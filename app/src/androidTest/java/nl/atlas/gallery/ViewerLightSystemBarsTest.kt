@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
+import android.os.Build
+import androidx.test.platform.app.InstrumentationRegistry
 import android.view.Window
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.core.view.WindowCompat
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.AtlasDarkRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -66,10 +69,16 @@ class ViewerLightSystemBarsTest {
             }
             AtlasGalleryTheme(dark = dark) {
                 if (viewerOpen.value) {
-                    GalleryViewer(photos, photo.uri, onBack = { viewerOpen.value = false })
+                    // Real routes paint a dark edge-to-edge Surface behind transparent
+                    // Android 15+ system bars. Exercise that path, not a white test root.
+                    AtlasDarkRoute {
+                        GalleryViewer(photos, photo.uri, onBack = { viewerOpen.value = false })
+                    }
                 } else {
-                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.White)
-                        .testTag("test-light-gallery"))
+                    Box(Modifier.fillMaxSize().background(
+                        if (dark) androidx.compose.ui.graphics.Color(0xFF0B0D10)
+                        else androidx.compose.ui.graphics.Color.White
+                    ).testTag("test-light-gallery"))
                 }
             }
         }
@@ -78,7 +87,12 @@ class ViewerLightSystemBarsTest {
         rule.runOnIdle {
             val w = requireNotNull(window)
             originalContrast = w.isNavigationBarContrastEnforced
-            assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.navigationBarColor)
+            // Target 36 uses enforced edge-to-edge on API 35+: the Window
+            // color getters can return transparent even while the real pixels
+            // behind navigation are correct. Inspect those pixels below.
+            if (Build.VERSION.SDK_INT < 35) {
+                assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.navigationBarColor)
+            }
             assertEquals(!dark, WindowCompat.getInsetsController(w, w.decorView).isAppearanceLightNavigationBars)
             viewerOpen.value = true
         }
@@ -86,13 +100,16 @@ class ViewerLightSystemBarsTest {
         rule.runOnIdle {
             val w = requireNotNull(window)
             val controller = WindowCompat.getInsetsController(w, w.decorView)
-            assertEquals("status backdrop", Color.BLACK, w.statusBarColor)
-            assertEquals("3-button nav backdrop", Color.BLACK, w.navigationBarColor)
+            if (Build.VERSION.SDK_INT < 35) {
+                assertEquals("status backdrop", Color.BLACK, w.statusBarColor)
+                assertEquals("3-button nav backdrop", Color.BLACK, w.navigationBarColor)
+            }
             assertFalse("no grey system contrast scrim", w.isNavigationBarContrastEnforced)
             assertFalse("status icons stay white", controller.isAppearanceLightStatusBars)
             assertFalse("navigation icons stay white", controller.isAppearanceLightNavigationBars)
         }
         rule.waitForIdle()
+        assertDarkNavigationPixels("viewer $mode")
         saveUiEvidence("680-viewer-$mode.png")
 
         rule.onNodeWithTag("atlas-viewer-details-open").performClick()
@@ -101,6 +118,7 @@ class ViewerLightSystemBarsTest {
         rule.onNodeWithText("Resolution").performScrollTo()
         rule.onNodeWithText("Resolution").assertIsDisplayed()
         rule.waitForIdle()
+        assertDarkNavigationPixels("details $mode")
         saveUiEvidence("680-details-$mode.png")
 
         rule.runOnIdle { viewerOpen.value = false }
@@ -108,11 +126,36 @@ class ViewerLightSystemBarsTest {
         rule.runOnIdle {
             val w = requireNotNull(window)
             val controller = WindowCompat.getInsetsController(w, w.decorView)
-            assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.statusBarColor)
-            assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.navigationBarColor)
+            if (Build.VERSION.SDK_INT < 35) {
+                assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.statusBarColor)
+                assertEquals(if (dark) Color.rgb(11, 13, 16) else Color.WHITE, w.navigationBarColor)
+            }
             assertEquals(originalContrast, w.isNavigationBarContrastEnforced)
             assertEquals("gallery restores status icon contrast", !dark, controller.isAppearanceLightStatusBars)
             assertEquals("gallery restores nav icon contrast", !dark, controller.isAppearanceLightNavigationBars)
+        }
+    }
+
+    /** Pixel proof of the actual 3-button band on edge-to-edge Android. */
+    private fun assertDarkNavigationPixels(phase: String) {
+        val shot = requireNotNull(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        ) { "No screenshot for $phase" }
+        try {
+            var total = 0.0
+            var samples = 0
+            for (y in shot.height - 48 until shot.height step 4) {
+                for (x in 0 until shot.width step 8) {
+                    val c = shot.getPixel(x, y)
+                    total += (0.2126 * Color.red(c) + 0.7152 * Color.green(c) +
+                        0.0722 * Color.blue(c)) / 255.0
+                    samples++
+                }
+            }
+            assertTrue("$phase: navigation area is light (mean ${total / samples})",
+                total / samples < 0.35)
+        } finally {
+            shot.recycle()
         }
     }
 }
