@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
@@ -97,7 +98,21 @@ class SelectionMoreJourneyTest {
         compose.onNodeWithTag("atlas-create-album-name").performTextInput(NEW_ALBUM)
         compose.waitForIdle()
         saveUiEvidence("more-568-create-album.png")
-        compose.onNodeWithTag("atlas-create-album-confirm").performClick()
+        // On the full emulator shard the open IME can intercept the Create tap.
+        // Dismiss it explicitly before exercising the actual dialog action.
+        compose.runOnUiThread {
+            val activity = compose.activity
+            val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as
+                android.view.inputmethod.InputMethodManager
+            imm.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-create-album-confirm")
+            .assertIsEnabled().performClick()
+        waitUntil("new album dialog dismisses") {
+            compose.onAllNodes(hasTestTag("atlas-create-album-confirm"))
+                .fetchSemanticsNodes().isEmpty()
+        }
         acceptWriteConsentUntil { fixtures.relativePathOf(ids[2]) == NEW_PATH }
         assertEquals(NEW_PATH, fixtures.relativePathOf(ids[2]))
         assertEquals(fixtures.nameOf(2), fixtures.displayNameOf(ids[2]))
