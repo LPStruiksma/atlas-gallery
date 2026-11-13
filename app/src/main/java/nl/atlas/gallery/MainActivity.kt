@@ -2841,28 +2841,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         }
                         if (provenanceDetailsOpen && provenance != null) {
-                            AlertDialog(
-                                onDismissRequest = { provenanceDetailsOpen = false },
-                                confirmButton = {
-                                    TextButton(onClick = { provenanceDetailsOpen = false }) {
-                                        Text("Close")
-                                    }
-                                },
-                                title = { Text("Photo details") },
-                                text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("Checked ${provenance.observedPhotoRows} · " +
-                                            "partial ${provenance.weakPhotoRows} · " +
-                                            "omitted ${provenance.ignoredPhotoRows}")
-                                        provenance.missingPhotoFields.toSortedMap().forEach { (field, count) ->
-                                            Text("$field: $count (" +
-                                                "%.2f".format(Locale.US,
-                                                    count * 100.0 / provenance.observedPhotoRows.coerceAtLeast(1)) +
-                                                "%)")
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.testTag("atlas-people-details-dialog")
+                            PhotoDetailsDialog(
+                                content = photoDetailsContent(
+                                    checked = provenance.observedPhotoRows,
+                                    partial = provenance.weakPhotoRows,
+                                    skipped = provenance.ignoredPhotoRows,
+                                    missing = provenance.missingPhotoFields,
+                                    locale = Locale.getDefault()
+                                ),
+                                onClose = { provenanceDetailsOpen = false }
                             )
                         }
                     }
