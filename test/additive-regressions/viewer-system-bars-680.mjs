@@ -22,3 +22,9 @@ test('viewer bars stay black across chrome toggles and restore the gallery on ex
 test('Details content accounts for Android navigation insets before bottom padding (#680)', () => {
   assert.match(details, /windowInsetsPadding\(WindowInsets\.navigationBars\.only\(WindowInsetsSides\.Bottom\)\)/);
 });
+
+test('API 35+ translucent navigation bar uses a restorable dark window backdrop (#680)', () => {
+  assert.match(viewer, /val oldDecorBackground = decor\.background/);
+  assert.match(viewer, /if \(android\.os\.Build\.VERSION\.SDK_INT >= 35\) \{\s*decor\.background = android\.graphics\.drawable\.ColorDrawable\(android\.graphics\.Color\.BLACK\)/);
+  assert.match(viewer, /onDispose\s*\{[\s\S]*decor\.background = oldDecorBackground/);
+});
