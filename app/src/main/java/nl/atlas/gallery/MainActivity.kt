@@ -2801,6 +2801,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
+                            scanLoading = access && discovery.status == null,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
                             },
@@ -2826,7 +2827,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onLinkV4 = {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
-                            onDiagnostics = { statusOpen = true }
+                            onDiagnostics = { statusOpen = true },
+                            onReadLastCrash = { LastCrashRecorder.read(context) },
+                            onCopyLastCrash = { report ->
+                                val clipboard = context.getSystemService(
+                                    android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("ATLAS last crash", report))
+                                Toast.makeText(context, "Last crash copied", Toast.LENGTH_SHORT).show()
+                            },
+                            onShareLastCrash = { report ->
+                                try {
+                                    context.startActivity(Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, report)
+                                        }, "Share last crash"))
+                                } catch (_: ActivityNotFoundException) {
+                                    Toast.makeText(context, "No app can share the crash report",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            }
                         )
                         if (peopleNumbersOpen) PeopleNumbersRoute(discoveryHost, searchGrant) {
                             peopleNumbersOpen = false
