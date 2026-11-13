@@ -284,10 +284,9 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
   run_kill_phase() {
-    local phase="$1" method="$2" extra="${3:-}"
+    local phase="$1" method="$2"
     local capture="/tmp/atlas-kill43-$phase.txt"
-    # shellcheck disable=SC2086
-    adb shell am instrument -w -r $extra -e atlasKillPhase "$phase" \
+    adb shell am instrument -w -r -e atlasKillPhase "$phase" \
       -e class "nl.atlas.gallery.PeopleScanProcessKillTest#$method" "$RUNNER" \
       > "$capture" 2>&1 || true
     cat "$capture"
@@ -331,20 +330,34 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     done
     return 1
   }
-  adb shell dumpsys battery unplug
-  adb logcat -c || true
-  # --no-restart: a finished instrumentation otherwise force-stops the target
-  # package, which cancels its jobs. The seed process stays; SIGKILL ends it.
-  run_kill_phase seed seedBeforeKill --no-restart
-  kill_app
-  adb shell dumpsys battery set ac 1
-  adb shell dumpsys battery set status 2
   kill43_diagnostics() {
     face_log | tail -50
     adb shell dumpsys battery | head -12 || true
     adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
     timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
   }
+  adb shell dumpsys battery unplug
+  adb logcat -c || true
+  run_kill_phase seed seedBeforeKill
+  adb logcat -c || true
+  # A finished instrumentation force-stops its target package, which cancels
+  # its jobs (and --no-restart cannot start one). So the user's next open
+  # arms the scan, as on a phone: launch ATLAS once (still unplugged), wait
+  # for its gallery publication to enqueue the chain, go Home, and SIGKILL
+  # that process. From here on no Activity may start.
+  adb shell am start -W -n nl.atlas.gallery/.MainActivity >/dev/null
+  for _ in $(seq 1 60); do
+    face_log | grep -q 'publication_done' && break
+    sleep 1
+  done
+  face_log | grep 'publication_done' || {
+    kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
+  sleep 2 # let WorkManager persist the enqueue
+  adb shell input keyevent KEYCODE_HOME
+  kill_app
+  adb logcat -c || true
+  adb shell dumpsys battery set ac 1
+  adb shell dumpsys battery set status 2
   first="$(wait_restore_in_new_pid "")" || {
     kill43_diagnostics; echo "::error::#43 WorkManager never restored the scan"; exit 1; }
   # Mid-run: the worker has finished at least one batch, not its run.

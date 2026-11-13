@@ -24,10 +24,13 @@ import java.io.File
  *   grant, and an opt-in through the app's own [PeopleDiscoveryHost.forApp]
  *   while the emulator is unplugged, so the WorkManager chain is enqueued but
  *   no batch runs yet. Nothing is processed.
- * - (script) charge, let WorkManager start the app process for the worker,
- *   kill -9 it mid-run, let WorkManager start it again and finish a run.
- * - verify: only the real app database and preferences are read. The same
- *   catalogue (no restage) made progress, all of it in worker processes.
+ * - (script) the finished instrumentation force-stops the package, which
+ *   cancels its jobs, so ATLAS is opened once, as a user would, to arm the
+ *   chain; Home, then SIGKILL. Charging lets WorkManager start a worker
+ *   process; it is killed with SIGKILL mid-run, and WorkManager must start
+ *   another that carries on. No Activity starts after the first SIGKILL.
+ * - verify: only the real app database and preferences are read. The
+ *   published catalogue made progress, all of it in worker processes.
  * - cleanup: deletes exactly the invented rows.
  *
  * The ordinary connected suite skips every phase.
@@ -94,11 +97,11 @@ class PeopleScanProcessKillTest {
     @Test fun verifyAfterKill() {
         assumeTrue(phase == "verify")
         requireEmulator()
-        val (epoch, items) = record.readLines().let { it[0] to it[1].toInt() }
+        val (seeded, items) = record.readLines().let { it[0] to it[1].toInt() }
         val memory = PeopleOptInMemory.preferences(target)
         assertNotNull("still opted in", memory.load())
-        assertEquals("the worker carried the seeded catalogue, no restage", epoch,
-            memory.loadPublished()?.epoch)
+        val epoch = requireNotNull(memory.loadPublished()?.epoch) { "a published scope survived" }
+        android.util.Log.i("ATLAS_KILL43", "verify carried=${epoch == seeded}")
         val store = FaceIndexStore(target)
         try {
             assertEquals("the last epoch is the seeded one", epoch, store.reviveDormantEpoch())
