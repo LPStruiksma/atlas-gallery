@@ -212,11 +212,32 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# Preserve normal viewer/filmstrip checks and their real PNG screenshots.
+# If the mismatch lane replaced the fixture with signer B, Gradle must
+# retain the same environment or it will attempt to install signer A again.
+# D2-5p scale lines (FaceIndexStoreScaleAndroidTest) go to logcat; keep a
+# buffer large enough for the whole suite and print them even on failure.
+adb logcat -G 16M || true
+adb logcat -c || true
+connected_status=0
+shard_args=()
+if [[ "$SHARD_COUNT" -gt 1 ]]; then
+  shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
+    -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
+fi
+gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+echo "::group::ATLAS_SCALE synthetic SQLite measurements"
+# Bounded (run 43076916972): if the device died with the tests, plain `adb logcat` blocks on
+# "- waiting for device -" until the job cap and turns a red shard into a cancel.
+timeout 30 adb logcat -d -s ATLAS_SCALE:I || echo "ATLAS_SCALE logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
+if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
 # #31: the two real-process People/visual/grid/Albums phases cannot run in
 # one instrumentation invocation: force-stop must kill the target process
 # between them. The test seeds only invented images and its own app-private
 # database, while MainActivity and the Android permission publication are real.
-# Run before the sharded suite; its PNGs remain in MediaStore for evidence pull.
+# Run after the sharded suite to avoid polluting its MediaStore fixture counts;
+# the PNGs still remain for the final evidence pull.
 if [[ "$SHARD_INDEX" == "0" ]]; then
   [[ "${GITHUB_ACTIONS:-}" == "true" &&
     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
@@ -252,26 +273,6 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   echo "PASS: #31 separate-process People, visual, Settings, Photos and Albums relaunch"
 fi
 
-# Preserve normal viewer/filmstrip checks and their real PNG screenshots.
-# If the mismatch lane replaced the fixture with signer B, Gradle must
-# retain the same environment or it will attempt to install signer A again.
-# D2-5p scale lines (FaceIndexStoreScaleAndroidTest) go to logcat; keep a
-# buffer large enough for the whole suite and print them even on failure.
-adb logcat -G 16M || true
-adb logcat -c || true
-connected_status=0
-shard_args=()
-if [[ "$SHARD_COUNT" -gt 1 ]]; then
-  shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
-    -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
-fi
-gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
-echo "::group::ATLAS_SCALE synthetic SQLite measurements"
-# Bounded (run 43076916972): if the device died with the tests, plain `adb logcat` blocks on
-# "- waiting for device -" until the job cap and turns a red shard into a cancel.
-timeout 30 adb logcat -d -s ATLAS_SCALE:I || echo "ATLAS_SCALE logcat unavailable (device gone or timed out)"
-echo "::endgroup::"
-if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
 # UI evidence (#588, #586): discovery and checks live in scripts/ci_ui_evidence.sh;
 # the expected names are declared per feature in scripts/ui-evidence.d/.
 # A shard pulls only its own screenshots; the aggregate emulator-ui job
