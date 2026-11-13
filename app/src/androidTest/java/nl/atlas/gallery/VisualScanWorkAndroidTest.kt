@@ -64,6 +64,13 @@ class VisualScanWorkAndroidTest {
     private val target = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(target.cacheDir, "visual-scan-work-" + UUID.randomUUID())
     private val modelCopy = File(dir, "model-copy/siglip2_b16_224_int8.onnx")
+    // A per-test SharedPreferences file survives host recreation without touching
+    // the real app's choices or any photo/identity data.
+    private val preferenceName = "atlas-visual-test-${dir.name}"
+    private val choices = PeopleOptInMemory.preferences(object : ContextWrapper(target) {
+        override fun getSharedPreferences(name: String, mode: Int): android.content.SharedPreferences =
+            target.getSharedPreferences(preferenceName, mode)
+    })
     private val stores = mutableListOf<AutoCloseable>()
 
     private class RecordingScheduler : PeopleScanScheduling {
@@ -147,6 +154,7 @@ class VisualScanWorkAndroidTest {
         if (!realSiglip) modelCopy.writeBytes(ByteArray(16))
         return PeopleDiscoveryHost(
             store = faces,
+            optInMemory = choices,
             photoGrantCurrent = { granted },
             inferenceFactory = {
                 FaceEmbeddingPipeline.forOnnx(
@@ -193,6 +201,7 @@ class VisualScanWorkAndroidTest {
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         dir.deleteRecursively()
+        target.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     private fun batch(): FaceBatchResult? =
@@ -272,17 +281,24 @@ class VisualScanWorkAndroidTest {
         val embedsBefore = embeds.get()
         assertTrue(visualDone in 1..9)
 
-        // A new process: nothing is authorised until the user opts in again.
+        // A new process can see a transient permission read before the gallery
+        // publishes its first authorised catalogue. This must hide all People
+        // without erasing the saved opt-ins or making us tap the switches again.
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         stores.clear()
         scheduler = RecordingScheduler()
+        granted = false
         val restarted = host()
         assertNull("no session from a previous process", batch())
-        restarted.start("gallery-7", inventory)
-        assertFalse("visual opt-in is not restored", restarted.visualStatus(faceEpoch(restarted))!!.enabled)
-        restarted.setVisualIndex(true)
-        assertEquals("vectors survive the restart", visualDone, visualProgress(restarted).done)
+        restarted.onGalleryPublication(null) { inventory }
+        assertNull("not readable without a live Android grant", restarted.status(null).people)
+        granted = true
+        restarted.onGalleryPublication("gallery-7") { inventory }
+        assertTrue("visual switch survives process recreation",
+            restarted.visualStatus(faceEpoch(restarted))!!.enabled)
+        assertEquals("vectors survive without a second tap", visualDone,
+            visualProgress(restarted).done)
         assertTrue(faces.progress(faceEpoch(restarted))!!.processed >= facesDone)
 
         drain(restarted)
