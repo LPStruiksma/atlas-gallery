@@ -29,4 +29,10 @@ assert.match(report, /result\.append\("Heap: "\)/);
 // Android's free-text exit description must never enter the report.
 assert.doesNotMatch(report, /\.description/);
 
+// The inventory cache ran out of heap three times on the phone (decode twice,
+// encode once): reading and writing it must absorb that, not end the app.
+const cache = read('app/src/main/java/nl/atlas/gallery/GalleryInventoryCache.kt');
+assert.match(cache, /catch \(_: OutOfMemoryError\) \{[\s\S]*?event=cache_read_out_of_memory"\)\s*null/);
+assert.match(cache, /catch \(_: OutOfMemoryError\) \{[\s\S]*?tmp\.delete\(\)[\s\S]*?event=cache_write_out_of_memory/);
+
 console.log('scan-memory-41 source contracts passed');
