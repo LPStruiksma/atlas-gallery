@@ -208,7 +208,7 @@ assert "permissions" not in _build and "secrets" not in _build
 assert "environment" not in _build and "contents: write" not in _build
 assert "persist-credentials: false" in _build
 assert ":app:assembleRelease" in _build and "signingConfig" not in _build
-assert "    environment: atlas-release\n" in _sign
+assert "    environment: release\n" in _sign
 assert "    permissions:\n      contents: write\n" in _sign
 # The key-holding job never checks out or builds repository code.
 for forbidden in ("actions/checkout", "gradle", "setup-android", "git clone"):

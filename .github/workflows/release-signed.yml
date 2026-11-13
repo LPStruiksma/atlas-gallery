@@ -7,7 +7,7 @@ name: ATLAS signed phone release (main only)
 #   * Job 1 (build) checks out and runs Gradle with NO secret, NO environment
 #     and a read-only token. It hands an aligned, UNSIGNED APK to job 2.
 #   * Job 2 (sign) never checks out or runs repository code. It is the only job
-#     bound to the `atlas-release` environment (deployment branches: main only;
+#     bound to the `release` environment (deployment branches: main only;
 #     the keystore and its password exist only there), the only job with
 #     contents: write, and it deletes the keystore whatever happens.
 #   * Signing fails unless the signer is the M1 key below.
@@ -153,7 +153,7 @@ jobs:
     timeout-minutes: 15
     # Lukas restricts this environment to the main branch; the keystore and its
     # password are environment secrets that exist nowhere else.
-    environment: atlas-release
+    environment: release
     permissions:
       contents: write
     env:
@@ -191,7 +191,7 @@ jobs:
           umask 077
           trap 'rm -rf "$KEYDIR"' EXIT
           [[ -n "$ATLAS_RELEASE_KEYSTORE_B64" && -n "$ATLAS_RELEASE_KEY_PASSWORD" ]] \
-            || { echo '::error::atlas-release environment secrets are missing (see docs/RELEASE_PHONE_UPDATES.md)'; exit 1; }
+            || { echo '::error::release environment secrets are missing (see docs/RELEASE_PHONE_UPDATES.md)'; exit 1; }
           mkdir -m 700 "$KEYDIR"
           printf '%s' "$ATLAS_RELEASE_KEYSTORE_B64" | base64 -d > "$KEYDIR/atlas.p12" \
             || { echo '::error::ATLAS_RELEASE_KEYSTORE_B64 is not valid base64'; exit 1; }

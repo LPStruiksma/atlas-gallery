@@ -9,7 +9,7 @@
 1. **build** (no secret, no environment, read-only token): checks out the pushed `main` commit, picks the version, runs `gradle :app:assembleRelease` with no signing configuration, `zipalign`s the unsigned APK and hands it to the next job with a checksum.
    - `versionCode` = UTC `yyMMddHH` × 10 + minute ÷ 6 (for example `261109147` at 14:42), at least one above the newest `v0.3.<code>` release tag, so it only ever goes up and stays above the Mac builds (`26110913`). `versionName` = `0.3.<versionCode>`. The stamp is written in the runner's working copy only, never committed.
    - Release notes = the merged PR titles since the previous release tag.
-2. **sign** (environment `atlas-release`, the only job with `contents: write`): never checks out or runs repository code and uses the runner's own Android SDK (no third-party action). It decodes the keystore into a private temp folder (`umask 077`), signs with `apksigner` (passwords only through its environment), and deletes the keystore at once and again in an `always()` step. It then refuses the APK unless:
+2. **sign** (environment `release`, the only job with `contents: write`): never checks out or runs repository code and uses the runner's own Android SDK (no third-party action). It decodes the keystore into a private temp folder (`umask 077`), signs with `apksigner` (passwords only through its environment), and deletes the keystore at once and again in an `always()` step. It then refuses the APK unless:
    - exactly one signer, equal to `5f15596090e3cfa339c2fd73a2039a23ecca9d02ae4e3506e22dabe976ce170b` (the M1 key);
    - package `nl.atlas.gallery`, the expected versionCode/versionName, aligned, not debuggable.
 3. Publishes GitHub release `v0.3.<code>` with `ATLAS-0.3.<code>.apk` and `SHA256SUMS`.
@@ -22,7 +22,7 @@ All actions are pinned by full commit SHA. If the secrets are missing the sign j
    ~~~bash
    base64 -i ~/ATLAS-signing/atlas-permanent.p12 | pbcopy
    ~~~
-2. Open <https://github.com/LPStruiksma/atlas-native/settings/environments/new>, name it `atlas-release`, press **Configure environment**.
+2. Open <https://github.com/LPStruiksma/atlas-gallery/settings/environments/new>, name it `release`, press **Configure environment**.
 3. Under **Deployment branches and tags** choose **Selected branches and tags** → **Add deployment branch or tag rule** → `main`.
 4. **Add environment secret**: name `ATLAS_RELEASE_KEYSTORE_B64`, value: paste (Cmd+V).
 5. **Add environment secret**: name `ATLAS_RELEASE_KEY_PASSWORD`, value: the key's password (the one you type in the Mac pastes).
