@@ -1,9 +1,49 @@
 package nl.atlas.gallery
 
-/** No Android dependencies; testable on the JVM. */
-data class MediaRecord(
+/**
+ * #63: one shared instance per content-collection prefix
+ * (`content://media/external_primary/images/media/` and the like), so a
+ * [MediaRecord] keeps a reference plus its id instead of a full URI string.
+ * Bounded: past [MAX] distinct prefixes a record keeps its full string.
+ */
+internal object MediaUriPrefixes {
+    private const val MAX = 256
+    private val table = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** The shared prefix when [uri] is exactly that prefix followed by [id]; else null. */
+    fun prefixOf(uri: String, id: Long): String? {
+        if (id < 0L) return null
+        var digits = 0
+        var rest = id
+        do { digits++; rest /= 10 } while (rest != 0L)
+        val cut = uri.length - digits
+        if (cut < 2 || uri[cut - 1] != '/') return null
+        // The tail must be exactly the decimal digits of id (no sign, no zero padding).
+        var value = id
+        for (i in uri.length - 1 downTo cut) {
+            if (uri[i] != ('0' + (value % 10).toInt())) return null
+            value /= 10
+        }
+        val prefix = uri.substring(0, cut)
+        table[prefix]?.let { return it }
+        if (table.size >= MAX) return null
+        return table.putIfAbsent(prefix, prefix) ?: prefix
+    }
+}
+
+/**
+ * No Android dependencies; testable on the JVM.
+ *
+ * #63: behaves as the former data class (same constructor, properties,
+ * equals, copy) but does not store a URI string per row: [uri] is rebuilt
+ * from a shared collection prefix plus [id] when it has that shape, which
+ * every MediaStore row does. A 250k-photo library no longer holds 250k URI
+ * strings on the heap. [hashCode] leaves the URI out (allowed: equal records
+ * still hash equal) so hashing allocates nothing.
+ */
+class MediaRecord(
     val id: Long,
-    val uri: String,
+    uri: String,
     val name: String,
     val relativePath: String,
     val sizeBytes: Long,
@@ -26,6 +66,23 @@ data class MediaRecord(
     val favoriteKnown: Boolean = false,
     val dateSource: MediaDateSource = MediaDateSource.UNKNOWN
 ) {
+    /** The shared prefix ([uriIsPrefix]) or, for an unusual URI, the whole string. */
+    private val uriPart: String
+    private val uriIsPrefix: Boolean
+
+    init {
+        val prefix = MediaUriPrefixes.prefixOf(uri, id)
+        uriPart = prefix ?: uri
+        uriIsPrefix = prefix != null
+    }
+
+    val uri: String get() = if (uriIsPrefix) uriPart + id else uriPart
+
+    /** Same URI as [other], without building either string when both are prefix + id. */
+    fun hasSameUri(other: MediaRecord): Boolean =
+        if (uriIsPrefix && other.uriIsPrefix) id == other.id && uriPart == other.uriPart
+        else uri == other.uri
+
     // Legacy V4 reviewed assignments use exact paths. A removable volume
     // must NEVER impersonate /storage/emulated/0 just because its relative
     // folder and filename happen to match a primary-storage photograph.
@@ -36,6 +93,76 @@ data class MediaRecord(
             "/storage/emulated/0/" else "/storage/" + volumeName + "/") +
             relativePath.trimStart('/') + name
     val album: String get() = relativePath.trimEnd('/').substringAfterLast('/').ifBlank { "Root" }
+
+    fun copy(
+        id: Long = this.id,
+        uri: String = this.uri,
+        name: String = this.name,
+        relativePath: String = this.relativePath,
+        sizeBytes: Long = this.sizeBytes,
+        takenAtMillis: Long = this.takenAtMillis,
+        isVideo: Boolean = this.isVideo,
+        durationMillis: Long = this.durationMillis,
+        modifiedAtSeconds: Long = this.modifiedAtSeconds,
+        volumeName: String = this.volumeName,
+        providerVersion: String? = this.providerVersion,
+        generationModified: Long = this.generationModified,
+        widthPixels: Int = this.widthPixels,
+        heightPixels: Int = this.heightPixels,
+        orientationDegrees: Int = this.orientationDegrees,
+        isFavorite: Boolean = this.isFavorite,
+        favoriteKnown: Boolean = this.favoriteKnown,
+        dateSource: MediaDateSource = this.dateSource
+    ): MediaRecord = MediaRecord(id, uri, name, relativePath, sizeBytes, takenAtMillis,
+        isVideo, durationMillis, modifiedAtSeconds, volumeName, providerVersion,
+        generationModified, widthPixels, heightPixels, orientationDegrees, isFavorite,
+        favoriteKnown, dateSource)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is MediaRecord) return false
+        return id == other.id && sizeBytes == other.sizeBytes &&
+            takenAtMillis == other.takenAtMillis && isVideo == other.isVideo &&
+            durationMillis == other.durationMillis &&
+            modifiedAtSeconds == other.modifiedAtSeconds &&
+            generationModified == other.generationModified &&
+            widthPixels == other.widthPixels && heightPixels == other.heightPixels &&
+            orientationDegrees == other.orientationDegrees &&
+            isFavorite == other.isFavorite && favoriteKnown == other.favoriteKnown &&
+            dateSource == other.dateSource && name == other.name &&
+            relativePath == other.relativePath && volumeName == other.volumeName &&
+            providerVersion == other.providerVersion && hasSameUri(other)
+    }
+
+    override fun hashCode(): Int {
+        var h = id.hashCode()
+        h = 31 * h + name.hashCode()
+        h = 31 * h + relativePath.hashCode()
+        h = 31 * h + sizeBytes.hashCode()
+        h = 31 * h + takenAtMillis.hashCode()
+        h = 31 * h + isVideo.hashCode()
+        h = 31 * h + durationMillis.hashCode()
+        h = 31 * h + modifiedAtSeconds.hashCode()
+        h = 31 * h + volumeName.hashCode()
+        h = 31 * h + (providerVersion?.hashCode() ?: 0)
+        h = 31 * h + generationModified.hashCode()
+        h = 31 * h + widthPixels
+        h = 31 * h + heightPixels
+        h = 31 * h + orientationDegrees
+        h = 31 * h + isFavorite.hashCode()
+        h = 31 * h + favoriteKnown.hashCode()
+        h = 31 * h + dateSource.hashCode()
+        return h
+    }
+
+    override fun toString(): String = "MediaRecord(id=$id, uri=$uri, name=$name, " +
+        "relativePath=$relativePath, sizeBytes=$sizeBytes, takenAtMillis=$takenAtMillis, " +
+        "isVideo=$isVideo, durationMillis=$durationMillis, " +
+        "modifiedAtSeconds=$modifiedAtSeconds, volumeName=$volumeName, " +
+        "providerVersion=$providerVersion, generationModified=$generationModified, " +
+        "widthPixels=$widthPixels, heightPixels=$heightPixels, " +
+        "orientationDegrees=$orientationDegrees, isFavorite=$isFavorite, " +
+        "favoriteKnown=$favoriteKnown, dateSource=$dateSource)"
 }
 
 /** Samsung Gallery's sort sheet plus ATLAS's size sorts (#514: Largest and Smallest). */
