@@ -29,6 +29,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,6 +52,8 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1780,6 +1787,7 @@ internal class PeopleDiscoveryHost(
 internal class PeopleDiscoveryBinding(
     val status: PeopleDiscoveryStatus?,
     val onStart: () -> Unit,
+    val onScanNow: () -> Unit,
     val onPause: () -> Unit,
     val onResume: () -> Unit,
     /** The "Visual search index" switch; off can also delete its data. */
@@ -1817,11 +1825,75 @@ internal fun <T> rememberPeopleDiscoveryOf(
         }
     }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val appContext = LocalContext.current.applicationContext
+    val manualJob = remember(host) { mutableStateOf<Job?>(null) }
+    DisposableEffect(host, lifecycleOwner) {
+        host.setForegroundVisible(
+            lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> host.setForegroundVisible(true)
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    host.setForegroundVisible(false)
+                    manualJob.value?.cancel()
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            host.setForegroundVisible(false)
+            manualJob.value?.cancel()
+        }
+    }
     return PeopleDiscoveryBinding(
         status = status?.takeIf { galleryGrant != null },
         onStart = {
             val grant = galleryGrant
             if (grant != null) scope.launch(Dispatchers.IO) { host.start(grant, project(inventory)) }
+        },
+        onScanNow = {
+            val grant = galleryGrant
+            if (grant != null &&
+                lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                manualJob.value?.cancel()
+                manualJob.value = scope.launch(Dispatchers.IO) {
+                    val token = host.beginManualForeground(grant, project(inventory))
+                        ?: return@launch
+                    var stoppedFor: String? = null
+                    try {
+                        val job = currentCoroutineContext()[Job]
+                        while (job?.isActive == true && host.manualScanActive(token)) {
+                            stoppedFor = host.manualHoldReason(token)
+                            if (stoppedFor != null) break
+                            val batch = nl.atlas.gallery.featureface.work.runPeopleScanBatch(
+                                appContext, manualForeground = true,
+                                isStopped = { job.isActive != true || !host.manualScanActive(token) }
+                            ) ?: break
+                            when (batch.stop) {
+                                FaceBatchStop.PHOTO_LIMIT, FaceBatchStop.TIME_LIMIT,
+                                FaceBatchStop.PHOTO_FAILED -> Unit
+                                FaceBatchStop.DETECTOR_PENDING, FaceBatchStop.DETECTOR_STALLED ->
+                                    delay(5_000)
+                                FaceBatchStop.HELD -> {
+                                    stoppedFor = host.manualHoldReason(token)
+                                        ?: "Waiting for safe scan conditions"
+                                    break
+                                }
+                                FaceBatchStop.PERMISSION_STALE -> {
+                                    stoppedFor = "Waiting for current photo access"
+                                    break
+                                }
+                                FaceBatchStop.NO_PENDING -> break
+                            }
+                        }
+                    } finally {
+                        host.stopManualForeground(token, stoppedFor)
+                    }
+                }
+            }
         },
         onPause = { scope.launch(Dispatchers.IO) { host.pause() } },
         onResume = { scope.launch(Dispatchers.IO) { host.resume() } },

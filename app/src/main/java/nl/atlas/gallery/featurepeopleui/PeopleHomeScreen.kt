@@ -76,6 +76,7 @@ fun PeopleHomeScreen(
     v4OneTimeImportMode: ReviewedV4ImportMode = ReviewedV4ImportMode.REPLACES,
     modifier: Modifier = Modifier,
     onStartDiscovery: (() -> Unit)? = null,
+    onScanNow: (() -> Unit)? = null,
     onPauseDiscovery: (() -> Unit)? = null,
     onResumeDiscovery: (() -> Unit)? = null,
     onOpenReview: (() -> Unit)? = null,
@@ -158,6 +159,13 @@ fun PeopleHomeScreen(
             }
         }
         addAll(menuItems)
+        // #61: explicit foreground face discovery is available even on battery.
+        // Keep it in People ⋮ so the Samsung-style grid stays uncluttered.
+        if (onScanNow != null && !currentPermissionEpoch.isNullOrBlank() &&
+            discovery.phase != FaceDiscoveryPhase.UNAVAILABLE &&
+            discovery.phase != FaceDiscoveryPhase.PERMISSION_REQUIRED) {
+            add(AtlasHeaderMenuItem("Scan now", "atlas-people-scan-now", onClick = onScanNow))
+        }
         // #643: scan and review are People actions, so they sit in ⋮ rather
         // than as buttons on the page. The empty page keeps "Discover faces".
         if (scan.start != null && tiles.isNotEmpty()) add(AtlasHeaderMenuItem(
@@ -293,6 +301,14 @@ private fun peopleScanControls(
  */
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
+    // A held foreground request must never masquerade as active discovery.
+    state.statusNote?.let { note ->
+        Text(note, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+            .testTag("atlas-people-scan-waiting"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
     val line = peopleProgressLine(state) ?: return
     Box(Modifier.fillMaxWidth().semantics { stateDescription = line }
         .testTag("atlas-people-progress-line")) {

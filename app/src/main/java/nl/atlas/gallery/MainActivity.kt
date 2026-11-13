@@ -2801,6 +2801,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
+                            scanStatusNote = discovery.status?.ui?.statusNote,
+                            onScanNow = discovery.onScanNow.takeIf { access },
                             scanLoading = access && discovery.status == null,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
@@ -3325,6 +3327,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // refresh: a refresh is not face discovery.
                                 currentPermissionEpoch = discovery.status?.displayEpoch,
                                 onStartDiscovery = discovery.onStart,
+                                onScanNow = discovery.onScanNow.takeIf { access },
                                 onPauseDiscovery = discovery.onPause,
                                 onResumeDiscovery = discovery.onResume,
                                 onOpenReview = { peopleReviewOpen = true },
