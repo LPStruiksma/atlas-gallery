@@ -542,7 +542,8 @@ private fun StoryVideoStage(
                 // Audio-focus loss or a disconnected headset must not leave the
                 // UI advertising "Pause video" when playback has stopped.
                 if (!playWhenReady && latestPlaying &&
-                    reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS) {
+                    (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS ||
+                        reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY)) {
                     latestPaused()
                 }
             }
@@ -560,14 +561,20 @@ private fun StoryVideoStage(
             latestPaused()
         }
         onDispose {
+            // An owner can change while the same video remains mounted.
+            // Rewire observers only; do not release the remembered player.
             lifecycleOwner.lifecycle.removeObserver(observer)
             player.removeListener(listener)
+        }
+    }
+    DisposableEffect(player) {
+        onDispose {
             player.pause()
             player.release()
             latestReleased()
         }
     }
-    LaunchedEffect(player, playing, failed) {
+    LaunchedEffect(player, playing, failed, lifecycleOwner) {
         if (playing && !failed &&
             lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             if (player.playbackState == Player.STATE_ENDED) {
