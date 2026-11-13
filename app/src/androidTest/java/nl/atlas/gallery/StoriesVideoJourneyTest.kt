@@ -97,6 +97,7 @@ class StoriesVideoJourneyTest {
 
         compose.onNodeWithTag("atlas-story-pause").performClick()
         await(hasContentDescription("Pause video"))
+        await(hasTestTag("atlas-story-video-is-playing"))
         compose.onNodeWithTag("atlas-story-video-surface").assertExists()
         saveUiEvidence("stories-21-playing-" + mode + ".png")
 
