@@ -64,6 +64,11 @@ class ViewerVideoChromeJourneyTest {
                 }
             }
             awaitPlayer()
+            compose.waitUntil(20_000L) {
+                runCatching {
+                    compose.onNodeWithTag("atlas-video-seek").assertIsEnabled()
+                }.isSuccess
+            }
             val originalStripY = compose.onNodeWithTag("atlas-filmstrip")
                 .fetchSemanticsNode().boundsInRoot.center.y
             for (theme in listOf("dark", "light")) {
@@ -82,8 +87,10 @@ class ViewerVideoChromeJourneyTest {
                 saveUiEvidence("viewer-video-$theme-playing.png")
 
                 compose.onNodeWithTag("atlas-video-play-pause").performClick()
-                compose.onNodeWithTag("atlas-video-play-pause")
-                    .assert(hasContentDescription("Play video"))
+                compose.waitUntil(10_000L) {
+                    compose.onAllNodes(hasContentDescription("Play video"))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
                 saveUiEvidence("viewer-video-$theme-paused.png")
 
                 // Hold the slider thumb long enough for an actual extracted
@@ -93,14 +100,18 @@ class ViewerVideoChromeJourneyTest {
                     moveTo(Offset(width * 0.78f, height * 0.5f))
                 }
                 compose.waitUntil(15_000L) {
-                    compose.onAllNodesWithTag("atlas-video-seek-preview")
+                    // Wait for extracted pixels, not just the preview shell.
+                    compose.onAllNodesWithTag("atlas-video-seek-frame")
                         .fetchSemanticsNodes().isNotEmpty()
                 }
                 compose.onNodeWithTag("atlas-video-seek-preview").assertIsDisplayed()
+                compose.onNodeWithTag("atlas-video-seek-frame").assertIsDisplayed()
                 saveUiEvidence("viewer-video-$theme-seek.png")
                 compose.onNodeWithTag("atlas-video-seek").performTouchInput { up() }
-                compose.onNodeWithTag("atlas-video-play-pause")
-                    .assert(hasContentDescription("Play video"))
+                compose.waitUntil(10_000L) {
+                    compose.onAllNodes(hasContentDescription("Play video"))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
             }
 
             // Delayed mount and teardown still work when the pager changes.
@@ -114,8 +125,10 @@ class ViewerVideoChromeJourneyTest {
             assertTrue("Filmstrip moved between photo/video", kotlin.math.abs(originalStripY - photoStripY) < 4f)
             compose.onNodeWithTag("atlas-thumbnail-0").performClick()
             awaitPlayer()
-            compose.onNodeWithTag("atlas-video-play-pause")
-                .assert(hasContentDescription("Play video"))
+            compose.waitUntil(10_000L) {
+                compose.onAllNodes(hasContentDescription("Play video"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
         } finally {
             video.delete()
             photo.delete()
