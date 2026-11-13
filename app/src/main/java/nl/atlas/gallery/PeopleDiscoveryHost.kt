@@ -698,7 +698,7 @@ internal class PeopleDiscoveryHost(
     fun stopManualForeground(token: Long? = null, note: String? = null) {
         val updated = synchronized(lock) {
             if (token != null && token != manualGeneration) return@synchronized false
-            if (!manualForegroundActive && note == null) return@synchronized false
+            if (!manualForegroundActive) return@synchronized false
             manualForegroundActive = false
             if (note != null) lastManualWait = note
             true
@@ -1870,7 +1870,7 @@ internal fun <T> rememberPeopleDiscoveryOf(
                             if (stoppedFor != null) break
                             val batch = nl.atlas.gallery.featureface.work.runPeopleScanBatch(
                                 appContext, manualForeground = true,
-                                isStopped = { job.isActive != true || !host.manualScanActive(token) }
+                                isStopped = { job?.isActive != true || !host.manualScanActive(token) }
                             ) ?: break
                             when (batch.stop) {
                                 FaceBatchStop.PHOTO_LIMIT, FaceBatchStop.TIME_LIMIT,

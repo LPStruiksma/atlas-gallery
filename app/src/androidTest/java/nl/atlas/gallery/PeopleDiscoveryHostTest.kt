@@ -15,6 +15,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -48,6 +49,7 @@ import nl.atlas.gallery.featurepeopleui.PeopleHomeUiState
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -86,6 +88,8 @@ class PeopleDiscoveryHostTest {
 
     @Volatile private var granted = true
     @Volatile private var charging = true
+    @Volatile private var batteryPercent = 100
+    @Volatile private var thermalStatus = 0
     private val decoded = AtomicInteger()
     private val scheduler = RecordingScheduler()
 
@@ -144,11 +148,81 @@ class PeopleDiscoveryHostTest {
                         480, 480, 0.4f + 0.02f * id, 0.5f, 0.8f + 0.01f * id)))
                 }
             },
-            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true) },
+            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true,
+                batteryPercent = batteryPercent, thermalStatus = thermalStatus) },
             scheduler = scheduler,
             publishClusters = publish?.invoke(store) ?: store::publishClustersIfDue,
             optInMemory = optIn
         )
+    }
+
+
+    /**
+     * #61: real host and fake invented media, with WorkManager replaced by the
+     * recording scheduler. The rendered People line is captured while unplugged.
+     */
+    @Test fun manualUnpluggedScanIsForegroundOnlyAndRendered() {
+        charging = false
+        batteryPercent = 80
+        thermalStatus = 0
+        val host = host()
+        val grant = "manual-unplugged"
+        host.setForegroundVisible(true)
+        val token = requireNotNull(host.beginManualForeground(grant, inventory))
+        assertTrue(host.manualScanActive(token))
+        assertTrue(scheduler.cancels.get() > 0)
+        val first = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true) { false }
+        }
+        assertNotNull(first)
+        assertTrue("one synthetic photo indexed", first!!.photosIndexed > 0)
+        val state = host.status(grant)
+        assertTrue("a bounded batch leaves visible work", state.ui.eligible > state.ui.processed)
+        assertEquals(FaceDiscoveryPhase.SCANNING, state.ui.phase)
+        compose.setContent {
+            PeopleHomeScreen(
+                state = PeopleHomeUiState(discovery = state.ui),
+                actions = state.actions,
+                currentPermissionEpoch = state.displayEpoch,
+                onOpenProfile = {},
+                onScanNow = {}
+            )
+        }
+        waitForProgress("Finding people · ${state.ui.processed} of ${state.ui.eligible}")
+        assertTrue("rendered progress has pixels", compose.onRoot().captureToImage().width > 0)
+        openMenuFor("atlas-people-scan-now")
+        assertTrue("manual work must not enqueue background batches",
+            scheduler.nexts.get() == 0 && scheduler.laters.get() == 0)
+
+        val indexed = decoded.get()
+        batteryPercent = 29
+        val lowBattery = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true) { false }
+        }
+        assertEquals(FaceBatchStop.HELD, lowBattery?.stop)
+        assertEquals(indexed, decoded.get())
+        assertEquals("Battery below 30%", host.status(grant).ui.statusNote)
+
+        batteryPercent = 80
+        thermalStatus = 2
+        val hot = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { false },
+                manualForeground = true) { false }
+        }
+        assertEquals(FaceBatchStop.HELD, hot?.stop)
+        assertEquals("Waiting for phone to cool", host.status(grant).ui.statusNote)
+
+        thermalStatus = 0
+        host.setForegroundVisible(false)
+        assertFalse(host.manualScanActive(token))
+        val background = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true) { false }
+        }
+        assertEquals(FaceBatchStop.HELD, background?.stop)
+        assertEquals(indexed, decoded.get())
     }
 
     @After fun cleanUp() {
