@@ -1,0 +1,7 @@
+# #17 floating selection action pill (SelectionPillLight/DarkJourneyTest).
+selection-pill-17-light-single
+selection-pill-17-light-multi
+selection-pill-17-light-more
+selection-pill-17-dark-single
+selection-pill-17-dark-multi
+selection-pill-17-dark-more

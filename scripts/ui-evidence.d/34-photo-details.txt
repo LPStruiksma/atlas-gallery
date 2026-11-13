@@ -1,0 +1,6 @@
+# Issue #34: synthetic before/after render of Settings > Advanced > Photo details
+# Captured by PhotoDetailsDialogEvidenceTest at 1080x2340; no real media data.
+photo-details-34-before-dark
+photo-details-34-before-light
+photo-details-34-after-dark
+photo-details-34-after-light

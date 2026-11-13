@@ -108,6 +108,9 @@ import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featuredesign.AtlasGalleryNavigation
+import nl.atlas.gallery.featuredesign.LocalAtlasTabBackdrop
+import nl.atlas.gallery.featuredesign.rememberAtlasTabBackdropState
+import nl.atlas.gallery.featuredesign.atlasCaptureTabBackdrop
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -2553,6 +2556,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
+    // The content and floating navigation share the underlying *drawn* page.
+    // The recorded layer never includes the pill or selection actions.
+    val tabBackdrop = rememberAtlasTabBackdropState()
     Scaffold(
         containerColor = DeepBg,
         // DeepBg is not a colorScheme colour, so contentColorFor(DeepBg) fell
@@ -2588,7 +2594,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         }
                     ) else emptyList()
                 )
-            } else AtlasGalleryNavigation(
+            } else CompositionLocalProvider(LocalAtlasTabBackdrop provides tabBackdrop) {
+                AtlasGalleryNavigation(
                 selected = when (tab) {
                     1 -> AtlasDestination.ALBUMS
                     2 -> AtlasDestination.PEOPLE
@@ -2616,7 +2623,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     albumVolume = null
                     albumReturnToAlbums = false
                 }
-            )
+                )
+            }
             }
         }
     ) { insets ->
@@ -2631,7 +2639,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
             (if (drawUnderBar) insets.calculateBottomPadding() else 0.dp)) {
-        Column(Modifier.fillMaxSize().padding(
+        // No GPU capture or blur allocation in the Android 10/11 fallback.
+        val contentModifier = if (Build.VERSION.SDK_INT >= 31) {
+            Modifier.fillMaxSize().atlasCaptureTabBackdrop(tabBackdrop)
+        } else {
+            Modifier.fillMaxSize()
+        }
+        Column(contentModifier.padding(
             start = insets.calculateStartPadding(layoutDirection),
             top = insets.calculateTopPadding(),
             end = insets.calculateEndPadding(layoutDirection),
@@ -2792,6 +2806,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
+                            scanLoading = access && discovery.status == null,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
                             },
@@ -2817,7 +2832,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onLinkV4 = {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
-                            onDiagnostics = { statusOpen = true }
+                            onDiagnostics = { statusOpen = true },
+                            onReadLastCrash = { LastCrashRecorder.read(context) },
+                            onCopyLastCrash = { report ->
+                                val clipboard = context.getSystemService(
+                                    android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("ATLAS last crash", report))
+                                Toast.makeText(context, "Last crash copied", Toast.LENGTH_SHORT).show()
+                            },
+                            onShareLastCrash = { report ->
+                                try {
+                                    context.startActivity(Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, report)
+                                        }, "Share last crash"))
+                                } catch (_: ActivityNotFoundException) {
+                                    Toast.makeText(context, "No app can share the crash report",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            }
                         )
                         if (peopleNumbersOpen) PeopleNumbersRoute(discoveryHost, searchGrant) {
                             peopleNumbersOpen = false
@@ -2832,28 +2866,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         }
                         if (provenanceDetailsOpen && provenance != null) {
-                            AlertDialog(
-                                onDismissRequest = { provenanceDetailsOpen = false },
-                                confirmButton = {
-                                    TextButton(onClick = { provenanceDetailsOpen = false }) {
-                                        Text("Close")
-                                    }
-                                },
-                                title = { Text("Photo details") },
-                                text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("Checked ${provenance.observedPhotoRows} · " +
-                                            "partial ${provenance.weakPhotoRows} · " +
-                                            "omitted ${provenance.ignoredPhotoRows}")
-                                        provenance.missingPhotoFields.toSortedMap().forEach { (field, count) ->
-                                            Text("$field: $count (" +
-                                                "%.2f".format(Locale.US,
-                                                    count * 100.0 / provenance.observedPhotoRows.coerceAtLeast(1)) +
-                                                "%)")
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.testTag("atlas-people-details-dialog")
+                            PhotoDetailsDialog(
+                                content = photoDetailsContent(
+                                    checked = provenance.observedPhotoRows,
+                                    partial = provenance.weakPhotoRows,
+                                    skipped = provenance.ignoredPhotoRows,
+                                    missing = provenance.missingPhotoFields,
+                                    locale = Locale.getDefault()
+                                ),
+                                onClose = { provenanceDetailsOpen = false }
                             )
                         }
                     }
@@ -3301,6 +3322,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     v4SyncSummary = v4SyncState
                                 ),
                                 actions = discovery.status?.actions ?: PeopleActionAvailability(),
+                                restoring = access && discovery.status == null &&
+                                    discoveryHost.discoveryOptedIn(),
                                 onOpenProfile = { id ->
                                     personBwFolderOnly = false
                                     personFilter = id

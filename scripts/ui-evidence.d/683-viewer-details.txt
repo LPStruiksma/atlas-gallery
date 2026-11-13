@@ -1,0 +1,8 @@
+# #683 Viewer Details: real synthetic JPEG EXIF and injected video track
+# metadata, in both ATLAS themes on the API35 S24+ sized emulator.
+details-683-photo-top-dark
+details-683-photo-camera-dark
+details-683-video-dark
+details-683-photo-top-light
+details-683-photo-camera-light
+details-683-video-light

@@ -30,6 +30,8 @@ import java.security.MessageDigest
  * -Dhypotheses=DIR writes each policy's "same person?" questions for judge_hypotheses.py.
  * -Dautoadd=DIR (no policy argument) scores later faces against named people for judge_autoadd.py.
  * -Dearly=FILE with it: the photo numbers that come first (split_by_upload.py); default even numbers.
+ * -Dphase1=DIR (no policy argument) plays the owner's Phase 1 path for phase1.py: group, name each
+ *   recurring person's largest group, let sure faces join, list the questions. -Dfloors=0.45,0.40 sweeps.
  */
 private fun uid(i: Int): String = MessageDigest.getInstance("MD5").digest("f$i".toByteArray())
     .joinToString("") { "%02x".format(it) }
@@ -48,6 +50,7 @@ fun main(args: Array<String>) {
 
     println("faces=$n photos=${photo.toSet().size} authors=${author.toSet().size}")
     System.getProperty("autoadd")?.let { autoAdd(it, n, dim, metric, ids, index, photo, label); return }
+    System.getProperty("phase1")?.let { phase1(it, n, dim, metric, ids, index, photo, label); return }
     for (spec in args.drop(1)) {
         val (policy, useMetric) = when (spec) {
             "conservative" -> ClusterPolicy.SFACE_CONSERVATIVE to false
@@ -177,4 +180,67 @@ private fun autoAdd(
     File(dir, "people.txt").writeText(people.joinToString("\n") { it.joinToString(" ") })
     File(dir, "late.txt").writeText(out.toString())
     println("named people=${people.size} from ${groups.size} groups of 3+ in the first half of the photos, later faces=${late.size}")
+}
+
+/**
+ * -Dphase1=DIR: the owner's Phase 1 path on the bench (#580).
+ *
+ * All faces are grouped with the measured rule. Then, per recurring reference
+ * identity (10+ faces), largest first, the owner names the unnamed group that
+ * holds most of that identity's faces, as it stands (mistakes included), once
+ * per group. FaceClusterer.update with those names lets sure faces join a
+ * named person (ClusterPolicy.personMatchFloor), and SamePersonHypotheses lists
+ * the questions the app would ask. For each floor in -Dfloors (default the
+ * shipped one) writes DIR/<floor>/faces.txt (one line per face: n|m|u, the
+ * person or group index, the match mean or 0) and DIR/<floor>/named.txt
+ * (person index, reference identity) and DIR/<floor>/questions.txt (person or
+ * -1, group anchor face, other anchor face or -1, group size, mean pair, best
+ * match) for phase1.py, which judges them with the reference model.
+ */
+private fun phase1(
+    dir: String, n: Int, dim: Int, metric: Array<FaceMetric.Face>, ids: Array<NativeFaceObservationId>,
+    index: Map<NativeFaceObservationId, Int>, photo: IntArray, label: IntArray
+) {
+    val base = ClusterPolicy.SFACE_MEASURED.copy(metric = null)
+    val floors = System.getProperty("floors")?.split(",")?.map { it.toFloat() } ?: listOf(base.personMatchFloor)
+    val faces = (0 until n).map { FaceEmbedding(ids[it], "m", metric[it].vector, metric[it].crowd, photo[it] + 1L) }
+    var grouped = FaceClusterState.empty("m", dim, base.copy(personMatchFloor = 0f))
+    for (chunk in faces.chunked(1024)) grouped = ClusterPublication.publish(grouped, chunk)
+    val groupOf = IntArray(n) { -1 }
+    grouped.unknownClusters.forEachIndexed { k, c -> for (m in c.members) groupOf[index.getValue(m)] = k }
+    val sizes = label.filter { it >= 0 }.groupingBy { it }.eachCount()
+    val recurring = sizes.filterValues { it >= 10 }.entries.sortedByDescending { it.value }.map { it.key }
+    val taken = HashSet<Int>()
+    val named = ArrayList<Pair<Int, Int>>() // group, identity
+    for (who in recurring) {
+        val best = (0 until n).filter { label[it] == who && groupOf[it] >= 0 && groupOf[it] !in taken }
+            .groupingBy { groupOf[it] }.eachCount().maxByOrNull { it.value } ?: continue
+        if (grouped.unknownClusters[best.key].members.size < 3) continue
+        taken += best.key; named += best.key to who
+    }
+    val confirmed = HashMap<NativeFaceObservationId, PersonKey>()
+    named.forEachIndexed { k, (g, _) -> for (m in grouped.unknownClusters[g].members) confirmed[m] = PersonKey("p$k") }
+    println("phase1: recurring identities=${recurring.size} named=${named.size} named faces=${confirmed.size}")
+    for (floor in floors) {
+        val t = System.nanoTime()
+        var state = FaceClusterState.empty("m", dim, base.copy(personMatchFloor = floor))
+        for (chunk in faces.chunked(1024)) state = ClusterPublication.publish(state, chunk)
+        state = FaceClusterer.update(state, reviews = ClusterReviewFacts(confirmed = confirmed))
+        val out = File(dir, "%.2f".format(floor)).apply { mkdirs() }
+        val line = Array(n) { "" }
+        for ((f, p) in confirmed) line[index.getValue(f)] = "n ${p.value.drop(1)} 0"
+        for ((f, m) in state.matched) line[index.getValue(f)] = "m ${m.person.value.drop(1)} ${m.mean}"
+        state.unknownClusters.forEachIndexed { k, c -> for (m in c.members) line[index.getValue(m)] = "u $k 0" }
+        File(out, "faces.txt").writeText(line.joinToString("\n"))
+        File(out, "named.txt").writeText(named.withIndex().joinToString("\n") { (k, v) -> "$k ${v.second}" })
+        val forPeople = SamePersonHypotheses.forPeople(state, limit = 10_000)
+        val between = SamePersonHypotheses.of(state, limit = 10_000)
+        File(out, "questions.txt").writeText((forPeople.map { q ->
+            "${q.person.value.drop(1)} ${index.getValue(q.group.anchor)} -1 ${q.groupFaces} ${q.meanPair} ${q.bestMatch}"
+        } + between.map { q ->
+            "-1 ${index.getValue(q.first.anchor)} ${index.getValue(q.second.anchor)} ${q.firstFaces + q.secondFaces} ${q.meanPair} ${q.bestMatch}"
+        }).joinToString("\n"))
+        println("floor %.2f: matched=%d unnamed groups=%d person questions=%d group questions=%d  %.1fs".format(
+            floor, state.matched.size, state.unknownClusters.size, forPeople.size, between.size, (System.nanoTime() - t) / 1e9))
+    }
 }

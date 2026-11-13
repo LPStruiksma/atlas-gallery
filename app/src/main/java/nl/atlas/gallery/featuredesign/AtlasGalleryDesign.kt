@@ -9,15 +9,28 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.background
+import android.os.Build
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -274,6 +287,33 @@ enum class AtlasDestination(
 }
 
 /**
+ * #22: the Scaffold's main content records its actual drawing commands in a
+ * reusable layer. The navigation pill samples that layer independently; simply
+ * adding Modifier.blur to a Surface would blur the glyphs, not its backdrop.
+ * No bitmap readback, image copies, photo access or per-frame PixelCopy.
+ */
+internal class AtlasTabBackdropState(val layer: GraphicsLayer) {
+    var originInRoot by mutableStateOf(Offset.Unspecified)
+}
+
+internal val LocalAtlasTabBackdrop = staticCompositionLocalOf<AtlasTabBackdropState?> { null }
+
+@Composable
+internal fun rememberAtlasTabBackdropState(): AtlasTabBackdropState {
+    val layer = rememberGraphicsLayer()
+    return remember(layer) { AtlasTabBackdropState(layer) }
+}
+
+internal fun Modifier.atlasCaptureTabBackdrop(backdrop: AtlasTabBackdropState): Modifier =
+    this.onGloballyPositioned { backdrop.originInRoot = it.positionInRoot() }
+        .drawWithContent {
+            backdrop.layer.record {
+                this@drawWithContent.drawContent()
+            }
+            drawLayer(backdrop.layer)
+        }
+
+/**
  * #640 (#509 §2): Samsung's compact floating tab bar. One fully rounded dark
  * pill, 12 dp from the screen edges, outlined-weight 24 dp icons with small
  * labels; the active tab uses the filled glyph, tint and label weight,
@@ -293,26 +333,57 @@ fun AtlasGalleryNavigation(
             .padding(horizontal = AtlasPillEdge, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
-            shape = CircleShape,
-            color = AtlasPillColor,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            // A white pill needs a soft shadow to lift off a white page.
-            shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
-            modifier = Modifier.fillMaxWidth().height(AtlasTabPillHeight)
-                .testTag("atlas-nav-pill")
+        val backdrop = LocalAtlasTabBackdrop.current
+        val blurredLayer = rememberGraphicsLayer()
+        val blurRadiusPx = with(LocalDensity.current) { 14.dp.toPx() }
+        val blurEffect = remember(blurRadiusPx) {
+            BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Clamp)
+        }
+        var pillOrigin by remember { mutableStateOf(Offset.Unspecified) }
+        Box(
+            Modifier.fillMaxWidth().height(AtlasTabPillHeight)
+                .onGloballyPositioned { pillOrigin = it.positionInRoot() }
         ) {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // API31+: blur only the live page underneath the pill, clipped to
+            // its outline. The translucent Surface and all four tab items are
+            // drawn *after* the effect, so text and glyphs remain pixel-sharp.
+            // API29-30: no RenderEffect; keep the existing translucent Surface.
+            if (Build.VERSION.SDK_INT >= 31 && backdrop != null) {
+                Box(Modifier.matchParentSize().clip(CircleShape).drawWithContent {
+                    if (pillOrigin.isSpecified && backdrop.originInRoot.isSpecified) {
+                        val shift = backdrop.originInRoot - pillOrigin
+                        blurredLayer.record(
+                            size = IntSize(size.width.roundToInt(), size.height.roundToInt())
+                        ) {
+                            translate(left = shift.x, top = shift.y) {
+                                drawLayer(backdrop.layer)
+                            }
+                        }
+                        blurredLayer.renderEffect = blurEffect
+                        drawLayer(blurredLayer)
+                    }
+                })
+            }
+            Surface(
+                shape = CircleShape,
+                color = AtlasPillColor,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                // A white pill needs a soft shadow to lift off a white page.
+                shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
+                modifier = Modifier.matchParentSize().testTag("atlas-nav-pill")
             ) {
-                AtlasDestination.entries.forEach { destination ->
-                    AtlasTabItem(
-                        destination = destination,
-                        selected = selected == destination,
-                        onClick = { onSelect(destination) },
-                        modifier = Modifier.weight(1f)
-                    )
+                Row(
+                    Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AtlasDestination.entries.forEach { destination ->
+                        AtlasTabItem(
+                            destination = destination,
+                            selected = selected == destination,
+                            onClick = { onSelect(destination) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -346,7 +417,8 @@ private fun AtlasTabItem(
     modifier: Modifier = Modifier
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
-    val tint = if (selected) ink else ink.copy(alpha = 0.6f)
+    // 11sp labels still meet text contrast over a white tile behind the dark pill.
+    val tint = if (selected) ink else ink.copy(alpha = 0.78f)
     Column(
         modifier
             .fillMaxHeight()
