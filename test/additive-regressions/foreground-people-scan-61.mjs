@@ -1,0 +1,26 @@
+// #61. Deliberately fails until a foreground-only manual scan path exists.
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const read = (p) => readFileSync(p, 'utf8');
+const host = read('app/src/main/java/nl/atlas/gallery/PeopleDiscoveryHost.kt');
+const worker = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorkRuntime.kt');
+const batch = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorker.kt');
+const ui = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt');
+const settings = read('app/src/main/java/nl/atlas/gallery/AtlasSettingsScreen.kt');
+const contract = read('app/src/main/java/nl/atlas/gallery/featureface/FaceDiscoveryContract.kt');
+const policy = read('app/src/main/java/nl/atlas/gallery/featureface/ManualFaceScanGuard.kt');
+assert.match(policy, /batteryPercent\s*<\s*30/);
+assert.match(policy, /thermalStatus\s*>=\s*2/);
+assert.match(policy, /!foreground/);
+assert.match(host, /fun beginManualForeground/);
+assert.match(host, /fun stopManualForeground/);
+assert.match(host, /backgroundMaintenance = !manualForegroundActive/);
+assert.match(host, /scheduler\.cancel\(\)/);
+assert.match(worker, /manualForeground: Boolean = false/);
+assert.match(worker, /!conditions\.backgroundMaintenance/);
+assert.match(batch, /manualForeground: Boolean = false/);
+assert.match(contract, /!backgroundMaintenance \|\| charging/);
+assert.match(ui, /atlas-people-scan-now/);
+assert.match(settings, /atlas-settings-scan-now/);
+const scheduler = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorkScheduler.kt');
+assert.match(scheduler, /\.setRequiresCharging\(true\)/);
