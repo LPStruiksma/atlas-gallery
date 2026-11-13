@@ -65,7 +65,9 @@ class FindSimilarAppJourneyTest {
         waitFor(hasTestTag("atlas-visual-index"))
         compose.onNodeWithTag("atlas-visual-index-switch").assertExists()
         dismissWithBack(compose, hasTestTag("atlas-visual-index"))
-
+        // #664: Settings is a full route without the bottom navigation pill.
+        compose.onNodeWithTag("atlas-header-back").performClick()
+        waitFor(hasTestTag("atlas-nav-photos"))
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         waitFor(gridPhoto)
         compose.onAllNodes(gridPhoto, useUnmergedTree = true)[0].performClick()
