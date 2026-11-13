@@ -281,19 +281,18 @@ class VisualScanWorkAndroidTest {
         val embedsBefore = embeds.get()
         assertTrue(visualDone in 1..9)
 
-        // A new process can see a transient permission read before the gallery
-        // publishes its first authorised catalogue. This must hide all People
-        // without erasing the saved opt-ins or making us tap the switches again.
+        // The authoritative Android permission is still granted, but the
+        // first gallery publication is pending. Hide People until publication
+        // without erasing saved choices or requiring another user tap.
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         stores.clear()
         scheduler = RecordingScheduler()
-        granted = false
+        granted = true
         val restarted = host()
         assertNull("no session from a previous process", batch())
         restarted.onGalleryPublication(null) { inventory }
-        assertNull("not readable without a live Android grant", restarted.status(null).people)
-        granted = true
+        assertNull("not readable before current catalogue", restarted.status(null).people)
         restarted.onGalleryPublication("gallery-7") { inventory }
         assertTrue("visual switch survives process recreation",
             restarted.visualStatus(faceEpoch(restarted))!!.enabled)
@@ -307,6 +306,37 @@ class VisualScanWorkAndroidTest {
         assertEquals(1, done.skipped)
         assertEquals("indexed images are not embedded again", 9, embeds.get())
         assertTrue(embeds.get() > embedsBefore)
+    }
+
+    @Test fun revokedWhileStoppedRequiresFreshPeopleAndVisualOptIn() {
+        val original = host()
+        original.start("gallery-7", inventory)
+        assertTrue(original.setVisualIndex(true))
+        assertNotNull(choices.load())
+        assertTrue(choices.loadVisual())
+
+        // No in-process scope exists at the moment of the Android permission
+        // revocation. This is the privacy-critical counterpart to a pending
+        // first gallery publication after restart.
+        PeopleScanWorkRuntime.clear()
+        stores.forEach { runCatching { it.close() } }
+        stores.clear()
+        scheduler = RecordingScheduler()
+        granted = false
+        val restarted = host()
+        restarted.onGalleryPublication(null) { inventory }
+        assertNull("People remain unreadable after revoke", restarted.status(null).people)
+        assertNull("OS revoke clears saved People choice", choices.load())
+        assertFalse("OS revoke clears visual choice", choices.loadVisual())
+
+        // An OS permission grant is not a user opt-in for face discovery.
+        granted = true
+        restarted.onGalleryPublication("gallery-7") { inventory }
+        assertFalse("must not silently rearm discovery", restarted.discoveryOptedIn())
+        assertFalse("must not silently rearm visual indexing",
+            restarted.visualStatus(null)!!.enabled)
+        assertNull("no People until a new explicit opt-in",
+            restarted.status("gallery-7").people)
     }
 
     // VS-S2b: Find similar reads the live visual epoch only through this accessor.
