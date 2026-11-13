@@ -207,15 +207,15 @@ class FaceIndexStoreRecoveryAndroidTest {
         assertNull(store.clusterState("epoch-a"))
         assertTrue(store.embeddingRecords("epoch-b", b.key).isEmpty())
         assertTrue(store.embeddingRecords("epoch-b", a.key).isEmpty())
-        // #39: served without the removed faces, never with the old observation.
-        assertEquals(0, store.clusterState("epoch-b")?.faces?.size)
+        // #39: no published face is left, so nothing is served until the rescan.
+        assertNull(store.clusterState("epoch-b"))
         val newUid = embed(store, "epoch-b")
         assertNotEquals(old, newUid)
         assertTrue(store.materializeClusters("epoch-b"))
         assertEquals(1, store.clusterState("epoch-b")?.faces?.size)
         snapshot(store, "epoch-c", listOf(a.copy(revision = "r2")),
             "$model-next")
-        assertEquals(0, store.clusterState("epoch-c")?.faces?.size)
+        assertNull(store.clusterState("epoch-c"))
         assertTrue(store.embeddingRecords("epoch-c", a.key).isEmpty())
         assertFalse(store.completeEmbeddings(
             requireNotNull(store.claim("epoch-c", 2_000)), listOf(box),

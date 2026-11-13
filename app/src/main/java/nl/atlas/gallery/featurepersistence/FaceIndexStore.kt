@@ -1427,12 +1427,20 @@ class FaceIndexStore(
      * holds them is refused at commit, and keep `people_matched` marked
      * current: it lost only the removed faces' rows. `people_home` keeps the
      * old revision, so [peopleHome] counts live until the next refresh.
-     * Nothing to do while the published data is not servable anyway.
+     * Nothing to do while the published data is not servable anyway. When no
+     * published face is left (every photo edited, a model change), nothing
+     * is marked current: People waits for the rescan's publication rather
+     * than showing an empty publication as "No people".
      */
     private fun retirePublishedRevision(db: SQLiteDatabase) {
         if (!matchedCurrent(db)) return
         bumpReviewRevision(db, reviewRevision(db))
-        markMatchedCurrent(db)
+        meteredStatements++
+        val anyPublished = db.rawQuery("""SELECT EXISTS(SELECT 1 FROM cluster_members)
+            OR EXISTS(SELECT 1 FROM people_confirmed)""", null).use { c ->
+            check(c.moveToFirst()); c.getInt(0) != 0
+        }
+        if (anyPublished) markMatchedCurrent(db)
     }
 
     /**
