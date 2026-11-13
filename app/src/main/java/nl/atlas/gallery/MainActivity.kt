@@ -2634,7 +2634,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
             (if (drawUnderBar) insets.calculateBottomPadding() else 0.dp)) {
-        Column(Modifier.fillMaxSize().atlasCaptureTabBackdrop(tabBackdrop).padding(
+        // No GPU capture or blur allocation in the Android 10/11 fallback.
+        val contentModifier = if (Build.VERSION.SDK_INT >= 31) {
+            Modifier.fillMaxSize().atlasCaptureTabBackdrop(tabBackdrop)
+        } else {
+            Modifier.fillMaxSize()
+        }
+        Column(contentModifier.padding(
             start = insets.calculateStartPadding(layoutDirection),
             top = insets.calculateTopPadding(),
             end = insets.calculateEndPadding(layoutDirection),
