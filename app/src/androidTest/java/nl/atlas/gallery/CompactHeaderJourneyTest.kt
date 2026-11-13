@@ -90,8 +90,8 @@ class CompactHeaderJourneyTest {
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsSelected()
         compose.onNodeWithTag("atlas-library-status").performClick()
 
-        // Library status gets a Back arrow in the same slim bar.
-        waitFor(hasTestTag("atlas-header-title") and hasText("Library status"))
+        // Settings gets a Back arrow in the same slim bar.
+        waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         assertSlimHeader()
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-header-title") and hasText("Photos"))
@@ -115,7 +115,7 @@ class CompactHeaderJourneyTest {
         compose.onNodeWithTag("atlas-search-overflow").performClick()
         waitFor(hasTestTag("atlas-library-status"))
         compose.onNodeWithTag("atlas-library-status").performClick()
-        waitFor(hasTestTag("atlas-header-title") and hasText("Library status"))
+        waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-search-field"))
     }

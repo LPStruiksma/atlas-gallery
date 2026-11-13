@@ -1,0 +1,18 @@
+# #664 Settings from Photos, Albums and People in both device themes; 1080x2340.
+settings-664-menu-photos-light
+settings-664-menu-albums-light
+settings-664-menu-people-light
+settings-664-photos-light
+settings-664-albums-light
+settings-664-people-light
+settings-664-advanced-light
+settings-664-diagnostics-light
+settings-664-menu-photos-dark
+settings-664-menu-albums-dark
+settings-664-menu-people-dark
+settings-664-photos-dark
+settings-664-albums-dark
+settings-664-people-dark
+settings-664-advanced-dark
+settings-664-diagnostics-dark
+settings-664-scan-controls
