@@ -1,8 +1,10 @@
 package nl.atlas.gallery
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -31,13 +33,18 @@ class LastCrashSettingsAndroidTest {
                 )
             }
         }
-        compose.onNodeWithTag("atlas-settings-advanced").performClick()
-        compose.onNodeWithTag("atlas-settings-last-crash").performClick()
-        compose.onNodeWithTag("atlas-settings-last-crash-text").assertExists()
+        compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
+        compose.onNodeWithTag("atlas-settings-last-crash").performScrollTo().performClick()
+        compose.onNodeWithTag("atlas-settings-last-crash-text").performScrollTo()
+            .assertIsDisplayed()
+        // Names backup adds Settings rows above Advanced. Scroll before tapping
+        // the now-lower actions so a clipped button cannot swallow the click.
+        compose.onNodeWithTag("atlas-settings-last-crash-copy").performScrollTo()
+            .assertIsDisplayed()
         compose.waitForIdle()
         saveUiEvidence("settings-33-last-crash.png")
         compose.onNodeWithTag("atlas-settings-last-crash-copy").performClick()
-        compose.onNodeWithTag("atlas-settings-last-crash-share").performClick()
+        compose.onNodeWithTag("atlas-settings-last-crash-share").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(report, copied)
             assertEquals(report, shared)
