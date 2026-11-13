@@ -14,7 +14,11 @@ assert.match(source, /Quickstep isn't responding/);
 assert.match(source, /"Wait"/);
 assert.match(source, /com\.android\.providers\.media/);
 assert.match(source, /findAccessibilityNodeInfosByText\(needle\)/);
-assert.match(source, /button\(root, "Allow"\)/);
+// API 35 renders the MediaProvider action in uppercase (ALLOW), while
+// other builds use Allow; the safe scoped helper must accept either spelling.
+assert.match(source, /button\(root, "Allow"\) \{ label ->/);
+assert.match(source, /label\.equals\("Allow", ignoreCase = true\)/);
+assert.match(source, /label\.startsWith\("Allow ", ignoreCase = true\)/);
 assert.match(source, /ACTION_CLICK/);
 assert.match(source, /Move did not finish/);
 assert.doesNotMatch(source, /Assume\.assume|assumeNoException|@Ignore/);
