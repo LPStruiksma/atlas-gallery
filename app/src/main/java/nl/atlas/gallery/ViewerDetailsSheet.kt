@@ -78,9 +78,10 @@ internal fun ViewerDetailsSheet(
     media: MediaRecord, onDismiss: () -> Unit,
     /** #553: who is in the photo; null (or no faces) hides the People row. */
     photoPeople: ViewerPhotoPeople? = null,
-    /** Tests can open fully without changing the normal partial-sheet behavior. */
-    sheetState: SheetState = rememberModalBottomSheetState()
+    /** Fully open only when requested; normal Details keeps its partial-open gesture. */
+    fullyExpanded: Boolean = false
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = fullyExpanded)
     val context = LocalContext.current
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current

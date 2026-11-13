@@ -5,9 +5,7 @@ import android.media.ExifInterface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,7 +64,6 @@ class ViewerExtendedDetailsEvidenceTest {
         return file
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Test fun photoExifAndVideoRenderInDarkAndLight() {
         val image = syntheticJpeg()
         val extracted = FileInputStream(image).use(::readViewerExif)
@@ -103,10 +100,8 @@ class ViewerExtendedDetailsEvidenceTest {
                         .background(MaterialTheme.colorScheme.background)) {
                         // The real sheet opens partially; evidence deliberately
                         // presents its fully opened state so rows can be captured.
-                        val evidenceSheetState = rememberModalBottomSheetState(
-                            skipPartiallyExpanded = true)
                         ViewerDetailsSheet(
-                            selected, onDismiss = {}, sheetState = evidenceSheetState)
+                            selected, onDismiss = {}, fullyExpanded = true)
                     }
                 }
             }
