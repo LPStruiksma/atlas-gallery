@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.media.Image
@@ -60,6 +62,8 @@ class StoriesVideoJourneyTest {
     private val playback = StoryPlaybackState()
     private var opened: String? = null
     private var backs = 0
+    private var released = 0
+    private var dispatcher: OnBackPressedDispatcher? = null
 
     @Before fun createMedia() {
         first = publishPhoto("stories-first.png", 0xff24b6c9.toInt())
@@ -86,6 +90,7 @@ class StoriesVideoJourneyTest {
 
         compose.onNodeWithTag("atlas-story-next").performClick()
         await(hasTestTag("atlas-story-video-first-frame"))
+        compose.onNodeWithContentDescription("Moment 2 of 3").assertExists()
         compose.onNodeWithContentDescription("Resume video").assertExists()
         compose.onNodeWithTag("atlas-story-player").assertExists()
         saveUiEvidence("stories-21-poster-" + mode + ".png")
@@ -111,6 +116,7 @@ class StoriesVideoJourneyTest {
         // Back one moment never jumps out to a separate Viewer.
         compose.onNodeWithTag("atlas-story-previous").performClick()
         compose.onNodeWithContentDescription("Moment 1 of 3").assertExists()
+        compose.runOnIdle { assertEquals("previous releases its decoder", 1, released) }
         compose.onNodeWithTag("atlas-story-next").performClick()
         await(hasTestTag("atlas-story-video-surface"))
 
@@ -119,10 +125,11 @@ class StoriesVideoJourneyTest {
         assertEquals(video.toString(), opened)
         compose.onNodeWithContentDescription("Resume video").assertExists()
 
-        // A close removes the player and returns to the same story grid.
-        compose.onNodeWithTag("atlas-story-close").performClick()
+        // System Back goes to the grid and disposes the active player.
+        compose.runOnIdle { requireNotNull(dispatcher).onBackPressed() }
         compose.onNodeWithTag("atlas-stories-grid").assertExists()
         compose.onNodeWithTag("atlas-story-video-surface").assertDoesNotExist()
+        compose.runOnIdle { assertEquals("Back releases its decoder", 2, released) }
 
         compose.onNodeWithTag("atlas-story-manual").performClick()
         compose.onNodeWithTag("atlas-story-pause").performClick()
@@ -131,6 +138,7 @@ class StoriesVideoJourneyTest {
         compose.runOnIdle { grant = null } // simulated revoked permission/publication
         compose.onNodeWithTag("atlas-story-video-surface").assertDoesNotExist()
         compose.onNodeWithTag("atlas-stories-empty").assertExists()
+        compose.runOnIdle { assertEquals("grant revocation releases its decoder", 3, released) }
         compose.onNodeWithTag("atlas-stories-back").performClick()
         assertEquals(1, backs)
     }
@@ -146,13 +154,15 @@ class StoriesVideoJourneyTest {
             )
         )))
         compose.setContent {
+            dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
             AtlasGalleryTheme(dark = dark) {
                 AtlasStoriesScreen(
                     deck = deck, currentGrantEpoch = grant,
                     currentCatalogRevision = REVISION,
                     playback = playback,
                     onBack = { backs++ },
-                    onOpenMedia = { opened = it }
+                    onOpenMedia = { opened = it },
+                    onVideoPlayerReleased = { released++ }
                 )
             }
         }
