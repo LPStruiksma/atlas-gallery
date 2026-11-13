@@ -190,7 +190,7 @@ class FaceSearchCorpusAndroidTest {
     @Test fun pageBoundariesPreserveAllFacesAndSmallFixtureRanking() = withStore { store ->
         val total = 517
         val epoch = "epoch-pages"
-        grant(store, epoch, (1..total).map(::media))
+        grant(store, epoch, (1..total).map { media(it) })
         val blob = nl.atlas.gallery.featurepersistence.FaceEmbeddingVectorCodec.encode(vector(0))
         val db = store.writableDatabase
         db.beginTransaction()
@@ -213,7 +213,7 @@ class FaceSearchCorpusAndroidTest {
         val result = search(corpus)
         assertEquals(FaceQueryStatus.OK, result.status)
         assertEquals(total, result.scannedFaces)
-        val expected = (1..total).map(::media).sortedBy { it.key }
+        val expected = (1..total).map { media(it) }.sortedBy { it.key }
         assertEquals(expected, result.hits.map { it.media })
         assertTrue(result.hits.all { it.tier == FaceMatchTier.SAME_PERSON })
     }
