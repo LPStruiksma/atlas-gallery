@@ -874,6 +874,29 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val busy by vm.busy.collectAsState()
     val error by vm.error.collectAsState()
     var grants by remember { mutableStateOf(readGalleryMediaGrant(context)) }
+    // Aggregate scan observations in this process, without reading media fields.
+    // No GalleryRepository hook or scan-policy change: cancelled/superseded
+    // scans are not called successful publications.
+    var diagnosticScanStarted by remember { mutableLongStateOf(0L) }
+    var diagnosticScanEpoch by remember { mutableLongStateOf(-1L) }
+    LaunchedEffect(busy) {
+        if (busy) {
+            diagnosticScanStarted = System.nanoTime()
+            diagnosticScanEpoch = publishedGallery.epoch
+        } else if (diagnosticScanStarted > 0L) {
+            val duration = ((System.nanoTime() - diagnosticScanStarted) / 1_000_000L)
+                .coerceAtLeast(0L)
+            val published = publishedGallery.epoch != diagnosticScanEpoch
+            val outcome = when {
+                published && error == null -> "SUCCESS"
+                error != null -> "FAILED"
+                else -> "SUPERSEDED"
+            }
+            AtlasDiagnosticsRing.scan(duration,
+                publishedGallery.items.size.takeIf { published }, outcome)
+            diagnosticScanStarted = 0L
+        }
+    }
     val access = grants.hasAny
     // Activity recreation can reuse a ViewModel with a broader prior album.
     // Start restricted scopes gated even BEFORE ON_RESUME is delivered.
@@ -1127,6 +1150,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // running scan even while another tab is shown. Nothing starts here.
     val discoveryHost = remember(context) { PeopleDiscoveryHost.forApp(context) }
     val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, media)
+    val diagnosticPeople = discovery.status?.ui
+    LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
+        diagnosticPeople?.eligible) {
+        if (diagnosticPeople != null) {
+            AtlasDiagnosticsRing.people(diagnosticPeople.phase.name,
+                diagnosticPeople.processed, diagnosticPeople.eligible)
+        }
+    }
     var peopleReviewOpen by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
