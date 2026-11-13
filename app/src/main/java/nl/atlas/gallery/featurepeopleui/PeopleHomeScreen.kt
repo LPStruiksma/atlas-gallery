@@ -56,9 +56,9 @@ import nl.atlas.gallery.featurepeople.cluster.PersonKey
  * shared header, a thin progress line under it while a scan runs, then only
  * a 3-column grid of round face crops with names, or a plain empty state.
  * No banners, status text, free buttons or import blocks. ⋮ holds People
- * actions only (sort, Hidden, scan and review); maintenance tools such as
- * the Monochrome Studio import, the visual index and People numbers live in
- * Library status & settings (#643).
+ * actions only (sort, Hidden, discover and review); pause/resume, the
+ * Monochrome Studio import, visual index and People numbers live in Settings
+ * (#643, #664).
  *
  * The screen never scans, imports or queries media itself. The caller owns
  * async work and all grants. A start/pause/resume/review control is offered
@@ -162,8 +162,7 @@ fun PeopleHomeScreen(
         // than as buttons on the page. The empty page keeps "Discover faces".
         if (scan.start != null && tiles.isNotEmpty()) add(AtlasHeaderMenuItem(
             "Discover faces", "atlas-people-start", onClick = scan.start))
-        scan.pause?.let { add(AtlasHeaderMenuItem("Pause scanning", "atlas-people-pause", onClick = it)) }
-        scan.resume?.let { add(AtlasHeaderMenuItem("Resume scanning", "atlas-people-resume", onClick = it)) }
+        // #664: pause/resume have one home, under Settings > People.
         scan.review?.let { add(AtlasHeaderMenuItem("Review unknown faces", "atlas-people-review", onClick = it)) }
     }
     Column(modifier.fillMaxSize().testTag("atlas-people-screen")) {

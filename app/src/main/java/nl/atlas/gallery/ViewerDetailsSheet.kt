@@ -9,7 +9,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -69,31 +68,57 @@ internal val LocalViewerDimensionsReader =
     staticCompositionLocalOf { MediaStoreViewerDimensionsReader }
 
 /**
- * An intentionally restrained viewer detail surface. MediaStore metadata is
- * queried ONLY while visible, on Dispatchers.IO; no separate storage
- * permission, camera/vendor API, full decode, image export, or cloud access.
+ * Samsung-like ordering: capture date, file name/path, physical file facts,
+ * then photo/video camera facts. Only this fully opened sheet reads metadata;
+ * the drag preview below stays entirely free of content-provider IO.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ViewerDetailsSheet(
     media: MediaRecord, onDismiss: () -> Unit,
     /** #553: who is in the photo; null (or no faces) hides the People row. */
-    photoPeople: ViewerPhotoPeople? = null
+    photoPeople: ViewerPhotoPeople? = null,
+    /** Fully open only when requested; normal Details keeps its partial-open gesture. */
+    fullyExpanded: Boolean = false
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = fullyExpanded)
     val context = LocalContext.current
     val dimensionsReader = LocalViewerDimensionsReader.current
+    val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
-    var dimensions by remember(media.uri) { mutableStateOf<ViewerDimensions?>(null) }
-    var queryFinished by remember(media.uri) { mutableStateOf(false) }
-    LaunchedEffect(media.uri, dimensionsReader) {
+    var dimensions by remember(media.uri, media.modifiedAtSeconds) {
+        mutableStateOf<ViewerDimensions?>(null)
+    }
+    var queryFinished by remember(media.uri, media.modifiedAtSeconds) {
+        mutableStateOf(false)
+    }
+    var metadata by remember(media.uri, media.modifiedAtSeconds, media.generationModified) {
+        mutableStateOf<ViewerExtendedMetadata?>(null)
+    }
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, dimensionsReader) {
         queryFinished = false
         dimensions = dimensionsReader.read(context, media.uri)
         queryFinished = true
     }
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, media.generationModified, metadataReader) {
+        metadata = null
+        metadata = metadataReader.read(context, media)
+    }
+    val displayedDimensions = dimensions ?: media.takeIf {
+        it.widthPixels > 0 && it.heightPixels > 0
+    }?.let { ViewerDimensions(it.widthPixels, it.heightPixels) }
+    val ink = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val capture = viewerCaptureDateMillis(facts, metadata)
+    val cameraRows = if (media.isVideo) emptyList() else viewerCameraRows(metadata)
+    val videoRows = if (media.isVideo) {
+        viewerVideoRows(metadata, media.durationMillis)
+    } else emptyList()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF171A20),
-        contentColor = Color.White,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = ink,
         modifier = Modifier.testTag("atlas-viewer-details")
     ) {
         Column(
@@ -104,34 +129,55 @@ internal fun ViewerDetailsSheet(
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                 .padding(bottom = 36.dp)
         ) {
-            Text("Details", style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(18.dp))
-            // #553: who is in the photo, first, so the half-open sheet shows it.
-            photoPeople?.let { ViewerPhotoPeopleSection(media, it) }
+            Text("Details", color = muted, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(12.dp))
+            capture?.let {
+                Text(
+                    remember(it) {
+                        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                            .format(Date(it))
+                    },
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.testTag("atlas-details-capture-date")
+                )
+                Spacer(Modifier.height(16.dp))
+            }
             ViewerDetailRow("Name", facts.filename)
-            ViewerDetailRow("Type", facts.kind)
-            ViewerDetailRow("Album", facts.album)
-            facts.relativeFolder?.let { ViewerDetailRow("Folder", it) }
+            facts.relativeFolder?.let { ViewerDetailRow("Path", it) }
             facts.fileSize?.let { ViewerDetailRow("Size", it) }
-            facts.duration?.let { ViewerDetailRow("Duration", it) }
-            facts.takenAtMillis?.let {
-                ViewerDetailRow("Date taken", remember(it) {
-                    DateFormat.getDateTimeInstance(
-                        DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it))
-                })
-            }
-            facts.modifiedAtMillis?.let {
-                ViewerDetailRow("Date modified", remember(it) {
-                    DateFormat.getDateTimeInstance(
-                        DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it))
-                })
-            }
             val resolution = when {
+                displayedDimensions != null ->
+                    "${displayedDimensions.width} × ${displayedDimensions.height}"
                 !queryFinished -> "Reading…"
-                dimensions != null -> "${dimensions!!.width} × ${dimensions!!.height}"
                 else -> "Unavailable"
             }
             ViewerDetailRow("Resolution", resolution)
+            viewerMegapixels(displayedDimensions)?.let { ViewerDetailRow("Megapixels", it) }
+
+            // #553 preserved: the same interactive People section and callbacks.
+            photoPeople?.let { ViewerPhotoPeopleSection(media, it) }
+
+            if (cameraRows.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text("Camera details", style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag("atlas-details-camera"))
+                cameraRows.forEach { ViewerDetailRow(it.label, it.value) }
+            }
+            if (videoRows.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text("Video details", style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag("atlas-details-video"))
+                videoRows.forEach { ViewerDetailRow(it.label, it.value) }
+            }
+            Spacer(Modifier.height(12.dp))
+            ViewerDetailRow("Type", facts.kind)
+            ViewerDetailRow("Album", facts.album)
+            facts.modifiedAtMillis?.let {
+                ViewerDetailRow("Date modified", remember(it) {
+                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                        .format(Date(it))
+                })
+            }
         }
     }
 }
@@ -140,14 +186,13 @@ internal fun ViewerDetailsSheet(
 private fun ViewerDetailRow(label: String, value: String) {
     Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFFADBAC7))
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(3.dp))
         Text(value, style = MaterialTheme.typography.bodyMedium,
-            color = Color.White)
+            color = MaterialTheme.colorScheme.onSurface)
     }
-    HorizontalDivider(color = Color(0xFF303640))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
-
 
 /**
  * The same presentation facts as the full details sheet, without a provider

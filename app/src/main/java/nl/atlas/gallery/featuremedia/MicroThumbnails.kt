@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.clearViewerMetadataCache
 import nl.atlas.gallery.presentationCacheKeyOrNull
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -74,6 +75,9 @@ internal object MicroThumbnails {
      * are deleted (once per transition) and nothing new is kept or shown.
      */
     fun applyGrant(images: Boolean, videos: Boolean, selected: Boolean) {
+        // Permission rechecks also invalidate process-only Details EXIF cached
+        // across media-grant epochs; never display stale metadata after revoke.
+        clearViewerMetadataCache()
         val now = microThumbnailsAllowed(images, videos, selected)
         val wasAllowed = allowed
         val first = !grantKnown

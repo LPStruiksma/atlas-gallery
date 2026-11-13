@@ -176,6 +176,55 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         saveUiEvidence("selection-679-page-$mode.png")
     }
 
+    /** #664: Settings is reached from all three Samsung-style ⋮ menus. */
+    @Test fun settingsFromPhotosAlbumsPeopleFollowSystemTheme() {
+        waitFor(hasTestTag("atlas-nav-photos"))
+        listOf("photos", "albums", "people").forEach { tab ->
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            waitFor(hasTestTag("atlas-header-more"))
+            if (tab == "photos") {
+                // The Photos sort icon remains available on the Photos route.
+                compose.onNodeWithTag("atlas-photos-sort").assertExists()
+            }
+            compose.onNodeWithTag("atlas-header-more").performClick()
+            waitFor(hasTestTag("atlas-library-status"))
+            settle()
+            saveUiEvidence("settings-664-menu-$tab-$mode.png")
+            compose.onNodeWithTag("atlas-library-status").performClick()
+            waitFor(hasTestTag("atlas-settings-screen"))
+            if (tab == "photos") {
+                // #664 review: Photos actions must not leak into the Settings header.
+                compose.onNodeWithTag("atlas-photos-sort").assertDoesNotExist()
+            }
+            listOf("atlas-settings-face-scanning", "atlas-people-numbers-open",
+                "atlas-settings-theme", "atlas-settings-advanced",
+                "atlas-settings-version").forEach {
+                compose.onNodeWithTag(it).assertExists()
+            }
+            // Advanced is collapsed until deliberately opened.
+            compose.onNodeWithTag("atlas-people-import-v4").assertDoesNotExist()
+            settle()
+            saveUiEvidence("settings-664-$tab-$mode.png")
+            compose.onNodeWithTag("atlas-settings-advanced").performClick()
+            listOf("atlas-people-import-v4", "atlas-people-link-v4",
+                "atlas-settings-diagnostics").forEach {
+                compose.onNodeWithTag(it).assertExists()
+            }
+            if (tab == "photos") {
+                settle()
+                saveUiEvidence("settings-664-advanced-$mode.png")
+                compose.onNodeWithTag("atlas-settings-diagnostics").performClick()
+                waitFor(hasTestTag("atlas-header-back"))
+                settle()
+                saveUiEvidence("settings-664-diagnostics-$mode.png")
+                compose.onNodeWithTag("atlas-header-back").performClick()
+                waitFor(hasTestTag("atlas-settings-screen"))
+            }
+            compose.onNodeWithTag("atlas-header-back").performClick()
+            waitFor(hasTestTag("atlas-nav-$tab"))
+        }
+    }
+
     @Test fun photoAndAlbumIconsHaveDistinctActiveAndInactiveVectors() {
         val photos = AtlasDestination.PHOTOS
         val albums = AtlasDestination.ALBUMS
