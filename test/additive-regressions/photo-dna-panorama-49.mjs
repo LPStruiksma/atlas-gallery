@@ -19,7 +19,9 @@ assert.ok(hash.indexOf("photoDnaThumbnailWithinBudget(bitmap.width, bitmap.heigh
 assert.match(hash, /onOverBudget\(\)/);
 assert.match(host, /oversizedThumbnailSkips=/);
 assert.match(unit, /photoDnaThumbnailWithinBudget\(800, 80\)/);
-assert.match(unit, /photoDnaThumbnailEdge\(8_000, 1_000\)/);
+assert.match(unit, /val sourceWidth = 8_000/);
+assert.match(unit, /val sourceHeight = 1_000/);
+assert.match(unit, /photoDnaThumbnailEdge\(sourceWidth, sourceHeight\)/);
 assert.match(android, /Bitmap\.createBitmap\(8_000, 1_000, Bitmap\.Config\.ARGB_8888\)/);
 assert.match(android, /visualHashAuthorizedImage\(/);
 assert.match(android, /assertTrue\(hash\.informative\)/);
