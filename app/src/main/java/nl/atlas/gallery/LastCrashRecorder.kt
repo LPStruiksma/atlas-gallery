@@ -28,7 +28,9 @@ internal fun formatCrashReport(
     timestampMillis: Long,
     version: String,
     threadCategory: String,
-    failure: Throwable
+    failure: Throwable,
+    /** #42: caught and shown in the app instead of ending the process. */
+    handled: Boolean = false
 ): String {
     val result = StringBuilder(512)
     result.append("ATLAS last crash\nTime: ")
@@ -37,6 +39,7 @@ internal fun formatCrashReport(
         .append(version.takeIf(VERSION_NAME::matches) ?: "unknown")
         .append("\nThread: ")
         .append(if (threadCategory == "main") "main" else "background")
+        .append(if (handled) "\nOutcome: handled, app kept running" else "")
         .append("\nException: ")
         .append(safeClass(failure.javaClass.name) ?: "OtherThrowable")
         .append('\n')
@@ -68,25 +71,44 @@ internal object LastCrashRecorder {
     fun read(context: Context): String? =
         runCatching { file(context).takeIf { it.isFile }?.readText(Charsets.UTF_8) }.getOrNull()
 
+    private fun version(appContext: Context): String = runCatching {
+        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
+    }.getOrNull() ?: "unknown"
+
+    private fun write(appContext: Context, report: String) {
+        val dest = file(appContext)
+        if (dest.parentFile?.mkdirs() == true || dest.parentFile?.isDirectory == true) {
+            val temp = File(dest.parentFile, "last.tmp")
+            FileOutputStream(temp).use { output ->
+                output.write(report.toByteArray(Charsets.UTF_8))
+                output.fd.sync()
+            }
+            if (!temp.renameTo(dest)) temp.delete()
+        }
+    }
+
+    /**
+     * #42: a failure the app caught and survived (Photo DNA planning) is
+     * still the Last crash Lukas can copy, marked as handled. Never throws.
+     */
+    fun recordHandled(context: Context, failure: Throwable) {
+        try {
+            val appContext = context.applicationContext
+            write(appContext, formatCrashReport(System.currentTimeMillis(),
+                version(appContext), "background", failure, handled = true))
+        } catch (_: Throwable) {
+            // Out of disk space/OOM: the app already shows the failure.
+        }
+    }
+
     fun install(context: Context) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         val appContext = context.applicationContext
-        val version = runCatching {
-            appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
-        }.getOrNull() ?: "unknown"
+        val version = version(appContext)
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
                 val kind = if (thread === Looper.getMainLooper().thread) "main" else "background"
-                val report = formatCrashReport(System.currentTimeMillis(), version, kind, throwable)
-                val dest = file(appContext)
-                if (dest.parentFile?.mkdirs() == true || dest.parentFile?.isDirectory == true) {
-                    val temp = File(dest.parentFile, "last.tmp")
-                    FileOutputStream(temp).use { output ->
-                        output.write(report.toByteArray(Charsets.UTF_8))
-                        output.fd.sync()
-                    }
-                    if (!temp.renameTo(dest)) temp.delete()
-                }
+                write(appContext, formatCrashReport(System.currentTimeMillis(), version, kind, throwable))
             } catch (_: Throwable) {
                 // Out of disk space/OOM must not conceal the original fatal crash.
             } finally {
