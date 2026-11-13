@@ -40,5 +40,5 @@ jobs:
             exit 1
           fi
           echo "Discovered ${#tests[@]} additive .mjs source-contract test files:"
-          printf ' - %s\\n' "${tests[@]}"
+          printf ' - %s\n' "${tests[@]}"
           node --test "${tests[@]}"
