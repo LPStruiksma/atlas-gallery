@@ -30,7 +30,7 @@ class PhotoDnaPanoramaAndroidTest {
             put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ATLAS-PhotoDna-Panorama/")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val uri = assertNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
         try {
             val original = Bitmap.createBitmap(8_000, 1_000, Bitmap.Config.ARGB_8888)
             try {
