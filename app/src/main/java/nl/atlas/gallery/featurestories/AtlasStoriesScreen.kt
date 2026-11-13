@@ -59,6 +59,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.testTag
@@ -235,7 +237,9 @@ fun AtlasStoriesScreen(
     onBack: () -> Unit,
     onOpenMedia: (String) -> Unit,
     modifier: Modifier = Modifier,
-    playback: StoryPlaybackState = rememberStoryPlaybackState(deck)
+    playback: StoryPlaybackState = rememberStoryPlaybackState(deck),
+    /** Optional observer invoked after Media3 release (useful for lifecycle diagnostics). */
+    onVideoPlayerReleased: () -> Unit = {}
 ) {
     val cards = currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
     // A position restored after a recreate (#451) settles once a live deck arrives.
@@ -255,6 +259,7 @@ fun AtlasStoriesScreen(
             },
             onClose = { playback.position = null },
             onOpenMedia = onOpenMedia,
+            onVideoPlayerReleased = onVideoPlayerReleased,
             modifier = modifier
         )
         return
@@ -385,6 +390,7 @@ private fun StoryPlayback(
     onPositionChange: (index: Int, playing: Boolean) -> Unit,
     onClose: () -> Unit,
     onOpenMedia: (String) -> Unit,
+    onVideoPlayerReleased: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val item = story.items[index]
@@ -403,6 +409,7 @@ private fun StoryPlayback(
                     uri = item.uri,
                     playing = playing,
                     onPaused = { onPositionChange(index, false) },
+                    onReleased = onVideoPlayerReleased,
                     onCompleted = {
                         if (index < story.items.lastIndex) onPositionChange(index + 1, true)
                         else onPositionChange(index, false)
@@ -474,7 +481,8 @@ private fun StoryPlayback(
             // the same explicit moment description available to accessibility.
             if (item.isVideo) {
                 Box(Modifier.align(Alignment.Center).size(1.dp)
-                    .testTag("atlas-story-video-moment-" + (index + 1)))
+                    .testTag("atlas-story-video-moment-" + (index + 1))
+                    .semantics { contentDescription = "Moment " + (index + 1) + " of " + story.items.size })
             }
         }
     }
@@ -491,13 +499,15 @@ private fun StoryVideoStage(
     uri: String,
     playing: Boolean,
     onPaused: () -> Unit,
-    onCompleted: () -> Unit
+    onCompleted: () -> Unit,
+    onReleased: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestPlaying by rememberUpdatedState(playing)
     val latestPaused by rememberUpdatedState(onPaused)
     val latestCompleted by rememberUpdatedState(onCompleted)
+    val latestReleased by rememberUpdatedState(onReleased)
     var firstFrame by remember(uri) { mutableStateOf(false) }
     var failed by remember(uri) { mutableStateOf(false) }
     var ended by remember(uri) { mutableStateOf(false) }
@@ -554,6 +564,7 @@ private fun StoryVideoStage(
             player.removeListener(listener)
             player.pause()
             player.release()
+            latestReleased()
         }
     }
     LaunchedEffect(player, playing, failed) {
