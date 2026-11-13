@@ -1047,6 +1047,14 @@ private fun ViewerSystemBars(visible: Boolean) {
         val oldLightStatus = controller.isAppearanceLightStatusBars
         val oldLightNavigation = controller.isAppearanceLightNavigationBars
         val oldBehavior = controller.systemBarsBehavior
+        // API 35+ can force a transparent navigation bar regardless of
+        // navigationBarColor. Paint the window backdrop under its buttons.
+        // Replace (not mutate) the drawable so disposal restores it exactly.
+        val decor = window.decorView
+        val oldDecorBackground = decor.background
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            decor.background = android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK)
+        }
 
         window.statusBarColor = android.graphics.Color.BLACK
         window.navigationBarColor = android.graphics.Color.BLACK
@@ -1065,6 +1073,9 @@ private fun ViewerSystemBars(visible: Boolean) {
             controller.isAppearanceLightStatusBars = oldLightStatus
             controller.isAppearanceLightNavigationBars = oldLightNavigation
             controller.systemBarsBehavior = oldBehavior
+            if (android.os.Build.VERSION.SDK_INT >= 35) {
+                decor.background = oldDecorBackground
+            }
         }
     }
     LaunchedEffect(window, view, visible) {
