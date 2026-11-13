@@ -22,7 +22,7 @@ test("#46 People status is visible and queued does not claim an active scan", ()
   assert.match(home, /peopleStatusLine\(state\)/);
   assert.match(host, /groupingEpoch/);
   assert.match(host, /scanBatchEpoch/);
-  assert.match(host, /FaceScanPhase\\.QUEUED/);
+  assert.match(host, /FaceScanPhase\.QUEUED/);
   assert.match(presentation, /GROUPING/);
 });
 
