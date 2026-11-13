@@ -126,6 +126,30 @@ internal fun AtlasSettingsScreen(
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
+                SettingsActionRow("Last crash", "atlas-settings-last-crash",
+                    onClick = { crashExpanded = !crashExpanded },
+                    value = if (crashExpanded) "Hide" else "Show")
+                if (crashExpanded) {
+                    // Read only when the user opens this section; never upload implicitly.
+                    val last = remember(crashExpanded) { onReadLastCrash() }
+                    Text(last ?: "No crash recorded yet",
+                        modifier = Modifier.fillMaxWidth().padding(12.dp)
+                            .testTag("atlas-settings-last-crash-text"),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 12, overflow = TextOverflow.Ellipsis)
+                    if (last != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onCopyLastCrash(last) },
+                                modifier = Modifier.testTag("atlas-settings-last-crash-copy")) {
+                                Text("Copy")
+                            }
+                            TextButton(onClick = { onShareLastCrash(last) },
+                                modifier = Modifier.testTag("atlas-settings-last-crash-share")) {
+                                Text("Share")
+                            }
+                        }
+                    }
+                }
                 SettingsActionRow("Export diagnostics", "atlas-settings-export-diagnostics",
                     onClick = { exportExpanded = !exportExpanded },
                     value = if (exportExpanded) "Hide" else "Show")
@@ -150,30 +174,6 @@ internal fun AtlasSettingsScreen(
                             TextButton(onClick = { onShareDiagnostics(report) },
                                 modifier = Modifier.testTag("atlas-settings-export-diagnostics-share")) {
                                 Text("Share text file")
-                            }
-                        }
-                    }
-                }
-                SettingsActionRow("Last crash", "atlas-settings-last-crash",
-                    onClick = { crashExpanded = !crashExpanded },
-                    value = if (crashExpanded) "Hide" else "Show")
-                if (crashExpanded) {
-                    // Read only when the user opens this section; never upload implicitly.
-                    val last = remember(crashExpanded) { onReadLastCrash() }
-                    Text(last ?: "No crash recorded yet",
-                        modifier = Modifier.fillMaxWidth().padding(12.dp)
-                            .testTag("atlas-settings-last-crash-text"),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 12, overflow = TextOverflow.Ellipsis)
-                    if (last != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { onCopyLastCrash(last) },
-                                modifier = Modifier.testTag("atlas-settings-last-crash-copy")) {
-                                Text("Copy")
-                            }
-                            TextButton(onClick = { onShareLastCrash(last) },
-                                modifier = Modifier.testTag("atlas-settings-last-crash-share")) {
-                                Text("Share")
                             }
                         }
                     }
