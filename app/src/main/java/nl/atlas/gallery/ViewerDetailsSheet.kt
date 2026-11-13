@@ -77,7 +77,9 @@ internal val LocalViewerDimensionsReader =
 internal fun ViewerDetailsSheet(
     media: MediaRecord, onDismiss: () -> Unit,
     /** #553: who is in the photo; null (or no faces) hides the People row. */
-    photoPeople: ViewerPhotoPeople? = null
+    photoPeople: ViewerPhotoPeople? = null,
+    /** Tests can open fully without changing the normal partial-sheet behavior. */
+    sheetState: SheetState = rememberModalBottomSheetState()
 ) {
     val context = LocalContext.current
     val dimensionsReader = LocalViewerDimensionsReader.current
@@ -113,6 +115,7 @@ internal fun ViewerDetailsSheet(
     } else emptyList()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = ink,
         modifier = Modifier.testTag("atlas-viewer-details")

@@ -5,7 +5,9 @@ import android.media.ExifInterface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +66,7 @@ class ViewerExtendedDetailsEvidenceTest {
         return file
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Test fun photoExifAndVideoRenderInDarkAndLight() {
         val image = syntheticJpeg()
         val extracted = FileInputStream(image).use(::readViewerExif)
@@ -98,7 +101,12 @@ class ViewerExtendedDetailsEvidenceTest {
                 AtlasGalleryTheme(dark = dark) {
                     Box(Modifier.fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)) {
-                        ViewerDetailsSheet(selected, onDismiss = {})
+                        // The real sheet opens partially; evidence deliberately
+                        // presents its fully opened state so rows can be captured.
+                        val evidenceSheetState = rememberModalBottomSheetState(
+                            skipPartiallyExpanded = true)
+                        ViewerDetailsSheet(
+                            selected, onDismiss = {}, sheetState = evidenceSheetState)
                     }
                 }
             }
@@ -112,15 +120,21 @@ class ViewerExtendedDetailsEvidenceTest {
             rule.waitUntil(8_000) {
                 rule.onAllNodesWithText("Samsung SM-S928B").fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithTag("atlas-details-capture-date").assertExists()
+            rule.onNodeWithTag("atlas-details-capture-date").assertIsDisplayed()
             rule.onNodeWithText("Camera-photo.jpg").assertExists()
             rule.onNodeWithText("DCIM/Camera").assertExists()
             rule.onNodeWithText("12.0 MP").assertExists()
             rule.onNodeWithText("Name").performScrollTo()
+            rule.onNodeWithText("Camera-photo.jpg").assertIsDisplayed()
+            rule.onNodeWithText("12.0 MP").assertIsDisplayed()
             saveUiEvidence("details-683-photo-top-$suffix.png")
-            rule.onNodeWithTag("atlas-details-camera").performScrollTo()
-            rule.onNodeWithText("f/1.7").assertExists()
-            rule.onNodeWithText("1/125 s").assertExists()
+            // Scroll to the last required camera fact, not merely the header.
+            // Existence in semantics does not prove a row is in the screenshot.
+            rule.onNodeWithText("1/125 s").performScrollTo()
+            rule.onNodeWithText("Camera details").assertIsDisplayed()
+            rule.onNodeWithText("Samsung SM-S928B").assertIsDisplayed()
+            rule.onNodeWithText("f/1.7").assertIsDisplayed()
+            rule.onNodeWithText("1/125 s").assertIsDisplayed()
             saveUiEvidence("details-683-photo-camera-$suffix.png")
 
             rule.runOnIdle { selected = video }
@@ -128,8 +142,10 @@ class ViewerExtendedDetailsEvidenceTest {
                 rule.onAllNodesWithText("29.97 fps").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("Holiday-video.mp4").assertExists()
-            rule.onNodeWithTag("atlas-details-video").performScrollTo()
-            rule.onNodeWithText("H.264").assertExists()
+            rule.onNodeWithText("29.97 fps").performScrollTo()
+            rule.onNodeWithText("Video details").assertIsDisplayed()
+            rule.onNodeWithText("H.264").assertIsDisplayed()
+            rule.onNodeWithText("29.97 fps").assertIsDisplayed()
             saveUiEvidence("details-683-video-$suffix.png")
         }
     }
