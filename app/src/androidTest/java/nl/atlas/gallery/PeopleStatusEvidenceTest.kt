@@ -11,9 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodes
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
@@ -90,7 +89,7 @@ class PeopleStatusEvidenceTest {
                         processed = if (next == FaceDiscoveryPhase.FINISHED) 10
                             else if (next == FaceDiscoveryPhase.QUEUED) 0 else 3,
                         eligible = 10))
-                assertTrue(compose.onAllNodes(hasText(requireNotNull(peopleExpected)))
+                assertTrue(compose.onAllNodesWithText(requireNotNull(peopleExpected))
                     .fetchSemanticsNodes().isNotEmpty())
                 saveUiEvidence("status-46-people-$name-${if (theme) "dark" else "light"}.png")
 
@@ -98,7 +97,7 @@ class PeopleStatusEvidenceTest {
                 compose.waitForIdle()
                 compose.onNodeWithTag("atlas-settings-face-scanning").assertExists()
                 compose.onNodeWithTag("atlas-people-visual-index").assertExists()
-                assertTrue(compose.onAllNodes(hasText(faceScanSettingsValue(next, false, true)))
+                assertTrue(compose.onAllNodesWithText(faceScanSettingsValue(next, false, true))
                     .fetchSemanticsNodes().isNotEmpty())
                 saveUiEvidence("status-46-settings-$name-${if (theme) "dark" else "light"}.png")
             }

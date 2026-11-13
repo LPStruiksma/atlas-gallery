@@ -79,7 +79,7 @@ internal fun AtlasSettingsScreen(
                 scanAction, scanValue)
             if (visualIndexOn != null) {
                 SettingsActionRow("Visual search index", "atlas-people-visual-index",
-                    onVisualIndex, visualIndexStatusText(visualIndexOn, visualStatus,
+                    onVisualIndex.takeIf { visualStatus != null }, visualIndexStatusText(visualIndexOn, visualStatus,
                         scanPhase, scanLoading, scanPhotoAccess))
             }
             SettingsActionRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
