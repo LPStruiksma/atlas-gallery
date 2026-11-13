@@ -1,2 +1,11 @@
 # #31 Settings while People catalogue is asynchronously restoring.
 settings-31-restoring
+# Two separate MainActivity instrumentation invocations with adb force-stop between.
+relaunch31-before-people
+relaunch31-before-settings
+relaunch31-before-photos
+relaunch31-before-albums
+relaunch31-after-people
+relaunch31-after-settings
+relaunch31-after-photos
+relaunch31-after-albums
