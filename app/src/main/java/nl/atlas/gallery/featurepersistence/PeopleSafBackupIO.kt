@@ -39,8 +39,7 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
             "This does not restore settings, SAF access or original photographs."
     }
 
-        // A separate, path-free native People format. The old format above
-        // intentionally remains available to its existing legacy callers.
+    // Separate from the path-bearing V4 backup; both retain independent formats.
     /** Runs only after a fresh, affirmative destination warning and SAF choice. */
     internal fun exportNamesToSelectedDocument(
         uri: Uri, host: PeopleDiscoveryHost, galleryGrant: String?,
