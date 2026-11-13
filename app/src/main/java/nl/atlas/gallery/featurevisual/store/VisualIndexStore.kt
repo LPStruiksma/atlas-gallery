@@ -91,6 +91,13 @@ class VisualIndexStore(context: Context) :
             .thenBy { it.frameMs ?: IMAGE_FRAME }
     }
 
+    init {
+        // #47: write-ahead log, as in FaceIndexStore. The public API stays
+        // @Synchronized, so this store's own calls still run one at a time;
+        // the database itself no longer makes a reader wait for a writer.
+        setWriteAheadLoggingEnabled(true)
+    }
+
     override fun onConfigure(db: SQLiteDatabase) {
         db.setForeignKeyConstraintsEnabled(true)
     }
