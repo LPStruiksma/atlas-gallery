@@ -1,0 +1,108 @@
+{
+  "_note": "Pinned sources for the VS-S0 spike. sha256 is of the upstream file as downloaded on 2026-11-07. Licences checked at the named upstream commit; see docs/visual-search/VS_S0_MODEL_SPIKE.md.",
+  "openclip_vitb32_laion400m": {
+    "family": "OpenCLIP ViT-B/32 (quickgelu), LAION-400M e32",
+    "url": "https://github.com/mlfoundations/open_clip/releases/download/v0.2-weights/vit_b_32-quickgelu-laion400m_e32-46683a32.pt",
+    "sha256": "46683a32721d5c68911153698992361285d20ca690bb4f317c11e45c03d798fa",
+    "licence": "MIT (mlfoundations/open_clip LICENSE @ f9a0948d573009f8fa3e530e55814cb11fb8e8bd)",
+    "loader": "openclip",
+    "arch": "ViT-B-32-quickgelu",
+    "input": 224,
+    "resize": "shortest_crop",
+    "interp": "bicubic",
+    "mean": [
+      0.48145466,
+      0.4578275,
+      0.40821073
+    ],
+    "std": [
+      0.26862954,
+      0.26130258,
+      0.27577711
+    ],
+    "int8_keep_fp32": [
+      "/tower/transformer/resblocks.7/mlp/c_proj/MatMul"
+    ]
+  },
+  "siglip_b16_224": {
+    "family": "SigLIP B/16 224, WebLI (English)",
+    "url": "https://storage.googleapis.com/big_vision/siglip/webli_en_b16_224_63724782.npz",
+    "sha256": "bc55927446ff6ad6536514860996279753196cb96e032fabd1bdd52980e15de1",
+    "licence": "Apache-2.0 (google-research/big_vision README 'License' + LICENSE @ 0127fb6b337ee2a27bf4e54dea79cff176527356: covers models)",
+    "loader": "timm",
+    "arch": "vit_base_patch16_siglip_224",
+    "input": 224,
+    "resize": "squash",
+    "interp": "bilinear",
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "siglip2_b16_224": {
+    "family": "SigLIP 2 B/16 224, WebLI (multilingual)",
+    "url": "https://storage.googleapis.com/big_vision/siglip2/siglip2_b16_224.npz",
+    "sha256": "74abfd2488a01f78c1cce5a38861dc929ea42aeabe8f622eaaa60ddfffeaad4e",
+    "licence": "Apache-2.0 (as siglip_b16_224, same repository and commit)",
+    "loader": "timm",
+    "arch": "vit_base_patch16_siglip_224",
+    "input": 224,
+    "resize": "squash",
+    "interp": "bilinear",
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "int8_keep_fp32": [
+      "/tower/blocks/blocks.5/mlp/fc2/MatMul"
+    ]
+  },
+  "siglip2_b32_256": {
+    "family": "SigLIP 2 B/32 256, WebLI (multilingual)",
+    "url": "https://storage.googleapis.com/big_vision/siglip2/siglip2_b32_256.npz",
+    "sha256": "695c33a58add54589cb8545334f328bf12fcbbffc1f3961563ab6084b609f77b",
+    "licence": "Apache-2.0 (as siglip_b16_224, same repository and commit)",
+    "loader": "timm",
+    "arch": "vit_base_patch32_siglip_256",
+    "input": 256,
+    "resize": "squash",
+    "interp": "bilinear",
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "int8_keep_fp32": [
+      "/tower/blocks/blocks.5/mlp/fc2/MatMul"
+    ]
+  },
+  "mediapipe_person_detector": {
+    "family": "MediaPipe person detector (OpenCV Zoo ONNX, 2023mar)",
+    "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/person_detection_mediapipe/person_detection_mediapipe_2023mar.onnx",
+    "sha256": "47fd5599d6fa17608f03e0eb0ae230baa6e597d7e8a2c8199fe00abea55a701f",
+    "licence": "Apache-2.0 (opencv/opencv_zoo models/person_detection_mediapipe/README.md 'License' @ 48b10fa505aeb51fbd127fc60a5c660040e823b7)"
+  },
+  "mediapipe_pose": {
+    "family": "MediaPipe BlazePose full (OpenCV Zoo ONNX, 2023mar)",
+    "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/pose_estimation_mediapipe/pose_estimation_mediapipe_2023mar.onnx",
+    "sha256": "9d89c599319a18fb7d2e28451a883476164543182bafca5f09eb2cf767ed2f3f",
+    "licence": "Apache-2.0 (opencv/opencv_zoo models/pose_estimation_mediapipe/README.md 'License' @ 48b10fa505aeb51fbd127fc60a5c660040e823b7)"
+  }
+}

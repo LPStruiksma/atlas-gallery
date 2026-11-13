@@ -1,0 +1,61 @@
+name: ATLAS APK signing safety
+on:
+  pull_request:
+    paths:
+      - 'scripts/check_apk_upgrade_signing.py'
+      - 'scripts/test_apk_upgrade_signing.py'
+      - 'scripts/consolidate_native_people_capture.py'
+      - 'scripts/test_consolidate_native_people_capture.py'
+      - 'scripts/validate_native_people_backup.py'
+      - 'scripts/test_native_people_backup.py'
+      - 'scripts/export_native_people_recovery.py'
+      - 'scripts/test_native_people_recovery.py'
+      - 'scripts/probe_existing_native_install.py'
+      - 'scripts/test_probe_existing_native_install.py'
+      - '.github/workflows/signing-safety.yml'
+      - '.github/workflows/release-signed.yml'
+      - 'scripts/audit_stable_signing_workflow.py'
+      - 'scripts/test_audit_stable_signing_workflow.py'
+      - 'docs/STABLE_SIGNING.md'
+      - 'app/build.gradle.kts'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/check_apk_upgrade_signing.py'
+      - 'scripts/test_apk_upgrade_signing.py'
+      - 'scripts/consolidate_native_people_capture.py'
+      - 'scripts/test_consolidate_native_people_capture.py'
+      - 'scripts/validate_native_people_backup.py'
+      - 'scripts/test_native_people_backup.py'
+      - 'scripts/export_native_people_recovery.py'
+      - 'scripts/test_native_people_recovery.py'
+      - 'scripts/probe_existing_native_install.py'
+      - 'scripts/test_probe_existing_native_install.py'
+      - '.github/workflows/signing-safety.yml'
+      - '.github/workflows/release-signed.yml'
+      - 'scripts/audit_stable_signing_workflow.py'
+      - 'scripts/test_audit_stable_signing_workflow.py'
+permissions:
+  contents: read
+jobs:
+  signing-public-certificate-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test signing-secret source isolation audit
+        run: python3 scripts/test_audit_stable_signing_workflow.py
+      - name: GitHub-signed phone release workflow passes the isolation audit
+        run: python3 scripts/audit_stable_signing_workflow.py .github/workflows/release-signed.yml
+      - name: Test signature checking without keystores, passwords or real APKs
+        run: python3 scripts/test_apk_upgrade_signing.py
+      - name: Test offline WAL consolidation without phone/identity access
+        run: python3 scripts/test_consolidate_native_people_capture.py
+      - name: Test private People backup validator using synthetic SQLite only
+        run: python3 scripts/test_native_people_backup.py
+      - name: Test lossless native People recovery import with synthetic names and paths
+        run: python3 scripts/test_native_people_recovery.py
+      - name: Test read-only phone probe with no Shizuku or private data
+        run: python3 scripts/test_probe_existing_native_install.py

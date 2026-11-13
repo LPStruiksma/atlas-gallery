@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATLAS launcher icon foreground (full colour).
+     An "A" for ATLAS with a person in its frame: People sit at the heart of the gallery.
+     All content stays inside the 66dp adaptive-icon safe zone (centre 54,54). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M33,77L54,31L75,77"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#FFFFC24A"
+        android:pathData="M54,58.8m-5.8,0a5.8,5.8 0,1 1,11.6 0a5.8,5.8 0,1 1,-11.6 0" />
+    <path
+        android:fillColor="#FFFFC24A"
+        android:pathData="M44,77A10,9.5 0,0 1,64 77Z" />
+</vector>

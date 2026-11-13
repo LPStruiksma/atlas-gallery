@@ -1,0 +1,3 @@
+# #679: real Photos selection with one tile chosen; All and date headers unchecked.
+selection-679-page-light
+selection-679-page-dark

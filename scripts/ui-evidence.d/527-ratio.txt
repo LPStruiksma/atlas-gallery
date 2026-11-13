@@ -1,0 +1,5 @@
+# #527 real-ratio evidence.
+ratio-527-album-square-grid
+ratio-527-album-original-timeline-on
+ratio-527-album-original-timeline-off
+ratio-527-album-original-missing-metadata

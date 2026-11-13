@@ -1,0 +1,69 @@
+name: ATLAS Photo DNA synthetic safety
+on:
+  pull_request:
+    paths:
+      - 'tools/photo_lineage/**'
+      - '.github/workflows/photo-lineage-safety.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/photo_lineage/**'
+      - '.github/workflows/photo-lineage-safety.yml'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-photo-dna-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-lineage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Detect stacked prototype availability (workflow bootstrap may precede #87)
+        id: study
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -d tools/photo_lineage ]]; then
+            if [[ -d baseline/tools/photo_lineage ]]; then
+              echo '::error::Photo DNA prototype/test suite disappeared from the PR head; refusing a false green check.'
+              exit 1
+            fi
+            echo '::notice::Workflow-only bootstrap on main before PR #87. No prototype in either revision; no tests run.'
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+          else
+            test -s tools/photo_lineage/requirements.txt
+            test -d tools/photo_lineage/tests
+            test -n "$(find tools/photo_lineage/tests -name 'test_*.py' -print -quit)"
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install image-analysis test dependencies (headless, no private data)
+        if: steps.study.outputs.available == 'true'
+        run: python -m pip install -r tools/photo_lineage/requirements.txt
+      - name: Run all synthetic Photo DNA unit tests
+        if: steps.study.outputs.available == 'true'
+        run: python -m unittest discover -s tools/photo_lineage/tests -v
+      - name: Enforce synthetic precision/recall gate when present
+        if: steps.study.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f tools/photo_lineage/ci_gate.py ]]; then
+            python -m tools.photo_lineage.ci_gate
+          else
+            # Earliest stacked PR (#87) introduced the core matcher first.
+            # Its unittest suite is the required gate for that initial head.
+            echo '::notice::Initial matcher-only revision: no ci_gate.py yet; unit tests passed.'
+          fi

@@ -1,0 +1,90 @@
+name: ATLAS synthetic signer-mismatch People recovery
+on:
+  pull_request:
+    # Actions-minutes rule (autodev CI audit 2026-11-12): drafts run the offline contract only.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/ci_android_upgrade_emulator.sh'
+      - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_enable_kvm.sh'
+      - 'scripts/export_native_people_recovery.py'
+      - 'scripts/validate_native_people_backup.py'
+      - 'app/src/main/java/nl/atlas/gallery/PeopleRepository.kt'
+      - '.github/workflows/signer-mismatch-recovery.yml'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-emulator-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check Bash syntax and synthetic offline recovery invariants
+        run: |
+          set -euo pipefail
+          bash -n scripts/ci_android_upgrade_emulator.sh
+          python3 scripts/test_native_people_backup.py
+          python3 scripts/test_native_people_recovery.py
+  synthetic-recovery-stateful:
+    if: ${{ !github.event.pull_request.draft }}
+    needs: offline-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: upgrade-baseline
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Fail fast without Linux KVM
+        shell: bash
+        # #597: settle udev and retry; every failure prints "::error::KVM unavailable".
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Exercise incompatible signer and restore synthetic private People data
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          # One shell command: inline shell conditionals do not survive runner splitting.
+          script: env ATLAS_SYNTHETIC_MISMATCH=1 ATLAS_RECOVERY_ONLY=1 bash scripts/ci_android_upgrade_emulator.sh
+  synthetic-recovery:
+    # Stable join check for the stateful signer-mismatch recovery. The plain instrumented UI
+    # suite is NOT repeated here: it is identical to build-apk.yml's emulator-ui shards, which
+    # run on every path that changes it (app/** and the emulator scripts). Removed 2026-11-12
+    # (CI audit) to stop paying for the same two emulators twice.
+    if: ${{ !cancelled() && !github.event.pull_request.draft }}
+    needs: [synthetic-recovery-stateful]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the stateful recovery to pass
+        shell: bash
+        env:
+          RECOVERY_RESULT: ${{ needs.synthetic-recovery-stateful.result }}
+        run: |
+          set -euo pipefail
+          echo "Stateful recovery: $RECOVERY_RESULT"
+          [[ "$RECOVERY_RESULT" == "success" ]] || {
+            echo "::error::Synthetic signer-mismatch recovery did not pass"; exit 1;
+          }

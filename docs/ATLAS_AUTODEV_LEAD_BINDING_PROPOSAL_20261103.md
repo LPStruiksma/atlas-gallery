@@ -1,0 +1,5 @@
+# Review note: ATLAS lead binding (proposed, NOT enabled)
+
+The adjacent JSON is a derivative of `LPStruiksma/autodev/config/project-development-lead-claude-worker.json` from its 2026-11-03 main, augmented with only the required `tenant` object. Its correct destination, once independently reviewed, would be a **new separate** AutoDev `config/project-development-lead-atlas-claude-worker.json` — never overwrite the GeoAsset/tenant-neutral worker. The AutoDev consumer reads the binding from an approved config in its own trusted repository; **this ATLAS-side copy alone does not run anything**.
+
+Review against exact current AutoDev lead/queue protocol, then run `autodev-tenant-readiness` on a clean ATLAS clone with this config. Do not trigger a worker wake, subscription send or CI until project source/default branch and cost gates are settled. Any actual AutoDev worker config is a cross-repo policy-controlled change. The account owner has confirmed adding ATLAS as a resource to the Claude Code AutoDev project; runtime access remains to be confirmed in that seat.

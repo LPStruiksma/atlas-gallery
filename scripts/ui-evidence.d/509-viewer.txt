@@ -1,0 +1,3 @@
+# #509 viewer scrub and swipe-up Details (ViewerInteractionTest).
+viewer-509-after-scrub
+viewer-509-swipe-up-details

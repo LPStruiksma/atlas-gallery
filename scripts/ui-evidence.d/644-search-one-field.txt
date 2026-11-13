@@ -1,0 +1,5 @@
+# #644 Search as one field (SearchOneFieldEvidenceTest).
+search-644-rest
+search-644-recents
+search-644-typing
+search-644-results

@@ -1,0 +1,184 @@
+name: ATLAS P0 Phone G3 Cloud Handoff (manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Generate 3/4 preview APK pairs OR verify owner-signed pair in emulator'
+        type: choice
+        options: [generate, verify]
+        required: true
+      preview_run_id:
+        description: 'Verify only: successful generate workflow run ID'
+        type: string
+      signed_release_tag:
+        description: 'Verify only: private INTERNAL PRERELEASE tag holding four owner-signed APKs'
+        type: string
+      owner_cert_sha256:
+        description: 'Verify only: PUBLIC owner signer certificate SHA256 (64 hex)'
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: atlas-p0-phone-g3-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  generate:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.operation == 'generate' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout trusted workflow contract from main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run zero-secret fictional artifact contract regressions before SDK/Gradle
+        run: |
+          python3 scripts/test_p0_cloud_g3_contract.py
+          bash -n scripts/p0_cloud_g3_emulator.sh
+      - name: Checkout IMMUTABLE G1/G2-reviewed app source
+        uses: actions/checkout@v4
+        with:
+          ref: 36bd476530abad6ebe794bd2d00128d83940518a
+          path: pinned-source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Android SDK build tools 36
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Require pinned source, no inherited signing inputs, two independent source trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git -C pinned-source rev-parse HEAD)" == '36bd476530abad6ebe794bd2d00128d83940518a' ]]
+          for key in ATLAS_STABLE_SIGNING_PATH ATLAS_STABLE_SIGNING_STORE_PASSWORD ATLAS_STABLE_SIGNING_KEY_ALIAS ATLAS_STABLE_SIGNING_KEY_PASSWORD; do
+            [[ -z "${!key:-}" ]] || { echo '::error::Refusing inherited signing configuration'; exit 1; }
+          done
+          mkdir -p source-v3 source-v4
+          git -C pinned-source archive HEAD | tar -x -C source-v3
+          git -C pinned-source archive HEAD | tar -x -C source-v4
+          python3 scripts/p0_cloud_g3_contract.py bump source-v4/app/build.gradle.kts
+          cmp -s source-v3/app/build.gradle.kts source-v4/app/build.gradle.kts && exit 1
+      - name: Build both distinct versionCode variants (temporary debug signing ONLY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p source-v3 :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+          gradle -p source-v4 :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+      - name: Verify all four APKs and create SHA256 source provenance manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo '::error::Generator checkout is not current trusted main SHA'; exit 1; }
+          python3 scripts/p0_cloud_g3_contract.py preview \
+            --v3 source-v3 --v4 source-v4 --output p0-preview \
+            --generator-sha "$GITHUB_SHA" \
+            --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+      - name: Upload complete cloud-to-Termux signing handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-P0-G3-preview-apks
+          path: p0-preview/
+          retention-days: 7
+          if-no-files-found: error
+  verify:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.operation == 'verify' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout main-owned verification script (never PR code)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Android SDK 36 for signer/package checks
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Authenticate GitHub run and download the private signed transport
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ inputs.preview_run_id }}
+          SIGNED_TAG: ${{ inputs.signed_release_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN" =~ ^[0-9]{6,16}$ ]] || { echo '::error::Invalid build run ID'; exit 1; }
+          [[ "$SIGNED_TAG" =~ ^atlas-p0-g3-[a-z0-9-]{1,48}$ ]] || { echo '::error::Invalid private release tag'; exit 1; }
+          mkdir -p p0-preview p0-signed p0-evidence
+          # The workflow NAME is not a unique identity: bind the referenced run
+          # to the repository's actual trusted workflow ID as well as HEAD SHA.
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/p0-cloud-g3.yml" --jq .id > p0-evidence/expected-workflow-id.txt
+          gh run view "$BUILD_RUN" --json workflowName,workflowDatabaseId,conclusion,headBranch,headSha,event \
+            > p0-evidence/source-run.json
+          python3 - <<'PY_CHECK_RUN'
+          import json
+          from pathlib import Path
+          s = json.loads(Path('p0-evidence/source-run.json').read_text())
+          wid = int(Path('p0-evidence/expected-workflow-id.txt').read_text().strip())
+          if s.get('workflowDatabaseId') != wid:
+              raise SystemExit('NO-GO: wrong generating workflow ID')
+          if s.get('workflowName') != 'ATLAS P0 Phone G3 Cloud Handoff (manual only)':
+              raise SystemExit('NO-GO: generating workflow name changed')
+          if not (s.get('conclusion') == 'success' and s.get('headBranch') == 'main'
+                  and s.get('event') == 'workflow_dispatch'):
+              raise SystemExit('NO-GO: run is not a successful trusted-main dispatch')
+          import re
+          if not isinstance(s.get('headSha'), str) or not re.fullmatch(r'[a-fA-F0-9]{40}', s['headSha']):
+              raise SystemExit('NO-GO: invalid generator source SHA')
+          PY_CHECK_RUN
+          gh release view "$SIGNED_TAG" --json isDraft,isPrerelease \
+            | python3 -c 'import json,sys; x=json.load(sys.stdin); sys.exit(0 if x.get("isDraft") is False and x.get("isPrerelease") is True else "NO-GO: require an approved PRIVATE-REPO prerelease")'
+          gh run download "$BUILD_RUN" -n ATLAS-P0-G3-preview-apks -D p0-preview
+          gh release download "$SIGNED_TAG" -p 'A-*.apk' -p 'B-*.apk' -D p0-signed
+      - name: Verify downloaded APKs offline without any GitHub token in the parser
+        shell: bash
+        env:
+          PUBLIC_CERT: ${{ inputs.owner_cert_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$PUBLIC_CERT" =~ ^[a-fA-F0-9]{64}$ ]] || { echo '::error::Invalid public signer digest'; exit 1; }
+          generator_sha="$(python3 -c 'import json; print(json.load(open("p0-evidence/source-run.json"))["headSha"])')"
+          python3 scripts/p0_cloud_g3_contract.py verify-signed \
+            --preview p0-preview --signed p0-signed --output p0-evidence/public-proof.json \
+            --generator-sha "$generator_sha" \
+            --fingerprint "$PUBLIC_CERT" \
+            --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+      - name: Require usable KVM, refuse software-emulation fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm || { echo '::error::KVM not available'; exit 1; }
+      - name: Android API35 retained-certificate upgrade proof on disposable emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/p0_cloud_g3_emulator.sh
+      - name: Upload public hashes and FICTIONAL instrumentation result (only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-P0-G3-owner-signed-API35-evidence
+          path: p0-evidence/*
+          if-no-files-found: warn
+          retention-days: 7

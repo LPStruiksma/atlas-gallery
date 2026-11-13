@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""Export the image towers of the candidate models to ONNX (fp32 + int8).
+
+Each exported graph takes a normalised NCHW float32 batch and returns an
+L2-normalised embedding, so on-device code only has to resize, normalise
+and run. The int8 variant uses ONNX Runtime dynamic (weight-only) INT8
+quantisation of MatMul/Gemm, which ORT Mobile runs on the CPU without any
+extra dependency.
+
+Usage:
+  export_onnx.py --weights-dir ~/.cache/atlas-vs/models --out-dir ~/.cache/atlas-vs/onnx [--only name]
+
+VS-S1a (ship the SigLIP 2 B/16 int8 graph in the APK):
+  export_onnx.py --weights-dir ... --out-dir ... --only siglip2_b16_224 \
+      --ship-dir app/src/main/assets/models/siglip2 \
+      --golden-kotlin app/src/androidTest/java/nl/atlas/gallery/featurevisual/SiglipGolden.kt
+--ship-dir splits the int8 file into ordered parts of at most --part-mb MB
+(GitHub refuses files over 100 MB; no Git LFS). --golden-kotlin runs the int8
+graph on the synthetic images below, preprocessed with Pillow exactly as
+SiglipPreprocess.kt does, and writes their vectors for the androidTest.
+"""
+import argparse
+import hashlib
+import json
+import os
+
+import numpy as np
+import torch
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+class Normalised(torch.nn.Module):
+    def __init__(self, tower):
+        super().__init__()
+        self.tower = tower
+
+    def forward(self, x):
+        y = self.tower(x)
+        return torch.nn.functional.normalize(y, dim=-1)
+
+
+def load_openclip(spec, path):
+    import open_clip
+    model = open_clip.create_model(spec["arch"], pretrained=path)
+    return model.visual.eval()
+
+
+def load_timm(spec, path):
+    import timm
+    # num_classes=0 returns the MAP-pooled vector. The SigLIP B checkpoints
+    # have no img/head (identity), so this IS the shared image-text
+    # embedding: a later text query can reuse the same index.
+    model = timm.create_model(spec["arch"], pretrained=False, num_classes=0,
+                              img_size=spec["input"])
+    model.load_pretrained(path)
+    return model.eval()
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def split_parts(path, ship_dir, part_mb):
+    """Writes path as <name>.part0, .part1, ... of at most part_mb * 10^6 bytes."""
+    os.makedirs(ship_dir, exist_ok=True)
+    limit = part_mb * 1000 * 1000
+    stem = "siglip2_b16_224_int8.onnx"
+    parts = []
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(limit)
+            if not chunk:
+                break
+            dest = os.path.join(ship_dir, f"{stem}.part{len(parts)}")
+            with open(dest, "wb") as out:
+                out.write(chunk)
+            parts.append({"file": os.path.basename(dest), "bytes": len(chunk),
+                          "sha256": hashlib.sha256(chunk).hexdigest()})
+    return parts
+
+
+# Synthetic test images, defined by integer formulas so Kotlin
+# (SiglipGolden.kt's callers) and Python produce identical pixels. Never real photos.
+SYNTHETIC = [("gradient_disc", 320, 240), ("checker_band", 300, 400),
+             ("rings", 256, 256), ("large_stripes", 1200, 900)]
+
+
+def synthetic_rgb(name, w, h):
+    y, x = np.mgrid[0:h, 0:w].astype(np.int64)
+    if name == "gradient_disc":
+        r, g, b = x * 255 // (w - 1), y * 255 // (h - 1), np.full_like(x, 128)
+        disc = (x - 200) ** 2 + (y - 110) ** 2 <= 60 * 60
+        r, g, b = np.where(disc, 240, r), np.where(disc, 40, g), np.where(disc, 40, b)
+    elif name == "checker_band":
+        on = ((x // 25) + (y // 25)) % 2 == 1
+        r = g = b = np.where(on, 220, 30)
+        band = (x >= 100) & (x < 140)
+        r, g, b = np.where(band, 20, r), np.where(band, 120, g), np.where(band, 220, b)
+    elif name == "rings":
+        d2 = (x - 128) ** 2 + (y - 128) ** 2
+        r, g, b = (d2 // 37) % 256, (x * y // 97) % 256, (x + 2 * y) % 256
+    elif name == "large_stripes":
+        r = (x // 7) % 2 * 200 + 20
+        g = (y // 11) % 2 * 180 + 40
+        b = ((x + y) // 13) % 256
+    else:
+        raise ValueError(name)
+    return np.stack([r, g, b], axis=-1).astype(np.uint8)
+
+
+def write_golden_kotlin(int8_path, dest, model_sha):
+    import onnxruntime as ort
+    from PIL import Image
+    sess = ort.InferenceSession(int8_path, providers=["CPUExecutionProvider"])
+    lines = []
+    for name, w, h in SYNTHETIC:
+        resized = np.asarray(Image.fromarray(synthetic_rgb(name, w, h)).resize((224, 224), Image.BILINEAR))
+        x = ((resized.astype(np.float32) / 255.0 - 0.5) / 0.5).transpose(2, 0, 1)[None]
+        vec = sess.run(["embedding"], {"pixels": x})[0][0]
+        resized_sha = hashlib.sha256(resized.tobytes()).hexdigest()
+        body = ", ".join(f"{v:.6f}f" for v in vec)
+        lines.append(f'        Golden("{name}", {w}, {h}, "{resized_sha}", floatArrayOf({body})),')
+    src = f"""package nl.atlas.gallery.featurevisual
+
+// GENERATED by tools/visual_search_bench/export_onnx.py --golden-kotlin. Do not edit.
+// Vectors of the int8 SigLIP 2 B/16 graph (sha256 {model_sha}) on the synthetic images
+// of export_onnx.py SYNTHETIC, preprocessed with Pillow BILINEAR to 224x224; resizedSha256
+// is the SHA-256 of Pillow's 224x224 RGB bytes. Host ONNX Runtime, CPU.
+object SiglipGolden {{
+    class Golden(val name: String, val width: Int, val height: Int, val resizedSha256: String, val vector: FloatArray)
+
+    const val MODEL_SHA256 = "{model_sha}"
+
+    val all: List<Golden> = listOf(
+{chr(10).join(lines)}
+    )
+}}
+"""
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "w") as f:
+        f.write(src)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--weights-dir", required=True)
+    ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--only", action="append")
+    ap.add_argument("--ship-dir", help="split the siglip2_b16_224 int8 file into parts here")
+    ap.add_argument("--part-mb", type=int, default=60)
+    ap.add_argument("--golden-kotlin", help="write androidTest golden vectors for siglip2_b16_224")
+    a = ap.parse_args()
+    os.makedirs(a.out_dir, exist_ok=True)
+    specs = json.load(open(os.path.join(HERE, "models.json")))
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+
+    report_path = os.path.join(a.out_dir, "export_report.json")
+    report = json.load(open(report_path)) if os.path.exists(report_path) else {}
+    for name, spec in specs.items():
+        if name.startswith("_") or "loader" not in spec:
+            continue
+        if a.only and name not in a.only:
+            continue
+        src = os.path.join(a.weights_dir, os.path.basename(spec["url"]))
+        got = sha256(src)
+        if got != spec["sha256"]:
+            raise SystemExit(f"{name}: sha256 {got} != pinned {spec['sha256']}")
+        tower = {"openclip": load_openclip, "timm": load_timm}[spec["loader"]](spec, src)
+        model = Normalised(tower).eval()
+        x = torch.randn(1, 3, spec["input"], spec["input"])
+        fp32 = os.path.join(a.out_dir, f"{name}.fp32.onnx")
+        with torch.no_grad():
+            dim = model(x).shape[-1]
+            torch.onnx.export(model, (x,), fp32, input_names=["pixels"],
+                              output_names=["embedding"], opset_version=17,
+                              dynamic_axes={"pixels": {0: "n"}, "embedding": {0: "n"}},
+                              dynamo=False)
+        int8 = os.path.join(a.out_dir, f"{name}.int8.onnx")
+        # int8_keep_fp32: MLP output projections whose input has activation
+        # outliers that per-tensor dynamic int8 cannot represent (found with
+        # quant_probe.py; one layer per model collapses cosine to ~0.75).
+        quantize_dynamic(fp32, int8, weight_type=QuantType.QInt8,
+                         op_types_to_quantize=["MatMul", "Gemm"],
+                         nodes_to_exclude=spec.get("int8_keep_fp32", []))
+        report[name] = {
+            "dim": int(dim),
+            "params_m": round(sum(p.numel() for p in tower.parameters()) / 1e6, 1),
+            "fp32_mb": round(os.path.getsize(fp32) / 1e6, 1),
+            "int8_mb": round(os.path.getsize(int8) / 1e6, 1),
+            "fp32_sha256": sha256(fp32),
+            "int8_sha256": sha256(int8),
+        }
+        print(name, report[name], flush=True)
+        if name == "siglip2_b16_224" and a.ship_dir:
+            report[name]["parts"] = split_parts(int8, a.ship_dir, a.part_mb)
+            report[name]["int8_bytes"] = os.path.getsize(int8)
+            print("parts", report[name]["parts"], flush=True)
+        if name == "siglip2_b16_224" and a.golden_kotlin:
+            write_golden_kotlin(int8, a.golden_kotlin, report[name]["int8_sha256"])
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2)
+
+
+if __name__ == "__main__":
+    main()

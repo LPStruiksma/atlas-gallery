@@ -1,0 +1,7 @@
+# #568 selection More and hidden albums (SelectionMoreJourneyTest).
+more-568-menu
+more-568-picker
+more-568-copied
+more-568-create-album
+hide-568-albums
+hide-568-photos

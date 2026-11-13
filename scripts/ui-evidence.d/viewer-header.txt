@@ -1,0 +1,7 @@
+# Viewer and compact-header evidence.
+viewer-after-thumbnail-scrub
+viewer-near-end
+viewer-after-swipe
+header-photos
+header-albums
+header-photos-menu

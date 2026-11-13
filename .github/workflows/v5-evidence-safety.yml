@@ -1,0 +1,30 @@
+name: ATLAS V5 evidence-store safety (synthetic)
+on:
+  pull_request:
+    paths:
+      - 'tools/identity_fusion/**'
+      - '.github/workflows/v5-evidence-safety.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/identity_fusion/**'
+      - '.github/workflows/v5-evidence-safety.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile every V5 research module
+        run: python -m compileall -q tools/identity_fusion
+      - name: Run every model-free V5 regression test
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tools/identity_fusion -p 'test_*.py' -v

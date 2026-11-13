@@ -1,0 +1,40 @@
+name: ATLAS V4 Termux Preview Bundle
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/v4/monochrome_studio_v4_people_ux_preview.py'
+      - 'tools/v4/install_latest_download.sh'
+      - 'tools/v4/verify_preview_backup.py'
+      - '.github/workflows/v4-preview-bundle.yml'
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate and assemble current V4 preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/v4/monochrome_studio_v4_people_ux_preview.py
+          python3 -m py_compile tools/v4/verify_preview_backup.py
+          bash -n tools/v4/install_latest_download.sh
+          mkdir -p dist
+          cp tools/v4/monochrome_studio_v4_people_ux_preview.py dist/
+          cp tools/v4/install_latest_download.sh dist/atlas_v4_install_latest.sh
+          cp tools/v4/verify_preview_backup.py dist/verify_preview_backup.py
+          printf 'ATLAS V4 preview\ncommit %s\n' "$GITHUB_SHA" > dist/BUILD.txt
+          (cd dist && sha256sum monochrome_studio_v4_people_ux_preview.py atlas_v4_install_latest.sh verify_preview_backup.py > SHA256SUMS.txt)
+      - name: Downloadable private on-device preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-V4-Preview
+          path: dist/
+          retention-days: 21
+          if-no-files-found: error

@@ -1,0 +1,16 @@
+# #662 the app follows the phone light/dark setting.
+theme-662-photos-light
+theme-662-albums-light
+theme-662-people-light
+theme-662-search-light
+theme-662-photo-dna-light
+theme-662-photos-dark
+theme-662-albums-dark
+theme-662-people-dark
+theme-662-search-dark
+theme-662-photo-dna-dark
+theme-662-person-light
+theme-662-declutter-dark
+theme-662-declutter-light
+theme-662-viewer-light
+theme-662-viewer-dark

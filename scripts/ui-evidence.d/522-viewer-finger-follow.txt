@@ -1,0 +1,4 @@
+# #522 viewer photo follows the finger (ViewerFingerFollowTest, 1080x2340).
+viewer-522-down-mid-drag
+viewer-522-released
+viewer-522-up-mid-drag

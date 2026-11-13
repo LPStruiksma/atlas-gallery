@@ -1,0 +1,28 @@
+name: AutoDev tenant check
+# Cheap check on every PR so docs-only and non-app PRs also have exact-head CI for the
+# AutoDev merge join. No Android SDK, no secrets, about one billed minute.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: atlas-autodev-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Tenant manifest is valid JSON
+        run: python3 -m json.tool .autodev/project.json > /dev/null
+      - name: Preview signing trust boundary
+        run: python3 -m unittest discover -s .github/tests -p 'test_preview_signing_boundary.py'
+      - name: Release source contract
+        run: |
+          python3 scripts/verify_contract.py
+          python3 -m unittest discover -s scripts -p 'test_verify_contract.py'

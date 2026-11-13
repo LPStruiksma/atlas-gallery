@@ -1,0 +1,1616 @@
+{
+  "set": {
+    "images": 1397,
+    "classes": 36,
+    "pose_heavy": [
+      "Cartwheel",
+      "Handstand",
+      "Somersault",
+      "Yoga",
+      "Ballet",
+      "Karate",
+      "Judo",
+      "Wrestling",
+      "High jump",
+      "Pole vault",
+      "Meditation",
+      "Hug",
+      "Fencing",
+      "Boxing",
+      "Archery",
+      "Juggling",
+      "Trampolining",
+      "Selfie"
+    ],
+    "pose_detected": 845
+  },
+  "host": {
+    "cpu_count": 4,
+    "onnxruntime": "1.31.1"
+  },
+  "pose": {
+    "onnx_ms_1thread": {
+      "person_detection_mediapipe_2023mar.onnx": 8.0,
+      "pose_estimation_mediapipe_2023mar.onnx": 13.2
+    },
+    "pipeline_ms_median_1thread": 30.9,
+    "pose_only": {
+      "all": {
+        "map": 0.064,
+        "p10": 0.0931,
+        "classes": 36
+      },
+      "pose_heavy": {
+        "map": 0.0794,
+        "p10": 0.1254,
+        "classes": 18
+      }
+    }
+  },
+  "models": {
+    "openclip_vitb32_laion400m": {
+      "export": {
+        "dim": 512,
+        "params_m": 87.8,
+        "fp32_mb": 351.6,
+        "int8_mb": 102.8,
+        "fp32_sha256": "ae775178131d7a2d53655a6e3bb96408eb7ae266b643f7e8cdd499495e8b2222",
+        "int8_sha256": "cb6dde63d95d8baffbd45f4c96ea76fe52351c477787d442e7c2e7d5604fe4fd"
+      },
+      "fp32": {
+        "latency_ms_b1": {
+          "1thread": 86.0,
+          "4threads": 32.4
+        },
+        "semantic": {
+          "all": {
+            "map": 0.3807,
+            "p10": 0.5468,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4012,
+            "p10": 0.5588,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.607,
+          "Ballet": 0.63,
+          "Boxing": 0.561,
+          "Cartwheel": 0.146,
+          "Cycling": 0.375,
+          "Eating": 0.243,
+          "Fencing": 0.086,
+          "Golf": 0.256,
+          "Handstand": 0.196,
+          "High jump": 0.57,
+          "Hug": 0.256,
+          "Ice skating": 0.195,
+          "Judo": 0.544,
+          "Juggling": 0.146,
+          "Karate": 0.494,
+          "Kayaking": 0.561,
+          "Meditation": 0.767,
+          "Pole vault": 0.377,
+          "Reading": 0.192,
+          "Rock climbing": 0.75,
+          "Rowing": 0.63,
+          "Running": 0.55,
+          "Selfie": 0.486,
+          "Sitting": 0.067,
+          "Skateboarding": 0.515,
+          "Skiing": 0.277,
+          "Sledding": 0.615,
+          "Snowboarding": 0.214,
+          "Somersault": 0.168,
+          "Surfing": 0.365,
+          "Swimming": 0.204,
+          "Tennis": 0.362,
+          "Trampolining": 0.357,
+          "Walking": 0.11,
+          "Wrestling": 0.447,
+          "Yoga": 0.385
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.3837,
+            "p10": 0.5502,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4061,
+            "p10": 0.5635,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.3739,
+            "p10": 0.5422,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3952,
+            "p10": 0.5529,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.3592,
+            "p10": 0.5321,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3781,
+            "p10": 0.5405,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3278,
+            "p10": 0.5104,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3414,
+            "p10": 0.5156,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.5389,
+            "pose_heavy": 0.5487,
+            "per_class": {
+              "Archery": 0.843,
+              "Ballet": 0.83,
+              "Boxing": 0.685,
+              "Cartwheel": 0.268,
+              "Cycling": 0.627,
+              "Eating": 0.525,
+              "Fencing": 0.21,
+              "Golf": 0.491,
+              "Handstand": 0.458,
+              "High jump": 0.738,
+              "Hug": 0.369,
+              "Ice skating": 0.356,
+              "Judo": 0.602,
+              "Juggling": 0.315,
+              "Karate": 0.602,
+              "Kayaking": 0.681,
+              "Meditation": 0.89,
+              "Pole vault": 0.424,
+              "Reading": 0.363,
+              "Rock climbing": 0.89,
+              "Rowing": 0.772,
+              "Running": 0.778,
+              "Selfie": 0.596,
+              "Sitting": 0.145,
+              "Skateboarding": 0.677,
+              "Skiing": 0.393,
+              "Sledding": 0.8,
+              "Snowboarding": 0.292,
+              "Somersault": 0.295,
+              "Surfing": 0.541,
+              "Swimming": 0.361,
+              "Tennis": 0.613,
+              "Trampolining": 0.585,
+              "Walking": 0.219,
+              "Wrestling": 0.627,
+              "Yoga": 0.537
+            }
+          },
+          "w0.3": {
+            "all": 0.5221,
+            "pose_heavy": 0.5306,
+            "per_class": {
+              "Archery": 0.802,
+              "Ballet": 0.805,
+              "Boxing": 0.632,
+              "Cartwheel": 0.282,
+              "Cycling": 0.629,
+              "Eating": 0.497,
+              "Fencing": 0.188,
+              "Golf": 0.473,
+              "Handstand": 0.483,
+              "High jump": 0.75,
+              "Hug": 0.346,
+              "Ice skating": 0.328,
+              "Judo": 0.578,
+              "Juggling": 0.31,
+              "Karate": 0.595,
+              "Kayaking": 0.652,
+              "Meditation": 0.898,
+              "Pole vault": 0.405,
+              "Reading": 0.349,
+              "Rock climbing": 0.865,
+              "Rowing": 0.745,
+              "Running": 0.778,
+              "Selfie": 0.557,
+              "Sitting": 0.155,
+              "Skateboarding": 0.66,
+              "Skiing": 0.39,
+              "Sledding": 0.779,
+              "Snowboarding": 0.286,
+              "Somersault": 0.29,
+              "Surfing": 0.502,
+              "Swimming": 0.341,
+              "Tennis": 0.607,
+              "Trampolining": 0.554,
+              "Walking": 0.21,
+              "Wrestling": 0.573,
+              "Yoga": 0.502
+            }
+          }
+        }
+      },
+      "int8": {
+        "latency_ms_b1": {
+          "1thread": 26.1,
+          "4threads": 12.5
+        },
+        "semantic": {
+          "all": {
+            "map": 0.3769,
+            "p10": 0.5448,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3978,
+            "p10": 0.555,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.59,
+          "Ballet": 0.618,
+          "Boxing": 0.539,
+          "Cartwheel": 0.147,
+          "Cycling": 0.365,
+          "Eating": 0.234,
+          "Fencing": 0.085,
+          "Golf": 0.256,
+          "Handstand": 0.2,
+          "High jump": 0.574,
+          "Hug": 0.258,
+          "Ice skating": 0.194,
+          "Judo": 0.541,
+          "Juggling": 0.136,
+          "Karate": 0.486,
+          "Kayaking": 0.551,
+          "Meditation": 0.767,
+          "Pole vault": 0.373,
+          "Reading": 0.188,
+          "Rock climbing": 0.721,
+          "Rowing": 0.623,
+          "Running": 0.561,
+          "Selfie": 0.5,
+          "Sitting": 0.067,
+          "Skateboarding": 0.499,
+          "Skiing": 0.28,
+          "Sledding": 0.616,
+          "Snowboarding": 0.215,
+          "Somersault": 0.163,
+          "Surfing": 0.362,
+          "Swimming": 0.203,
+          "Tennis": 0.367,
+          "Trampolining": 0.358,
+          "Walking": 0.11,
+          "Wrestling": 0.439,
+          "Yoga": 0.385
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.3796,
+            "p10": 0.5476,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4025,
+            "p10": 0.5602,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.3698,
+            "p10": 0.5429,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3915,
+            "p10": 0.5541,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.3549,
+            "p10": 0.533,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3744,
+            "p10": 0.5426,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3235,
+            "p10": 0.5077,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3376,
+            "p10": 0.5116,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.5352,
+            "pose_heavy": 0.5457,
+            "per_class": {
+              "Archery": 0.82,
+              "Ballet": 0.818,
+              "Boxing": 0.665,
+              "Cartwheel": 0.268,
+              "Cycling": 0.629,
+              "Eating": 0.505,
+              "Fencing": 0.208,
+              "Golf": 0.484,
+              "Handstand": 0.458,
+              "High jump": 0.75,
+              "Hug": 0.385,
+              "Ice skating": 0.363,
+              "Judo": 0.589,
+              "Juggling": 0.3,
+              "Karate": 0.593,
+              "Kayaking": 0.667,
+              "Meditation": 0.888,
+              "Pole vault": 0.416,
+              "Reading": 0.356,
+              "Rock climbing": 0.875,
+              "Rowing": 0.768,
+              "Running": 0.788,
+              "Selfie": 0.6,
+              "Sitting": 0.149,
+              "Skateboarding": 0.657,
+              "Skiing": 0.394,
+              "Sledding": 0.786,
+              "Snowboarding": 0.294,
+              "Somersault": 0.29,
+              "Surfing": 0.53,
+              "Swimming": 0.37,
+              "Tennis": 0.62,
+              "Trampolining": 0.602,
+              "Walking": 0.207,
+              "Wrestling": 0.632,
+              "Yoga": 0.542
+            }
+          },
+          "w0.3": {
+            "all": 0.5208,
+            "pose_heavy": 0.5283,
+            "per_class": {
+              "Archery": 0.793,
+              "Ballet": 0.8,
+              "Boxing": 0.628,
+              "Cartwheel": 0.268,
+              "Cycling": 0.629,
+              "Eating": 0.492,
+              "Fencing": 0.193,
+              "Golf": 0.47,
+              "Handstand": 0.502,
+              "High jump": 0.767,
+              "Hug": 0.338,
+              "Ice skating": 0.33,
+              "Judo": 0.56,
+              "Juggling": 0.283,
+              "Karate": 0.586,
+              "Kayaking": 0.648,
+              "Meditation": 0.898,
+              "Pole vault": 0.405,
+              "Reading": 0.359,
+              "Rock climbing": 0.865,
+              "Rowing": 0.751,
+              "Running": 0.788,
+              "Selfie": 0.565,
+              "Sitting": 0.157,
+              "Skateboarding": 0.642,
+              "Skiing": 0.389,
+              "Sledding": 0.769,
+              "Snowboarding": 0.284,
+              "Somersault": 0.286,
+              "Surfing": 0.5,
+              "Swimming": 0.351,
+              "Tennis": 0.613,
+              "Trampolining": 0.578,
+              "Walking": 0.202,
+              "Wrestling": 0.559,
+              "Yoga": 0.502
+            }
+          }
+        },
+        "cos_to_fp32_mean": 0.9852
+      }
+    },
+    "siglip_b16_224": {
+      "export": {
+        "dim": 768,
+        "params_m": 92.9,
+        "fp32_mb": 371.7,
+        "int8_mb": 95.8,
+        "fp32_sha256": "93eb9a34fb895987df34d8eac2ad8e39446c20962036c27bfce2afa58dff073a",
+        "int8_sha256": "1bf91bdbcfd0059d79764dde19ca3bd38396ca8362910c540988fe38c256da4f"
+      },
+      "fp32": {
+        "latency_ms_b1": {
+          "1thread": 314.8,
+          "4threads": 91.2
+        },
+        "semantic": {
+          "all": {
+            "map": 0.4504,
+            "p10": 0.6205,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4907,
+            "p10": 0.6429,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.89,
+          "Ballet": 0.71,
+          "Boxing": 0.677,
+          "Cartwheel": 0.233,
+          "Cycling": 0.362,
+          "Eating": 0.272,
+          "Fencing": 0.09,
+          "Golf": 0.313,
+          "Handstand": 0.323,
+          "High jump": 0.625,
+          "Hug": 0.324,
+          "Ice skating": 0.211,
+          "Judo": 0.64,
+          "Juggling": 0.236,
+          "Karate": 0.533,
+          "Kayaking": 0.724,
+          "Meditation": 0.761,
+          "Pole vault": 0.516,
+          "Reading": 0.242,
+          "Rock climbing": 0.829,
+          "Rowing": 0.703,
+          "Running": 0.563,
+          "Selfie": 0.506,
+          "Sitting": 0.077,
+          "Skateboarding": 0.709,
+          "Skiing": 0.31,
+          "Sledding": 0.695,
+          "Snowboarding": 0.238,
+          "Somersault": 0.202,
+          "Surfing": 0.401,
+          "Swimming": 0.201,
+          "Tennis": 0.418,
+          "Trampolining": 0.613,
+          "Walking": 0.115,
+          "Wrestling": 0.516,
+          "Yoga": 0.439
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.448,
+            "p10": 0.6212,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4897,
+            "p10": 0.6468,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.4252,
+            "p10": 0.6041,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4633,
+            "p10": 0.6273,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.3976,
+            "p10": 0.5852,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4304,
+            "p10": 0.6063,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3505,
+            "p10": 0.5484,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3736,
+            "p10": 0.5651,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.6006,
+            "pose_heavy": 0.625,
+            "per_class": {
+              "Archery": 0.963,
+              "Ballet": 0.882,
+              "Boxing": 0.77,
+              "Cartwheel": 0.35,
+              "Cycling": 0.639,
+              "Eating": 0.525,
+              "Fencing": 0.212,
+              "Golf": 0.575,
+              "Handstand": 0.6,
+              "High jump": 0.767,
+              "Hug": 0.423,
+              "Ice skating": 0.381,
+              "Judo": 0.636,
+              "Juggling": 0.503,
+              "Karate": 0.595,
+              "Kayaking": 0.814,
+              "Meditation": 0.888,
+              "Pole vault": 0.546,
+              "Reading": 0.434,
+              "Rock climbing": 0.938,
+              "Rowing": 0.787,
+              "Running": 0.807,
+              "Selfie": 0.657,
+              "Sitting": 0.164,
+              "Skateboarding": 0.812,
+              "Skiing": 0.41,
+              "Sledding": 0.879,
+              "Snowboarding": 0.319,
+              "Somersault": 0.386,
+              "Surfing": 0.615,
+              "Swimming": 0.364,
+              "Tennis": 0.67,
+              "Trampolining": 0.793,
+              "Walking": 0.238,
+              "Wrestling": 0.649,
+              "Yoga": 0.631
+            }
+          },
+          "w0.3": {
+            "all": 0.5822,
+            "pose_heavy": 0.6063,
+            "per_class": {
+              "Archery": 0.963,
+              "Ballet": 0.863,
+              "Boxing": 0.74,
+              "Cartwheel": 0.346,
+              "Cycling": 0.627,
+              "Eating": 0.485,
+              "Fencing": 0.21,
+              "Golf": 0.557,
+              "Handstand": 0.594,
+              "High jump": 0.769,
+              "Hug": 0.39,
+              "Ice skating": 0.349,
+              "Judo": 0.611,
+              "Juggling": 0.48,
+              "Karate": 0.593,
+              "Kayaking": 0.783,
+              "Meditation": 0.89,
+              "Pole vault": 0.522,
+              "Reading": 0.424,
+              "Rock climbing": 0.915,
+              "Rowing": 0.787,
+              "Running": 0.817,
+              "Selfie": 0.635,
+              "Sitting": 0.16,
+              "Skateboarding": 0.78,
+              "Skiing": 0.411,
+              "Sledding": 0.85,
+              "Snowboarding": 0.306,
+              "Somersault": 0.364,
+              "Surfing": 0.557,
+              "Swimming": 0.354,
+              "Tennis": 0.646,
+              "Trampolining": 0.776,
+              "Walking": 0.238,
+              "Wrestling": 0.593,
+              "Yoga": 0.575
+            }
+          }
+        }
+      },
+      "int8": {
+        "latency_ms_b1": {
+          "1thread": 81.3,
+          "4threads": 29.3
+        },
+        "semantic": {
+          "all": {
+            "map": 0.4481,
+            "p10": 0.6192,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4856,
+            "p10": 0.6396,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.899,
+          "Ballet": 0.715,
+          "Boxing": 0.661,
+          "Cartwheel": 0.217,
+          "Cycling": 0.385,
+          "Eating": 0.279,
+          "Fencing": 0.09,
+          "Golf": 0.321,
+          "Handstand": 0.309,
+          "High jump": 0.602,
+          "Hug": 0.32,
+          "Ice skating": 0.207,
+          "Judo": 0.627,
+          "Juggling": 0.23,
+          "Karate": 0.533,
+          "Kayaking": 0.718,
+          "Meditation": 0.761,
+          "Pole vault": 0.491,
+          "Reading": 0.238,
+          "Rock climbing": 0.819,
+          "Rowing": 0.697,
+          "Running": 0.553,
+          "Selfie": 0.498,
+          "Sitting": 0.081,
+          "Skateboarding": 0.732,
+          "Skiing": 0.298,
+          "Sledding": 0.696,
+          "Snowboarding": 0.237,
+          "Somersault": 0.209,
+          "Surfing": 0.383,
+          "Swimming": 0.203,
+          "Tennis": 0.43,
+          "Trampolining": 0.6,
+          "Walking": 0.116,
+          "Wrestling": 0.516,
+          "Yoga": 0.46
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.446,
+            "p10": 0.6169,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4854,
+            "p10": 0.6402,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.4226,
+            "p10": 0.6005,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4583,
+            "p10": 0.624,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.3947,
+            "p10": 0.5816,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4253,
+            "p10": 0.6019,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3474,
+            "p10": 0.5453,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3685,
+            "p10": 0.5603,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.5988,
+            "pose_heavy": 0.6226,
+            "per_class": {
+              "Archery": 0.968,
+              "Ballet": 0.887,
+              "Boxing": 0.773,
+              "Cartwheel": 0.329,
+              "Cycling": 0.668,
+              "Eating": 0.532,
+              "Fencing": 0.21,
+              "Golf": 0.586,
+              "Handstand": 0.606,
+              "High jump": 0.75,
+              "Hug": 0.436,
+              "Ice skating": 0.377,
+              "Judo": 0.591,
+              "Juggling": 0.49,
+              "Karate": 0.62,
+              "Kayaking": 0.812,
+              "Meditation": 0.89,
+              "Pole vault": 0.541,
+              "Reading": 0.41,
+              "Rock climbing": 0.935,
+              "Rowing": 0.785,
+              "Running": 0.798,
+              "Selfie": 0.661,
+              "Sitting": 0.164,
+              "Skateboarding": 0.83,
+              "Skiing": 0.396,
+              "Sledding": 0.876,
+              "Snowboarding": 0.306,
+              "Somersault": 0.379,
+              "Surfing": 0.596,
+              "Swimming": 0.351,
+              "Tennis": 0.691,
+              "Trampolining": 0.778,
+              "Walking": 0.236,
+              "Wrestling": 0.654,
+              "Yoga": 0.646
+            }
+          },
+          "w0.3": {
+            "all": 0.5812,
+            "pose_heavy": 0.6056,
+            "per_class": {
+              "Archery": 0.96,
+              "Ballet": 0.85,
+              "Boxing": 0.735,
+              "Cartwheel": 0.361,
+              "Cycling": 0.654,
+              "Eating": 0.492,
+              "Fencing": 0.208,
+              "Golf": 0.559,
+              "Handstand": 0.592,
+              "High jump": 0.757,
+              "Hug": 0.405,
+              "Ice skating": 0.353,
+              "Judo": 0.56,
+              "Juggling": 0.478,
+              "Karate": 0.609,
+              "Kayaking": 0.783,
+              "Meditation": 0.893,
+              "Pole vault": 0.527,
+              "Reading": 0.402,
+              "Rock climbing": 0.9,
+              "Rowing": 0.779,
+              "Running": 0.802,
+              "Selfie": 0.641,
+              "Sitting": 0.162,
+              "Skateboarding": 0.8,
+              "Skiing": 0.39,
+              "Sledding": 0.862,
+              "Snowboarding": 0.305,
+              "Somersault": 0.364,
+              "Surfing": 0.541,
+              "Swimming": 0.33,
+              "Tennis": 0.674,
+              "Trampolining": 0.754,
+              "Walking": 0.233,
+              "Wrestling": 0.61,
+              "Yoga": 0.598
+            }
+          }
+        },
+        "cos_to_fp32_mean": 0.9828
+      }
+    },
+    "siglip2_b16_224": {
+      "export": {
+        "dim": 768,
+        "params_m": 92.9,
+        "fp32_mb": 371.7,
+        "int8_mb": 102.9,
+        "fp32_sha256": "d74808f03e0eefa6d7da3753731363d0e27dd1c8f54c511a52f3610476633573",
+        "int8_sha256": "74da3ac2b46e4292c4639affc3cca623c2d5551d012ead113b1486c22e0f5336"
+      },
+      "fp32": {
+        "latency_ms_b1": {
+          "1thread": 320.9,
+          "4threads": 90.5
+        },
+        "semantic": {
+          "all": {
+            "map": 0.462,
+            "p10": 0.6258,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.5107,
+            "p10": 0.6575,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.864,
+          "Ballet": 0.776,
+          "Boxing": 0.698,
+          "Cartwheel": 0.244,
+          "Cycling": 0.424,
+          "Eating": 0.236,
+          "Fencing": 0.096,
+          "Golf": 0.281,
+          "Handstand": 0.324,
+          "High jump": 0.615,
+          "Hug": 0.351,
+          "Ice skating": 0.202,
+          "Judo": 0.662,
+          "Juggling": 0.347,
+          "Karate": 0.531,
+          "Kayaking": 0.687,
+          "Meditation": 0.792,
+          "Pole vault": 0.484,
+          "Reading": 0.231,
+          "Rock climbing": 0.819,
+          "Rowing": 0.731,
+          "Running": 0.549,
+          "Selfie": 0.59,
+          "Sitting": 0.098,
+          "Skateboarding": 0.752,
+          "Skiing": 0.305,
+          "Sledding": 0.697,
+          "Snowboarding": 0.232,
+          "Somersault": 0.189,
+          "Surfing": 0.413,
+          "Swimming": 0.196,
+          "Tennis": 0.471,
+          "Trampolining": 0.593,
+          "Walking": 0.119,
+          "Wrestling": 0.574,
+          "Yoga": 0.461
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.4586,
+            "p10": 0.6286,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.5081,
+            "p10": 0.6625,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.4333,
+            "p10": 0.6123,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4782,
+            "p10": 0.6448,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.4035,
+            "p10": 0.5938,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4423,
+            "p10": 0.6226,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3541,
+            "p10": 0.5538,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3818,
+            "p10": 0.5773,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.6108,
+            "pose_heavy": 0.6435,
+            "per_class": {
+              "Archery": 0.953,
+              "Ballet": 0.927,
+              "Boxing": 0.81,
+              "Cartwheel": 0.386,
+              "Cycling": 0.722,
+              "Eating": 0.453,
+              "Fencing": 0.22,
+              "Golf": 0.536,
+              "Handstand": 0.611,
+              "High jump": 0.776,
+              "Hug": 0.436,
+              "Ice skating": 0.377,
+              "Judo": 0.62,
+              "Juggling": 0.662,
+              "Karate": 0.609,
+              "Kayaking": 0.8,
+              "Meditation": 0.902,
+              "Pole vault": 0.538,
+              "Reading": 0.373,
+              "Rock climbing": 0.945,
+              "Rowing": 0.832,
+              "Running": 0.783,
+              "Selfie": 0.72,
+              "Sitting": 0.228,
+              "Skateboarding": 0.842,
+              "Skiing": 0.421,
+              "Sledding": 0.893,
+              "Snowboarding": 0.322,
+              "Somersault": 0.319,
+              "Surfing": 0.589,
+              "Swimming": 0.354,
+              "Tennis": 0.715,
+              "Trampolining": 0.771,
+              "Walking": 0.221,
+              "Wrestling": 0.712,
+              "Yoga": 0.61
+            }
+          },
+          "w0.3": {
+            "all": 0.5923,
+            "pose_heavy": 0.625,
+            "per_class": {
+              "Archery": 0.938,
+              "Ballet": 0.895,
+              "Boxing": 0.773,
+              "Cartwheel": 0.379,
+              "Cycling": 0.702,
+              "Eating": 0.417,
+              "Fencing": 0.208,
+              "Golf": 0.514,
+              "Handstand": 0.609,
+              "High jump": 0.76,
+              "Hug": 0.418,
+              "Ice skating": 0.358,
+              "Judo": 0.609,
+              "Juggling": 0.65,
+              "Karate": 0.598,
+              "Kayaking": 0.779,
+              "Meditation": 0.9,
+              "Pole vault": 0.541,
+              "Reading": 0.38,
+              "Rock climbing": 0.905,
+              "Rowing": 0.811,
+              "Running": 0.773,
+              "Selfie": 0.691,
+              "Sitting": 0.221,
+              "Skateboarding": 0.818,
+              "Skiing": 0.417,
+              "Sledding": 0.86,
+              "Snowboarding": 0.322,
+              "Somersault": 0.312,
+              "Surfing": 0.546,
+              "Swimming": 0.331,
+              "Tennis": 0.696,
+              "Trampolining": 0.754,
+              "Walking": 0.224,
+              "Wrestling": 0.668,
+              "Yoga": 0.55
+            }
+          }
+        }
+      },
+      "int8": {
+        "latency_ms_b1": {
+          "1thread": 80.6,
+          "4threads": 32.0
+        },
+        "semantic": {
+          "all": {
+            "map": 0.4623,
+            "p10": 0.6243,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.5103,
+            "p10": 0.6541,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.863,
+          "Ballet": 0.802,
+          "Boxing": 0.683,
+          "Cartwheel": 0.239,
+          "Cycling": 0.456,
+          "Eating": 0.237,
+          "Fencing": 0.089,
+          "Golf": 0.285,
+          "Handstand": 0.326,
+          "High jump": 0.618,
+          "Hug": 0.359,
+          "Ice skating": 0.188,
+          "Judo": 0.641,
+          "Juggling": 0.336,
+          "Karate": 0.525,
+          "Kayaking": 0.688,
+          "Meditation": 0.791,
+          "Pole vault": 0.493,
+          "Reading": 0.235,
+          "Rock climbing": 0.814,
+          "Rowing": 0.724,
+          "Running": 0.556,
+          "Selfie": 0.609,
+          "Sitting": 0.098,
+          "Skateboarding": 0.751,
+          "Skiing": 0.309,
+          "Sledding": 0.694,
+          "Snowboarding": 0.239,
+          "Somersault": 0.186,
+          "Surfing": 0.405,
+          "Swimming": 0.201,
+          "Tennis": 0.461,
+          "Trampolining": 0.604,
+          "Walking": 0.115,
+          "Wrestling": 0.567,
+          "Yoga": 0.456
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.4584,
+            "p10": 0.6255,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.5075,
+            "p10": 0.6576,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.4327,
+            "p10": 0.6082,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4771,
+            "p10": 0.6373,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.4024,
+            "p10": 0.5879,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4404,
+            "p10": 0.6129,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.353,
+            "p10": 0.5497,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3797,
+            "p10": 0.5713,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.6055,
+            "pose_heavy": 0.6352,
+            "per_class": {
+              "Archery": 0.948,
+              "Ballet": 0.932,
+              "Boxing": 0.778,
+              "Cartwheel": 0.35,
+              "Cycling": 0.741,
+              "Eating": 0.458,
+              "Fencing": 0.215,
+              "Golf": 0.525,
+              "Handstand": 0.6,
+              "High jump": 0.748,
+              "Hug": 0.426,
+              "Ice skating": 0.335,
+              "Judo": 0.602,
+              "Juggling": 0.637,
+              "Karate": 0.625,
+              "Kayaking": 0.798,
+              "Meditation": 0.893,
+              "Pole vault": 0.543,
+              "Reading": 0.378,
+              "Rock climbing": 0.927,
+              "Rowing": 0.83,
+              "Running": 0.805,
+              "Selfie": 0.73,
+              "Sitting": 0.228,
+              "Skateboarding": 0.83,
+              "Skiing": 0.43,
+              "Sledding": 0.874,
+              "Snowboarding": 0.327,
+              "Somersault": 0.326,
+              "Surfing": 0.591,
+              "Swimming": 0.37,
+              "Tennis": 0.707,
+              "Trampolining": 0.771,
+              "Walking": 0.212,
+              "Wrestling": 0.727,
+              "Yoga": 0.583
+            }
+          },
+          "w0.3": {
+            "all": 0.5887,
+            "pose_heavy": 0.6187,
+            "per_class": {
+              "Archery": 0.938,
+              "Ballet": 0.897,
+              "Boxing": 0.735,
+              "Cartwheel": 0.361,
+              "Cycling": 0.72,
+              "Eating": 0.44,
+              "Fencing": 0.2,
+              "Golf": 0.511,
+              "Handstand": 0.604,
+              "High jump": 0.762,
+              "Hug": 0.41,
+              "Ice skating": 0.326,
+              "Judo": 0.576,
+              "Juggling": 0.63,
+              "Karate": 0.627,
+              "Kayaking": 0.767,
+              "Meditation": 0.895,
+              "Pole vault": 0.522,
+              "Reading": 0.385,
+              "Rock climbing": 0.885,
+              "Rowing": 0.813,
+              "Running": 0.79,
+              "Selfie": 0.7,
+              "Sitting": 0.221,
+              "Skateboarding": 0.81,
+              "Skiing": 0.427,
+              "Sledding": 0.85,
+              "Snowboarding": 0.317,
+              "Somersault": 0.317,
+              "Surfing": 0.554,
+              "Swimming": 0.343,
+              "Tennis": 0.685,
+              "Trampolining": 0.749,
+              "Walking": 0.214,
+              "Wrestling": 0.673,
+              "Yoga": 0.542
+            }
+          }
+        },
+        "cos_to_fp32_mean": 0.9778
+      }
+    },
+    "siglip2_b32_256": {
+      "export": {
+        "dim": 768,
+        "params_m": 94.6,
+        "fp32_mb": 378.4,
+        "int8_mb": 109.6,
+        "fp32_sha256": "c59d7e87463e42ba37bf9b53d0dd2f3367123c16cf0ad94e4907c57e826548c7",
+        "int8_sha256": "f169b2c0f45ae5a47d1450231ecead7189a2ca70a2588826bfca66f3ab54bd2d"
+      },
+      "fp32": {
+        "latency_ms_b1": {
+          "1thread": 105.9,
+          "4threads": 40.5
+        },
+        "semantic": {
+          "all": {
+            "map": 0.4292,
+            "p10": 0.5982,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4624,
+            "p10": 0.6139,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.725,
+          "Ballet": 0.727,
+          "Boxing": 0.575,
+          "Cartwheel": 0.183,
+          "Cycling": 0.366,
+          "Eating": 0.235,
+          "Fencing": 0.076,
+          "Golf": 0.292,
+          "Handstand": 0.261,
+          "High jump": 0.586,
+          "Hug": 0.352,
+          "Ice skating": 0.197,
+          "Judo": 0.586,
+          "Juggling": 0.225,
+          "Karate": 0.499,
+          "Kayaking": 0.666,
+          "Meditation": 0.796,
+          "Pole vault": 0.447,
+          "Reading": 0.229,
+          "Rock climbing": 0.806,
+          "Rowing": 0.701,
+          "Running": 0.535,
+          "Selfie": 0.579,
+          "Sitting": 0.095,
+          "Skateboarding": 0.651,
+          "Skiing": 0.294,
+          "Sledding": 0.679,
+          "Snowboarding": 0.233,
+          "Somersault": 0.165,
+          "Surfing": 0.387,
+          "Swimming": 0.192,
+          "Tennis": 0.448,
+          "Trampolining": 0.585,
+          "Walking": 0.119,
+          "Wrestling": 0.541,
+          "Yoga": 0.415
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.427,
+            "p10": 0.5983,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4616,
+            "p10": 0.6163,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.4041,
+            "p10": 0.5832,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4351,
+            "p10": 0.6,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.3769,
+            "p10": 0.5654,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.403,
+            "p10": 0.5789,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3317,
+            "p10": 0.5281,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3494,
+            "p10": 0.5391,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.582,
+            "pose_heavy": 0.5998,
+            "per_class": {
+              "Archery": 0.88,
+              "Ballet": 0.885,
+              "Boxing": 0.682,
+              "Cartwheel": 0.318,
+              "Cycling": 0.668,
+              "Eating": 0.457,
+              "Fencing": 0.175,
+              "Golf": 0.566,
+              "Handstand": 0.56,
+              "High jump": 0.755,
+              "Hug": 0.462,
+              "Ice skating": 0.377,
+              "Judo": 0.571,
+              "Juggling": 0.49,
+              "Karate": 0.586,
+              "Kayaking": 0.776,
+              "Meditation": 0.898,
+              "Pole vault": 0.489,
+              "Reading": 0.376,
+              "Rock climbing": 0.922,
+              "Rowing": 0.813,
+              "Running": 0.778,
+              "Selfie": 0.698,
+              "Sitting": 0.206,
+              "Skateboarding": 0.827,
+              "Skiing": 0.411,
+              "Sledding": 0.852,
+              "Snowboarding": 0.308,
+              "Somersault": 0.305,
+              "Surfing": 0.563,
+              "Swimming": 0.341,
+              "Tennis": 0.687,
+              "Trampolining": 0.78,
+              "Walking": 0.226,
+              "Wrestling": 0.698,
+              "Yoga": 0.565
+            }
+          },
+          "w0.3": {
+            "all": 0.5648,
+            "pose_heavy": 0.5807,
+            "per_class": {
+              "Archery": 0.86,
+              "Ballet": 0.852,
+              "Boxing": 0.645,
+              "Cartwheel": 0.304,
+              "Cycling": 0.659,
+              "Eating": 0.44,
+              "Fencing": 0.165,
+              "Golf": 0.548,
+              "Handstand": 0.562,
+              "High jump": 0.748,
+              "Hug": 0.426,
+              "Ice skating": 0.353,
+              "Judo": 0.553,
+              "Juggling": 0.485,
+              "Karate": 0.591,
+              "Kayaking": 0.75,
+              "Meditation": 0.9,
+              "Pole vault": 0.462,
+              "Reading": 0.376,
+              "Rock climbing": 0.88,
+              "Rowing": 0.802,
+              "Running": 0.78,
+              "Selfie": 0.68,
+              "Sitting": 0.217,
+              "Skateboarding": 0.778,
+              "Skiing": 0.41,
+              "Sledding": 0.836,
+              "Snowboarding": 0.305,
+              "Somersault": 0.293,
+              "Surfing": 0.53,
+              "Swimming": 0.323,
+              "Tennis": 0.667,
+              "Trampolining": 0.751,
+              "Walking": 0.226,
+              "Wrestling": 0.656,
+              "Yoga": 0.519
+            }
+          }
+        }
+      },
+      "int8": {
+        "latency_ms_b1": {
+          "1thread": 34.7,
+          "4threads": 16.8
+        },
+        "semantic": {
+          "all": {
+            "map": 0.4155,
+            "p10": 0.584,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4482,
+            "p10": 0.6014,
+            "classes": 18
+          }
+        },
+        "per_class_ap": {
+          "Archery": 0.686,
+          "Ballet": 0.733,
+          "Boxing": 0.532,
+          "Cartwheel": 0.184,
+          "Cycling": 0.328,
+          "Eating": 0.241,
+          "Fencing": 0.073,
+          "Golf": 0.298,
+          "Handstand": 0.247,
+          "High jump": 0.553,
+          "Hug": 0.343,
+          "Ice skating": 0.206,
+          "Judo": 0.574,
+          "Juggling": 0.197,
+          "Karate": 0.521,
+          "Kayaking": 0.643,
+          "Meditation": 0.789,
+          "Pole vault": 0.424,
+          "Reading": 0.207,
+          "Rock climbing": 0.775,
+          "Rowing": 0.706,
+          "Running": 0.538,
+          "Selfie": 0.567,
+          "Sitting": 0.093,
+          "Skateboarding": 0.61,
+          "Skiing": 0.288,
+          "Sledding": 0.625,
+          "Snowboarding": 0.224,
+          "Somersault": 0.154,
+          "Surfing": 0.393,
+          "Swimming": 0.188,
+          "Tennis": 0.417,
+          "Trampolining": 0.576,
+          "Walking": 0.111,
+          "Wrestling": 0.514,
+          "Yoga": 0.398
+        },
+        "fused_w0.1": {
+          "all": {
+            "map": 0.4137,
+            "p10": 0.5855,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4478,
+            "p10": 0.6048,
+            "classes": 18
+          }
+        },
+        "fused_w0.2": {
+          "all": {
+            "map": 0.3914,
+            "p10": 0.5713,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.4218,
+            "p10": 0.5912,
+            "classes": 18
+          }
+        },
+        "fused_w0.3": {
+          "all": {
+            "map": 0.365,
+            "p10": 0.5533,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3905,
+            "p10": 0.5693,
+            "classes": 18
+          }
+        },
+        "fused_w0.5": {
+          "all": {
+            "map": 0.3225,
+            "p10": 0.5195,
+            "classes": 36
+          },
+          "pose_heavy": {
+            "map": 0.3402,
+            "p10": 0.5328,
+            "classes": 18
+          }
+        },
+        "pose_rerank_top50_p10": {
+          "w0.15": {
+            "all": 0.5682,
+            "pose_heavy": 0.5884,
+            "per_class": {
+              "Archery": 0.86,
+              "Ballet": 0.882,
+              "Boxing": 0.67,
+              "Cartwheel": 0.307,
+              "Cycling": 0.61,
+              "Eating": 0.46,
+              "Fencing": 0.175,
+              "Golf": 0.575,
+              "Handstand": 0.549,
+              "High jump": 0.75,
+              "Hug": 0.441,
+              "Ice skating": 0.384,
+              "Judo": 0.547,
+              "Juggling": 0.41,
+              "Karate": 0.618,
+              "Kayaking": 0.743,
+              "Meditation": 0.89,
+              "Pole vault": 0.459,
+              "Reading": 0.339,
+              "Rock climbing": 0.89,
+              "Rowing": 0.813,
+              "Running": 0.778,
+              "Selfie": 0.691,
+              "Sitting": 0.189,
+              "Skateboarding": 0.78,
+              "Skiing": 0.4,
+              "Sledding": 0.802,
+              "Snowboarding": 0.308,
+              "Somersault": 0.312,
+              "Surfing": 0.565,
+              "Swimming": 0.343,
+              "Tennis": 0.667,
+              "Trampolining": 0.785,
+              "Walking": 0.217,
+              "Wrestling": 0.695,
+              "Yoga": 0.548
+            }
+          },
+          "w0.3": {
+            "all": 0.5528,
+            "pose_heavy": 0.5707,
+            "per_class": {
+              "Archery": 0.845,
+              "Ballet": 0.857,
+              "Boxing": 0.633,
+              "Cartwheel": 0.3,
+              "Cycling": 0.605,
+              "Eating": 0.445,
+              "Fencing": 0.177,
+              "Golf": 0.555,
+              "Handstand": 0.557,
+              "High jump": 0.736,
+              "Hug": 0.421,
+              "Ice skating": 0.351,
+              "Judo": 0.527,
+              "Juggling": 0.41,
+              "Karate": 0.607,
+              "Kayaking": 0.71,
+              "Meditation": 0.893,
+              "Pole vault": 0.432,
+              "Reading": 0.341,
+              "Rock climbing": 0.868,
+              "Rowing": 0.804,
+              "Running": 0.773,
+              "Selfie": 0.68,
+              "Sitting": 0.185,
+              "Skateboarding": 0.76,
+              "Skiing": 0.401,
+              "Sledding": 0.79,
+              "Snowboarding": 0.306,
+              "Somersault": 0.298,
+              "Surfing": 0.53,
+              "Swimming": 0.334,
+              "Tennis": 0.654,
+              "Trampolining": 0.746,
+              "Walking": 0.214,
+              "Wrestling": 0.654,
+              "Yoga": 0.5
+            }
+          }
+        },
+        "cos_to_fp32_mean": 0.9717
+      }
+    }
+  }
+}

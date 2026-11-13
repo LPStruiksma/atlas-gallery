@@ -1,0 +1,241 @@
+name: ATLAS signed phone release (main only)
+# G402 U17 (#497). Owner decision 2026-11-09 14:42Z: GitHub signs every merged
+# ATLAS change with the permanent key so the S24+ updater (Obtainium) installs
+# it without the Mac. Trust boundary:
+#   * Runs ONLY on a push to main (reviewed, merged code). No PR, dispatch, tag
+#     or other trigger; scripts/audit_stable_signing_workflow.py enforces this.
+#   * Job 1 (build) checks out and runs Gradle with NO secret, NO environment
+#     and a read-only token. It hands an aligned, UNSIGNED APK to job 2.
+#   * Job 2 (sign) never checks out or runs repository code. It is the only job
+#     bound to the `atlas-release` environment (deployment branches: main only;
+#     the keystore and its password exist only there), the only job with
+#     contents: write, and it deletes the keystore whatever happens.
+#   * Signing fails unless the signer is the M1 key below.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/release-signed.yml'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-signed-phone-release
+  cancel-in-progress: false
+env:
+  PACKAGE: nl.atlas.gallery
+  # Permanent ATLAS key (G3 PASS, #402 comment 6739924115). Any other signer fails.
+  EXPECTED_SIGNER_SHA256: 5f15596090e3cfa339c2fd73a2039a23ecca9d02ae4e3506e22dabe976ce170b
+  # Highest versionCode on the S24+ so far (#490 Mac build 0.3.26110913).
+  VERSION_CODE_FLOOR: '26110913'
+  BUILD_TOOLS: 36.0.0
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      version_code: ${{ steps.version.outputs.version_code }}
+      version_name: ${{ steps.version.outputs.version_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Refuse anything but a push to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]] \
+            || { echo "::error::Signed releases come only from a push to main (got $GITHUB_EVENT_NAME $GITHUB_REF)"; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo '::error::Checkout is not the pushed main commit'; exit 1; }
+          for key in ATLAS_STABLE_SIGNING_PATH ATLAS_STABLE_SIGNING_STORE_PASSWORD ATLAS_STABLE_SIGNING_KEY_ALIAS ATLAS_STABLE_SIGNING_KEY_PASSWORD ATLAS_RELEASE_KEYSTORE_B64 ATLAS_RELEASE_KEY_PASSWORD; do
+            if [[ -n "${!key:-}" ]]; then echo "::error::Build job must not see signing variable $key"; exit 1; fi
+          done
+      - name: Pick versionCode and release notes
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          # yyMMddHH * 10 + (minute / 6): stays below Android's 2100000000 cap
+          # until 2121 and sorts above every yyMMddHH Mac build. Never below
+          # the newest v0.3.<code> release tag + 1, so it only goes up.
+          stamp="$(date -u +%y%m%d%H)"
+          minute="$(date -u +%M)"
+          code=$(( 10#$stamp * 10 + 10#$minute / 6 ))
+          prev_tag="$(git tag --list 'v0.3.*' | sed -n 's/^v0\.3\.\([0-9]\{1,10\}\)$/\1 &/p' | sort -n | tail -n 1 | cut -d' ' -f2)"
+          if [[ -n "$prev_tag" ]]; then
+            prev_code="${prev_tag#v0.3.}"
+            (( code > prev_code )) || code=$(( prev_code + 1 ))
+          fi
+          (( code > VERSION_CODE_FLOOR && code < 2100000000 )) || { echo "::error::versionCode $code out of range"; exit 1; }
+          name="0.3.$code"
+          echo "version_code=$code" >> "$GITHUB_OUTPUT"
+          echo "version_name=$name" >> "$GITHUB_OUTPUT"
+          mkdir -p handoff
+          {
+            echo "ATLAS $name, signed by GitHub from main commit $GITHUB_SHA."
+            echo
+            if [[ -n "$prev_tag" ]]; then
+              echo "Merged since $prev_tag:"
+              git log --first-parent --format='- %s' "$prev_tag..HEAD" | grep -E '^- Merge (PR|pull request) ' | sed -E 's/^- Merge (PR|pull request) /- /' || echo '- (no merged PRs found)'
+            else
+              echo "First GitHub-signed release. Recent merges:"
+              git log --first-parent --format='- %s' -n 15 | grep -E '^- Merge (PR|pull request) ' | sed -E 's/^- Merge (PR|pull request) /- /' || echo '- (no merged PRs found)'
+            fi
+            echo
+            echo "Signer certificate SHA-256: $EXPECTED_SIGNER_SHA256"
+          } > handoff/notes.md
+          cat handoff/notes.md
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: 'platform-tools'
+      - name: Android SDK
+        run: sdkmanager --install 'platforms;android-36' "build-tools;$BUILD_TOOLS"
+      - name: Gradle 8.13 (sha256-pinned, same pin as owner_mac_release.sh)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o gradle-8.13-bin.zip https://services.gradle.org/distributions/gradle-8.13-bin.zip
+          echo '20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78  gradle-8.13-bin.zip' | sha256sum -c -
+          unzip -q gradle-8.13-bin.zip
+          echo "$RUNNER_TEMP/gradle-8.13/bin" >> "$GITHUB_PATH"
+      - name: Stamp version in this runner's working copy only
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+        run: |
+          python3 - app/build.gradle.kts <<'PY'
+          import os, pathlib, re, sys
+          path = pathlib.Path(sys.argv[1])
+          code, name = int(os.environ["VERSION_CODE"]), os.environ["VERSION_NAME"]
+          text = path.read_text()
+          vc = re.compile(r'(?m)^(\s*versionCode\s*=\s*)(\d+)(\s*)$')
+          vn = re.compile(r'(?m)^(\s*versionName\s*=\s*)"[^"\n]*"(\s*)$')
+          if len(vc.findall(text)) != 1 or len(vn.findall(text)) != 1:
+              raise SystemExit("NO-GO: expected one literal versionCode and one versionName in app/build.gradle.kts")
+          if code <= int(vc.search(text).group(2)):
+              raise SystemExit("NO-GO: versionCode not above the source's own value")
+          text = vc.sub(lambda m: m.group(1) + str(code) + m.group(3), text, count=1)
+          text = vn.sub(lambda m: m.group(1) + '"' + name + '"' + m.group(2), text, count=1)
+          path.write_text(text)
+          PY
+          echo "versionCode=$VERSION_CODE versionName=$VERSION_NAME"
+      # Gradle runs repository build code: it gets no secret, no signing
+      # configuration and no write token. It produces an UNSIGNED release APK.
+      - name: Unsigned release APK
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+      - name: Align and hand off
+        shell: bash
+        run: |
+          set -euo pipefail
+          unsigned=app/build/outputs/apk/release/app-release-unsigned.apk
+          [[ -s "$unsigned" ]] || { echo "::error::$unsigned missing"; exit 1; }
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign" -f -p 4 "$unsigned" handoff/aligned-unsigned.apk
+          ( cd handoff && sha256sum aligned-unsigned.apk notes.md > handoff.sha256 )
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atlas-unsigned-release
+          path: handoff/
+          if-no-files-found: error
+          retention-days: 3
+
+  sign:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Lukas restricts this environment to the main branch; the keystore and its
+    # password are environment secrets that exist nowhere else.
+    environment: atlas-release
+    permissions:
+      contents: write
+    env:
+      VERSION_CODE: ${{ needs.build.outputs.version_code }}
+      VERSION_NAME: ${{ needs.build.outputs.version_name }}
+    steps:
+      # No checkout: this job never runs repository code.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: atlas-unsigned-release
+          path: handoff
+      - name: Check the hand-off and the build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]] || { echo '::error::main push only'; exit 1; }
+          [[ "$VERSION_CODE" =~ ^[0-9]{9,10}$ && "$VERSION_NAME" == "0.3.$VERSION_CODE" ]] || { echo '::error::bad version from build job'; exit 1; }
+          ( cd handoff && sha256sum -c handoff.sha256 )
+          # Runner image's own Android SDK: no third-party action in the job that holds the key.
+          bt="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          if [[ ! -x "$bt/apksigner" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;$BUILD_TOOLS" > /dev/null
+          fi
+          for t in apksigner zipalign aapt; do [[ -x "$bt/$t" ]] || { echo "::error::missing $t"; exit 1; }; done
+          echo "BT=$bt" >> "$GITHUB_ENV"
+          echo "KEYDIR=$RUNNER_TEMP/atlas-key" >> "$GITHUB_ENV"
+      - name: Sign with the permanent key
+        shell: bash
+        env:
+          ATLAS_RELEASE_KEYSTORE_B64: ${{ secrets.ATLAS_RELEASE_KEYSTORE_B64 }}
+          ATLAS_RELEASE_KEY_PASSWORD: ${{ secrets.ATLAS_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          trap 'rm -rf "$KEYDIR"' EXIT
+          [[ -n "$ATLAS_RELEASE_KEYSTORE_B64" && -n "$ATLAS_RELEASE_KEY_PASSWORD" ]] \
+            || { echo '::error::atlas-release environment secrets are missing (see docs/RELEASE_PHONE_UPDATES.md)'; exit 1; }
+          mkdir -m 700 "$KEYDIR"
+          printf '%s' "$ATLAS_RELEASE_KEYSTORE_B64" | base64 -d > "$KEYDIR/atlas.p12" \
+            || { echo '::error::ATLAS_RELEASE_KEYSTORE_B64 is not valid base64'; exit 1; }
+          mkdir -m 700 out
+          # PKCS12: one password unlocks keystore and key; passed via environment only.
+          "$BT/apksigner" sign --ks "$KEYDIR/atlas.p12" --ks-type PKCS12 \
+            --ks-key-alias atlas-native-release \
+            --ks-pass env:ATLAS_RELEASE_KEY_PASSWORD \
+            --key-pass env:ATLAS_RELEASE_KEY_PASSWORD \
+            --out "out/ATLAS-$VERSION_NAME.apk" handoff/aligned-unsigned.apk
+      - name: Remove the keystore
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "${KEYDIR:-$RUNNER_TEMP/atlas-key}"
+          [[ ! -e "${KEYDIR:-$RUNNER_TEMP/atlas-key}" ]]
+      - name: Verify signer, package, version, not debuggable
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="out/ATLAS-$VERSION_NAME.apk"
+          fail() { rm -f "$apk"; echo "::error::$*"; exit 1; }
+          [[ -s "$apk" ]] || fail "signed APK missing"
+          certs="$("$BT/apksigner" verify --print-certs "$apk")" || fail "signature does not verify"
+          [[ "$(grep -Ec '^Signer #[0-9]+ certificate SHA-256 digest:' <<<"$certs")" == 1 ]] || fail "expected exactly one signer"
+          cert="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<<"$certs" | tr 'A-F' 'a-f')"
+          [[ "$cert" == "$EXPECTED_SIGNER_SHA256" ]] || fail "signer $cert is not the ATLAS key $EXPECTED_SIGNER_SHA256"
+          "$BT/zipalign" -c -p 4 "$apk" > /dev/null || fail "signed APK not aligned"
+          badging="$("$BT/aapt" dump badging "$apk")" || fail "aapt cannot read APK"
+          pkg="$(sed -n '/^package:/p' <<<"$badging")"
+          [[ "$pkg" == *"name='$PACKAGE'"* ]] || fail "package is not $PACKAGE: $pkg"
+          [[ "$pkg" == *"versionCode='$VERSION_CODE'"* ]] || fail "versionCode is not $VERSION_CODE: $pkg"
+          [[ "$pkg" == *"versionName='$VERSION_NAME'"* ]] || fail "versionName is not $VERSION_NAME: $pkg"
+          if grep -q '^application-debuggable' <<<"$badging"; then fail "APK is debuggable"; fi
+          ( cd out && sha256sum "ATLAS-$VERSION_NAME.apk" > SHA256SUMS && cat SHA256SUMS )
+          echo "signer_certificate_sha256=$cert"
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION_NAME" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "ATLAS $VERSION_NAME" --notes-file handoff/notes.md \
+            "out/ATLAS-$VERSION_NAME.apk" out/SHA256SUMS
+          echo "::notice::Published v$VERSION_NAME"

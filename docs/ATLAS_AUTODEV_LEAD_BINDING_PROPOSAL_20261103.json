@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "model": {
+    "id": "claude-code-platform-selected",
+    "reasoningEffort": null,
+    "maxOutputTokens": 16000
+  },
+  "maxCallCostUsd": 0,
+  "pricing": null,
+  "prompt": "prompts/project-development-lead.md",
+  "output": {
+    "maxEvidenceRefs": 10,
+    "maxFrozenDecisions": 6,
+    "maxRisks": 4,
+    "maxDoNotSpendTimeOn": 4,
+    "maxWorkItems": 4,
+    "maxAcceptanceCriteria": 6,
+    "maxDeterministicChecks": 5
+  },
+  "consumerSession": {
+    "surface": "claude-code-scheduled-task",
+    "modelToolsEnabled": true,
+    "runtimeProfile": "config/consumer-session-claude-code-worker-profile.json",
+    "economics": {
+      "metering": "PREPAID_SUBSCRIPTION",
+      "subscription": "the account owner's existing Claude subscription",
+      "providerCapacity": "UNKNOWN",
+      "actualModel": "UNKNOWN unless the Claude Code platform reports it"
+    },
+    "queue": {
+      "repository": "LPStruiksma/autodev",
+      "trustedGithubLogin": "LPStruiksma",
+      "workerActor": "claude",
+      "workerTargetActor": "claude/claude-code-scheduled-task",
+      "platformSessionPattern": "^session_[A-Za-z0-9]{8,64}$",
+      "windowMinutes": 90,
+      "pollIntervalSeconds": 20,
+      "protocolRef": "docs/runtime/claude-code-consumer-worker.md",
+      "packageExpiresAt": "2026-11-30T23:59:00Z"
+    }
+  },
+  "tenant": {
+    "projectId": "atlas-native",
+    "displayName": "ATLAS Native",
+    "repository": "LPStruiksma/atlas-native",
+    "requiredDocs": [
+      "README.md",
+      "docs/ATLAS_SAMSUNG_PARITY_PRODUCT_PROGRAM_20261103.md"
+    ]
+  }
+}

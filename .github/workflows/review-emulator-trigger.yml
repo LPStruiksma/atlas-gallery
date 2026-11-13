@@ -1,0 +1,40 @@
+name: ATLAS review emulator trigger
+# Actions-minutes rule (autodev CI audit 2026-11-12): build-apk.yml runs the API35 emulator
+# shards only on a non-draft PR labelled next:review. When that label is ADDED without a new
+# push, this job dispatches build-apk.yml on the PR branch head, so the head handed to Review
+# gets its exact-head emulator-ui check. Every other label event skips this one cheap job;
+# no build or emulator check is ever created, skipped or cancelled by a label change.
+# Same-repository branches only (fork PRs get a read-only token and are not used here).
+on:
+  pull_request:
+    types: [labeled]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/build-apk.yml'
+      - 'scripts/ci_android_upgrade_emulator.sh'
+      - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_enable_kvm.sh'
+      - '.github/workflows/review-emulator-trigger.yml'
+permissions:
+  contents: read
+  actions: write
+jobs:
+  dispatch-emulators:
+    if: ${{ github.event.label.name == 'next:review' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Dispatch build-apk.yml (build + API35 emulator shards) on the PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching emulators for $HEAD_REF at $HEAD_SHA"
+          gh workflow run build-apk.yml --ref "$HEAD_REF" -f run_ui_tests=true -f api_level=35

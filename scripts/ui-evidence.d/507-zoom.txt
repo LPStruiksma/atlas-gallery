@@ -1,0 +1,5 @@
+# #507 zoom transition (GridMotionFrameTimeTest).
+zoom-507-mid-pinch
+zoom-507-settled
+# #507 original rows entering from the square grid (PinchRealRatioJourneyTest).
+pinch-507-entering-ratio

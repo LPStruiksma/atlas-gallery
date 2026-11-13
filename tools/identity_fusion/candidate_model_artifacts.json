@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "id": "intel_omz_reid_0287_onnx",
+      "file_name": "person-reidentification-retail-0267.onnx",
+      "upstream_page": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/models/intel/person-reidentification-retail-0287/model.yml",
+      "source_purpose": "reid_trained",
+      "format": "onnx",
+      "bytes": 3571437,
+      "checksum_algorithm": "sha384",
+      "checksum": "c650c97722d597efd65fe041d67e17658d776c45d56736b817264ec544d8a9b5a5e8cdc1a0920cc2aada61151c1a9191",
+      "repository_license_label": "Apache-2.0",
+      "weight_rights_status": "unverified",
+      "production_approved": false,
+      "caution": "0287 model manifest names an ONNX file 0267; verify exact graph and training rights"
+    },
+    {
+      "id": "torchreid_osnet_x025_imagenet",
+      "file_name": "osnet_x0_25_imagenet.pth",
+      "upstream_page": "https://huggingface.co/kaiyangzhou/osnet/blob/main/osnet_x0_25_imagenet.pth",
+      "source_purpose": "imagenet_only",
+      "format": "pytorch_pickle",
+      "bytes": 2973731,
+      "checksum_algorithm": "sha256",
+      "checksum": "f54941a66bad4ddd07f2907f498c810ce639ce7a1abeaf2a151f8da118d84693",
+      "repository_license_label": "MIT",
+      "weight_rights_status": "unverified",
+      "production_approved": false,
+      "caution": "ImageNet pretrained, not a person-reID checkpoint; never unpickle untrusted weights"
+    },
+    {
+      "id": "torchreid_osnet_x025_msmt17",
+      "file_name": "osnet_x0_25_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth",
+      "upstream_page": "https://huggingface.co/kaiyangzhou/osnet/blob/main/osnet_x0_25_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth",
+      "source_purpose": "reid_trained",
+      "format": "pytorch_pickle",
+      "bytes": null,
+      "checksum_algorithm": "sha256",
+      "checksum": "cf55163d78fc44c62c82f85ab62d39f10438679b5abe8c698ae08cfa84aa6e18",
+      "repository_license_label": "MIT",
+      "weight_rights_status": "unverified",
+      "production_approved": false,
+      "caution": "Trained on MSMT17; dataset and derivative weight rights need separate review; never unpickle untrusted weights"
+    }
+  ]
+}

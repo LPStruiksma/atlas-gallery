@@ -1,0 +1,5 @@
+# #678: synthetic MediaStore Declutter deck/review screenshots in both themes.
+declutter-678-deck-light
+declutter-678-review-light
+declutter-678-review-dark
+declutter-678-deck-dark

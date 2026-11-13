@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "source_repository": "openvinotoolkit/open_model_zoo",
+  "source_commit_sha1": "af810de42bcf460a18610481f639dcdc86249e69",
+  "manifest_path": "models/intel/person-reidentification-retail-0287/model.yml",
+  "manifest_git_blob_sha1": "66bd141ab025c72eac575c0491a32a83b546e60f",
+  "license_path": "LICENSE",
+  "license_git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+  "upstream_commit_author_date_utc": "2024-02-12T18:10:35Z",
+  "source_verification_status": "commit_and_blob_identifiers_observed_via_github",
+  "checkpoint_redistribution_rights_status": "unverified",
+  "training_data_rights_status": "unverified",
+  "production_approved": false,
+  "accuracy_check_path": "models/intel/person-reidentification-retail-0287/accuracy-check.yml",
+  "accuracy_check_git_blob_sha1": "7e4aed04f03f88540533e8ac74c281589d8b18ae",
+  "manifest_sha256": "d424d78044d5da414d540514d28da01ee0e26e834965a51c0a6661c05ee190c7",
+  "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "accuracy_check_sha256": "6b69d25a54ecc8ce7dcdb304392d464351f1dc4e847feb6e3179b6a4843fb960"
+}

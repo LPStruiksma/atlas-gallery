@@ -1,0 +1,4 @@
+# #556 Photos selection mode (SelectionModeJourneyTest).
+selection-556-single
+selection-556-drag-range
+selection-556-header-group

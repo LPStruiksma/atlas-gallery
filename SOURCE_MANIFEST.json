@@ -1,0 +1,28 @@
+{
+  "release": "ATLAS Native 0.2.0-interaction-candidate",
+  "date": "2026-10-13",
+  "validation": "offline static and pure Kotlin tests only; Android CI pending",
+  "files": {
+    ".github/workflows/build-apk.yml": "6463e09ec7de573d35999de1b91689afaf4f91b09195e70f7585e1949dd65d08",
+    ".gitignore": "901d5021185ed4cc5d58b1c25912afd9b2fe2799245e19c21bb4dfe24a77264e",
+    "BENCHMARK_PLAN.md": "56312b0bc3998525e2f151f047b7a2bad72469087ec0b5cad55d723fa32dcc6c",
+    "QUALITY_EVIDENCE.md": "1f4fc5d4ac17e888a3a8808765043765b1743c49d3e61f66d271f36a9f921b22",
+    "README.md": "c5c5921303b903d74411119b1856151462255f5ac3a5d19529776e299b922c56",
+    "app/build.gradle.kts": "2c955501fe3cdb231584b8d07f62c44c28cf245cfa6819832709bfecff03c321",
+    "app/src/androidTest/java/nl/atlas/gallery/ViewerInteractionTest.kt": "6ae1f0f9538d38ed4d66f33ea9bd133fd9b90e2ab347d3c4724b8c3aac4aadf3",
+    "app/src/main/AndroidManifest.xml": "1e4fad5a0c95d997c22b54c435335faca7ddbb6a991701896654d5673a091059",
+    "app/src/main/java/nl/atlas/gallery/ArchiveLogic.kt": "40f1cd46ec8e75acaf2310768cbdc24008ba05b8002c39c0d456a4bbe1a68628",
+    "app/src/main/java/nl/atlas/gallery/AtlasApplication.kt": "5b995bd5be6346aca19cb351f36ec10fa7e6216190f82ff09c93c11c71cb4bac",
+    "app/src/main/java/nl/atlas/gallery/GalleryRepository.kt": "58d18b6805a5c2a9a3738fe40facf22a5af7bf4c0e80090dab1b9d625b036cc2",
+    "app/src/main/java/nl/atlas/gallery/GalleryViewer.kt": "d94fecf03b7a1346cdff6dec16da711826144ca0c1f44592467f7658367541a9",
+    "app/src/main/java/nl/atlas/gallery/MainActivity.kt": "2ad9091c879cb2e1b2d505274d920e00c61009b6f3ac7741b835ef172788a8d9",
+    "app/src/main/java/nl/atlas/gallery/PeopleRepository.kt": "d7bf9f33e10beac430a50d0757b0028ebeec5fef00fb5e07d561ba047509c0cd",
+    "app/src/test/java/nl/atlas/gallery/ArchiveLogicTest.kt": "2e9629faa5153f7e7fae88c63b6a9510abe91aae655a8eec5089aba1264a7042",
+    "build.gradle.kts": "b456d4dfb091478c253af3aeb6777d09e4894e96d6379f18c66e1f4c6169569a",
+    "gradle.properties": "a886559b125ecbd23fe4ec2fc2ce390c35e9f4fb52b3d7f1098720a6c12d3205",
+    "scripts/bootstrap_github.sh": "26e76112a0180ef6b8a0b7bbf49939ecccffc32e7150b24086483855e5ff38f3",
+    "scripts/verify_contract.py": "932b49e59516fc063efe20c711085babf600669786fb7cb550b46072f937429c",
+    "settings.gradle.kts": "505b1a126be87bfd5a68cf11dfe1f740fd47c61b9b1532c821c8e78dc5abc6ff",
+    "tests/PureLogicTest.kt": "3fe871e0df2e1328ab0bea5108abccbded0fbef7c74484a35a90136e9aad216f"
+  }
+}

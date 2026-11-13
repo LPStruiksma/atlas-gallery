@@ -1,0 +1,34 @@
+{
+  "siglip_b16_224": {
+    "dim": 768,
+    "params_m": 92.9,
+    "fp32_mb": 371.7,
+    "int8_mb": 95.8,
+    "fp32_sha256": "93eb9a34fb895987df34d8eac2ad8e39446c20962036c27bfce2afa58dff073a",
+    "int8_sha256": "1bf91bdbcfd0059d79764dde19ca3bd38396ca8362910c540988fe38c256da4f"
+  },
+  "siglip2_b16_224": {
+    "dim": 768,
+    "params_m": 92.9,
+    "fp32_mb": 371.7,
+    "int8_mb": 102.9,
+    "fp32_sha256": "d74808f03e0eefa6d7da3753731363d0e27dd1c8f54c511a52f3610476633573",
+    "int8_sha256": "74da3ac2b46e4292c4639affc3cca623c2d5551d012ead113b1486c22e0f5336"
+  },
+  "siglip2_b32_256": {
+    "dim": 768,
+    "params_m": 94.6,
+    "fp32_mb": 378.4,
+    "int8_mb": 109.6,
+    "fp32_sha256": "c59d7e87463e42ba37bf9b53d0dd2f3367123c16cf0ad94e4907c57e826548c7",
+    "int8_sha256": "f169b2c0f45ae5a47d1450231ecead7189a2ca70a2588826bfca66f3ab54bd2d"
+  },
+  "openclip_vitb32_laion400m": {
+    "dim": 512,
+    "params_m": 87.8,
+    "fp32_mb": 351.6,
+    "int8_mb": 102.8,
+    "fp32_sha256": "ae775178131d7a2d53655a6e3bb96408eb7ae266b643f7e8cdd499495e8b2222",
+    "int8_sha256": "cb6dde63d95d8baffbd45f4c96ea76fe52351c477787d442e7c2e7d5604fe4fd"
+  }
+}

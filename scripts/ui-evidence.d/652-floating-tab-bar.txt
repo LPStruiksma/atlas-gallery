@@ -1,0 +1,4 @@
+# #652 content draws under the floating tab pill; last row reachable (FloatingTabBarJourneyTest).
+nav-652-photos-under
+nav-652-album-end
+nav-652-albums-under

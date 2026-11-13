@@ -1,0 +1,2 @@
+# #654 Search 0-result text (PeopleSearchAppEvidenceTest).
+search-654-empty

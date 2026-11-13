@@ -1,0 +1,5 @@
+# #506 scroll-away header (HeaderScrollAwayJourneyTest).
+header-506-photos-hidden
+header-506-photos-revealed
+header-506-albums-hidden
+header-506-albums-revealed

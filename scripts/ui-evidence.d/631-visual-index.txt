@@ -1,0 +1,2 @@
+# #631 Visual search index stays on with photos left out (VisualIndexEvidenceTest).
+visual-index-left-out

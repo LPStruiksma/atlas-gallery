@@ -1,0 +1,10 @@
+# #551 person page and #580 "Same person?" and People numbers (PersonPageJourneyTest).
+person-unnamed
+person-named
+person-menu
+person-merge-picker
+person-same-question
+person-same-joined
+people-numbers
+person-auto-added
+people-same-queue

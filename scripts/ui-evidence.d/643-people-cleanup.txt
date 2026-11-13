@@ -1,0 +1,4 @@
+# #643 People tab cleanup: scan controls in ⋮, tools in Library status.
+people-menu-scanning
+people-grid-idle
+people-settings

@@ -1,0 +1,10 @@
+# #657 dialogs in the app theme, plus audit renders.
+dialog-657-add-name
+dialog-657-add-name-light
+dialog-657-edit-name
+dialog-657-merge-confirm
+dialog-657-people-numbers
+dialog-657-csv-approval
+dialog-657-declutter-confirm
+audit-657-photo-dna
+audit-657-declutter

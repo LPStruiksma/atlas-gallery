@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "id": "atlas-native",
+    "displayName": "ATLAS Native",
+    "repository": "LPStruiksma/atlas-gallery",
+    "defaultBranch": "main",
+    "trustedDevelopmentBranches": [
+      "main"
+    ]
+  },
+  "authority": {
+    "autonomyMode": "auto-merge-low-risk",
+    "automationBranchPrefix": "claude/",
+    "protectedBranches": [
+      "main"
+    ],
+    "humanOnly": [
+      "owner-phone-install-or-uninstall",
+      "stable-apk-signing-and-key-access",
+      "off-device-personal-media-or-biometric-access",
+      "worker-access-to-production-private-data",
+      "destructive-mediastore-mutations",
+      "paid-hosted-ci-and-external-api-spend",
+      "credentials-and-new-access",
+      "authority-security-and-workflow-changes"
+    ],
+    "forbiddenPaths": [
+      ".env",
+      ".env.*",
+      "signing/**",
+      "secrets/**",
+      "private/**",
+      "backups/**",
+      "eval/held-out/**"
+    ],
+    "protection": {
+      "schemaVersion": 1,
+      "unconditionalHumanOnlyPaths": [
+        ".autodev/**",
+        ".github/**",
+        "SECURITY.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".claude/**",
+        ".mcp.json",
+        "app/build.gradle.kts",
+        "app/src/main/AndroidManifest.xml",
+        "gradle.properties",
+        "scripts/p0_termux_owner_sign.sh",
+        "scripts/p0_owner_local_signer_emulator_proof.sh"
+      ],
+      "semanticAuthoritySensitivePaths": [
+        "app/build.gradle.kts",
+        "app/src/main/AndroidManifest.xml",
+        ".github/workflows/**",
+        ".autodev/**",
+        "gradle.properties",
+        "scripts/p0_termux_owner_sign.sh"
+      ],
+      "candidateHardReadDenied": [
+        "eval/held-out/**",
+        ".env",
+        ".env.*",
+        "signing/**",
+        "secrets/**",
+        "private/**",
+        "backups/**",
+        "tools/v4/private/**"
+      ],
+      "candidateHardWriteDenied": [
+        ".autodev/**",
+        ".github/**",
+        ".env",
+        ".env.*",
+        "eval/held-out/**",
+        "signing/**",
+        "secrets/**",
+        "private/**",
+        "backups/**",
+        "tools/v4/private/**"
+      ],
+      "evaluationCanaryFrozenPaths": [
+        ".autodev/**",
+        ".github/**",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "SECURITY.md",
+        "app/build.gradle.kts",
+        "app/src/main/AndroidManifest.xml"
+      ],
+      "tenantLocalNarrowing": {
+        "candidateExecutionBoundary": "narrow-only",
+        "platformHardFloorOverride": "forbidden"
+      }
+    }
+  },
+  "state": {
+    "requiredDocs": [
+      "README.md",
+      "docs/ATLAS_SAMSUNG_PARITY_PRODUCT_PROGRAM_20261103.md",
+      "docs/ATLAS_AUTODEV_OWNERSHIP_HANDOFF_20261103.md"
+    ],
+    "recentDocGroups": [],
+    "excludedPaths": [
+      "eval/held-out/**",
+      "signing/**",
+      "secrets/**",
+      "private/**",
+      "backups/**",
+      "tools/v4/private/**"
+    ],
+    "maxCharsPerDocument": 40000,
+    "maxTotalChars": 120000,
+    "minHeadroomChars": 20000,
+    "maxRecentCommits": 24
+  },
+  "commands": {
+    "check": "gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon"
+  },
+  "review": {
+    "enabled": true,
+    "maxCorrectionLoops": 2,
+    "configPath": null,
+    "captureCommand": null
+  },
+  "budgets": {
+    "maxAutonomousTransitionsPerCycle": 4,
+    "maxModelCostUsdPerCycle": 0,
+    "maxWallClockMinutesPerCycle": 60,
+    "maxRetriesPerTransition": 1
+  },
+  "promotion": {
+    "requireChecks": true,
+    "requireIndependentReview": true,
+    "allowDirectProtectedBranchWrite": false,
+    "autoMergeCategories": [
+      "routine"
+    ],
+    "humanMergePaths": [
+      ".autodev/**",
+      ".github/**",
+      "SECURITY.md",
+      "AGENTS.md",
+      "CLAUDE.md",
+      ".claude/**",
+      ".mcp.json",
+      "app/build.gradle.kts",
+      "app/src/main/AndroidManifest.xml",
+      "gradle.properties",
+      "scripts/p0_termux_owner_sign.sh",
+      "scripts/p0_owner_local_signer_emulator_proof.sh"
+    ],
+    "authoritySensitivePaths": [
+      "app/build.gradle.kts",
+      "app/src/main/AndroidManifest.xml",
+      ".github/**",
+      ".autodev/**"
+    ]
+  }
+}

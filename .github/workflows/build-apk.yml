@@ -1,0 +1,247 @@
+name: ATLAS Android - Build and UI Evidence
+on:
+  workflow_dispatch:
+    inputs:
+      run_ui_tests:
+        description: 'Run instrumented Android emulator navigation/filmstrip tests'
+        type: boolean
+        default: true
+      api_level:
+        description: 'Emulator API level (one level per approved run; 34 or 35)'
+        type: choice
+        options:
+          - '35'
+          - '34'
+        default: '35'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/build-apk.yml'
+      # #597: script-only PRs must run emulator-ui too.
+      - 'scripts/ci_android_upgrade_emulator.sh'
+      - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_enable_kvm.sh'
+  pull_request:
+    # Actions-minutes rule (autodev CI audit 2026-11-12): the API35 emulator shards run on a
+    # non-draft PR only when it carries `next:review`, i.e. once per candidate head handed to
+    # Review. Adding the label later dispatches this workflow on the PR branch head
+    # (review-emulator-trigger.yml). Pushes while next:dev get build + JVM tests only.
+    # ready_for_review: marking a labelled draft ready starts the emulators on that exact head.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - '.github/workflows/build-apk.yml'
+      # #597: script-only PRs must run emulator-ui too.
+      - 'scripts/ci_android_upgrade_emulator.sh'
+      - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_enable_kvm.sh'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify preview signing trust boundary before Gradle
+        run: python3 -m unittest discover -s .github/tests -p 'test_preview_signing_boundary.py'
+      - name: Validate release source contract before Android SDK setup
+        run: |
+          python3 scripts/verify_contract.py
+          python3 -m unittest discover -s scripts -p 'test_verify_contract.py'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Android SDK
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      # PR and push builds execute potentially untrusted source and Gradle.
+      # NEVER reference permanent signing secrets or materialize a stable key
+      # in this workflow. Use the separately gated stable workflow or offline
+      # owner-controlled signing ONLY after exact trust-boundary review.
+      - name: Preview-only signing safety notice
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in ATLAS_STABLE_SIGNING_PATH ATLAS_STABLE_SIGNING_STORE_PASSWORD ATLAS_STABLE_SIGNING_KEY_ALIAS ATLAS_STABLE_SIGNING_KEY_PASSWORD; do
+            if [[ -n "${!key:-}" ]]; then
+              echo '::error::Preview build must never inherit protected stable signing.'
+              exit 1
+            fi
+          done
+          echo '::notice::PR/push APK uses a runner-local debug certificate; no in-place S24+ upgrade is promised.'
+      - name: Unit tests, compile androidTests, and PREVIEW APK
+        run: gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+      - name: Publish APK signing identity (public certificate fingerprint only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk |
+            grep 'Signer #1 certificate SHA-256 digest:' |
+            sed 's/^/APK /' > app/build/outputs/apk/debug/signing-fingerprint.txt
+          grep -q 'SHA-256 digest:' app/build/outputs/apk/debug/signing-fingerprint.txt
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-native-debug-APK
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/signing-fingerprint.txt
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload AndroidTest APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-ui-test-APK
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+          retention-days: 2
+  emulator-ui-shard:
+    # AutoDev Actions-minutes rule: draft PR heads and heads without next:review get build + JVM
+    # tests only; the API35 emulator job runs on a non-draft PR labelled next:review and on
+    # opted-in manual runs (which is how review-emulator-trigger.yml starts it).
+    # Job names stay static: a run cancelled before it starts must not leave checks under an
+    # unevaluated expression name, which would block the merge join for that head.
+    # #588: the instrumented suite outgrew one 40-minute job, so it runs as two
+    # shards (each with its own cap). Shard 0 also runs the upgrade phases. The
+    # emulator-ui job below is the single check that joins and reviews read.
+    if: ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
+    name: emulator-ui shard ${{ matrix.shard }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      # The baseline is checked out independently; avoids git-fetch credentials
+      # and makes a real older-APK -> new-APK emulator upgrade test possible.
+      - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch has no pull_request.base.sha; use main as
+          # independently checked-out baseline for manual RC acceptance.
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: upgrade-baseline
+          persist-credentials: false
+      - name: Refuse falsely identical baseline and candidate APK sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          rc_sha="$(git rev-parse HEAD)"
+          baseline_sha="$(git -C upgrade-baseline rev-parse HEAD)"
+          echo "Candidate commit: $rc_sha"
+          echo "Baseline commit:  $baseline_sha"
+          if [[ "$rc_sha" == "$baseline_sha" ]]; then
+            echo '::error::Need distinct baseline and candidate Git revisions for install -r persistence.'
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      # Official android-emulator-runner Linux GitHub Actions setup: without
+      # KVM access this job falls back to extremely slow software emulation.
+      - name: Enable KVM hardware acceleration (fail fast if unavailable)
+        shell: bash
+        # #597: settle udev and retry; every failure prints "::error::KVM unavailable".
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Emulator Compose interactions + private People upgrade preservation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # PR checks default to API35; manual dispatch supports a separate
+          # API34 acceptance run without doubling every PR's emulator minutes.
+          api-level: ${{ inputs.api_level || '35' }}
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          # Run one shell command; the runner would otherwise execute each line separately.
+          script: env ATLAS_SHARD_INDEX=${{ matrix.shard }} ATLAS_SHARD_COUNT=2 bash scripts/ci_android_upgrade_emulator.sh
+      - name: Upload this shard's screenshots and instrumented test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}
+          path: |
+            ui-evidence/*
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 7
+  emulator-ui:
+    # One check for joins and reviews: green only when every shard is green and
+    # the shards together saved the whole UI-evidence set. Skipped with the
+    # shards (drafts, heads without next:review, pushes); never runs when cancelled.
+    if: ${{ !cancelled() && ((github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests)) }}
+    needs: emulator-ui-shard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require every emulator shard to pass
+        shell: bash
+        env:
+          SHARDS_RESULT: ${{ needs.emulator-ui-shard.result }}
+        run: |
+          set -euo pipefail
+          echo "Emulator shards: $SHARDS_RESULT"
+          [[ "$SHARDS_RESULT" == "success" ]] || { echo "::error::An emulator-ui shard did not pass ($SHARDS_RESULT)"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Download shard evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ATLAS-android-UI-evidence-shard-*
+          path: shards
+      - name: Merge shard screenshots and check the full UI-evidence set
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ui-evidence
+          for dir in shards/*/ui-evidence; do
+            [[ -d "$dir" ]] && cp -n "$dir"/*.png ui-evidence/ 2>/dev/null || true
+          done
+          bash scripts/ci_ui_evidence.sh verify
+      - name: Upload merged screenshots and shard test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-android-UI-evidence
+          path: |
+            ui-evidence/*
+            shards/*/app/build/outputs/androidTest-results/**
+            shards/*/app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,4 @@
+# #400 Random order stays put through a viewer filmstrip scrub (RandomViewerScrubJourneyTest).
+random-400-album
+random-400-viewer-after-scrub
+random-400-album-after-viewer

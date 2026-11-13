@@ -1,0 +1,232 @@
+name: V4 People UX synthetic checks
+on:
+  pull_request:
+    paths:
+      - 'tools/v4/**'
+      - '.github/workflows/v4-people-ux.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/v4/**'
+      - '.github/workflows/v4-people-ux.yml'
+permissions:
+  contents: read
+jobs:
+  people-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check local People identity transactions and browser syntax
+        run: python3 tools/v4/test_people_ux.py
+      - name: Verify optional read-only face metadata sidecar preserves legacy CSV and source SQLite
+        run: python3 tools/v4/test_confirmed_face_sidecar.py
+      - name: Bound optional face sidecar export to two SELECTs over 2401 fictional images
+        run: python3 tools/v4/test_sidecar_streaming.py
+      - name: Preserve keyboard focus and prevent stale scroll on review page turns
+        run: node tools/v4/test_page_focus_continuity.cjs
+      - name: Coalesce rapid pager taps and isolate in-flight renders across 2001 synthetic items
+        run: node tools/v4/test_review_turn_singleflight.cjs
+      - name: Coalesce direct review/Undo writes and isolate stale mutation responses
+        run: node tools/v4/test_review_write_singleflight.cjs
+      - name: Preserve newer one-use Undo when an older reviewed write finishes late
+        run: node tools/v4/test_review_late_undo_order.cjs
+      - name: Preserve newer one-use Undo across delayed Person creation acknowledgement
+        run: node tools/v4/test_create_late_undo_order.cjs
+      - name: Preserve newer Undo after delayed existing-Person face and group attachment
+        run: node tools/v4/test_attach_late_undo_order.cjs
+      - name: Reject malformed existing-Person face/group attachment success receipts
+        run: node tools/v4/test_attach_ack_shape.cjs
+      - name: Protect newer Undo from late profile merge/restore acknowledgements
+        run: node tools/v4/test_merge_restore_late_undo.cjs
+      - name: Reject incomplete profile Merge and Restore HTTP-success receipts before changing Undo
+        run: node tools/v4/test_merge_restore_ack_shape.cjs
+      - name: Never claim review rollback after lost POST acknowledgement or confirmed-save repaint failure
+        run: node tools/v4/test_review_write_uncertain_feedback.cjs
+      - name: Reject partial HTTP-success acknowledgements for all four reviewed face mutations
+        run: node tools/v4/test_direct_review_ack_shape.cjs
+      - name: Distinguish unverified manual Undo from confirmed Undo with failed screen refresh
+        run: node tools/v4/test_undo_uncertain_feedback.cjs
+      - name: Verify one-use Undo count acknowledgment before discarding browser recovery evidence
+        run: node tools/v4/test_undo_ack_shape.cjs
+      - name: Check read-only Undo status, expired history and malformed token refusal against actual SQLite
+        run: python3 tools/v4/test_undo_status.py
+      - name: Preserve pending Undo state through ambiguous status and stale navigation
+        run: node tools/v4/test_undo_status_browser.cjs
+      - name: Recover opaque direct-review status after lost acknowledgement and browser reload
+        run: node tools/v4/test_review_write_status_browser.cjs
+      - name: Recover existing-Person selected faces through opaque chooser keys
+        run: node tools/v4/test_person_chooser_review_recovery.cjs
+      - name: Recover whole-group existing Person attachment without blind retry
+        run: node tools/v4/test_group_attach_review_status_browser.cjs
+      - name: Require reviewer inspection before another direct mutation or Undo after lost acknowledgement
+        run: node tools/v4/test_review_retry_after_unknown.cjs
+      - name: Preserve scroll and keyboard focus after face review, assignment and Undo
+        run: node tools/v4/test_review_position_after_write.cjs
+      - name: Keep asynchronous background job status from redrawing newer review screens
+        run: node tools/v4/test_background_action_render_guard.cjs
+      - name: Guard delayed Person portrait selection and similarity search across navigation
+        run: node tools/v4/test_cover_search_context.cjs
+      - name: Avoid false rollback message after suggested-group attach acknowledgement loss
+        run: node tools/v4/test_suggested_group_uncertain_feedback.cjs
+      - name: Keep selected-face destination context and new selections safe across chooser latency
+        run: node tools/v4/test_scoped_face_assignment.cjs
+      - name: Prevent empty end pages and stale review navigation on fictional People
+        run: node tools/v4/test_review_pager_browser.cjs
+      - name: Preserve Unsorted forward cursor across earlier face assignments
+        run: node tools/v4/test_untagged_forward_cursor.cjs
+      - name: Prevent stale review responses from mutating newer tabs, pages, or cursor
+        run: node tools/v4/test_stale_review_state.cjs
+      - name: Prevent late responses from drawing over newer People review navigation
+        run: node tools/v4/test_render_race.cjs
+      - name: Verify higher-resolution photo inspection stays cache-bounded and read-only
+        run: |
+          python3 tools/v4/test_photo_review_rendition.py
+          node tools/v4/test_photo_review_markup.cjs
+      - name: Restore named Person page, scroll and focus after full-photo detour
+        run: node tools/v4/test_photo_return_context.cjs
+      - name: Refuse stale queued Back scroll after newer tab, search or face navigation
+        run: node tools/v4/test_stale_back_scroll.cjs
+      - name: Restore review page and scroll after face similarity detours
+        run: node tools/v4/test_similarity_return.cjs
+      - name: Benchmark single-Person summary without global face cover scan
+        run: python3 tools/v4/test_person_targeted_summary.py
+      - name: Ensure Person modes request only visible rows in parallel
+        run: node tools/v4/test_person_targeted_loading.cjs
+      - name: Bound cold thumbnail image decodes and coalesce concurrent cache misses
+        run: python3 tools/v4/test_thumbnail_decode_budget.py
+      - name: Prevent already-tagged lookalikes from appearing assignable
+        run: node tools/v4/test_face_selection_eligibility.cjs
+      - name: Dismiss deliberate person-picker safely with Escape and restore keyboard focus
+        run: node tools/v4/test_picker_escape_focus.cjs
+      - name: Contain keyboard Tab focus in visible People picker modal step
+        run: node tools/v4/test_picker_focus_trap.cjs
+      - name: Check keyboard-operable People tiles and independent selection controls
+        run: node tools/v4/test_accessible_review_tiles.cjs
+      - name: Keep review Undo/error feedback accessible and visible over chooser
+        run: node tools/v4/test_toast_review_feedback.cjs
+      - name: Limit explicit People chooser portraits and preserve confirmation under races
+        run: node tools/v4/test_picker_scoped_covers.cjs
+      - name: Only request visible People portraits without stale search/focus races
+        run: node tools/v4/test_visible_roster_covers.cjs
+      - name: Benchmark two-thousand-profile People search and preserved return
+        run: node tools/v4/test_people_search_resume.cjs
+      - name: Guard explicit same-name rename and preserve separate identities
+        run: |
+          python3 tools/v4/test_rename_safety.py
+          node tools/v4/test_rename_safety.cjs
+      - name: Coalesce rapid Person renames and surface ambiguous write outcomes
+        run: node tools/v4/test_rename_singleflight.cjs
+      - name: Reject malformed Rename HTTP-success and report acknowledged write after failed repaint
+        run: node tools/v4/test_rename_ack_shape.cjs
+      - name: Avoid all-library portrait rescoring in explicit merge entrypoint
+        run: node tools/v4/test_merge_metadata_chooser.cjs
+      - name: Reject stale async Person rename merge and restore after navigating away
+        run: node tools/v4/test_stale_person_actions.cjs
+      - name: Confirm archived People merge preserves provenance and safely restores on synthetic data
+        run: python3 tools/v4/test_merge_archive.py
+      - name: Check safe duplicate names and atomic reviewed creation
+        run: python3 tools/v4/test_duplicate_name_review.py
+      - name: Enforce review-first identity approval for scanner, browser and CLI
+        run: python3 tools/v4/test_review_first_policy.py
+      - name: Check new-profile undo exact recovery and stale-review safeguards
+        run: |
+          python3 tools/v4/test_new_person_undo.py
+          node tools/v4/test_new_person_browser_undo.cjs
+      - name: Reject duplicate Person creates under durable replay, rollback and concurrent SQLite requests
+        run: python3 tools/v4/test_person_create_idempotency.py
+      - name: Validate atomic reviewed face-write ledger, collision refusal, Undo and SQLite race
+        run: python3 tools/v4/test_atomic_review_write_idempotency.py
+      - name: Confirm atomic whole-group attachment replay with SQLite rollback and concurrent writers
+        run: python3 tools/v4/test_group_attach_review_idempotency.py
+      - name: Expose one-use Person creation Undo on returned People roster
+        run: node tools/v4/test_roster_create_undo_visible.cjs
+      - name: Verify selected-face Hide is fail-closed and Undo restores provisional groups
+        run: python3 tools/v4/test_ignore_undo.py
+      - name: Protect manual and historical automatic tags with exact unassignment Undo
+        run: python3 tools/v4/test_unassign_undo.py
+      - name: Confirm stale suggestion approval is refused within one SQLite write lock
+        run: python3 tools/v4/test_accept_atomic.py
+      - name: Verify deliberate suggestion rejection is atomic and reversible
+        run: python3 tools/v4/test_reject_undo.py
+      - name: Check atomic undo, conflict rejection and Discover group restoration
+        run: python3 tools/v4/test_manual_review_undo.py
+      - name: Check frictionless new-person creation and deliberate existing-person assignment
+        run: node tools/v4/test_quick_create.cjs
+      - name: Open an existing People roster homonym without a phantom face attachment
+        run: node tools/v4/test_roster_existing_profile.cjs
+      - name: Coalesce rapid People-roster New Person creation and protect pending homonym chooser
+        run: node tools/v4/test_roster_newperson_singleflight.cjs
+      - name: Require explicit roster inspection after uncertain person creation response
+        run: node tools/v4/test_uncertain_person_create.cjs
+      - name: Require cryptographically secure per-intent Person creation request IDs
+        run: node tools/v4/test_secure_create_request_ids.cjs
+      - name: Preserve opaque recovery evidence after malformed Person creation success acknowledgement
+        run: node tools/v4/test_create_ack_shape.cjs
+      - name: Recover prior opaque Person creation keys safely after browser reload
+        run: node tools/v4/test_pending_person_create_recovery.cjs
+      - name: Refuse malformed committed Person creation status before retiring recovery keys
+        run: node tools/v4/test_create_status_ack_shape.cjs
+      - name: Keep 2001-Person roster cache across read-only unresolved recovery statuses
+        run: node tools/v4/test_readonly_status_people_cache.cjs
+      - name: Refuse stale People roster GETs racing uncertain or confirmed identity writes
+        run: node tools/v4/test_roster_get_write_race.cjs
+      - name: Invalidate People roster across two local browser tabs without identity metadata
+        run: node tools/v4/test_cross_tab_people_cache.cjs
+      - name: Guard delayed group count and roster actions after switching review groups
+        run: node tools/v4/test_stale_group_actions.cjs
+      - name: Coalesce rapid conflicting Group Name and Attach launches
+        run: node tools/v4/test_group_entry_singleflight.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lightweight numerical dependency for synthetic embedding test
+        run: python3 -m pip install --disable-pip-version-check --quiet numpy==2.2.6
+      - name: Stream twenty thousand fictional lookalikes with bounded memory and exact results
+        run: python3 tools/v4/test_streaming_lookalikes.py
+      - name: Verify exact 40/60-item lookahead and legacy pagination on fictional data
+        run: python3 tools/v4/test_review_pagination.py
+      - name: Compare 2001-face keyset against shrinking offset queue
+        run: python3 tools/v4/test_untagged_forward_cursor.py
+      - name: Verify Person Review tags page integrity after earlier unassignments
+        run: python3 tools/v4/test_person_face_cursor.py
+      - name: Benchmark narrowly scoped Discover portraits against all-People scoring
+        run: python3 tools/v4/test_targeted_discover_covers.py
+      - name: Check named-person Discover candidate matching on synthetic faces
+        run: python3 tools/v4/test_group_candidates.py
+      - name: Benchmark bounded Discover-page known-person hints without assignments
+        run: python3 tools/v4/test_group_list_hints.py
+      - name: Verify vectorized Discover hints exactly match independent scalar reference
+        run: python3 tools/v4/test_hints_vectorized_parity.py
+      - name: Preserve stable Discover shuffle paging without profile mutations
+        run: python3 tools/v4/test_group_discover_shuffle.py
+      - name: Verify keyset Discover pass across 2001 fictional groups and mutable review
+        run: python3 tools/v4/test_discover_stable_pass.py
+      - name: Compare bounded stable-page SQL to frozen full aggregate across 2001 fictional groups
+        run: python3 tools/v4/test_stable_query_fastpath.py
+      - name: Check browser stable Discover pass and legacy sort compatibility
+        run: node tools/v4/test_discover_stable_pass.cjs
+      - name: Default new Discover reviewers to gap-free keyset, preserve saved sort choices
+        run: node tools/v4/test_discover_safe_default.cjs
+      - name: Smoke bounded V4 review query performance on 12000 fictional photos
+        run: python3 tools/v4/benchmark_review_scale.py --smoke
+      - name: Check live CLI job state and honest offline fallback
+        run: python3 tools/v4/test_live_status.py
+      - name: Check Android filename suffix-proof V4 installer
+        run: bash tools/v4/test_install_latest.sh
+      - name: Rehearse V4 People backup restoration and protect source from writes
+        run: python3 tools/v4/test_verify_preview_backup.py
+      - name: Reject V4 backup overwrites and preserve previously verified snapshots
+        run: python3 tools/v4/test_backup_no_overwrite.py
+      - name: Assemble real private V4 preview bundle offline and verify checksum manifest
+        run: python3 tools/v4/test_preview_bundle.py
+      - name: Check cautious unattended People filing and full undo
+        run: python3 tools/v4/test_auto_identity.py
+      - name: Compare read-only threshold frontier on identical synthetic held-out faces
+        run: python3 tools/v4/test_auto_calibration.py
+      - name: Preserve confirmed labels across failed photo reanalysis
+        run: python3 tools/v4/test_scan_label_safety.py
+      - name: Verify integrity-sealed native People export snapshots
+        run: python3 tools/v4/test_native_sync.py

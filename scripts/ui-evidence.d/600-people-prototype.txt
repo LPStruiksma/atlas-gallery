@@ -1,0 +1,6 @@
+# #600 People prototype journey in the real Activity (PeoplePrototypeJourneyTest).
+prototype-people-unnamed
+prototype-people-named
+prototype-person-page
+prototype-search-named
+prototype-people-restarted
