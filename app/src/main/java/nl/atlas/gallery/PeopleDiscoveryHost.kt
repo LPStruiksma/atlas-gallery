@@ -258,6 +258,9 @@ internal data class PeopleOptIn(val paused: Boolean)
 internal interface PeopleOptInMemory {
     fun load(): PeopleOptIn?
     fun save(value: PeopleOptIn?)
+    /** Separate user choice; still fenced by the current Android photo grant. */
+    fun loadVisual(): Boolean = false
+    fun saveVisual(enabled: Boolean) = Unit
 
     companion object {
         /** Forget on process death (tests, and the pre-#543 behaviour). */
@@ -276,6 +279,10 @@ internal interface PeopleOptInMemory {
             override fun save(value: PeopleOptIn?) {
                 prefs.edit().putBoolean("opted_in", value != null)
                     .putBoolean("paused", value?.paused == true).commit()
+            }
+            override fun loadVisual(): Boolean = prefs.getBoolean("visual_index_opted_in", false)
+            override fun saveVisual(enabled: Boolean) {
+                prefs.edit().putBoolean("visual_index_opted_in", enabled).commit()
             }
         }
     }
@@ -568,8 +575,9 @@ internal class PeopleDiscoveryHost(
     private var inference: OnDeviceFaceLocator? = null
     private val reviewGeneration = AtomicLong()
 
-    // Visual search index (VS-S1c): a separate, in-process, off-by-default opt-in.
-    private var visualOptedIn = false
+    // The user's separate opt-in survives host/process recreation. Stored choice
+    // is never authorization: every read and publication still checks live grant.
+    private var visualOptedIn = optedIn && optInMemory.loadVisual()
     private var visualFailure: String? = null
     /** Rows or the model copy may remain after an opt-out without delete. */
     private var visualDataKept = false
@@ -703,6 +711,7 @@ internal class PeopleDiscoveryHost(
                 visualOptedIn = false
             }
         }
+        if (!keepOptIn) optInMemory.saveVisual(false)
         visualScope = null
         try { visualStore?.invalidatePermissionScope() } catch (_: SQLException) { }
         closeEmbedder()
@@ -734,6 +743,9 @@ internal class PeopleDiscoveryHost(
             visualFailure = null
             scope?.takeIf { liveEpoch == it.epoch }
         }
+        // Commit before the potentially long catalogue stage. If it cannot
+        // run now, the next authorised publication can recover the choice.
+        optInMemory.saveVisual(true)
         val published = s != null && photoGrantCurrent() &&
             publishVisual(s.epoch, s.inventory)
         if (published && !synchronized(lock) { pausedByUser }) {
@@ -826,6 +838,12 @@ internal class PeopleDiscoveryHost(
             failVisual("The visual index could not be saved on this phone (storage may be " +
                 "full). Turn it on again to retry. No photo was changed.")
             return false
+        } catch (e: RuntimeException) {
+            // A malformed provider/staging response must not crash Settings.
+            // Only an exception class is logged; never source URIs or images.
+            Log.w("ATLAS_VISUAL", "visual_catalogue_failed type=${e.javaClass.simpleName}")
+            failVisual("The visual index encountered an error. Turn it off and on to retry.")
+            return false
         } finally {
             if (begun && !done) {
                 try { store.invalidateSnapshotIfCurrent(epoch) } catch (_: SQLException) { }
@@ -834,7 +852,9 @@ internal class PeopleDiscoveryHost(
     }
 
     private fun failVisual(message: String) {
-        stopVisual(keepOptIn = false)
+        // A failed write/model stage is not user opt-out. Fence every lease,
+        // keep the durable choice and surface the error until retry.
+        stopVisual(keepOptIn = true)
         synchronized(lock) { visualFailure = message }
         changed()
     }
@@ -889,8 +909,24 @@ internal class PeopleDiscoveryHost(
         // access still present is a pending (selected-photos) refresh or an
         // Activity recreation: hold the run and resume it on the next
         // publication, never drop the opt-in (#436 review F2).
-        if (!photoGrantCurrent()) { revoke(); return }
-        if (galleryGrant == null) { hold(); return }
+        if (!photoGrantCurrent()) {
+            if (synchronized(lock) { scope == null }) {
+                // Startup can observe permissions before Android restores a
+                // selected-photo grant. No active scope exists to revoke.
+                // Hide data now, but do not destroy the user's saved opt-ins.
+                Log.i("ATLAS_FACE", "publication_hold cause=startup_grant_unavailable")
+                hold()
+            } else {
+                Log.i("ATLAS_FACE", "publication_revoke cause=live_grant_lost")
+                revoke()
+            }
+            return
+        }
+        if (galleryGrant == null) {
+            Log.i("ATLAS_FACE", "publication_hold cause=gallery_pending")
+            hold()
+            return
+        }
         if (current == galleryGrant && liveEpoch != null &&
             liveEpoch == synchronized(lock) { scope?.epoch }) return
         val published = synchronized(publishLock) {
@@ -958,6 +994,8 @@ internal class PeopleDiscoveryHost(
             // The visual catalogue follows every face publication, so both
             // stages always share one grant snapshot (and resume together).
             if (published) {
+                Log.i("ATLAS_FACE", "publication_ready items=${inventory.size} " +
+                    "paused=${synchronized(lock) { pausedByUser }}")
                 regroupIfRulesChanged(epoch)
                 visualScope = null
                 if (synchronized(lock) { visualOptedIn }) publishVisual(epoch, inventory)
