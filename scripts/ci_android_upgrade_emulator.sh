@@ -212,6 +212,46 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# #31: the two real-process People/visual/grid/Albums phases cannot run in
+# one instrumentation invocation: force-stop must kill the target process
+# between them. The test seeds only invented images and its own app-private
+# database, while MainActivity and the Android permission publication are real.
+# Run before the sharded suite; its PNGs remain in MediaStore for evidence pull.
+if [[ "$SHARD_INDEX" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+  [[ "${GITHUB_ACTIONS:-}" == "true" &&
+    "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
+    echo "::error::#31 real-process fixture requires isolated GitHub emulator"; exit 1
+  }
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+  run_relaunch_phase() {
+    local phase="$1" method="$2"
+    local capture="/tmp/atlas-relaunch31-$phase.txt"
+    adb shell am instrument -w -r -e atlasForceStopPhase "$phase" \
+      -e class "nl.atlas.gallery.PeopleForceStopRelaunchTest#$method" "$RUNNER" \
+      > "$capture" 2>&1 || true
+    cat "$capture"
+    if ! grep -Fq 'OK (1 test)' "$capture"; then
+      echo "::error::#31 $phase real-process instrumentation failed"
+      timeout 30 adb logcat -d -b crash -t 500 || true
+      return 1
+    fi
+  }
+  adb logcat -c || true
+  run_relaunch_phase seed seedBeforeForceStop
+  adb shell am force-stop nl.atlas.gallery
+  run_relaunch_phase verify verifyAfterForceStop
+  if timeout 30 adb logcat -d -b crash -t 500 |
+    grep -E 'FATAL EXCEPTION|Process nl[.]atlas[.]gallery.*crashed'; then
+    echo "::error::#31 visual index relaunch emitted a process crash"; exit 1
+  fi
+  run_relaunch_phase cleanup cleanupAfterForceStop
+  # Reset only the disposable app data of this verified emulator. Public
+  # synthetic screenshot PNGs stay available for the evidence pull.
+  adb shell pm clear nl.atlas.gallery
+  echo "PASS: #31 separate-process People, visual, Settings, Photos and Albums relaunch"
+fi
+
 # Preserve normal viewer/filmstrip checks and their real PNG screenshots.
 # If the mismatch lane replaced the fixture with signer B, Gradle must
 # retain the same environment or it will attempt to install signer A again.
