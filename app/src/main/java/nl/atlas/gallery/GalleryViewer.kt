@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -30,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -58,6 +61,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -96,7 +100,9 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import coil3.request.crossfade
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -1061,9 +1067,8 @@ private fun ViewerVideoPage(
             videoSettled = true
         }
     }
-    // The viewer controls must also be recoverable with TalkBack on video.
-    // Keep native PlayerView children accessible (do NOT merge or override
-    // descendant controls); this parent action has no touch interception.
+    // TalkBack gets a surface action to reveal gallery chrome; the player
+    // itself has no native controller children to intercept playback focus.
     Box(Modifier.fillMaxSize().testTag("atlas-video-surface")
         .semantics {
             if (focused) {
@@ -1081,7 +1086,8 @@ private fun ViewerVideoPage(
         }) {
         if (shouldStartViewerVideoPlayer(focused, rapidlyChanging, videoSettled)) {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-player")) {
-                VideoPage(media.uri, resumePositionMs, onSavePosition, onLivePosition)
+                VideoPage(media.uri, resumePositionMs, onSavePosition, onLivePosition,
+                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome)
             }
         } else {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-poster"),
@@ -1311,12 +1317,35 @@ internal val ViewerPhotoDecodedKey = SemanticsPropertyKey<Boolean>("AtlasViewerP
 internal fun viewerVideoMustPause(event: Lifecycle.Event): Boolean =
     event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP
 
+/** Clamp user progress before converting to a video time (also used by TalkBack). */
+internal fun viewerVideoSeekPosition(durationMs: Long, fraction: Float): Long {
+    if (durationMs <= 0 || !fraction.isFinite()) return 0L
+    return (durationMs.toDouble() * fraction.coerceIn(0f, 1f)).toLong()
+        .coerceIn(0L, durationMs)
+}
+
+internal fun viewerVideoTimecode(positionMs: Long): String {
+    val seconds = positionMs.coerceAtLeast(0L) / 1_000L
+    val minutes = seconds / 60L
+    return if (minutes >= 60L)
+        "%d:%02d:%02d".format(minutes / 60L, minutes % 60L, seconds % 60L)
+    else "%d:%02d".format(minutes, seconds % 60L)
+}
+
+/**
+ * Media3 only renders the decoded surface. The small, gallery-owned control
+ * row lives above the unchanged filmstrip and bottom action pill, at the same
+ * position for every video. Scrub frames are extracted on IO, only while the
+ * seek thumb is held; no thumbnails are persisted or added to MediaStore.
+ */
 @Composable
 internal fun VideoPage(
     uri: String, resumePositionMs: Long = 0L,
     onSavePosition: (Long) -> Unit = {},
     /** Gets a main-thread reader of the playing position while mounted, then null. */
-    onLivePosition: ((() -> Long)?) -> Unit = {}
+    onLivePosition: ((() -> Long)?) -> Unit = {},
+    chromeVisible: Boolean = true,
+    onToggleChrome: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
@@ -1332,12 +1361,22 @@ internal fun VideoPage(
             }
     }
     val latestSavePosition by rememberUpdatedState(onSavePosition)
+    // The visible position and play intent follow Media3 (including completion).
+    // Reading the player only on main also keeps Find Similar's live reader safe.
+    var playbackPositionMs by remember(player) { mutableLongStateOf(resumePositionMs.coerceAtLeast(0L)) }
+    var durationMs by remember(player) { mutableLongStateOf(0L) }
+    var playing by remember(player) { mutableStateOf(false) }
+    LaunchedEffect(player) {
+        while (true) {
+            playbackPositionMs = player.currentPosition.coerceAtLeast(0L)
+            durationMs = player.duration.takeIf { it > 0L } ?: 0L
+            playing = player.playWhenReady &&
+                player.playbackState != androidx.media3.common.Player.STATE_ENDED
+            delay(180)
+        }
+    }
     // A user may start playback then background ATLAS, lock the phone, or
-    // open another activity. Stop audio/video before the app is invisible;
-    // scrubbing still releases the player when this page leaves composition.
-    // Observing a different LifecycleOwner must never release a remembered
-    // player that remains mounted. Its release belongs to player disposal,
-    // while observers are detached/re-attached on owner changes.
+    // open another activity. Pause before invisible; no automatic resume.
     DisposableEffect(player, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (viewerVideoMustPause(event)) player.pause()
@@ -1358,10 +1397,129 @@ internal fun VideoPage(
             player.release()
         }
     }
-    AndroidView(factory = { PlayerView(it).apply {
-        this.player = player
-        useController = true
-    } }, modifier = Modifier.fillMaxSize())
+
+    var seeking by remember(player) { mutableStateOf(false) }
+    var seekFraction by remember(player) { mutableFloatStateOf(0f) }
+    var resumeAfterSeeking by remember(player) { mutableStateOf(false) }
+    val progress = if (seeking) seekFraction else if (durationMs > 0L)
+        (playbackPositionMs.toDouble() / durationMs.toDouble()).toFloat().coerceIn(0f, 1f)
+        else 0f
+    val targetMs = if (seeking) viewerVideoSeekPosition(durationMs, seekFraction) else null
+    var seekPreview by remember(uri) { mutableStateOf<Bitmap?>(null) }
+    // Changing the target cancels the previous request; a bounded 240x135
+    // frame is decoded only after the finger has held its latest position.
+    LaunchedEffect(uri, targetMs) {
+        seekPreview = null
+        val timeMs = targetMs ?: return@LaunchedEffect
+        if (durationMs <= 0L) return@LaunchedEffect
+        delay(100)
+        seekPreview = withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, Uri.parse(uri))
+                retriever.getScaledFrameAtTime(
+                    timeMs.coerceAtMost(Long.MAX_VALUE / 1_000L) * 1_000L,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 240, 135)
+            } catch (_: Exception) {
+                // Revoked or corrupt media: leave the preview empty, never
+                // expose a URI or interfere with Media3 playback.
+                null
+            } finally {
+                retriever.release()
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        AndroidView(factory = { PlayerView(it).apply {
+            this.player = player
+            useController = false
+        } }, modifier = Modifier.fillMaxSize())
+        // The Android video surface has no tap action. This transparent
+        // Compose layer gives touch users the same chrome toggle as TalkBack
+        // without stealing horizontal pager drags.
+        Box(Modifier.fillMaxSize().pointerInput(uri) {
+            detectTapGestures(onTap = { onToggleChrome() })
+        })
+        AnimatedVisibility(chromeVisible,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(horizontal = 14.dp, vertical = 164.dp),
+            enter = CHROME_ENTER, exit = CHROME_EXIT
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (seeking) {
+                    Box(Modifier.size(176.dp, 110.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF292929))
+                        .testTag("atlas-video-seek-preview"),
+                        contentAlignment = Alignment.Center) {
+                        seekPreview?.let { frame ->
+                            Image(frame.asImageBitmap(), contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop)
+                        }
+                        Text(viewerVideoTimecode(targetMs ?: 0L),
+                            color = Color.White, fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                                .background(Color(0xA0000000))
+                                .padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                ViewerPill(Modifier.fillMaxWidth().height(54.dp)
+                    .testTag("atlas-video-controls")) {
+                    IconButton(
+                        onClick = {
+                            if (player.playWhenReady) player.pause()
+                            else {
+                                if (player.playbackState ==
+                                    androidx.media3.common.Player.STATE_ENDED) player.seekTo(0L)
+                                player.play()
+                            }
+                        },
+                        modifier = Modifier.testTag("atlas-video-play-pause")
+                    ) {
+                        Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (playing) "Pause video" else "Play video", tint = Color.White)
+                    }
+                    Text(viewerVideoTimecode(if (seeking) targetMs ?: 0L else playbackPositionMs),
+                        color = Color.White, fontSize = 12.sp)
+                    Slider(
+                        value = progress,
+                        onValueChange = { value ->
+                            if (!seeking) {
+                                resumeAfterSeeking = player.playWhenReady
+                                player.pause()
+                                seeking = true
+                            }
+                            seekFraction = value.coerceIn(0f, 1f)
+                        },
+                        onValueChangeFinished = {
+                            if (seeking) {
+                                val atMs = viewerVideoSeekPosition(durationMs, seekFraction)
+                                player.seekTo(atMs)
+                                playbackPositionMs = atMs
+                                if (resumeAfterSeeking) player.play()
+                                seeking = false
+                            }
+                        },
+                        enabled = durationMs > 0L,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color(0xFF888888)),
+                        modifier = Modifier.weight(1f)
+                            .testTag("atlas-video-seek")
+                            .semantics { contentDescription = "Seek video" }
+                    )
+                    Text(viewerVideoTimecode(durationMs),
+                        color = Color.White, fontSize = 12.sp,
+                        modifier = Modifier.padding(end = 8.dp))
+                }
+            }
+        }
+    }
 }
 
 /**
