@@ -509,6 +509,7 @@ private fun StoryVideoStage(
     val latestCompleted by rememberUpdatedState(onCompleted)
     val latestReleased by rememberUpdatedState(onReleased)
     var firstFrame by remember(uri) { mutableStateOf(false) }
+    var isPlaying by remember(uri) { mutableStateOf(false) }
     var failed by remember(uri) { mutableStateOf(false) }
     var ended by remember(uri) { mutableStateOf(false) }
     val player = remember(uri) {
@@ -526,6 +527,9 @@ private fun StoryVideoStage(
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 firstFrame = true
+            }
+            override fun onIsPlayingChanged(value: Boolean) {
+                isPlaying = value
             }
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED && latestPlaying && !ended) {
@@ -600,6 +604,10 @@ private fun StoryVideoStage(
         if (firstFrame) {
             Box(Modifier.align(Alignment.TopStart).size(1.dp)
                 .testTag("atlas-story-video-first-frame"))
+        }
+        if (isPlaying) {
+            Box(Modifier.align(Alignment.TopStart).size(1.dp)
+                .testTag("atlas-story-video-is-playing"))
         }
         if (failed) {
             Column(Modifier.align(Alignment.Center)
