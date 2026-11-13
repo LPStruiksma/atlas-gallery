@@ -83,7 +83,8 @@ class PeopleForceStopRelaunchTest {
                 }
                 try {
                     assertTrue("Only an isolated emulator may execute process phases",
-                        android.os.Build.FINGERPRINT.contains("generic") ||
+                        android.os.Build.HARDWARE in setOf("ranchu", "goldfish") ||
+                            android.os.Build.FINGERPRINT.contains("generic") ||
                             android.os.Build.FINGERPRINT.contains("emulator"))
                     if (phase == "seed") {
                         assertTrue("The seed fixture must start empty", !root.exists())
