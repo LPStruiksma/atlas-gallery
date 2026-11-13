@@ -49,6 +49,38 @@ class AtlasDiagnosticsReportTest {
         assertTrue(text.contains("rows=599 outcome=SUCCESS"))
     }
 
+    @Test fun scannerFailuresUseTypedCodesAndRealFreshScanReuse() {
+        assertEquals("SNAPSHOT_CHANGED",
+            atlasScanFailureOutcome(GalleryProviderSnapshotChanged()))
+        assertEquals("OUT_OF_MEMORY", atlasScanFailureOutcome(OutOfMemoryError("/DCIM/secret")))
+        assertEquals("PERMISSION_DENIED",
+            atlasScanFailureOutcome(SecurityException("content://secret")))
+        assertEquals("CANCELLED",
+            atlasScanFailureOutcome(java.util.concurrent.CancellationException("secret")))
+        assertEquals("FAILED", atlasScanFailureOutcome(IllegalStateException("secret")))
+        AtlasDiagnosticsRing.scan(25, 42, "SUCCESS", reused = 0)
+        val last = AtlasDiagnosticsRing.scans().last()
+        assertEquals(42, last.rows)
+        assertEquals(0, last.reused)
+        assertEquals("SUCCESS", last.outcome)
+        assertTrue(formatAtlasDiagnostics(AtlasDiagnosticsSnapshot(scans = listOf(last)))
+            .contains("rows=42 reused=0"))
+    }
+
+    @Test fun populatedPeopleSlotsRemainNumbersAndBooleans() {
+        val text = formatAtlasDiagnostics(AtlasDiagnosticsSnapshot(
+            peopleDirty = true, peoplePending = 8, peopleOptIn = true,
+            lastPublicationMs = 1_799_900_123_000L, publicationDurationMs = 754,
+            visualModelPresent = true, visualModelVerified = false
+        ))
+        assertTrue(text.contains("People dirty: yes"))
+        assertTrue(text.contains("People pending: 8"))
+        assertTrue(text.contains("People opted in: yes"))
+        assertTrue(text.contains("Last People publication epoch ms: 1799900123000"))
+        assertTrue(text.contains("Last People publication duration ms: 754"))
+        assertTrue(text.contains("Visual model verified: no"))
+    }
+
     @Test fun unknownOrUnmeasuredFieldsAreExplicitNotInvented() {
         val text = formatAtlasDiagnostics(AtlasDiagnosticsSnapshot(
             peoplePhase = "QUEUED", photoAccess = "SELECTED"))

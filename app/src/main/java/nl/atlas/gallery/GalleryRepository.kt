@@ -372,6 +372,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         val scanStartedNanos = System.nanoTime()
         fun scanElapsedMilliseconds(): Long =
             ((System.nanoTime() - scanStartedNanos) / 1_000_000L).coerceAtLeast(0L)
+        var diagnosticOutcome = "SUPERSEDED"
+        var diagnosticRows: Int? = null
         // The scope belongs to the scan, not whichever Activity grant happens
         // to be visible when an asynchronous MediaStore cursor finishes.
         val observedGrantAtStart = readGalleryMediaGrant(getApplication<Application>())
@@ -412,6 +414,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
+                        diagnosticRows = inventory.size
+                        diagnosticOutcome = "SUCCESS"
                         // A prior failed scan followed by this exact authorized
                         // publication is now observable without logging media.
                         android.util.Log.i("ATLAS_SCAN",
@@ -434,8 +438,15 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             } catch (cancelled: CancellationException) {
                 // ViewModel disposal is not an inventory error. Never publish
                 // a misleading retry banner or spin up another canceled scan.
+                diagnosticOutcome = "CANCELLED"
                 throw cancelled
+            } catch (oom: OutOfMemoryError) {
+                // Record a fixed outcome while preserving the fatal JVM error.
+                diagnosticOutcome = atlasScanFailureOutcome(oom)
+                throw oom
             } catch (e: Exception) {
+                diagnosticOutcome = if (refreshQueue.mayPublish(ticket))
+                    atlasScanFailureOutcome(e) else "SUPERSEDED"
                 inventoryDirty = true
                 // Ignore errors from a request superseded by a newer access
                 // scope: its result is no longer authoritative either.
@@ -478,6 +489,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     }
                 }
             } finally {
+                // A full repository scan reads fresh MediaStore rows: 0 reused.
+                // Do not claim this count for failed or superseded attempts.
+                AtlasDiagnosticsRing.scan(scanElapsedMilliseconds(), diagnosticRows,
+                    diagnosticOutcome, reused = diagnosticRows?.let { 0 })
                 // A notification during IO marks the inventory dirty. Explicit
                 // new requests (not arbitrary continuous observer churn) get
                 // coalesced into a guaranteed follow-up read.

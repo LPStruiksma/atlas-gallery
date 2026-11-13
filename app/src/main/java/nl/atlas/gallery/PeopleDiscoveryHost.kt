@@ -170,6 +170,15 @@ internal data class PeopleDiscoveryStatus(
     val provenance: FaceCatalogPublication? = null
 )
 
+/** The scope-gated, identity-free fields allowed in diagnostic export. */
+internal data class PeopleAggregateDiagnostics(
+    val optedIn: Boolean?,
+    val dirty: Boolean? = null,
+    val pending: Int? = null,
+    val lastPublicationMs: Long? = null,
+    val publicationDurationMs: Long? = null
+)
+
 /**
  * The visual search index panel's facts. It rides on the face discovery run
  * (same worker, guards and grant), so [mayEnable] needs a started run.
@@ -557,6 +566,11 @@ internal class PeopleDiscoveryHost(
     private data class Snapshot(
         val optedIn: Boolean, val paused: Boolean, val scope: Scope?, val failure: String?
     )
+
+    private data class PeoplePublicationObservation(
+        val epoch: String, val timestampMs: Long, val durationMs: Long
+    )
+    @Volatile private var lastPublicationObservation: PeoplePublicationObservation? = null
 
     /** Failed publications in a row after a drained queue (#508 review). */
     private val publicationFailures = java.util.concurrent.atomic.AtomicInteger()
@@ -1198,7 +1212,13 @@ internal class PeopleDiscoveryHost(
             var publicationFailed = false
             try {
                 // Not due is one constant-cost read; a drained queue always publishes.
-                publishClusters(owned.epoch, drained)
+                val started = clockElapsedMs()
+                val didPublish = publishClusters(owned.epoch, drained)
+                if (didPublish && scopeCurrent()) {
+                    lastPublicationObservation = PeoplePublicationObservation(owned.epoch,
+                        System.currentTimeMillis().coerceAtLeast(0L),
+                        (clockElapsedMs() - started).coerceAtLeast(0L))
+                }
                 publicationContinues = drained && store.clusterPublicationContinues(owned.epoch)
                 publicationFailures.set(0)
             } catch (e: CancellationException) {
@@ -1241,6 +1261,28 @@ internal class PeopleDiscoveryHost(
         override fun afterBatch(result: FaceBatchResult) = afterBatch(result, null)
 
         override fun close() = Unit
+    }
+
+    /**
+     * Read-only aggregate snapshot. The current epoch and Android grant fence
+     * both the SQLite generation read and the in-process timing observation.
+     * This method never publishes, scans or exposes epoch/identity strings.
+     */
+    fun aggregateDiagnostics(galleryGrant: String?): PeopleAggregateDiagnostics {
+        if (galleryGrant == null || !photoGrantCurrent())
+            return PeopleAggregateDiagnostics(null)
+        val (active, epoch) = synchronized(lock) {
+            optedIn to scope?.takeIf { optedIn && it.galleryGrant == galleryGrant }?.epoch
+        }
+        val current = epoch?.takeIf { scopeCurrent(it) }
+        val generation = current?.let {
+            runCatching { store.clusterGenerationDiagnostics(it) }.getOrNull()
+        }
+        val observation = lastPublicationObservation?.takeIf {
+            current != null && it.epoch == current && generation != null
+        }
+        return PeopleAggregateDiagnostics(active, generation?.first,
+            generation?.second, observation?.timestampMs, observation?.durationMs)
     }
 
     /** One consistent read for the People panel. Blocking; IO only. */

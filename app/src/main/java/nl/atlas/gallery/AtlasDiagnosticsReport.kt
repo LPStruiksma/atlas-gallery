@@ -15,6 +15,15 @@ internal data class AtlasScanDiagnostic(
     val outcome: String
 )
 
+/** No exception text or Android media identifiers enter the ring. */
+internal fun atlasScanFailureOutcome(error: Throwable): String = when (error) {
+    is GalleryProviderSnapshotChanged -> "SNAPSHOT_CHANGED"
+    is OutOfMemoryError -> "OUT_OF_MEMORY"
+    is java.util.concurrent.CancellationException -> "CANCELLED"
+    is SecurityException -> "PERMISSION_DENIED"
+    else -> "FAILED"
+}
+
 internal data class AtlasWorkDiagnostic(
     val state: String,
     val attempts: Int?,
@@ -198,18 +207,19 @@ internal object AtlasDiagnosticsRing {
     private val history = ArrayDeque<AtlasScanDiagnostic>()
     private val lines = ArrayDeque<String>()
 
-    fun scan(durationMs: Long, rows: Int?, outcome: String) {
+    fun scan(durationMs: Long, rows: Int?, outcome: String, reused: Int? = null) {
         val runtime = Runtime.getRuntime()
         val used = (runtime.totalMemory() - runtime.freeMemory()).coerceAtLeast(0)
         val limit = runtime.maxMemory()
         val safeOutcome = code(outcome, OUTCOMES)
-        val event = AtlasScanDiagnostic(durationMs.coerceAtLeast(0), rows, null,
-            used, limit, safeOutcome)
+        val event = AtlasScanDiagnostic(durationMs.coerceAtLeast(0), rows?.takeIf { it >= 0 },
+            reused?.takeIf { it >= 0 }, used, limit, safeOutcome)
         synchronized(lock) {
             history.addLast(event)
             while (history.size > 20) history.removeFirst()
             appendLog("ATLAS_SCAN elapsed_ms=" + event.durationMs +
-                (rows?.let { " rows=" + it } ?: "") + " heap_used=" + used +
+                (event.rows?.let { " rows=" + it } ?: "") +
+                (event.reused?.let { " reused=" + it } ?: "") + " heap_used=" + used +
                 " heap_limit=" + limit + " outcome=" + safeOutcome)
         }
     }

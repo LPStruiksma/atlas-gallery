@@ -16,6 +16,8 @@ import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
 import nl.atlas.gallery.featuremedia.MicroThumbnails
 import nl.atlas.gallery.featurepeople.identity.PeopleNumbers
 import nl.atlas.gallery.featurevisual.onnx.SiglipImageEmbedder
+import nl.atlas.gallery.featurevisual.onnx.SiglipModel
+import nl.atlas.gallery.featurevisual.onnx.SiglipModelFile
 
 /**
  * Strictly read-only system and already-published ATLAS aggregates. The scan,
@@ -79,6 +81,18 @@ internal suspend fun captureAtlasDiagnostics(
                 } ?: emptyList()
         }.getOrDefault(emptyList())
     } else emptyList()
+    val peopleDiagnostics = if (current && faceGrantEpoch != null) {
+        runCatching { faceHost.aggregateDiagnostics(faceGrantEpoch) }.getOrNull()
+    } else null
+    // The folder's existence alone is not evidence of a valid model.
+    // Verify the joined model's pinned size and hash on this explicit IO export.
+    val modelFile = File(File(context.noBackupFilesDir, SiglipImageEmbedder.MODEL_DIR),
+        SiglipModel.FILE_NAME)
+    val modelPresent = modelFile.isFile
+    val modelVerified = if (!modelPresent) false else runCatching {
+        modelFile.length() == SiglipModel.SIZE_BYTES &&
+            SiglipModelFile.sha256Hex(modelFile) == SiglipModel.SHA256
+    }.getOrNull()
     val ui = status?.ui?.takeIf { current }
     val visual = status?.visual?.takeIf { current }
     val snapshot = AtlasDiagnosticsSnapshot(
@@ -105,15 +119,17 @@ internal suspend fun captureAtlasDiagnostics(
         peopleProcessed = ui?.processed ?: 0,
         peopleFaces = people?.faces,
         peopleClusters = people?.let { it.groupsOf3 + it.pairs + it.singletons + it.namedPeople },
-        // The current host does not publish dirty/pending counters, an opt-in
-        // flag or publication durations as safe read-only accessors.
+        peopleDirty = peopleDiagnostics?.dirty,
+        peoplePending = peopleDiagnostics?.pending,
+        peopleOptIn = peopleDiagnostics?.optedIn,
+        lastPublicationMs = peopleDiagnostics?.lastPublicationMs,
+        publicationDurationMs = peopleDiagnostics?.publicationDurationMs,
         visualOptIn = visual?.enabled,
         visualDone = visual?.done,
         visualTotal = visual?.total,
         visualSkipped = visual?.skipped,
-        visualModelPresent = runCatching {
-            File(context.noBackupFilesDir, SiglipImageEmbedder.MODEL_DIR).exists()
-        }.getOrNull(),
+        visualModelPresent = modelPresent,
+        visualModelVerified = modelVerified,
         batteryPercent = percent,
         charging = charging,
         thermalStatus = if (Build.VERSION.SDK_INT >= 29) power?.currentThermalStatus else null,
@@ -134,7 +150,9 @@ internal suspend fun captureAtlasDiagnostics(
         formatAtlasDiagnostics(snapshot.copy(
             images = 0, videos = 0, volumes = 0, folders = 0, photoAccess = "NONE",
             peoplePhase = "UNAVAILABLE", peopleEligible = 0, peopleProcessed = 0,
-            peopleFaces = null, peopleClusters = null, visualOptIn = null,
+            peopleFaces = null, peopleClusters = null, peopleDirty = null,
+            peoplePending = null, peopleOptIn = null, lastPublicationMs = null,
+            publicationDurationMs = null, visualOptIn = null,
             visualDone = null, visualTotal = null, visualSkipped = null
         ))
     } else formatAtlasDiagnostics(snapshot)
