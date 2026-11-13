@@ -1021,18 +1021,47 @@ private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowSc
         content = content)
 }
 
-/** Hide status + navigation bars with the chrome; always restore on exit. */
+/**
+ * #680: the viewer owns a black backdrop behind Android's system navigation
+ * area and light bar icons even when entered from the light-themed gallery.
+ * Keep this override for the viewer's lifetime, independent of chrome.
+ */
 @Composable
 private fun ViewerSystemBars(visible: Boolean) {
     val view = LocalView.current
     val window = (view.context as? android.app.Activity)?.window ?: return
-    DisposableEffect(window, view, visible) {
+    DisposableEffect(window, view) {
         val controller = WindowCompat.getInsetsController(window, view)
+        val oldStatusColor = window.statusBarColor
+        val oldNavigationColor = window.navigationBarColor
+        val oldNavContrast = window.isNavigationBarContrastEnforced
+        val oldLightStatus = controller.isAppearanceLightStatusBars
+        val oldLightNavigation = controller.isAppearanceLightNavigationBars
+        val oldBehavior = controller.systemBarsBehavior
+
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
+        // Android can otherwise overlay a light 3-button contrast scrim.
+        window.isNavigationBarContrastEnforced = false
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+        onDispose {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = oldStatusColor
+            window.navigationBarColor = oldNavigationColor
+            window.isNavigationBarContrastEnforced = oldNavContrast
+            controller.isAppearanceLightStatusBars = oldLightStatus
+            controller.isAppearanceLightNavigationBars = oldLightNavigation
+            controller.systemBarsBehavior = oldBehavior
+        }
+    }
+    LaunchedEffect(window, view, visible) {
+        val controller = WindowCompat.getInsetsController(window, view)
         if (visible) controller.show(WindowInsetsCompat.Type.systemBars())
         else controller.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
     }
 }
 

@@ -98,7 +98,11 @@ internal fun ViewerDetailsSheet(
     ) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp).padding(bottom = 36.dp)
+                .padding(horizontal = 24.dp)
+                // The scrollable rows clear the 3-button navigation area
+                // even with a viewer sheet drawn edge-to-edge (#680).
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = 36.dp)
         ) {
             Text("Details", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(18.dp))

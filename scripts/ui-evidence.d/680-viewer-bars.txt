@@ -1,0 +1,5 @@
+# #680: Viewer bars and inset-safe Details under both gallery themes.
+680-viewer-light
+680-details-light
+680-viewer-dark
+680-details-dark
