@@ -1,0 +1,58 @@
+name: ATLAS bounded KVM failed-job retry
+
+# Native, bounded replacement for chat-triggered KVM sweeps (#673).
+# Only the workflow_run job gets actions:write. Never execute or check out PR
+# source in that privileged job: the policy code is loaded from trusted main.
+on:
+  workflow_run:
+    workflows:
+      - ATLAS Android - Build and UI Evidence
+    types: [completed]
+  pull_request:
+    paths:
+      - '.github/workflows/kvm-failure-retry.yml'
+      - 'scripts/kvm_failure_retry.py'
+      - 'scripts/test_kvm_failure_retry.py'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-tests:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Check out candidate for isolated, read-only policy fixtures
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Test KVM-only retry evidence and attempt cap
+        run: python3 -m unittest discover -s scripts -p 'test_kvm_failure_retry.py'
+
+  retry-failed-kvm-shards:
+    if: >-
+      ${{ github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'failure' &&
+          github.event.repository.full_name == 'LPStruiksma/atlas-gallery' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    concurrency:
+      group: atlas-kvm-retry-${{ github.event.workflow_run.id }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out trusted default-branch policy only (never failed PR)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Admit exact KVM-only diagnostic and rerun failed jobs at most twice
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/kvm_failure_retry.py
