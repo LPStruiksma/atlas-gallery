@@ -1,5 +1,13 @@
 package nl.atlas.gallery.featurestories
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -34,8 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -49,6 +59,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -361,7 +373,10 @@ private fun StoryTile(story: StoryCard, onClick: () -> Unit) {
     }
 }
 
-/** Still images advance every five seconds; videos require an explicit viewer handoff. */
+/**
+ * A photo timer and an inline, single-moment Media3 player share the same deck
+ * position. Neither the Player nor its URI is persisted in the story state.
+ */
 @Composable
 private fun StoryPlayback(
     story: StoryCard,
@@ -383,10 +398,25 @@ private fun StoryPlayback(
     }
     Surface(modifier.fillMaxSize().testTag("atlas-story-player"), color = Color.Black) {
         Box(Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = Uri.parse(item.uri), contentDescription = "Moment " + (index + 1) + " of " + story.items.size,
-                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()
-            )
+            if (item.isVideo) {
+                StoryVideoStage(
+                    uri = item.uri,
+                    playing = playing,
+                    onPaused = { onPositionChange(index, false) },
+                    onCompleted = {
+                        if (index < story.items.lastIndex) onPositionChange(index + 1, true)
+                        else onPositionChange(index, false)
+                    }
+                )
+            } else {
+                AsyncImage(
+                    model = Uri.parse(item.uri),
+                    contentDescription = "Moment " + (index + 1) + " of " + story.items.size,
+                    contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()
+                )
+            }
+            // The video surface has no platform controller: the same accessible
+            // story controls stay on top of either media kind.
             Column(Modifier.align(Alignment.TopCenter).fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.68f)).padding(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -400,10 +430,12 @@ private fun StoryPlayback(
                     Text(story.title, style = MaterialTheme.typography.titleMedium,
                         color = Color.White, modifier = Modifier.weight(1f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = { onPositionChange(index, !playing) }, enabled = !item.isVideo,
+                    IconButton(onClick = { onPositionChange(index, !playing) },
                         modifier = Modifier.testTag("atlas-story-pause")) {
                         Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (item.isVideo) "Open video below" else if (playing) "Pause slideshow" else "Resume slideshow",
+                            contentDescription = if (item.isVideo) {
+                                if (playing) "Pause video" else "Resume video"
+                            } else if (playing) "Pause slideshow" else "Resume slideshow",
                             tint = Color.White)
                     }
                     IconButton(onClick = onClose,
@@ -416,22 +448,155 @@ private fun StoryPlayback(
                 .background(Color.Black.copy(alpha = 0.68f)).padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                IconButton(onClick = { if (index > 0) onPositionChange(index - 1, playing) }, enabled = index > 0,
-                    modifier = Modifier.testTag("atlas-story-previous")) {
+                IconButton(onClick = {
+                    if (index > 0) onPositionChange(index - 1, playing)
+                }, enabled = index > 0, modifier = Modifier.testTag("atlas-story-previous")) {
                     Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous moment", tint = Color.White)
                 }
-                TextButton(onClick = { onOpenMedia(item.uri) },
-                    modifier = Modifier.testTag("atlas-story-open-gallery")) {
+                TextButton(onClick = {
+                    // The optional Viewer route never leaves a playing video behind.
+                    onPositionChange(index, false)
+                    onOpenMedia(item.uri)
+                }, modifier = Modifier.testTag("atlas-story-open-gallery")) {
                     Icon(Icons.Filled.OpenInFull, null, tint = Color.White,
                         modifier = Modifier.size(16.dp))
-                    Text(if (item.isVideo) "Play video" else "Open photo", color = Color.White,
+                    Text(if (item.isVideo) "Open video" else "Open photo", color = Color.White,
                         modifier = Modifier.padding(start = 8.dp))
                 }
                 IconButton(onClick = {
-                    if (index < story.items.lastIndex) onPositionChange(index + 1, playing) else onClose()
-                },
-                    modifier = Modifier.testTag("atlas-story-next")) {
+                    if (index < story.items.lastIndex) onPositionChange(index + 1, playing)
+                    else onClose()
+                }, modifier = Modifier.testTag("atlas-story-next")) {
                     Icon(Icons.Filled.SkipNext, contentDescription = "Next moment", tint = Color.White)
+                }
+            }
+            // Video frames are a platform Surface, not Compose semantics. Keep
+            // the same explicit moment description available to accessibility.
+            if (item.isVideo) {
+                Box(Modifier.align(Alignment.Center).size(1.dp)
+                    .testTag("atlas-story-video-moment-" + (index + 1)))
+            }
+        }
+    }
+}
+
+/**
+ * One local media URI at a time. The player belongs to this composition only:
+ * stepping, Back, Viewer handoff, token revocation and screen unmount all
+ * dispose it. Pausing the app pauses the saved Story position as well, so a
+ * foreground return never starts audio automatically.
+ */
+@Composable
+private fun StoryVideoStage(
+    uri: String,
+    playing: Boolean,
+    onPaused: () -> Unit,
+    onCompleted: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val latestPlaying by rememberUpdatedState(playing)
+    val latestPaused by rememberUpdatedState(onPaused)
+    val latestCompleted by rememberUpdatedState(onCompleted)
+    var firstFrame by remember(uri) { mutableStateOf(false) }
+    var failed by remember(uri) { mutableStateOf(false) }
+    var ended by remember(uri) { mutableStateOf(false) }
+    val player = remember(uri) {
+        ExoPlayer.Builder(context)
+            .setAudioAttributes(androidx.media3.common.AudioAttributes.DEFAULT, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+                playWhenReady = false
+                prepare()
+            }
+    }
+
+    DisposableEffect(player, lifecycleOwner) {
+        val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                firstFrame = true
+            }
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED && latestPlaying && !ended) {
+                    ended = true
+                    latestCompleted()
+                }
+            }
+            override fun onPlayerError(error: PlaybackException) {
+                failed = true
+                player.pause()
+                latestPaused()
+            }
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                // Audio-focus loss or a disconnected headset must not leave the
+                // UI advertising "Pause video" when playback has stopped.
+                if (!playWhenReady && latestPlaying &&
+                    reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS) {
+                    latestPaused()
+                }
+            }
+        }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                player.pause()
+                latestPaused()
+            }
+        }
+        player.addListener(listener)
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            player.pause()
+            latestPaused()
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            player.removeListener(listener)
+            player.pause()
+            player.release()
+        }
+    }
+    LaunchedEffect(player, playing, failed) {
+        if (playing && !failed &&
+            lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            if (player.playbackState == Player.STATE_ENDED) {
+                ended = false
+                player.seekTo(0L)
+            }
+            player.play()
+        } else {
+            player.pause()
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    this.player = player
+                    useController = false
+                }
+            },
+            update = { it.player = player },
+            modifier = Modifier.fillMaxSize().testTag("atlas-story-video-surface")
+        )
+        if (firstFrame) {
+            Box(Modifier.align(Alignment.TopStart).size(1.dp)
+                .testTag("atlas-story-video-first-frame"))
+        }
+        if (failed) {
+            Column(Modifier.align(Alignment.Center)
+                .background(Color.Black.copy(alpha = 0.86f))
+                .padding(24.dp).testTag("atlas-story-video-error"),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("This video could not be played", color = Color.White)
+                TextButton(onClick = {
+                    failed = false
+                    ended = false
+                    player.prepare()
+                    // Explicit retry: never silently loop an inaccessible URI.
+                    latestPaused()
+                }, modifier = Modifier.testTag("atlas-story-video-retry")) {
+                    Text("Retry video", color = Color.White)
                 }
             }
         }
