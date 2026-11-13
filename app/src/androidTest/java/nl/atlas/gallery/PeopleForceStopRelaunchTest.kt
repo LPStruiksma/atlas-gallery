@@ -285,9 +285,8 @@ class PeopleForceStopRelaunchTest {
             compose.onAllNodesWithText("Restoring…").fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodesWithText("Unavailable").fetchSemanticsNodes().isEmpty())
         compose.onNodeWithTag("atlas-header-back").performClick()
-        // The grid must not be replaced by the first-time inventory spinner.
-        waitFor("Photos grid first frame") { has("atlas-timeline-grid") }
-        compose.onNodeWithTag("atlas-first-scan").assertDoesNotExist()
+        // Back lands on People: captureLibrary opens Photos itself and checks the
+        // grid is not replaced by the first-time inventory spinner.
         captureLibrary("after")
         compose.onNodeWithTag("atlas-nav-people").performClick()
         waitFor("named People after a new process") { has("atlas-native-person-album") }
