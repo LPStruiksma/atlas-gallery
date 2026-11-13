@@ -79,7 +79,8 @@ abstract class SelectionPillActivityJourney(private val dark: Boolean) {
             .getUnclippedBoundsInRoot()
         val pill = compose.onNodeWithTag("atlas-selection-pill")
             .getUnclippedBoundsInRoot()
-        assertTrue("Action pill must be narrower than the full-width bar", pill.width < outer.width)
+        assertTrue("Action pill must be narrower than the full-width bar",
+            (pill.right - pill.left) < (outer.right - outer.left))
         assertTrue("Action pill must clear the bottom inset/margin", pill.bottom < outer.bottom)
         compose.onNodeWithTag("atlas-selection-share").assertIsEnabled()
         compose.onNodeWithTag("atlas-selection-trash").assertIsEnabled()
