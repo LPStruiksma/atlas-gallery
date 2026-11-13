@@ -222,4 +222,35 @@ class GalleryInventoryCacheTest {
         assertTrue(GalleryPublishedInventory(8L, items).displayItems(full).isEmpty())
         assertTrue(GalleryPublishedInventory(9L, emptyList()).displayItems(full).isEmpty())
     }
+
+    // #41: the phone's bug report has two fatal OutOfMemoryErrors in decode and
+    // one in encode. The cache is an optimisation and must never end the app.
+    @Test fun heapExhaustionWhileReadingMeansNoCacheNotACrash() {
+        val dir = Files.createTempDirectory("atlas-cache-oom-read-").toFile()
+        try {
+            val cache = GalleryInventoryCacheFile(java.io.File(dir, "inventory.bin"))
+            cache.write(full, listOf(record(1), record(2)))
+            assertNull(cache.read { throw OutOfMemoryError("synthetic") })
+            // The file is untouched: a later read with heap to spare succeeds.
+            assertEquals(2, cache.read()?.items?.size)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun heapExhaustionWhileWritingKeepsThePreviousCache() {
+        val dir = Files.createTempDirectory("atlas-cache-oom-write-").toFile()
+        try {
+            val destination = java.io.File(dir, "inventory.bin")
+            val cache = GalleryInventoryCacheFile(destination)
+            cache.write(full, listOf(record(1)))
+            cache.write(full, listOf(record(1), record(2), record(3))) {
+                throw OutOfMemoryError("synthetic")
+            }
+            assertEquals(1, cache.read()?.items?.size)
+            assertFalse(java.io.File(dir, "inventory.bin.tmp").exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 }

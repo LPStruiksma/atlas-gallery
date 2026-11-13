@@ -149,7 +149,14 @@ internal class GalleryInventoryCacheFile(private val file: File) {
                 file.inputStream().use { GalleryInventoryCacheCodec.decode(it, checkActive) }
             } catch (cancelled: java.util.concurrent.CancellationException) {
                 throw cancelled
-            } catch (_: Exception) { null }
+            } catch (_: Exception) { null
+            } catch (_: OutOfMemoryError) {
+                // #41: the phone ran out of heap in decode twice in one day.
+                // The cache is an optimisation: without it the scan fills the
+                // screen. The half-built list is unreachable from here on.
+                android.util.Log.w("ATLAS_SCAN", "event=cache_read_out_of_memory")
+                null
+            }
         }
 
     fun write(grant: GalleryMediaGrant, items: List<MediaRecord>, checkActive: () -> Unit = {}) {
@@ -171,6 +178,12 @@ internal class GalleryInventoryCacheFile(private val file: File) {
             } catch (e: Exception) {
                 tmp.delete()
                 if (e is java.util.concurrent.CancellationException) throw e
+            }
+            catch (_: OutOfMemoryError) {
+                // #41: a cache that cannot be written is skipped, never fatal;
+                // the previous cache file stays as it was.
+                tmp.delete()
+                android.util.Log.w("ATLAS_SCAN", "event=cache_write_out_of_memory")
             }
         }
     }
