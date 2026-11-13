@@ -10,7 +10,10 @@ const micro = read('app/src/main/java/nl/atlas/gallery/featuremedia/MicroThumbna
 
 // A cold-start permission observation must not erase previously chosen
 // face/visual discovery, and genuinely revoked scopes must stay hidden.
-assert.match(host, /if \(!photoGrantCurrent\(\)\) \{\s*if \(synchronized\(lock\) \{ scope == null \}\)/);
+// A fresh process has no scope after a real OS revoke as well as a pending refresh.
+// The actual Android grant loss must clear the saved opt-in unconditionally.
+assert.match(host, /if \(!photoGrantCurrent\(\)\) \{\s*Log\.i\("ATLAS_FACE", "publication_revoke cause=android_grant_lost"\)\s*revoke\(\)/);
+assert.doesNotMatch(host, /if \(synchronized\(lock\) \{ scope == null \}\)/);
 assert.match(host, /visualOptedIn = optedIn && optInMemory\.loadVisual\(\)/);
 assert.match(host, /optInMemory\.saveVisual\(true\)/);
 assert.match(host, /optInMemory\.saveVisual\(false\)/);
