@@ -182,12 +182,20 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         listOf("photos", "albums", "people").forEach { tab ->
             compose.onNodeWithTag("atlas-nav-$tab").performClick()
             waitFor(hasTestTag("atlas-header-more"))
+            if (tab == "photos") {
+                // The Photos sort icon remains available on the Photos route.
+                compose.onNodeWithTag("atlas-photos-sort").assertExists()
+            }
             compose.onNodeWithTag("atlas-header-more").performClick()
             waitFor(hasTestTag("atlas-library-status"))
             settle()
             saveUiEvidence("settings-664-menu-$tab-$mode.png")
             compose.onNodeWithTag("atlas-library-status").performClick()
             waitFor(hasTestTag("atlas-settings-screen"))
+            if (tab == "photos") {
+                // #664 review: Photos actions must not leak into the Settings header.
+                compose.onNodeWithTag("atlas-photos-sort").assertDoesNotExist()
+            }
             listOf("atlas-settings-face-scanning", "atlas-people-numbers-open",
                 "atlas-settings-theme", "atlas-settings-advanced",
                 "atlas-settings-version").forEach {
