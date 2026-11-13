@@ -6,6 +6,8 @@ const viewer = readFileSync(new URL('../../app/src/main/java/nl/atlas/gallery/Ga
 const details = readFileSync(new URL('../../app/src/main/java/nl/atlas/gallery/ViewerDetailsSheet.kt', import.meta.url), 'utf8');
 
 test('viewer bars stay black across chrome toggles and restore the gallery on exit (#680)', () => {
+  assert.match(viewer, /view\.context\.viewerHostActivity\(\)/);
+  assert.match(viewer, /is android\.content\.ContextWrapper -> baseContext\.viewerHostActivity\(\)/);
   assert.match(viewer, /DisposableEffect\(window, view\)\s*\{/);
   assert.match(viewer, /window\.navigationBarColor = android\.graphics\.Color\.BLACK/);
   assert.match(viewer, /window\.statusBarColor = android\.graphics\.Color\.BLACK/);
