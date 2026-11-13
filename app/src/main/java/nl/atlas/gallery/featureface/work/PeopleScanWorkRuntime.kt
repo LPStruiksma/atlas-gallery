@@ -79,12 +79,17 @@ internal fun thermalAllowsScan(context: Context): Boolean {
 internal fun safeToStep(
     session: PeopleScanSession,
     thermalAllowed: Boolean,
-    stopped: Boolean
+    stopped: Boolean,
+    manualForeground: Boolean = false
 ): Boolean {
     if (stopped || !thermalAllowed || session.epoch.isBlank()) return false
     return try {
         val conditions = session.currentConditions() ?: return false
-        conditions.canRun() && conditions.charging && session.scopeCurrent()
+        // Manual is allowed only when the host currently vouches for foreground mode.
+        // Every WorkManager call uses the default and still requires charging.
+        val powerAllowed = if (manualForeground) !conditions.backgroundMaintenance
+            else conditions.charging
+        conditions.canRun() && powerAllowed && session.scopeCurrent()
     } catch (cancelled: java.util.concurrent.CancellationException) {
         throw cancelled
     } catch (interrupted: InterruptedException) {

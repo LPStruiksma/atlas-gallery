@@ -63,6 +63,7 @@ import nl.atlas.gallery.featureface.FaceFrameReader
 import nl.atlas.gallery.featureface.FaceMediaKey
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
+import nl.atlas.gallery.featureface.ManualFaceScanGuard
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
@@ -140,7 +141,9 @@ import nl.atlas.gallery.featurepersistence.IndexedMedia
 internal data class PeoplePowerState(
     val charging: Boolean,
     val batteryNotLow: Boolean,
-    val storageNotLow: Boolean
+    val storageNotLow: Boolean,
+    val batteryPercent: Int? = 100,
+    val thermalStatus: Int? = 0
 )
 
 /** Where the worker's bounded batches go; WorkManager in the app, a fake in tests. */
@@ -524,7 +527,10 @@ internal class PeopleDiscoveryHost(
             return PeoplePowerState(
                 charging = plugged,
                 batteryNotLow = plugged || percent > 15,
-                storageNotLow = context.filesDir.usableSpace > 512L * 1024 * 1024
+                storageNotLow = context.filesDir.usableSpace > 512L * 1024 * 1024,
+                batteryPercent = if (level >= 0 && scale > 0) percent else null,
+                thermalStatus = (context.getSystemService(Context.POWER_SERVICE)
+                    as? android.os.PowerManager)?.currentThermalStatus
             )
         }
     }
@@ -563,6 +569,10 @@ internal class PeopleDiscoveryHost(
     private val lock = Any()
     private var optedIn = false
     private var pausedByUser = false
+    @Volatile private var manualForegroundActive = false
+    @Volatile private var foregroundVisible = false
+    private var manualGeneration = 0L
+    @Volatile private var lastManualWait: String? = null
     private var scope: Scope? = null
     private var failure: String? = null
     private var failedGrant: String? = null
@@ -629,6 +639,67 @@ internal class PeopleDiscoveryHost(
         liveEpoch == epoch && synchronized(lock) { optedIn } && photoGrantCurrent()
 
     /** The user's explicit "Discover faces". Blocking; IO only. */
+    /**
+     * #61: a manual invocation is a process-local, foreground-only capability.
+     * Never store it with the persisted opt-in or in WorkManager Data.
+     */
+    fun setForegroundVisible(visible: Boolean) {
+        if (foregroundVisible == visible) return
+        foregroundVisible = visible
+        if (!visible) stopManualForeground(note = "ATLAS is in the background")
+    }
+
+    fun beginManualForeground(galleryGrant: String, inventory: List<FaceVisibleMedia>): Long? {
+        if (!foregroundVisible || !photoGrantCurrent()) return null
+        val existing = synchronized(lock) {
+            optedIn && scope?.galleryGrant == galleryGrant && liveEpoch == scope?.epoch
+        }
+        if (!existing) start(galleryGrant, inventory)
+        else if (synchronized(lock) { pausedByUser }) resume()
+        if (!foregroundVisible || !photoGrantCurrent()) return null
+        val token = synchronized(lock) {
+            if (!optedIn || pausedByUser || scope?.galleryGrant != galleryGrant ||
+                liveEpoch != scope?.epoch) null
+            else {
+                manualGeneration++
+                manualForegroundActive = true
+                lastManualWait = null
+                manualGeneration
+            }
+        }
+        if (token != null) {
+            // Cancel the charging-only chain before the explicit foreground loop.
+            scheduler.cancel()
+            PeopleScanWorkRuntime.installForOptedInHost(provider)
+            changed()
+        }
+        return token
+    }
+
+    fun manualScanActive(token: Long): Boolean = synchronized(lock) {
+        manualForegroundActive && foregroundVisible && manualGeneration == token
+    }
+
+    fun manualHoldReason(token: Long): String? {
+        if (!manualScanActive(token)) return "ATLAS is in the background"
+        val state = power()
+        return ManualFaceScanGuard(
+            state.batteryPercent, state.thermalStatus, foregroundVisible
+        ).holdReason()
+    }
+
+    fun stopManualForeground(token: Long? = null, note: String? = null) {
+        val updated = synchronized(lock) {
+            if (token != null && token != manualGeneration) return@synchronized false
+            if (!manualForegroundActive && note == null) return@synchronized false
+            manualForegroundActive = false
+            if (note != null) lastManualWait = note
+            true
+        }
+        if (updated) changed()
+    }
+
+
     fun start(galleryGrant: String, inventory: List<FaceVisibleMedia>) {
         if (!photoGrantCurrent()) return
         synchronized(lock) {
@@ -655,6 +726,7 @@ internal class PeopleDiscoveryHost(
     }
 
     fun pause() {
+        stopManualForeground()
         synchronized(lock) { if (!optedIn) return; pausedByUser = true }
         optInMemory.save(PeopleOptIn(paused = true))
         scheduler.cancel()
@@ -681,6 +753,7 @@ internal class PeopleDiscoveryHost(
      * Keeps the private index for reconciliation; never touches V4 People.
      */
     fun revoke() {
+        stopManualForeground()
         synchronized(lock) {
             optedIn = false
             pausedByUser = false
@@ -1056,11 +1129,12 @@ internal class PeopleDiscoveryHost(
             optedIn = opted,
             photosPermissionGranted = photoGrantCurrent(),
             permissionSnapshotCurrent = liveEpoch == epoch,
-            batteryNotLow = p.batteryNotLow,
+            batteryNotLow = p.batteryNotLow &&
+                (!manualForegroundActive || p.batteryPercent?.let { it >= 30 } == true),
             storageNotLow = p.storageNotLow,
             charging = p.charging,
             pausedByUser = paused,
-            backgroundMaintenance = true
+            backgroundMaintenance = !manualForegroundActive
         )
     }
 
@@ -1217,7 +1291,7 @@ internal class PeopleDiscoveryHost(
             // next run that has visual work opens it again.
             if (visualNext == NextBatch.NONE) closeEmbedder()
             val paused = synchronized(lock) { pausedByUser }
-            if (!paused && scopeCurrent()) when (
+            if (!manualForegroundActive && !paused && scopeCurrent()) when (
                 combineNextBatch(when {
                     publicationContinues -> NextBatch.NOW
                     retryPublication -> NextBatch.LATER
@@ -1278,13 +1352,24 @@ internal class PeopleDiscoveryHost(
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability())
         }
         val hold = conditions(scoped.epoch).holdReason()
+        val manualWait = if (manualForegroundActive) {
+            val p = power()
+            ManualFaceScanGuard(p.batteryPercent, p.thermalStatus, foregroundVisible).holdReason()
+        } else null
+        val pending = progress.pending + progress.running > 0
+        val waitNote = if (!pending || snap.paused) null else when {
+            manualWait != null -> manualWait
+            manualForegroundActive -> null
+            !power().charging -> lastManualWait ?: "Waiting for charging · use Scan now while unplugged"
+            else -> lastManualWait
+        }
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
-            counts.awaitingReview, hold)
+            counts.awaitingReview, if (manualWait != null) FaceScanPhase.BATTERY_LOW else hold)
         val total = progress.pending + progress.running + progress.processed + progress.failed
         val ui = presentNativeFaceScan(NativeFaceScanDisplayEvidence(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,
             counts.awaitingReview, nativeDetectorInstalled = true, realStartActionAvailable = true
-        ), scoped.epoch)
+        ), scoped.epoch).copy(statusNote = waitNote)
         val people = currentHome(scoped.epoch)
         return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
