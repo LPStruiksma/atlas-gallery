@@ -5,12 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.net.Uri
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,11 +62,12 @@ class PhotoDnaPanoramaAndroidTest {
                 heightPixels = 1_000
             )
             var oversizedSkips = 0
-            val hash = visualHashAuthorizedImage(
+            val hash = requireNotNull(visualHashAuthorizedImage(
                 resolver, record, stillAuthorized = { true },
-                checkCancelled = {}, onOverBudget = { oversizedSkips++ })
-            assertNotNull("panorama should not be skipped", hash)
-            assertTrue(requireNotNull(hash).informative)
+                checkCancelled = {}, onOverBudget = { oversizedSkips++ })) {
+                "panorama should not be skipped"
+            }
+            assertTrue(hash.informative)
             assertEquals(0, oversizedSkips)
         } finally {
             resolver.delete(uri, null, null)
