@@ -76,7 +76,7 @@ class PeopleForceStopRelaunchTest {
     private val prepare = object : TestRule {
         override fun apply(base: Statement, description: Description) = object : Statement() {
             override fun evaluate() {
-                val phase = instrumentation.arguments.getString("atlasForceStopPhase")
+                val phase = InstrumentationRegistry.getArguments().getString("atlasForceStopPhase")
                 if (phase !in setOf("seed", "verify", "cleanup")) {
                     base.evaluate() // The test method will skip, without touching fixtures.
                     return
@@ -118,6 +118,8 @@ class PeopleForceStopRelaunchTest {
                     put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_RELAUNCH31_$i.png")
                     put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                     put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/$FOLDER/")
+                    put(MediaStore.Images.Media.DATE_TAKEN,
+                        System.currentTimeMillis() - i * 86_400_000L)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }))
             val bitmap = SyntheticFace.bitmap(spec(i))
@@ -217,7 +219,7 @@ class PeopleForceStopRelaunchTest {
     }
 
     @Test fun seedBeforeForceStop() {
-        assumeTrue(instrumentation.arguments.getString("atlasForceStopPhase") == "seed")
+        assumeTrue(InstrumentationRegistry.getArguments().getString("atlasForceStopPhase") == "seed")
         waitFor("Photos tab") { has("atlas-nav-photos") }
         val activity = compose.activity
         val vm = androidx.lifecycle.ViewModelProvider(activity)[GalleryViewModel::class.java]
@@ -248,7 +250,7 @@ class PeopleForceStopRelaunchTest {
     }
 
     @Test fun verifyAfterForceStop() {
-        assumeTrue(instrumentation.arguments.getString("atlasForceStopPhase") == "verify")
+        assumeTrue(InstrumentationRegistry.getArguments().getString("atlasForceStopPhase") == "verify")
         assertNotNull("People opt-in persisted beyond the process", choices.load())
         assertTrue("visual choice persisted beyond the process", choices.loadVisual())
         // The first frame must not be replaced by the first-time inventory spinner.
@@ -270,7 +272,7 @@ class PeopleForceStopRelaunchTest {
     }
 
     @Test fun cleanupAfterForceStop() {
-        assumeTrue(instrumentation.arguments.getString("atlasForceStopPhase") == "cleanup")
+        assumeTrue(InstrumentationRegistry.getArguments().getString("atlasForceStopPhase") == "cleanup")
         val matches = GalleryRepository(target).load().filter {
             it.relativePath == "Pictures/$FOLDER/" &&
                 it.name.startsWith("IMG_RELAUNCH31_")
