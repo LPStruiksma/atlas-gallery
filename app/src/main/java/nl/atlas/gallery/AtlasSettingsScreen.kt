@@ -65,8 +65,8 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = faceScanSettingsValue(
-        scanPhase, scanLoading, scanHasSavedOptIn, scanPhotoAccess)
+    val scanValue = if (scanLoading) "Restoring…" else faceScanSettingsValue(
+        scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())

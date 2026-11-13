@@ -1283,6 +1283,20 @@ internal class PeopleDiscoveryHost(
                 PeopleActionAvailability(mayStartScan = ui.phase == FaceDiscoveryPhase.READY),
                 visual = visualStatus(null))
         }
+        // The cluster writer may hold SQLite for a long publication part.
+        // Report its actual live stage without waiting for a DB read or
+        // inventing new permission-scoped counters. Old home tiles are served
+        // only through the same current-grant check as an ordinary home read.
+        if (!snap.paused && groupingEpoch == scoped.epoch && photoGrantCurrent()) {
+            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.GROUPING,
+                observedPermissionEpoch = display)
+            val visualOn = synchronized(lock) { visualOptedIn }
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                people = liveHomePeople(scoped.epoch),
+                visual = if (visualStore != null)
+                    VisualIndexStatus(enabled = visualOn, mayEnable = false) else null,
+                provenance = scoped.provenance)
+        }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
         if (progress == null || counts == null) {
