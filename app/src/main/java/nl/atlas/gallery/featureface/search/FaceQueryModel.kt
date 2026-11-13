@@ -326,8 +326,7 @@ class FaceSearchCorpus private constructor(
             @Suppress("UNCHECKED_CAST")
             val completeIds = (if (n == ids.size) ids else ids.copyOf(n)) as Array<String>
             @Suppress("UNCHECKED_CAST")
-            val completeBoxes = (if (n == boxes.size) boxes else boxes.copyOf(n))
-                as Array<IndexedFaceBox>
+            val completeBoxes = (if (n == boxes.size) boxes else boxes.copyOf(n)) as Array<IndexedFaceBox>
             return FaceSearchCorpus(modelVersion, n, completeIds,
                 if (n == ids.size) vecs else vecs.copyOf(n * DIMENSION),
                 if (n == ids.size) invNorms else invNorms.copyOf(n),
