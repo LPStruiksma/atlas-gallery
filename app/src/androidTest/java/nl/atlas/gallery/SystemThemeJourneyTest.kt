@@ -142,10 +142,13 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
         waitFor(hasTestTag("atlas-nav-photos"))
-        val media = compose.onAllNodes(SemanticsMatcher("visible timeline tile") { node ->
+        val mediaMatcher = SemanticsMatcher("visible timeline tile") { node ->
             node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
                 ?.startsWith("atlas-timeline-media-") == true
-        }).fetchSemanticsNodes()
+        }
+        // Navigation can mount before the asynchronous synthetic MediaStore scan.
+        waitFor(mediaMatcher)
+        val media = compose.onAllNodes(mediaMatcher).fetchSemanticsNodes()
         val tileTag = requireNotNull(media.firstOrNull()?.config
             ?.getOrElseNullable(SemanticsProperties.TestTag) { null }) {
             "Synthetic Photos fixture must expose a timeline tile"

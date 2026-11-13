@@ -10,6 +10,9 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
@@ -40,7 +43,7 @@ import org.junit.runners.model.Statement
  * More → Copy to album into an existing album (originals stay), More → Move
  * to album into a new album (Android's write consent is accepted if shown),
  * then Albums ⋮ → Hide albums hides the fixture album from Photos and unhides
- * it again. Screenshots go to the emulator-only Pictures/ATLAS-UI-Evidence.
+ * it again. Screenshots go to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR).
  */
 @RunWith(AndroidJUnit4::class)
 class SelectionMoreJourneyTest {
@@ -102,7 +105,16 @@ class SelectionMoreJourneyTest {
         compose.onNodeWithTag("atlas-create-album-name").performTextInput(NEW_ALBUM)
         compose.waitForIdle()
         saveUiEvidence("more-568-create-album.png")
-        compose.onNodeWithTag("atlas-create-album-confirm").performClick()
+        // The emulator IME can consume a coordinate tap while it is open.
+        // Activate the enabled Create button via its accessibility click action,
+        // then require the dialog to close and the real MediaStore move to finish.
+        compose.onNodeWithTag("atlas-create-album-confirm")
+            .assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        waitUntil("new album dialog dismisses") {
+            compose.onAllNodes(hasTestTag("atlas-create-album-confirm"))
+                .fetchSemanticsNodes().isEmpty()
+        }
         acceptWriteConsentUntil { fixtures.relativePathOf(ids[2]) == NEW_PATH }
         assertEquals(NEW_PATH, fixtures.relativePathOf(ids[2]))
         assertEquals(fixtures.nameOf(2), fixtures.displayNameOf(ids[2]))

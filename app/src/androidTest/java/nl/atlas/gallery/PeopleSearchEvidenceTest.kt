@@ -58,7 +58,7 @@ import org.junit.runner.RunWith
  * #516 rendered proof in the real Activity on invented PNGs: People is a
  * plain page (no banner, explainer, V4 card or index panel), its secondary
  * actions sit in ⋮, and Search is one field. Screenshots go to the
- * emulator-only Pictures/ATLAS-UI-Evidence folder for the PR.
+ * emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR) for the PR.
  */
 @RunWith(AndroidJUnit4::class)
 class PeopleSearchAppEvidenceTest {

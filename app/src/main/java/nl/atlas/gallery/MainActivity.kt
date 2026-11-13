@@ -124,6 +124,7 @@ import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.ReadOnlyComposable
 import nl.atlas.gallery.featuregrid.AtlasFeatureGrid
+import nl.atlas.gallery.featuregrid.awaitReadyUnlessUserDrags
 import nl.atlas.gallery.featuregrid.AtlasTimelineGallery
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.TimelineDisplayedSlots
@@ -1699,11 +1700,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // The new order (async sort, album selection) and its timeline plan
         // arrive later and mount a fresh grid; settle on the top again once
         // that plan is displayed for the new catalogue.
-        val shown = withTimeoutOrNull(15_000L) {
+        // #698: but never after the user has started scrolling: a drag on
+        // either timeline before the new plan is shown cancels this reset.
+        val shown = awaitReadyUnlessUserDrags(
+            reset.map { it.interactionSource.interactions }, 15_000L
+        ) {
             snapshotFlow { timelineDisplayed?.source?.takeIf { it === latestVisible } }
                 .filterNotNull().first()
         }
-        if (shown != null) {
+        if (shown) {
             withFrameNanos { }
             reset.forEach { it.scrollToItem(0) }
         }
