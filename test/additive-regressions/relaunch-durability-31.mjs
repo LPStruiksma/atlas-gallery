@@ -16,6 +16,14 @@ assert.match(host, /optInMemory\.saveVisual\(true\)/);
 assert.match(host, /optInMemory\.saveVisual\(false\)/);
 assert.match(host, /fun scopeCurrent\(epoch: String\): Boolean =\s*liveEpoch == epoch && synchronized\(lock\) \{ optedIn \} && photoGrantCurrent\(\)/);
 
+const settings = read('app/src/main/java/nl/atlas/gallery/AtlasSettingsScreen.kt');
+const activity = read('app/src/main/java/nl/atlas/gallery/MainActivity.kt');
+
+// While asynchronous publication is restoring the real host, Settings must
+// say so rather than showing the terminal "Unavailable" status.
+assert.match(activity, /scanLoading = access && discovery\.status == null/);
+assert.match(settings, /if \(scanLoading\) "Restoring…" else/);
+
 // Not cacheDir: Android is allowed to purge cacheDir under storage pressure,
 // which makes every gallery relaunch regenerate all micro thumbnails.
 assert.match(micro, /MicroThumbnailStore\(File\(context\.noBackupFilesDir, "atlas-micro-v1"\)/);
