@@ -58,3 +58,16 @@ internal inline fun <T> failGalleryScanOnHeapExhaustion(scan: () -> T): T =
         // The partial result list is unreachable from here on and can be collected.
         throw GalleryScanOutOfMemory()
     }
+
+/**
+ * The rows a scan may share: what is on screen after the disk-cache load has
+ * finished, failed or been cancelled. [shown] is read only after that, so a
+ * cache published while the scan was starting is the scan's previous
+ * inventory. Cancelling the waiting scan cancels the wait, not the cache load.
+ */
+internal suspend fun <T> inventoryShownAfterCacheSettles(
+    cacheLoad: kotlinx.coroutines.Job?, shown: () -> T
+): T {
+    cacheLoad?.join()
+    return shown()
+}

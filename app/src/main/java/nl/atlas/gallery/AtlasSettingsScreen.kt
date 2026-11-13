@@ -114,7 +114,7 @@ internal fun AtlasSettingsScreen(
                         modifier = Modifier.fillMaxWidth().padding(12.dp)
                             .testTag("atlas-settings-last-crash-text"),
                         style = MaterialTheme.typography.bodySmall,
-                        maxLines = 12, overflow = TextOverflow.Ellipsis)
+                        maxLines = 28, overflow = TextOverflow.Ellipsis)
                     if (last != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { onCopyLastCrash(last) },

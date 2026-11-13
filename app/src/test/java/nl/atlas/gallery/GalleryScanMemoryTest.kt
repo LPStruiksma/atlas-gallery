@@ -6,6 +6,8 @@ import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import org.junit.Test
 
 /**
@@ -142,5 +144,33 @@ class GalleryScanMemoryTest {
     @Test fun processExitListIsBounded() {
         val many = (1..50).map { ProcessExitFact(1_700_000_000_000L - it, "crash", 1L, 1L) }
         assertEquals(9, formatProcessExits(many).trimEnd().lines().size)
+    }
+
+    @Test fun aCachePublishedWhileTheScanStartsIsTheScansPrevious() = kotlinx.coroutines.runBlocking {
+        // Cold start: the screen is still empty when the scan begins, and the
+        // cache load publishes later. The scan must see the cached rows.
+        var onScreen: List<MediaRecord> = emptyList()
+        val cached = listOf(row(1), row(2))
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val cacheLoad = launch { release.await(); onScreen = cached }
+        val scan = async { inventoryShownAfterCacheSettles(cacheLoad) { onScreen } }
+        kotlinx.coroutines.yield()
+        assertFalse(scan.isCompleted)
+        release.complete(Unit)
+        val previous = scan.await()
+        assertSame(cached, previous)
+        val reuse = GalleryScanRecordReuse(previous)
+        assertSame(cached[0], reuse.canonical(row(1)))
+        assertEquals(1, reuse.reused)
+    }
+
+    @Test fun aFailedCancelledOrAbsentCacheLoadDoesNotHoldTheScan() = kotlinx.coroutines.runBlocking {
+        assertEquals(7, inventoryShownAfterCacheSettles(null) { 7 })
+        val cancelled = launch { kotlinx.coroutines.awaitCancellation() }
+        cancelled.cancel()
+        assertEquals(8, inventoryShownAfterCacheSettles(cancelled) { 8 })
+        val finished = launch { }
+        finished.join()
+        assertEquals(9, inventoryShownAfterCacheSettles(finished) { 9 })
     }
 }

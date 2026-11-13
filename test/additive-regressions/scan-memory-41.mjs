@@ -16,6 +16,10 @@ assert.match(repo, /failGalleryScanOnHeapExhaustion \{/);
 assert.match(repo, /target\.add\(reuse\.canonical\(MediaRecord\(/);
 assert.match(repo, /reuse\.shared\(cursor\.stringOr\(idxPath, ""\)\)/);
 assert.match(repo, /repo\.load\(providerCancellation, shownAtStart\)/);
+// Cold start: the scan picks its previous rows only after the cache load settled.
+assert.match(repo, /cachedInventoryLoad = viewModelScope\.launch \{/);
+assert.match(repo, /val shownAtStart = inventoryShownAfterCacheSettles\(cachedInventoryLoad\) \{\s*_publishedInventory\.value\.items/);
+assert.match(reuse, /cacheLoad\?\.join\(\)\s*return shown\(\)/);
 // Reuse only on full equality; never by URI or ID alone.
 assert.match(reuse, /if \(before == fresh\)/);
 assert.match(reuse, /catch \(_: OutOfMemoryError\) \{[\s\S]*throw GalleryScanOutOfMemory\(\)/);

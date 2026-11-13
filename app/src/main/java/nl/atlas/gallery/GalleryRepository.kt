@@ -260,6 +260,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         }
     }
 
+    // #41: the cold-start scan waits for this before it picks the rows to
+    // share, or cache and scan would each hold a full copy of the library.
+    private var cachedInventoryLoad: Job? = null
+
     init {
         application.contentResolver.registerContentObserver(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, mediaObserver
@@ -277,7 +281,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
      * flow starts the real scan in parallel, which then replaces it.
      */
     private fun loadCachedInventory() {
-        viewModelScope.launch {
+        cachedInventoryLoad = viewModelScope.launch {
             val cached = try {
                 withContext(Dispatchers.IO) {
                     val readContext = currentCoroutineContext()
@@ -403,8 +407,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             var settleFailedSnapshot = false
             _busy.value = true
             try {
-                // The inventory on screen now; unchanged rows share its objects.
-                val shownAtStart = _publishedInventory.value.items
+                // The inventory on screen once the disk cache has settled;
+                // unchanged rows share its objects. On a cold start the cache
+                // decode and this scan start together: reading the screen
+                // before the cache is published would find it empty.
+                val shownAtStart = inventoryShownAfterCacheSettles(cachedInventoryLoad) {
+                    _publishedInventory.value.items
+                }
                 val inventory = withContext(Dispatchers.IO) {
                     val scanContext = currentCoroutineContext()
                     repo.load(providerCancellation, shownAtStart) { scanContext.ensureActive() }
