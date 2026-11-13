@@ -1,8 +1,12 @@
 package nl.atlas.gallery
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -53,19 +57,24 @@ class PhotoDnaPlanningFailureRouteTest {
         var dark by mutableStateOf(false)
         rule.setContent {
             AtlasGalleryTheme(dark = dark) {
-                val planning = rememberPhotoDna(records, tokens, enabled = true) { record, _ ->
-                    calls.incrementAndGet()
-                    // First planning attempt: the provider read blows up.
-                    if (failNext.getAndSet(false)) error("synthetic planner failure")
-                    hashCurationBytes(record.sizeBytes,
-                        openAuthorized = { ByteArrayInputStream(ByteArray(40) { 4 }) },
-                        stillAuthorized = { true })
+                // The root Surface MainActivity draws behind every route, so the
+                // dark evidence shows the dark background, not a bare window.
+                Surface(Modifier.fillMaxSize(), color = DeepBg,
+                    contentColor = MaterialTheme.colorScheme.onBackground) {
+                    val planning = rememberPhotoDna(records, tokens, enabled = true) { record, _ ->
+                        calls.incrementAndGet()
+                        // First planning attempt: the provider read blows up.
+                        if (failNext.getAndSet(false)) error("synthetic planner failure")
+                        hashCurationBytes(record.sizeBytes,
+                            openAuthorized = { ByteArrayInputStream(ByteArray(40) { 4 }) },
+                            stillAuthorized = { true })
+                    }
+                    PhotoDnaRoute(
+                        result = currentPhotoDna(planning.result, tokens), verifying = false,
+                        onBack = {}, onOpenPhoto = {}, onReviewRequested = {},
+                        failed = planning.failed, onRetry = planning::retry
+                    )
                 }
-                PhotoDnaRoute(
-                    result = currentPhotoDna(planning.result, tokens), verifying = false,
-                    onBack = {}, onOpenPhoto = {}, onReviewRequested = {},
-                    failed = planning.failed, onRetry = planning::retry
-                )
             }
         }
         rule.waitForNode(hasTestTag("atlas-photo-dna-failed"), 20_000L)
