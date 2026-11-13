@@ -524,7 +524,8 @@ class PeopleDiscoveryHostTest {
         val db = store.writableDatabase
         fun republish() {
             db.execSQL("UPDATE cluster_generation SET dirty=1 WHERE singleton=1")
-            assertNull("dirty generation hides People home", store.peopleHome(epoch))
+            // #39: a dirty generation keeps serving the last published People home.
+            assertNotNull("dirty generation keeps People home", store.peopleHome(epoch))
             assertTrue(store.materializeClusters(epoch))
         }
         val faces = group.members.map { it.localHex }.sorted()

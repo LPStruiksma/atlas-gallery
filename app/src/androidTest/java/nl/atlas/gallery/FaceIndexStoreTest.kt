@@ -955,7 +955,8 @@ class FaceIndexStoreTest {
                 assertTrue(resumed.completeEmbeddings(
                     requireNotNull(resumed.claim("epoch-B", 2000)), listOf(box),
                     listOf(syntheticEmbedding()), model))
-                assertNull(resumed.clusterState("epoch-B"))
+                // #39: the last publication is served while the new face waits.
+                assertEquals(1, resumed.clusterState("epoch-B")?.faces?.size)
                 assertTrue(resumed.materializeClusters("epoch-B"))
                 assertEquals(2, resumed.clusterState("epoch-B")?.faces?.size)
                 assertFalse(resumed.completeEmbeddings(requireNotNull(interrupted),
