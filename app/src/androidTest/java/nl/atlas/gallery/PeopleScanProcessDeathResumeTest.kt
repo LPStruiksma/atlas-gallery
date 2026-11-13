@@ -19,6 +19,7 @@ import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,6 +44,7 @@ class PeopleScanProcessDeathResumeTest {
     @Volatile private var granted = true
     @Volatile private var token: String? = "images"
     private val decoded = AtomicInteger()
+    private val disarmed = AtomicInteger()
 
     private class Memory : PeopleOptInMemory {
         var optIn: PeopleOptIn? = null
@@ -102,6 +104,7 @@ class PeopleScanProcessDeathResumeTest {
                 override fun next() = Unit
                 override fun later() = Unit
                 override fun cancel() = Unit
+                override fun disarm() { disarmed.incrementAndGet() }
             },
             optInMemory = memory,
             photoGrantToken = { token }
@@ -164,8 +167,34 @@ class PeopleScanProcessDeathResumeTest {
         scanPartlyThenDie()
         token = null
         val host = newProcess()
+        disarmed.set(0)
         assertFalse(restorePeopleScanInBackground(target, host) { inventory })
         assertNull(batch())
+        assertEquals("no periodic re-arm left waking for nothing", 1, disarmed.get())
+    }
+
+    /** #71 S1: the gallery cache counts only under the grant Android reports now. */
+    @Test fun aCacheWrittenUnderAnotherGrantIsNotTrusted() {
+        val file = File(target.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE)
+        val saved = if (file.isFile) file.readBytes() else null
+        try {
+            val now = readGalleryMediaGrant(target)
+            val other = now.copy(images = !now.images, selected = !now.selected)
+            GalleryInventoryCacheFile(file).write(other, emptyList())
+            assertNull("a cache from another grant gives no inventory",
+                cachedFaceInventory(target))
+            scanPartlyThenDie()
+            val host = newProcess()
+            disarmed.set(0)
+            assertFalse("so no background run", restorePeopleScanInBackground(target, host))
+            assertNull(batch())
+            assertEquals(1, disarmed.get())
+            GalleryInventoryCacheFile(file).write(now, emptyList())
+            assertNotNull("the same cache under today's grant is trusted",
+                cachedFaceInventory(target))
+        } finally {
+            if (saved != null) file.writeBytes(saved) else file.delete()
+        }
     }
 
     @Test fun noTrustedInventoryMeansNoRun() {

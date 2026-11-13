@@ -1079,8 +1079,14 @@ internal class PeopleDiscoveryHost(
                 onGalleryPublication(null) { emptyList() }
                 return false
             }
-            if (photoGrantToken() == null || optInMemory.loadPublished() == null) return false
-            val items = inventory() ?: return false
+            // Selected-photos access, nothing published yet or no trusted
+            // inventory: this cannot run in the background. Drop the periodic
+            // re-arm; the next foreground publication arms it again (#71 S2).
+            if (photoGrantToken() == null || optInMemory.loadPublished() == null) {
+                scheduler.disarm()
+                return false
+            }
+            val items = inventory() ?: run { scheduler.disarm(); return false }
             onGalleryPublication("background-" + UUID.randomUUID()) { items }
         }
         val armed = synchronized(lock) {

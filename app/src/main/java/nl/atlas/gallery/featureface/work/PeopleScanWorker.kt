@@ -68,6 +68,9 @@ suspend fun runPeopleScanRun(
             val batch = runPeopleScanBatch(context, thermalAllowed, isStopped) ?: break
             photos += batch.photosIndexed
             batches++
+            // #43: one count per batch, so a run cut off by process death still
+            // left a trace. Counts only: never a URI, ID, name or face.
+            android.util.Log.i("ATLAS_FACE", "scan_batch photos=${batch.photosIndexed}")
             decision = plan.afterBatch(isStopped())
             if (decision != PeopleScanRunPlan.Decision.CONTINUE) break
             currentCoroutineContext().ensureActive()
