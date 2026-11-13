@@ -426,7 +426,7 @@ data class AtlasHeaderMenuItem(
  * Compact, image-first top bar shared by every top-level gallery surface
  * (#492): an optional Back arrow, a single-line title with an optional
  * one-line status, caller icon [actions], and an overflow menu holding
- * secondary actions and Library status/settings. Default height is
+ * secondary actions and the Settings destination. Default height is
  * [AtlasHeaderHeight] so photos start near the top of the screen.
  * No inert controls: Back, actions and menu entries appear only when real.
  */
@@ -444,7 +444,7 @@ fun AtlasGalleryHeader(
     val overflow = buildList {
         addAll(menuItems)
         if (onOpenLibraryStatus != null) add(AtlasHeaderMenuItem(
-            "Library status & settings", "atlas-library-status",
+            "Settings", "atlas-library-status",
             onClick = onOpenLibraryStatus))
     }
     Row(

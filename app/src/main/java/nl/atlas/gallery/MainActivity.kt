@@ -909,6 +909,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Primary destinations: Photos=0, Albums=1, People=2, Search=3.
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var statusOpen by rememberSaveable { mutableStateOf(false) }
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = statusOpen) { statusOpen = false }
+    BackHandler(enabled = settingsOpen && !statusOpen) { settingsOpen = false }
     var albumReturnToAlbums by rememberSaveable { mutableStateOf(false) }
     // E2a (#439): Stories open over the Albums tab; no new primary destination.
     var storiesOpen by rememberSaveable { mutableStateOf(false) }
@@ -1098,7 +1101,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
     var hiddenPeopleOpen by rememberSaveable { mutableStateOf(false) }
-    // #643: People maintenance tools live in Library status & settings.
+    // #643: People maintenance tools live in Settings.
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
     var peopleNumbersOpen by remember { mutableStateOf(false) }
@@ -2439,10 +2442,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             photos = sorted,
             onStep = { similarStep = it },
             onOpen = { items, record, _ -> if (items === visible) openViewer(items, record.uri) },
-            // #643: the Visual search index switch lives in Library status.
+            // #643: the Visual search index switch lives in Settings.
             onOpenSettings = {
                 closeFindSimilar()
-                statusOpen = true
+                settingsOpen = true
             },
             onClose = {
                 // `visible` is still the results list in this frame: reopen the
@@ -2528,6 +2531,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // API 35 emulator: "Photos", the empty-state heading, Settings icon).
         contentColor = MaterialTheme.colorScheme.onBackground,
         bottomBar = {
+            if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
                 tab == 0 && personFilter == null && !statusOpen &&
                     !originalProportions && timelineEnabled
@@ -2570,6 +2574,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         AtlasDestination.SEARCH -> 3
                     }
                     statusOpen = false
+                    settingsOpen = false
                     storiesOpen = false
                     storyPlayback.position = null
                     photoDnaOpen = false
@@ -2582,6 +2587,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     albumReturnToAlbums = false
                 }
             )
+            }
         }
     ) { insets ->
         // #652: on the Photos timeline/grid, album detail and the Albums grid,
@@ -2590,7 +2596,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // Every other screen (and selection mode's opaque bar) stays above it.
         val navPillShown = !(batchSelection != null && tab == 0 && personFilter == null &&
             !statusOpen && !originalProportions && timelineEnabled)
-        val drawUnderBar = navPillShown && access && !statusOpen && personFilter == null &&
+        val drawUnderBar = navPillShown && access && !statusOpen && !settingsOpen && personFilter == null &&
             (tab == 0 || (tab == 1 && !storiesOpen && !photoDnaOpen))
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
@@ -2666,17 +2672,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 AtlasGalleryHeader(
                     title = when {
                         statusOpen -> "Library status"
+                        settingsOpen -> "Settings"
                         personFilter != null -> people.firstOrNull { it.id == personFilter }?.name ?: "Person"
                         tab == 0 && album != null -> album!!.trimEnd('/').substringAfterLast('/')
                         tab == 2 -> "People"
                         tab == 3 -> "Search"
                         else -> "Photos"
                     },
-                    subtitle = if (photosControls)
+                    subtitle = if (photosControls && !settingsOpen && !statusOpen)
                         photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
                     else null,
                     onBack = when {
                         statusOpen -> ({ statusOpen = false })
+                        settingsOpen -> ({ settingsOpen = false })
                         photosControls && album != null -> ({
                             album = null
                             albumVolume = null
@@ -2685,9 +2693,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         })
                         else -> null
                     },
-                    backDescription = if (statusOpen) "Close library status" else "All albums",
-                    onOpenLibraryStatus = if (statusOpen) null else ({ statusOpen = true }),
-                    menuItems = if (photosControls) photosHeaderMenu(
+                    backDescription = when {
+                        statusOpen -> "Back to Settings"
+                        settingsOpen -> "Close Settings"
+                        else -> "All albums"
+                    },
+                    onOpenLibraryStatus = if (statusOpen || settingsOpen) null else ({ settingsOpen = true }),
+                    menuItems = if (photosControls && !settingsOpen && !statusOpen) photosHeaderMenu(
                         timelineSelected = timelineEnabled && !originalProportions,
                         canDeclutter = canDeclutter,
                         onToggleTimeline = toggleTimeline,
@@ -2712,10 +2724,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
             // #514/#506: on the Photos grid the header is drawn over the grid and
             // scrolls away with it (Samsung); the grid then uses the full height.
-            val headerScrollsWithGrid = photosControls && timelineEnabled && !originalProportions
+            val headerScrollsWithGrid = photosControls && timelineEnabled && !originalProportions &&
+                !settingsOpen && !statusOpen
             // #644: Search is one field with its own ⋮ (Samsung), no title bar.
-            val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen
-            if (((tab != 1 && tab != 2) || personFilter != null || statusOpen) &&
+            val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
+            if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
                 !headerScrollsWithGrid && !searchOwnsTop) {
                 galleryHeader()
             }
@@ -2723,7 +2736,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 Text(notification!!, Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                     color = Mint, style = MaterialTheme.typography.bodySmall)
             }
-            if (!access) {
+            if (!access && !settingsOpen && !statusOpen) {
                 Column(Modifier.fillMaxSize().padding(28.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2741,26 +2754,41 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             } else {
                 when {
                     statusOpen -> {
+                        // Advanced > Diagnostics: same read-only library facts.
+                        ActivityScreen(media.size, people.size, busy, error, vm::refresh)
+                    }
+                    settingsOpen -> {
                         val visualStatus = discovery.status?.visual
                         val provenance = discovery.status?.provenance
-                        ActivityScreen(media.size, people.size, busy, error, vm::refresh) {
-                            // #643: moved here from People ⋮; same tags as before.
-                            LibraryPeopleTools(
-                                visualIndexOn = visualStatus?.enabled,
-                                showPhotoDetails = provenance != null &&
-                                    (provenance.missingPhotoFields.isNotEmpty() ||
-                                        provenance.ignoredPhotoRows > 0),
-                                onImportV4 = {
-                                    importLauncher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
-                                },
-                                onLinkV4 = {
-                                    linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
-                                },
-                                onVisualIndex = { visualIndexOpen = true },
-                                onPeopleNumbers = { peopleNumbersOpen = true },
-                                onPhotoDetails = { provenanceDetailsOpen = true }
-                            )
-                        }
+                        AtlasSettingsScreen(
+                            scanPhase = discovery.status?.ui?.phase,
+                            onPauseScan = discovery.onPause.takeIf {
+                                discovery.status?.actions?.mayPauseScan == true
+                            },
+                            onResumeScan = discovery.onResume.takeIf {
+                                discovery.status?.actions?.mayResumeScan == true
+                            },
+                            visualIndexOn = visualStatus?.enabled,
+                            showPhotoDetails = provenance != null &&
+                                (provenance.missingPhotoFields.isNotEmpty() ||
+                                    provenance.ignoredPhotoRows > 0),
+                            versionName = remember(context) {
+                                runCatching {
+                                    context.packageManager.getPackageInfo(
+                                        context.packageName, 0).versionName
+                                }.getOrNull() ?: "Unknown"
+                            },
+                            onVisualIndex = { visualIndexOpen = true },
+                            onPeopleNumbers = { peopleNumbersOpen = true },
+                            onPhotoDetails = { provenanceDetailsOpen = true },
+                            onImportV4 = {
+                                importLauncher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
+                            },
+                            onLinkV4 = {
+                                linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
+                            },
+                            onDiagnostics = { statusOpen = true }
+                        )
                         if (peopleNumbersOpen) PeopleNumbersRoute(discoveryHost, searchGrant) {
                             peopleNumbersOpen = false
                         }
@@ -3075,7 +3103,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 MediaPreview(record, modifier, ContentScale.Crop, 512)
                             },
                             isLoading = busy || albumsPending,
-                            onOpenLibraryStatus = { statusOpen = true },
+                            onOpenLibraryStatus = { settingsOpen = true },
                             loadIssue = if (albumFailed.value && !busy)
                                 AlbumLoadIssue.READ_FAILED else null,
                             onRetry = { albumRetryEpoch++ },
@@ -3100,7 +3128,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             suggestionSources = searchChoices?.choices.orEmpty(),
                             currentPermissionEpoch = searchGrant,
                             hasResults = searchActive && !searched.isNullOrEmpty(),
-                            onOpenLibraryStatus = { statusOpen = true },
+                            onOpenLibraryStatus = { settingsOpen = true },
                             onFiltersChange = { incoming ->
                                 searchSession = searchSession.changeFacets(
                                     incoming,
@@ -3222,7 +3250,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             val profiles = permittedCovers?.projection?.profiles.orEmpty()
                             // #516/#643: People is the plain Samsung grid. ⋮ holds
                             // People actions only; the visual index, People numbers,
-                            // photo details and the V4 import sit in Library status.
+                            // photo details and the V4 import sit in Settings.
                             var samePersonQueueOpen by remember { mutableStateOf(false) }
                             val peopleMenu = listOf(
                                 // #584: Samsung's People ⋮ → Hidden; Show this person
@@ -3269,7 +3297,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     discoveryHost.liveHomePeople(discovery.status?.displayEpoch)
                                 },
                                 menuItems = peopleMenu,
-                                onOpenLibraryStatus = { statusOpen = true },
+                                onOpenLibraryStatus = { settingsOpen = true },
                                 portrait = { profile ->
                                     val record = profile.coverUri?.let {
                                         permittedCovers?.authorizedCoversByUri?.get(it)
@@ -3682,48 +3710,7 @@ private fun ActivityScreen(
         if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
         Button(onClick = refresh) { Text("Refresh photos") }
         HorizontalDivider()
-        Text("Native preview: viewer and imported names work independently of Termux. Face inference and CLIP semantic indexing are not yet integrated into this app.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Original files are never moved, deleted or modified by this release.", color = Mint)
         HorizontalDivider()
         peopleTools()
-    }
-}
-
-/**
- * #643: People's maintenance and developer tools, moved out of People ⋮
- * into Library status & settings with their old tags. Rows only; each
- * opens the same dialog or document picker as before.
- */
-@Composable
-private fun LibraryPeopleTools(
-    visualIndexOn: Boolean?,
-    showPhotoDetails: Boolean,
-    onImportV4: () -> Unit,
-    onLinkV4: () -> Unit,
-    onVisualIndex: () -> Unit,
-    onPeopleNumbers: () -> Unit,
-    onPhotoDetails: () -> Unit
-) {
-    Column(Modifier.fillMaxWidth().testTag("atlas-library-people-tools")) {
-        Text("People", style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 4.dp))
-        if (visualIndexOn != null) SettingsRow("Visual search index", "atlas-people-visual-index",
-            onVisualIndex, if (visualIndexOn) "On" else "Off")
-        SettingsRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
-        if (showPhotoDetails) SettingsRow("Photo details", "atlas-people-details", onPhotoDetails)
-        SettingsRow("Import from Monochrome Studio", "atlas-people-import-v4", onImportV4)
-        SettingsRow("Link Monochrome Studio export", "atlas-people-link-v4", onLinkV4)
-    }
-}
-
-/** One plain settings row: a label, an optional value, the whole row tappable. */
-@Composable
-private fun SettingsRow(label: String, tag: String, onClick: () -> Unit, value: String? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
-        .testTag(tag), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        if (value != null) Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium)
     }
 }
