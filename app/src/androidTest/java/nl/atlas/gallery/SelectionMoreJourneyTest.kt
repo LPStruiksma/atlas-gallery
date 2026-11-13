@@ -216,7 +216,11 @@ class SelectionMoreJourneyTest {
                 }
                 if (mediaRoots.isNotEmpty()) mediaConsentWindowSeen = true
                 mediaRoots.firstNotNullOfOrNull { root ->
-                    button(root, "Allow") { it == "Allow" || it.startsWith("Allow ") }
+                    // API 35 uses uppercase ALLOW; compare case-insensitively.
+                    button(root, "Allow") { label ->
+                        label.equals("Allow", ignoreCase = true) ||
+                            label.startsWith("Allow ", ignoreCase = true)
+                    }
                 }?.let {
                     if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) clicks++
                 }
