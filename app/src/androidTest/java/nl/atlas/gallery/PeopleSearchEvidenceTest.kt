@@ -166,6 +166,35 @@ class PeopleSearchStateEvidenceTest {
      * the title: no status text, no button. Pause and review sit in ⋮, next
      * to Hidden; the V4 import is not there. Idle, the line is gone too.
      */
+    /** #31: the async permission/catalogue gap renders a restoring state, not a lost scan. */
+    @Test fun settingsRendersRestoringWhileTheGalleryPublicationIsPending() {
+        compose.setContent {
+            AtlasEvidenceHarness {
+                AtlasSettingsScreen(
+                    scanPhase = null,
+                    onPauseScan = null,
+                    onResumeScan = null,
+                    visualIndexOn = true,
+                    showPhotoDetails = false,
+                    versionName = "test",
+                    onVisualIndex = {},
+                    onPeopleNumbers = {},
+                    onPhotoDetails = {},
+                    onImportV4 = {},
+                    onLinkV4 = {},
+                    onDiagnostics = {},
+                    scanLoading = true
+                )
+            }
+        }
+        waitFor(compose, hasTestTag("atlas-settings-face-scanning"))
+        compose.onNodeWithText("Restoring…").assertExists()
+        compose.onNodeWithText("Unavailable").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-people-visual-index").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("settings-31-restoring.png")
+    }
+
     @Test fun settingsPausesAndResumesOnlyWhenTheHostOffersActions() {
         var phase by mutableStateOf(FaceDiscoveryPhase.SCANNING)
         var pauses = 0
