@@ -890,8 +890,10 @@ internal class PeopleDiscoveryHost(
 
     /**
      * A new gallery publication (MediaStore refresh or a changed grant). While
-     * a run is opted in, republish the catalogue under a fresh epoch; a null
-     * grant means photo access is gone and revokes. Blocking; IO only.
+     * a run is opted in, republish under a fresh epoch. A null gallery grant
+     * means publication is pending only while Android still grants access.
+     * An Android permission loss revokes even on a fresh process with no
+     * in-memory scope. Blocking; IO only.
      */
     fun onGalleryPublication(galleryGrant: String?, inventory: () -> List<FaceVisibleMedia>) {
         val (active, current, paused) = synchronized(lock) {
@@ -905,21 +907,14 @@ internal class PeopleDiscoveryHost(
             if (cleared) changed()
             return
         }
-        // Only a real loss of photo access revokes. A null gallery grant with
-        // access still present is a pending (selected-photos) refresh or an
-        // Activity recreation: hold the run and resume it on the next
-        // publication, never drop the opt-in (#436 review F2).
+        // An OS permission check is authoritative across process death:
+        // scope == null is also true after a real revoke while ATLAS was stopped.
+        // Keeping a stored opt-in in that case would silently restart discovery
+        // when access is granted again. The pending gallery-publication signal
+        // below is distinct from the Android permission decision.
         if (!photoGrantCurrent()) {
-            if (synchronized(lock) { scope == null }) {
-                // Startup can observe permissions before Android restores a
-                // selected-photo grant. No active scope exists to revoke.
-                // Hide data now, but do not destroy the user's saved opt-ins.
-                Log.i("ATLAS_FACE", "publication_hold cause=startup_grant_unavailable")
-                hold()
-            } else {
-                Log.i("ATLAS_FACE", "publication_revoke cause=live_grant_lost")
-                revoke()
-            }
+            Log.i("ATLAS_FACE", "publication_revoke cause=android_grant_lost")
+            revoke()
             return
         }
         if (galleryGrant == null) {
