@@ -31,4 +31,15 @@ assert.match(settings, /if \(scanLoading\) "Restoring…" else/);
 // which makes every gallery relaunch regenerate all micro thumbnails.
 assert.match(micro, /MicroThumbnailStore\(File\(context\.noBackupFilesDir, "atlas-micro-v1"\)/);
 assert.match(micro, /if \(!now && \(wasAllowed \|\| first\)\)/);
+// connectedDebugAndroidTest can uninstall/reinstall both test and target APKs;
+// the separate-process phase must reinstall them before granting photo access.
+const ciScript = read('scripts/ci_android_upgrade_emulator.sh');
+const afterConnected = ciScript.split('if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi')[1];
+assert.ok(afterConnected, 'relaunch checks must run after a successful connected test suite');
+const appInstall = afterConnected.indexOf('adb install -r "$NEW"');
+const testInstall = afterConnected.indexOf('adb install -r "$TEST"');
+const mediaGrant = afterConnected.indexOf('adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES');
+assert.ok(appInstall >= 0 && testInstall > appInstall && mediaGrant > testInstall,
+  'reinstall both APKs after the connected suite and before the real-process photo grant');
+
 console.log('relaunch-durability-31: source contracts pass');
