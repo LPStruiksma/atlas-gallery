@@ -19,6 +19,7 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -56,6 +57,10 @@ class SelectionMoreJourneyTest {
         compose.waitForIdle()
 
         // 1. Select two items; the bar's More lists Copy to album, Move to album.
+        // Waiting for the last fixture proves catalog load, not that the first
+        // fixture is mounted in the lazy timeline viewport after layout.
+        compose.onNodeWithTag("atlas-timeline-grid")
+            .performScrollToNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
         waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()

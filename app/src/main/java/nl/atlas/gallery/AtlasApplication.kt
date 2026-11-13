@@ -14,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Persist one privacy-redacted trace before Android's original crash handler runs.
+        LastCrashRecorder.install(this)
         // #555: ATLAS's micro-thumbnail store; only used under full media access.
         MicroThumbnails.install(this)
         ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()

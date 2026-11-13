@@ -1,0 +1,2 @@
+#33: Settings → Advanced → Last crash expanded, redacted report (synthetic)
+settings-33-last-crash

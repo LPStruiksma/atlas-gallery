@@ -1,0 +1,12 @@
+# Issue #19 · Samsung parity §2 Photos sort choice sheet.
+# S24+ 1080x2340; every active order shown in both phone themes.
+sort-12-newest-light
+sort-12-oldest-light
+sort-12-largest-light
+sort-12-smallest-light
+sort-12-random-light
+sort-12-newest-dark
+sort-12-oldest-dark
+sort-12-largest-dark
+sort-12-smallest-dark
+sort-12-random-dark

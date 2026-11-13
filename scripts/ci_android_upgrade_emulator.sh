@@ -243,6 +243,10 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
     echo "::error::#31 real-process fixture requires isolated GitHub emulator"; exit 1
   }
+  # The connected-test task cleans up its installed APKs before returning.
+  # Reinstall both targets before the separately launched process phases.
+  adb install -r "$NEW"
+  adb install -r "$TEST"
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
   run_relaunch_phase() {
