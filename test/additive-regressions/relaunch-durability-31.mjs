@@ -10,7 +10,7 @@ const micro = read('app/src/main/java/nl/atlas/gallery/featuremedia/MicroThumbna
 
 // A cold-start permission observation must not erase previously chosen
 // face/visual discovery, and genuinely revoked scopes must stay hidden.
-assert.match(host, /if \(!photoGrantCurrent\(\)\) \{\s*if \(scope == null\)/);
+assert.match(host, /if \(!photoGrantCurrent\(\)\) \{\s*if \(synchronized\(lock\) \{ scope == null \}\)/);
 assert.match(host, /visualOptedIn = optedIn && optInMemory\.loadVisual\(\)/);
 assert.match(host, /optInMemory\.saveVisual\(true\)/);
 assert.match(host, /optInMemory\.saveVisual\(false\)/);
