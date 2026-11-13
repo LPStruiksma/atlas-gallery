@@ -1092,9 +1092,14 @@ internal class PeopleDiscoveryHost(
             }
             dormant
         }
+        // The directory validates its epoch while it builds, before this
+        // carry-over makes it live; afterwards it follows liveEpoch as usual.
+        var building = true
         val directory = FaceAuthorizedMediaDirectory.build(epoch, sorted, { it },
-            activeEpoch = { liveEpoch }, providerSnapshotCurrent = photoGrantCurrent,
+            activeEpoch = { if (building) epoch else liveEpoch },
+            providerSnapshotCurrent = photoGrantCurrent,
             maxPhotoRows = maxCatalogPhotos)
+        building = false
         val carried = photoGrantCurrent() && photoGrantToken() == token && synchronized(lock) {
             if (!optedIn) return@synchronized false
             scope = Scope(epoch, galleryGrant, directory, sorted, existing?.provenance)
@@ -1168,9 +1173,14 @@ internal class PeopleDiscoveryHost(
                 keepActiveReadable = keepReadable
             ).publish(epoch, detectorVersion, inventory.asSequence())
             logPhotoProvenance(publication)
+            // Staged behind (#31), the new epoch is committed in the store but
+            // not yet live here: validate against it until the swap below.
+            var building = keepReadable
             val directory = FaceAuthorizedMediaDirectory.build(epoch, inventory, { it },
-                activeEpoch = { liveEpoch }, providerSnapshotCurrent = photoGrantCurrent,
+                activeEpoch = { if (building) epoch else liveEpoch },
+                providerSnapshotCurrent = photoGrantCurrent,
                 maxPhotoRows = maxCatalogPhotos)
+            building = false
             val published = synchronized(lock) {
                 if (!owns(epoch) || !optedIn) return@synchronized false
                 liveEpoch = epoch
