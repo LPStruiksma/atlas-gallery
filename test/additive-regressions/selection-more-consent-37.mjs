@@ -13,7 +13,8 @@ assert.match(source, /assertEquals\(NEW_PATH, fixtures\.relativePathOf\(ids\[2\]
 assert.match(source, /Quickstep isn't responding/);
 assert.match(source, /"Wait"/);
 assert.match(source, /com\.android\.providers\.media/);
-assert.match(source, /findAccessibilityNodeInfosByText\("Allow"\)/);
+assert.match(source, /findAccessibilityNodeInfosByText\(needle\)/);
+assert.match(source, /button\(root, "Allow"\)/);
 assert.match(source, /ACTION_CLICK/);
 assert.match(source, /Move did not finish/);
 assert.doesNotMatch(source, /Assume\.assume|assumeNoException|@Ignore/);
