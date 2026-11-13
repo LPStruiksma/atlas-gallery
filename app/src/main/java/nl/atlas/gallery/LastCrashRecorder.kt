@@ -22,7 +22,7 @@ private val SAFE_PACKAGES = listOf(
 )
 
 private fun safeClass(name: String): String? =
-    name.takeIf { REPORT_NAME.matches(it) && SAFE_PACKAGES.any(name::startsWith) }
+    name.takeIf { REPORT_NAME.matches(it) && SAFE_PACKAGES.any { name.startsWith(it) } }
 
 internal fun formatCrashReport(
     timestampMillis: Long,
@@ -66,7 +66,7 @@ internal object LastCrashRecorder {
     private fun file(context: Context): File = File(context.filesDir, "crash/last.txt")
 
     fun read(context: Context): String? =
-        runCatching { file(context).takeIf(File::isFile)?.readText(Charsets.UTF_8) }.getOrNull()
+        runCatching { file(context).takeIf { it.isFile }?.readText(Charsets.UTF_8) }.getOrNull()
 
     fun install(context: Context) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
