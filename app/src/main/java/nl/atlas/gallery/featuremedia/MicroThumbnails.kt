@@ -65,7 +65,7 @@ internal object MicroThumbnails {
         if (store != null) return
         resolver = context.applicationContext.contentResolver
         val total = runCatching { StatFs(context.filesDir.absolutePath).totalBytes }.getOrDefault(0L)
-        store = MicroThumbnailStore(File(context.cacheDir, "atlas-micro-v1"),
+        // Survive Android cache eviction between launches. The existing byte budget\n        // still caps this app-private tier, and applyGrant clears it on revoke.\n        store = MicroThumbnailStore(File(context.noBackupFilesDir, "atlas-micro-v1"),
             microThumbnailDiskBudgetBytes(total))
     }
 
