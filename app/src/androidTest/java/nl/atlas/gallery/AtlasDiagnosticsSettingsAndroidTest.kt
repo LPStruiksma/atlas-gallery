@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -35,12 +36,12 @@ class AtlasDiagnosticsSettingsAndroidTest {
             }
         }
         compose.onNodeWithTag("atlas-settings-advanced").performClick()
-        compose.onNodeWithTag("atlas-settings-export-diagnostics").performClick()
+        compose.onNodeWithTag("atlas-settings-export-diagnostics").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("atlas-settings-export-diagnostics-text").assertExists()
         saveUiEvidence("settings-45-export-diagnostics.png")
-        compose.onNodeWithTag("atlas-settings-export-diagnostics-copy").performClick()
-        compose.onNodeWithTag("atlas-settings-export-diagnostics-share").performClick()
+        compose.onNodeWithTag("atlas-settings-export-diagnostics-copy").performScrollTo().performClick()
+        compose.onNodeWithTag("atlas-settings-export-diagnostics-share").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(report, copied)
             assertEquals(report, shared)
