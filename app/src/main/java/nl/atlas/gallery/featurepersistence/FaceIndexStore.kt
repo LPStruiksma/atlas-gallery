@@ -1449,8 +1449,8 @@ class FaceIndexStore(
         // Revalidate before touching SQLite, including type/size/key bounds.
         NativePeopleNamesBackupCodec.encode(incoming)
         return write { db ->
-            val version = storedEmbedderVersion(db)
-            require(currentEpoch(db) == epoch && version != null &&
+            val version = storedEmbedderVersion(db) ?: error("People model unavailable")
+            require(currentEpoch(db) == epoch &&
                 clusterGenerationClean(db)) { "People index changed; reopen the backup" }
             fun strings(sql: String, args: Array<String>? = null): Set<String> =
                 db.rawQuery(sql, args).use { cursor ->
@@ -1468,7 +1468,6 @@ class FaceIndexStore(
             var applied = 0
             var skipped = 0
             var reGroup = false
-            fun accepted(yes: Boolean) { if (yes) applied++ else skipped++ }
             for ((key, name) in incoming.names) {
                 if (key !in people) { skipped++; continue }
                 check(db.insertWithOnConflict("people_names", null,
@@ -1480,7 +1479,7 @@ class FaceIndexStore(
                 if (key !in people || key !in incoming.names) { skipped++; continue }
                 check(db.insertWithOnConflict("people_hidden", null,
                     ContentValues().apply { put("person_key", key) },
-                    SQLiteDatabase.CONFLICT_IGNORE) != -1L)
+                    SQLiteDatabase.CONFLICT_REPLACE) != -1L)
                 applied++
             }
             val oldConfirmed = reviewRows(db).confirmed
@@ -1521,7 +1520,7 @@ class FaceIndexStore(
                     if (!valid) { skipped++; continue }
                     val count = db.insertWithOnConflict(table, null,
                         ContentValues().apply { put(a, first); put(b, second) },
-                        SQLiteDatabase.CONFLICT_IGNORE)
+                        SQLiteDatabase.CONFLICT_REPLACE)
                     check(count != -1L)
                     applied++
                     reGroup = true
@@ -1535,7 +1534,7 @@ class FaceIndexStore(
                 check(db.insertWithOnConflict("people_rejected", null,
                     ContentValues().apply {
                         put("face_uid", face); put("person_key", person)
-                    }, SQLiteDatabase.CONFLICT_IGNORE) != -1L)
+                    }, SQLiteDatabase.CONFLICT_REPLACE) != -1L)
                 applied++
                 reGroup = true
             }
