@@ -154,6 +154,33 @@ internal data class PhotoDnaCandidates(
 )
 
 /**
+ * Ignore every occurrence of a URI that the catalogue repeats. Even if two
+ * copies agree on metadata, including both would make the review plan reject
+ * duplicate URIs and crash its uncaught UI planning coroutine. If they disagree,
+ * choosing one would be unsafe for a later destructive preflight. Fail closed:
+ * neither occurrence can be offered until a fresh catalogue is consistent.
+ * Also used for visual hash candidates, whose pair keys require unique URIs.
+ */
+internal fun photoDnaDistinctEligible(
+    source: List<MediaRecord>,
+    budget: PhotoDnaBudget = PhotoDnaBudget(),
+    checkpoint: () -> Unit = {}
+): List<MediaRecord> {
+    val seen = HashSet<String>()
+    val duplicated = HashSet<String>()
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        if (!seen.add(record.uri)) duplicated.add(record.uri)
+    }
+    val eligible = ArrayList<MediaRecord>()
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        if (record.uri !in duplicated && photoDnaEligible(record, budget)) eligible.add(record)
+    }
+    return eligible
+}
+
+/**
  * Two files can only be byte-identical when their sizes match. Classes are
  * taken largest-potential-saving first and only while the whole class fits
  * the budget, so a class is never half-checked.
@@ -164,10 +191,9 @@ internal fun photoDnaCandidates(
     checkpoint: () -> Unit = {}
 ): PhotoDnaCandidates {
     val bySize = HashMap<Long, MutableList<MediaRecord>>()
-    source.forEachIndexed { index, record ->
+    photoDnaDistinctEligible(source, budget, checkpoint).forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        if (photoDnaEligible(record, budget))
-            bySize.getOrPut(record.sizeBytes) { ArrayList(2) }.add(record)
+        bySize.getOrPut(record.sizeBytes) { ArrayList(2) }.add(record)
     }
     val classes = bySize.entries.filter { it.value.size > 1 }
         .sortedWith(compareByDescending<Map.Entry<Long, MutableList<MediaRecord>>> {
@@ -365,11 +391,8 @@ internal fun planPhotoDnaVisual(
 ): PhotoDnaVisualPass {
     val none = PhotoDnaVisualPass(emptyList(), emptyList(), emptyMap(), 0, 0, 0, 0L, false)
     if (plan.scopeEpoch != tokens.scopeEpoch) return none
-    val images = ArrayList<MediaRecord>()
-    source.forEachIndexed { index, record ->
-        if ((index and 1023) == 0) checkpoint()
-        if (!record.isVideo && photoDnaEligible(record)) images.add(record)
-    }
+    val images = ArrayList(photoDnaDistinctEligible(source, checkpoint = checkpoint)
+        .filterNot { it.isVideo })
     images.sortWith(compareByDescending<MediaRecord> { it.takenAtMillis }.thenBy { it.uri })
     val hashed = ArrayList<MediaRecord>()
     val values = ArrayList<Long>()
@@ -456,6 +479,10 @@ private object PhotoDnaVisualHashes {
 /** Thumbnail edge for the perceptual hash: plenty for a 9x8 grid, cheap to decode. */
 private val VISUAL_THUMBNAIL = Size(96, 96)
 
+/** A misbehaving thumbnail provider must not allocate a full-resolution pixel buffer. */
+internal fun photoDnaThumbnailWithinBudget(width: Int, height: Int): Boolean =
+    width in 1..256 && height in 1..256
+
 /**
  * The perceptual hash of one already-authorized image, from Android's own
  * thumbnail: ContentResolver.loadThumbnail returns a small bitmap and rotates
@@ -480,6 +507,12 @@ internal fun visualHashAuthorizedImage(
     } catch (_: SecurityException) {
         return null
     } catch (_: IllegalArgumentException) {
+        return null
+    }
+    // The provider is asked for 96x96, but a faulty implementation may ignore
+    // the request. Never copy a full-size HARDWARE bitmap or allocate its pixels.
+    if (!photoDnaThumbnailWithinBudget(bitmap.width, bitmap.height)) {
+        bitmap.recycle()
         return null
     }
     val software = if (bitmap.config == Bitmap.Config.HARDWARE)
