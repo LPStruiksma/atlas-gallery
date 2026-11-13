@@ -1425,7 +1425,7 @@ internal fun VideoPage(
                 // expose a URI or interfere with Media3 playback.
                 null
             } finally {
-                retriever.release()
+                runCatching { retriever.release() }
             }
         }
     }
@@ -1444,7 +1444,7 @@ internal fun VideoPage(
         AnimatedVisibility(chromeVisible,
             modifier = Modifier.align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                .padding(horizontal = 14.dp, vertical = 164.dp),
+                .padding(start = 14.dp, end = 14.dp, bottom = 164.dp),
             enter = CHROME_ENTER, exit = CHROME_EXIT
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1456,7 +1456,8 @@ internal fun VideoPage(
                         contentAlignment = Alignment.Center) {
                         seekPreview?.let { frame ->
                             Image(frame.asImageBitmap(), contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize()
+                                    .testTag("atlas-video-seek-frame"),
                                 contentScale = ContentScale.Crop)
                         }
                         Text(viewerVideoTimecode(targetMs ?: 0L),
