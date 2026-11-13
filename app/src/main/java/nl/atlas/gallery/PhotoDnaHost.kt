@@ -476,12 +476,29 @@ private object PhotoDnaVisualHashes {
     val cache = PhotoDnaVisualCache()
 }
 
-/** Thumbnail edge for the perceptual hash: plenty for a 9x8 grid, cheap to decode. */
-private val VISUAL_THUMBNAIL = Size(96, 96)
+/** A 9x8 dHash needs little detail, even for extreme panoramas. */
+private const val PHOTO_DNA_THUMBNAIL_TARGET_EDGE = 96
+internal const val PHOTO_DNA_THUMBNAIL_MAX_PIXELS = 256L * 256L
 
-/** A misbehaving thumbnail provider must not allocate a full-resolution pixel buffer. */
+/**
+ * loadThumbnail may preserve the aspect ratio while filling the requested
+ * *short* edge. For an 8000x1000 panorama a 96x96 request can yield 768x96;
+ * request 90x90 instead so the provider returns about 720x90 (<= 65536 px).
+ * Use square requests for either EXIF orientation; absent dimensions get a
+ * conservative default followed by a bounded retry when needed.
+ */
+internal fun photoDnaThumbnailEdge(width: Int, height: Int): Int {
+    if (width <= 0 || height <= 0) return PHOTO_DNA_THUMBNAIL_TARGET_EDGE
+    val short = minOf(width, height).toDouble()
+    val long = maxOf(width, height).toDouble()
+    return kotlin.math.sqrt(PHOTO_DNA_THUMBNAIL_MAX_PIXELS * short / long)
+        .toInt().coerceIn(1, PHOTO_DNA_THUMBNAIL_TARGET_EDGE)
+}
+
+/** Never allocate a software copy or pixel array for a provider's huge bitmap. */
 internal fun photoDnaThumbnailWithinBudget(width: Int, height: Int): Boolean =
-    width in 1..256 && height in 1..256
+    width > 0 && height > 0 &&
+        width.toLong() * height <= PHOTO_DNA_THUMBNAIL_MAX_PIXELS
 
 /**
  * The perceptual hash of one already-authorized image, from Android's own
@@ -495,26 +512,54 @@ internal fun visualHashAuthorizedImage(
     resolver: ContentResolver,
     record: MediaRecord,
     stillAuthorized: () -> Boolean,
-    checkCancelled: () -> Unit
+    checkCancelled: () -> Unit,
+    onOverBudget: () -> Unit = {}
 ): CurationVisualHash? {
     if (record.isVideo) return null
     checkCancelled()
     if (!stillAuthorized()) return null
-    val bitmap = try {
-        resolver.loadThumbnail(Uri.parse(record.uri), VISUAL_THUMBNAIL, CancellationSignal())
+    val uri = Uri.parse(record.uri)
+    val signal = CancellationSignal()
+    fun load(edge: Int): Bitmap? = try {
+        resolver.loadThumbnail(uri, Size(edge, edge), signal)
     } catch (_: IOException) {
-        return null
+        null
     } catch (_: SecurityException) {
-        return null
+        null
     } catch (_: IllegalArgumentException) {
-        return null
+        null
     }
-    // The provider is asked for 96x96, but a faulty implementation may ignore
-    // the request. Never copy a full-size HARDWARE bitmap or allocate its pixels.
+    val initialEdge = photoDnaThumbnailEdge(record.widthPixels, record.heightPixels)
+    var bitmap = load(initialEdge) ?: return null
+    // A provider can ignore metadata or the requested size. Retry at most
+    // once with the measured aspect ratio; never copy a bitmap over budget.
     if (!photoDnaThumbnailWithinBudget(bitmap.width, bitmap.height)) {
+        val measuredEdge = photoDnaThumbnailEdge(bitmap.width, bitmap.height)
+        val scale = kotlin.math.sqrt(PHOTO_DNA_THUMBNAIL_MAX_PIXELS.toDouble() /
+            (bitmap.width.toLong() * bitmap.height).toDouble())
+        val retryEdge = minOf(initialEdge - 1, measuredEdge,
+            (initialEdge * scale).toInt())
         bitmap.recycle()
-        return null
+        if (retryEdge < 1) {
+            onOverBudget()
+            return null
+        }
+        checkCancelled()
+        if (!stillAuthorized()) return null
+        val retried = load(retryEdge)
+        if (retried == null) {
+            onOverBudget()
+            return null
+        }
+        bitmap = retried
+        if (!photoDnaThumbnailWithinBudget(bitmap.width, bitmap.height)) {
+            bitmap.recycle()
+            onOverBudget()
+            return null
+        }
     }
+    // Keep the #38 HARDWARE guard: no hardware-to-ARGB copy before the
+    // provider's actual (not merely requested) dimensions are within budget.
     val software = if (bitmap.config == Bitmap.Config.HARDWARE)
         bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
     return try {
@@ -760,19 +805,28 @@ internal fun rememberPhotoDna(
         if (!grant.images) return@LaunchedEffect
         var previousDeferred: Int? = null
         var passes = 0
+        var totalOversizedSkips = 0
         while (true) {
             // The byte plan (with any Keep marks) is the base; visual pairs are rebuilt on it.
             val basePlan = planned.plan
-            val pass = withContext(Dispatchers.IO) {
+            val (pass, oversizedThumbnailSkips) = withContext(Dispatchers.IO) {
                 val check = { ensureActive() }
                 val authorized = { readGalleryMediaGrant(context) == grant }
+                var skipped = 0
                 PhotoDnaVisualHashes.cache.bindGrant(grant)
-                planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
-                    decode = { visualHashAuthorizedImage(context.contentResolver, it, authorized, check) },
+                val visual = planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
+                    decode = { record -> visualHashAuthorizedImage(context.contentResolver,
+                        record, authorized, check, onOverBudget = { skipped++ }) },
                     stillAuthorized = authorized, checkpoint = check)
+                visual to skipped
             }
             passes++
             if (result !== planned || readGalleryMediaGrant(context) != grant) return@LaunchedEffect
+            totalOversizedSkips += oversizedThumbnailSkips
+            // One count-only record per pass, never a URI or personal-media detail.
+            android.util.Log.i("ATLAS_PHOTO_DNA", "visual pass decoded=${pass.decodedFiles} " +
+                "hashed=${pass.hashedFiles} oversizedThumbnailSkips=$oversizedThumbnailSkips " +
+                "totalOversizedSkips=$totalOversizedSkips deferred=${pass.deferredFiles}")
             planned.addVisualPairs(pass)
             if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return@LaunchedEffect
             previousDeferred = pass.deferredFiles
