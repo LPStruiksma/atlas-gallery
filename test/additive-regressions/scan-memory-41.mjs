@@ -35,4 +35,8 @@ const cache = read('app/src/main/java/nl/atlas/gallery/GalleryInventoryCache.kt'
 assert.match(cache, /catch \(_: OutOfMemoryError\) \{[\s\S]*?event=cache_read_out_of_memory"\)\s*null/);
 assert.match(cache, /catch \(_: OutOfMemoryError\) \{[\s\S]*?tmp\.delete\(\)[\s\S]*?event=cache_write_out_of_memory/);
 
+// Stopgap approved by the owner on 2026-11-13: nine out-of-memory crashes in one
+// day at the 256 MiB limit. Remove only once the catalogue's footprint is cut.
+assert.match(read('app/src/main/AndroidManifest.xml'), /<application[^>]*android:largeHeap="true"/);
+
 console.log('scan-memory-41 source contracts passed');
