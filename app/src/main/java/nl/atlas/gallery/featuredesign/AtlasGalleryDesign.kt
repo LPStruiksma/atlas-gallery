@@ -34,13 +34,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.material3.*
@@ -259,19 +260,24 @@ private tailrec fun android.content.Context.findActivity(): android.app.Activity
     else -> null
 }
 
-enum class AtlasDestination(val title: String, val icon: ImageVector) {
-    // #652: outlined, as Samsung's floating chrome (#509 §0).
-    PHOTOS("Photos", Icons.Outlined.PhotoLibrary),
-    ALBUMS("Albums", Icons.Outlined.Collections),
-    PEOPLE("People", Icons.Outlined.People),
-    SEARCH("Search", Icons.Outlined.Search)
+enum class AtlasDestination(
+    val title: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector
+) {
+    // #685: photos = a single picture, albums = a four-tile grid.
+    // #652: inactive glyphs are outlined; active glyphs are filled (#509 §0).
+    PHOTOS("Photos", Icons.Outlined.Image, Icons.Filled.Image),
+    ALBUMS("Albums", Icons.Outlined.GridView, Icons.Filled.GridView),
+    PEOPLE("People", Icons.Outlined.People, Icons.Filled.People),
+    SEARCH("Search", Icons.Outlined.Search, Icons.Filled.Search)
 }
 
 /**
  * #640 (#509 §2): Samsung's compact floating tab bar. One fully rounded dark
  * pill, 12 dp from the screen edges, outlined-weight 24 dp icons with small
- * labels; the active tab is shown by tint and weight, never by a Material
- * selection blob. Activity is a secondary settings surface, never a primary
+ * labels; the active tab uses the filled glyph, tint and label weight,
+ * never a Material selection blob. Activity is a secondary settings surface, never a primary
  * gallery destination.
  */
 @Composable
@@ -350,7 +356,8 @@ private fun AtlasTabItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(destination.icon, contentDescription = null, tint = tint,
+        Icon(if (selected) destination.selectedIcon else destination.icon,
+            contentDescription = null, tint = tint,
             modifier = Modifier.size(24.dp))
         Spacer(Modifier.height(2.dp))
         Text(

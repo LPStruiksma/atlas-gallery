@@ -1,0 +1,5 @@
+#685: real MainActivity bottom pill, both selected states in each system theme.
+nav-685-photos-light
+nav-685-albums-light
+nav-685-photos-dark
+nav-685-albums-dark
