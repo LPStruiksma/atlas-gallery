@@ -47,7 +47,8 @@ internal fun AtlasSettingsScreen(
     onPhotoDetails: () -> Unit,
     onImportV4: () -> Unit,
     onLinkV4: () -> Unit,
-    onDiagnostics: () -> Unit
+    onDiagnostics: () -> Unit,
+    scanLoading: Boolean = false
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     val scanAction = when (scanPhase) {
@@ -55,7 +56,7 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = when (scanPhase) {
+    val scanValue = if (scanLoading) "Restoring…" else when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> "On · Pause"
         FaceDiscoveryPhase.QUEUED -> "Starting"
         FaceDiscoveryPhase.PAUSED -> "Paused · Resume"
