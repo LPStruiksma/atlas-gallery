@@ -170,8 +170,32 @@ internal data class PeopleDiscoveryStatus(
     /** The separate "Visual search index" opt-in (VS-S1c); null when unavailable. */
     val visual: VisualIndexStatus? = null,
     /** Non-identifying diagnostics for the active face catalogue. */
-    val provenance: FaceCatalogPublication? = null
+    val provenance: FaceCatalogPublication? = null,
+    /**
+     * #75: served, with published face groups, but [people] is not readable
+     * yet (a regroup or the #580 refill runs). Not an empty result: People
+     * must keep what it showed, or its restoring screen, never "No people".
+     */
+    val peoplePending: Boolean = false
 )
+
+/**
+ * #75: People shows its blank restoring screen, not "No people", while an
+ * opted-in catalogue is not served yet or its people are pending.
+ */
+internal fun peopleHomeRestoring(
+    access: Boolean, optedIn: Boolean, status: PeopleDiscoveryStatus?
+): Boolean = access && optedIn && status == null // as on main; the fix follows
+
+/**
+ * #75: while [next]'s people are pending, keep the summary [previous] showed
+ * for the same epoch instead of dropping to nothing.
+ */
+internal fun holdPendingPeople(
+    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+): PeopleDiscoveryStatus? {
+    return next // as on main; the fix follows
+}
 
 /**
  * The visual search index panel's facts. It rides on the face discovery run
@@ -504,7 +528,13 @@ internal class PeopleDiscoveryHost(
      * (also after a process restart) while the next one stages. Null (the
      * default) keeps the strict behaviour: every publication restages blind.
      */
-    private val photoGrantToken: () -> String? = { null }
+    private val photoGrantToken: () -> String? = { null },
+    /**
+     * #75 test seam: runs right after a publication made a carried catalogue
+     * served and before its people are regrouped, so a test can read status
+     * in exactly that window. The app passes nothing.
+     */
+    private val onCarried: () -> Unit = {}
 ) {
     companion object {
         /**
@@ -1045,6 +1075,7 @@ internal class PeopleDiscoveryHost(
             when (carry) {
                 Carry.UNCHANGED -> {
                     mode = "carried"
+                    onCarried()
                     // The catalogue is exactly what this inventory would stage.
                     regroupIfRulesChanged(synchronized(lock) { scope }!!.epoch)
                     val epoch = synchronized(lock) { scope }!!.epoch
@@ -1055,6 +1086,7 @@ internal class PeopleDiscoveryHost(
                 }
                 Carry.STAGE_BEHIND -> {
                     mode = "staged-behind"
+                    onCarried()
                     changed() // the carried catalogue shows now; the restage follows
                     publish(galleryGrant, sorted, keepReadable = true,
                         known = token!! to digest!!)
@@ -1581,11 +1613,13 @@ internal class PeopleDiscoveryHost(
             counts.awaitingReview, nativeDetectorInstalled = true, realStartActionAvailable = true
         ), scoped.epoch)
         val people = currentHome(scoped.epoch)
+        // #75: null people with published groups is "not readable yet", not empty.
+        val pending = false // as on main; the fix follows
         return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
             mayResumeScan = ui.phase == FaceDiscoveryPhase.PAUSED,
             mayOpenReview = counts.awaitingReview > 0
-        ), people, visualStatus(scoped.epoch), scoped.provenance)
+        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = pending)
     }
 
     /**
@@ -2073,11 +2107,12 @@ internal fun <T> rememberPeopleDiscoveryOf(
         // value (or "Restoring…") instead of flashing a not-started state.
         withContext(Dispatchers.IO) {
             host.status(galleryGrant).takeIf { host.serves(galleryGrant) || !host.discoveryOptedIn() }
-        }?.let { value = it }
-        value = withContext(Dispatchers.IO) {
+        }?.let { value = holdPendingPeople(value, it) }
+        val published = withContext(Dispatchers.IO) {
             host.onGalleryPublication(galleryGrant) { project(inventory) }
             host.status(galleryGrant)
         }
+        value = holdPendingPeople(value, published)
     }
     val scope = rememberCoroutineScope()
     return PeopleDiscoveryBinding(

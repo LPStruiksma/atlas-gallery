@@ -495,6 +495,15 @@ class FaceIndexStore(
         db.rawQuery("SELECT 1 FROM cluster_members LIMIT 1", null).use { it.moveToFirst() }
 
     /**
+     * #75: whether [epoch] is readable and holds published face groups. With
+     * a null [peopleHome] that means "not readable yet" (a regroup or the
+     * #580 refill), never "nobody": the first scan before any publication
+     * has no membership.
+     */
+    fun hasPublishedMembership(epoch: String): Boolean =
+        authorizedEmbeddingRead(epoch, false) { db, _ -> hasMembership(db) }
+
+    /**
      * #579: membership published under other grouping rules must be
      * regrouped under [ClusterPolicy.DEFAULT]. Opening only marks the
      * generation dirty (cluster reads return null, as during a scan) and
