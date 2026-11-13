@@ -1029,7 +1029,10 @@ private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowSc
 @Composable
 private fun ViewerSystemBars(visible: Boolean) {
     val view = LocalView.current
-    val window = (view.context as? android.app.Activity)?.window ?: return
+    // Compose's LocalView can be hosted by a ContextThemeWrapper. A direct
+    // Activity cast silently skipped the entire viewer bar override on the
+    // real MainActivity route (API 35 rendered a light navigation band).
+    val window = view.context.viewerHostActivity()?.window ?: return
     DisposableEffect(window, view) {
         val controller = WindowCompat.getInsetsController(window, view)
         val oldStatusColor = window.statusBarColor
@@ -1064,6 +1067,13 @@ private fun ViewerSystemBars(visible: Boolean) {
         else controller.hide(WindowInsetsCompat.Type.systemBars())
     }
 }
+
+private tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
+    when (this) {
+        is android.app.Activity -> this
+        is android.content.ContextWrapper -> baseContext.viewerHostActivity()
+        else -> null
+    }
 
 internal fun shouldStartViewerVideoPlayer(
     focused: Boolean, rapidlyChanging: Boolean, settled: Boolean
