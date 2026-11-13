@@ -2802,13 +2802,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
                             scanLoading = access && discovery.status == null,
+                            scanHasSavedOptIn = discoveryHost.hasSavedScanOptIn(),
+                            scanPhotoAccess = access,
+                            visualStatus = visualStatus,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
                             },
                             onResumeScan = discovery.onResume.takeIf {
                                 discovery.status?.actions?.mayResumeScan == true
                             },
-                            visualIndexOn = visualStatus?.enabled,
+                            visualIndexOn = visualStatus?.enabled ?:
+                                discoveryHost.hasSavedVisualOptIn().takeIf { it },
                             showPhotoDetails = provenance != null &&
                                 (provenance.missingPhotoFields.isNotEmpty() ||
                                     provenance.ignoredPhotoRows > 0),

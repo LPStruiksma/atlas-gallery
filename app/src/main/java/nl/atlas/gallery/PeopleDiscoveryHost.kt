@@ -314,10 +314,11 @@ internal fun selectNativePersonAlbum(
  */
 internal fun startedScanPhase(
     pausedByUser: Boolean, pending: Int, running: Int,
-    awaitingReview: Int, hold: FaceScanPhase?
+    awaitingReview: Int, hold: FaceScanPhase?, grouping: Boolean = false
 ): FaceScanPhase = when {
     pausedByUser -> FaceScanPhase.PAUSED
     hold == FaceScanPhase.PERMISSION_REQUIRED -> FaceScanPhase.PERMISSION_REQUIRED
+    grouping && hold == null -> FaceScanPhase.GROUPING
     pending + running > 0 -> hold ?: FaceScanPhase.RUNNING
     awaitingReview > 0 -> FaceScanPhase.REVIEW_AVAILABLE
     else -> FaceScanPhase.COMPLETE
@@ -572,6 +573,8 @@ internal class PeopleDiscoveryHost(
     }
     /** Epoch the store may serve right now; any change holds old engines. */
     @Volatile private var liveEpoch: String? = null
+    /** True only while a scan batch is actually publishing groups for this epoch. */
+    @Volatile private var groupingEpoch: String? = null
     private var inference: OnDeviceFaceLocator? = null
     private val reviewGeneration = AtomicLong()
 
@@ -617,6 +620,10 @@ internal class PeopleDiscoveryHost(
      * the earlier one fail its next stage write and turned discovery off.
      */
     private val publishLock = Any()
+
+    /** A stored choice is safe to expose as status, not as permission to read faces. */
+    fun hasSavedScanOptIn(): Boolean = synchronized(lock) { optedIn }
+    fun hasSavedVisualOptIn(): Boolean = synchronized(lock) { visualOptedIn }
 
     /** The token to pass as PeopleHomeScreen's currentPermissionEpoch. */
     fun displayEpoch(galleryGrant: String?): String? = synchronized(lock) {
@@ -1197,7 +1204,10 @@ internal class PeopleDiscoveryHost(
             var publicationContinues = false
             var publicationFailed = false
             try {
-                // Not due is one constant-cost read; a drained queue always publishes.
+                // This is a real grouping stage, not a queued scan; clear the marker
+                // in finally even when publication is cancelled or fails.
+                groupingEpoch = owned.epoch
+                changed()
                 publishClusters(owned.epoch, drained)
                 publicationContinues = drained && store.clusterPublicationContinues(owned.epoch)
                 publicationFailures.set(0)
@@ -1209,6 +1219,9 @@ internal class PeopleDiscoveryHost(
                 // photo retries with the next batch; a drained queue has none,
                 // so it retries later, a bounded number of times (#508 review).
                 publicationFailed = true
+            } finally {
+                if (groupingEpoch == owned.epoch) groupingEpoch = null
+                changed()
             }
             val retryPublication = publicationFailed && drained &&
                 publicationFailures.incrementAndGet() <= MAX_PUBLICATION_RETRIES
@@ -1279,7 +1292,7 @@ internal class PeopleDiscoveryHost(
         }
         val hold = conditions(scoped.epoch).holdReason()
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
-            counts.awaitingReview, hold)
+            counts.awaitingReview, hold, grouping = groupingEpoch == scoped.epoch)
         val total = progress.pending + progress.running + progress.processed + progress.failed
         val ui = presentNativeFaceScan(NativeFaceScanDisplayEvidence(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,
