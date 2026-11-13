@@ -122,12 +122,12 @@ private fun Problem(state: FindSimilarState, onOpenSettings: () -> Unit, onBack:
         val (tag, title, body) = when (problem) {
             FindSimilarProblem.INDEX_OFF -> Triple("index-off",
                 "Similar-photo search is off.",
-                "Turn on the Visual search index in Library status & settings. ATLAS compares " +
+                "Turn on the Visual search index in Settings. ATLAS compares " +
                     "your photos on " +
                     "this device only.")
             FindSimilarProblem.INDEX_NOT_READY -> Triple("not-indexed",
                 "Your photos are still being prepared for similar-photo search.",
-                "Try again once the Visual search index in Library status & settings has finished.")
+                "Try again once the Visual search index in Settings has finished.")
             FindSimilarProblem.REFERENCE_UNREADABLE -> Triple("unreadable",
                 "This photo can't be searched.",
                 "ATLAS couldn't read it on this device. No photo was changed.")

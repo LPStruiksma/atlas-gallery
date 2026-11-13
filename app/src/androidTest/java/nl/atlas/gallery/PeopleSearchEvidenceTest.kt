@@ -107,13 +107,16 @@ class PeopleSearchAppEvidenceTest {
         dismissWithBack(compose, hasTestTag("atlas-people-hidden"))
         waitFor(compose, hasTestTag("atlas-people-home"))
 
-        // #643: they moved to Library status & settings, with their tags.
+        // #664: Settings is the one home for People maintenance.
         compose.onNodeWithTag("atlas-header-more").performClick()
         waitFor(compose, hasTestTag("atlas-library-status"))
         compose.onNodeWithTag("atlas-library-status").performClick()
-        waitFor(compose, hasTestTag("atlas-library-people-tools"))
+        waitFor(compose, hasTestTag("atlas-settings-screen"))
+        compose.onNodeWithTag("atlas-people-numbers-open").assertExists()
+        compose.onNodeWithTag("atlas-people-import-v4").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-settings-advanced").performClick()
         listOf("atlas-people-import-v4", "atlas-people-link-v4",
-            "atlas-people-numbers-open").forEach {
+            "atlas-settings-diagnostics").forEach {
             compose.onNodeWithTag(it).assertExists()
         }
         compose.waitForIdle()
@@ -163,8 +166,38 @@ class PeopleSearchStateEvidenceTest {
      * the title: no status text, no button. Pause and review sit in ⋮, next
      * to Hidden; the V4 import is not there. Idle, the line is gone too.
      */
-    @Test fun peopleGridWithRoundPortraitsWhileScanning() {
+    @Test fun settingsPausesAndResumesOnlyWhenTheHostOffersActions() {
+        var phase by mutableStateOf(FaceDiscoveryPhase.SCANNING)
         var pauses = 0
+        var resumes = 0
+        compose.setContent {
+            AtlasEvidenceHarness {
+                AtlasSettingsScreen(
+                    scanPhase = phase,
+                    onPauseScan = { pauses++; phase = FaceDiscoveryPhase.PAUSED },
+                    onResumeScan = { resumes++; phase = FaceDiscoveryPhase.SCANNING },
+                    visualIndexOn = false,
+                    showPhotoDetails = false,
+                    versionName = "test",
+                    onVisualIndex = {},
+                    onPeopleNumbers = {},
+                    onPhotoDetails = {},
+                    onImportV4 = {},
+                    onLinkV4 = {},
+                    onDiagnostics = {}
+                )
+            }
+        }
+        waitFor(compose, hasTestTag("atlas-settings-face-scanning"))
+        compose.onNodeWithTag("atlas-settings-face-scanning").performClick()
+        compose.runOnIdle { assertEquals(1, pauses); assertEquals(FaceDiscoveryPhase.PAUSED, phase) }
+        compose.onNodeWithTag("atlas-settings-face-scanning").performClick()
+        compose.runOnIdle { assertEquals(1, resumes); assertEquals(FaceDiscoveryPhase.SCANNING, phase) }
+        compose.waitForIdle()
+        saveUiEvidence("settings-664-scan-controls.png")
+    }
+
+    @Test fun peopleGridWithRoundPortraitsWhileScanning() {
         var reviews = 0
         var phase by mutableStateOf(FaceDiscoveryPhase.SCANNING)
         val profiles = names.mapIndexed { i, name ->
@@ -184,7 +217,6 @@ class PeopleSearchStateEvidenceTest {
                         mayOpenReview = true),
                     onOpenProfile = {},
                     currentPermissionEpoch = "synthetic-grant",
-                    onPauseDiscovery = { pauses++ },
                     onOpenReview = { reviews++ },
                     menuItems = listOf(AtlasHeaderMenuItem("Hidden",
                         "atlas-people-hidden-open", onClick = {})),
@@ -204,18 +236,15 @@ class PeopleSearchStateEvidenceTest {
         saveUiEvidence("people-grid.png")
 
         compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor(compose, hasTestTag("atlas-people-pause"))
+        waitFor(compose, hasTestTag("atlas-people-review"))
         listOf("atlas-people-hidden-open", "atlas-people-review", "atlas-library-status")
             .forEach { compose.onNodeWithTag(it).assertExists() }
-        listOf("atlas-people-import-v4", "atlas-people-link-v4").forEach {
+        listOf("atlas-people-pause", "atlas-people-resume",
+            "atlas-people-import-v4", "atlas-people-link-v4").forEach {
             compose.onNodeWithTag(it).assertDoesNotExist()
         }
         compose.waitForIdle()
         saveUiEvidence("people-menu-scanning.png")
-        compose.onNodeWithTag("atlas-people-pause").performClick()
-        compose.runOnIdle { assertEquals(1, pauses) }
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor(compose, hasTestTag("atlas-people-review"))
         compose.onNodeWithTag("atlas-people-review").performClick()
         compose.runOnIdle { assertEquals(1, reviews) }
 

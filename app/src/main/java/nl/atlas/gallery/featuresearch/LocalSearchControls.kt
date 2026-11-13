@@ -147,7 +147,7 @@ fun LocalSearchControls(
                         onClick = { overflowOpen = false; extraFilters = !extraFilters },
                         modifier = Modifier.testTag("atlas-search-more-filters"))
                     if (onOpenLibraryStatus != null) DropdownMenuItem(
-                        text = { Text("Library status & settings") },
+                        text = { Text("Settings") },
                         onClick = { overflowOpen = false; onOpenLibraryStatus() },
                         modifier = Modifier.testTag("atlas-library-status"))
                 }

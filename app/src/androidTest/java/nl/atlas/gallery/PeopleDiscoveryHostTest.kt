@@ -252,8 +252,8 @@ class PeopleDiscoveryHostTest {
         compose.onNodeWithText("Discover faces").performClick()
         waitFor("scheduler start") { scheduler.starts.get() == 1 }
         waitForProgress("Finding people · 0 of 10")
-        openMenuFor("atlas-people-pause")
-        dismissWithBack(compose, hasTestTag("atlas-people-pause"))
+        // #664: pause/resume moved to Settings; the scan keeps progressing
+        // without opening the old People overflow control here.
 
         // First bounded batch: some photos indexed, a next batch queued.
         val first = batch()
