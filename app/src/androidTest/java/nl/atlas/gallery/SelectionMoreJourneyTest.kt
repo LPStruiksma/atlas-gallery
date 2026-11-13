@@ -39,7 +39,7 @@ import org.junit.runners.model.Statement
  * More → Copy to album into an existing album (originals stay), More → Move
  * to album into a new album (Android's write consent is accepted if shown),
  * then Albums ⋮ → Hide albums hides the fixture album from Photos and unhides
- * it again. Screenshots go to the emulator-only Pictures/ATLAS-UI-Evidence.
+ * it again. Screenshots go to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR).
  */
 @RunWith(AndroidJUnit4::class)
 class SelectionMoreJourneyTest {

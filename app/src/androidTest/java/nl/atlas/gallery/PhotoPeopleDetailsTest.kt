@@ -28,7 +28,7 @@ import org.junit.runner.RunWith
  * #553 rendered proof: swipe-up Details of a photo with three invented faces
  * (two named, one unnamed). A named circle opens that person; "+" opens the
  * name dialog and the stored name replaces it. Faces are drawn locally;
- * screenshots go to the emulator-only Pictures/ATLAS-UI-Evidence folder.
+ * screenshots go to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR).
  */
 @RunWith(AndroidJUnit4::class)
 class PhotoPeopleDetailsTest {

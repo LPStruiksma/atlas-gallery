@@ -153,6 +153,8 @@ private class VisualFixtures : TestRule {
                         Bitmap.CompressFormat.JPEG))
                     insert(UNRELATED, "image/png", encode(160, 120, ::otherPattern,
                         Bitmap.CompressFormat.PNG))
+                    // #703: the scan sees exactly these three, whatever ran before.
+                    assertLibraryIsExactly(context, listOf(NEAR_SMALL, NEAR_LARGE, UNRELATED))
                     base.evaluate()
                 } finally {
                     inserted.forEach { runCatching { context.contentResolver.delete(it, null, null) } }
