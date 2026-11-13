@@ -1566,7 +1566,7 @@ internal class PeopleDiscoveryHost(
         return PeopleReviewPage(queue, clusters, page.nextCursor)
     }
 
-    /** True while the user's in-process opt-in holds (a pending refresh keeps it). */
+    /** True while the saved user opt-in remains active in this host (a pending refresh keeps it). */
     fun discoveryOptedIn(): Boolean = synchronized(lock) { optedIn }
 
     /**
