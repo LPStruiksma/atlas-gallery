@@ -31,6 +31,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
@@ -325,7 +326,9 @@ class PersonPageJourneyTest {
         compose.onNodeWithTag("atlas-person-name").performClick()
         waitForTag("atlas-person-name-field")
         compose.onNodeWithTag("atlas-person-name-field").performTextInput("Synthetic Ada")
-        compose.onNodeWithTag("atlas-person-name-save").performClick()
+        // The text field exposes Done → onSave; an IME can swallow a tap on Save.
+        // Exercise this real submit path and still check the retarget and store.
+        compose.onNodeWithTag("atlas-person-name-field").performImeAction()
         waitFor("page follows the named person") { request?.person != null }
         val ada = request!!.person!!
         waitForText("Synthetic Ada")
