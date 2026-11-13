@@ -241,7 +241,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     val failedInventoryEpoch = _failedInventoryEpoch.asStateFlow()
     // #505: cold start opens straight into the last catalogue from disk.
     private val inventoryCache = GalleryInventoryCacheFile(
-        java.io.File(application.noBackupFilesDir, "gallery-inventory.bin"))
+        java.io.File(application.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))
     private var inventoryCacheWrite: Job? = null
     @Volatile private var inventoryDirty = true
     private val mediaChangeVersion = AtomicLong(0L)

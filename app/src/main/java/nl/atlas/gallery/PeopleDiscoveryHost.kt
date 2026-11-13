@@ -145,11 +145,14 @@ internal data class PeoplePowerState(
 
 /** Where the worker's bounded batches go; WorkManager in the app, a fake in tests. */
 internal interface PeopleScanScheduling {
+    /** Starts the chain, and (#43) keeps a periodic re-arm while opted in. */
     fun start()
     fun next()
     /** The next batch after a hold, with an initial delay. */
     fun later()
     fun cancel()
+    /** #43: the user stopped (off, pause) or access is gone: no re-arm either. */
+    fun disarm() = Unit
 }
 
 /** Everything People's discovery panel needs from one consistent read. */
@@ -575,7 +578,11 @@ internal class PeopleDiscoveryHost(
                 java.io.File(context.noBackupFilesDir, SiglipImageEmbedder.MODEL_DIR).exists()
             },
             scheduler = object : PeopleScanScheduling {
-                override fun start() = PeopleScanWorkScheduler.enqueueAfterVerifiedOptIn(context)
+                override fun start() {
+                    PeopleScanWorkScheduler.enqueueAfterVerifiedOptIn(context)
+                    PeopleScanWorkScheduler.enqueueRearm(context)
+                }
+                override fun disarm() = PeopleScanWorkScheduler.cancelRearm(context)
                 override fun next() = PeopleScanWorkScheduler.enqueueNextBatch(context)
                 override fun later() = PeopleScanWorkScheduler.enqueueNextBatch(context, delayed = true)
                 override fun cancel() = PeopleScanWorkScheduler.cancel(context)
@@ -737,6 +744,7 @@ internal class PeopleDiscoveryHost(
         synchronized(lock) { if (!optedIn) return; pausedByUser = true }
         optInMemory.save(PeopleOptIn(paused = true))
         scheduler.cancel()
+        scheduler.disarm()
         changed()
     }
 
@@ -775,6 +783,7 @@ internal class PeopleDiscoveryHost(
         faceCrops.clear()
         PeopleScanWorkRuntime.clear()
         scheduler.cancel()
+        scheduler.disarm()
         store.invalidatePermissionScope()
         stopVisual(keepOptIn = false)
         changed()
@@ -1051,6 +1060,37 @@ internal class PeopleDiscoveryHost(
         changed()
     }
 
+    /**
+     * #43: a background worker in a process without the Activity. Rebuilds the
+     * scope from stored state only: the kept opt-in (not paused), a stored
+     * publication, a full-library grant token and [inventory], the gallery's
+     * own grant-checked cache. Goes through [onGalleryPublication], so a real
+     * grant loss revokes exactly as in the app. True when a run is armed.
+     * Blocking; IO only.
+     */
+    fun restoreForBackgroundWork(inventory: () -> List<FaceVisibleMedia>?): Boolean {
+        val (wanted, served) = synchronized(lock) {
+            (optedIn && !pausedByUser) to (scope != null && liveEpoch == scope?.epoch)
+        }
+        if (!wanted) return false
+        if (!served) {
+            if (!photoGrantCurrent()) {
+                // Same rule as a publication: real loss of access revokes.
+                onGalleryPublication(null) { emptyList() }
+                return false
+            }
+            if (photoGrantToken() == null || optInMemory.loadPublished() == null) return false
+            val items = inventory() ?: return false
+            onGalleryPublication("background-" + UUID.randomUUID()) { items }
+        }
+        val armed = synchronized(lock) {
+            optedIn && !pausedByUser && scope != null && liveEpoch == scope?.epoch
+        }
+        Log.i("ATLAS_FACE", "background_restore armed=$armed reused=$served")
+        if (armed) PeopleScanWorkRuntime.installForOptedInHost(provider)
+        return armed
+    }
+
     private enum class Carry { NONE, UNCHANGED, STAGE_BEHIND }
 
     /** Versions a stored catalogue was built with; any change forces a restage. */
@@ -1135,6 +1175,7 @@ internal class PeopleDiscoveryHost(
         faceCrops.clear()
         PeopleScanWorkRuntime.clear()
         scheduler.cancel()
+        scheduler.disarm()
         stopVisual(keepOptIn = false)
         changed()
     }
