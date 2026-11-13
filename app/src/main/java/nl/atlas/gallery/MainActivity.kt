@@ -1108,12 +1108,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         authorized = searchGrant != null, source = media)
     val latestPhotoDnaTokens = rememberUpdatedState(photoDnaTokens)
     val photoDnaGrant = grants
-    val photoDna = rememberPhotoDna(media, photoDnaTokens,
+    val photoDnaPlanning = rememberPhotoDna(media, photoDnaTokens,
         enabled = tab == 1 && photoDnaOpen) { record, check ->
         hashAuthorizedMedia(context.contentResolver, record,
             stillAuthorized = { readGalleryMediaGrant(context) == photoDnaGrant },
             checkCancelled = check)
     }
+    val photoDna = photoDnaPlanning.result
     // O(1) reference-identity generation: even replacing confirmed People with
     // an equal-count/different-label roster creates a new anonymous token.
     val peopleGeneration = remember(CatalogSourceKey(people)) {
@@ -3106,7 +3107,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             },
                             onReviewRequested = ::requestPhotoDnaTrash,
                             // No tokens: a no-access message, never an endless spinner (#445).
-                            accessible = photoDnaTokens != null
+                            accessible = photoDnaTokens != null,
+                            // #42: a planning error is a Retry, not a quit.
+                            failed = photoDnaPlanning.failed,
+                            onRetry = photoDnaPlanning::retry
                         )
                     }
                     tab == 1 -> Column(Modifier.fillMaxSize()) {
