@@ -850,7 +850,12 @@ class FaceIndexStore(
             // that changed none of those keeps it as it was (#543): new photos
             // are only queued, and a restart's fresh epoch then shows People
             // at once instead of waiting for a full cluster rebuild.
-            if (pruned) db.execSQL("UPDATE cluster_generation SET dirty=1 WHERE singleton=1")
+            // #39: the last publication stays readable while dirty, minus the
+            // pruned faces, under a new review revision (see [servable]).
+            if (pruned) {
+                db.execSQL("UPDATE cluster_generation SET dirty=1 WHERE singleton=1")
+                retirePublishedRevision(db)
+            }
             // Bulk SQLite changes can be silently ignored by triggers.
             // Never authorize partial keys, stale source/model metadata or
             // unreleased leases under a newly published permission epoch.
@@ -962,7 +967,9 @@ class FaceIndexStore(
         return write { db ->
             if (currentEpoch(db) != lease.permissionEpoch || !matches(db, lease))
                 return@write false
-            db.delete("faces","media_key=?",arrayOf(lease.media.key))
+            // #39: a removed face retires the review snapshots that held it.
+            if (db.delete("faces","media_key=?",arrayOf(lease.media.key)) > 0)
+                retirePublishedRevision(db)
             // Box-only completion may cascade an earlier embedding or cluster.
             db.execSQL("UPDATE cluster_generation SET dirty=1 WHERE singleton=1")
             boxes.forEachIndexed { index, b ->
@@ -1010,7 +1017,9 @@ class FaceIndexStore(
             if (currentEpoch(db) != lease.permissionEpoch || !matches(db, lease) ||
                 storedEmbedderVersion(db) != embedderVersion) return@metered false
             meteredStatements++
-            db.delete("faces", "media_key=?", arrayOf(lease.media.key))
+            // #39: a removed face retires the review snapshots that held it.
+            if (db.delete("faces", "media_key=?", arrayOf(lease.media.key)) > 0)
+                retirePublishedRevision(db)
             boxes.forEachIndexed { ordinal, box ->
                 val uid = UUID.randomUUID().toString().replace("-", "")
                 meteredStatements += 2
@@ -1371,7 +1380,11 @@ class FaceIndexStore(
             true
         }
 
-    /** Never show incomplete cluster membership, including after a restart. */
+    /**
+     * Never show incomplete cluster membership, including after a restart:
+     * only a whole publication, never a half-written one. #39: while new faces
+     * wait, the last publication without them.
+     */
     fun clusterState(epoch: String): FaceClusterState? = peopleReview(epoch)?.clusters
 
     private fun clusterGenerationClean(db: SQLiteDatabase): Boolean =
@@ -1380,16 +1393,62 @@ class FaceIndexStore(
         }
 
     /**
+     * #39: true when `people_matched` was written at the current review
+     * revision, i.e. a publication or review commit ran and nothing since
+     * left its rows stale (see [refillPeopleMatchedIfStale]).
+     */
+    private fun matchedCurrent(db: SQLiteDatabase): Boolean {
+        meteredStatements++
+        val written = db.rawQuery("SELECT revision FROM people_matched_generation WHERE singleton=1",
+            null).use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null }
+        return written == reviewRevision(db)
+    }
+
+    /**
+     * #39: whether the last published People data may be read and reviewed.
+     * A dirty generation only means new faces wait for the next publication
+     * (or a regroup is due): published membership, names and facts stay as
+     * the last publication or commit left them, minus faces that were since
+     * removed, and every removal moves the review revision on
+     * ([retirePublishedRevision]), so an older snapshot cannot commit. Not
+     * servable before the first publication, while `people_matched` waits
+     * for its refill (those rows may name the wrong person), or between the
+     * parts of a split publication (#508; a regroup rebuilds membership in
+     * parts, so a part alone is not a whole publication).
+     */
+    private fun servable(db: SQLiteDatabase): Boolean {
+        val gen = generation(db)
+        return !gen.dirty || (gen.pending < PUBLICATION_CONTINUES && matchedCurrent(db))
+    }
+
+    /**
+     * #39: faces were removed from the published People data (their rows
+     * cascaded away). Move the review revision on, so a snapshot that still
+     * holds them is refused at commit, and keep `people_matched` marked
+     * current: it lost only the removed faces' rows. `people_home` keeps the
+     * old revision, so [peopleHome] counts live until the next refresh.
+     * Nothing to do while the published data is not servable anyway.
+     */
+    private fun retirePublishedRevision(db: SQLiteDatabase) {
+        if (!matchedCurrent(db)) return
+        bumpReviewRevision(db, reviewRevision(db))
+        markMatchedCurrent(db)
+    }
+
+    /**
      * Published clusters with the durable review facts and names, read in one
      * epoch-gated transaction. Null while revoked, superseded or unpublished.
+     * #39: while new faces wait for publication, the last published clusters
+     * (pending faces left out, as a publication seeds from them).
      */
     fun peopleReview(epoch: String): StoredPeopleReview? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
-            if (!clusterGenerationClean(db)) null
+            val clean = clusterGenerationClean(db)
+            if (!servable(db)) null
             else {
                 val names = personNames(db)
                 StoredPeopleReview(PeopleReviewRecords.generation(reviewRevision(db)),
-                    buildClusterState(db, version), names,
+                    buildClusterState(db, version, onlyMaterialized = !clean), names,
                     // A name dropped outside a commit never leaves a dangling hide.
                     hiddenPeople(db).mapTo(HashSet()) { PersonKey(it) }.filterTo(HashSet()) {
                         it in names
@@ -1404,16 +1463,18 @@ class FaceIndexStore(
      *
      * Served from `people_home`, which [refreshPeopleHome] rewrites in the same
      * transaction as every review-generation bump (publication and review
-     * commit). Every change to face eligibility marks the cluster generation
-     * dirty, and only a publication (which bumps the revision) clears it, so
-     * a clean generation whose summary carries the current revision is exact:
+     * commit). Removing a face moves the revision on without a refresh
+     * ([retirePublishedRevision]), and a new face counts nowhere here until
+     * a publication, so a summary that carries the current revision is exact:
      * the read is one row per named person. A summary from another revision
-     * (a file from before #532, until its next bump) falls back to the same
-     * query, run live. Generation and rows share this authorized transaction.
+     * (after a removal, or a file from before #532, until its next refresh)
+     * falls back to the same query, run live. Generation and rows share this
+     * authorized transaction. #39: served while new faces wait for
+     * publication (see [servable]), so People never empties during a scan.
      */
     fun peopleHome(epoch: String): StoredPeopleHome? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
-            if (!clusterGenerationClean(db)) return@authorizedEmbeddingRead null
+            if (!servable(db)) return@authorizedEmbeddingRead null
             val revision = reviewRevision(db)
             meteredStatements++
             val built = db.rawQuery("SELECT revision FROM people_home_generation WHERE singleton=1",
@@ -1461,8 +1522,9 @@ class FaceIndexStore(
      * [clusters].reviews, [names] and the unknown membership of [clusters],
      * which the reducer computed from the snapshot named [expectedGeneration].
      * Returns the new generation, or null (nothing written) when the epoch is
-     * no longer active, the model changed, a scan made clusters dirty, or any
-     * publication or other review committed since that snapshot. Only rows
+     * no longer active, the model changed, published data is not servable
+     * (see [servable]), or any publication, face removal or other review
+     * committed since that snapshot. Only rows
      * that differ are written; every table is read back before commit.
      * [tally] (#580) is counted in the same transaction, so a refused or
      * rolled-back commit counts nothing; an undo also takes the undone tap
@@ -1481,9 +1543,11 @@ class FaceIndexStore(
         val membership = ClusterPublication.membership(clusters)
         val nameRows = names.entries.associate { it.key.value to it.value }
         return write { db ->
+            // #39: allowed while new faces wait for publication; the
+            // snapshot leaves them out and the commit writes no row for them.
             if (currentEpoch(db) != epoch ||
                 storedEmbedderVersion(db) != clusters.modelVersion ||
-                !clusterGenerationClean(db)) return@write null
+                !servable(db)) return@write null
             val revision = reviewRevision(db)
             if (PeopleReviewRecords.generation(revision) != expectedGeneration) return@write null
             val old = reviewRows(db)
@@ -1570,7 +1634,7 @@ class FaceIndexStore(
      */
     fun peopleReviewGeneration(epoch: String): String? =
         authorizedEmbeddingRead(epoch, null) { db, _ ->
-            if (!clusterGenerationClean(db)) null
+            if (!servable(db)) null
             else PeopleReviewRecords.generation(reviewRevision(db))
         }
 
@@ -1710,7 +1774,7 @@ class FaceIndexStore(
      * published unknown-cluster member and every confirmed face that is
      * present, processed, of the current model and not reviewed NOT_A_FACE,
      * with its vector, plus the review facts. Null while revoked, superseded
-     * or unpublished (the dirty flag), like [peopleHome].
+     * or not servable, like [peopleHome].
      *
      * Cheap on purpose: it drives from `cluster_members` and
      * `people_confirmed` (pinned with CROSS JOIN, see [PEOPLE_HOME_SELECT]),
@@ -1719,7 +1783,7 @@ class FaceIndexStore(
      */
     fun personMatchInputs(epoch: String): PersonMatchInputs? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
-            if (!clusterGenerationClean(db)) return@authorizedEmbeddingRead null
+            if (!servable(db)) return@authorizedEmbeddingRead null
             val builder = PersonMatchInputs.Builder(
                 PeopleReviewRecords.generation(reviewRevision(db)), version, reviewFacts(db))
             meteredStatements++

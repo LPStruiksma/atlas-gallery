@@ -24,6 +24,7 @@ import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
 import nl.atlas.gallery.featurepersistence.PeopleReviewRecords
 import nl.atlas.gallery.featurepersistence.StoredPeopleReview
+import nl.atlas.gallery.featurepersistence.StoredPersonSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -447,6 +448,78 @@ class FaceIndexStoreIdentityReviewTest {
         }
     }
 
+    private fun dirty(store: FaceIndexStore): Boolean =
+        store.readableDatabase.rawQuery("SELECT dirty FROM cluster_generation WHERE singleton=1",
+            null).use { check(it.moveToFirst()); it.getInt(0) == 1 }
+    private fun photo(key: String): Int = Regex("/(\\d+)#").find(key)!!.groupValues[1].toInt()
+    private fun faceOf(store: FaceIndexStore, epoch: String, n: Int) =
+        NativeFaceObservationId(store.embeddingRecords(epoch, media(n).key).single().nativeFaceUid)
+
+    /**
+     * #39: while a scan adds faces (the generation is dirty until the next
+     * publication), People keeps serving the last published people and
+     * groups, and a review commits against that snapshot. The next
+     * publication places the new face and keeps the review.
+     */
+    @Test fun lastPublishedPeopleStayServedAndReviewableWhileNewFacesWait() = withStore { store ->
+        // Photos 1..3: one person, named Ana; photos 4..6: an unnamed group of three.
+        grant(store, "epoch-A", (1..6).map { media(it) })
+        scanAll(store, "epoch-A") { if (photo(it) <= 3) 0 else 5 }
+        val stored = requireNotNull(store.peopleReview("epoch-A"))
+        val anaGroup = stored.clusters.unknownClusters.single { faceOf(store, "epoch-A", 1) in it.members }
+        val named = requireNotNull(reviewPeopleCluster(uiState("epoch-A", stored),
+            PeopleReviewAction.NameCluster(anaGroup.id, ana, "Ana")))
+        val published = requireNotNull(commit(store, "epoch-A", stored.generation, named))
+        val group = requireNotNull(store.peopleHome("epoch-A")).unnamed.single()
+        assertEquals(3, group.faceCount)
+
+        // A later grant adds photo 7; the scan embeds its face, no publication yet.
+        grant(store, "epoch-B", (1..7).map { media(it) })
+        val lease = requireNotNull(store.claim("epoch-B", 5_000))
+        assertEquals(media(7).key, lease.media.key)
+        assertTrue(store.completeEmbeddings(lease, listOf(box), listOf(vector(9)), model))
+        assertTrue("a new face leaves the generation dirty", dirty(store))
+        val pending = faceOf(store, "epoch-B", 7)
+
+        assertEquals(published, store.peopleReviewGeneration("epoch-B"))
+        val home = requireNotNull(store.peopleHome("epoch-B")) { "People home is served during a scan" }
+        assertEquals(published, home.generation)
+        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid),
+            home.people.getValue(ana))
+        assertEquals(listOf(group), home.unnamed)
+        val review = requireNotNull(store.peopleReview("epoch-B")) {
+            "the person page is served during a scan" }
+        assertEquals(published, review.generation)
+        assertFalse("a pending face is not in the published snapshot", pending in review.clusters)
+        assertEquals(3, review.clusters.reviews.confirmed.size)
+        assertEquals(mapOf(ana to "Ana"), review.names)
+        assertNotNull(store.personMatchInputs("epoch-B"))
+
+        // A review computed from that snapshot commits while the face waits.
+        val bo = PersonKey("person-bo")
+        val second = requireNotNull(reviewPeopleCluster(uiState("epoch-B", review),
+            PeopleReviewAction.NameCluster(review.clusters.unknownClusters.single().id, bo, "Bo")))
+        val reviewed = requireNotNull(commit(store, "epoch-B", review.generation, second)) {
+            "reviews are allowed while new faces wait" }
+        assertTrue("the commit publishes no pending face", dirty(store))
+        assertNull(commit(store, "epoch-B", review.generation, second)) // stale replay
+        val homeAfterReview = requireNotNull(store.peopleHome("epoch-B"))
+        assertEquals(reviewed, homeAfterReview.generation)
+        assertEquals(mapOf(ana to "Ana", bo to "Bo"),
+            homeAfterReview.people.mapValues { it.value.name })
+        assertTrue(homeAfterReview.unnamed.isEmpty())
+
+        // The next publication places the new face and keeps both names.
+        assertTrue(store.materializeClusters("epoch-B"))
+        assertFalse(dirty(store))
+        val after = requireNotNull(store.peopleReview("epoch-B"))
+        assertNotEquals(reviewed, after.generation)
+        assertTrue(pending in after.clusters)
+        assertEquals(mapOf(ana to "Ana", bo to "Bo"), after.names)
+        assertEquals(6, after.clusters.reviews.confirmed.size)
+        assertMatchesStored(store, after)
+    }
+
     @Test fun staleGenerationRevokedEpochAndDirtyClustersRefuseCommit() = withStore { store ->
         val stored = scannedLibrary(store)
         val named = nameBiggest("epoch-A", stored)
@@ -460,15 +533,21 @@ class FaceIndexStoreIdentityReviewTest {
         val stranger = reread.clusters.unknownClusters.single()
         val second = requireNotNull(reviewPeopleCluster(uiState("epoch-A", reread),
             PeopleReviewAction.NameCluster(stranger.id, PersonKey("person-bo"), "Bo")))
-        // A new grant that edits a photo makes clusters dirty: no commit until
-        // they are published, even with the still-current generation.
+        // A new grant that edits a photo removes its face (the stranger) and
+        // makes clusters dirty. #39: People is still served without that face,
+        // under a new generation, so the snapshot that held it cannot commit.
         grant(store, "epoch-B", (1..5).map { if (it == 4) media(4, rev = 2) else media(it) })
-        assertNull(store.peopleReview("epoch-B"))
+        assertTrue(dirty(store))
+        val served = requireNotNull(store.peopleReview("epoch-B"))
+        assertNotEquals(committed, served.generation)
+        assertEquals(served.generation, store.peopleReviewGeneration("epoch-B"))
+        assertTrue(served.clusters.unknownClusters.isEmpty())
+        assertEquals(3, requireNotNull(store.peopleHome("epoch-B")).people.getValue(ana).faceCount)
         assertNull(commit(store, "epoch-B", committed, second))
         assertNull(commit(store, "epoch-A", committed, second)) // superseded epoch
         scanAll(store, "epoch-B") { 9 }
         val fresh = requireNotNull(store.peopleReview("epoch-B"))
-        assertNotEquals(committed, fresh.generation) // publication advanced it
+        assertNotEquals(served.generation, fresh.generation) // publication advanced it
         assertNull(commit(store, "epoch-B", committed, second))
         assertTrue(fresh.names.keys == setOf(ana))
         // Revocation hides names and facts and refuses writes.

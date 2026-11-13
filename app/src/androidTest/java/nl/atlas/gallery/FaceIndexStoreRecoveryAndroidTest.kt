@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.util.UUID
+import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.onnx.SFaceModel
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
@@ -69,8 +70,11 @@ class FaceIndexStoreRecoveryAndroidTest {
     private fun embed(store: FaceIndexStore, epoch: String, axis: Int = 0): String {
         val lease = requireNotNull(store.claim(epoch, 1_000))
         assertTrue(store.completeEmbeddings(lease, listOf(box), listOf(vector(axis)), model))
-        assertNull("Dirty generation became visible before publication", store.clusterState(epoch))
-        return store.embeddingRecords(epoch, lease.media.key).single().nativeFaceUid
+        val uid = store.embeddingRecords(epoch, lease.media.key).single().nativeFaceUid
+        // #39: a dirty generation serves at most the last publication, never the new face.
+        assertFalse("A pending face became visible before publication",
+            store.clusterState(epoch)?.contains(NativeFaceObservationId(uid)) == true)
+        return uid
     }
 
     private fun rows(store: FaceIndexStore): List<Pair<String, String>> =
@@ -142,14 +146,15 @@ class FaceIndexStoreRecoveryAndroidTest {
         assertTrue(store.materializeClusters("epoch-a")) // idempotent clean publication
     }
 
-    @Test fun failedReplacementRetainsPrivateOldRowsButNotAnyDirtyClusterRead() = fixture { _, store ->
+    @Test fun failedReplacementRetainsOldRowsAndServesOnlyTheLastPublication() = fixture { _, store ->
         snapshot(store, "epoch-a", listOf(a))
         embed(store, "epoch-a")
         assertTrue(store.materializeClusters("epoch-a"))
         val priorRows = rows(store)
         snapshot(store, "epoch-b", listOf(a, b))
         embed(store, "epoch-b", 1)
-        assertNull(store.clusterState("epoch-b"))
+        // #39: the last publication (photo a only) stays readable while b waits.
+        assertEquals(1, store.clusterState("epoch-b")?.faces?.size)
         store.writableDatabase.execSQL(
             """CREATE TRIGGER reject_members BEFORE INSERT ON cluster_members
                BEGIN SELECT RAISE(ABORT, 'synthetic replacement rollback'); END"""
@@ -160,7 +165,7 @@ class FaceIndexStoreRecoveryAndroidTest {
                 fail("Replacement unexpectedly committed")
             } catch (_: android.database.sqlite.SQLiteException) { }
             assertEquals(priorRows, rows(store))
-            assertNull(store.clusterState("epoch-b"))
+            assertEquals(1, store.clusterState("epoch-b")?.faces?.size)
             assertNull(store.clusterState("epoch-a"))
         } finally {
             store.writableDatabase.execSQL("DROP TRIGGER reject_members")
@@ -202,14 +207,15 @@ class FaceIndexStoreRecoveryAndroidTest {
         assertNull(store.clusterState("epoch-a"))
         assertTrue(store.embeddingRecords("epoch-b", b.key).isEmpty())
         assertTrue(store.embeddingRecords("epoch-b", a.key).isEmpty())
-        assertNull(store.clusterState("epoch-b"))
+        // #39: served without the removed faces, never with the old observation.
+        assertEquals(0, store.clusterState("epoch-b")?.faces?.size)
         val newUid = embed(store, "epoch-b")
         assertNotEquals(old, newUid)
         assertTrue(store.materializeClusters("epoch-b"))
         assertEquals(1, store.clusterState("epoch-b")?.faces?.size)
         snapshot(store, "epoch-c", listOf(a.copy(revision = "r2")),
             "$model-next")
-        assertNull(store.clusterState("epoch-c"))
+        assertEquals(0, store.clusterState("epoch-c")?.faces?.size)
         assertTrue(store.embeddingRecords("epoch-c", a.key).isEmpty())
         assertFalse(store.completeEmbeddings(
             requireNotNull(store.claim("epoch-c", 2_000)), listOf(box),
@@ -256,7 +262,8 @@ class FaceIndexStoreRecoveryAndroidTest {
         FaceIndexStore(context).use { reopened ->
             assertNull(reopened.clusterState("epoch-a"))
             snapshot(reopened, "epoch-b", listOf(a, b, c))
-            assertNull(reopened.clusterState("epoch-b"))
+            // #39: the two published faces are served while the third waits.
+            assertEquals(2, reopened.clusterState("epoch-b")?.faces?.size)
             assertTrue(reopened.materializeClusters("epoch-b"))
             val after = rows(reopened)
             // Published rows are the seed: kept as they were (distinct axes,
