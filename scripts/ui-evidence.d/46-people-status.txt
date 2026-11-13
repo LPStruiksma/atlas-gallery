@@ -1,0 +1,25 @@
+# #46: synthetic People and Settings state lines at 1080x2340, both themes.
+status-46-people-charger-light
+status-46-settings-charger-light
+status-46-people-queued-light
+status-46-settings-queued-light
+status-46-people-finding-light
+status-46-settings-finding-light
+status-46-people-grouping-light
+status-46-settings-grouping-light
+status-46-people-paused-light
+status-46-settings-paused-light
+status-46-people-finished-light
+status-46-settings-finished-light
+status-46-people-charger-dark
+status-46-settings-charger-dark
+status-46-people-queued-dark
+status-46-settings-queued-dark
+status-46-people-finding-dark
+status-46-settings-finding-dark
+status-46-people-grouping-dark
+status-46-settings-grouping-dark
+status-46-people-paused-dark
+status-46-settings-paused-dark
+status-46-people-finished-dark
+status-46-settings-finished-dark
