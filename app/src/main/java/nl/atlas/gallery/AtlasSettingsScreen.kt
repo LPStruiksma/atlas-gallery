@@ -50,6 +50,7 @@ internal fun AtlasSettingsScreen(
     onImportV4: () -> Unit,
     onLinkV4: () -> Unit,
     onDiagnostics: () -> Unit,
+    scanLoading: Boolean = false,
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {}
@@ -61,7 +62,7 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = when (scanPhase) {
+    val scanValue = if (scanLoading) "Restoring…" else when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> "On · Pause"
         FaceDiscoveryPhase.QUEUED -> "Starting"
         FaceDiscoveryPhase.PAUSED -> "Paused · Resume"
