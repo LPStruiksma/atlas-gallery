@@ -295,13 +295,18 @@ class FaceIndexStore(
         createSameUnknownTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
+        ensureDormantEpochColumn(db)
         db.beginTransaction()
         try {
             regroupOnPolicyChange(db)
             refillPeopleMatchedIfStale(db)
             db.delete("stage", null, null)
-            db.execSQL("""UPDATE control SET active_epoch=NULL,
-                staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
+            // #31: the last published epoch is kept DORMANT, never readable.
+            // Only reviveDormantEpoch() can make it readable again, and the host
+            // calls that only after it has re-checked the live Android grant.
+            db.execSQL("""UPDATE control SET dormant_epoch=COALESCE(active_epoch,
+                dormant_epoch), active_epoch=NULL, staging_epoch=NULL,
+                staged_count=0 WHERE singleton=1""")
             db.execSQL("""UPDATE catalog SET state=CASE WHEN attempts>=3 THEN
                 'failed' ELSE 'queued' END, lease=NULL, lease_epoch=NULL,
                 lease_deadline=NULL WHERE state='running'""")
@@ -351,6 +356,17 @@ class FaceIndexStore(
      * them. Idempotent (detected by name), additive only, and it never
      * touches a row: existing faces read frame_ms NULL (a photo).
      */
+    /** #31: additive and nullable, like the other late columns. */
+    private fun ensureDormantEpochColumn(db: SQLiteDatabase) {
+        val has = db.rawQuery("PRAGMA table_info(control)", null).use { c ->
+            val name = c.getColumnIndexOrThrow("name")
+            var found = false
+            while (c.moveToNext()) if (c.getString(name) == "dormant_epoch") found = true
+            found
+        }
+        if (!has) db.execSQL("ALTER TABLE control ADD COLUMN dormant_epoch TEXT")
+    }
+
     private fun ensureVideoColumns(db: SQLiteDatabase) {
         fun has(table: String, column: String): Boolean =
             db.rawQuery("PRAGMA table_info($table)", null).use { c ->
@@ -679,8 +695,30 @@ class FaceIndexStore(
         write { db ->
             db.delete("stage", null, null)
             db.execSQL("""UPDATE control SET active_epoch=NULL,
-                staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
+                staging_epoch=NULL, dormant_epoch=NULL, staged_count=0 WHERE singleton=1""")
         }
+    }
+
+    /**
+     * #31: makes the epoch that was active when this database was last
+     * opened readable again, and returns it; null when there is none, or a
+     * snapshot is staging or active. The CALLER must first confirm that the
+     * live Android grant equals the grant that epoch was published under.
+     * Any invalidation or new snapshot drops the dormant epoch for good.
+     */
+    /** #31: the readable epoch now, if any. */
+    fun activeEpoch(): String? = currentEpoch(readableDatabase)
+
+    fun reviveDormantEpoch(): String? = write { db ->
+        val (active, staging, dormant) = db.rawQuery(
+            "SELECT active_epoch, staging_epoch, dormant_epoch FROM control WHERE singleton=1",
+            null).use { c ->
+            check(c.moveToFirst()); Triple(c.getString(0), c.getString(1), c.getString(2))
+        }
+        if (active != null || staging != null || dormant == null) return@write null
+        db.execSQL("UPDATE control SET active_epoch=?, dormant_epoch=NULL WHERE singleton=1",
+            arrayOf(dormant))
+        dormant
     }
 
     /**
@@ -701,7 +739,7 @@ class FaceIndexStore(
             if (!owned) return@write false
             db.delete("stage", null, null)
             db.execSQL("""UPDATE control SET active_epoch=NULL,
-                staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
+                staging_epoch=NULL, dormant_epoch=NULL, staged_count=0 WHERE singleton=1""")
             true
         }
     }
@@ -710,7 +748,7 @@ class FaceIndexStore(
      * MUST be called immediately when permission visibility becomes uncertain:
      * active observations become unreadable before any new catalog is staged.
      */
-    fun beginSnapshot(epoch: String) {
+    fun beginSnapshot(epoch: String, keepActiveReadable: Boolean = false) {
         validEpoch(epoch)
         val accepted = write { db ->
             // A delayed worker may outlive a newer permission epoch. Replaying
@@ -723,15 +761,25 @@ class FaceIndexStore(
                 if (currentEpoch(db) == epoch || stagedEpoch(db) == epoch) {
                     db.delete("stage", null, null)
                     db.execSQL("""UPDATE control SET active_epoch=NULL,
-                        staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
+                        staging_epoch=NULL, dormant_epoch=NULL, staged_count=0
+                        WHERE singleton=1""")
                 }
                 return@write false
             }
             // A genuinely new token invalidates all earlier grant visibility
             // in the same SQLite transaction that starts the new snapshot.
+            // #31: unless the caller has just re-checked that the Android
+            // grant is unchanged, then the published catalogue stays readable
+            // until commitSnapshot replaces it in one transaction. Staging
+            // writes only the stage table, never the catalogue it serves.
             db.delete("stage", null, null)
-            db.execSQL("""UPDATE control SET active_epoch=NULL,
-                staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
+            if (keepActiveReadable) {
+                db.execSQL("""UPDATE control SET staging_epoch=NULL, dormant_epoch=NULL,
+                    staged_count=0 WHERE singleton=1""")
+            } else {
+                db.execSQL("""UPDATE control SET active_epoch=NULL,
+                    staging_epoch=NULL, dormant_epoch=NULL, staged_count=0 WHERE singleton=1""")
+            }
             db.insertOrThrow("epoch_history", null,
                 ContentValues().apply { put("epoch", epoch) })
             db.execSQL("UPDATE control SET staging_epoch=?, staged_count=0 WHERE singleton=1",
