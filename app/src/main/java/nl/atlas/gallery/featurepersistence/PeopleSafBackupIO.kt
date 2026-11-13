@@ -17,6 +17,16 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
     companion object {
         const val MIME_TYPE = "application/octet-stream"
         const val SUGGESTED_NAME = "atlas-people.atlaspeople"
+        const val NAMES_SUGGESTED_NAME = "atlas-people-names.atlasnames"
+        const val NAMES_EXPORT_WARNING =
+            "This file contains private People names and opaque review keys. " +
+            "It contains no photos, face vectors, file names or media paths. " +
+            "Your chosen document provider may sync the unencrypted file to a cloud. " +
+            "Choose local storage for an offline copy."
+        const val NAMES_IMPORT_WARNING =
+            "Import only applies names, hidden flags and review decisions for " +
+            "existing local People keys. Unknown keys and conflicting decisions " +
+            "are skipped; original photos are never modified."
         const val EXPORT_WARNING =
             "The selected document provider may upload this unencrypted backup to a cloud. " +
             "It contains confirmed People names and absolute image paths (no photo bytes). " +
@@ -29,21 +39,8 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
             "This does not restore settings, SAF access or original photographs."
     }
 
-    companion object {
         // A separate, path-free native People format. The old format above
         // intentionally remains available to its existing legacy callers.
-        const val NAMES_SUGGESTED_NAME = "atlas-people-names.atlasnames"
-        const val NAMES_EXPORT_WARNING =
-            "This file contains private People names and opaque review keys. " +
-            "It contains no photos, face vectors, file names or media paths. " +
-            "Your chosen document provider may sync the unencrypted file to a cloud. " +
-            "Choose local storage for an offline copy."
-        const val NAMES_IMPORT_WARNING =
-            "Import only applies names, hidden flags and review decisions for " +
-            "existing local People keys. Unknown keys and conflicting decisions " +
-            "are skipped; original photos are never modified."
-    }
-
     /** Runs only after a fresh, affirmative destination warning and SAF choice. */
     internal fun exportNamesToSelectedDocument(
         uri: Uri, host: PeopleDiscoveryHost, galleryGrant: String?,
