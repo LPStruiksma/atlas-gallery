@@ -56,6 +56,10 @@ import nl.atlas.gallery.featuremedia.MicroThumbnails
 import nl.atlas.gallery.featuremedia.microThumbnailMemoryKey
 import androidx.compose.ui.graphics.asImageBitmap
 import nl.atlas.gallery.featuremedia.MicroThumbnailWarmer
+import nl.atlas.gallery.featuremedia.MicroThumbnailWarmScheduler
+import nl.atlas.gallery.featuremedia.microWarmForCatalog
+import nl.atlas.gallery.featuremedia.microWarmCharging
+import nl.atlas.gallery.featuremedia.microThumbnailDiskKey
 import nl.atlas.gallery.featuremedia.ThumbnailPipeline
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -901,7 +905,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             MicroThumbnails.active
         ) {
             delay(MICRO_WARM_START_DELAY_MS) // first screen and its tiles first
-            MicroThumbnailWarmer.warm(context.contentResolver, media)
+            val store = MicroThumbnails.store ?: return@LaunchedEffect
+            // The scan, including every disk existence check, happens off the UI thread.
+            // LaunchedEffect cancels stale epochs; the live grant is checked again after
+            // the scan and after any warm, before changing deferred work.
+            val authorized = {
+                MicroThumbnails.active && ThumbnailPipeline.autoWarm &&
+                    readGalleryMediaGrant(context) == grants
+            }
+            microWarmForCatalog(
+                items = media,
+                charging = microWarmCharging(context),
+                isMissing = { item ->
+                    microThumbnailDiskKey(item)?.let { !store.contains(it) } ?: false
+                },
+                authorized = authorized,
+                warm = { limit ->
+                    MicroThumbnailWarmer.warm(context.contentResolver, media,
+                        limit = limit, gate = authorized)
+                },
+                deferRemainder = { MicroThumbnailWarmScheduler.enqueue(context) },
+                cancelDeferred = { MicroThumbnailWarmScheduler.cancel(context) }
+            )
         }
     }
 
