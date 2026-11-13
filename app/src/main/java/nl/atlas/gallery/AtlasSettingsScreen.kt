@@ -53,7 +53,9 @@ internal fun AtlasSettingsScreen(
     scanLoading: Boolean = false,
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
-    onShareLastCrash: (String) -> Unit = {}
+    onShareLastCrash: (String) -> Unit = {},
+    onExportNames: () -> Unit = {},
+    onImportNames: () -> Unit = {}
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
@@ -88,6 +90,8 @@ internal fun AtlasSettingsScreen(
                     onVisualIndex, if (visualIndexOn) "On" else "Off")
             }
             SettingsActionRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
+            SettingsActionRow("Export names", "atlas-people-names-export", onExportNames)
+            SettingsActionRow("Import names", "atlas-people-names-import", onImportNames)
         }
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
