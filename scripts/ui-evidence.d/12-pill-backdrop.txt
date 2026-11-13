@@ -1,0 +1,8 @@
+#22: S24+ (1080x2340) real MainActivity over synthetic colour tiles and quiet surfaces.
+# API 35: actual live background blur inside pill; API 29-30: translucent fallback.
+pill-22-photos-light
+pill-22-albums-light
+pill-22-search-light
+pill-22-photos-dark
+pill-22-albums-dark
+pill-22-search-dark
