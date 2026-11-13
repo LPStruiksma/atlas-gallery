@@ -284,9 +284,10 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
   adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
   run_kill_phase() {
-    local phase="$1" method="$2"
+    local phase="$1" method="$2" extra="${3:-}"
     local capture="/tmp/atlas-kill43-$phase.txt"
-    adb shell am instrument -w -r -e atlasKillPhase "$phase" \
+    # shellcheck disable=SC2086
+    adb shell am instrument -w -r $extra -e atlasKillPhase "$phase" \
       -e class "nl.atlas.gallery.PeopleScanProcessKillTest#$method" "$RUNNER" \
       > "$capture" 2>&1 || true
     cat "$capture"
@@ -332,12 +333,20 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   }
   adb shell dumpsys battery unplug
   adb logcat -c || true
-  run_kill_phase seed seedBeforeKill
-  kill_app # the instrumentation process normally ends with the run
+  # --no-restart: a finished instrumentation otherwise force-stops the target
+  # package, which cancels its jobs. The seed process stays; SIGKILL ends it.
+  run_kill_phase seed seedBeforeKill --no-restart
+  kill_app
   adb shell dumpsys battery set ac 1
   adb shell dumpsys battery set status 2
+  kill43_diagnostics() {
+    face_log | tail -50
+    adb shell dumpsys battery | head -12 || true
+    adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
+    timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
+  }
   first="$(wait_restore_in_new_pid "")" || {
-    face_log | tail -50; echo "::error::#43 WorkManager never restored the scan"; exit 1; }
+    kill43_diagnostics; echo "::error::#43 WorkManager never restored the scan"; exit 1; }
   # Mid-run: the worker has finished at least one batch, not its run.
   for _ in $(seq 1 120); do
     face_log | grep -qE "\( *$first\).*scan_batch photos=[1-9]" && break
@@ -352,7 +361,7 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   echo "#43: SIGKILL worker process $first mid-run"
   kill_app
   second="$(wait_restore_in_new_pid "$first")" || {
-    face_log | tail -50; echo "::error::#43 no restore after the kill"; exit 1; }
+    kill43_diagnostics; echo "::error::#43 no restore after the kill"; exit 1; }
   echo "#43: WorkManager restarted the scan in process $second"
   for _ in $(seq 1 120); do
     face_log | grep -qE "\( *$second\).*scan_batch photos=[1-9]" && break
