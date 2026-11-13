@@ -2801,6 +2801,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
+                            scanLoading = access && discovery.status == null,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
                             },
@@ -2826,7 +2827,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onLinkV4 = {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
-                            onDiagnostics = { statusOpen = true }
+                            onDiagnostics = { statusOpen = true },
+                            onReadLastCrash = { LastCrashRecorder.read(context) },
+                            onCopyLastCrash = { report ->
+                                val clipboard = context.getSystemService(
+                                    android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("ATLAS last crash", report))
+                                Toast.makeText(context, "Last crash copied", Toast.LENGTH_SHORT).show()
+                            },
+                            onShareLastCrash = { report ->
+                                try {
+                                    context.startActivity(Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, report)
+                                        }, "Share last crash"))
+                                } catch (_: ActivityNotFoundException) {
+                                    Toast.makeText(context, "No app can share the crash report",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            }
                         )
                         if (peopleNumbersOpen) PeopleNumbersRoute(discoveryHost, searchGrant) {
                             peopleNumbersOpen = false
@@ -2841,28 +2861,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         }
                         if (provenanceDetailsOpen && provenance != null) {
-                            AlertDialog(
-                                onDismissRequest = { provenanceDetailsOpen = false },
-                                confirmButton = {
-                                    TextButton(onClick = { provenanceDetailsOpen = false }) {
-                                        Text("Close")
-                                    }
-                                },
-                                title = { Text("Photo details") },
-                                text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("Checked ${provenance.observedPhotoRows} · " +
-                                            "partial ${provenance.weakPhotoRows} · " +
-                                            "omitted ${provenance.ignoredPhotoRows}")
-                                        provenance.missingPhotoFields.toSortedMap().forEach { (field, count) ->
-                                            Text("$field: $count (" +
-                                                "%.2f".format(Locale.US,
-                                                    count * 100.0 / provenance.observedPhotoRows.coerceAtLeast(1)) +
-                                                "%)")
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.testTag("atlas-people-details-dialog")
+                            PhotoDetailsDialog(
+                                content = photoDetailsContent(
+                                    checked = provenance.observedPhotoRows,
+                                    partial = provenance.weakPhotoRows,
+                                    skipped = provenance.ignoredPhotoRows,
+                                    missing = provenance.missingPhotoFields,
+                                    locale = Locale.getDefault()
+                                ),
+                                onClose = { provenanceDetailsOpen = false }
                             )
                         }
                     }

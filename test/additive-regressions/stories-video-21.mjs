@@ -23,5 +23,9 @@ test("Every Story video player is paused on background and released on removal",
   assert.match(stories, /Lifecycle\.Event\.ON_STOP/);
   assert.match(stories, /player\.release\(\)/);
   assert.match(stories, /DisposableEffect\(player/);
-  assert.match(stories, /PlayerView/);
+  // TextureView composes with Story chrome for real emulator screenshots.
+  assert.match(stories, /TextureView/);
+  assert.match(stories, /setVideoTextureView\(/);
+  assert.match(stories, /clearVideoTextureView\(/);
+  assert.doesNotMatch(stories, /PlayerView\(/);
 });

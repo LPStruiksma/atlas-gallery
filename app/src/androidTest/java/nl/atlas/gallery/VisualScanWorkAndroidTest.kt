@@ -64,6 +64,13 @@ class VisualScanWorkAndroidTest {
     private val target = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(target.cacheDir, "visual-scan-work-" + UUID.randomUUID())
     private val modelCopy = File(dir, "model-copy/siglip2_b16_224_int8.onnx")
+    // A per-test SharedPreferences file survives host recreation without touching
+    // the real app's choices or any photo/identity data.
+    private val preferenceName = "atlas-visual-test-${dir.name}"
+    private val choices = PeopleOptInMemory.preferences(object : ContextWrapper(target) {
+        override fun getSharedPreferences(name: String, mode: Int): android.content.SharedPreferences =
+            target.getSharedPreferences(preferenceName, mode)
+    })
     private val stores = mutableListOf<AutoCloseable>()
 
     private class RecordingScheduler : PeopleScanScheduling {
@@ -147,6 +154,7 @@ class VisualScanWorkAndroidTest {
         if (!realSiglip) modelCopy.writeBytes(ByteArray(16))
         return PeopleDiscoveryHost(
             store = faces,
+            optInMemory = choices,
             photoGrantCurrent = { granted },
             inferenceFactory = {
                 FaceEmbeddingPipeline.forOnnx(
@@ -193,6 +201,7 @@ class VisualScanWorkAndroidTest {
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         dir.deleteRecursively()
+        target.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     private fun batch(): FaceBatchResult? =
@@ -272,17 +281,23 @@ class VisualScanWorkAndroidTest {
         val embedsBefore = embeds.get()
         assertTrue(visualDone in 1..9)
 
-        // A new process: nothing is authorised until the user opts in again.
+        // The authoritative Android permission is still granted, but the
+        // first gallery publication is pending. Hide People until publication
+        // without erasing saved choices or requiring another user tap.
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         stores.clear()
         scheduler = RecordingScheduler()
+        granted = true
         val restarted = host()
         assertNull("no session from a previous process", batch())
-        restarted.start("gallery-7", inventory)
-        assertFalse("visual opt-in is not restored", restarted.visualStatus(faceEpoch(restarted))!!.enabled)
-        restarted.setVisualIndex(true)
-        assertEquals("vectors survive the restart", visualDone, visualProgress(restarted).done)
+        restarted.onGalleryPublication(null) { inventory }
+        assertNull("not readable before current catalogue", restarted.status(null).people)
+        restarted.onGalleryPublication("gallery-7") { inventory }
+        assertTrue("visual switch survives process recreation",
+            restarted.visualStatus(faceEpoch(restarted))!!.enabled)
+        assertEquals("vectors survive without a second tap", visualDone,
+            visualProgress(restarted).done)
         assertTrue(faces.progress(faceEpoch(restarted))!!.processed >= facesDone)
 
         drain(restarted)
@@ -291,6 +306,37 @@ class VisualScanWorkAndroidTest {
         assertEquals(1, done.skipped)
         assertEquals("indexed images are not embedded again", 9, embeds.get())
         assertTrue(embeds.get() > embedsBefore)
+    }
+
+    @Test fun revokedWhileStoppedRequiresFreshPeopleAndVisualOptIn() {
+        val original = host()
+        original.start("gallery-7", inventory)
+        assertTrue(original.setVisualIndex(true))
+        assertNotNull(choices.load())
+        assertTrue(choices.loadVisual())
+
+        // No in-process scope exists at the moment of the Android permission
+        // revocation. This is the privacy-critical counterpart to a pending
+        // first gallery publication after restart.
+        PeopleScanWorkRuntime.clear()
+        stores.forEach { runCatching { it.close() } }
+        stores.clear()
+        scheduler = RecordingScheduler()
+        granted = false
+        val restarted = host()
+        restarted.onGalleryPublication(null) { inventory }
+        assertNull("People remain unreadable after revoke", restarted.status(null).people)
+        assertNull("OS revoke clears saved People choice", choices.load())
+        assertFalse("OS revoke clears visual choice", choices.loadVisual())
+
+        // An OS permission grant is not a user opt-in for face discovery.
+        granted = true
+        restarted.onGalleryPublication("gallery-7") { inventory }
+        assertFalse("must not silently rearm discovery", restarted.discoveryOptedIn())
+        assertFalse("must not silently rearm visual indexing",
+            restarted.visualStatus(null)!!.enabled)
+        assertNull("no People until a new explicit opt-in",
+            restarted.status("gallery-7").people)
     }
 
     // VS-S2b: Find similar reads the live visual epoch only through this accessor.

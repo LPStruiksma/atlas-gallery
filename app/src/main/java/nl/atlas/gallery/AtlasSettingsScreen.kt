@@ -17,9 +17,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -47,15 +49,20 @@ internal fun AtlasSettingsScreen(
     onPhotoDetails: () -> Unit,
     onImportV4: () -> Unit,
     onLinkV4: () -> Unit,
-    onDiagnostics: () -> Unit
+    onDiagnostics: () -> Unit,
+    scanLoading: Boolean = false,
+    onReadLastCrash: () -> String? = { null },
+    onCopyLastCrash: (String) -> Unit = {},
+    onShareLastCrash: (String) -> Unit = {}
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
+    var crashExpanded by rememberSaveable { mutableStateOf(false) }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = when (scanPhase) {
+    val scanValue = if (scanLoading) "Restoring…" else when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> "On · Pause"
         FaceDiscoveryPhase.QUEUED -> "Starting"
         FaceDiscoveryPhase.PAUSED -> "Paused · Resume"
@@ -98,6 +105,30 @@ internal fun AtlasSettingsScreen(
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
+                SettingsActionRow("Last crash", "atlas-settings-last-crash",
+                    onClick = { crashExpanded = !crashExpanded },
+                    value = if (crashExpanded) "Hide" else "Show")
+                if (crashExpanded) {
+                    // Read only when the user opens this section; never upload implicitly.
+                    val last = remember(crashExpanded) { onReadLastCrash() }
+                    Text(last ?: "No crash recorded yet",
+                        modifier = Modifier.fillMaxWidth().padding(12.dp)
+                            .testTag("atlas-settings-last-crash-text"),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 28, overflow = TextOverflow.Ellipsis)
+                    if (last != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onCopyLastCrash(last) },
+                                modifier = Modifier.testTag("atlas-settings-last-crash-copy")) {
+                                Text("Copy")
+                            }
+                            TextButton(onClick = { onShareLastCrash(last) },
+                                modifier = Modifier.testTag("atlas-settings-last-crash-share")) {
+                                Text("Share")
+                            }
+                        }
+                    }
+                }
             }
         }
         SettingsGroup("About", "atlas-settings-about") {

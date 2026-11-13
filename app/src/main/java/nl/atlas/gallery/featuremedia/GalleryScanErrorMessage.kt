@@ -11,6 +11,8 @@ package nl.atlas.gallery
 internal fun galleryScanFailureMessage(cause: Exception): String = when (cause) {
     is SecurityException ->
         "Photo access was interrupted. Check Photos permission and refresh."
+    is GalleryScanOutOfMemory ->
+        "ATLAS ran low on memory while refreshing. Try refreshing again."
     is IllegalStateException ->
         "Gallery contents changed or became unavailable. Try refreshing."
     else ->

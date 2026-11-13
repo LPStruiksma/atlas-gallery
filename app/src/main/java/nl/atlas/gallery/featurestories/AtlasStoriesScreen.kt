@@ -7,7 +7,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import android.graphics.Matrix
+import android.view.TextureView
+import androidx.media3.common.VideoSize
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -523,8 +525,20 @@ private fun StoryVideoStage(
             }
     }
 
+    // Render decoded frames in the same hierarchy as the Story controls.
+    // SurfaceView can occlude Compose chrome and yield a black emulator capture.
+    val textureView = remember(uri) {
+        TextureView(context).apply {
+            addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                fitStoryVideoTexture(this, player.videoSize.width, player.videoSize.height)
+            }
+        }
+    }
     DisposableEffect(player, lifecycleOwner) {
         val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                fitStoryVideoTexture(textureView, videoSize.width, videoSize.height)
+            }
             override fun onRenderedFirstFrame() {
                 firstFrame = true
             }
@@ -571,8 +585,10 @@ private fun StoryVideoStage(
             player.removeListener(listener)
         }
     }
-    DisposableEffect(player) {
+    DisposableEffect(player, textureView) {
+        player.setVideoTextureView(textureView)
         onDispose {
+            player.clearVideoTextureView(textureView)
             player.pause()
             player.release()
             latestReleased()
@@ -592,13 +608,7 @@ private fun StoryVideoStage(
     }
     Box(Modifier.fillMaxSize()) {
         AndroidView(
-            factory = {
-                PlayerView(it).apply {
-                    this.player = player
-                    useController = false
-                }
-            },
-            update = { it.player = player },
+            factory = { textureView },
             modifier = Modifier.fillMaxSize().testTag("atlas-story-video-surface")
         )
         if (firstFrame) {
@@ -627,4 +637,16 @@ private fun StoryVideoStage(
             }
         }
     }
+}
+
+/** Letterbox the decoded frame without stretching square media to a phone display. */
+private fun fitStoryVideoTexture(view: TextureView, videoWidth: Int, videoHeight: Int) {
+    if (view.width == 0 || view.height == 0 || videoWidth <= 0 || videoHeight <= 0) return
+    val frameRatio = videoWidth.toFloat() / videoHeight
+    val viewRatio = view.width.toFloat() / view.height
+    val scaleX = if (frameRatio < viewRatio) frameRatio / viewRatio else 1f
+    val scaleY = if (frameRatio > viewRatio) viewRatio / frameRatio else 1f
+    view.setTransform(Matrix().apply {
+        setScale(scaleX, scaleY, view.width / 2f, view.height / 2f)
+    })
 }
