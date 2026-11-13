@@ -185,7 +185,7 @@ internal data class PeopleDiscoveryStatus(
  */
 internal fun peopleHomeRestoring(
     access: Boolean, optedIn: Boolean, status: PeopleDiscoveryStatus?
-): Boolean = access && optedIn && status == null // as on main; the fix follows
+): Boolean = access && optedIn && (status == null || status.peoplePending)
 
 /**
  * #75: while [next]'s people are pending, keep the summary [previous] showed
@@ -194,7 +194,10 @@ internal fun peopleHomeRestoring(
 internal fun holdPendingPeople(
     previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
 ): PeopleDiscoveryStatus? {
-    return next // as on main; the fix follows
+    if (next == null || !next.peoplePending || next.people != null) return next
+    val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
+        ?: return next
+    return next.copy(people = held, peoplePending = false)
 }
 
 /**
@@ -1614,7 +1617,8 @@ internal class PeopleDiscoveryHost(
         ), scoped.epoch)
         val people = currentHome(scoped.epoch)
         // #75: null people with published groups is "not readable yet", not empty.
-        val pending = false // as on main; the fix follows
+        val pending = people == null && try { store.hasPublishedMembership(scoped.epoch) }
+            catch (_: android.database.SQLException) { false }
         return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
             mayResumeScan = ui.phase == FaceDiscoveryPhase.PAUSED,
