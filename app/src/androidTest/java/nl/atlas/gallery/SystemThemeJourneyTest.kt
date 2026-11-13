@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -30,6 +32,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import nl.atlas.gallery.featuredesign.AtlasDestination
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -68,6 +72,14 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             compose.onNodeWithTag("atlas-nav-$tab").performClick()
             settle()
             saveUiEvidence("theme-662-$tab-$mode.png")
+            // #685: capture the real selected and inactive pill icons on
+            // both primary tabs, in both system themes, at S24+ resolution.
+            if (tab == "photos" || tab == "albums") {
+                compose.onNodeWithTag("atlas-nav-$tab").assertIsSelected()
+                val other = if (tab == "photos") "albums" else "photos"
+                compose.onNodeWithTag("atlas-nav-$other").assertIsNotSelected()
+                saveUiEvidence("nav-685-$tab-$mode.png")
+            }
         }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         compose.onNodeWithTag("atlas-header-more").performClick()
@@ -162,6 +174,17 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 inkPixels >= 4)
         }
         saveUiEvidence("selection-679-page-$mode.png")
+    }
+
+    @Test fun photoAndAlbumIconsHaveDistinctActiveAndInactiveVectors() {
+        val photos = AtlasDestination.PHOTOS
+        val albums = AtlasDestination.ALBUMS
+        assertNotEquals("Photos and Albums need distinguishable inactive glyphs",
+            photos.icon, albums.icon)
+        assertNotEquals("Photos and Albums need distinguishable active glyphs",
+            photos.selectedIcon, albums.selectedIcon)
+        assertNotEquals("Photos selected state must be filled", photos.icon, photos.selectedIcon)
+        assertNotEquals("Albums selected state must be filled", albums.icon, albums.selectedIcon)
     }
 
     private fun settle() {
