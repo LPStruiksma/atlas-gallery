@@ -244,6 +244,11 @@ class FaceIndexStore(
     init {
         require(maxCatalogMedia in 1..MAX_CATALOG_MEDIA)
         require(publicationFaceLimit in 1..MAX_PUBLICATION_FACES)
+        // #47: write-ahead log, so a read outside a transaction takes its own
+        // connection and sees the last commit instead of waiting for the
+        // scanner's write transaction. Journal mode only: no schema version
+        // change, and a reverted build reopens the file in its own mode.
+        setWriteAheadLoggingEnabled(true)
     }
 
     /**
