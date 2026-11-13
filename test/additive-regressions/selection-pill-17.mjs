@@ -20,7 +20,8 @@ test('selection chrome uses floating pill instead of full-width Material Navigat
 });
 
 test('selection actions retain explicit disabled, favourite and More semantics', () => {
-  assert.match(selection, /enabled\s*=\s*active/);
+  assert.match(selection, /val active = enabled && count > 0/);
+  assert.match(selection, /clickable\(enabled = enabled/);
   assert.match(selection, /role\s*=\s*Role\.Button/);
   assert.match(selection, /role\s*=\s*Role\.Checkbox/);
   assert.match(selection, /onTrash/);
