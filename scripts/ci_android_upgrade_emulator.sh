@@ -217,7 +217,7 @@ fi
 # between them. The test seeds only invented images and its own app-private
 # database, while MainActivity and the Android permission publication are real.
 # Run before the sharded suite; its PNGs remain in MediaStore for evidence pull.
-if [[ "$SHARD_INDEX" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+if [[ "$SHARD_INDEX" == "0" ]]; then
   [[ "${GITHUB_ACTIONS:-}" == "true" &&
     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
     echo "::error::#31 real-process fixture requires isolated GitHub emulator"; exit 1
