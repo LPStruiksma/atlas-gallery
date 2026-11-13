@@ -83,8 +83,7 @@ internal suspend fun captureAtlasDiagnostics(
     val visual = status?.visual?.takeIf { current }
     val snapshot = AtlasDiagnosticsSnapshot(
         version = info?.versionName ?: "unknown",
-        build = if (Build.VERSION.SDK_INT >= 28) info?.longVersionCode ?: 0
-            else @Suppress("DEPRECATION") (info?.versionCode?.toLong() ?: 0),
+        build = info?.longVersionCode ?: 0L,
         androidApi = Build.VERSION.SDK_INT,
         deviceModel = Build.MODEL ?: "unknown",
         memoryClassMb = activity?.memoryClass ?: 0,
@@ -125,7 +124,9 @@ internal suspend fun captureAtlasDiagnostics(
         fileBytes = fileBytes,
         work = work,
         lastCrash = LastCrashRecorder.read(context),
-        exits = exits
+        exits = exits,
+        scans = AtlasDiagnosticsRing.scans(),
+        logLines = AtlasDiagnosticsRing.logs()
     )
     // A grant that changed while scanning aggregate metadata must not export a
     // stale permission-scoped count. In that case restart without scoped data.
