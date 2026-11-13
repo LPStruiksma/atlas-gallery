@@ -309,17 +309,20 @@ internal fun selectNativePersonAlbum(
 
 /**
  * Pure phase choice for a started run, separated for JVM tests. A user pause
- * wins; pending work shows the live hold reason or RUNNING; a drained catalog
- * shows REVIEW_AVAILABLE while unreviewed detections remain, else COMPLETE.
+ * wins; only a worker's actual batch (or an in-flight DB row) is RUNNING.
+ * A pending queue without an active batch is QUEUED, not a fictitious scan;
+ * a drained catalog shows REVIEW_AVAILABLE or COMPLETE.
  */
 internal fun startedScanPhase(
     pausedByUser: Boolean, pending: Int, running: Int,
-    awaitingReview: Int, hold: FaceScanPhase?, grouping: Boolean = false
+    awaitingReview: Int, hold: FaceScanPhase?, grouping: Boolean = false,
+    activeBatch: Boolean = false
 ): FaceScanPhase = when {
     pausedByUser -> FaceScanPhase.PAUSED
     hold == FaceScanPhase.PERMISSION_REQUIRED -> FaceScanPhase.PERMISSION_REQUIRED
     grouping && hold == null -> FaceScanPhase.GROUPING
-    pending + running > 0 -> hold ?: FaceScanPhase.RUNNING
+    pending + running > 0 -> hold ?: if (activeBatch || running > 0)
+        FaceScanPhase.RUNNING else FaceScanPhase.QUEUED
     awaitingReview > 0 -> FaceScanPhase.REVIEW_AVAILABLE
     else -> FaceScanPhase.COMPLETE
 }
@@ -575,6 +578,8 @@ internal class PeopleDiscoveryHost(
     @Volatile private var liveEpoch: String? = null
     /** True only while a scan batch is actually publishing groups for this epoch. */
     @Volatile private var groupingEpoch: String? = null
+    /** Real granted worker-session window, never inferred from queued rows. */
+    @Volatile private var scanBatchEpoch: String? = null
     private var inference: OnDeviceFaceLocator? = null
     private val reviewGeneration = AtomicLong()
 
@@ -1092,7 +1097,10 @@ internal class PeopleDiscoveryHost(
             s to (inference ?: return null)
         }
         if (!photoGrantCurrent()) return null
-        return Session(s, locator)
+        return Session(s, locator).also {
+            scanBatchEpoch = s.epoch
+            changed()
+        }
     }
 
     private inner class Session(
@@ -1253,7 +1261,10 @@ internal class PeopleDiscoveryHost(
 
         override fun afterBatch(result: FaceBatchResult) = afterBatch(result, null)
 
-        override fun close() = Unit
+        override fun close() {
+            if (scanBatchEpoch == owned.epoch) scanBatchEpoch = null
+            changed()
+        }
     }
 
     /** One consistent read for the People panel. Blocking; IO only. */
@@ -1306,7 +1317,8 @@ internal class PeopleDiscoveryHost(
         }
         val hold = conditions(scoped.epoch).holdReason()
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
-            counts.awaitingReview, hold, grouping = groupingEpoch == scoped.epoch)
+            counts.awaitingReview, hold, grouping = groupingEpoch == scoped.epoch,
+            activeBatch = scanBatchEpoch == scoped.epoch)
         val total = progress.pending + progress.running + progress.processed + progress.failed
         val ui = presentNativeFaceScan(NativeFaceScanDisplayEvidence(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,

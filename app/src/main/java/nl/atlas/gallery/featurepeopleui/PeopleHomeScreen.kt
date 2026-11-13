@@ -294,7 +294,8 @@ private fun peopleScanControls(
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
     val line = peopleProgressLine(state) ?: return
-    Column(Modifier.fillMaxWidth().testTag("atlas-people-progress-line")) {
+    Column(Modifier.fillMaxWidth().semantics { stateDescription = line }
+        .testTag("atlas-people-progress-line")) {
         Text(line,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 .semantics { stateDescription = line }.testTag("atlas-people-status"),
