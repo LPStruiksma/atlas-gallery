@@ -25,8 +25,8 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
             "Choose local storage for an offline copy."
         const val NAMES_IMPORT_WARNING =
             "Import only applies names, hidden flags and review decisions for " +
-            "existing local People keys. Unknown keys and conflicting decisions " +
-            "are skipped; original photos are never modified."
+            "existing local People keys. Matching names may be updated. Unknown " +
+            "keys and conflicting decisions are skipped; photos stay untouched."
         const val EXPORT_WARNING =
             "The selected document provider may upload this unencrypted backup to a cloud. " +
             "It contains confirmed People names and absolute image paths (no photo bytes). " +
