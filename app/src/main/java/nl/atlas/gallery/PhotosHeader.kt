@@ -74,6 +74,7 @@ internal fun SortOrder.label(): String = name.lowercase().replaceFirstChar { it.
  * Applying a choice or explicitly reshuffling Random closes the sheet before
  * notifying the existing asynchronous sort pipeline.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun PhotosSortAction(order: SortOrder, onSort: (SortOrder) -> Unit, onShuffle: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
