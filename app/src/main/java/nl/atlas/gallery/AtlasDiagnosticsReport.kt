@@ -8,7 +8,7 @@ package nl.atlas.gallery
  */
 internal data class AtlasScanDiagnostic(
     val durationMs: Long,
-    val rows: Int,
+    val rows: Int?,
     val reused: Int?,
     val heapUsedBytes: Long,
     val heapLimitBytes: Long,
@@ -71,7 +71,7 @@ internal data class AtlasDiagnosticsSnapshot(
 )
 
 private val VERSION = Regex("[0-9]+(?:\\.[0-9]+){1,5}(?:-[0-9]+)?")
-private val DEVICE = Regex("(?:SM-[A-Z0-9]{3,12}|Pixel [0-9A-Za-z]{1,8}|sdk_gphone[0-9A-Za-z_]*)")
+private val DEVICE = Regex("(?:SM-[A-Z0-9]{3,12}|Pixel [0-9]{1,2}[a-z]?(?: Pro| XL)?|sdk_gphone[0-9]{1,2}(?:_[a-z0-9]+)*)")
 private val PHASES = setOf("UNAVAILABLE", "READY", "QUEUED", "SCANNING", "PAUSED",
     "FINISHED", "FAILED", "PERMISSION_REQUIRED", "BATTERY_LOW", "STORAGE_LOW",
     "REVIEW_AVAILABLE")
@@ -185,4 +185,50 @@ internal fun formatAtlasDiagnostics(s: AtlasDiagnosticsSnapshot): String = build
     s.logLines.takeLast(500).mapNotNull(::safeLog).forEach {
         line("Log", it)
     }
+}
+
+
+/**
+ * In-process ring: only aggregate events published while this process is alive.
+ * This cannot recover historical logcat or previous-process scans; those remain
+ * explicitly unavailable after restart. No persisted identifiers or media data.
+ */
+internal object AtlasDiagnosticsRing {
+    private val lock = Any()
+    private val history = ArrayDeque<AtlasScanDiagnostic>()
+    private val lines = ArrayDeque<String>()
+
+    fun scan(durationMs: Long, rows: Int?, outcome: String) {
+        val runtime = Runtime.getRuntime()
+        val used = (runtime.totalMemory() - runtime.freeMemory()).coerceAtLeast(0)
+        val limit = runtime.maxMemory()
+        val safeOutcome = code(outcome, OUTCOMES)
+        val event = AtlasScanDiagnostic(durationMs.coerceAtLeast(0), rows, null,
+            used, limit, safeOutcome)
+        synchronized(lock) {
+            history.addLast(event)
+            while (history.size > 20) history.removeFirst()
+            appendLog("ATLAS_SCAN elapsed_ms=" + event.durationMs +
+                (rows?.let { " rows=" + it } ?: "") + " heap_used=" + used +
+                " heap_limit=" + limit + " outcome=" + safeOutcome)
+        }
+    }
+
+    fun people(phase: String, processed: Int, eligible: Int) {
+        synchronized(lock) {
+            appendLog("ATLAS_PEOPLE phase=" + code(phase, PHASES) +
+                " processed=" + processed.coerceAtLeast(0) +
+                " eligible=" + eligible.coerceAtLeast(0))
+        }
+    }
+
+    // Called only under lock. No raw message can pass the safeLog grammar.
+    private fun appendLog(line: String) {
+        safeLog(line)?.let {
+            lines.addLast(it)
+            while (lines.size > 500) lines.removeFirst()
+        }
+    }
+    fun scans(): List<AtlasScanDiagnostic> = synchronized(lock) { history.toList() }
+    fun logs(): List<String> = synchronized(lock) { lines.toList() }
 }
