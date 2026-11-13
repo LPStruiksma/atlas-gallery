@@ -1,6 +1,10 @@
 package nl.atlas.gallery.featuremedia
 
 import android.content.ContentResolver
+import android.content.Intent
+import android.os.BatteryManager
+import android.content.Context
+import android.content.IntentFilter
 import android.os.Process
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
@@ -42,11 +46,13 @@ internal object MicroThumbnailWarmer {
     suspend fun warm(
         resolver: ContentResolver,
         items: List<MediaRecord>,
-        yieldWhile: () -> Boolean = { ThumbnailPipeline.gridScrolling }
+        yieldWhile: () -> Boolean = { ThumbnailPipeline.gridScrolling },
+        limit: Int = Int.MAX_VALUE,
+        gate: () -> Boolean = { true }
     ): Report = withContext(dispatcher) {
         val store = MicroThumbnails.store
         if (store == null || !MicroThumbnails.active) return@withContext Report(0, 0, 0, 0)
-        fillMicroStore(store, items, { MicroThumbnails.active }, yieldWhile) { media, key ->
+        fillMicroStore(store, items, { MicroThumbnails.active }, yieldWhile, limit = limit, gate = gate) { media, key ->
             val made = makeAndStore(resolver, store, MicroThumbnailData(media, key))
             made?.recycle()
             made != null
@@ -71,6 +77,8 @@ internal suspend fun fillMicroStore(
     items: List<MediaRecord>,
     active: () -> Boolean,
     yieldWhile: () -> Boolean,
+    limit: Int = Int.MAX_VALUE,
+    gate: () -> Boolean = { true },
     make: (MediaRecord, String) -> Boolean
 ): MicroThumbnailWarmer.Report {
     val started = System.currentTimeMillis()
@@ -83,11 +91,18 @@ internal suspend fun fillMicroStore(
     var swept = false
     for ((index, media) in ordered.withIndex()) {
         coroutineContext.ensureActive()
-        if (!active() || index >= tail) break
-        while (yieldWhile()) delay(MICRO_WARM_YIELD_MS)
+        if (!active() || !gate() || index >= tail || checked >= limit) break
+        while (yieldWhile()) {
+            coroutineContext.ensureActive()
+            if (!active() || !gate()) return MicroThumbnailWarmer.Report(checked, generated, failed,
+                System.currentTimeMillis() - started)
+            delay(MICRO_WARM_YIELD_MS)
+        }
+        if (!active() || !gate()) break
         checked++
         val key = microThumbnailDiskKey(media) ?: continue
         if (store.contains(key)) continue
+        if (!active() || !gate()) break
         while (store.full() && tail > index + 1) {
             microThumbnailDiskKey(ordered[--tail])?.let(store::remove)
         }
@@ -97,9 +112,68 @@ internal suspend fun fillMicroStore(
             tail = ordered.size // older items may fit again in the space freed
         }
         if (store.full()) break
+        if (!active() || !gate()) break
         if (make(media, key)) generated++ else failed++
     }
     return MicroThumbnailWarmer.Report(checked, generated, failed, System.currentTimeMillis() - started)
 }
 
 private const val MICRO_WARM_YIELD_MS = 120L
+
+/** Conservative charging check: an unknown battery state is treated as battery power. */
+internal fun microWarmCharging(context: Context): Boolean {
+    val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        ?: return false
+    return when (battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1)) {
+        BatteryManager.BATTERY_STATUS_CHARGING, BatteryManager.BATTERY_STATUS_FULL -> true
+        else -> false
+    }
+}
+
+/**
+ * Plan and execute the same path used by the UI, without blocking its dispatcher
+ * with hash/file-existence checks for a mostly-cached 150k+ item catalogue.
+ * A post-scan grant check and coroutine cancellation protect superseded epochs.
+ */
+internal suspend fun <T> microWarmForCatalog(
+    items: List<T>,
+    charging: Boolean,
+    isMissing: (T) -> Boolean,
+    authorized: () -> Boolean,
+    warm: suspend (Int) -> Unit,
+    deferRemainder: () -> Unit,
+    cancelDeferred: () -> Unit
+) {
+    val plan = if (charging) microWarmPlan(0, charging = true) else
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
+            var missing = 0
+            for (item in items) {
+                coroutineContext.ensureActive()
+                if (isMissing(item) && ++missing > MICRO_WARM_LARGE_MISSING) break
+            }
+            microWarmPlan(missing, charging = false)
+        }
+    coroutineContext.ensureActive()
+    if (!authorized()) return
+    warm(plan.immediateLimit)
+    coroutineContext.ensureActive()
+    if (!authorized()) return
+    if (plan.deferRemainder) deferRemainder() else cancelDeferred()
+}
+
+/** A large first fill warms just the newest items on battery, then defers the rest. */
+internal data class MicroWarmPlan(val immediateLimit: Int, val deferRemainder: Boolean)
+
+/**
+ * The immediate limit is a count of catalogue entries visited, not a count
+ * of cache misses. Small top-ups and charging must visit the whole catalogue.
+ */
+internal fun microWarmPlan(missing: Int, charging: Boolean): MicroWarmPlan =
+    if (!charging && missing > MICRO_WARM_LARGE_MISSING) {
+        MicroWarmPlan(MICRO_WARM_BATTERY_LIMIT, true)
+    } else {
+        MicroWarmPlan(Int.MAX_VALUE, false)
+    }
+
+internal const val MICRO_WARM_LARGE_MISSING = 3_000
+internal const val MICRO_WARM_BATTERY_LIMIT = 512
