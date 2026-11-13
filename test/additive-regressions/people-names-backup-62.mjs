@@ -23,5 +23,5 @@ assert.match(settings, /"Export names"/);
 assert.match(settings, /"Import names"/);
 assert.match(activity, /ActivityResultContracts.CreateDocument/);
 assert.match(activity, /ActivityResultContracts.OpenDocument/);
-assert.match(activity, /atlas-people-names-export/);
-assert.match(activity, /atlas-people-names-import/);
+assert.match(settings, /atlas-people-names-export/);
+assert.match(settings, /atlas-people-names-import/);
