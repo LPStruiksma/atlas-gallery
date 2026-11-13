@@ -149,9 +149,10 @@ fun SamsungSelectionBottomBar(
 
     BoxWithConstraints(
         modifier.fillMaxWidth()
+            // Tag the full-width outer region, not its inset/padded content.
+            .testTag("atlas-selection-bottom-bar")
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .testTag("atlas-selection-bottom-bar"),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         // Tablet layouts stay compact; narrow phones divide available width
