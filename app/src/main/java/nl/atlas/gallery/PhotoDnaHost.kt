@@ -24,13 +24,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
@@ -51,6 +54,7 @@ import android.content.Context
 import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -772,6 +776,45 @@ internal fun hashAuthorizedMedia(
 )
 
 /**
+ * #42: how one Photo DNA planning step ended. Any throwable but a
+ * cancellation, including a failed `require` in CurationReviewPlan and an
+ * OutOfMemoryError on a large library, becomes [Failed] instead of reaching
+ * the main looper and killing the app.
+ */
+internal sealed interface PhotoDnaOutcome<out T> {
+    data class Done<T>(val value: T) : PhotoDnaOutcome<T>
+    class Failed(val error: Throwable) : PhotoDnaOutcome<Nothing>
+}
+
+internal inline fun <T> photoDnaOutcome(step: () -> T): PhotoDnaOutcome<T> = try {
+    PhotoDnaOutcome.Done(step())
+} catch (cancel: kotlinx.coroutines.CancellationException) {
+    throw cancel
+} catch (failure: Throwable) {
+    PhotoDnaOutcome.Failed(failure)
+}
+
+/**
+ * The host's Photo DNA state: the plan (if any), whether planning failed
+ * before a plan could be shown, and a Retry that runs planning again.
+ */
+@Stable
+internal class PhotoDnaPlanning {
+    var result: PhotoDnaResult? by mutableStateOf(null, referentialEqualityPolicy())
+        internal set
+    /** True when planning stopped on an error and no plan is on screen. */
+    var failed: Boolean by mutableStateOf(false)
+        internal set
+    internal var attempt: Int by mutableIntStateOf(0)
+        private set
+
+    fun retry() {
+        failed = false
+        attempt++
+    }
+}
+
+/**
  * Plans off main, only while [enabled], and only when the tokens or source
  * list change, never per recomposition. A result from older tokens is kept
  * but never rendered: every reader goes through [currentPhotoDna]. While
@@ -784,55 +827,83 @@ internal fun rememberPhotoDna(
     tokens: PhotoDnaTokens?,
     enabled: Boolean,
     hash: (MediaRecord, () -> Unit) -> CurationByteDigest?
-): PhotoDnaResult? {
+): PhotoDnaPlanning {
     val context = LocalContext.current.applicationContext
-    var result by remember { mutableStateOf<PhotoDnaResult?>(null, referentialEqualityPolicy()) }
-    LaunchedEffect(tokens, CatalogSourceKey(source), enabled) {
+    val state = remember { PhotoDnaPlanning() }
+    LaunchedEffect(tokens, CatalogSourceKey(source), enabled, state.attempt) {
         if (tokens == null) {
-            result = null
+            state.result = null
+            state.failed = false
             PhotoDnaVisualHashes.cache.clear()
             return@LaunchedEffect
         }
-        val current = currentPhotoDna(result, tokens)
+        val current = currentPhotoDna(state.result, tokens)
         if (!enabled || current?.needsVisualPass == false) return@LaunchedEffect
-        // Show the byte plan first; visual pairs follow when their pass ends.
-        val planned = current ?: withContext(Dispatchers.IO) {
-            val check = { ensureActive() }
-            planPhotoDna(source, tokens, { hash(it, check) }, checkpoint = check,
-                keepReceipts = { PhotoDnaKeepStore.get(context).resolveCurrentlyValid(it) })
-        }.also { result = it }
-        val grant = readGalleryMediaGrant(context)
-        if (!grant.images) return@LaunchedEffect
-        var previousDeferred: Int? = null
-        var passes = 0
-        var totalOversizedSkips = 0
-        while (true) {
-            // The byte plan (with any Keep marks) is the base; visual pairs are rebuilt on it.
-            val basePlan = planned.plan
-            val (pass, oversizedThumbnailSkips) = withContext(Dispatchers.IO) {
-                val check = { ensureActive() }
-                val authorized = { readGalleryMediaGrant(context) == grant }
-                var skipped = 0
-                PhotoDnaVisualHashes.cache.bindGrant(grant)
-                val visual = planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
-                    decode = { record -> visualHashAuthorizedImage(context.contentResolver,
-                        record, authorized, check, onOverBudget = { skipped++ }) },
-                    stillAuthorized = authorized, checkpoint = check)
-                visual to skipped
+        state.failed = false
+        // #42: any failure in the byte plan or a visual pass (a `require` in
+        // CurationReviewPlan, an OOM on a large library, a provider error)
+        // ends here: recorded as Last crash, shown as Retry when no plan is
+        // on screen, never thrown into the main looper.
+        val outcome = photoDnaOutcome {
+            planAndChainVisualPasses(context, source, tokens, current, hash,
+                latest = { state.result }) { state.result = it }
+        }
+        if (outcome is PhotoDnaOutcome.Failed) {
+            if (currentPhotoDna(state.result, tokens) == null) state.failed = true
+            withContext(NonCancellable + Dispatchers.IO) {
+                LastCrashRecorder.recordHandled(context, outcome.error)
             }
-            passes++
-            if (result !== planned || readGalleryMediaGrant(context) != grant) return@LaunchedEffect
-            totalOversizedSkips += oversizedThumbnailSkips
-            // One count-only record per pass, never a URI or personal-media detail.
-            android.util.Log.i("ATLAS_PHOTO_DNA", "visual pass decoded=${pass.decodedFiles} " +
-                "hashed=${pass.hashedFiles} oversizedThumbnailSkips=$oversizedThumbnailSkips " +
-                "totalOversizedSkips=$totalOversizedSkips deferred=${pass.deferredFiles}")
-            planned.addVisualPairs(pass)
-            if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return@LaunchedEffect
-            previousDeferred = pass.deferredFiles
         }
     }
-    return result
+    return state
+}
+
+/** The body of [rememberPhotoDna]'s effect; it may throw, the caller catches. */
+private suspend fun planAndChainVisualPasses(
+    context: Context,
+    source: List<MediaRecord>,
+    tokens: PhotoDnaTokens,
+    current: PhotoDnaResult?,
+    hash: (MediaRecord, () -> Unit) -> CurationByteDigest?,
+    latest: () -> PhotoDnaResult?,
+    publish: (PhotoDnaResult) -> Unit
+) {
+    // Show the byte plan first; visual pairs follow when their pass ends.
+    val planned = current ?: withContext(Dispatchers.IO) {
+        val check = { ensureActive() }
+        planPhotoDna(source, tokens, { hash(it, check) }, checkpoint = check,
+            keepReceipts = { PhotoDnaKeepStore.get(context).resolveCurrentlyValid(it) })
+    }.also(publish)
+    val grant = readGalleryMediaGrant(context)
+    if (!grant.images) return
+    var previousDeferred: Int? = null
+    var passes = 0
+    var totalOversizedSkips = 0
+    while (true) {
+        // The byte plan (with any Keep marks) is the base; visual pairs are rebuilt on it.
+        val basePlan = planned.plan
+        val (pass, oversizedThumbnailSkips) = withContext(Dispatchers.IO) {
+            val check = { ensureActive() }
+            val authorized = { readGalleryMediaGrant(context) == grant }
+            var skipped = 0
+            PhotoDnaVisualHashes.cache.bindGrant(grant)
+            val visual = planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
+                decode = { record -> visualHashAuthorizedImage(context.contentResolver,
+                    record, authorized, check, onOverBudget = { skipped++ }) },
+                stillAuthorized = authorized, checkpoint = check)
+            visual to skipped
+        }
+        passes++
+        if (latest() !== planned || readGalleryMediaGrant(context) != grant) return
+        totalOversizedSkips += oversizedThumbnailSkips
+        // One count-only record per pass, never a URI or personal-media detail.
+        android.util.Log.i("ATLAS_PHOTO_DNA", "visual pass decoded=${pass.decodedFiles} " +
+            "hashed=${pass.hashedFiles} oversizedThumbnailSkips=$oversizedThumbnailSkips " +
+            "totalOversizedSkips=$totalOversizedSkips deferred=${pass.deferredFiles}")
+        planned.addVisualPairs(pass)
+        if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return
+        previousDeferred = pass.deferredFiles
+    }
 }
 
 /** The Photo DNA row on the Albums tab, under Stories. */
@@ -885,6 +956,9 @@ internal fun PhotoDnaRoute(
     onReviewRequested: (CurationReviewRequest) -> Unit,
     modifier: Modifier = Modifier,
     accessible: Boolean = true,
+    /** #42: planning failed before a plan could be shown; offer [onRetry]. */
+    failed: Boolean = false,
+    onRetry: () -> Unit = {},
     /** Tests only: replaces the fresh full-byte read under the grant held at the Keep tap. */
     hashForKeep: ((MediaRecord, () -> Unit) -> CurationByteDigest?)? = null,
     unchanged: (Context, List<MediaRecord>) -> Boolean = { context, records ->
@@ -936,8 +1010,10 @@ internal fun PhotoDnaRoute(
             // Only the plan still on screen (same tokens) takes the mark.
             when (outcome) {
                 is PhotoDnaKeepOutcome.Saved ->
-                    if (latest !== held || !held.markKept(outcome.groupKey, outcome.keeperUri))
-                        resetKeeper(groupKey)
+                    // #42: rebuilding the plan may throw; a refused mark is a reset, not a crash.
+                    if (latest !== held || !runCatching {
+                            held.markKept(outcome.groupKey, outcome.keeperUri)
+                        }.getOrDefault(false)) resetKeeper(groupKey)
                 is PhotoDnaKeepOutcome.Refused -> {
                     resetKeeper(groupKey)
                     Toast.makeText(context, outcome.reason, Toast.LENGTH_LONG).show()
@@ -959,6 +1035,7 @@ internal fun PhotoDnaRoute(
             if (!accessible || shown == null || verifying) {
                 Text(when {
                     !accessible -> PhotoDnaCopy.NO_ACCESS_STATUS
+                    shown == null && failed -> PhotoDnaCopy.FAILED_STATUS
                     shown == null -> PhotoDnaCopy.SEARCHING
                     else -> PhotoDnaCopy.RECHECKING
                 }, style = MaterialTheme.typography.bodySmall,
@@ -974,6 +1051,19 @@ internal fun PhotoDnaRoute(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("atlas-photo-dna-no-access")
                 )
+            }
+        } else if (shown == null && failed) {
+            Column(
+                Modifier.fillMaxSize().padding(28.dp).testTag("atlas-photo-dna-failed"),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(PhotoDnaCopy.FAILED_BODY, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FilledTonalButton(onClick = onRetry,
+                    modifier = Modifier.testTag("atlas-photo-dna-retry")) {
+                    Text(PhotoDnaCopy.RETRY)
+                }
             }
         } else if (shown == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

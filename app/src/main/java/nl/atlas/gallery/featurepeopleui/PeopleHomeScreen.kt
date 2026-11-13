@@ -87,6 +87,12 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    /**
+     * #31: a kept opt-in whose catalogue is still being restored. Shows a
+     * quiet page, never "No people" and "Discover faces" for a library that
+     * already has people.
+     */
+    restoring: Boolean = false,
     portrait: @Composable (PeopleProfileUi) -> Unit = {
         // NEVER issue an independent Coil request from a URI-only V4 cover.
         // The hosting lane must supply an authorized MediaRecord and M's
@@ -173,7 +179,11 @@ fun PeopleHomeScreen(
         )
         PeopleScanProgress(discovery)
         if (tiles.isEmpty()) {
-            PeopleEmptyState(scan.start)
+            if (restoring) {
+                Box(Modifier.fillMaxSize().testTag("atlas-people-restoring"))
+            } else {
+                PeopleEmptyState(scan.start)
+            }
             return@Column
         }
         LazyColumn(

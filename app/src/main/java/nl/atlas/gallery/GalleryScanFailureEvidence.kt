@@ -22,7 +22,7 @@ internal class GalleryProviderVersionUnavailable :
 internal enum class GalleryScanFailureCode {
     SNAPSHOT_CHANGED, VERSION_UNAVAILABLE,
     SECURITY, PROVIDER_BUSY, SQLITE, PROVIDER_CANCELLED,
-    PROVIDER_IPC, PROVIDER_STATE, INVALID_ROW, IO, UNKNOWN
+    PROVIDER_IPC, PROVIDER_STATE, INVALID_ROW, IO, OUT_OF_MEMORY, UNKNOWN
 }
 
 internal enum class GalleryScanGrantMatch { SAME, DIFFERENT, UNKNOWN }
@@ -65,6 +65,7 @@ internal fun galleryScanFailureEvidence(
         cause is GalleryProviderSnapshotChanged -> GalleryScanFailureCode.SNAPSHOT_CHANGED
         cause is GalleryProviderVersionUnavailable -> GalleryScanFailureCode.VERSION_UNAVAILABLE
         cause is SecurityException -> GalleryScanFailureCode.SECURITY
+        cause is GalleryScanOutOfMemory -> GalleryScanFailureCode.OUT_OF_MEMORY
         cause.javaClass.name in setOf(
             "android.database.sqlite.SQLiteDatabaseLockedException",
             "android.database.sqlite.SQLiteDatabaseBusyException"
