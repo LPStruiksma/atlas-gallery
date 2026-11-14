@@ -164,36 +164,43 @@ internal data class PhotoDnaCandidates(
 )
 
 /**
- * URIs the catalogue repeats. #65: found by sorting the ids in a primitive
- * array, so no URI string or set entry is made per row; only rows whose id
- * repeats (rare: one per volume at most) are compared by URI.
+ * Find repeated URIs by sorting primitive URI hashes, not allocating a URI
+ * string or set entry for each catalogue row. A collision is only a candidate:
+ * exact URI comparisons decide duplicates, including malformed rows whose
+ * MediaStore id differs from the URI's id. The map holds only actual duplicates.
  */
-private fun repeatedPhotoDnaUris(source: List<MediaRecord>, checkpoint: () -> Unit): Set<String> {
-    if (source.size < 2) return emptySet()
-    val ids = LongArray(source.size)
+private fun repeatedPhotoDnaUris(source: List<MediaRecord>, checkpoint: () -> Unit): Map<Int, Set<String>> {
+    if (source.size < 2) return emptyMap()
+    val hashes = IntArray(source.size)
     source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        ids[index] = record.id
+        hashes[index] = record.uriHashCodeWithoutAllocation()
     }
-    ids.sort()
+    hashes.sort()
     checkpoint()
-    var repeatedIds: HashSet<Long>? = null
-    for (i in 1 until ids.size) {
-        if (ids[i] == ids[i - 1]) (repeatedIds ?: HashSet<Long>().also { repeatedIds = it }).add(ids[i])
+    var repeatedHashes: HashSet<Int>? = null
+    for (i in 1 until hashes.size) {
+        if (hashes[i] == hashes[i - 1])
+            (repeatedHashes ?: HashSet<Int>().also { repeatedHashes = it }).add(hashes[i])
     }
-    val candidates = repeatedIds ?: return emptySet()
+    val candidates = repeatedHashes ?: return emptyMap()
     val seen = HashSet<String>()
-    val duplicated = HashSet<String>()
+    val duplicated = HashMap<Int, MutableSet<String>>()
     source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        if (record.id in candidates && !seen.add(record.uri)) duplicated.add(record.uri)
+        val hash = record.uriHashCodeWithoutAllocation()
+        if (hash in candidates) {
+            val uri = record.uri
+            if (!seen.add(uri)) duplicated.getOrPut(hash) { HashSet() }.add(uri)
+        }
     }
     return duplicated
 }
 
-/** Eligible for Photo DNA and not one of [repeated] URIs (never builds a URI when none repeat). */
-private fun photoDnaDistinctOk(record: MediaRecord, repeated: Set<String>, budget: PhotoDnaBudget) =
-    photoDnaEligible(record, budget) && (repeated.isEmpty() || record.uri !in repeated)
+/** Compare actual URI text only for the few hashes known to contain duplicates. */
+private fun photoDnaDistinctOk(record: MediaRecord, repeated: Map<Int, Set<String>>, budget: PhotoDnaBudget) =
+    photoDnaEligible(record, budget) &&
+        (repeated[record.uriHashCodeWithoutAllocation()]?.let { record.uri !in it } ?: true)
 
 /**
  * Ignore every occurrence of a URI that the catalogue repeats. Even if two
