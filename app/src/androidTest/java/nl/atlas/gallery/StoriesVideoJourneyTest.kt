@@ -92,12 +92,17 @@ class StoriesVideoJourneyTest {
         compose.onNodeWithContentDescription("Moment 2 of 3").assertExists()
         compose.onNodeWithContentDescription("Resume video").assertExists()
         compose.onNodeWithTag("atlas-story-player").assertExists()
+        // #92: the paused stage shows a decoded still poster, not the raw
+        // texture, so the capture never depends on the emulator video buffer.
+        await(hasTestTag("atlas-story-video-poster-ready"))
         saveUiEvidence("stories-21-poster-" + mode + ".png")
 
         compose.onNodeWithTag("atlas-story-pause").performClick()
         await(hasContentDescription("Pause video"))
         await(hasTestTag("atlas-story-video-is-playing"))
         compose.onNodeWithTag("atlas-story-video-surface").assertExists()
+        // Real playback replaces the poster with decoded frames.
+        compose.onNodeWithTag("atlas-story-video-poster").assertDoesNotExist()
         saveUiEvidence("stories-21-playing-" + mode + ".png")
 
         // Decoder EOS is an actual asynchronous Media3 event, not a fake callback.
