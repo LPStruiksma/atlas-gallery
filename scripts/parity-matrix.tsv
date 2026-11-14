@@ -11,20 +11,20 @@ pictures-header-away	light	no		HeaderScrollAwayJourneyTest	Scroll-away screensho
 pictures-header-away	dark	no		HeaderScrollAwayJourneyTest	Scroll-away screenshots exist but no controlled light/dark pair
 albums-overview	light	yes	theme-662-albums-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 albums-overview	dark	yes	theme-662-albums-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
-albums-detail	light	no		AlbumGridEvidenceTest	No controlled light/dark capture after entering a synthetic album detail
-albums-detail	dark	no		AlbumGridEvidenceTest	No controlled light/dark capture after entering a synthetic album detail
+albums-detail	light	yes	parity-24-albums-detail-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+albums-detail	dark	yes	parity-24-albums-detail-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-overview	light	yes	theme-662-people-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-overview	dark	yes	theme-662-people-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-named	light	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
 people-named	dark	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
-people-hidden	light	no		PeopleSearchAppEvidenceTest	Hidden People route has only an uncontrolled-theme PNG
-people-hidden	dark	no		PeopleSearchAppEvidenceTest	Hidden People route has only an uncontrolled-theme PNG
+people-hidden	light	yes	parity-24-people-hidden-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+people-hidden	dark	yes	parity-24-people-hidden-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-photo	light	yes	theme-662-viewer-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-photo	dark	yes	theme-662-viewer-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-details-people	light	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
 viewer-details-people	dark	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
-viewer-filmstrip	light	no		ViewerInteractionTest	Viewer capture does not assert an independently exposed filmstrip in both themes
-viewer-filmstrip	dark	no		ViewerInteractionTest	Viewer capture does not assert an independently exposed filmstrip in both themes
+viewer-filmstrip	light	yes	parity-24-viewer-filmstrip-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+viewer-filmstrip	dark	yes	parity-24-viewer-filmstrip-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 search-person	light	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
 search-person	dark	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
 selection-more	light	yes	selection-pill-17-light-more.png	SelectionPillLightJourneyTest / SelectionPillDarkJourneyTest	
