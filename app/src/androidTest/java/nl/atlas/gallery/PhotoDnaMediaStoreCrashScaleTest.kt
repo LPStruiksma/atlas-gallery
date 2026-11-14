@@ -13,13 +13,14 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
+import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -151,6 +152,7 @@ private class CrashScaleMediaStoreFixtures : TestRule {
                 val choices = PeopleOptInMemory.preferences(context)
                 val previousPeople = choices.load()
                 val previousVisual = choices.loadVisual()
+                val previousPublished = choices.loadPublished()
                 listOf(Manifest.permission.READ_MEDIA_IMAGES,
                     Manifest.permission.READ_MEDIA_VIDEO).forEach {
                     instrumentation.uiAutomation.grantRuntimePermission(context.packageName, it)
@@ -173,8 +175,15 @@ private class CrashScaleMediaStoreFixtures : TestRule {
                 } finally {
                     // Restore original opt-in after the Activity rule finishes;
                     // the fixture never opts a personal library into scanning.
+                    if (previousPeople == null) {
+                        // We opted in only for this emulator journey. Cancel
+                        // that worker before removing its synthetic inventory.
+                        PeopleScanWorkScheduler.cancel(context)
+                        PeopleScanWorkRuntime.clear()
+                    }
                     choices.saveVisual(previousVisual)
                     choices.save(previousPeople)
+                    choices.savePublished(previousPublished)
                     inserted.asReversed().forEach { uri ->
                         runCatching { context.contentResolver.delete(uri, null, null) }
                     }
