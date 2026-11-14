@@ -71,6 +71,8 @@ sealed interface FaceSearchState {
     data object VersionMismatch : FaceSearchState
     /** Photo access or the face scope was revoked or replaced; results were dropped. */
     data object Revoked : FaceSearchState
+    /** The search exceeded available heap: results are discarded and a retry is possible. */
+    data object Unavailable : FaceSearchState
     data object Failed : FaceSearchState
     data class Empty(val epoch: String) : FaceSearchState
     data class Results(
@@ -121,6 +123,11 @@ class FaceSearchSession(
         } catch (cancelled: CancellationException) {
             if (generation.get() == request) mutableState.value = FaceSearchState.Idle
             throw cancelled
+        } catch (_: OutOfMemoryError) {
+            // OOM is an Error, not an Exception. Keep it at the session
+            // boundary so a large corpus cannot crash the whole gallery.
+            // Discard the partial corpus; the next search starts fresh.
+            FaceSearchState.Unavailable
         } catch (_: SecurityException) {
             FaceSearchState.Revoked
         } catch (interrupted: InterruptedException) {
