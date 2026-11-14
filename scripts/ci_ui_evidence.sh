@@ -22,7 +22,9 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 declared_dir="${ATLAS_UI_EVIDENCE_DECLARED_DIR:-$script_dir/ui-evidence.d}"
 # #577: tests store evidence under a camera-style name dated 2001-01-01.
-remote_dir=/sdcard/Pictures/ATLAS-UI-Evidence
+# #703: in shell-owned scratch space, not shared storage, so MediaStore never
+# indexes a screenshot and later tests never see one (UI_EVIDENCE_DEVICE_DIR).
+remote_dir=/data/local/tmp/atlas-ui-evidence
 prefix=IMG_20010101_000000_
 name_re='^[A-Za-z0-9][A-Za-z0-9_-]*$'
 

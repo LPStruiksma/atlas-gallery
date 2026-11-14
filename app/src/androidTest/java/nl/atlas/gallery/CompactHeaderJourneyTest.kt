@@ -31,7 +31,7 @@ import org.junit.runners.model.Statement
 /**
  * #492 compact Samsung-style header in the real Activity, on invented PNGs
  * inserted by this test (emulator only, deleted afterwards). Screenshots go
- * to the emulator-only Pictures/ATLAS-UI-Evidence folder for the PR.
+ * to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR) for the PR.
  */
 @RunWith(AndroidJUnit4::class)
 class CompactHeaderJourneyTest {
@@ -142,7 +142,8 @@ class CompactHeaderJourneyTest {
  * ([resolveMediaDate]), because MediaStore keeps no DATE_TAKEN for a PNG
  * without EXIF. Without it every screenshot dated "now" (DATE_MODIFIED) and
  * sorted ahead of the test fixtures, pushing them out of the first rows.
- * scripts/ci_android_upgrade_emulator.sh pulls the prefixed name.
+ * scripts/ci_ui_evidence.sh pulls the prefixed name. Since #703 the file
+ * is no longer in MediaStore, so the date hint only keeps the name stable.
  */
 internal const val UI_EVIDENCE_PREFIX = "IMG_20010101_000000_"
 
@@ -182,21 +183,40 @@ internal fun saveUiEvidence(filename: String) {
         }
         Thread.sleep(250L)
     }
-    val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, uiEvidenceDisplayName(filename))
-        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ATLAS-UI-Evidence/")
-    }
-    val uri = requireNotNull(target.contentResolver.insert(
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)) {
-        "Could not create a synthetic UI-evidence image"
-    }
-    try {
-        requireNotNull(target.contentResolver.openOutputStream(uri)) {
-            "Could not write synthetic UI-evidence image"
-        }.use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "Screenshot encoding failed" } }
+    val png = try {
+        java.io.ByteArrayOutputStream().also {
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "Screenshot encoding failed" }
+        }.toByteArray()
     } finally {
         bitmap.recycle()
+    }
+    writeUiEvidenceFile(uiEvidenceDisplayName(filename), png)
+}
+
+/**
+ * #703: where the CI script pulls evidence from. It is shell-owned scratch
+ * space outside shared storage, so MediaStore never indexes a screenshot and
+ * no later test finds one in its gallery. Gradle's uninstall leaves it alone.
+ */
+internal const val UI_EVIDENCE_DEVICE_DIR = "/data/local/tmp/atlas-ui-evidence"
+
+/** Writes [bytes] through the shell user, which owns [UI_EVIDENCE_DEVICE_DIR]. */
+internal fun writeUiEvidenceFile(name: String, bytes: ByteArray) {
+    require(Regex("^[A-Za-z0-9][A-Za-z0-9_.-]*$").matches(name)) { "Bad UI-evidence name $name" }
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+        throw IllegalStateException("UI evidence needs API 31+ (CI runs API 35)")
+    }
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    fun drain(fd: android.os.ParcelFileDescriptor) =
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
+    drain(automation.executeShellCommand("mkdir -p $UI_EVIDENCE_DEVICE_DIR"))
+    val path = "$UI_EVIDENCE_DEVICE_DIR/$name"
+    val (stdout, stdin) = automation.executeShellCommandRw("dd of=$path")
+    android.os.ParcelFileDescriptor.AutoCloseOutputStream(stdin).use { it.write(bytes) }
+    drain(stdout) // dd has finished once its output closes
+    val size = String(drain(automation.executeShellCommand("stat -c %s $path"))).trim()
+    check(size == bytes.size.toString()) {
+        "UI evidence $name: wrote ${bytes.size} bytes, device has '$size'"
     }
 }
 
