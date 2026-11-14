@@ -311,7 +311,7 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     while IFS= read -r job; do
       namespace="${job#JOB }"
       namespace="${namespace%%:*}"
-      id="${job#*:/}"
+      id="${job#*/}"
       id="${id%%:*}"
       if [[ "$namespace" == androidx.work.systemjobscheduler ]]; then
         result="$(adb shell cmd jobscheduler run -f --namespace "$namespace" nl.atlas.gallery "$id" 2>&1)" || {
