@@ -110,6 +110,10 @@ for n in sorted(pulled):
         fail(f"Invalid image {p}")
 print(f"PASS: {len(declared)} real PNG screenshots")
 '
+    # Assemble the exact-head parity matrix from verified real PNGs. Keeping
+    # its aliases in a subfolder preserves the root declared-set comparison;
+    # the existing ui-evidence/* artifact upload includes the matrix folder.
+    python3 "$script_dir/verify_parity_matrix.py" ui-evidence
     # Some review seats cannot download Actions artifacts; print every
     # screenshot as base64 so it can be decoded from the job log.
     for shot in ui-evidence/*.png; do
