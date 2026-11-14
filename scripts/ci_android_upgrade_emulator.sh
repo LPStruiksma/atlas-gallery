@@ -305,8 +305,8 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   force_jobs() {
     local id
     for id in $(adb shell dumpsys jobscheduler | tr -d '\r' |
-        grep -oE 'JOB #u[0-9]+a[0-9]+/[0-9]+: [0-9a-f]+ nl[.]atlas[.]gallery/' |
-        sed -E 's|^JOB #[^/]+/([0-9]+):.*|\1|' | sort -u); do
+        grep -oE 'JOB [^[:space:]]+/[0-9]+: [0-9a-f]+ @?[^[:space:]]*nl[.]atlas[.]gallery/' |
+        sed -E 's|^JOB [^[:space:]]+/([0-9]+):.*|\1|' | sort -u); do
       adb shell cmd jobscheduler run -f nl.atlas.gallery "$id" >/dev/null 2>&1 || true
     done
   }
