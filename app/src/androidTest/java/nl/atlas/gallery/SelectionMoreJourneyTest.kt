@@ -114,13 +114,20 @@ class SelectionMoreJourneyTest {
             .assertIsEnabled()
             .performSemanticsAction(SemanticsActions.OnClick) { it() }
         logMoveBoundary("after-confirm")
+        // MediaProvider's genuine permission Activity can now own the foreground.
+        // Handle its Allow action and the completed MediaStore move before
+        // querying app Compose; no Compose hierarchy exists while it is paused.
+        acceptWriteConsentUntil { fixtures.relativePathOf(ids[2]) == NEW_PATH }
+        logMoveBoundary("move-finished")
+        waitUntil("app resumes after MediaProvider consent") {
+            compose.activityRule.scenario.state == androidx.lifecycle.Lifecycle.State.RESUMED
+        }
+        compose.waitForIdle()
         waitUntil("new album dialog dismisses") {
             compose.onAllNodes(hasTestTag("atlas-create-album-confirm"))
                 .fetchSemanticsNodes().isEmpty()
         }
         logMoveBoundary("dialog-dismissed")
-        acceptWriteConsentUntil { fixtures.relativePathOf(ids[2]) == NEW_PATH }
-        logMoveBoundary("move-finished")
         assertEquals(NEW_PATH, fixtures.relativePathOf(ids[2]))
         assertEquals(fixtures.nameOf(2), fixtures.displayNameOf(ids[2]))
         waitFor(hasTestTag("atlas-nav-photos"))
