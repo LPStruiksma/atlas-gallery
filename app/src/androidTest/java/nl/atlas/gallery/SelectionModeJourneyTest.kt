@@ -40,7 +40,7 @@ import org.junit.runners.model.Statement
  * (two days of six, newest in the grid) inserted by this test and deleted afterwards: long-press
  * one tile, long-press-drag across six, a date header's check circle, then
  * Share. The chooser launch is intercepted, so no share target ever opens.
- * Screenshots go to the emulator-only Pictures/ATLAS-UI-Evidence folder.
+ * Screenshots go to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR).
  */
 @RunWith(AndroidJUnit4::class)
 class SelectionModeJourneyTest {
