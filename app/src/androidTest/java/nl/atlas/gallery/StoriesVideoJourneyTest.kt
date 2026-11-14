@@ -87,6 +87,7 @@ class StoriesVideoJourneyTest {
         saveUiEvidence("stories-21-photo-" + mode + ".png")
 
         compose.onNodeWithTag("atlas-story-next").performClick()
+        // Tag appears only after a first frame and valid letterbox transform.
         await(hasTestTag("atlas-story-video-first-frame"))
         compose.onNodeWithContentDescription("Moment 2 of 3").assertExists()
         compose.onNodeWithContentDescription("Resume video").assertExists()

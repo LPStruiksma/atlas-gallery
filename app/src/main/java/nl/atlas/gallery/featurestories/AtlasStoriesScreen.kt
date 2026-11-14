@@ -510,6 +510,7 @@ private fun StoryVideoStage(
     val latestPaused by rememberUpdatedState(onPaused)
     val latestCompleted by rememberUpdatedState(onCompleted)
     val latestReleased by rememberUpdatedState(onReleased)
+    var fitApplied by remember(uri) { mutableStateOf(false) }
     var firstFrame by remember(uri) { mutableStateOf(false) }
     var isPlaying by remember(uri) { mutableStateOf(false) }
     var failed by remember(uri) { mutableStateOf(false) }
@@ -521,7 +522,6 @@ private fun StoryVideoStage(
             .build().apply {
                 setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
                 playWhenReady = false
-                prepare()
             }
     }
 
@@ -530,16 +530,17 @@ private fun StoryVideoStage(
     val textureView = remember(uri) {
         TextureView(context).apply {
             addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                fitStoryVideoTexture(this, player.videoSize.width, player.videoSize.height)
+                fitApplied = fitStoryVideoTexture(this, player.videoSize.width, player.videoSize.height)
             }
         }
     }
     DisposableEffect(player, lifecycleOwner) {
         val listener = object : Player.Listener {
             override fun onVideoSizeChanged(videoSize: VideoSize) {
-                fitStoryVideoTexture(textureView, videoSize.width, videoSize.height)
+                fitApplied = fitStoryVideoTexture(textureView, videoSize.width, videoSize.height)
             }
             override fun onRenderedFirstFrame() {
+                fitApplied = fitStoryVideoTexture(textureView, player.videoSize.width, player.videoSize.height)
                 firstFrame = true
             }
             override fun onIsPlayingChanged(value: Boolean) {
@@ -573,6 +574,9 @@ private fun StoryVideoStage(
             }
         }
         player.addListener(listener)
+        // Observe video size before preparing, then reconcile known dimensions.
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        fitApplied = fitStoryVideoTexture(textureView, player.videoSize.width, player.videoSize.height)
         lifecycleOwner.lifecycle.addObserver(observer)
         if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             player.pause()
@@ -611,7 +615,7 @@ private fun StoryVideoStage(
             factory = { textureView },
             modifier = Modifier.fillMaxSize().testTag("atlas-story-video-surface")
         )
-        if (firstFrame) {
+        if (firstFrame && fitApplied) {
             Box(Modifier.align(Alignment.TopStart).size(1.dp)
                 .testTag("atlas-story-video-first-frame"))
         }
@@ -640,8 +644,8 @@ private fun StoryVideoStage(
 }
 
 /** Letterbox the decoded frame without stretching square media to a phone display. */
-private fun fitStoryVideoTexture(view: TextureView, videoWidth: Int, videoHeight: Int) {
-    if (view.width == 0 || view.height == 0 || videoWidth <= 0 || videoHeight <= 0) return
+private fun fitStoryVideoTexture(view: TextureView, videoWidth: Int, videoHeight: Int): Boolean {
+    if (view.width == 0 || view.height == 0 || videoWidth <= 0 || videoHeight <= 0) return false
     val frameRatio = videoWidth.toFloat() / videoHeight
     val viewRatio = view.width.toFloat() / view.height
     val scaleX = if (frameRatio < viewRatio) frameRatio / viewRatio else 1f
@@ -649,4 +653,5 @@ private fun fitStoryVideoTexture(view: TextureView, videoWidth: Int, videoHeight
     view.setTransform(Matrix().apply {
         setScale(scaleX, scaleY, view.width / 2f, view.height / 2f)
     })
+    return true
 }

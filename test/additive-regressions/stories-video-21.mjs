@@ -29,3 +29,11 @@ test("Every Story video player is paused on background and released on removal",
   assert.match(stories, /clearVideoTextureView\(/);
   assert.doesNotMatch(stories, /PlayerView\(/);
 });
+
+// Guard against the first decoded frame racing video size and layout.
+test("Stories poster readiness requires a completed TextureView fit", () => {
+  assert.match(stories, /if \(firstFrame && fitApplied\)/);
+  assert.match(stories, /fitApplied = fitStoryVideoTexture\(textureView, player\.videoSize\.width, player\.videoSize\.height\)/);
+  assert.match(stories, /override fun onRenderedFirstFrame\(\)/);
+  assert.match(stories, /if \(player\.playbackState == Player\.STATE_IDLE\) player\.prepare\(\)/);
+});
