@@ -600,8 +600,9 @@ class FaceIndexStoreIdentityReviewTest {
         scanAll(store, "epoch-C", embedder = "$model-vNext") { 0 }
         val bumped = requireNotNull(store.peopleReview("epoch-C"))
         assertEquals(mapOf(ana to "Ana"), bumped.names)
-        // Source-matched, same-box confirmed faces return under their new UIDs.
-        assertEquals(2, bumped.clusters.reviews.confirmed.size)
+        // The earlier source edit invalidated one of the two confirmations.
+        // Only the remaining source-matched face may survive the model bump.
+        assertEquals(1, bumped.clusters.reviews.confirmed.size)
         assertTrue(bumped.clusters.reviews.confirmed.keys.none { it == oldId })
         assertEquals(0, count(store, "people_cannot_link"))
         assertEquals(0, count(store, "people_rejected"))
