@@ -47,10 +47,12 @@ fun presentNativeFaceScan(
             else FaceDiscoveryPhase.UNAVAILABLE
         "QUEUED" -> FaceDiscoveryPhase.QUEUED
         "RUNNING" -> FaceDiscoveryPhase.SCANNING
+        "GROUPING" -> FaceDiscoveryPhase.GROUPING
         "PAUSED" -> FaceDiscoveryPhase.PAUSED
         "PERMISSION_REQUIRED" -> FaceDiscoveryPhase.PERMISSION_REQUIRED
         "STORAGE_LOW" -> FaceDiscoveryPhase.STORAGE_LOW
         "BATTERY_LOW" -> FaceDiscoveryPhase.BATTERY_LOW
+        "CHARGER_REQUIRED" -> FaceDiscoveryPhase.WAITING_FOR_CHARGER
         "REVIEW_AVAILABLE" -> FaceDiscoveryPhase.REVIEW_AVAILABLE
         "COMPLETE" -> FaceDiscoveryPhase.FINISHED
         "ERROR" -> FaceDiscoveryPhase.FAILED
