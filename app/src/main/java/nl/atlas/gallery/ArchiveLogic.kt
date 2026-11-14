@@ -78,6 +78,11 @@ class MediaRecord(
 
     val uri: String get() = if (uriIsPrefix) uriPart + id else uriPart
 
+    /** [uri] starts with [start], without building it when the shared prefix decides. */
+    fun uriStartsWith(start: String): Boolean =
+        if (uriIsPrefix && start.length <= uriPart.length) uriPart.startsWith(start)
+        else uri.startsWith(start)
+
     /** Same URI as [other], without building either string when both are prefix + id. */
     fun hasSameUri(other: MediaRecord): Boolean =
         if (uriIsPrefix && other.uriIsPrefix) id == other.id && uriPart == other.uriPart
