@@ -148,9 +148,12 @@ class StoreWriteAheadLogTest {
         }
     }
 
-    /** A plain revert: same file, same schema version, no WAL request. */
-    private class RevertedHelper(context: Context, name: String) :
-        SQLiteOpenHelper(context, name, null, 3) {
+    /** Simulate disabling WAL at the *same* schema version.
+     * The visual store uses v4 after #67; reverting to a v3 app is a schema
+     * downgrade and must fail closed instead of silently rewriting user data.
+     */
+    private class RevertedHelper(context: Context, name: String, schemaVersion: Int) :
+        SQLiteOpenHelper(context, name, null, schemaVersion) {
         override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
         override fun onCreate(db: SQLiteDatabase) = fail("existing file must not be recreated")
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) =
@@ -168,14 +171,15 @@ class StoreWriteAheadLogTest {
         FaceIndexStore(contextFor(faceFile)).use { publishFaces(it, "epoch-A") }
         VisualIndexStore(contextFor(visualFile)).use { publishVisual(it, "grant-A") }
 
-        RevertedHelper(contextFor(faceFile), "atlas_face_discovery.db").use {
+        RevertedHelper(contextFor(faceFile), "atlas_face_discovery.db", 3).use {
             val db = it.writableDatabase
             assertEquals(3, db.version)
             assertEquals(2, catalogRows(db))
         }
-        RevertedHelper(contextFor(visualFile), "atlas_visual_index.db").use {
+        RevertedHelper(contextFor(visualFile), "atlas_visual_index.db",
+            VisualIndexStore.SCHEMA_VERSION).use {
             val db = it.writableDatabase
-            assertEquals(3, db.version)
+            assertEquals(VisualIndexStore.SCHEMA_VERSION, db.version)
             assertEquals(2, catalogRows(db))
         }
         // And forward again: today's build reopens the reverted file in WAL.
