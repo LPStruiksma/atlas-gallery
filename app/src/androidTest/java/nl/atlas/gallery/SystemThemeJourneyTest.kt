@@ -112,6 +112,20 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * light glyphs. Samples the bottom 48 px of a real screenshot.
      */
     private fun assertDarkBottomStrip(what: String) {
+        // Compose idle does not mean SurfaceFlinger composited the viewer: one
+        // CI shot still showed the light route below (#82, mean 0.789). Poll up
+        // to 5 s; the threshold is unchanged.
+        val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+        var mean = bottomStripMean()
+        while (mean >= 0.35 && android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(250L)
+            mean = bottomStripMean()
+        }
+        assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
+            mean < 0.35)
+    }
+
+    private fun bottomStripMean(): Double {
         val shot = requireNotNull(InstrumentationRegistry.getInstrumentation()
             .uiAutomation.takeScreenshot()) { "Screenshot acquisition failed" }
         try {
@@ -125,9 +139,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                     n++
                 }
             }
-            val mean = sum / n
-            assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
-                mean < 0.35)
+            return sum / n
         } finally {
             shot.recycle()
         }
@@ -142,17 +154,21 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
         waitFor(hasTestTag("atlas-nav-photos"))
-        val mediaMatcher = SemanticsMatcher("visible timeline tile") { node ->
+        // MediaStore inventory loads off the Compose frame clock. Wait for the
+        // fixture's actual tile rather than sampling immediately after nav appears.
+        val visibleTile = SemanticsMatcher("visible timeline tile") { node ->
             node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
                 ?.startsWith("atlas-timeline-media-") == true
         }
-        // Navigation can mount before the asynchronous synthetic MediaStore scan.
-        waitFor(mediaMatcher)
-        val media = compose.onAllNodes(mediaMatcher).fetchSemanticsNodes()
-        val tileTag = requireNotNull(media.firstOrNull()?.config
-            ?.getOrElseNullable(SemanticsProperties.TestTag) { null }) {
-            "Synthetic Photos fixture must expose a timeline tile"
+        compose.waitUntil(30_000L) {
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
         }
+        val tileTag = requireNotNull(
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().firstOrNull()
+                ?.config?.getOrElseNullable(SemanticsProperties.TestTag) { null }
+        ) { "Synthetic Photos fixture must expose a timeline tile" }
         compose.onNodeWithTag(tileTag).performTouchInput { longClick() }
         waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.waitForIdle()

@@ -46,6 +46,11 @@ object PhotoDnaCopy {
         "Photo DNA needs access to your photos to find duplicates. Nothing was changed."
     const val SEARCHING = "Looking for duplicates…"
     const val RECHECKING = "Checking the selected files again…"
+    /** #42: planning stopped on an error; nothing was changed. */
+    const val FAILED_STATUS = "Couldn't finish checking duplicates"
+    const val FAILED_BODY =
+        "Couldn't finish checking duplicates. Nothing was changed. Try again, or close Photo DNA."
+    const val RETRY = "Retry"
 
     /** "Checked 2 files", plus "· 3 more next time" when a pass was cut short. */
     fun checked(files: Int, deferred: Int): String =

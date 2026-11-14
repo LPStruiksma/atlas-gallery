@@ -20,12 +20,31 @@ package nl.atlas.gallery
  * Used by one scan on one thread.
  */
 internal class GalleryScanRecordReuse(previous: List<MediaRecord> = emptyList()) {
-    // Keyed by the previous records' own URI strings: no new string per row.
-    private val byUri: HashMap<String, MediaRecord>? =
-        if (previous.isEmpty()) null
-        else HashMap<String, MediaRecord>((previous.size * 4 / 3) + 1).also { map ->
-            for (record in previous) map[record.uri] = record
+    // #63: records no longer hold URI strings, so look the previous record up
+    // by id in a sorted primitive array (no string and no boxed key per row),
+    // then compare URIs without building them. Ids may repeat across volumes.
+    private val ids: LongArray?
+    private val records: Array<MediaRecord>?
+    init {
+        if (previous.isEmpty()) { ids = null; records = null } else {
+            val sorted = previous.sortedBy { it.id }.toTypedArray()
+            records = sorted
+            ids = LongArray(sorted.size) { sorted[it].id }
         }
+    }
+
+    private fun previousWithSameUri(fresh: MediaRecord): MediaRecord? {
+        val ids = ids ?: return null
+        val records = records ?: return null
+        var i = java.util.Arrays.binarySearch(ids, fresh.id)
+        if (i < 0) return null
+        while (i > 0 && ids[i - 1] == fresh.id) i--
+        while (i < ids.size && ids[i] == fresh.id) {
+            if (records[i].hasSameUri(fresh)) return records[i]
+            i++
+        }
+        return null
+    }
     private val strings = HashMap<String, String>()
 
     /** Rows of this scan answered with the previous inventory's own object. */
@@ -37,7 +56,7 @@ internal class GalleryScanRecordReuse(previous: List<MediaRecord> = emptyList())
 
     /** The previous object when [fresh] equals it in every field, else [fresh]. */
     fun canonical(fresh: MediaRecord): MediaRecord {
-        val before = byUri?.get(fresh.uri) ?: return fresh
+        val before = previousWithSameUri(fresh) ?: return fresh
         return if (before == fresh) { reused++; before } else fresh
     }
 }

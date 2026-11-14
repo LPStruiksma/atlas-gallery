@@ -23,6 +23,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -163,9 +164,9 @@ class PeopleSearchStateEvidenceTest {
     private val names = listOf("Ada", "Ben", "Chloé", "Daan", "Eva", "Femke", "Gijs", "")
 
     /**
-     * #643: while a scan runs, People shows the grid and one thin line under
-     * the title: no status text, no button. Pause and review sit in ⋮, next
-     * to Hidden; the V4 import is not there. Idle, the line is gone too.
+     * #643/#46: while a scan runs, People shows a readable status and
+     * one thin animated bar. Pause and review remain in ⋮ next to Hidden.
+     * The completed status remains visible after the animated bar goes away.
      */
     /** #31: the async permission/catalogue gap renders a restoring state, not a lost scan. */
     @Test fun settingsRendersRestoringWhileTheGalleryPublicationIsPending() {
@@ -189,7 +190,9 @@ class PeopleSearchStateEvidenceTest {
             }
         }
         waitFor(compose, hasTestTag("atlas-settings-face-scanning"))
-        compose.onNodeWithText("Restoring…").assertExists()
+        // Both saved face and visual opt-ins are restoring, not unavailable.
+        assertEquals(2, compose.onAllNodesWithText("Restoring…")
+            .fetchSemanticsNodes().size)
         compose.onNodeWithText("Unavailable").assertDoesNotExist()
         compose.onNodeWithTag("atlas-people-visual-index").assertExists()
         compose.waitForIdle()
@@ -261,7 +264,9 @@ class PeopleSearchStateEvidenceTest {
         compose.onNodeWithTag("atlas-people-progress-line")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription,
                 "Finding people · 320 of 1000"))
-        assertNoText(compose, "Finding people", "Pause scanning", "Review unknown faces")
+        // #46 makes the active scan text visible; controls still live in ⋮.
+        compose.onNodeWithText("Finding people · 320 of 1000").assertExists()
+        assertNoText(compose, "Pause scanning", "Review unknown faces")
         compose.waitForIdle()
         saveUiEvidence("people-grid.png")
 

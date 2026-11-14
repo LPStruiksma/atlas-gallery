@@ -20,8 +20,10 @@ class PeopleDiscoveryHostPhaseTest {
             startedScanPhase(false, 0, 0, 4, FaceScanPhase.PERMISSION_REQUIRED))
     }
 
-    @Test fun pendingWorkShowsTheLiveHoldOrRunning() {
-        assertEquals(FaceScanPhase.RUNNING, startedScanPhase(false, 3, 0, 0, null))
+    @Test fun pendingQueueDoesNotPretendAnInactiveWorkerIsScanning() {
+        assertEquals(FaceScanPhase.QUEUED, startedScanPhase(false, 3, 0, 0, null))
+        assertEquals(FaceScanPhase.RUNNING,
+            startedScanPhase(false, 3, 0, 0, null, activeBatch = true))
         assertEquals(FaceScanPhase.RUNNING, startedScanPhase(false, 0, 1, 0, null))
         assertEquals(FaceScanPhase.BATTERY_LOW,
             startedScanPhase(false, 3, 0, 0, FaceScanPhase.BATTERY_LOW))

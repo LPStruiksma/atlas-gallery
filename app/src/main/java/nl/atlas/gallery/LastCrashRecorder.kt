@@ -101,7 +101,9 @@ internal fun formatCrashReport(
     threadCategory: String,
     failure: Throwable,
     /** [heapUseLogFields] at the time of the crash; null leaves the line out. */
-    heap: String? = null
+    heap: String? = null,
+    /** #42: caught and shown in the app instead of ending the process. */
+    handled: Boolean = false
 ): String {
     val result = StringBuilder(512)
     result.append("ATLAS last crash\nTime: ")
@@ -110,6 +112,7 @@ internal fun formatCrashReport(
         .append(version.takeIf(VERSION_NAME::matches) ?: "unknown")
         .append("\nThread: ")
         .append(if (threadCategory == "main") "main" else "background")
+        .append(if (handled) "\nOutcome: handled, app kept running" else "")
         .append("\nException: ")
         .append(safeClass(failure.javaClass.name) ?: "OtherThrowable")
         .append('\n')
@@ -136,14 +139,50 @@ internal fun formatCrashReport(
     return result.toString()
 }
 
+/**
+ * Durable crash slots. The fatal slot keeps its original path for existing
+ * installations; a handled failure has its own atomic file and cannot evict it.
+ * File-only implementation so the fatal/handled sequence is JVM-testable.
+ */
+internal class CrashReportStore(private val fatalFile: File) {
+    private val handledFile: File get() = File(fatalFile.parentFile, "handled.txt")
+
+    fun read(): String? {
+        val fatal = runCatching {
+            fatalFile.takeIf { it.isFile }?.readText(Charsets.UTF_8)
+        }.getOrNull()
+        val handled = runCatching {
+            handledFile.takeIf { it.isFile }?.readText(Charsets.UTF_8)
+        }.getOrNull()
+        return when {
+            fatal == null -> handled
+            handled == null -> fatal
+            else -> fatal.trimEnd('\n') + "\n\nLatest handled failure\n" + handled
+        }
+    }
+
+    fun writeFatal(report: String) = write(fatalFile, report)
+
+    fun writeHandled(report: String) = write(handledFile, report)
+
+    private fun write(dest: File, report: String) {
+        if (dest.parentFile?.mkdirs() == true || dest.parentFile?.isDirectory == true) {
+            val temp = File(dest.parentFile, dest.nameWithoutExtension + ".tmp")
+            FileOutputStream(temp).use { output ->
+                output.write(report.toByteArray(Charsets.UTF_8))
+                output.fd.sync()
+            }
+            if (!temp.renameTo(dest)) temp.delete()
+        }
+    }
+}
+
 internal object LastCrashRecorder {
     private fun file(context: Context): File = File(context.filesDir, "crash/last.txt")
 
     /** The last Java crash, then how the last few app processes ended; null when neither exists. */
     fun read(context: Context): String? {
-        val crash = runCatching {
-            file(context).takeIf { it.isFile }?.readText(Charsets.UTF_8)
-        }.getOrNull()
+        val crash = CrashReportStore(file(context)).read()
         val exits = formatProcessExits(recentExits(context))
         return when {
             crash == null && exits.isEmpty() -> null
@@ -167,27 +206,36 @@ internal object LastCrashRecorder {
         }.getOrDefault(emptyList())
     }
 
+    private fun version(appContext: Context): String = runCatching {
+        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
+    }.getOrNull() ?: "unknown"
+
+    /**
+     * #42: a failure the app caught and survived (Photo DNA planning) is
+     * still readable in Last crash, marked as handled, without replacing a fatal.
+     * Never throws.
+     */
+    fun recordHandled(context: Context, failure: Throwable) {
+        try {
+            val appContext = context.applicationContext
+            val heap = runCatching { heapUseLogFields() }.getOrNull()
+            CrashReportStore(file(appContext)).writeHandled(formatCrashReport(System.currentTimeMillis(),
+                version(appContext), "background", failure, heap, handled = true))
+        } catch (_: Throwable) {
+            // Out of disk space/OOM: the app already shows the failure.
+        }
+    }
+
     fun install(context: Context) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         val appContext = context.applicationContext
-        val version = runCatching {
-            appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
-        }.getOrNull() ?: "unknown"
+        val version = version(appContext)
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
                 val kind = if (thread === Looper.getMainLooper().thread) "main" else "background"
                 val heap = runCatching { heapUseLogFields() }.getOrNull()
-                val report = formatCrashReport(System.currentTimeMillis(), version, kind,
-                    throwable, heap)
-                val dest = file(appContext)
-                if (dest.parentFile?.mkdirs() == true || dest.parentFile?.isDirectory == true) {
-                    val temp = File(dest.parentFile, "last.tmp")
-                    FileOutputStream(temp).use { output ->
-                        output.write(report.toByteArray(Charsets.UTF_8))
-                        output.fd.sync()
-                    }
-                    if (!temp.renameTo(dest)) temp.delete()
-                }
+                CrashReportStore(file(appContext)).writeFatal(formatCrashReport(
+                    System.currentTimeMillis(), version, kind, throwable, heap))
             } catch (_: Throwable) {
                 // Out of disk space/OOM must not conceal the original fatal crash.
             } finally {

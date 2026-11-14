@@ -18,19 +18,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
@@ -51,6 +55,7 @@ import android.content.Context
 import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -142,9 +147,15 @@ internal fun photoDnaEligible(record: MediaRecord, budget: PhotoDnaBudget = Phot
     if (record.sizeBytes <= 0L || record.sizeBytes > budget.maxFileBytes ||
         record.modifiedAtSeconds <= 0L || record.id <= 0L) return false
     if (record.name.startsWith(".trashed-") || record.name.startsWith(".pending-")) return false
-    if (record.relativePath.split('/').any { it.startsWith(".") }) return false
-    return record.uri.startsWith("content://" + MediaStore.AUTHORITY + "/")
+    if (hasHiddenFolder(record.relativePath)) return false
+    return record.uriStartsWith(MEDIA_URI_START)
 }
+
+private val MEDIA_URI_START = "content://" + MediaStore.AUTHORITY + "/"
+
+/** A path segment starting with '.', without splitting the path into strings. */
+private fun hasHiddenFolder(path: String): Boolean =
+    path.startsWith('.') || path.contains("/.")
 
 internal data class PhotoDnaCandidates(
     /** Files to hash, grouped by size class (each class has at least two files). */
@@ -152,6 +163,45 @@ internal data class PhotoDnaCandidates(
     /** Files that shared a size but did not fit this pass's budget. */
     val deferredFiles: Int
 )
+
+/**
+ * Find repeated URIs by sorting primitive URI hashes, not allocating a URI
+ * string or set entry for each catalogue row. A collision is only a candidate:
+ * exact URI comparisons decide duplicates, including malformed rows whose
+ * MediaStore id differs from the URI's id. The map holds only actual duplicates.
+ */
+private fun repeatedPhotoDnaUris(source: List<MediaRecord>, checkpoint: () -> Unit): Map<Int, Set<String>> {
+    if (source.size < 2) return emptyMap()
+    val hashes = IntArray(source.size)
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        hashes[index] = record.uriHashCodeWithoutAllocation()
+    }
+    hashes.sort()
+    checkpoint()
+    var repeatedHashes: HashSet<Int>? = null
+    for (i in 1 until hashes.size) {
+        if (hashes[i] == hashes[i - 1])
+            (repeatedHashes ?: HashSet<Int>().also { repeatedHashes = it }).add(hashes[i])
+    }
+    val candidates = repeatedHashes ?: return emptyMap()
+    val seen = HashSet<String>()
+    val duplicated = HashMap<Int, MutableSet<String>>()
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        val hash = record.uriHashCodeWithoutAllocation()
+        if (hash in candidates) {
+            val uri = record.uri
+            if (!seen.add(uri)) duplicated.getOrPut(hash) { HashSet() }.add(uri)
+        }
+    }
+    return duplicated
+}
+
+/** Compare actual URI text only for the few hashes known to contain duplicates. */
+private fun photoDnaDistinctOk(record: MediaRecord, repeated: Map<Int, Set<String>>, budget: PhotoDnaBudget) =
+    photoDnaEligible(record, budget) &&
+        (repeated[record.uriHashCodeWithoutAllocation()]?.let { record.uri !in it } ?: true)
 
 /**
  * Ignore every occurrence of a URI that the catalogue repeats. Even if two
@@ -166,16 +216,11 @@ internal fun photoDnaDistinctEligible(
     budget: PhotoDnaBudget = PhotoDnaBudget(),
     checkpoint: () -> Unit = {}
 ): List<MediaRecord> {
-    val seen = HashSet<String>()
-    val duplicated = HashSet<String>()
-    source.forEachIndexed { index, record ->
-        if ((index and 1023) == 0) checkpoint()
-        if (!seen.add(record.uri)) duplicated.add(record.uri)
-    }
+    val repeated = repeatedPhotoDnaUris(source, checkpoint)
     val eligible = ArrayList<MediaRecord>()
     source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        if (record.uri !in duplicated && photoDnaEligible(record, budget)) eligible.add(record)
+        if (photoDnaDistinctOk(record, repeated, budget)) eligible.add(record)
     }
     return eligible
 }
@@ -184,33 +229,70 @@ internal fun photoDnaDistinctEligible(
  * Two files can only be byte-identical when their sizes match. Classes are
  * taken largest-potential-saving first and only while the whole class fits
  * the budget, so a class is never half-checked.
+ *
+ * #65: planned in passes over [source] without an intermediate list or map
+ * per row. Pass 1 sorts the eligible sizes in a primitive array to find the
+ * size classes; only the classes chosen for this pass (at most
+ * [PhotoDnaBudget.maxFiles] files) are then gathered as records.
  */
 internal fun photoDnaCandidates(
     source: List<MediaRecord>,
     budget: PhotoDnaBudget = PhotoDnaBudget(),
     checkpoint: () -> Unit = {}
 ): PhotoDnaCandidates {
-    val bySize = HashMap<Long, MutableList<MediaRecord>>()
-    photoDnaDistinctEligible(source, budget, checkpoint).forEachIndexed { index, record ->
+    val repeated = repeatedPhotoDnaUris(source, checkpoint)
+    val sizes = LongArray(source.size)
+    var eligible = 0
+    source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        bySize.getOrPut(record.sizeBytes) { ArrayList(2) }.add(record)
+        if (photoDnaDistinctOk(record, repeated, budget)) sizes[eligible++] = record.sizeBytes
     }
-    val classes = bySize.entries.filter { it.value.size > 1 }
-        .sortedWith(compareByDescending<Map.Entry<Long, MutableList<MediaRecord>>> {
-            it.key * (it.value.size - 1)
-        }.thenByDescending { it.key })
-    val chosen = ArrayList<MediaRecord>()
+    java.util.Arrays.sort(sizes, 0, eligible)
+    checkpoint()
+    // Size classes with at least two files, as parallel primitive arrays.
+    var classes = 0
+    val classSize = LongArray(eligible / 2 + 1)
+    val classCount = IntArray(eligible / 2 + 1)
+    var i = 0
+    while (i < eligible) {
+        var j = i + 1
+        while (j < eligible && sizes[j] == sizes[i]) j++
+        if (j - i > 1) { classSize[classes] = sizes[i]; classCount[classes] = j - i; classes++ }
+        i = j
+    }
+    val order = (0 until classes).sortedWith(compareByDescending<Int> {
+        classSize[it] * (classCount[it] - 1)
+    }.thenByDescending { classSize[it] })
+    checkpoint()
+    val chosenOrder = ArrayList<Long>()
+    var files = 0
     var bytes = 0L
     var deferred = 0
-    for ((size, members) in classes) {
-        val classBytes = size * members.size
-        if (chosen.size + members.size > budget.maxFiles || classBytes > budget.maxTotalBytes - bytes) {
-            deferred += members.size
+    for (c in order) {
+        val size = classSize[c]
+        val count = classCount[c]
+        val classBytes = size * count
+        if (files + count > budget.maxFiles || classBytes > budget.maxTotalBytes - bytes) {
+            deferred += count
             continue
         }
-        members.sortBy { it.uri }
-        chosen += members
+        chosenOrder += size
+        files += count
         bytes += classBytes
+    }
+    if (chosenOrder.isEmpty()) return PhotoDnaCandidates(emptyList(), deferred)
+    val members = HashMap<Long, ArrayList<MediaRecord>>(chosenOrder.size * 2)
+    for (size in chosenOrder) members[size] = ArrayList(2)
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        val bucket = members[record.sizeBytes]
+        if (bucket != null && photoDnaDistinctOk(record, repeated, budget)) bucket.add(record)
+    }
+    val chosen = ArrayList<MediaRecord>(files)
+    for (size in chosenOrder) {
+        val bucket = members.getValue(size)
+        bucket.sortBy { it.uri }
+        chosen += bucket
     }
     return PhotoDnaCandidates(chosen, deferred)
 }
@@ -476,12 +558,29 @@ private object PhotoDnaVisualHashes {
     val cache = PhotoDnaVisualCache()
 }
 
-/** Thumbnail edge for the perceptual hash: plenty for a 9x8 grid, cheap to decode. */
-private val VISUAL_THUMBNAIL = Size(96, 96)
+/** A 9x8 dHash needs little detail, even for extreme panoramas. */
+private const val PHOTO_DNA_THUMBNAIL_TARGET_EDGE = 96
+internal const val PHOTO_DNA_THUMBNAIL_MAX_PIXELS = 256L * 256L
 
-/** A misbehaving thumbnail provider must not allocate a full-resolution pixel buffer. */
+/**
+ * loadThumbnail may preserve the aspect ratio while filling the requested
+ * *short* edge. For an 8000x1000 panorama a 96x96 request can yield 768x96;
+ * request 90x90 instead so the provider returns about 720x90 (<= 65536 px).
+ * Use square requests for either EXIF orientation; absent dimensions get a
+ * conservative default followed by a bounded retry when needed.
+ */
+internal fun photoDnaThumbnailEdge(width: Int, height: Int): Int {
+    if (width <= 0 || height <= 0) return PHOTO_DNA_THUMBNAIL_TARGET_EDGE
+    val short = minOf(width, height).toDouble()
+    val long = maxOf(width, height).toDouble()
+    return kotlin.math.sqrt(PHOTO_DNA_THUMBNAIL_MAX_PIXELS * short / long)
+        .toInt().coerceIn(1, PHOTO_DNA_THUMBNAIL_TARGET_EDGE)
+}
+
+/** Never allocate a software copy or pixel array for a provider's huge bitmap. */
 internal fun photoDnaThumbnailWithinBudget(width: Int, height: Int): Boolean =
-    width in 1..256 && height in 1..256
+    width > 0 && height > 0 &&
+        width.toLong() * height <= PHOTO_DNA_THUMBNAIL_MAX_PIXELS
 
 /**
  * The perceptual hash of one already-authorized image, from Android's own
@@ -495,26 +594,54 @@ internal fun visualHashAuthorizedImage(
     resolver: ContentResolver,
     record: MediaRecord,
     stillAuthorized: () -> Boolean,
-    checkCancelled: () -> Unit
+    checkCancelled: () -> Unit,
+    onOverBudget: () -> Unit = {}
 ): CurationVisualHash? {
     if (record.isVideo) return null
     checkCancelled()
     if (!stillAuthorized()) return null
-    val bitmap = try {
-        resolver.loadThumbnail(Uri.parse(record.uri), VISUAL_THUMBNAIL, CancellationSignal())
+    val uri = Uri.parse(record.uri)
+    val signal = CancellationSignal()
+    fun load(edge: Int): Bitmap? = try {
+        resolver.loadThumbnail(uri, Size(edge, edge), signal)
     } catch (_: IOException) {
-        return null
+        null
     } catch (_: SecurityException) {
-        return null
+        null
     } catch (_: IllegalArgumentException) {
-        return null
+        null
     }
-    // The provider is asked for 96x96, but a faulty implementation may ignore
-    // the request. Never copy a full-size HARDWARE bitmap or allocate its pixels.
+    val initialEdge = photoDnaThumbnailEdge(record.widthPixels, record.heightPixels)
+    var bitmap = load(initialEdge) ?: return null
+    // A provider can ignore metadata or the requested size. Retry at most
+    // once with the measured aspect ratio; never copy a bitmap over budget.
     if (!photoDnaThumbnailWithinBudget(bitmap.width, bitmap.height)) {
+        val measuredEdge = photoDnaThumbnailEdge(bitmap.width, bitmap.height)
+        val scale = kotlin.math.sqrt(PHOTO_DNA_THUMBNAIL_MAX_PIXELS.toDouble() /
+            (bitmap.width.toLong() * bitmap.height).toDouble())
+        val retryEdge = minOf(initialEdge - 1, measuredEdge,
+            (initialEdge * scale).toInt())
         bitmap.recycle()
-        return null
+        if (retryEdge < 1) {
+            onOverBudget()
+            return null
+        }
+        checkCancelled()
+        if (!stillAuthorized()) return null
+        val retried = load(retryEdge)
+        if (retried == null) {
+            onOverBudget()
+            return null
+        }
+        bitmap = retried
+        if (!photoDnaThumbnailWithinBudget(bitmap.width, bitmap.height)) {
+            bitmap.recycle()
+            onOverBudget()
+            return null
+        }
     }
+    // Keep the #38 HARDWARE guard: no hardware-to-ARGB copy before the
+    // provider's actual (not merely requested) dimensions are within budget.
     val software = if (bitmap.config == Bitmap.Config.HARDWARE)
         bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
     return try {
@@ -727,6 +854,45 @@ internal fun hashAuthorizedMedia(
 )
 
 /**
+ * #42: how one Photo DNA planning step ended. Any throwable but a
+ * cancellation, including a failed `require` in CurationReviewPlan and an
+ * OutOfMemoryError on a large library, becomes [Failed] instead of reaching
+ * the main looper and killing the app.
+ */
+internal sealed interface PhotoDnaOutcome<out T> {
+    data class Done<T>(val value: T) : PhotoDnaOutcome<T>
+    class Failed(val error: Throwable) : PhotoDnaOutcome<Nothing>
+}
+
+internal inline fun <T> photoDnaOutcome(step: () -> T): PhotoDnaOutcome<T> = try {
+    PhotoDnaOutcome.Done(step())
+} catch (cancel: kotlinx.coroutines.CancellationException) {
+    throw cancel
+} catch (failure: Throwable) {
+    PhotoDnaOutcome.Failed(failure)
+}
+
+/**
+ * The host's Photo DNA state: the plan (if any), whether planning failed
+ * before a plan could be shown, and a Retry that runs planning again.
+ */
+@Stable
+internal class PhotoDnaPlanning {
+    var result: PhotoDnaResult? by mutableStateOf(null, referentialEqualityPolicy())
+        internal set
+    /** True when planning stopped on an error and no plan is on screen. */
+    var failed: Boolean by mutableStateOf(false)
+        internal set
+    internal var attempt: Int by mutableIntStateOf(0)
+        private set
+
+    fun retry() {
+        failed = false
+        attempt++
+    }
+}
+
+/**
  * Plans off main, only while [enabled], and only when the tokens or source
  * list change, never per recomposition. A result from older tokens is kept
  * but never rendered: every reader goes through [currentPhotoDna]. While
@@ -739,46 +905,83 @@ internal fun rememberPhotoDna(
     tokens: PhotoDnaTokens?,
     enabled: Boolean,
     hash: (MediaRecord, () -> Unit) -> CurationByteDigest?
-): PhotoDnaResult? {
+): PhotoDnaPlanning {
     val context = LocalContext.current.applicationContext
-    var result by remember { mutableStateOf<PhotoDnaResult?>(null, referentialEqualityPolicy()) }
-    LaunchedEffect(tokens, CatalogSourceKey(source), enabled) {
+    val state = remember { PhotoDnaPlanning() }
+    LaunchedEffect(tokens, CatalogSourceKey(source), enabled, state.attempt) {
         if (tokens == null) {
-            result = null
+            state.result = null
+            state.failed = false
             PhotoDnaVisualHashes.cache.clear()
             return@LaunchedEffect
         }
-        val current = currentPhotoDna(result, tokens)
+        val current = currentPhotoDna(state.result, tokens)
         if (!enabled || current?.needsVisualPass == false) return@LaunchedEffect
-        // Show the byte plan first; visual pairs follow when their pass ends.
-        val planned = current ?: withContext(Dispatchers.IO) {
-            val check = { ensureActive() }
-            planPhotoDna(source, tokens, { hash(it, check) }, checkpoint = check,
-                keepReceipts = { PhotoDnaKeepStore.get(context).resolveCurrentlyValid(it) })
-        }.also { result = it }
-        val grant = readGalleryMediaGrant(context)
-        if (!grant.images) return@LaunchedEffect
-        var previousDeferred: Int? = null
-        var passes = 0
-        while (true) {
-            // The byte plan (with any Keep marks) is the base; visual pairs are rebuilt on it.
-            val basePlan = planned.plan
-            val pass = withContext(Dispatchers.IO) {
-                val check = { ensureActive() }
-                val authorized = { readGalleryMediaGrant(context) == grant }
-                PhotoDnaVisualHashes.cache.bindGrant(grant)
-                planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
-                    decode = { visualHashAuthorizedImage(context.contentResolver, it, authorized, check) },
-                    stillAuthorized = authorized, checkpoint = check)
+        state.failed = false
+        // #42: any failure in the byte plan or a visual pass (a `require` in
+        // CurationReviewPlan, an OOM on a large library, a provider error)
+        // ends here: recorded as Last crash, shown as Retry when no plan is
+        // on screen, never thrown into the main looper.
+        val outcome = photoDnaOutcome {
+            planAndChainVisualPasses(context, source, tokens, current, hash,
+                latest = { state.result }) { state.result = it }
+        }
+        if (outcome is PhotoDnaOutcome.Failed) {
+            if (currentPhotoDna(state.result, tokens) == null) state.failed = true
+            withContext(NonCancellable + Dispatchers.IO) {
+                LastCrashRecorder.recordHandled(context, outcome.error)
             }
-            passes++
-            if (result !== planned || readGalleryMediaGrant(context) != grant) return@LaunchedEffect
-            planned.addVisualPairs(pass)
-            if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return@LaunchedEffect
-            previousDeferred = pass.deferredFiles
         }
     }
-    return result
+    return state
+}
+
+/** The body of [rememberPhotoDna]'s effect; it may throw, the caller catches. */
+private suspend fun planAndChainVisualPasses(
+    context: Context,
+    source: List<MediaRecord>,
+    tokens: PhotoDnaTokens,
+    current: PhotoDnaResult?,
+    hash: (MediaRecord, () -> Unit) -> CurationByteDigest?,
+    latest: () -> PhotoDnaResult?,
+    publish: (PhotoDnaResult) -> Unit
+) {
+    // Show the byte plan first; visual pairs follow when their pass ends.
+    val planned = current ?: withContext(Dispatchers.IO) {
+        val check = { ensureActive() }
+        planPhotoDna(source, tokens, { hash(it, check) }, checkpoint = check,
+            keepReceipts = { PhotoDnaKeepStore.get(context).resolveCurrentlyValid(it) })
+    }.also(publish)
+    val grant = readGalleryMediaGrant(context)
+    if (!grant.images) return
+    var previousDeferred: Int? = null
+    var passes = 0
+    var totalOversizedSkips = 0
+    while (true) {
+        // The byte plan (with any Keep marks) is the base; visual pairs are rebuilt on it.
+        val basePlan = planned.plan
+        val (pass, oversizedThumbnailSkips) = withContext(Dispatchers.IO) {
+            val check = { ensureActive() }
+            val authorized = { readGalleryMediaGrant(context) == grant }
+            var skipped = 0
+            PhotoDnaVisualHashes.cache.bindGrant(grant)
+            val visual = planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
+                decode = { record -> visualHashAuthorizedImage(context.contentResolver,
+                    record, authorized, check, onOverBudget = { skipped++ }) },
+                stillAuthorized = authorized, checkpoint = check)
+            visual to skipped
+        }
+        passes++
+        if (latest() !== planned || readGalleryMediaGrant(context) != grant) return
+        totalOversizedSkips += oversizedThumbnailSkips
+        // One count-only record per pass, never a URI or personal-media detail.
+        android.util.Log.i("ATLAS_PHOTO_DNA", "visual pass decoded=${pass.decodedFiles} " +
+            "hashed=${pass.hashedFiles} oversizedThumbnailSkips=$oversizedThumbnailSkips " +
+            "totalOversizedSkips=$totalOversizedSkips deferred=${pass.deferredFiles}")
+        planned.addVisualPairs(pass)
+        if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return
+        previousDeferred = pass.deferredFiles
+    }
 }
 
 /** The Photo DNA row on the Albums tab, under Stories. */
@@ -831,6 +1034,9 @@ internal fun PhotoDnaRoute(
     onReviewRequested: (CurationReviewRequest) -> Unit,
     modifier: Modifier = Modifier,
     accessible: Boolean = true,
+    /** #42: planning failed before a plan could be shown; offer [onRetry]. */
+    failed: Boolean = false,
+    onRetry: () -> Unit = {},
     /** Tests only: replaces the fresh full-byte read under the grant held at the Keep tap. */
     hashForKeep: ((MediaRecord, () -> Unit) -> CurationByteDigest?)? = null,
     unchanged: (Context, List<MediaRecord>) -> Boolean = { context, records ->
@@ -882,8 +1088,10 @@ internal fun PhotoDnaRoute(
             // Only the plan still on screen (same tokens) takes the mark.
             when (outcome) {
                 is PhotoDnaKeepOutcome.Saved ->
-                    if (latest !== held || !held.markKept(outcome.groupKey, outcome.keeperUri))
-                        resetKeeper(groupKey)
+                    // #42: rebuilding the plan may throw; a refused mark is a reset, not a crash.
+                    if (latest !== held || !runCatching {
+                            held.markKept(outcome.groupKey, outcome.keeperUri)
+                        }.getOrDefault(false)) resetKeeper(groupKey)
                 is PhotoDnaKeepOutcome.Refused -> {
                     resetKeeper(groupKey)
                     Toast.makeText(context, outcome.reason, Toast.LENGTH_LONG).show()
@@ -892,7 +1100,9 @@ internal fun PhotoDnaRoute(
             saving.remove(groupKey)
         }
     }
-    Column(modifier.fillMaxSize().testTag("atlas-photo-dna")) {
+    // #73: this route replaces the Albums scaffold and must consume its own
+    // top system inset under Android edge-to-edge, in either theme.
+    Column(modifier.fillMaxSize().statusBarsPadding().testTag("atlas-photo-dna")) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.testTag("atlas-photo-dna-back")) {
@@ -905,6 +1115,7 @@ internal fun PhotoDnaRoute(
             if (!accessible || shown == null || verifying) {
                 Text(when {
                     !accessible -> PhotoDnaCopy.NO_ACCESS_STATUS
+                    shown == null && failed -> PhotoDnaCopy.FAILED_STATUS
                     shown == null -> PhotoDnaCopy.SEARCHING
                     else -> PhotoDnaCopy.RECHECKING
                 }, style = MaterialTheme.typography.bodySmall,
@@ -920,6 +1131,19 @@ internal fun PhotoDnaRoute(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("atlas-photo-dna-no-access")
                 )
+            }
+        } else if (shown == null && failed) {
+            Column(
+                Modifier.fillMaxSize().padding(28.dp).testTag("atlas-photo-dna-failed"),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(PhotoDnaCopy.FAILED_BODY, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FilledTonalButton(onClick = onRetry,
+                    modifier = Modifier.testTag("atlas-photo-dna-retry")) {
+                    Text(PhotoDnaCopy.RETRY)
+                }
             }
         } else if (shown == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

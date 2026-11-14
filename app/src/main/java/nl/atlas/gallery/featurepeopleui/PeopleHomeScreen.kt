@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featureface.NativeFaceObservationId
@@ -297,31 +298,31 @@ private fun peopleScanControls(
 )
 
 /**
- * #643: while a scan is queued, runs or is paused, one thin line under the
- * title and nothing else: no text, no button. The count stays readable for
- * TalkBack as the line's state ("Finding people · 3 of 10").
+ * #46: show a readable status line, not an animated scan bar for queued or
+ * charger-held work. Accessible status text and counters share one formatter.
  */
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
     val line = peopleProgressLine(state) ?: return
-    Box(Modifier.fillMaxWidth().semantics { stateDescription = line }
+    Column(Modifier.fillMaxWidth().semantics { stateDescription = line }
         .testTag("atlas-people-progress-line")) {
-        val progress = state.progress
-        val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
-        if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
-        else LinearProgressIndicator(bar)
+        Text(line,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                .semantics { stateDescription = line }.testTag("atlas-people-status"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (state.phase == FaceDiscoveryPhase.SCANNING ||
+            state.phase == FaceDiscoveryPhase.GROUPING) {
+            val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
+            val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
+            if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
+            else LinearProgressIndicator(modifier = bar)
+        }
     }
 }
 
-/** The scan state as words, "Finding people · 3 of 10", or null when idle. */
-internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? {
-    val count = if (state.eligible > 0) " · ${state.processed} of ${state.eligible}" else ""
-    return when (state.phase) {
-        FaceDiscoveryPhase.QUEUED, FaceDiscoveryPhase.SCANNING -> "Finding people$count"
-        FaceDiscoveryPhase.PAUSED -> "Paused$count"
-        else -> null
-    }
-}
+/** The same words shown in Settings and People, with scoped progress counts. */
+internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? = peopleStatusLine(state)
 
 @Composable
 private fun PortraitCircle(content: @Composable () -> Unit) {

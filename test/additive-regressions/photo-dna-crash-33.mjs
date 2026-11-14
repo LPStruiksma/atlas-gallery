@@ -7,7 +7,10 @@ import { readFileSync } from "node:fs";
 const host = readFileSync("app/src/main/java/nl/atlas/gallery/PhotoDnaHost.kt", "utf8");
 
 assert.match(host, /internal fun photoDnaDistinctEligible\(/);
-assert.match(host, /photoDnaDistinctEligible\(source, budget, checkpoint\)/);
+const planner = host.slice(host.indexOf("internal fun photoDnaCandidates("),
+  host.indexOf("/** A digest counts"));
+assert.match(planner, /repeatedPhotoDnaUris\(source, checkpoint\)/);
+assert.match(planner, /photoDnaDistinctOk\(record, repeated, budget\)/);
 assert.match(host, /photoDnaDistinctEligible\(source, checkpoint = checkpoint\)/);
 assert.match(host, /internal fun photoDnaThumbnailWithinBudget\(/);
 const preview = host.slice(host.indexOf("internal fun visualHashAuthorizedImage("),

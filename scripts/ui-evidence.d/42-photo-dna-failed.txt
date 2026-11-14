@@ -1,0 +1,4 @@
+# Issue #42 · Photo DNA planning failure is a Retry state, not an app quit.
+# S24+ 1080x2340; synthetic records, a planner that throws on the first try.
+photo-dna-42-failed-light
+photo-dna-42-failed-dark

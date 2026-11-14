@@ -12,8 +12,9 @@ object FaceDiscoveryContract {
 }
 
 enum class FaceScanPhase {
-    NOT_CONFIGURED, NEVER_STARTED, QUEUED, RUNNING, PAUSED,
-    PERMISSION_REQUIRED, STORAGE_LOW, BATTERY_LOW, REVIEW_AVAILABLE, COMPLETE, ERROR
+    NOT_CONFIGURED, NEVER_STARTED, QUEUED, RUNNING, GROUPING, PAUSED,
+    PERMISSION_REQUIRED, STORAGE_LOW, BATTERY_LOW, CHARGER_REQUIRED,
+    REVIEW_AVAILABLE, COMPLETE, ERROR
 }
 
 /** Latest *fully committed* MediaStore permission-visible snapshot, never a raw path. */
@@ -54,7 +55,8 @@ data class FaceScanConditions(
         !photosPermissionGranted || !permissionSnapshotCurrent -> FaceScanPhase.PERMISSION_REQUIRED
         !optedIn || pausedByUser -> FaceScanPhase.PAUSED
         !storageNotLow -> FaceScanPhase.STORAGE_LOW
-        !batteryNotLow || (backgroundMaintenance && !charging) -> FaceScanPhase.BATTERY_LOW
+        !batteryNotLow -> FaceScanPhase.BATTERY_LOW
+        (backgroundMaintenance && !charging) -> FaceScanPhase.CHARGER_REQUIRED
         else -> null
     }
 }

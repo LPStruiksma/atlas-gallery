@@ -1,0 +1,11 @@
+# #21: synthetic photo → H.264 video → photo Stories stage; S24+ 1080x2340.
+# Each mode captures the starting photo, paused first video frame,
+# real playing frame, and photo reached after Media3 EOS.
+stories-21-photo-light
+stories-21-poster-light
+stories-21-playing-light
+stories-21-ended-light
+stories-21-photo-dark
+stories-21-poster-dark
+stories-21-playing-dark
+stories-21-ended-dark
