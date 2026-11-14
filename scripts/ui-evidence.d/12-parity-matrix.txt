@@ -1,0 +1,8 @@
+# #24: new real MainActivity route captures under isolated light/dark system themes.
+# Existing paired captures are already declared by 662, 664, 17, 678 and 34.
+parity-24-albums-detail-light
+parity-24-albums-detail-dark
+parity-24-people-hidden-light
+parity-24-people-hidden-dark
+parity-24-viewer-filmstrip-light
+parity-24-viewer-filmstrip-dark

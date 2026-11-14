@@ -110,6 +110,17 @@ for n in sorted(pulled):
         fail(f"Invalid image {p}")
 print(f"PASS: {len(declared)} real PNG screenshots")
 '
+    # Only the real canonical declared set is a parity-matrix run. The
+    # ATLAS_UI_EVIDENCE_DECLARED_DIR override is used by host-only tests for
+    # arbitrary fixture names; those tests may not claim parity evidence.
+    # The normal emulator aggregate never sets this override.
+    if [[ -z "${ATLAS_UI_EVIDENCE_DECLARED_DIR:-}" ]]; then
+      python3 -m unittest discover -s "$script_dir" -p "test_verify_parity_matrix.py"
+      python3 -m unittest discover -s "$script_dir" -p "test_parity_audit_capture_contract.py"
+      python3 "$script_dir/verify_parity_matrix.py" ui-evidence
+    else
+      echo "NOTICE: custom declaration set; no parity matrix artifact generated"
+    fi
     # Some review seats cannot download Actions artifacts; print every
     # screenshot as base64 so it can be decoded from the job log.
     for shot in ui-evidence/*.png; do
