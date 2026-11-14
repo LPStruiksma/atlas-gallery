@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -1022,7 +1023,9 @@ internal fun PhotoDnaRoute(
             saving.remove(groupKey)
         }
     }
-    Column(modifier.fillMaxSize().testTag("atlas-photo-dna")) {
+    // #73: this route replaces the Albums scaffold and must consume its own
+    // top system inset under Android edge-to-edge, in either theme.
+    Column(modifier.fillMaxSize().statusBarsPadding().testTag("atlas-photo-dna")) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.testTag("atlas-photo-dna-back")) {
