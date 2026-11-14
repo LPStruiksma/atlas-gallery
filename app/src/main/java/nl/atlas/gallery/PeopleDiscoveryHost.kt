@@ -1672,8 +1672,9 @@ internal class PeopleDiscoveryHost(
         }
         // If the worker has already held the old scope for a new publication,
         // avoid querying stale epoch counters entirely.
-        if (liveEpoch != scoped.epoch && photoGrantCurrent()) {
-            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.QUEUED,
+        if (liveEpoch != scoped.epoch) {
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(photoGrantCurrent(),
+                scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
                 visual = visualStatus(null))
