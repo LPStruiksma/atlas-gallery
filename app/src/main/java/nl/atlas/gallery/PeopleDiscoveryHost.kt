@@ -1670,6 +1670,14 @@ internal class PeopleDiscoveryHost(
                     VisualIndexStatus(enabled = visualOn, mayEnable = false) else null,
                 provenance = scoped.provenance)
         }
+        // If the worker has already held the old scope for a new publication,
+        // avoid querying stale epoch counters entirely.
+        if (liveEpoch != scoped.epoch && photoGrantCurrent()) {
+            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.QUEUED,
+                observedPermissionEpoch = display)
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
+        }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
         // An epoch swap invalidates counters but not the Android photo grant.
