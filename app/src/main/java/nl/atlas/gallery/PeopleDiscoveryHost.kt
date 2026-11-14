@@ -1116,10 +1116,18 @@ internal class PeopleDiscoveryHost(
                     // behind this still-authorized face inventory; worker holds.
                     if (token != null && synchronized(lock) { visualOptedIn }) {
                         val saved = optInMemory.loadPublishedVisual()
-                        if (saved != null && saved.faceEpoch == synchronized(lock) { scope?.epoch } &&
-                            saved.grant == token) {
-                            val currentVisual = try { visualStore?.reviveDormantEpoch(
-                                visualModelVersion, visualDimension) } catch (_: SQLException) { null }
+                        val carriedEpoch = synchronized(lock) { scope?.epoch }
+                        if (saved != null && saved.faceEpoch == carriedEpoch &&
+                            saved.grant == token && carriedEpoch != null &&
+                            scopeCurrent(carriedEpoch)) {
+                            // A fresh publication is imminent: the old visual
+                            // read remains gated by the carried face directory,
+                            // while the scan worker is suspended.
+                            val currentVisual = visualScope?.takeIf {
+                                it.faceEpoch == carriedEpoch && it.epoch == saved.epoch
+                            }?.epoch ?: try {
+                                visualStore?.reviveDormantEpoch(visualModelVersion, visualDimension)
+                            } catch (_: SQLException) { null }
                             if (currentVisual == saved.epoch && photoGrantCurrent() &&
                                 photoGrantToken() == token) {
                                 visualScope = VisualScope(saved.faceEpoch, currentVisual,
