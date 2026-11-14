@@ -17,7 +17,9 @@ data class FaceDiscoveryUiState(
     val unknownObservations: Int = 0,
     val errorMessage: String? = null,
     /** Authoritative grant epoch from Lane I; never reuse across selection changes. */
-    val observedPermissionEpoch: String? = null
+    val observedPermissionEpoch: String? = null,
+    /** Concrete foreground guard or stop reason; never a media identifier. */
+    val statusNote: String? = null
 ) {
     init {
         require(processed >= 0 && eligible >= 0 && processed <= eligible)
