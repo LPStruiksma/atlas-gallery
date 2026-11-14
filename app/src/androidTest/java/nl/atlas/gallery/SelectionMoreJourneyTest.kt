@@ -147,9 +147,11 @@ class SelectionMoreJourneyTest {
     }
 
     /**
-     * Taps Android's own "Allow" if the write-consent sheet appears, until
-     * [done]. On a timeout the error names every on-screen text seen while
-     * waiting (consent sheet, ATLAS's result toast) and the row's state.
+     * Tap *MediaProvider's* Allow action, never an unrelated app's Allow.
+     * API 35 can show a Quickstep ANR on this shared emulator just as the
+     * MediaProvider consent activity launches (run 43464660051, shard 0).
+     * Choosing Android's "Wait" on that *launcher* ANR only clears the
+     * obstruction; it never counts as consent or a completed move.
      */
     private fun acceptWriteConsentUntil(done: () -> Boolean) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
@@ -158,29 +160,73 @@ class SelectionMoreJourneyTest {
         }
         val seen = LinkedHashSet<String>()
         var clicks = 0
+        var quickstepAnrSeen = false
+        var quickstepWaits = 0
+        var mediaConsentWindowSeen = false
+
         fun texts(node: AccessibilityNodeInfo?, out: MutableSet<String>, depth: Int = 0) {
             if (node == null || depth > 30 || out.size > 80) return
             listOfNotNull(node.text, node.contentDescription).map { it.toString().trim() }
                 .filter { it.isNotEmpty() }.forEach { out += it.take(80) }
             for (i in 0 until node.childCount) texts(node.getChild(i), out, depth + 1)
         }
+
+        // Accessibility sometimes puts the label on a non-clickable child of
+        // the Android dialog button. Click only its nearest clickable parent.
+        fun button(root: AccessibilityNodeInfo, needle: String,
+            accept: (String) -> Boolean = { it == needle }): AccessibilityNodeInfo? =
+            root.findAccessibilityNodeInfosByText(needle).firstNotNullOfOrNull { textNode ->
+                val label = textNode.text?.toString()?.trim() ?: return@firstNotNullOfOrNull null
+                if (!accept(label)) return@firstNotNullOfOrNull null
+                generateSequence(textNode) { it.parent }.take(4).firstOrNull { it.isClickable }
+            }
+
         val deadline = System.currentTimeMillis() + 60_000L
         while (!done()) {
-            val roots = automation.windows.mapNotNull { it.root } + listOfNotNull(automation.rootInActiveWindow)
+            val roots = automation.windows.mapNotNull { it.root } +
+                listOfNotNull(automation.rootInActiveWindow)
             roots.forEach { texts(it, seen) }
             if (System.currentTimeMillis() >= deadline) {
                 val id = fixtures.ids[2]
-                throw IllegalStateException("Move did not finish; Allow clicks=$clicks; row path=" +
+                throw IllegalStateException("Move did not finish; Allow clicks=$clicks; " +
+                    "MediaProvider window=$mediaConsentWindowSeen; " +
+                    "Quickstep ANR=$quickstepAnrSeen Wait clicks=$quickstepWaits; row path=" +
                     "${fixtures.relativePathOf(id)} name=${fixtures.displayNameOf(id)}; " +
                     "new album=${fixtures.namesIn(NEW_PATH)}; windows=" +
                     automation.windows.joinToString { "${it.type}:${it.title}" } + "; texts seen=$seen" +
                     "; log=" + transferLog() + "; threads=" + threadState())
             }
-            roots.firstNotNullOfOrNull { root ->
-                root.findAccessibilityNodeInfosByText("Allow").firstOrNull { it.isClickable }
-            }?.let { if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) clicks++ }
-            // The v2 Compose rule runs effect coroutines on its test dispatcher:
-            // without this the move's coroutine never resumes after its IO pass.
+
+            val launcherAnr = roots.firstOrNull { root ->
+                root.findAccessibilityNodeInfosByText("Quickstep isn't responding").isNotEmpty() &&
+                    root.findAccessibilityNodeInfosByText("Close app").isNotEmpty()
+            }
+            if (launcherAnr != null) {
+                quickstepAnrSeen = true
+                // Do not close the Android launcher or bypass the permission.
+                // A repeatedly hung launcher still fails this test on timeout.
+                if (quickstepWaits < 2) {
+                    button(launcherAnr, "Wait")?.let {
+                        if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) quickstepWaits++
+                    }
+                }
+            } else {
+                val mediaRoots = roots.filter {
+                    it.packageName?.toString()?.startsWith("com.android.providers.media") == true
+                }
+                if (mediaRoots.isNotEmpty()) mediaConsentWindowSeen = true
+                mediaRoots.firstNotNullOfOrNull { root ->
+                    // API 35 uses uppercase ALLOW; compare case-insensitively.
+                    button(root, "Allow") { label ->
+                        label.equals("Allow", ignoreCase = true) ||
+                            label.startsWith("Allow ", ignoreCase = true)
+                    }
+                }?.let {
+                    if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) clicks++
+                }
+            }
+            // The v2 Compose rule uses a test dispatcher for effect coroutines.
+            // Release that dispatcher after the Android activity result/IO pass.
             compose.waitForIdle()
             Thread.sleep(300L)
         }

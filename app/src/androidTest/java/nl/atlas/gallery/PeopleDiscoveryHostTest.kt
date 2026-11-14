@@ -275,10 +275,11 @@ class PeopleDiscoveryHostTest {
         assertNotNull("drained scan must publish clusters", clusters)
         assertTrue(clusters!!.unknownClusters.isNotEmpty())
 
-        // #516/#643: the thin progress line belongs to the scanning phases; a
-        // drained scan drops it and ⋮ offers the review action.
-        waitFor("progress line gone") {
-            compose.onAllNodesWithTag("atlas-people-progress-line")
+        // #516/#643/#46: a drained scan keeps its truthful Finished status,
+        // but the animated progress bar is reserved for active work.
+        waitForProgress("Finished · 10 of 10")
+        waitFor("animated progress bar gone") {
+            compose.onAllNodesWithTag("atlas-people-progress")
                 .fetchSemanticsNodes().isEmpty()
         }
         openMenuFor("atlas-people-review")
@@ -524,7 +525,8 @@ class PeopleDiscoveryHostTest {
         val db = store.writableDatabase
         fun republish() {
             db.execSQL("UPDATE cluster_generation SET dirty=1 WHERE singleton=1")
-            assertNull("dirty generation hides People home", store.peopleHome(epoch))
+            // #39: a dirty generation keeps serving the last published People home.
+            assertNotNull("dirty generation keeps People home", store.peopleHome(epoch))
             assertTrue(store.materializeClusters(epoch))
         }
         val faces = group.members.map { it.localHex }.sorted()
