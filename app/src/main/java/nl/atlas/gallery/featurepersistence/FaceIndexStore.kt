@@ -915,11 +915,11 @@ class FaceIndexStore(
                 // Model/alignment bump or v1 migration: force re-embed before displaying clusters.
                 db.execSQL("""UPDATE catalog SET state='queued', attempts=0, skip_reason=NULL,
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
-                db.delete("faces", null, null) // cascades embeddings, memberships, facts
-                // #48: preserve human decisions before the cascade removes old
-                // model vectors. Only unchanged media with the same face box
-                // may receive a confirmation on the freshly embedded face.
+                // #48: capture human confirmations while their old face rows and
+                // embeddings still exist. Deleting faces cascades these facts.
+                // Only source-matched, unchanged boxes may be restored later.
                 captureModelCarry(db)
+                db.delete("faces", null, null) // cascades embeddings, memberships, facts
                 db.delete("people_home", null, null)
                 db.execSQL("UPDATE people_home_generation SET revision=NULL WHERE singleton=1")
             }
