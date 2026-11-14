@@ -151,6 +151,21 @@ class PeopleDiscoveryHostTest {
         )
     }
 
+    @Test fun aggregateDiagnosticsAreOptedInAndGrantFenced() {
+        val h = host()
+        assertEquals(false, h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").dirty)
+        h.start("scope", inventory)
+        val observed = h.aggregateDiagnostics("scope")
+        assertEquals(true, observed.optedIn)
+        assertNotNull(observed.dirty)
+        assertNotNull(observed.pending)
+        assertNull(h.aggregateDiagnostics("another-scope").dirty)
+        granted = false
+        assertNull(h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").pending)
+    }
+
     @After fun cleanUp() {
         PeopleScanWorkRuntime.clear()
         if (::store.isInitialized) store.close()
