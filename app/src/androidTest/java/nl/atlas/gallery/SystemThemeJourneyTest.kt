@@ -190,10 +190,10 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             waitFor(hasTestTag("atlas-library-status"))
             settle()
             saveUiEvidence("settings-664-menu-$tab-$mode.png")
-            // Wait for the menu to close and navigation to settle before
-            // asserting the destination. This does not change app behaviour.
-            compose.onNodeWithTag("atlas-library-status").performClick()
-            compose.waitForIdle()
+            // Assert the Settings menu entry is still visible before clicking,
+            // then observe the destination header before inspecting its content.
+            compose.onNodeWithTag("atlas-library-status").assertIsDisplayed().performClick()
+            waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
             waitFor(hasTestTag("atlas-settings-screen"))
             if (tab == "photos") {
                 // #664 review: Photos actions must not leak into the Settings header.
