@@ -164,8 +164,23 @@ class ViewerLightSystemBarsTest {
         }
     }
 
-    /** Pixel proof of the actual 3-button band on edge-to-edge Android. */
+    /**
+     * Pixel proof of the actual 3-button band on edge-to-edge Android.
+     * Compose idle does not mean SurfaceFlinger has composited the new route:
+     * one CI shot right after opening the viewer still showed the white
+     * gallery (#82, mean 0.977). Poll for up to 5 s; the threshold is unchanged.
+     */
     private fun assertDarkNavigationPixels(phase: String) {
+        val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+        var mean = navigationBandMean(phase)
+        while (mean >= 0.35 && android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(250L)
+            mean = navigationBandMean(phase)
+        }
+        assertTrue("$phase: navigation area is light (mean $mean)", mean < 0.35)
+    }
+
+    private fun navigationBandMean(phase: String): Double {
         val shot = requireNotNull(
             InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         ) { "No screenshot for $phase" }
@@ -180,8 +195,7 @@ class ViewerLightSystemBarsTest {
                     samples++
                 }
             }
-            assertTrue("$phase: navigation area is light (mean ${total / samples})",
-                total / samples < 0.35)
+            return total / samples
         } finally {
             shot.recycle()
         }
