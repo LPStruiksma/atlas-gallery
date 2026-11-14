@@ -5,10 +5,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.saveUiEvidence
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 
 /**
@@ -17,7 +19,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class FaceSearchUnavailableScreenTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     @Test fun outOfMemoryShowsRecoveryMessageAndCloseWorks() {
         var closes = 0
