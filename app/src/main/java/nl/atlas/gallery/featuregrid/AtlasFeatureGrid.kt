@@ -50,6 +50,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.SharedPhotoOrigins
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 
 private const val DENSITY_PREFS = "atlas_featuregrid_density"
 
@@ -274,9 +278,16 @@ fun AtlasFeatureGrid(
             }.testTag("atlas-feature-grid")
         ) {
             itemsIndexed(items, key = { index, _ -> gridLazySaveablePositionKey(index) }) { _, media ->
+                // Keep coordinates outside Compose state: scroll frames must not
+                // recompose every visible tile merely to track its rectangle.
+                val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
                 Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable(onClickLabel = "Open ${media.name}") { currentOpen(media) }
+                    .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
+                    .clickable(onClickLabel = "Open ${media.name}") {
+                        SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
+                        currentOpen(media)
+                    }
                     .testTag("atlas-grid-media-${media.id}-${if (media.isVideo) "video" else "photo"}")) {
                     // Existing Coil media request and cache remain owned by the host.
                     // A fixed request size across 3/4/7 does not force extra decodes
