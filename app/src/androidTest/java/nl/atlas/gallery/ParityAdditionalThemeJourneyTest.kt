@@ -47,10 +47,8 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
         compose.waitForNode(hasText("photos & videos", substring = true))
         compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         compose.waitUntil(60_000L) {
-            compose.onAllNodesWithTag("atlas-timeline-media-", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty() ||
-                compose.onNodeWithTag("atlas-timeline-grid").fetchSemanticsNode()
-                    .config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 12f
+            compose.onNodeWithTag("atlas-timeline-grid").fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 12f
         }
         val grid = compose.onNodeWithTag("atlas-timeline-grid")
         repeat(3) { grid.performTouchInput { swipeUp() }; compose.waitForIdle() }
@@ -67,6 +65,10 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
         compose.waitForNode(hasText("photos & videos", substring = true))
         compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         val grid = compose.onNodeWithTag("atlas-timeline-grid")
+        compose.waitUntil(60_000L) {
+            grid.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+                .maxValue() > 12f
+        }
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
         grid.performTouchInput {
             pinch(
