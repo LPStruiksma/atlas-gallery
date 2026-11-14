@@ -105,6 +105,36 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         }
         assertDarkBottomStrip("viewer under $mode")
         saveUiEvidence("theme-662-viewer-$mode.png")
+        waitFor(hasTestTag("atlas-filmstrip"))
+        saveUiEvidence("parity-24-viewer-filmstrip-$mode.png")
+    }
+
+
+    /**
+     * #24: capture real album detail and Hidden People under each system
+     * theme, through MainActivity with only invented fixture images.
+     */
+    @Test fun parityAlbumDetailAndHiddenPeopleRoutes() {
+        waitFor(hasTestTag("atlas-nav-albums"))
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        val fixtureAlbum = hasTestTag("atlas-album-card") and
+            hasText("ATLAS-Theme-Fixture", substring = true)
+        waitFor(fixtureAlbum)
+        compose.onAllNodes(fixtureAlbum).onFirst().performClick()
+        waitFor(hasTestTag("atlas-header-title") and
+            hasText("ATLAS-Theme-Fixture", substring = true))
+        settle()
+        saveUiEvidence("parity-24-albums-detail-$mode.png")
+        compose.onNodeWithTag("atlas-header-back").performClick()
+        waitFor(hasTestTag("atlas-nav-people"))
+        compose.onNodeWithTag("atlas-nav-people").performClick()
+        waitFor(hasTestTag("atlas-people-home"))
+        compose.onNodeWithTag("atlas-header-more").performClick()
+        waitFor(hasTestTag("atlas-people-hidden-open"))
+        compose.onNodeWithTag("atlas-people-hidden-open").performClick()
+        waitFor(hasTestTag("atlas-people-hidden"))
+        settle()
+        saveUiEvidence("parity-24-people-hidden-$mode.png")
     }
 
     /**
