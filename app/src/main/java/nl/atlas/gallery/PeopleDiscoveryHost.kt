@@ -411,6 +411,13 @@ internal fun startedScanPhase(
     else -> FaceScanPhase.COMPLETE
 }
 
+/** #114: user-facing phase, separate from the worker's unchanged hold reason. */
+internal fun publicationStatusPhase(
+    photoGrantCurrent: Boolean, scopedEpochReadable: Boolean,
+    workerHold: FaceScanPhase?
+): FaceDiscoveryPhase = if (!photoGrantCurrent) FaceDiscoveryPhase.PERMISSION_REQUIRED
+    else FaceDiscoveryPhase.QUEUED
+
 /**
  * #508: the face catalogue's order, newest capture first (then the newest
  * MediaStore id). Stable, so equal rows keep the gallery's order.
@@ -1658,12 +1665,24 @@ internal class PeopleDiscoveryHost(
         }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
+        // An epoch swap invalidates counters but not the Android photo grant.
+        // Hide stale counts and show Starting while the worker remains held.
+        val grantCurrent = photoGrantCurrent()
         if (progress == null || counts == null) {
-            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.PERMISSION_REQUIRED,
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(grantCurrent,
+                scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
-            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability())
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
         }
         val hold = conditions(scoped.epoch).holdReason()
+        if (hold == FaceScanPhase.PERMISSION_REQUIRED) {
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(grantCurrent,
+                scopedEpochReadable = true, workerHold = hold),
+                observedPermissionEpoch = display)
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
+        }
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
             counts.awaitingReview, hold, grouping = groupingEpoch == scoped.epoch,
             activeBatch = scanBatchEpoch == scoped.epoch)
