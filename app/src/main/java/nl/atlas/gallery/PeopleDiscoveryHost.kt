@@ -922,7 +922,9 @@ internal class PeopleDiscoveryHost(
         val saved = optInMemory.loadPublishedVisual() ?: return false
         if (saved.faceEpoch != faceEpoch || saved.grant != token ||
             saved.inventory != faceInventoryDigest(inventory, visualCatalogueSalt())) return false
-        val revived = try { store.reviveDormantEpoch(visualModelVersion, visualDimension) }
+        val revived = visualScope?.takeIf {
+            it.faceEpoch == faceEpoch && it.epoch == saved.epoch && !it.staging
+        }?.epoch ?: try { store.reviveDormantEpoch(visualModelVersion, visualDimension) }
             catch (_: SQLException) { null }
         if (revived != saved.epoch || !scopeCurrent(faceEpoch) || photoGrantToken() != token) {
             if (revived != null) try { store.invalidateSnapshotIfCurrent(revived) }
