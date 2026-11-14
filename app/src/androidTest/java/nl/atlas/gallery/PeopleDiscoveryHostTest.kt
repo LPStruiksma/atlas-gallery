@@ -210,7 +210,7 @@ class PeopleDiscoveryHostTest {
         waitForText("Discover faces")
         compose.onNodeWithText("Discover faces").performClick()
         waitFor("weak photo scanner start") { scheduler.starts.get() == 1 }
-        waitForProgress("Finding people · 0 of 1")
+        waitForProgress("Starting · 0 of 1")
         assertEquals(1, host.status(grant).provenance!!.weakPhotoRows)
         assertEquals(1, host.status(grant).provenance!!.sourcePhotoRows)
         assertEquals(1, batch()!!.photosIndexed)
@@ -251,7 +251,7 @@ class PeopleDiscoveryHostTest {
 
         compose.onNodeWithText("Discover faces").performClick()
         waitFor("scheduler start") { scheduler.starts.get() == 1 }
-        waitForProgress("Finding people · 0 of 10")
+        waitForProgress("Starting · 0 of 10")
         // #664: pause/resume moved to Settings; the scan keeps progressing
         // without opening the old People overflow control here.
 
@@ -261,7 +261,7 @@ class PeopleDiscoveryHostTest {
         assertTrue("batch indexed photos: $first", first!!.photosIndexed in 1..8)
         assertTrue(first.stop == FaceBatchStop.PHOTO_LIMIT || first.stop == FaceBatchStop.TIME_LIMIT)
         assertEquals(1, scheduler.nexts.get())
-        waitForProgress("Finding people · ${first.photosIndexed} of 10")
+        waitForProgress("Starting · ${first.photosIndexed} of 10")
 
         // Drain: the last batch publishes clusters (scanFinished) and chains nothing.
         var stop = first.stop
@@ -275,10 +275,11 @@ class PeopleDiscoveryHostTest {
         assertNotNull("drained scan must publish clusters", clusters)
         assertTrue(clusters!!.unknownClusters.isNotEmpty())
 
-        // #516/#643: the thin progress line belongs to the scanning phases; a
-        // drained scan drops it and ⋮ offers the review action.
-        waitFor("progress line gone") {
-            compose.onAllNodesWithTag("atlas-people-progress-line")
+        // #516/#643/#46: a drained scan keeps its truthful Finished status,
+        // but the animated progress bar is reserved for active work.
+        waitForProgress("Finished · 10 of 10")
+        waitFor("animated progress bar gone") {
+            compose.onAllNodesWithTag("atlas-people-progress")
                 .fetchSemanticsNodes().isEmpty()
         }
         openMenuFor("atlas-people-review")

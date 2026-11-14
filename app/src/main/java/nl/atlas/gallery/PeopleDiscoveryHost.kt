@@ -367,16 +367,20 @@ internal fun selectNativePersonAlbum(
 
 /**
  * Pure phase choice for a started run, separated for JVM tests. A user pause
- * wins; pending work shows the live hold reason or RUNNING; a drained catalog
- * shows REVIEW_AVAILABLE while unreviewed detections remain, else COMPLETE.
+ * wins; only a worker's actual batch (or an in-flight DB row) is RUNNING.
+ * A pending queue without an active batch is QUEUED, not a fictitious scan;
+ * a drained catalog shows REVIEW_AVAILABLE or COMPLETE.
  */
 internal fun startedScanPhase(
     pausedByUser: Boolean, pending: Int, running: Int,
-    awaitingReview: Int, hold: FaceScanPhase?
+    awaitingReview: Int, hold: FaceScanPhase?, grouping: Boolean = false,
+    activeBatch: Boolean = false
 ): FaceScanPhase = when {
     pausedByUser -> FaceScanPhase.PAUSED
     hold == FaceScanPhase.PERMISSION_REQUIRED -> FaceScanPhase.PERMISSION_REQUIRED
-    pending + running > 0 -> hold ?: FaceScanPhase.RUNNING
+    grouping && hold == null -> FaceScanPhase.GROUPING
+    pending + running > 0 -> hold ?: if (activeBatch || running > 0)
+        FaceScanPhase.RUNNING else FaceScanPhase.QUEUED
     awaitingReview > 0 -> FaceScanPhase.REVIEW_AVAILABLE
     else -> FaceScanPhase.COMPLETE
 }
@@ -646,6 +650,10 @@ internal class PeopleDiscoveryHost(
      * worker holds while it is set; reads keep serving [liveEpoch].
      */
     @Volatile private var stagingEpoch: String? = null
+    /** True only while a scan batch is actually publishing groups for this epoch. */
+    @Volatile private var groupingEpoch: String? = null
+    /** Real granted worker-session window, never inferred from queued rows. */
+    @Volatile private var scanBatchEpoch: String? = null
     private var inference: OnDeviceFaceLocator? = null
     private val reviewGeneration = AtomicLong()
 
@@ -691,6 +699,10 @@ internal class PeopleDiscoveryHost(
      * the earlier one fail its next stage write and turned discovery off.
      */
     private val publishLock = Any()
+
+    /** A stored choice is safe to expose as status, not as permission to read faces. */
+    fun hasSavedScanOptIn(): Boolean = synchronized(lock) { optedIn }
+    fun hasSavedVisualOptIn(): Boolean = synchronized(lock) { visualOptedIn }
 
     /** The token to pass as PeopleHomeScreen's currentPermissionEpoch. */
     fun displayEpoch(galleryGrant: String?): String? = synchronized(lock) {
@@ -1294,7 +1306,10 @@ internal class PeopleDiscoveryHost(
             s to (inference ?: return null)
         }
         if (!photoGrantCurrent()) return null
-        return Session(s, locator)
+        return Session(s, locator).also {
+            scanBatchEpoch = s.epoch
+            changed()
+        }
     }
 
     private inner class Session(
@@ -1406,7 +1421,10 @@ internal class PeopleDiscoveryHost(
             var publicationContinues = false
             var publicationFailed = false
             try {
-                // Not due is one constant-cost read; a drained queue always publishes.
+                // This is a real grouping stage, not a queued scan; clear the marker
+                // in finally even when publication is cancelled or fails.
+                groupingEpoch = owned.epoch
+                changed()
                 publishClusters(owned.epoch, drained)
                 publicationContinues = drained && store.clusterPublicationContinues(owned.epoch)
                 publicationFailures.set(0)
@@ -1418,6 +1436,9 @@ internal class PeopleDiscoveryHost(
                 // photo retries with the next batch; a drained queue has none,
                 // so it retries later, a bounded number of times (#508 review).
                 publicationFailed = true
+            } finally {
+                if (groupingEpoch == owned.epoch) groupingEpoch = null
+                changed()
             }
             val retryPublication = publicationFailed && drained &&
                 publicationFailures.incrementAndGet() <= MAX_PUBLICATION_RETRIES
@@ -1449,7 +1470,10 @@ internal class PeopleDiscoveryHost(
 
         override fun afterBatch(result: FaceBatchResult) = afterBatch(result, null)
 
-        override fun close() = Unit
+        override fun close() {
+            if (scanBatchEpoch == owned.epoch) scanBatchEpoch = null
+            changed()
+        }
     }
 
     /** One consistent read for the People panel. Blocking; IO only. */
@@ -1479,6 +1503,20 @@ internal class PeopleDiscoveryHost(
                 PeopleActionAvailability(mayStartScan = ui.phase == FaceDiscoveryPhase.READY),
                 visual = visualStatus(null))
         }
+        // The cluster writer may hold SQLite for a long publication part.
+        // Report its actual live stage without waiting for a DB read or
+        // inventing new permission-scoped counters. Old home tiles are served
+        // only through the same current-grant check as an ordinary home read.
+        if (!snap.paused && groupingEpoch == scoped.epoch && photoGrantCurrent()) {
+            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.GROUPING,
+                observedPermissionEpoch = display)
+            val visualOn = synchronized(lock) { visualOptedIn }
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                people = liveHomePeople(scoped.epoch),
+                visual = if (visualStore != null)
+                    VisualIndexStatus(enabled = visualOn, mayEnable = false) else null,
+                provenance = scoped.provenance)
+        }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
         if (progress == null || counts == null) {
@@ -1488,7 +1526,8 @@ internal class PeopleDiscoveryHost(
         }
         val hold = conditions(scoped.epoch).holdReason()
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
-            counts.awaitingReview, hold)
+            counts.awaitingReview, hold, grouping = groupingEpoch == scoped.epoch,
+            activeBatch = scanBatchEpoch == scoped.epoch)
         val total = progress.pending + progress.running + progress.processed + progress.failed
         val ui = presentNativeFaceScan(NativeFaceScanDisplayEvidence(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,
@@ -1635,6 +1674,52 @@ internal class PeopleDiscoveryHost(
         }
         changed()
         return committed
+    }
+
+    /**
+     * #62: scoped native names backup, distinct from the old V4 path-bearing
+     * format. Both calls are blocking and must run on Dispatchers.IO.
+     */
+    fun exportNamesBackup(galleryGrant: String?): ByteArray {
+        val epoch = displayEpoch(galleryGrant)
+            ?: error("People is unavailable; grant photo access and open People first")
+        return synchronized(reviewLock) {
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            val snapshot = store.exportNativeNamesSnapshot(epoch)
+                ?: error("People groups are updating; retry after publication")
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec.encode(snapshot)
+        }
+    }
+
+    fun importNamesBackup(
+        galleryGrant: String?, bytes: ByteArray, approvedChecksum: String
+    ): nl.atlas.gallery.featurepersistence.NativePeopleNamesImportResult {
+        val codec = nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec
+        require(codec.checksum(bytes) == approvedChecksum) {
+            "Selected names backup changed after the preview"
+        }
+        val snapshot = codec.decode(bytes)
+        val epoch = displayEpoch(galleryGrant)
+            ?: error("People is unavailable; grant photo access and open People first")
+        val result = synchronized(reviewLock) {
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            val merged = store.importNativeNamesSnapshot(epoch, snapshot)
+            liveReview = null
+            liveHome = null
+            if (merged.applied > 0 && store.regroupPending(epoch)) {
+                var parts = 0
+                do {
+                    require(scopeCurrent(epoch)) { "People permission changed during restore" }
+                    check(store.materializeClusters(epoch)) { "People grouping cannot finish" }
+                    parts++
+                } while (store.clusterPublicationContinues(epoch) &&
+                    parts < MAX_REGROUP_PARTS)
+            }
+            merged
+        }
+        changed()
+        return result
     }
 
     /**

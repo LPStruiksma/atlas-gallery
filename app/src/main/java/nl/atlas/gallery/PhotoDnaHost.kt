@@ -147,9 +147,15 @@ internal fun photoDnaEligible(record: MediaRecord, budget: PhotoDnaBudget = Phot
     if (record.sizeBytes <= 0L || record.sizeBytes > budget.maxFileBytes ||
         record.modifiedAtSeconds <= 0L || record.id <= 0L) return false
     if (record.name.startsWith(".trashed-") || record.name.startsWith(".pending-")) return false
-    if (record.relativePath.split('/').any { it.startsWith(".") }) return false
-    return record.uri.startsWith("content://" + MediaStore.AUTHORITY + "/")
+    if (hasHiddenFolder(record.relativePath)) return false
+    return record.uriStartsWith(MEDIA_URI_START)
 }
+
+private val MEDIA_URI_START = "content://" + MediaStore.AUTHORITY + "/"
+
+/** A path segment starting with '.', without splitting the path into strings. */
+private fun hasHiddenFolder(path: String): Boolean =
+    path.startsWith('.') || path.contains("/.")
 
 internal data class PhotoDnaCandidates(
     /** Files to hash, grouped by size class (each class has at least two files). */
@@ -157,6 +163,45 @@ internal data class PhotoDnaCandidates(
     /** Files that shared a size but did not fit this pass's budget. */
     val deferredFiles: Int
 )
+
+/**
+ * Find repeated URIs by sorting primitive URI hashes, not allocating a URI
+ * string or set entry for each catalogue row. A collision is only a candidate:
+ * exact URI comparisons decide duplicates, including malformed rows whose
+ * MediaStore id differs from the URI's id. The map holds only actual duplicates.
+ */
+private fun repeatedPhotoDnaUris(source: List<MediaRecord>, checkpoint: () -> Unit): Map<Int, Set<String>> {
+    if (source.size < 2) return emptyMap()
+    val hashes = IntArray(source.size)
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        hashes[index] = record.uriHashCodeWithoutAllocation()
+    }
+    hashes.sort()
+    checkpoint()
+    var repeatedHashes: HashSet<Int>? = null
+    for (i in 1 until hashes.size) {
+        if (hashes[i] == hashes[i - 1])
+            (repeatedHashes ?: HashSet<Int>().also { repeatedHashes = it }).add(hashes[i])
+    }
+    val candidates = repeatedHashes ?: return emptyMap()
+    val seen = HashSet<String>()
+    val duplicated = HashMap<Int, MutableSet<String>>()
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        val hash = record.uriHashCodeWithoutAllocation()
+        if (hash in candidates) {
+            val uri = record.uri
+            if (!seen.add(uri)) duplicated.getOrPut(hash) { HashSet() }.add(uri)
+        }
+    }
+    return duplicated
+}
+
+/** Compare actual URI text only for the few hashes known to contain duplicates. */
+private fun photoDnaDistinctOk(record: MediaRecord, repeated: Map<Int, Set<String>>, budget: PhotoDnaBudget) =
+    photoDnaEligible(record, budget) &&
+        (repeated[record.uriHashCodeWithoutAllocation()]?.let { record.uri !in it } ?: true)
 
 /**
  * Ignore every occurrence of a URI that the catalogue repeats. Even if two
@@ -171,16 +216,11 @@ internal fun photoDnaDistinctEligible(
     budget: PhotoDnaBudget = PhotoDnaBudget(),
     checkpoint: () -> Unit = {}
 ): List<MediaRecord> {
-    val seen = HashSet<String>()
-    val duplicated = HashSet<String>()
-    source.forEachIndexed { index, record ->
-        if ((index and 1023) == 0) checkpoint()
-        if (!seen.add(record.uri)) duplicated.add(record.uri)
-    }
+    val repeated = repeatedPhotoDnaUris(source, checkpoint)
     val eligible = ArrayList<MediaRecord>()
     source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        if (record.uri !in duplicated && photoDnaEligible(record, budget)) eligible.add(record)
+        if (photoDnaDistinctOk(record, repeated, budget)) eligible.add(record)
     }
     return eligible
 }
@@ -189,33 +229,70 @@ internal fun photoDnaDistinctEligible(
  * Two files can only be byte-identical when their sizes match. Classes are
  * taken largest-potential-saving first and only while the whole class fits
  * the budget, so a class is never half-checked.
+ *
+ * #65: planned in passes over [source] without an intermediate list or map
+ * per row. Pass 1 sorts the eligible sizes in a primitive array to find the
+ * size classes; only the classes chosen for this pass (at most
+ * [PhotoDnaBudget.maxFiles] files) are then gathered as records.
  */
 internal fun photoDnaCandidates(
     source: List<MediaRecord>,
     budget: PhotoDnaBudget = PhotoDnaBudget(),
     checkpoint: () -> Unit = {}
 ): PhotoDnaCandidates {
-    val bySize = HashMap<Long, MutableList<MediaRecord>>()
-    photoDnaDistinctEligible(source, budget, checkpoint).forEachIndexed { index, record ->
+    val repeated = repeatedPhotoDnaUris(source, checkpoint)
+    val sizes = LongArray(source.size)
+    var eligible = 0
+    source.forEachIndexed { index, record ->
         if ((index and 1023) == 0) checkpoint()
-        bySize.getOrPut(record.sizeBytes) { ArrayList(2) }.add(record)
+        if (photoDnaDistinctOk(record, repeated, budget)) sizes[eligible++] = record.sizeBytes
     }
-    val classes = bySize.entries.filter { it.value.size > 1 }
-        .sortedWith(compareByDescending<Map.Entry<Long, MutableList<MediaRecord>>> {
-            it.key * (it.value.size - 1)
-        }.thenByDescending { it.key })
-    val chosen = ArrayList<MediaRecord>()
+    java.util.Arrays.sort(sizes, 0, eligible)
+    checkpoint()
+    // Size classes with at least two files, as parallel primitive arrays.
+    var classes = 0
+    val classSize = LongArray(eligible / 2 + 1)
+    val classCount = IntArray(eligible / 2 + 1)
+    var i = 0
+    while (i < eligible) {
+        var j = i + 1
+        while (j < eligible && sizes[j] == sizes[i]) j++
+        if (j - i > 1) { classSize[classes] = sizes[i]; classCount[classes] = j - i; classes++ }
+        i = j
+    }
+    val order = (0 until classes).sortedWith(compareByDescending<Int> {
+        classSize[it] * (classCount[it] - 1)
+    }.thenByDescending { classSize[it] })
+    checkpoint()
+    val chosenOrder = ArrayList<Long>()
+    var files = 0
     var bytes = 0L
     var deferred = 0
-    for ((size, members) in classes) {
-        val classBytes = size * members.size
-        if (chosen.size + members.size > budget.maxFiles || classBytes > budget.maxTotalBytes - bytes) {
-            deferred += members.size
+    for (c in order) {
+        val size = classSize[c]
+        val count = classCount[c]
+        val classBytes = size * count
+        if (files + count > budget.maxFiles || classBytes > budget.maxTotalBytes - bytes) {
+            deferred += count
             continue
         }
-        members.sortBy { it.uri }
-        chosen += members
+        chosenOrder += size
+        files += count
         bytes += classBytes
+    }
+    if (chosenOrder.isEmpty()) return PhotoDnaCandidates(emptyList(), deferred)
+    val members = HashMap<Long, ArrayList<MediaRecord>>(chosenOrder.size * 2)
+    for (size in chosenOrder) members[size] = ArrayList(2)
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        val bucket = members[record.sizeBytes]
+        if (bucket != null && photoDnaDistinctOk(record, repeated, budget)) bucket.add(record)
+    }
+    val chosen = ArrayList<MediaRecord>(files)
+    for (size in chosenOrder) {
+        val bucket = members.getValue(size)
+        bucket.sortBy { it.uri }
+        chosen += bucket
     }
     return PhotoDnaCandidates(chosen, deferred)
 }

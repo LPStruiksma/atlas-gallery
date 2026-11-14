@@ -45,10 +45,12 @@ class NativeFaceDiscoveryPresentationTest {
             "NEVER_STARTED" to FaceDiscoveryPhase.READY,
             "QUEUED" to FaceDiscoveryPhase.QUEUED,
             "RUNNING" to FaceDiscoveryPhase.SCANNING,
+            "GROUPING" to FaceDiscoveryPhase.GROUPING,
             "PAUSED" to FaceDiscoveryPhase.PAUSED,
             "PERMISSION_REQUIRED" to FaceDiscoveryPhase.PERMISSION_REQUIRED,
             "STORAGE_LOW" to FaceDiscoveryPhase.STORAGE_LOW,
             "BATTERY_LOW" to FaceDiscoveryPhase.BATTERY_LOW,
+            "CHARGER_REQUIRED" to FaceDiscoveryPhase.WAITING_FOR_CHARGER,
             "REVIEW_AVAILABLE" to FaceDiscoveryPhase.REVIEW_AVAILABLE,
             "COMPLETE" to FaceDiscoveryPhase.FINISHED,
             "ERROR" to FaceDiscoveryPhase.FAILED

@@ -5,6 +5,7 @@ import android.net.Uri
 import nl.atlas.gallery.PeopleBackupPreview
 import nl.atlas.gallery.PeopleRepository
 import nl.atlas.gallery.PeopleRestoreComparison
+import nl.atlas.gallery.PeopleDiscoveryHost
 
 /**
  * This boundary ONLY handles user-chosen SAF documents. It never chooses a
@@ -16,6 +17,16 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
     companion object {
         const val MIME_TYPE = "application/octet-stream"
         const val SUGGESTED_NAME = "atlas-people.atlaspeople"
+        const val NAMES_SUGGESTED_NAME = "atlas-people-names.atlasnames"
+        const val NAMES_EXPORT_WARNING =
+            "This file contains private People names and opaque review keys. " +
+            "It contains no photos, face vectors, file names or media paths. " +
+            "Your chosen document provider may sync the unencrypted file to a cloud. " +
+            "Choose local storage for an offline copy."
+        const val NAMES_IMPORT_WARNING =
+            "Import only applies names, hidden flags and review decisions for " +
+            "existing local People keys. Matching names may be updated. Unknown " +
+            "keys and conflicting decisions are skipped; photos stay untouched."
         const val EXPORT_WARNING =
             "The selected document provider may upload this unencrypted backup to a cloud. " +
             "It contains confirmed People names and absolute image paths (no photo bytes). " +
@@ -26,6 +37,49 @@ class PeopleSafBackupIO(private val resolver: ContentResolver) {
             "names cancel the entire import; existing assignments are never erased. " +
             "Only continue after reviewing the source, row count and checksum. " +
             "This does not restore settings, SAF access or original photographs."
+    }
+
+    // Separate from the path-bearing V4 backup; both retain independent formats.
+    /** Runs only after a fresh, affirmative destination warning and SAF choice. */
+    internal fun exportNamesToSelectedDocument(
+        uri: Uri, host: PeopleDiscoveryHost, galleryGrant: String?,
+        destinationRiskAcknowledged: Boolean
+    ): NativePeopleNamesPreview {
+        require(destinationRiskAcknowledged) { "Accept the document-provider warning first" }
+        validateDocumentUri(uri)
+        val bytes = host.exportNamesBackup(galleryGrant)
+        PeopleDocumentTransport.writeAndReadBack(
+            bytes, openOutput = { resolver.openOutputStream(uri, "w") },
+            openInput = { resolver.openInputStream(uri) }
+        )
+        return NativePeopleNamesBackupCodec.preview(bytes)
+    }
+
+    internal fun previewNamesImport(uri: Uri): NativePeopleNamesPreview {
+        validateDocumentUri(uri)
+        return NativePeopleNamesBackupCodec.preview(
+            PeopleDocumentTransport.readBounded(
+                resolver.openInputStream(uri) ?: error("Selected names backup is unreadable"),
+                NativePeopleNamesBackupCodec.MAX_BYTES
+            )
+        )
+    }
+
+    /** Reopen document at approval. An edited or swapped provider file is refused. */
+    internal fun importNamesFromSelectedDocument(
+        uri: Uri, host: PeopleDiscoveryHost, galleryGrant: String?,
+        approvedChecksum: String, explicitlyApproved: Boolean
+    ): NativePeopleNamesImportResult {
+        require(explicitlyApproved) { "Names import needs explicit approval" }
+        validateDocumentUri(uri)
+        val bytes = PeopleDocumentTransport.readBounded(
+            resolver.openInputStream(uri) ?: error("Selected names backup is unreadable"),
+            NativePeopleNamesBackupCodec.MAX_BYTES
+        )
+        require(NativePeopleNamesBackupCodec.checksum(bytes) == approvedChecksum) {
+            "Names backup changed after preview"
+        }
+        return host.importNamesBackup(galleryGrant, bytes, approvedChecksum)
     }
 
     data class ExportReceipt(val rowCount: Int, val byteCount: Int, val sha256: String)
