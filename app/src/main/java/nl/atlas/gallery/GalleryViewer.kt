@@ -1027,20 +1027,70 @@ private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowSc
         content = content)
 }
 
-/** Hide status + navigation bars with the chrome; always restore on exit. */
+/**
+ * #680: the viewer owns a black backdrop behind Android's system navigation
+ * area and light bar icons even when entered from the light-themed gallery.
+ * Keep this override for the viewer's lifetime, independent of chrome.
+ */
 @Composable
 private fun ViewerSystemBars(visible: Boolean) {
     val view = LocalView.current
-    val window = (view.context as? android.app.Activity)?.window ?: return
-    DisposableEffect(window, view, visible) {
+    // Compose's LocalView can be hosted by a ContextThemeWrapper. A direct
+    // Activity cast silently skipped the entire viewer bar override on the
+    // real MainActivity route (API 35 rendered a light navigation band).
+    val window = view.context.viewerHostActivity()?.window ?: return
+    DisposableEffect(window, view) {
         val controller = WindowCompat.getInsetsController(window, view)
+        val oldStatusColor = window.statusBarColor
+        val oldNavigationColor = window.navigationBarColor
+        val oldNavContrast = window.isNavigationBarContrastEnforced
+        val oldLightStatus = controller.isAppearanceLightStatusBars
+        val oldLightNavigation = controller.isAppearanceLightNavigationBars
+        val oldBehavior = controller.systemBarsBehavior
+        // API 35+ can force a transparent navigation bar regardless of
+        // navigationBarColor. Paint the window backdrop under its buttons.
+        // Replace (not mutate) the drawable so disposal restores it exactly.
+        val decor = window.decorView
+        val oldDecorBackground = decor.background
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            decor.background = android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK)
+        }
+
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
+        // Android can otherwise overlay a light 3-button contrast scrim.
+        window.isNavigationBarContrastEnforced = false
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+        onDispose {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = oldStatusColor
+            window.navigationBarColor = oldNavigationColor
+            window.isNavigationBarContrastEnforced = oldNavContrast
+            controller.isAppearanceLightStatusBars = oldLightStatus
+            controller.isAppearanceLightNavigationBars = oldLightNavigation
+            controller.systemBarsBehavior = oldBehavior
+            if (android.os.Build.VERSION.SDK_INT >= 35) {
+                decor.background = oldDecorBackground
+            }
+        }
+    }
+    LaunchedEffect(window, view, visible) {
+        val controller = WindowCompat.getInsetsController(window, view)
         if (visible) controller.show(WindowInsetsCompat.Type.systemBars())
         else controller.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { controller.show(WindowInsetsCompat.Type.systemBars()) }
     }
 }
+
+private tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
+    when (this) {
+        is android.app.Activity -> this
+        is android.content.ContextWrapper -> baseContext.viewerHostActivity()
+        else -> null
+    }
 
 internal fun shouldStartViewerVideoPlayer(
     focused: Boolean, rapidlyChanging: Boolean, settled: Boolean
