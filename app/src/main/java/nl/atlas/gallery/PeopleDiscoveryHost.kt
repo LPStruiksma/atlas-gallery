@@ -754,6 +754,14 @@ internal class PeopleDiscoveryHost(
         if (!existing) start(galleryGrant, inventory)
         else if (synchronized(lock) { pausedByUser }) resume()
         if (!foregroundVisible || !photoGrantCurrent()) return null
+        val sensorState = power()
+        val initialWait = ManualFaceScanGuard(sensorState.batteryPercent,
+            sensorState.thermalStatus, foregroundVisible).holdReason()
+        if (initialWait != null) {
+            lastManualWait = initialWait
+            changed()
+            return null
+        }
         val token = synchronized(lock) {
             if (!optedIn || pausedByUser || scope?.galleryGrant != galleryGrant ||
                 liveEpoch != scope?.epoch) null
