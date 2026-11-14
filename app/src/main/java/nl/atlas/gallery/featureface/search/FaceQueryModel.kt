@@ -272,7 +272,6 @@ class FaceSearchCorpus private constructor(
         private val mediaRows = ArrayList<IndexedMedia>()
         private val mediaByKey = HashMap<String, Int>()
         private val seen = HashSet<String>()
-        private var built = false
 
         init {
             require(modelVersion.isNotBlank() && modelVersion.length <= 256 &&
@@ -291,7 +290,6 @@ class FaceSearchCorpus private constructor(
         fun add(face: NativeFaceObservationId, media: IndexedMedia, box: IndexedFaceBox,
                 clusterAnchor: NativeFaceObservationId?, vector: FloatArray,
                 frameMs: Long? = null): Builder {
-            check(!built) { "Corpus builder already finalized" }
             require(n < MAX_FACES) { "Face search corpus limit $MAX_FACES reached" }
             require(frameMs == null || frameMs >= 0) { "Negative video frame time" }
             require(seen.add(face.localHex)) { "Duplicate face in corpus" }
@@ -317,24 +315,11 @@ class FaceSearchCorpus private constructor(
         }
 
         fun build(reviews: ClusterReviewFacts, clustersPublished: Boolean): FaceSearchCorpus {
-            check(!built) { "Corpus builder already finalized" }
-            built = true
-            // The SQLite corpus path counted rows within its read transaction,
-            // so these arrays already have the exact final size. Reuse them
-            // instead of doubling peak vector memory during the final copy.
-            // A finalized builder may not add rows: the corpus stays immutable.
             @Suppress("UNCHECKED_CAST")
-            val completeIds = (if (n == ids.size) ids else ids.copyOf(n)) as Array<String>
-            @Suppress("UNCHECKED_CAST")
-            val completeBoxes = (if (n == boxes.size) boxes else boxes.copyOf(n)) as Array<IndexedFaceBox>
-            return FaceSearchCorpus(modelVersion, n, completeIds,
-                if (n == ids.size) vecs else vecs.copyOf(n * DIMENSION),
-                if (n == ids.size) invNorms else invNorms.copyOf(n),
-                if (n == ids.size) mediaIdx else mediaIdx.copyOf(n),
-                mediaRows.toList(), completeBoxes,
-                if (n == ids.size) anchors else anchors.copyOf(n),
-                if (n == ids.size) frames else frames.copyOf(n),
-                clustersPublished, reviews)
+            return FaceSearchCorpus(modelVersion, n, ids.copyOf(n) as Array<String>,
+                vecs.copyOf(n * DIMENSION), invNorms.copyOf(n), mediaIdx.copyOf(n),
+                mediaRows.toList(), boxes.copyOf(n) as Array<IndexedFaceBox>,
+                anchors.copyOf(n), frames.copyOf(n), clustersPublished, reviews)
         }
     }
 

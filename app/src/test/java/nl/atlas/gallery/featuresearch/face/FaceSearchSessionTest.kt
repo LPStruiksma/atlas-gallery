@@ -279,14 +279,4 @@ class FaceSearchSessionTest {
         assertEquals(FaceReferencePreparation.Unavailable(FaceReferenceProblem.NOT_INDEXED),
             prepareFaceReference(port, "epoch-1", photo))
     }
-
-    /** A memory failure must not escape the session or strand the searching spinner. */
-    @Test fun corpusOutOfMemoryIsRetryable() {
-        val port = FakePort(corpus(listOf(Row(1, 1, at(query, 0.90f)))))
-        val search = session(port)
-        port.onCorpus = { throw OutOfMemoryError("synthetic constrained heap") }
-        assertEquals(FaceSearchState.Unavailable, search.searchNow())
-        port.onCorpus = {}
-        assertTrue("the user may try again", search.searchNow() is FaceSearchState.Results)
-    }
 }

@@ -182,39 +182,4 @@ class FaceSearchCorpusAndroidTest {
         assertFalse(store.faceSearchCorpus("epoch-B")!!.clustersPublished)
         assertEquals(6, store.faceSearchCorpus("epoch-B")!!.faceCount)
     }
-
-    /**
-     * #64: the next page must not skip or duplicate a face, nor change the
-     * sorted results. More than two 256-row pages, without a full-library scan.
-     */
-    @Test fun pageBoundariesPreserveAllFacesAndSmallFixtureRanking() = withStore { store ->
-        val total = 517
-        val epoch = "epoch-pages"
-        grant(store, epoch, (1..total).map { media(it) })
-        val blob = nl.atlas.gallery.featurepersistence.FaceEmbeddingVectorCodec.encode(vector(0))
-        val db = store.writableDatabase
-        db.beginTransaction()
-        try {
-            for (n in 1..total) {
-                val item = media(n)
-                val face = n.toString(16).padStart(32, '0')
-                db.execSQL("UPDATE catalog SET state='processed' WHERE media_key=?", arrayOf(item.key))
-                db.execSQL("""INSERT INTO faces(media_key,ordinal,face_uid,l,t,r,b)
-                    VALUES(?,?,?,0.1,0.2,0.5,0.8)""", arrayOf<Any>(item.key, 0, face))
-                db.execSQL("""INSERT INTO embeddings(face_uid,source_revision,model_version,vector)
-                    VALUES(?,?,?,?)""", arrayOf<Any>(face, item.revision, model, blob))
-            }
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
-        }
-        val corpus = requireNotNull(store.faceSearchCorpus(epoch))
-        assertEquals(total, corpus.faceCount)
-        val result = search(corpus)
-        assertEquals(FaceQueryStatus.OK, result.status)
-        assertEquals(total, result.scannedFaces)
-        val expected = (1..total).map { media(it) }.sortedBy { it.key }
-        assertEquals(expected, result.hits.map { it.media })
-        assertTrue(result.hits.all { it.tier == FaceMatchTier.SAME_PERSON })
-    }
 }

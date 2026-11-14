@@ -7,7 +7,7 @@ fun main() {
     check(noPermission.holdReason() == FaceScanPhase.PERMISSION_REQUIRED)
     val idle = FaceScanConditions(true, true, true, true, true, false, false, true)
     check(!idle.canRun())
-    check(idle.holdReason() == FaceScanPhase.BATTERY_LOW)
+    check(idle.holdReason() == FaceScanPhase.CHARGER_REQUIRED)
     check(idle.copy(charging = true).canRun())
     check(idle.copy(backgroundMaintenance = false).canRun())
     val snap = FaceScanSnapshot("p1", 150000, 149999, 0, 1, 0, 1, "mlkit-bundled-opt-in-v1", false)

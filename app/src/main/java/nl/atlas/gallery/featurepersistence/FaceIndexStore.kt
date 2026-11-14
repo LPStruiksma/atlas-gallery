@@ -300,6 +300,7 @@ class FaceIndexStore(
         createSameUnknownTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
+        createModelCarryTable(db)
         ensureDormantEpochColumn(db)
         db.beginTransaction()
         try {
@@ -355,6 +356,7 @@ class FaceIndexStore(
             revision TEXT NOT NULL, $TAKEN_MS_COLUMN)""")
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
+        createModelCarryTable(db)
     }
     /**
      * VS-V1b: add the nullable video columns to a v1..v3 file that lacks
@@ -417,6 +419,58 @@ class FaceIndexStore(
     private fun createPeopleHidden(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_hidden(
             person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256))""")
+    }
+
+    /**
+     * #48: model-change journal is app-private metadata, not a vector or media
+     * backup. It is intentionally independent of faces so the old observation
+     * can be deleted atomically while its confirmation waits for re-embedding.
+     * No inferred matches, only exact media revision/detector/ordinal/box.
+     * Names remain in people_names even when no face can safely be restored.
+     */
+    private fun createModelCarryTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_model_carry(
+            media_key TEXT NOT NULL, revision TEXT NOT NULL,
+            detector_version TEXT NOT NULL, ordinal INTEGER NOT NULL,
+            l REAL NOT NULL, t REAL NOT NULL, r REAL NOT NULL, b REAL NOT NULL,
+            frame_ms INTEGER, person_key TEXT NOT NULL,
+            PRIMARY KEY(media_key,ordinal))""")
+    }
+
+    private fun captureModelCarry(db: SQLiteDatabase) {
+        db.execSQL("""INSERT OR REPLACE INTO people_model_carry
+            (media_key,revision,detector_version,ordinal,l,t,r,b,frame_ms,person_key)
+            SELECT f.media_key,c.revision,c.detector_version,f.ordinal,
+                f.l,f.t,f.r,f.b,f.frame_ms,p.person_key
+            FROM people_confirmed p
+            JOIN faces f ON f.face_uid=p.face_uid
+            JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+            JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+            WHERE NOT EXISTS(SELECT 1 FROM people_model_carry pc
+                WHERE pc.media_key=f.media_key AND pc.ordinal=f.ordinal)""")
+    }
+
+    /** Called only inside the current lease's atomic completion transaction. */
+    private fun restoreModelCarry(db: SQLiteDatabase, lease: IndexedFaceLease,
+                                  ordinal: Int, uid: String, box: IndexedFaceBox,
+                                  frameMs: Long?) {
+        // SQLite's rawQuery selectionArgs cannot safely represent a nullable
+        // video timestamp: use two fixed SQL shapes, never interpolate content.
+        val sql = """SELECT person_key FROM people_model_carry
+            WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
+                AND ABS(l - ?) < 0.000001 AND ABS(t - ?) < 0.000001
+                AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001""" +
+            if (frameMs == null) " AND frame_ms IS NULL" else " AND frame_ms=?"
+        val args = arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
+            ordinal.toString(), box.left.toString(), box.top.toString(),
+            box.right.toString(), box.bottom.toString())
+        val person = db.rawQuery(sql, if (frameMs == null) args else args + frameMs.toString())
+            .use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        if (person != null) {
+            check(db.insertOrThrow("people_confirmed", null, ContentValues().apply {
+                put("face_uid", uid); put("person_key", person)
+            }) != -1L) { "Model carry confirmation was not saved" }
+        }
     }
 
     /**
@@ -489,8 +543,7 @@ class FaceIndexStore(
     /**
      * v3 identity review. Face-keyed rows reference `embeddings`, so they
      * cascade with the observation (source change, rescan, model bump).
-     * Person names are not face-keyed; a model bump clears them explicitly
-     * in [commitSnapshot]. `people_review_generation` changes on every
+     * Person names are not face-keyed: a model bump retains them (#48). `people_review_generation` changes on every
      * review commit and cluster publication (see [StoredPeopleReview]).
      */
     private fun createPeopleReviewTables(db: SQLiteDatabase) {
@@ -859,13 +912,15 @@ class FaceIndexStore(
             val beforePrune = totalChanges(db)
             val modelChanged = FaceEmbeddingVersionFence.changed(priorModel, embedderVersion)
             if (modelChanged) {
+                // #48: journal only completed prior-model confirmations before
+                // marking photos queued; captureModelCarry requires processed
+                // catalog rows with a matching source embedding revision.
+                // Both original face rows and confirmations still exist here.
+                captureModelCarry(db)
                 // Model/alignment bump or v1 migration: force re-embed before displaying clusters.
                 db.execSQL("""UPDATE catalog SET state='queued', attempts=0, skip_reason=NULL,
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
                 db.delete("faces", null, null) // cascades embeddings, memberships, facts
-                // Names belong to identities of the old model's observations.
-                db.delete("people_names", null, null)
-                db.delete("people_hidden", null, null)
                 db.delete("people_home", null, null)
                 db.execSQL("UPDATE people_home_generation SET revision=NULL WHERE singleton=1")
             }
@@ -882,6 +937,11 @@ class FaceIndexStore(
                 arrayOf(detectorVersion, detectorVersion))
             db.execSQL("""DELETE FROM faces WHERE media_key IN
                 (SELECT media_key FROM catalog WHERE state!='processed')""")
+            // Do not re-attach to deleted, revised or re-detected photos.
+            db.execSQL("""DELETE FROM people_model_carry WHERE NOT EXISTS
+                (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
+                    AND c.revision=people_model_carry.revision
+                    AND c.detector_version=people_model_carry.detector_version)""")
             val pruned = modelChanged || totalChanges(db) != beforePrune
             // Even identical media may have an in-flight old-epoch lease.
             db.execSQL("""UPDATE catalog SET state='queued',
@@ -1087,7 +1147,10 @@ class FaceIndexStore(
                     put("face_uid", uid); put("source_revision", lease.media.revision)
                     put("model_version", embedderVersion); put("vector", encoded[ordinal])
                 })
+                restoreModelCarry(db, lease, ordinal, uid, box, frameMs.getOrNull(ordinal))
             }
+            // Rescanned media cannot claim an old decision again.
+            db.delete("people_model_carry", "media_key=?", arrayOf(lease.media.key))
             // D2-5p: never read or rewrite other photos' clusters here; the
             // work above and below is bounded by this photo's (<=32) faces.
             // Until a batch publishes, clusterState is unavailable.
@@ -1516,6 +1579,175 @@ class FaceIndexStore(
                     })
             }
         }
+
+    /**
+     * #62: one epoch-checked, consistent snapshot of only human-authored
+     * People metadata. Never select a media key, URI, pathname or vector.
+     */
+    fun exportNativeNamesSnapshot(epoch: String): NativePeopleNamesSnapshot? =
+        authorizedEmbeddingRead(epoch, null) { db, _ ->
+            if (!clusterGenerationClean(db)) return@authorizedEmbeddingRead null
+            fun pairs(sql: String): Set<Pair<String, String>> =
+                db.rawQuery(sql, null).use { cursor ->
+                    buildSet {
+                        while (cursor.moveToNext()) {
+                            add(cursor.getString(0) to cursor.getString(1))
+                        }
+                    }
+                }
+            val names = personNames(db).entries.associate { it.key.value to it.value }
+            val faceDecisions = db.rawQuery(
+                """SELECT f.face_uid,r.decision FROM face_reviews r
+                    JOIN faces f ON f.media_key=r.media_key AND f.ordinal=r.ordinal
+                    JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'""", null
+            ).use { cursor ->
+                buildMap {
+                    while (cursor.moveToNext()) put(cursor.getString(0), cursor.getString(1))
+                }
+            }
+            NativePeopleNamesSnapshot(names, hiddenPeople(db),
+                pairs("SELECT face_uid,person_key FROM people_confirmed").toMap(),
+                pairs("SELECT face_a,face_b FROM people_cannot_link"),
+                pairs("SELECT face_uid,person_key FROM people_rejected"),
+                pairs("SELECT face_a,face_b FROM people_same_unknown"),
+                faceDecisions)
+        }
+
+    /**
+     * Non-destructive import: only keys already in the active native index
+     * qualify. Missing identities/faces, or conflicting confirmations, are
+     * counted and skipped. All writes share one SQLite transaction and epoch
+     * check. A new identity fact forces a cluster publication from local
+     * vectors; no media is ever read as part of import.
+     */
+    fun importNativeNamesSnapshot(
+        epoch: String, incoming: NativePeopleNamesSnapshot
+    ): NativePeopleNamesImportResult {
+        validEpoch(epoch)
+        // Revalidate before touching SQLite, including type/size/key bounds.
+        NativePeopleNamesBackupCodec.encode(incoming)
+        return write { db ->
+            val version = storedEmbedderVersion(db) ?: error("People model unavailable")
+            require(currentEpoch(db) == epoch &&
+                clusterGenerationClean(db)) { "People index changed; reopen the backup" }
+            fun strings(sql: String, args: Array<String>? = null): Set<String> =
+                db.rawQuery(sql, args).use { cursor ->
+                    buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) }
+                }
+            val people = strings("SELECT person_key FROM people_names") +
+                strings("SELECT DISTINCT person_key FROM people_confirmed")
+            val faces = strings("""SELECT e.face_uid FROM embeddings e
+                JOIN faces f ON f.face_uid=e.face_uid
+                JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                    AND c.revision=e.source_revision
+                WHERE e.model_version=?""", arrayOf(version))
+            val observations = strings("""SELECT f.face_uid FROM faces f
+                JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'""")
+            var applied = 0
+            var skipped = 0
+            var reGroup = false
+            for ((key, name) in incoming.names) {
+                if (key !in people) { skipped++; continue }
+                check(db.insertWithOnConflict("people_names", null,
+                    ContentValues().apply { put("person_key", key); put("name", name) },
+                    SQLiteDatabase.CONFLICT_REPLACE) != -1L)
+                applied++
+            }
+            for (key in incoming.hidden) {
+                if (key !in people || key !in incoming.names) { skipped++; continue }
+                check(db.insertWithOnConflict("people_hidden", null,
+                    ContentValues().apply { put("person_key", key) },
+                    SQLiteDatabase.CONFLICT_REPLACE) != -1L)
+                applied++
+            }
+            val oldConfirmed = reviewRows(db).confirmed
+            val mergedConfirmed = oldConfirmed.toMutableMap()
+            for ((face, person) in incoming.confirmed) {
+                val current = mergedConfirmed[face]
+                if (face !in faces || person !in people ||
+                    (current != null && current != person)) {
+                    skipped++; continue
+                }
+                if (current == null) {
+                    check(db.insertOrThrow("people_confirmed", null,
+                        ContentValues().apply {
+                            put("face_uid", face); put("person_key", person)
+                        }) != -1L)
+                    db.delete("cluster_members", "face_uid=?", arrayOf(face))
+                    mergedConfirmed[face] = person
+                    reGroup = true
+                }
+                applied++
+            }
+            fun addPairs(table: String, a: String, b: String,
+                         incomingPairs: Set<Pair<String, String>>) {
+                for ((first, second) in incomingPairs) {
+                    val valid = first in faces && second in faces &&
+                        // The two contradictory pair kinds must never coexist.
+                        !(table == "people_same_unknown" &&
+                            db.rawQuery("""SELECT 1 FROM people_cannot_link
+                                WHERE face_a=? AND face_b=?""",
+                                arrayOf(first, second)).use { it.moveToFirst() }) &&
+                        !(table == "people_cannot_link" &&
+                            db.rawQuery("""SELECT 1 FROM people_same_unknown
+                                WHERE face_a=? AND face_b=?""",
+                                arrayOf(first, second)).use { it.moveToFirst() }) &&
+                        !(table == "people_cannot_link" &&
+                            mergedConfirmed[first] != null &&
+                            mergedConfirmed[first] == mergedConfirmed[second])
+                    if (!valid) { skipped++; continue }
+                    val count = db.insertWithOnConflict(table, null,
+                        ContentValues().apply { put(a, first); put(b, second) },
+                        SQLiteDatabase.CONFLICT_REPLACE)
+                    check(count != -1L)
+                    applied++
+                    reGroup = true
+                }
+            }
+            addPairs("people_cannot_link", "face_a", "face_b", incoming.cannotLink)
+            for ((face, person) in incoming.rejected) {
+                if (face !in faces || person !in people || mergedConfirmed[face] == person) {
+                    skipped++; continue
+                }
+                check(db.insertWithOnConflict("people_rejected", null,
+                    ContentValues().apply {
+                        put("face_uid", face); put("person_key", person)
+                    }, SQLiteDatabase.CONFLICT_REPLACE) != -1L)
+                applied++
+                reGroup = true
+            }
+            addPairs("people_same_unknown", "face_a", "face_b", incoming.sameUnknown)
+            for ((face, decision) in incoming.faceDecisions) {
+                if (face !in observations || face in mergedConfirmed) {
+                    skipped++; continue
+                }
+                val target = db.rawQuery("""SELECT media_key,ordinal FROM faces
+                    WHERE face_uid=?""", arrayOf(face)).use { cursor ->
+                    if (cursor.moveToFirst())
+                        cursor.getString(0) to cursor.getInt(1) else null
+                }
+                if (target == null) { skipped++; continue }
+                check(db.insertWithOnConflict("face_reviews", null,
+                    ContentValues().apply {
+                        put("media_key", target.first); put("ordinal", target.second)
+                        put("decision", decision)
+                    }, SQLiteDatabase.CONFLICT_REPLACE) != -1L)
+                applied++
+            }
+            if (applied > 0) {
+                bumpReviewRevision(db, reviewRevision(db))
+                if (reGroup) {
+                    db.execSQL("""UPDATE cluster_generation SET dirty=1,
+                        pending=MAX(pending,$PUBLICATION_CONTINUES)
+                        WHERE singleton=1""")
+                } else {
+                    refreshPeopleHome(db, version)
+                    markMatchedCurrent(db)
+                }
+            }
+            NativePeopleNamesImportResult(applied, skipped)
+        }
+    }
 
     /**
      * People home (#532): named identities that still own a present,

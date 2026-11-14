@@ -1,2 +1,0 @@
-# Rendered unavailable-state screen from FaceSearchUnavailableScreenTest
-face-search-unavailable

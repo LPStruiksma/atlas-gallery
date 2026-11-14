@@ -6,8 +6,8 @@ package nl.atlas.gallery.featurepeopleui
  * All counters refer to accessible material in the CURRENT permission epoch.
  */
 enum class FaceDiscoveryPhase {
-    UNAVAILABLE, READY, QUEUED, SCANNING, PAUSED, FINISHED, FAILED,
-    PERMISSION_REQUIRED, BATTERY_LOW, STORAGE_LOW, REVIEW_AVAILABLE
+    UNAVAILABLE, READY, QUEUED, SCANNING, GROUPING, PAUSED, FINISHED, FAILED,
+    PERMISSION_REQUIRED, BATTERY_LOW, WAITING_FOR_CHARGER, STORAGE_LOW, REVIEW_AVAILABLE
 }
 
 data class FaceDiscoveryUiState(
@@ -26,7 +26,8 @@ data class FaceDiscoveryUiState(
 
     val progress: Float? get() = if (eligible > 0) processed.toFloat() / eligible else null
     val isBusy: Boolean get() = phase == FaceDiscoveryPhase.QUEUED ||
-        phase == FaceDiscoveryPhase.SCANNING
+        phase == FaceDiscoveryPhase.SCANNING ||
+        phase == FaceDiscoveryPhase.GROUPING
 
     /** Revocation/reselection must immediately hide stale scanner status/counts. */
     fun restrictedToGrant(currentPermissionEpoch: String?): FaceDiscoveryUiState =
@@ -132,11 +133,13 @@ fun discoveryHeadline(state: FaceDiscoveryUiState): String = when (state.phase) 
     FaceDiscoveryPhase.READY -> "Ready to discover faces on this device"
     FaceDiscoveryPhase.QUEUED -> "Face discovery is queued"
     FaceDiscoveryPhase.SCANNING -> "Looking for faces on this device"
+    FaceDiscoveryPhase.GROUPING -> "Grouping faces on this device"
     FaceDiscoveryPhase.PAUSED -> "Face discovery is paused"
     FaceDiscoveryPhase.FINISHED -> "Face discovery finished"
     FaceDiscoveryPhase.FAILED -> "Face discovery needs attention"
     FaceDiscoveryPhase.PERMISSION_REQUIRED -> "Photo access needs an update"
-    FaceDiscoveryPhase.BATTERY_LOW -> "Face discovery is waiting for power"
+    FaceDiscoveryPhase.BATTERY_LOW -> "Face discovery is waiting for battery"
+    FaceDiscoveryPhase.WAITING_FOR_CHARGER -> "Face discovery is waiting for a charger"
     FaceDiscoveryPhase.STORAGE_LOW -> "Face discovery is waiting for storage"
     FaceDiscoveryPhase.REVIEW_AVAILABLE -> "Unknown faces ready for review"
 }
@@ -148,7 +151,7 @@ fun discoveryExplanation(state: FaceDiscoveryUiState): String = when (state.phas
         "Detection finds faces, not names. Any new faces will remain unknown until you review them."
     FaceDiscoveryPhase.QUEUED ->
         "The on-device scan will begin when the actual scanner's requirements are met."
-    FaceDiscoveryPhase.SCANNING, FaceDiscoveryPhase.PAUSED ->
+    FaceDiscoveryPhase.SCANNING, FaceDiscoveryPhase.GROUPING, FaceDiscoveryPhase.PAUSED ->
         "Detection is local and resumable. An unknown face is never automatically assigned to a person."
     FaceDiscoveryPhase.FINISHED ->
         "Detected faces are not identified people. Review available unknown observations separately."
@@ -157,7 +160,9 @@ fun discoveryExplanation(state: FaceDiscoveryUiState): String = when (state.phas
     FaceDiscoveryPhase.PERMISSION_REQUIRED ->
         "Your photo access has changed. No old face observations will be shown until the permitted catalogue is checked again."
     FaceDiscoveryPhase.BATTERY_LOW ->
-        "Scanning is suspended to respect battery limits. No photo or confirmed label was changed."
+        "Scanning is suspended because the battery is low. No photo or confirmed label was changed."
+    FaceDiscoveryPhase.WAITING_FOR_CHARGER ->
+        "Scanning is waiting for a charger. No photo or confirmed label was changed."
     FaceDiscoveryPhase.STORAGE_LOW ->
         "Scanning is suspended because the device reports low storage. ATLAS will not make room by deleting photos."
     FaceDiscoveryPhase.REVIEW_AVAILABLE ->
