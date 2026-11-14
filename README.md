@@ -8,7 +8,7 @@
 
 ## Install and update
 
-Signed releases are published on [GitHub Releases](https://github.com/LPStruiksma/atlas-gallery/releases) from `main` by [release-signed.yml](.github/workflows/release-signed.yml), and the phone updates through Obtainium. See [docs/RELEASE_PHONE_UPDATES.md](docs/RELEASE_PHONE_UPDATES.md) and [docs/STABLE_SIGNING.md](docs/STABLE_SIGNING.md). Package `nl.atlas.gallery`. The version code is derived from the build time.
+Signed releases are published on [GitHub Releases](https://github.com/LPStruiksma/atlas-gallery/releases) from `main` by [release-signed.yml](.github/workflows/release-signed.yml), and the phone updates through Obtainium. See [docs/RELEASE_PHONE_UPDATES.md](docs/RELEASE_PHONE_UPDATES.md). Older signing documents (`docs/STABLE_SIGNING.md`, `docs/P0_SIGNING_AND_FRESH_START.md`) describe earlier debug-key and Mac-paste routes and are history, apart from the Mac fallback named in that page. Package `nl.atlas.gallery`. The version code is derived from the build time.
 
 ## Privacy (public repository)
 
@@ -17,7 +17,7 @@ No personal photos, videos, face embeddings, People databases, private evaluatio
 ## Build and CI
 
 - Kotlin, Jetpack Compose, Coil 3, Media3, ONNX Runtime; Android API 36; Gradle 8.13.
-- [build-apk.yml](.github/workflows/build-apk.yml) builds and runs JVM tests on every push. The API35 emulator UI shards run only when a PR is labelled `next:review` ([review-emulator-trigger.yml](.github/workflows/review-emulator-trigger.yml)), so they run once per review candidate instead of on every development push.
+- [build-apk.yml](.github/workflows/build-apk.yml) builds and runs JVM tests on pushes that change app or build files. The API35 emulator UI shards run only when a PR is labelled `next:review` ([review-emulator-trigger.yml](.github/workflows/review-emulator-trigger.yml)), so they run once per review candidate instead of on every development push.
 - [autodev-ci.yml](.github/workflows/autodev-ci.yml) runs static checks and the additive `.mjs` source contracts.
 
 Offline checks (no personal media needed):
