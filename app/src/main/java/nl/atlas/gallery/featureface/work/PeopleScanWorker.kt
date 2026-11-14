@@ -27,6 +27,11 @@ class PeopleScanWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // #43: after process death no host has installed a provider. Rebuild
+        // it from stored, re-checked state instead of ending the chain.
+        if (!PeopleScanWorkRuntime.installed()) {
+            nl.atlas.gallery.restorePeopleScanInBackground(applicationContext)
+        }
         // Never spin or spend WorkManager retry on a transient hold: the
         // session decides in afterBatch whether a next bounded batch follows.
         // #552: "now" runs here, in this execution, for up to MAX_RUN_MS.
@@ -63,6 +68,9 @@ suspend fun runPeopleScanRun(
             val batch = runPeopleScanBatch(context, thermalAllowed, isStopped) ?: break
             photos += batch.photosIndexed
             batches++
+            // #43: one count per batch, so a run cut off by process death still
+            // left a trace. Counts only: never a URI, ID, name or face.
+            android.util.Log.i("ATLAS_FACE", "scan_batch photos=${batch.photosIndexed}")
             decision = plan.afterBatch(isStopped())
             if (decision != PeopleScanRunPlan.Decision.CONTINUE) break
             currentCoroutineContext().ensureActive()
@@ -158,5 +166,21 @@ suspend fun runPeopleScanBatch(
         return null // provider disappeared; no stale retry
     } finally {
         session.close()
+    }
+}
+
+/**
+ * #43: periodic, charging only. Re-arms the bounded scan chain of a kept
+ * opt-in when process death ended it; does nothing otherwise.
+ */
+class PeopleScanRearmWorker(
+    context: Context,
+    params: WorkerParameters
+) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        val armed = PeopleScanWorkRuntime.installed() ||
+            nl.atlas.gallery.restorePeopleScanInBackground(applicationContext)
+        if (armed) PeopleScanWorkScheduler.enqueueAfterVerifiedOptIn(applicationContext)
+        Result.success()
     }
 }

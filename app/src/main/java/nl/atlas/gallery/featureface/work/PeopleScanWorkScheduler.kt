@@ -5,13 +5,17 @@ import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
  * Only PeopleDiscoveryHost calls this, after the user's explicit "Discover faces"
- * (or Resume) in the same process. No boot/regrant observer calls this code.
+ * (or Resume), or a restored opt-in (#543), in the same process. #43: a worker
+ * may also rebuild that host from stored state after process death; no
+ * boot/regrant observer calls this code.
  */
 object PeopleScanWorkScheduler {
     const val UNIQUE_NAME = "atlas-native-people-scan-v1"
@@ -64,6 +68,36 @@ object PeopleScanWorkScheduler {
         val next = request(if (delayed) HOLD_RETRY_MINUTES else 0)
         WorkManager.getInstance(context.applicationContext)
             .enqueueUniqueWork(UNIQUE_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, next)
+    }
+
+    /** #43: the periodic re-arm of an opted-in run that process death ended. */
+    const val REARM_NAME = "atlas-people-scan-rearm-v1"
+    const val REARM_HOURS = 6L
+
+    private fun constraints() = Constraints.Builder()
+        .setRequiresCharging(true)
+        .setRequiresBatteryNotLow(true)
+        .setRequiresStorageNotLow(true)
+        .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+        .build()
+
+    /**
+     * #43: while the user is opted in, a charging phone re-arms the scan chain
+     * every [REARM_HOURS] even when no process is alive. The re-arm worker,
+     * like every batch, reauthorizes from stored state on its own. KEEP: one.
+     */
+    fun enqueueRearm(context: Context) {
+        val rearm = PeriodicWorkRequest.Builder(PeopleScanRearmWorker::class.java,
+            REARM_HOURS, TimeUnit.HOURS)
+            .setConstraints(constraints())
+            .build()
+        WorkManager.getInstance(context.applicationContext)
+            .enqueueUniquePeriodicWork(REARM_NAME, ExistingPeriodicWorkPolicy.KEEP, rearm)
+    }
+
+    /** The user turned discovery off or paused it, or access is gone. */
+    fun cancelRearm(context: Context) {
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(REARM_NAME)
     }
 
     fun cancel(context: Context) {

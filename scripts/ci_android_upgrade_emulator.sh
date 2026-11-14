@@ -275,6 +275,145 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   # synthetic screenshot PNGs stay available for the evidence pull.
   adb shell pm clear nl.atlas.gallery
   echo "PASS: #31 separate-process People, visual, Settings, Photos and Albums relaunch"
+
+  # #43: real process death mid-scan. The seed opts in through the app's own
+  # host while unplugged (chain enqueued, nothing scanned). Charging lets
+  # WorkManager start the app process for the worker; it is killed with
+  # SIGKILL (like LMK/OOM; not force-stop, which cancels jobs) mid-run, and
+  # WorkManager must start it again and carry on, with no Activity at all.
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+  run_kill_phase() {
+    local phase="$1" method="$2"
+    local capture="/tmp/atlas-kill43-$phase.txt"
+    adb shell am instrument -w -r -e atlasKillPhase "$phase" \
+      -e class "nl.atlas.gallery.PeopleScanProcessKillTest#$method" "$RUNNER" \
+      > "$capture" 2>&1 || true
+    cat "$capture"
+    if ! grep -Fq 'OK (1 test)' "$capture"; then
+      echo "::error::#43 $phase real-process instrumentation failed"
+      timeout 30 adb logcat -d -b crash -t 500 || true
+      return 1
+    fi
+  }
+  app_pid() { adb shell pidof nl.atlas.gallery 2>/dev/null | tr -d '\r' || true; }
+  face_log() { timeout 30 adb logcat -d -v brief -s ATLAS_FACE:I || true; }
+  restore_pids() {
+    face_log | grep 'background_restore armed=true' |
+      sed -E 's/^[^(]*\( *([0-9]+)\).*/\1/' | sort -u
+  }
+  force_jobs() {
+    # Android 35 reports WorkManager jobs as:
+    # JOB androidx.work.systemjobscheduler:u0a150/4: ... @androidx.work.systemjobscheduler@nl.atlas.gallery/...
+    # Jobs registered in that namespace cannot be run via the default (null)
+    # namespace: cmd jobscheduler run -f nl.atlas.gallery 4 is a no-op.
+    local job namespace id result
+    while IFS= read -r job; do
+      namespace="${job#JOB }"
+      namespace="${namespace%%:*}"
+      id="${job#*/}"
+      id="${id%%:*}"
+      if [[ "$namespace" == androidx.work.systemjobscheduler ]]; then
+        result="$(adb shell cmd jobscheduler run -f --namespace "$namespace" nl.atlas.gallery "$id" 2>&1)" || {
+          echo "::warning::#43 could not run WorkManager job $namespace/$id: $result" >&2
+          continue
+        }
+      else
+        result="$(adb shell cmd jobscheduler run -f nl.atlas.gallery "$id" 2>&1)" || {
+          echo "::warning::#43 could not run WorkManager job $id: $result" >&2
+          continue
+        }
+      fi
+    done < <(adb shell dumpsys jobscheduler | tr -d '\r' |
+      grep -E '^ *JOB (androidx[.]work[.]systemjobscheduler:|#)[^[:space:]]*/[0-9]+: [0-9a-f]+ @?[^[:space:]]*nl[.]atlas[.]gallery/' |
+      sed -E 's/^ *//')
+  }
+  kill_app() {
+    local pid; pid="$(app_pid)"
+    [[ -z "$pid" ]] && return 0
+    adb shell run-as nl.atlas.gallery kill -9 "$pid" || true
+    for _ in $(seq 1 20); do [[ -z "$(app_pid)" ]] && return 0; sleep 0.5; done
+    echo "::error::#43 could not kill pid $pid"; return 1
+  }
+  wait_restore_in_new_pid() {
+    local known="$1"
+    for _ in $(seq 1 24); do
+      force_jobs
+      for _ in $(seq 1 5); do
+        local p; for p in $(restore_pids); do
+          if ! grep -qx "$p" <<<"$known"; then echo "$p"; return 0; fi
+        done
+        sleep 1
+      done
+    done
+    return 1
+  }
+  kill43_diagnostics() {
+    face_log | tail -50
+    adb shell dumpsys battery | head -12 || true
+    adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
+    timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
+  }
+  adb shell dumpsys battery unplug
+  adb logcat -c || true
+  run_kill_phase seed seedBeforeKill
+  adb logcat -c || true
+  # A finished instrumentation force-stops its target package, which cancels
+  # its jobs (and --no-restart cannot start one). So the user's next open
+  # arms the scan, as on a phone: launch ATLAS once (still unplugged), wait
+  # for its gallery publication to enqueue the chain, go Home, and SIGKILL
+  # that process. From here on no Activity may start.
+  adb shell am start -W -n nl.atlas.gallery/.MainActivity >/dev/null
+  for _ in $(seq 1 60); do
+    face_log | grep -q 'publication_done' && break
+    sleep 1
+  done
+  face_log | grep 'publication_done' || {
+    kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
+  sleep 2 # let WorkManager persist the enqueue
+  adb shell input keyevent KEYCODE_HOME
+  kill_app
+  adb logcat -c || true
+  adb shell dumpsys battery set ac 1
+  adb shell dumpsys battery set status 2
+  first="$(wait_restore_in_new_pid "")" || {
+    kill43_diagnostics; echo "::error::#43 WorkManager never restored the scan"; exit 1; }
+  # Mid-run: the worker has finished at least one batch, not its run.
+  for _ in $(seq 1 120); do
+    face_log | grep -qE "\( *$first\).*scan_batch photos=[1-9]" && break
+    sleep 0.5
+  done
+  face_log | grep -E "\( *$first\).*scan_batch photos=[1-9]" ||
+    { echo "::error::#43 the first worker process scanned nothing"; exit 1; }
+  if face_log | grep -E "\( *$first\).*scan_rate"; then
+    echo "::error::#43 the first worker run ended before the kill; not mid-scan"; exit 1
+  fi
+  [[ "$(app_pid)" == "$first" ]] || { echo "::error::#43 worker pid $first gone before kill"; exit 1; }
+  echo "#43: SIGKILL worker process $first mid-run"
+  kill_app
+  second="$(wait_restore_in_new_pid "$first")" || {
+    kill43_diagnostics; echo "::error::#43 no restore after the kill"; exit 1; }
+  echo "#43: WorkManager restarted the scan in process $second"
+  for _ in $(seq 1 120); do
+    face_log | grep -qE "\( *$second\).*scan_batch photos=[1-9]" && break
+    sleep 1
+  done
+  face_log | grep -E "\( *$second\).*scan_batch photos=[1-9]" || {
+    echo "::error::#43 the restarted worker scanned nothing"; exit 1; }
+  adb shell dumpsys battery unplug
+  kill_app
+  if timeout 30 adb logcat -d | grep -E 'START u0 .*cmp=nl[.]atlas[.]gallery/'; then
+    echo "::error::#43 an Activity was started; the resume must not need one"; exit 1
+  fi
+  if timeout 30 adb logcat -d -b crash -t 500 |
+    grep -E 'FATAL EXCEPTION|Process nl[.]atlas[.]gallery.*crashed'; then
+    echo "::error::#43 the worker process crashed"; exit 1
+  fi
+  run_kill_phase verify verifyAfterKill
+  adb shell dumpsys battery reset
+  run_kill_phase cleanup cleanupAfterKill
+  adb shell pm clear nl.atlas.gallery
+  echo "PASS: #43 a face scan killed mid-run (SIGKILL) resumed in a new worker process without the Activity"
 fi
 
 # UI evidence (#588, #586): discovery and checks live in scripts/ci_ui_evidence.sh;

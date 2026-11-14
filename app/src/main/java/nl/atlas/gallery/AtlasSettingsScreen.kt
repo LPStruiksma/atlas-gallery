@@ -19,13 +19,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
@@ -59,30 +57,11 @@ internal fun AtlasSettingsScreen(
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
-    onReadDiagnostics: suspend () -> String = { "ATLAS diagnostics unavailable" },
-    onCopyDiagnostics: (String) -> Unit = {},
-    onShareDiagnostics: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {}
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
-    var exportExpanded by rememberSaveable { mutableStateOf(false) }
-    var exported by remember { mutableStateOf<String?>(null) }
-    var exportFailed by remember { mutableStateOf(false) }
-    if (exportExpanded) {
-        LaunchedEffect(exportExpanded) {
-            exported = null
-            exportFailed = false
-            try {
-                exported = onReadDiagnostics()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                exportFailed = true
-            }
-        }
-    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -145,34 +124,6 @@ internal fun AtlasSettingsScreen(
                             TextButton(onClick = { onShareLastCrash(last) },
                                 modifier = Modifier.testTag("atlas-settings-last-crash-share")) {
                                 Text("Share")
-                            }
-                        }
-                    }
-                }
-                SettingsActionRow("Export diagnostics", "atlas-settings-export-diagnostics",
-                    onClick = { exportExpanded = !exportExpanded },
-                    value = if (exportExpanded) "Hide" else "Show")
-                if (exportExpanded) {
-                    // Explicit user action only. No identifier or media leaves the device
-                    // without the user's separate Copy or Share tap.
-                    val report = exported
-                    Text(when {
-                        exportFailed -> "Could not prepare diagnostics"
-                        report == null -> "Preparing aggregate diagnostics…"
-                        else -> report
-                    }, modifier = Modifier.fillMaxWidth().padding(12.dp)
-                        .testTag("atlas-settings-export-diagnostics-text"),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 18, overflow = TextOverflow.Ellipsis)
-                    if (report != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { onCopyDiagnostics(report) },
-                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-copy")) {
-                                Text("Copy")
-                            }
-                            TextButton(onClick = { onShareDiagnostics(report) },
-                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-share")) {
-                                Text("Share text file")
                             }
                         }
                     }
