@@ -912,13 +912,14 @@ class FaceIndexStore(
             val beforePrune = totalChanges(db)
             val modelChanged = FaceEmbeddingVersionFence.changed(priorModel, embedderVersion)
             if (modelChanged) {
+                // #48: journal only completed prior-model confirmations before
+                // marking photos queued; captureModelCarry requires processed
+                // catalog rows with a matching source embedding revision.
+                // Both original face rows and confirmations still exist here.
+                captureModelCarry(db)
                 // Model/alignment bump or v1 migration: force re-embed before displaying clusters.
                 db.execSQL("""UPDATE catalog SET state='queued', attempts=0, skip_reason=NULL,
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
-                // #48: capture human confirmations while their old face rows and
-                // embeddings still exist. Deleting faces cascades these facts.
-                // Only source-matched, unchanged boxes may be restored later.
-                captureModelCarry(db)
                 db.delete("faces", null, null) // cascades embeddings, memberships, facts
                 db.delete("people_home", null, null)
                 db.execSQL("UPDATE people_home_generation SET revision=NULL WHERE singleton=1")
