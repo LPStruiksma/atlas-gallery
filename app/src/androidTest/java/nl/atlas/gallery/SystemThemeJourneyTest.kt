@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -197,7 +198,10 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             waitFor(hasTestTag("atlas-library-status"))
             settle()
             saveUiEvidence("settings-664-menu-$tab-$mode.png")
-            compose.onNodeWithTag("atlas-library-status").performClick()
+            // Assert the Settings menu entry is still visible before clicking,
+            // then observe the destination header before inspecting its content.
+            compose.onNodeWithTag("atlas-library-status").assertIsDisplayed().performClick()
+            waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
             waitFor(hasTestTag("atlas-settings-screen"))
             if (tab == "photos") {
                 // #664 review: Photos actions must not leak into the Settings header.
@@ -224,7 +228,9 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 waitFor(hasTestTag("atlas-header-back"))
                 settle()
                 saveUiEvidence("settings-664-diagnostics-$mode.png")
+                // Diagnostics Back must reveal Settings, not the Photos route.
                 compose.onNodeWithTag("atlas-header-back").performClick()
+                waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
                 waitFor(hasTestTag("atlas-settings-screen"))
             }
             compose.onNodeWithTag("atlas-header-back").performClick()

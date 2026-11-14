@@ -1,0 +1,27 @@
+// #61: a manual foreground capability must never loosen WorkManager charging.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const read = (path) => readFileSync(path, 'utf8');
+const host = read('app/src/main/java/nl/atlas/gallery/PeopleDiscoveryHost.kt');
+const guard = read('app/src/main/java/nl/atlas/gallery/featureface/ManualFaceScanGuard.kt');
+const worker = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorker.kt');
+const runtime = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorkRuntime.kt');
+const ui = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt');
+const settings = read('app/src/main/java/nl/atlas/gallery/AtlasSettingsScreen.kt');
+const scheduling = read('app/src/main/java/nl/atlas/gallery/featureface/work/PeopleScanWorkScheduler.kt');
+const evidence = read('scripts/ui-evidence.d/61-manual-scan.txt');
+assert.match(guard, /batteryPercent\s*<\s*30/);
+assert.match(guard, /thermalStatus\s*>=\s*2/);
+assert.match(guard, /!foreground/);
+assert.match(host, /fun beginManualForeground/);
+assert.match(host, /fun stopManualForeground/);
+assert.match(host, /scheduler\.start\(\)/);
+assert.match(host, /backgroundMaintenance = !manualForegroundActive/);
+assert.match(worker, /manualForeground: Boolean = false/);
+assert.match(runtime, /!conditions\.backgroundMaintenance/);
+assert.match(ui, /atlas-people-scan-now/);
+assert.match(settings, /atlas-settings-scan-now/);
+assert.match(scheduling, /\.setRequiresCharging\(true\)/);
+assert.match(evidence, /people-61-scan-now-unplugged-light/);
+assert.match(evidence, /people-61-scan-now-unplugged-dark/);
+assert.match(evidence, /people-61-settings-battery-low-light/);
