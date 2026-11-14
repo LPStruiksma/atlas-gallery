@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import android.content.Context
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.SemanticsMatcher
@@ -13,8 +14,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -38,10 +41,14 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
     private val mode = if (dark) "dark" else "light"
     private val fixtures = SyntheticHeaderFixtures(
         sizes = List(120) { 120 to 90 },
-        folderOf = { step -> "ATLAS-Parity-Scroll-" + ((step - 1) / 5 + 1) })
+        folderOf = { step -> "ATLAS-Parity-Scroll-" + ((step - 1) / 5 + 1) },
+        beforeLaunch = ::resetParityDensity)
     private val compose = createAndroidComposeRule<MainActivity>()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
         .around(ParityNightModeRule(dark)).around(fixtures).around(compose)
+
+    @After fun restoreDensity() =
+        resetParityDensity(InstrumentationRegistry.getInstrumentation().targetContext)
 
     @Test fun photosHeaderAwayPaired() {
         compose.waitForNode(hasText("photos & videos", substring = true))
@@ -79,8 +86,12 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
                 durationMillis = 400L
             )
         }
-        compose.waitForIdle()
-        grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "5 columns"))
+        compose.waitUntil(30_000L) {
+            compose.onAllNodesWithTag("atlas-timeline-grid").fetchSemanticsNodes().any {
+                it.config.getOrNull(SemanticsProperties.StateDescription) == "7 columns"
+            }
+        }
+        grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "7 columns"))
         saveUiEvidence("parity-24-pinch-compact-$mode.png")
     }
 }
@@ -106,4 +117,10 @@ private class ParityNightModeRule(private val dark: Boolean) : TestRule {
         return ParcelFileDescriptor.AutoCloseInputStream(pfd)
             .use { it.readBytes().decodeToString() }
     }
+}
+
+/** Start each evidence journey from the actual 4-column default, not a previous test. */
+private fun resetParityDensity(context: Context) {
+    check(context.getSharedPreferences("atlas_featuregrid_density", Context.MODE_PRIVATE)
+        .edit().clear().commit()) { "Cannot reset timeline density for parity capture" }
 }
