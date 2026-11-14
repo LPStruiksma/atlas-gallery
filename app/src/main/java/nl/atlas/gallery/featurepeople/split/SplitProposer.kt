@@ -100,7 +100,7 @@ object SplitProposer {
         for ((a, b) in veto) { vetoOf[a].add(b); vetoOf[b].add(a) }
 
         // Steps 1-4 on a deterministic core.
-        val core = coreOf(n, vetoOf)
+        val core = coreOf(n, BooleanArray(n) { vetoOf[it].size > 0 })
         val groups = candidateGroups(core, vec, crowd, vetoOf, dim, tuning)
         val minSize = minGroupSize(n)
         var significant = groups.filter { it.size >= minSize }
@@ -203,14 +203,19 @@ object SplitProposer {
 
     // ---- steps 1-4 --------------------------------------------------------
 
-    /** All faces, or an even stride of them plus every face with a veto fact. */
-    private fun coreOf(n: Int, vetoOf: Array<IntList>): IntArray {
+    /**
+     * All faces, or exactly [CORE_MAX] of them: up to a quarter faces with a
+     * veto fact (so the separators take part), the rest an even stride over
+     * the other faces. Sorted, never more than [CORE_MAX].
+     */
+    internal fun coreOf(n: Int, hasVeto: BooleanArray): IntArray {
         if (n <= CORE_MAX) return IntArray(n) { it }
         val pick = BooleanArray(n)
-        val step = n.toDouble() / CORE_MAX
-        for (j in 0 until CORE_MAX) pick[(j * step).toInt()] = true
-        var extra = 0
-        for (i in 0 until n) if (vetoOf[i].size > 0 && !pick[i] && extra < CORE_MAX / 4) { pick[i] = true; extra++ }
+        var taken = 0
+        for (i in 0 until n) if (hasVeto[i] && taken < CORE_MAX / 4) { pick[i] = true; taken++ }
+        val rest = (0 until n).filter { !pick[it] }
+        val slots = CORE_MAX - taken
+        for (j in 0 until slots) pick[rest[(j.toLong() * rest.size / slots).toInt()]] = true
         return (0 until n).filter { pick[it] }.toIntArray()
     }
 
@@ -437,7 +442,8 @@ object SplitProposer {
             for (x in 1 until best.size) if (best[x] < best[lo]) lo = x
             if (s > best[lo]) best[lo] = s
         }
-        if (used == 0) return 0f
+        // The face is its group's only reference (a one-face profile): it defines the group.
+        if (used == 0) return 1f
         var s = 0f; for (x in 0 until used) s += best[x]
         return s / used
     }

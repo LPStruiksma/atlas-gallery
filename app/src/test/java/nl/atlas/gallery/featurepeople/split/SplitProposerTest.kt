@@ -236,6 +236,43 @@ class SplitProposerTest {
         assertTrue(p.k <= 1)
     }
 
+    @Test fun singleFaceIsAOneMemberNoSplit() {
+        val rng = Random(12)
+        val name = PersonKey("person-a")
+        val only = SplitFace(FaceEmbedding(id(), model, face(person(rng), rng)), confirmedAs = name)
+        val p = SplitProposer.propose(SplitRequest(listOf(only)))
+        assertEquals(1, p.k)
+        assertFalse(p.isSplit)
+        assertTrue(p.unsure.isEmpty())
+        val g = p.groups.single()
+        assertEquals(listOf(only.embedding.observation), g.members)
+        assertEquals(listOf(only.embedding.observation), g.exemplars)
+        assertEquals(name, g.keepsName)
+        assertEquals(1, g.confirmedCount)
+    }
+
+    @Test fun coreNeverExceedsItsBoundEvenWithManyVetoes() {
+        val n = 5_000
+        val hasVeto = BooleanArray(n) { it % 2 == 0 }
+        val core = SplitProposer.coreOf(n, hasVeto)
+        assertEquals(SplitProposer.CORE_MAX, core.size)
+        assertEquals(core.size, core.toSet().size)
+        assertTrue((1 until core.size).all { core[it] > core[it - 1] })
+        assertTrue(core.count { hasVeto[it] } >= SplitProposer.CORE_MAX / 4)
+        assertEquals(800, SplitProposer.coreOf(800, BooleanArray(800) { true }).size)
+    }
+
+    @Test fun manyVetoesAtScaleKeepTheBoundAndTheSplit() {
+        val rng = Random(13)
+        val faces = profile(rng, List(2) { person(rng) }, listOf(1800, 1200))
+        val a = faces.filter { it.truth == 0 }; val b = faces.filter { it.truth == 1 }
+        val pairs = (0 until 1000).map { FacePair.of(a[it].face.embedding.observation, b[it].face.embedding.observation) }.toSet()
+        val p = propose(faces, ClusterReviewFacts(cannotLink = pairs))
+        assertEquals(2, p.k)
+        assertTrue(purity(p, faces) >= 0.99)
+        for (g in p.groups) { val set = g.members.toSet(); for (pair in pairs) assertFalse(pair.first in set && pair.second in set) }
+    }
+
     /**
      * Aggregate numbers over many synthetic profiles (the licensed-face bench
      * is in tools/people_bench). Gates are loose; the printed line is the record.
