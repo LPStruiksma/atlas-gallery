@@ -917,7 +917,7 @@ class FaceIndexStore(
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
                 db.delete("faces", null, null) // cascades embeddings, memberships, facts
                 // #48: preserve human decisions before the cascade removes old
-                // model vectors. Only unchanged media with an exact face box
+                // model vectors. Only unchanged media with the same face box
                 // may receive a confirmation on the freshly embedded face.
                 captureModelCarry(db)
                 db.delete("people_home", null, null)
