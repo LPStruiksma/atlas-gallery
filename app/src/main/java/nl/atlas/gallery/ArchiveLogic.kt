@@ -78,6 +78,22 @@ class MediaRecord(
 
     val uri: String get() = if (uriIsPrefix) uriPart + id else uriPart
 
+    /**
+     * Same hash as [uri], without constructing a per-row URI for the common
+     * prefix + id case. Hash collisions are resolved by exact URI comparisons.
+     */
+    internal fun uriHashCodeWithoutAllocation(): Int {
+        if (!uriIsPrefix || id < 0L) return uriPart.hashCode()
+        var hash = uriPart.hashCode()
+        var divisor = 1L
+        while (id / divisor >= 10L) divisor *= 10L
+        while (divisor > 0L) {
+            hash = 31 * hash + ('0'.code + (id / divisor % 10L).toInt())
+            divisor /= 10L
+        }
+        return hash
+    }
+
     /** [uri] starts with [start], without building it when the shared prefix decides. */
     fun uriStartsWith(start: String): Boolean =
         if (uriIsPrefix && start.length <= uriPart.length) uriPart.startsWith(start)
