@@ -78,7 +78,7 @@ object SplitProposer {
     private const val LOUVAIN_PASSES = 32
     private const val LOUVAIN_LEVELS = 12
 
-    fun propose(request: SplitRequest): SplitProposal {
+    fun propose(request: SplitRequest, tuning: SplitTuning = SplitTuning.DEFAULT): SplitProposal {
         val input = request.faces
         require(input.size <= MAX_FACES) { "Too many faces for one split" }
         if (input.isEmpty()) return SplitProposal(emptyList(), emptyList(), 0f)
@@ -101,11 +101,11 @@ object SplitProposer {
 
         // Steps 1-4 on a deterministic core.
         val core = coreOf(n, vetoOf)
-        val groups = candidateGroups(core, vec, crowd, vetoOf, dim)
+        val groups = candidateGroups(core, vec, crowd, vetoOf, dim, tuning)
         val minSize = minGroupSize(n)
         var significant = groups.filter { it.size >= minSize }
         if (significant.isEmpty()) significant = listOf(Group(IntList().also { l -> core.forEach(l::add) }))
-        significant = foldWeak(significant, vec, crowd, vetoOf, dim)
+        significant = foldWeak(significant, vec, crowd, vetoOf, dim, tuning)
         val k = significant.size
 
         // Step 5: score every face against each group's exemplar set.
@@ -113,7 +113,7 @@ object SplitProposer {
         val scores = Array(n) { i -> FloatArray(k) { g -> topMatch(i, refs[g], vec, crowd) } }
         val first = IntArray(n) { i -> argBest(scores[i], -1) }
         if (k >= 2) addSessionBonus(faces, first, scores, k)
-        val assignment = assign(n, k, scores, vetoOf)
+        val assignment = assign(n, k, scores, vetoOf, tuning)
 
         // Step 6 and output.
         val members = Array(k) { IntList() }
@@ -219,7 +219,7 @@ object SplitProposer {
     }
 
     private fun candidateGroups(
-        core: IntArray, vec: Array<FloatArray>, crowd: FloatArray, vetoOf: Array<IntList>, dim: Int
+        core: IntArray, vec: Array<FloatArray>, crowd: FloatArray, vetoOf: Array<IntList>, dim: Int, t: SplitTuning
     ): List<Group> {
         val m = core.size
         val local = HashMap<Int, Int>(m * 2).also { map -> core.forEachIndexed { j, i -> map[i] = j } }
@@ -239,7 +239,7 @@ object SplitProposer {
                 for (x in 0 until vetoLocal[a].size) vetoMark[vetoLocal[a][x]] = true
                 for (b in topIndices(sims, k)) {
                     if (vetoMark[b]) continue
-                    val w = sims[b] - EDGE_FLOOR
+                    val w = sims[b] - t.edgeFloor
                     if (w <= 0f) continue
                     if ((adj[a][b] ?: 0f) < w) { adj[a][b] = w; adj[b][a] = w }
                 }
@@ -284,7 +284,7 @@ object SplitProposer {
         val pair = Array(p) { FloatArray(p) }
         for (a in 0 until p) for (b in a + 1 until p) { val s = score(a, b); pair[a][b] = s; pair[b][a] = s }
         while (true) {
-            var bestA = -1; var bestB = -1; var best = JOIN_FLOOR
+            var bestA = -1; var bestB = -1; var best = t.joinFloor
             for (a in 0 until p) if (alive[a]) for (b in a + 1 until p) {
                 if (!alive[b] || vetoM[a][b]) continue
                 if (pair[a][b] >= best && (bestA < 0 || pair[a][b] > best)) { best = pair[a][b]; bestA = a; bestB = b }
@@ -381,7 +381,7 @@ object SplitProposer {
 
     /** Step 4: fold groups that are not clearly their own person into their nearest partner. */
     private fun foldWeak(
-        start: List<Group>, vec: Array<FloatArray>, crowd: FloatArray, vetoOf: Array<IntList>, dim: Int
+        start: List<Group>, vec: Array<FloatArray>, crowd: FloatArray, vetoOf: Array<IntList>, dim: Int, t: SplitTuning
     ): List<Group> {
         val groups = start.toMutableList()
         while (groups.size >= 2) {
@@ -402,7 +402,7 @@ object SplitProposer {
                 val margin = coh - nearScore
                 if (margin < worstMargin) { worstMargin = margin; worst = a; partner = near }
             }
-            if (worst < 0 || worstMargin >= GAIN_MIN) break
+            if (worst < 0 || worstMargin >= t.gainMin) break
             val a = groups[worst]; val b = groups[partner]
             val joined = IntList(); for (x in 0 until a.size) joined.add(a.faces[x]); for (x in 0 until b.size) joined.add(b.faces[x])
             groups.remove(a); groups.remove(b); groups += Group(joined.sorted())
@@ -473,7 +473,7 @@ object SplitProposer {
 
     private class Assignment(val group: Int, val best: Int, val confidence: Float, val reason: UnsureReason?)
 
-    private fun assign(n: Int, k: Int, scores: Array<FloatArray>, vetoOf: Array<IntList>): Array<Assignment> {
+    private fun assign(n: Int, k: Int, scores: Array<FloatArray>, vetoOf: Array<IntList>, t: SplitTuning): Array<Assignment> {
         val out = arrayOfNulls<Assignment>(n)
         if (k == 0) {
             for (i in 0 until n) out[i] = Assignment(-1, -1, 0f, UnsureReason.NO_GROUP)
@@ -496,16 +496,16 @@ object SplitProposer {
                 if (b < 0 || s[g] > s[b]) { c = b; b = g } else if (c < 0 || s[g] > s[c]) c = g
             }
             if (b < 0) { out[i] = Assignment(-1, rawBest, 0f, UnsureReason.CONFLICT); continue }
-            if (s[b] < OUTLIER_FLOOR) {
-                out[i] = Assignment(-1, b, clamp01(s[b] / OUTLIER_FLOOR) * 0.5f, UnsureReason.OUTLIER); continue
+            if (s[b] < t.outlierFloor) {
+                out[i] = Assignment(-1, b, clamp01(s[b] / t.outlierFloor) * 0.5f, UnsureReason.OUTLIER); continue
             }
             if (k == 1) {
-                out[i] = Assignment(b, b, clamp01((s[b] - OUTLIER_FLOOR) / CONFIDENT_MARGIN), null)
+                out[i] = Assignment(b, b, clamp01((s[b] - t.outlierFloor) / CONFIDENT_MARGIN), null)
                 placed[i] = b; continue
             }
             val m = if (c < 0) CONFIDENT_MARGIN else s[b] - s[c]
             val conf = clamp01(m / CONFIDENT_MARGIN)
-            if (m < UNSURE_MARGIN) { out[i] = Assignment(-1, b, conf, UnsureReason.LOW_MARGIN); continue }
+            if (m < t.unsureMargin) { out[i] = Assignment(-1, b, conf, UnsureReason.LOW_MARGIN); continue }
             out[i] = Assignment(b, b, conf, null)
             placed[i] = b
         }
@@ -637,6 +637,17 @@ class SplitFace(
     val capturedAtMillis: Long = 0L,
     val media: Long = 0L
 )
+
+/** The cut values ([SplitProposer] constants by default); other values are for the bench only. */
+data class SplitTuning(
+    val edgeFloor: Float = SplitProposer.EDGE_FLOOR,
+    val joinFloor: Float = SplitProposer.JOIN_FLOOR,
+    val gainMin: Float = SplitProposer.GAIN_MIN,
+    val unsureMargin: Float = SplitProposer.UNSURE_MARGIN,
+    val outlierFloor: Float = SplitProposer.OUTLIER_FLOOR
+) {
+    companion object { val DEFAULT = SplitTuning() }
+}
 
 class SplitRequest(
     val faces: List<SplitFace>,

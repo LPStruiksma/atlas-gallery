@@ -7,6 +7,7 @@ import nl.atlas.gallery.featurepeople.split.SplitFace
 import nl.atlas.gallery.featurepeople.split.SplitProposal
 import nl.atlas.gallery.featurepeople.split.SplitProposer
 import nl.atlas.gallery.featurepeople.split.SplitRequest
+import nl.atlas.gallery.featurepeople.split.SplitTuning
 import java.io.DataInputStream
 import java.io.File
 import java.security.MessageDigest
@@ -26,6 +27,8 @@ import kotlin.random.Random
  *   family   two identities of one Flickr author (often relatives)
  *
  * Arguments: VECTORS [maxProfilesPerKind]
+ * -Dnomedia=1 leaves out the picture keys (no shared-picture veto).
+ * -Dtunings=join,gain[,unsure,outlier];... sweeps cut values (default: the shipped constants).
  */
 private const val MIN_FACES = 12
 
@@ -33,7 +36,7 @@ private fun fid(i: Int): String = MessageDigest.getInstance("MD5").digest("s$i".
     .joinToString("") { "%02x".format(it) }
 
 private class Row(val kind: String, val truthK: Int, val k: Int, val purity: Double, val placed: Int,
-                  val unsure: Int, val faces: Int, val coverage: Double)
+                  val unsure: Int, val faces: Int, val coverage: Double, val twoInOnePhoto: Boolean)
 
 fun main(args: Array<String>) {
     val d = DataInputStream(File(args[0]).inputStream().buffered(1 shl 20))
@@ -58,12 +61,13 @@ fun main(args: Array<String>) {
         return s / (a.size.toDouble() * b.size)
     }
 
-    fun run(kind: String, people: List<Int>): Row {
+    fun run(kind: String, people: List<Int>, tuning: SplitTuning): Row {
         val faces = people.flatMap { byLabel.getValue(it) }
         val truth = HashMap<NativeFaceObservationId, Int>()
         for (l in people) for (i in byLabel.getValue(l)) truth[emb[i].observation] = l
-        val req = SplitRequest(faces.map { SplitFace(emb[it], media = photo[it] + 1L) })
-        val p: SplitProposal = SplitProposer.propose(req)
+        val noMedia = System.getProperty("nomedia") != null
+        val req = SplitRequest(faces.map { SplitFace(emb[it], media = if (noMedia) 0L else photo[it] + 1L) })
+        val p: SplitProposal = SplitProposer.propose(req, tuning)
         var right = 0; var placed = 0
         val bestShare = HashMap<Int, Int>()
         for (g in p.groups) {
@@ -75,13 +79,13 @@ fun main(args: Array<String>) {
         // Coverage: share of each true person's faces found in its own best group (mean over people).
         val coverage = people.map { (bestShare[it] ?: 0).toDouble() / byLabel.getValue(it).size }.average()
         return Row(kind, people.size, p.k, if (placed == 0) 1.0 else right.toDouble() / placed, placed,
-            p.unsure.size, faces.size, coverage)
+            p.unsure.size, faces.size, coverage,
+            people.any { l -> byLabel.getValue(l).let { f -> f.map { photo[it] }.toSet().size < f.size } })
     }
 
     val rng = Random(105)
-    val rows = ArrayList<Row>()
-    val t0 = System.nanoTime()
-    for (l in ids.shuffled(rng).take(maxPer)) rows += run("clean", listOf(l))
+    val profiles = ArrayList<Pair<String, List<Int>>>()
+    for (l in ids.shuffled(rng).take(maxPer)) profiles += "clean" to listOf(l)
     // Two-identity profiles from different authors, with their mutual score.
     val pairs = ArrayList<Triple<Int, Int, Double>>()
     val shuffled = ids.shuffled(rng)
@@ -90,34 +94,47 @@ fun main(args: Array<String>) {
         if (authorOf[a] == authorOf[b]) continue
         pairs += Triple(a, b, meanPair(byLabel.getValue(a), byLabel.getValue(b)))
     }
-    for ((a, b, _) in pairs.shuffled(rng).take(maxPer)) rows += run("two", listOf(a, b))
+    for ((a, b, _) in pairs.shuffled(rng).take(maxPer)) profiles += "two" to listOf(a, b)
     val alike = pairs.sortedByDescending { it.third }.take(maxOf(1, pairs.size / 10)).shuffled(rng).take(maxPer)
     println("alike pairs: mean pair %.3f..%.3f".format(alike.minOf { it.third }, alike.maxOf { it.third }))
-    for ((a, b, _) in alike) rows += run("alike", listOf(a, b))
+    for ((a, b, _) in alike) profiles += "alike" to listOf(a, b)
     val family = ArrayList<List<Int>>()
     for ((_, group) in ids.groupBy { authorOf.getValue(it) }) {
         for (x in group.indices) for (y in x + 1 until group.size) family += listOf(group[x], group[y])
     }
-    for (f in family.shuffled(rng).take(maxPer)) rows += run("family", f)
+    for (f in family.shuffled(rng).take(maxPer)) profiles += "family" to f
     repeat(maxPer) {
         val pick = ids.shuffled(rng).distinctBy { authorOf[it] }.take(3)
-        if (pick.size == 3) rows += run("three", pick)
+        if (pick.size == 3) profiles += "three" to pick
     }
-    val seconds = (System.nanoTime() - t0) / 1e9
-
-    for (kind in listOf("clean", "two", "three", "alike", "family")) {
-        val r = rows.filter { it.kind == kind }
-        if (r.isEmpty()) continue
-        val kRight = r.count { it.k == it.truthK }
-        val split = r.count { it.k >= 2 }
-        val purity = r.sumOf { it.purity * it.placed } / r.sumOf { it.placed }.coerceAtLeast(1)
-        val unsure = r.sumOf { it.unsure }.toDouble() / r.sumOf { it.faces }
-        val wrongSplit = r.count { it.k >= 2 && it.purity < 0.9 }
-        println("%-7s profiles=%d k_accuracy=%.3f split=%d purity=%.4f coverage=%.3f unsure_share=%.4f impure_splits=%d k_over=%d k_under=%d"
-            .format(kind, r.size, kRight.toDouble() / r.size, split, purity, r.map { it.coverage }.average(), unsure,
-                wrongSplit, r.count { it.k > it.truthK }, r.count { it.k < it.truthK }))
+    val tunings = System.getProperty("tunings")?.split(";")?.map { spec ->
+        val v = spec.split(",").map { it.toFloat() }
+        SplitTuning(joinFloor = v[0], gainMin = v[1], unsureMargin = v.getOrElse(2) { SplitProposer.UNSURE_MARGIN },
+            outlierFloor = v.getOrElse(3) { SplitProposer.OUTLIER_FLOOR })
+    } ?: listOf(SplitTuning.DEFAULT)
+    for (tuning in tunings) {
+        println("tuning join=${tuning.joinFloor} gain=${tuning.gainMin} unsure=${tuning.unsureMargin} outlier=${tuning.outlierFloor}")
+        val t0 = System.nanoTime()
+        val rows = profiles.map { (kind, people) -> run(kind, people, tuning) }
+        val seconds = (System.nanoTime() - t0) / 1e9
+        for (kind in listOf("clean", "two", "three", "alike", "family")) {
+            val r = rows.filter { it.kind == kind }
+            if (r.isEmpty()) continue
+            val kRight = r.count { it.k == it.truthK }
+            val split = r.count { it.k >= 2 }
+            val purity = r.sumOf { it.purity * it.placed } / r.sumOf { it.placed }.coerceAtLeast(1)
+            val unsure = r.sumOf { it.unsure }.toDouble() / r.sumOf { it.faces }
+            val wrongSplit = r.count { it.k >= 2 && it.purity < 0.9 }
+            println("  %-7s profiles=%d k_accuracy=%.3f split=%d purity=%.4f coverage=%.3f unsure_share=%.4f impure_splits=%d k_over=%d k_under=%d"
+                .format(kind, r.size, kRight.toDouble() / r.size, split, purity, r.map { it.coverage }.average(), unsure,
+                    wrongSplit, r.count { it.k > it.truthK }, r.count { it.k < it.truthK }))
+        }
+        val clean = rows.filter { it.kind == "clean" }
+        // A reference identity with two faces in one photo is a labelling error (two people under one label).
+        val sound = clean.filterNot { it.twoInOnePhoto }
+        println("  false_split_rate(clean)=%.4f (%d/%d)  without label errors=%.4f (%d/%d)  profiles=%d in %.1fs".format(
+            clean.count { it.k >= 2 }.toDouble() / clean.size.coerceAtLeast(1), clean.count { it.k >= 2 }, clean.size,
+            sound.count { it.k >= 2 }.toDouble() / sound.size.coerceAtLeast(1), sound.count { it.k >= 2 }, sound.size,
+            rows.size, seconds))
     }
-    val clean = rows.filter { it.kind == "clean" }
-    println("false_split_rate(clean)=%.4f  profiles=%d in %.1fs".format(
-        clean.count { it.k >= 2 }.toDouble() / clean.size.coerceAtLeast(1), rows.size, seconds))
 }
