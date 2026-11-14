@@ -620,11 +620,15 @@ class FaceIndexStoreIdentityReviewTest {
         assertEquals(1, count(store, "people_names"))
         assertEquals(0, count(store, "embeddings"))
         assertEquals(0, count(store, "people_confirmed"))
-        val changedLease = requireNotNull(store.claim("epoch-B", 1000L))
-        assertTrue(store.completeEmbeddings(changedLease,
-            listOf(IndexedFaceBox(0.15f, 0.2f, 0.5f, 0.8f)),
-            listOf(vector(0)), "$model-v2"))
-        scanAll(store, "epoch-B", embedder = "$model-v2") { 0 }
+        var now = 1000L
+        while (true) {
+            val lease = store.claim("epoch-B", now++) ?: break
+            val isChanged = lease.media.key == media(1).key
+            val nextBox = if (isChanged) IndexedFaceBox(0.15f, 0.2f, 0.5f, 0.8f) else box
+            assertTrue(store.completeEmbeddings(lease, listOf(nextBox),
+                listOf(vector(0)), "$model-v2"))
+        }
+        assertTrue(store.materializeClusters("epoch-B"))
         val restored = requireNotNull(store.peopleReview("epoch-B"))
         assertEquals(mapOf(ana to "Ana"), restored.names)
         assertEquals(2, restored.clusters.reviews.confirmed.size)
