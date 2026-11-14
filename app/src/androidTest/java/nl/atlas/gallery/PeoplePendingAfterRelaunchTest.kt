@@ -125,10 +125,37 @@ class PeoplePendingAfterRelaunchTest {
         }
         assertTrue(store.materializeClusters(epoch))
         val stored = requireNotNull(store.peopleReview(epoch))
-        val cluster = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        // The production SFace metric was fitted to real embeddings; axis-aligned
+        // synthetic vectors do not promise an automatic three-face cluster.
+        // Explicitly join the invented observations as a human would, keeping
+        // the relaunch/pending regression independent of that metric.
+        val faceByPhoto = store.readableDatabase.rawQuery(
+            """SELECT f.media_key, f.face_uid FROM faces f
+                JOIN catalog c ON c.media_key=f.media_key
+                WHERE c.state='processed' ORDER BY f.media_key""", null
+        ).use { cursor ->
+            buildMap<Long, nl.atlas.gallery.featureface.NativeFaceObservationId> {
+                while (cursor.moveToNext()) {
+                    val mediaKey = cursor.getString(0)
+                    val photoId = (1L..4L).single { mediaKey.contains("/$" + it.toString() + "#") }
+                    put(photoId, nl.atlas.gallery.featureface.NativeFaceObservationId(cursor.getString(1)))
+                }
+            }
+        }
+        assertEquals(4, faceByPhoto.size)
+        val samePerson = (1L..3L).map { faceByPhoto.getValue(it) }
+        var reviewed = PeopleClusterReviewState(epoch, stored.generation, stored.clusters, stored.names)
+        for (next in samePerson.drop(1)) {
+            val first = requireNotNull(reviewed.clusters.clusterOf(samePerson.first()))
+            val other = requireNotNull(reviewed.clusters.clusterOf(next))
+            if (first != other) reviewed = requireNotNull(reviewPeopleCluster(
+                reviewed, PeopleReviewAction.JoinUnknownClusters(first, other)))
+        }
+        val cluster = reviewed.clusters.unknownClusters.single {
+            it.members.containsAll(samePerson) && it.members.size == 3
+        }
         val named = requireNotNull(reviewPeopleCluster(
-            PeopleClusterReviewState(epoch, stored.generation, stored.clusters, stored.names),
-            PeopleReviewAction.NameCluster(cluster.id, ana, "Ana")))
+            reviewed, PeopleReviewAction.NameCluster(cluster.id, ana, "Ana")))
         assertNotNull(store.commitPeopleReview(epoch, stored.generation, named.clusters, named.names))
         assertEquals("Ana", host.status("gallery-1").people?.people?.get(ana)?.name)
         return epoch
