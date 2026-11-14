@@ -3420,8 +3420,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     v4SyncSummary = v4SyncState
                                 ),
                                 actions = discovery.status?.actions ?: PeopleActionAvailability(),
-                                restoring = access && discovery.status == null &&
-                                    discoveryHost.discoveryOptedIn(),
+                                restoring = peopleHomeRestoring(access,
+                                    discoveryHost.discoveryOptedIn(), discovery.status),
                                 onOpenProfile = { id ->
                                     personBwFolderOnly = false
                                     personFilter = id
