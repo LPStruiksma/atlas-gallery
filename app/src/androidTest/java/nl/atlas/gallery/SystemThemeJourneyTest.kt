@@ -142,14 +142,21 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
         waitFor(hasTestTag("atlas-nav-photos"))
-        val media = compose.onAllNodes(SemanticsMatcher("visible timeline tile") { node ->
+        // MediaStore inventory loads off the Compose frame clock. Wait for the
+        // fixture's actual tile rather than sampling immediately after nav appears.
+        val visibleTile = SemanticsMatcher("visible timeline tile") { node ->
             node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
                 ?.startsWith("atlas-timeline-media-") == true
-        }).fetchSemanticsNodes()
-        val tileTag = requireNotNull(media.firstOrNull()?.config
-            ?.getOrElseNullable(SemanticsProperties.TestTag) { null }) {
-            "Synthetic Photos fixture must expose a timeline tile"
         }
+        compose.waitUntil(30_000L) {
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        val tileTag = requireNotNull(
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().firstOrNull()
+                ?.config?.getOrElseNullable(SemanticsProperties.TestTag) { null }
+        ) { "Synthetic Photos fixture must expose a timeline tile" }
         compose.onNodeWithTag(tileTag).performTouchInput { longClick() }
         waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.waitForIdle()
