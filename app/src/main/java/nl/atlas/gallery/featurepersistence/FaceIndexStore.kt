@@ -454,16 +454,18 @@ class FaceIndexStore(
     private fun restoreModelCarry(db: SQLiteDatabase, lease: IndexedFaceLease,
                                   ordinal: Int, uid: String, box: IndexedFaceBox,
                                   frameMs: Long?) {
-        val person = db.rawQuery("""SELECT person_key FROM people_model_carry
+        // SQLite's rawQuery selectionArgs cannot safely represent a nullable
+        // video timestamp: use two fixed SQL shapes, never interpolate content.
+        val sql = """SELECT person_key FROM people_model_carry
             WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
                 AND ABS(l - ?) < 0.000001 AND ABS(t - ?) < 0.000001
-                AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001
-                AND ((frame_ms IS NULL AND ? IS NULL) OR frame_ms=?)""",
-            arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
-                ordinal.toString(), box.left.toString(), box.top.toString(),
-                box.right.toString(), box.bottom.toString(),
-                frameMs?.toString(), frameMs?.toString())
-        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+                AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001""" +
+            if (frameMs == null) " AND frame_ms IS NULL" else " AND frame_ms=?"
+        val args = arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
+            ordinal.toString(), box.left.toString(), box.top.toString(),
+            box.right.toString(), box.bottom.toString())
+        val person = db.rawQuery(sql, if (frameMs == null) args else args + frameMs.toString())
+            .use { c -> if (c.moveToFirst()) c.getString(0) else null }
         if (person != null) {
             check(db.insertOrThrow("people_confirmed", null, ContentValues().apply {
                 put("face_uid", uid); put("person_key", person)
