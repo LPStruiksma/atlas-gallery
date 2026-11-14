@@ -126,6 +126,7 @@ import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.ReadOnlyComposable
 import nl.atlas.gallery.featuregrid.AtlasFeatureGrid
+import nl.atlas.gallery.featuregrid.awaitReadyUnlessUserDrags
 import nl.atlas.gallery.featuregrid.AtlasTimelineGallery
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.TimelineDisplayedSlots
@@ -940,12 +941,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var statusOpen by rememberSaveable { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
-    // One callback owns the nested Settings navigation, so Android's Back
-    // dispatcher cannot select a stale Settings-close callback while leaving
-    // Diagnostics. The same rule is used by the visible header Back action.
-    BackHandler(enabled = settingsOpen || statusOpen) {
-        if (statusOpen) statusOpen = false else settingsOpen = false
-    }
+    BackHandler(enabled = statusOpen) { statusOpen = false }
+    BackHandler(enabled = settingsOpen && !statusOpen) { settingsOpen = false }
     var albumReturnToAlbums by rememberSaveable { mutableStateOf(false) }
     // E2a (#439): Stories open over the Albums tab; no new primary destination.
     var storiesOpen by rememberSaveable { mutableStateOf(false) }
@@ -1795,11 +1792,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // The new order (async sort, album selection) and its timeline plan
         // arrive later and mount a fresh grid; settle on the top again once
         // that plan is displayed for the new catalogue.
-        val shown = withTimeoutOrNull(15_000L) {
+        // #698: but never after the user has started scrolling: a drag on
+        // either timeline before the new plan is shown cancels this reset.
+        val shown = awaitReadyUnlessUserDrags(
+            reset.map { it.interactionSource.interactions }, 15_000L
+        ) {
             snapshotFlow { timelineDisplayed?.source?.takeIf { it === latestVisible } }
                 .filterNotNull().first()
         }
-        if (shown != null) {
+        if (shown) {
             withFrameNanos { }
             reset.forEach { it.scrollToItem(0) }
         }
@@ -2222,17 +2223,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(batchSelection == null) {
         if (batchSelection == null) albumPicker = null
     }
-    // Settings owns its Back stack (Diagnostics -> Settings -> origin). Do not let
-    // the general gallery Back handler race the Settings-specific handlers.
-    BackHandler(enabled = !settingsOpen && (coverSession != null || declutterFolder != null ||
+    // This later, general BackHandler takes precedence over the earlier
+    // Settings handler. Close the visible Settings (or Diagnostics) route
+    // before modifying any of the originating tab's background state.
+    BackHandler(enabled = settingsOpen || coverSession != null || declutterFolder != null ||
         viewerUri != null || batchSelection != null || statusOpen ||
-        personFilter != null || album != null || tab != 0)) {
+        personFilter != null || album != null || tab != 0) {
         when {
+            statusOpen -> statusOpen = false
+            settingsOpen -> settingsOpen = false
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
             viewerUri != null -> closeViewer()
             batchSelection != null -> batchSelection = null
-            statusOpen -> statusOpen = false
             personFilter != null -> personFilter = null
             tab == 0 && album != null -> {
                 album = null

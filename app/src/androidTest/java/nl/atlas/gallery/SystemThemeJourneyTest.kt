@@ -30,6 +30,7 @@ import androidx.core.view.WindowCompat
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -113,6 +114,20 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * light glyphs. Samples the bottom 48 px of a real screenshot.
      */
     private fun assertDarkBottomStrip(what: String) {
+        // Compose idle does not mean SurfaceFlinger composited the viewer: one
+        // CI shot still showed the light route below (#82, mean 0.789). Poll up
+        // to 5 s; the threshold is unchanged.
+        val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+        var mean = bottomStripMean()
+        while (mean >= 0.35 && android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(250L)
+            mean = bottomStripMean()
+        }
+        assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
+            mean < 0.35)
+    }
+
+    private fun bottomStripMean(): Double {
         val shot = requireNotNull(InstrumentationRegistry.getInstrumentation()
             .uiAutomation.takeScreenshot()) { "Screenshot acquisition failed" }
         try {
@@ -126,9 +141,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                     n++
                 }
             }
-            val mean = sum / n
-            assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
-                mean < 0.35)
+            return sum / n
         } finally {
             shot.recycle()
         }
@@ -143,14 +156,21 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
         waitFor(hasTestTag("atlas-nav-photos"))
-        val media = compose.onAllNodes(SemanticsMatcher("visible timeline tile") { node ->
+        // MediaStore inventory loads off the Compose frame clock. Wait for the
+        // fixture's actual tile rather than sampling immediately after nav appears.
+        val visibleTile = SemanticsMatcher("visible timeline tile") { node ->
             node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
                 ?.startsWith("atlas-timeline-media-") == true
-        }).fetchSemanticsNodes()
-        val tileTag = requireNotNull(media.firstOrNull()?.config
-            ?.getOrElseNullable(SemanticsProperties.TestTag) { null }) {
-            "Synthetic Photos fixture must expose a timeline tile"
         }
+        compose.waitUntil(30_000L) {
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        val tileTag = requireNotNull(
+            compose.onAllNodes(visibleTile, useUnmergedTree = true)
+                .fetchSemanticsNodes().firstOrNull()
+                ?.config?.getOrElseNullable(SemanticsProperties.TestTag) { null }
+        ) { "Synthetic Photos fixture must expose a timeline tile" }
         compose.onNodeWithTag(tileTag).performTouchInput { longClick() }
         waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.waitForIdle()
@@ -217,7 +237,8 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             if (tab == "photos") {
                 settle()
                 saveUiEvidence("settings-664-advanced-$mode.png")
-                compose.onNodeWithTag("atlas-settings-diagnostics").performClick()
+                compose.onNodeWithTag("atlas-settings-diagnostics").performScrollTo().performClick()
+                waitFor(hasTestTag("atlas-header-title") and hasText("Library status"))
                 waitFor(hasTestTag("atlas-header-back"))
                 settle()
                 saveUiEvidence("settings-664-diagnostics-$mode.png")

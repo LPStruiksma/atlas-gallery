@@ -56,11 +56,36 @@ class PhotoDnaCrashScaleTest {
         assertTrue(pass.evidence.none { it.leftUri == it.rightUri })
     }
 
-    @Test fun providerThumbnailsMustBeSmallBeforeAnyPixelAllocation() {
+    @Test fun providerThumbnailsMustFitAPixelBudgetBeforeAnyPixelAllocation() {
         assertTrue(photoDnaThumbnailWithinBudget(96, 96))
         assertTrue(photoDnaThumbnailWithinBudget(256, 256))
+        assertTrue(photoDnaThumbnailWithinBudget(800, 80))
+        assertTrue(photoDnaThumbnailWithinBudget(257, 96))
+        assertFalse(photoDnaThumbnailWithinBudget(800, 100))
         assertFalse(photoDnaThumbnailWithinBudget(8000, 6000))
-        assertFalse(photoDnaThumbnailWithinBudget(257, 96))
+        assertFalse(photoDnaThumbnailWithinBudget(Int.MAX_VALUE, Int.MAX_VALUE))
         assertFalse(photoDnaThumbnailWithinBudget(96, 0))
+    }
+
+    @Test fun panoramaSourceDimensionsYieldABoundedInformativeHash() {
+        val sourceWidth = 8_000
+        val sourceHeight = 1_000
+        val requestedEdge = photoDnaThumbnailEdge(sourceWidth, sourceHeight)
+        assertEquals(90, requestedEdge)
+        val decodedWidth = sourceWidth * requestedEdge / sourceHeight
+        val decodedHeight = requestedEdge
+        assertEquals(720, decodedWidth)
+        assertTrue(photoDnaThumbnailWithinBudget(decodedWidth, decodedHeight))
+        // Invented horizontal gradient, scaled to the expected provider thumbnail.
+        val pixels = IntArray(decodedWidth * decodedHeight) { position ->
+            val gray = 10 + (position % decodedWidth) * 230 / decodedWidth
+            (0xff shl 24) or (gray shl 16) or (gray shl 8) or gray
+        }
+        val hash = nl.atlas.gallery.featurecuration.curationDHash(
+            decodedWidth, decodedHeight, pixels)
+        assertTrue(hash.informative)
+        assertEquals(96, photoDnaThumbnailEdge(1000, 1000))
+        assertEquals(28, photoDnaThumbnailEdge(8_000, 100))
+        assertEquals(96, photoDnaThumbnailEdge(0, 0))
     }
 }

@@ -562,10 +562,14 @@ class FaceIndexStoreIdentityReviewTest {
     @Test fun sourceChangeDropsFactsForOldObservationsAndModelBumpClearsNames() = withStore { store ->
         val stored = scannedLibrary(store)
         val named = nameBiggest("epoch-A", stored)
-        val cluster = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        // Split off photo 2's face, never photo 1's: members are sorted by random
+        // observation UIDs, so members.first() picked photo 1 a third of the time,
+        // and then the photo 1 edit below invalidated no confirmation at all.
+        val split = faceOf(store, "epoch-A", 2)
+        assertTrue(stored.clusters.unknownClusters.any { it.members.size == 3 && split in it.members })
         // Split-off barrier and a rejection, so every v3 table holds rows.
         val withBarrier = requireNotNull(reviewPeopleCluster(named,
-            PeopleReviewAction.SplitPerson(ana, setOf(cluster.members.first()))))
+            PeopleReviewAction.SplitPerson(ana, setOf(split))))
         assertNotNull(commit(store, "epoch-A", stored.generation, withBarrier))
         assertEquals(2, count(store, "people_confirmed"))
         assertEquals(2, count(store, "people_cannot_link"))
@@ -573,8 +577,7 @@ class FaceIndexStoreIdentityReviewTest {
 
         val oldUid = store.embeddingRecords("epoch-A", media(1).key).single().nativeFaceUid
         val oldId = NativeFaceObservationId(oldUid)
-        assertTrue(oldId in withBarrier.clusters.reviews.confirmed ||
-            withBarrier.clusters.reviews.rejectedPeople.any { it.observation == oldId })
+        assertTrue(oldId in withBarrier.clusters.reviews.confirmed)
         // Photo 1 edited: its observation is rescanned under a new ID.
         val changed = listOf(media(1, rev = 2)) + (2..4).map { media(it) }
         grant(store, "epoch-B", changed)
@@ -590,17 +593,50 @@ class FaceIndexStoreIdentityReviewTest {
             it.first in after.clusters && it.second in after.clusters })
         assertEquals(mapOf(ana to "Ana"), after.names) // other photos still name Ana
 
-        // Embedder bump: every observation is new, so identity starts empty.
+        // #48: a model change invalidates old vectors but never erases typed names.
         grant(store, "epoch-C", changed, embedder = "$model-vNext")
         assertEquals(0, count(store, "embeddings"))
         assertEquals(0, count(store, "people_confirmed"))
         assertEquals(0, count(store, "people_cannot_link"))
         assertEquals(0, count(store, "people_rejected"))
-        assertEquals(0, count(store, "people_names"))
+        assertEquals(1, count(store, "people_names"))
         scanAll(store, "epoch-C", embedder = "$model-vNext") { 0 }
         val bumped = requireNotNull(store.peopleReview("epoch-C"))
-        assertTrue(bumped.names.isEmpty())
-        assertTrue(bumped.clusters.reviews.confirmed.isEmpty())
+        assertEquals(mapOf(ana to "Ana"), bumped.names)
+        // The earlier source edit invalidated one of the two confirmations.
+        // Only the remaining source-matched face may survive the model bump.
+        assertEquals(1, bumped.clusters.reviews.confirmed.size)
+        assertTrue(bumped.clusters.reviews.confirmed.keys.none { it == oldId })
+        assertEquals(0, count(store, "people_cannot_link"))
+        assertEquals(0, count(store, "people_rejected"))
+    }
+
+    /** #48: only exact source + detector + box continuity can restore a confirmation. */
+    @Test fun modelBumpKeepsNamesButDoesNotCarryChangedFaceBox() = withStore { store ->
+        val original = scannedLibrary(store)
+        val named = nameBiggest("epoch-A", original)
+        assertNotNull(commit(store, "epoch-A", original.generation, named))
+        val oldConfirmed = store.peopleReview("epoch-A")!!.clusters.reviews.confirmed.keys
+        assertEquals(3, oldConfirmed.size)
+
+        grant(store, "epoch-B", (1..4).map { media(it) }, embedder = "$model-v2")
+        // The untouched user names survive immediately; old vectors and facts do not.
+        assertEquals(1, count(store, "people_names"))
+        assertEquals(0, count(store, "embeddings"))
+        assertEquals(0, count(store, "people_confirmed"))
+        var now = 1000L
+        while (true) {
+            val lease = store.claim("epoch-B", now++) ?: break
+            val isChanged = lease.media.key == media(1).key
+            val nextBox = if (isChanged) IndexedFaceBox(0.15f, 0.2f, 0.5f, 0.8f) else box
+            assertTrue(store.completeEmbeddings(lease, listOf(nextBox),
+                listOf(vector(0)), "$model-v2"))
+        }
+        assertTrue(store.materializeClusters("epoch-B"))
+        val restored = requireNotNull(store.peopleReview("epoch-B"))
+        assertEquals(mapOf(ana to "Ana"), restored.names)
+        assertEquals(2, restored.clusters.reviews.confirmed.size)
+        assertTrue(restored.clusters.reviews.confirmed.keys.none { it in oldConfirmed })
     }
 
     @Test fun suppressedFactWriteRollsBackWholeReview() = withStore { store ->

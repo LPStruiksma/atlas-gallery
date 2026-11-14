@@ -92,9 +92,17 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
     }
 
     private fun back() {
-        assertTrue("Android Back dismissed the sort sheet",
+        // Capture both sides of the Back handoff without changing the gesture,
+        // dismissing system overlays, or weakening the sheet assertion.
+        val before = describeFocus()
+        android.util.Log.i("ATLAS_SORT_BACK", "before Android Back: $before")
+        val accepted = try {
             InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(
-                AccessibilityService.GLOBAL_ACTION_BACK))
+                AccessibilityService.GLOBAL_ACTION_BACK)
+        } finally {
+            android.util.Log.i("ATLAS_SORT_BACK", "after Android Back: ${describeFocus()}")
+        }
+        assertTrue("Android Back action accepted (before: $before)", accepted)
     }
 
     private fun SortOrder.tag() = "atlas-photos-sort-${name.lowercase()}"

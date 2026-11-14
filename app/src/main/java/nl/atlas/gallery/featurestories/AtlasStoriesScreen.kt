@@ -515,6 +515,13 @@ private fun StoryVideoStage(
     var isPlaying by remember(uri) { mutableStateOf(false) }
     var failed by remember(uri) { mutableStateOf(false) }
     var ended by remember(uri) { mutableStateOf(false) }
+    // A still poster covers the TextureView until playback has actually
+    // started. A paused, not-yet-played texture may hold no drawable frame
+    // (emulator GPU buffers, slow decoders), which would show a black stage.
+    // Once playback has started the texture keeps its last decoded frame, so a
+    // later pause shows that frame instead of jumping back to the poster.
+    var playbackStarted by remember(uri) { mutableStateOf(false) }
+    var posterReady by remember(uri) { mutableStateOf(false) }
     val player = remember(uri) {
         ExoPlayer.Builder(context)
             .setAudioAttributes(androidx.media3.common.AudioAttributes.DEFAULT, true)
@@ -545,6 +552,7 @@ private fun StoryVideoStage(
             }
             override fun onIsPlayingChanged(value: Boolean) {
                 isPlaying = value
+                if (value) playbackStarted = true
             }
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED && latestPlaying && !ended) {
@@ -615,6 +623,20 @@ private fun StoryVideoStage(
             factory = { textureView },
             modifier = Modifier.fillMaxSize().testTag("atlas-story-video-surface")
         )
+        if (!playbackStarted) {
+            // Same Fit letterbox as fitStoryVideoTexture, so the hand-over to
+            // decoded frames does not shift the picture.
+            AsyncImage(
+                model = Uri.parse(uri), contentDescription = null,
+                contentScale = ContentScale.Fit,
+                onSuccess = { posterReady = true },
+                modifier = Modifier.fillMaxSize().testTag("atlas-story-video-poster")
+            )
+            if (posterReady) {
+                Box(Modifier.align(Alignment.TopStart).size(1.dp)
+                    .testTag("atlas-story-video-poster-ready"))
+            }
+        }
         if (firstFrame && fitApplied) {
             Box(Modifier.align(Alignment.TopStart).size(1.dp)
                 .testTag("atlas-story-video-first-frame"))

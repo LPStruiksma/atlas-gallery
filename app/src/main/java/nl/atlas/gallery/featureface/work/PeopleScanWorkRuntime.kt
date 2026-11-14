@@ -10,7 +10,8 @@ import nl.atlas.gallery.featurevisual.VisualScanResult
  * A process-local authorization boundary. A persisted WorkRequest is NEVER proof of
  * permission, opt-in, provider generation, a model version, or a scan lease.
  * The host may install a factory only after it can independently verify each fact.
- * No default factory exists and no app lifecycle automatically schedules scans.
+ * No default factory exists. #43: after process death a worker asks the app's
+ * host to rebuild its scope from stored state, which it re-verifies first.
  */
 fun interface PeopleScanRuntimeProvider {
     fun acquire(context: Context): PeopleScanSession?
@@ -61,6 +62,9 @@ object PeopleScanWorkRuntime {
     fun installForOptedInHost(newProvider: PeopleScanRuntimeProvider) {
         provider = newProvider
     }
+
+    /** True while a host of this process has installed its provider. */
+    fun installed(): Boolean = provider != null
 
     /** Revocation or host teardown immediately refuses future acquisitions. */
     fun clear() { provider = null }

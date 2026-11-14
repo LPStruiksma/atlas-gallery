@@ -300,6 +300,7 @@ class FaceIndexStore(
         createSameUnknownTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
+        createModelCarryTable(db)
         ensureDormantEpochColumn(db)
         db.beginTransaction()
         try {
@@ -355,6 +356,7 @@ class FaceIndexStore(
             revision TEXT NOT NULL, $TAKEN_MS_COLUMN)""")
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
+        createModelCarryTable(db)
     }
     /**
      * VS-V1b: add the nullable video columns to a v1..v3 file that lacks
@@ -417,6 +419,58 @@ class FaceIndexStore(
     private fun createPeopleHidden(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_hidden(
             person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256))""")
+    }
+
+    /**
+     * #48: model-change journal is app-private metadata, not a vector or media
+     * backup. It is intentionally independent of faces so the old observation
+     * can be deleted atomically while its confirmation waits for re-embedding.
+     * No inferred matches, only exact media revision/detector/ordinal/box.
+     * Names remain in people_names even when no face can safely be restored.
+     */
+    private fun createModelCarryTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_model_carry(
+            media_key TEXT NOT NULL, revision TEXT NOT NULL,
+            detector_version TEXT NOT NULL, ordinal INTEGER NOT NULL,
+            l REAL NOT NULL, t REAL NOT NULL, r REAL NOT NULL, b REAL NOT NULL,
+            frame_ms INTEGER, person_key TEXT NOT NULL,
+            PRIMARY KEY(media_key,ordinal))""")
+    }
+
+    private fun captureModelCarry(db: SQLiteDatabase) {
+        db.execSQL("""INSERT OR REPLACE INTO people_model_carry
+            (media_key,revision,detector_version,ordinal,l,t,r,b,frame_ms,person_key)
+            SELECT f.media_key,c.revision,c.detector_version,f.ordinal,
+                f.l,f.t,f.r,f.b,f.frame_ms,p.person_key
+            FROM people_confirmed p
+            JOIN faces f ON f.face_uid=p.face_uid
+            JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+            JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+            WHERE NOT EXISTS(SELECT 1 FROM people_model_carry pc
+                WHERE pc.media_key=f.media_key AND pc.ordinal=f.ordinal)""")
+    }
+
+    /** Called only inside the current lease's atomic completion transaction. */
+    private fun restoreModelCarry(db: SQLiteDatabase, lease: IndexedFaceLease,
+                                  ordinal: Int, uid: String, box: IndexedFaceBox,
+                                  frameMs: Long?) {
+        // SQLite's rawQuery selectionArgs cannot safely represent a nullable
+        // video timestamp: use two fixed SQL shapes, never interpolate content.
+        val sql = """SELECT person_key FROM people_model_carry
+            WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
+                AND ABS(l - ?) < 0.000001 AND ABS(t - ?) < 0.000001
+                AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001""" +
+            if (frameMs == null) " AND frame_ms IS NULL" else " AND frame_ms=?"
+        val args = arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
+            ordinal.toString(), box.left.toString(), box.top.toString(),
+            box.right.toString(), box.bottom.toString())
+        val person = db.rawQuery(sql, if (frameMs == null) args else args + frameMs.toString())
+            .use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        if (person != null) {
+            check(db.insertOrThrow("people_confirmed", null, ContentValues().apply {
+                put("face_uid", uid); put("person_key", person)
+            }) != -1L) { "Model carry confirmation was not saved" }
+        }
     }
 
     /**
@@ -489,8 +543,7 @@ class FaceIndexStore(
     /**
      * v3 identity review. Face-keyed rows reference `embeddings`, so they
      * cascade with the observation (source change, rescan, model bump).
-     * Person names are not face-keyed; a model bump clears them explicitly
-     * in [commitSnapshot]. `people_review_generation` changes on every
+     * Person names are not face-keyed: a model bump retains them (#48). `people_review_generation` changes on every
      * review commit and cluster publication (see [StoredPeopleReview]).
      */
     private fun createPeopleReviewTables(db: SQLiteDatabase) {
@@ -859,13 +912,15 @@ class FaceIndexStore(
             val beforePrune = totalChanges(db)
             val modelChanged = FaceEmbeddingVersionFence.changed(priorModel, embedderVersion)
             if (modelChanged) {
+                // #48: journal only completed prior-model confirmations before
+                // marking photos queued; captureModelCarry requires processed
+                // catalog rows with a matching source embedding revision.
+                // Both original face rows and confirmations still exist here.
+                captureModelCarry(db)
                 // Model/alignment bump or v1 migration: force re-embed before displaying clusters.
                 db.execSQL("""UPDATE catalog SET state='queued', attempts=0, skip_reason=NULL,
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
                 db.delete("faces", null, null) // cascades embeddings, memberships, facts
-                // Names belong to identities of the old model's observations.
-                db.delete("people_names", null, null)
-                db.delete("people_hidden", null, null)
                 db.delete("people_home", null, null)
                 db.execSQL("UPDATE people_home_generation SET revision=NULL WHERE singleton=1")
             }
@@ -882,6 +937,11 @@ class FaceIndexStore(
                 arrayOf(detectorVersion, detectorVersion))
             db.execSQL("""DELETE FROM faces WHERE media_key IN
                 (SELECT media_key FROM catalog WHERE state!='processed')""")
+            // Do not re-attach to deleted, revised or re-detected photos.
+            db.execSQL("""DELETE FROM people_model_carry WHERE NOT EXISTS
+                (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
+                    AND c.revision=people_model_carry.revision
+                    AND c.detector_version=people_model_carry.detector_version)""")
             val pruned = modelChanged || totalChanges(db) != beforePrune
             // Even identical media may have an in-flight old-epoch lease.
             db.execSQL("""UPDATE catalog SET state='queued',
@@ -1087,7 +1147,10 @@ class FaceIndexStore(
                     put("face_uid", uid); put("source_revision", lease.media.revision)
                     put("model_version", embedderVersion); put("vector", encoded[ordinal])
                 })
+                restoreModelCarry(db, lease, ordinal, uid, box, frameMs.getOrNull(ordinal))
             }
+            // Rescanned media cannot claim an old decision again.
+            db.delete("people_model_carry", "media_key=?", arrayOf(lease.media.key))
             // D2-5p: never read or rewrite other photos' clusters here; the
             // work above and below is bounded by this photo's (<=32) faces.
             // Until a batch publishes, clusterState is unavailable.
@@ -1960,43 +2023,71 @@ class FaceIndexStore(
         }
 
     /**
-     * VS-F1 (#468), read-only: the in-memory search corpus of the active
-     * [epoch] and embedder model, read in ONE epoch-gated transaction (see
-     * [authorizedEmbeddingRead]): every embedded face of a processed source at
-     * its current revision, minus faces reviewed NOT_A_FACE, with its box,
-     * published cluster anchor and the human review facts. Cluster anchors are
-     * left out while a publication is pending, so search never expands through
-     * partial membership. Null while revoked, superseded or never committed.
-     * Writes nothing; the caller holds the result only while the grant lasts.
+     * VS-F1 (#468), #64: read the current model's corpus in bounded keyset
+     * pages inside ONE epoch-gated transaction ([authorizedEmbeddingRead]).
+     * The count and every page see the same SQLite snapshot: a revoked grant,
+     * replaced model, edited source or changed review cannot mix generations.
+     *
+     * Only processed, exact-revision faces other than NOT_A_FACE are present.
+     * Cluster anchors are suppressed during partial publication. The packed
+     * corpus is the only retained vector representation; no result-set-sized
+     * cursor window or collection of decoded FloatArrays is materialised.
      */
     fun faceSearchCorpus(epoch: String): FaceSearchCorpus? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             val published = clusterGenerationClean(db)
             val facts = reviewFacts(db)
             meteredStatements++
-            db.rawQuery("""SELECT e.face_uid,e.vector,c.media_key,c.revision,
-                    f.l,f.t,f.r,f.b,m.anchor_uid,f.frame_ms
-                FROM embeddings e
+            // Count just the eligible keys (not vectors), to allocate the
+            // packed arrays once instead of doubling and then copying them.
+            val expected = db.rawQuery("""SELECT COUNT(*) FROM embeddings e
                 JOIN faces f ON f.face_uid=e.face_uid
                 JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
                     AND c.revision=e.source_revision
-                LEFT JOIN cluster_members m ON m.face_uid=e.face_uid
                 LEFT JOIN face_reviews r ON r.media_key=f.media_key AND r.ordinal=f.ordinal
-                WHERE e.model_version=? AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')
-                ORDER BY e.face_uid""", arrayOf(version)).use { c ->
-                // No c.count: on Android that walks the whole result an extra time.
-                val builder = FaceSearchCorpus.Builder(version)
-                while (c.moveToNext()) {
-                    meteredRowsRead++
-                    builder.add(NativeFaceObservationId(c.getString(0)),
-                        IndexedMedia(c.getString(2), c.getString(3)),
-                        IndexedFaceBox(c.getFloat(4), c.getFloat(5), c.getFloat(6), c.getFloat(7)),
-                        if (!published || c.isNull(8)) null else NativeFaceObservationId(c.getString(8)),
-                        FaceEmbeddingVectorCodec.decode(c.getBlob(1)),
-                        if (c.isNull(9)) null else c.getLong(9))
-                }
-                builder.build(facts, published)
+                WHERE e.model_version=? AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')""",
+                arrayOf(version)).use { c ->
+                check(c.moveToFirst()) { "Missing corpus count" }
+                c.getInt(0)
             }
+            require(expected <= FaceSearchCorpus.MAX_FACES) { "Face search corpus limit reached" }
+            val builder = FaceSearchCorpus.Builder(version, expected)
+            val pageSize = 256
+            var afterFaceUid = ""
+            var loaded = 0
+            do {
+                var pageRows = 0
+                meteredStatements++
+                db.rawQuery("""SELECT e.face_uid,e.vector,c.media_key,c.revision,
+                        f.l,f.t,f.r,f.b,m.anchor_uid,f.frame_ms
+                    FROM embeddings e
+                    JOIN faces f ON f.face_uid=e.face_uid
+                    JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                        AND c.revision=e.source_revision
+                    LEFT JOIN cluster_members m ON m.face_uid=e.face_uid
+                    LEFT JOIN face_reviews r ON r.media_key=f.media_key AND r.ordinal=f.ordinal
+                    WHERE e.face_uid>? AND e.model_version=?
+                        AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')
+                    ORDER BY e.face_uid LIMIT ?""",
+                    arrayOf(afterFaceUid, version, pageSize.toString())).use { c ->
+                    while (c.moveToNext()) {
+                        meteredRowsRead++
+                        val uid = c.getString(0)
+                        builder.add(NativeFaceObservationId(uid),
+                            IndexedMedia(c.getString(2), c.getString(3)),
+                            IndexedFaceBox(c.getFloat(4), c.getFloat(5), c.getFloat(6), c.getFloat(7)),
+                            if (!published || c.isNull(8)) null
+                                else NativeFaceObservationId(c.getString(8)),
+                            FaceEmbeddingVectorCodec.decode(c.getBlob(1)),
+                            if (c.isNull(9)) null else c.getLong(9))
+                        afterFaceUid = uid
+                        pageRows++
+                        loaded++
+                    }
+                }
+            } while (pageRows == pageSize)
+            check(loaded == expected) { "Corpus changed during snapshot read" }
+            builder.build(facts, published)
         }
 
     /**

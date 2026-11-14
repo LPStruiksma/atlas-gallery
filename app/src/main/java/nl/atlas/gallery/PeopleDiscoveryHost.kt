@@ -155,11 +155,14 @@ internal data class PeoplePowerState(
 
 /** Where the worker's bounded batches go; WorkManager in the app, a fake in tests. */
 internal interface PeopleScanScheduling {
+    /** Starts the chain, and (#43) keeps a periodic re-arm while opted in. */
     fun start()
     fun next()
     /** The next batch after a hold, with an initial delay. */
     fun later()
     fun cancel()
+    /** #43: the user stopped (off, pause) or access is gone: no re-arm either. */
+    fun disarm() = Unit
 }
 
 /** Everything People's discovery panel needs from one consistent read. */
@@ -281,6 +284,12 @@ internal fun galleryPhotoGrantToken(context: Context): String? =
 
 internal data class PublishedFaceScope(val epoch: String, val grant: String, val inventory: String)
 
+/** Visual publication is bound to its face epoch, full grant and inventory. */
+internal data class PublishedVisualScope(
+    val faceEpoch: String, val epoch: String, val grant: String,
+    val inventory: String, val leftOutPhotos: Int
+)
+
 /**
  * #31: a stable digest of what a publication would stage. Equal digests mean
  * the same media, revisions and order, so the catalogue needs no restage.
@@ -318,6 +327,8 @@ internal interface PeopleOptInMemory {
     /** #31: which epoch was last published, under which grant, for which inventory. */
     fun loadPublished(): PublishedFaceScope? = null
     fun savePublished(value: PublishedFaceScope?) = Unit
+    fun loadPublishedVisual(): PublishedVisualScope? = null
+    fun savePublishedVisual(value: PublishedVisualScope?) = Unit
 
     companion object {
         /** Forget on process death (tests, and the pre-#543 behaviour). */
@@ -351,6 +362,21 @@ internal interface PeopleOptInMemory {
                 prefs.edit().putString("published_epoch", value?.epoch)
                     .putString("published_grant", value?.grant)
                     .putString("published_inventory", value?.inventory).commit()
+            }
+            override fun loadPublishedVisual(): PublishedVisualScope? {
+                val face = prefs.getString("published_visual_face", null) ?: return null
+                val epoch = prefs.getString("published_visual_epoch", null) ?: return null
+                val grant = prefs.getString("published_visual_grant", null) ?: return null
+                val inventory = prefs.getString("published_visual_inventory", null) ?: return null
+                val leftOut = prefs.getInt("published_visual_left_out", 0)
+                return PublishedVisualScope(face, epoch, grant, inventory, leftOut)
+            }
+            override fun savePublishedVisual(value: PublishedVisualScope?) {
+                prefs.edit().putString("published_visual_face", value?.faceEpoch)
+                    .putString("published_visual_epoch", value?.epoch)
+                    .putString("published_visual_grant", value?.grant)
+                    .putString("published_visual_inventory", value?.inventory)
+                    .putInt("published_visual_left_out", value?.leftOutPhotos ?: 0).commit()
             }
         }
     }
@@ -589,7 +615,11 @@ internal class PeopleDiscoveryHost(
                 java.io.File(context.noBackupFilesDir, SiglipImageEmbedder.MODEL_DIR).exists()
             },
             scheduler = object : PeopleScanScheduling {
-                override fun start() = PeopleScanWorkScheduler.enqueueAfterVerifiedOptIn(context)
+                override fun start() {
+                    PeopleScanWorkScheduler.enqueueAfterVerifiedOptIn(context)
+                    PeopleScanWorkScheduler.enqueueRearm(context)
+                }
+                override fun disarm() = PeopleScanWorkScheduler.cancelRearm(context)
                 override fun next() = PeopleScanWorkScheduler.enqueueNextBatch(context)
                 override fun later() = PeopleScanWorkScheduler.enqueueNextBatch(context, delayed = true)
                 override fun cancel() = PeopleScanWorkScheduler.cancel(context)
@@ -627,15 +657,15 @@ internal class PeopleDiscoveryHost(
     /**
      * A visual catalogue published for one face scope, under its own epoch.
      * [cursor] is where the next step's candidate window starts (#482
-     * follow-up). It lives as long as the epoch it reads: an epoch never
-     * survives a process restart (the store clears it on open), so keeping
-     * the cursor in SQLite would add nothing.
+     * follow-up). A revived scope starts with a fresh in-memory cursor.
+     * Staging behind the readable face catalogue holds the worker.
      */
     private class VisualScope(
         val faceEpoch: String,
         val epoch: String,
         /** #631: photos left out because Android gives them no fixed ID. */
-        val leftOutPhotos: Int = 0
+        val leftOutPhotos: Int = 0,
+        val staging: Boolean = false
     ) {
         val cursor = AtomicReference<VisualMedia?>(null)
     }
@@ -845,6 +875,7 @@ internal class PeopleDiscoveryHost(
         synchronized(lock) { if (!optedIn) return; pausedByUser = true }
         optInMemory.save(PeopleOptIn(paused = true))
         scheduler.cancel()
+        scheduler.disarm()
         changed()
     }
 
@@ -880,11 +911,13 @@ internal class PeopleDiscoveryHost(
         // Explicit off or real loss of photo access: the next start is a new opt-in.
         optInMemory.save(null)
         optInMemory.savePublished(null)
+        optInMemory.savePublishedVisual(null)
         liveReview = null
         liveHome = null
         faceCrops.clear()
         PeopleScanWorkRuntime.clear()
         scheduler.cancel()
+        scheduler.disarm()
         store.invalidatePermissionScope()
         stopVisual(keepOptIn = false)
         changed()
@@ -903,6 +936,7 @@ internal class PeopleDiscoveryHost(
             }
         }
         if (!keepOptIn) optInMemory.saveVisual(false)
+        optInMemory.savePublishedVisual(null)
         visualScope = null
         try { visualStore?.invalidatePermissionScope() } catch (_: SQLException) { }
         closeEmbedder()
@@ -938,7 +972,7 @@ internal class PeopleDiscoveryHost(
         // run now, the next authorised publication can recover the choice.
         optInMemory.saveVisual(true)
         val published = s != null && photoGrantCurrent() &&
-            publishVisual(s.epoch, s.inventory)
+            (visualScope?.faceEpoch == s.epoch || publishVisual(s.epoch, s.inventory))
         if (published && !synchronized(lock) { pausedByUser }) {
             PeopleScanWorkRuntime.installForOptedInHost(provider)
             scheduler.start()
@@ -973,6 +1007,33 @@ internal class PeopleDiscoveryHost(
      * counted, exactly as face discovery omits it ([FaceCatalogAdmission]);
      * it never switches the index off for every other photo.
      */
+    private fun visualCatalogueSalt(): String =
+        "${visualModelVersion}|${visualDimension}|${visualVideoFramesFor != null}|" +
+            VisualVideoBudget.MAX_CATALOG_VIDEOS.toString()
+
+    /** Only a carried face scope under the same full grant can revive visual reads. */
+    private fun reviveVisual(faceEpoch: String, token: String,
+                             inventory: List<FaceVisibleMedia>): Boolean {
+        val store = visualStore ?: return false
+        if (!synchronized(lock) { visualOptedIn } || !scopeCurrent(faceEpoch) ||
+            photoGrantToken() != token) return false
+        val saved = optInMemory.loadPublishedVisual() ?: return false
+        if (saved.faceEpoch != faceEpoch || saved.grant != token ||
+            saved.inventory != faceInventoryDigest(inventory, visualCatalogueSalt())) return false
+        val revived = visualScope?.takeIf {
+            it.faceEpoch == faceEpoch && it.epoch == saved.epoch && !it.staging
+        }?.epoch ?: try { store.reviveDormantEpoch(visualModelVersion, visualDimension) }
+            catch (_: SQLException) { null }
+        if (revived != saved.epoch || !scopeCurrent(faceEpoch) || photoGrantToken() != token) {
+            if (revived != null) try { store.invalidateSnapshotIfCurrent(revived) }
+                catch (_: SQLException) { }
+            optInMemory.savePublishedVisual(null)
+            return false
+        }
+        visualScope = VisualScope(faceEpoch, revived, saved.leftOutPhotos)
+        return true
+    }
+
     private fun publishVisual(faceEpoch: String, inventory: List<FaceVisibleMedia>): Boolean {
         val store = visualStore ?: return false
         if (!synchronized(lock) { visualOptedIn }) return false
@@ -1011,6 +1072,11 @@ internal class PeopleDiscoveryHost(
             store.commitSnapshot(epoch, visualModelVersion, visualDimension)
             check(current()) { "Visual catalogue scope changed" }
             visualScope = VisualScope(faceEpoch, epoch, leftOutPhotos)
+            val token = photoGrantToken()
+            optInMemory.savePublishedVisual(
+                if (token != null && current()) PublishedVisualScope(faceEpoch, epoch, token,
+                    faceInventoryDigest(inventory, visualCatalogueSalt()), leftOutPhotos)
+                else null)
             if (leftOutPhotos > 0) {
                 Log.i("ATLAS_VISUAL", "Visual catalogue left out $leftOutPhotos photos without a fixed ID")
             }
@@ -1135,15 +1201,43 @@ internal class PeopleDiscoveryHost(
                 Carry.UNCHANGED -> {
                     mode = "carried"
                     // The catalogue is exactly what this inventory would stage.
-                    regroupIfRulesChanged(synchronized(lock) { scope }!!.epoch)
                     val epoch = synchronized(lock) { scope }!!.epoch
                     if (synchronized(lock) { visualOptedIn } && visualScope?.faceEpoch != epoch) {
-                        publishVisual(epoch, sorted)
+                        // Restore visual progress before the potentially long face regroup.
+                        if (token == null || !reviveVisual(epoch, token, sorted))
+                            publishVisual(epoch, sorted)
                     }
+                    regroupIfRulesChanged(epoch)
                     true
                 }
                 Carry.STAGE_BEHIND -> {
                     mode = "staged-behind"
+                    // The previous visual catalogue may remain readable only
+                    // behind this still-authorized face inventory; worker holds.
+                    if (token != null && synchronized(lock) { visualOptedIn }) {
+                        val saved = optInMemory.loadPublishedVisual()
+                        val carriedEpoch = synchronized(lock) { scope?.epoch }
+                        if (saved != null && saved.faceEpoch == carriedEpoch &&
+                            saved.grant == token && carriedEpoch != null &&
+                            scopeCurrent(carriedEpoch)) {
+                            // A fresh publication is imminent: the old visual
+                            // read remains gated by the carried face directory,
+                            // while the scan worker is suspended.
+                            val currentVisual = visualScope?.takeIf {
+                                it.faceEpoch == carriedEpoch && it.epoch == saved.epoch
+                            }?.epoch ?: try {
+                                visualStore?.reviveDormantEpoch(visualModelVersion, visualDimension)
+                            } catch (_: SQLException) { null }
+                            if (currentVisual == saved.epoch && photoGrantCurrent() &&
+                                photoGrantToken() == token) {
+                                visualScope = VisualScope(saved.faceEpoch, currentVisual,
+                                    saved.leftOutPhotos, staging = true)
+                            } else if (currentVisual != null) {
+                                try { visualStore?.invalidateSnapshotIfCurrent(currentVisual) }
+                                    catch (_: SQLException) { }
+                            }
+                        }
+                    }
                     changed() // the carried catalogue shows now; the restage follows
                     publish(galleryGrant, sorted, keepReadable = true,
                         known = token!! to digest!!)
@@ -1159,6 +1253,49 @@ internal class PeopleDiscoveryHost(
             scheduler.start()
         }
         changed()
+    }
+
+    /**
+     * #43: a background worker in a process without the Activity. Rebuilds the
+     * scope from stored state only: the kept opt-in (not paused), a stored
+     * publication, a full-library grant token and [inventory], the gallery's
+     * own grant-checked cache. Goes through [onGalleryPublication], so a real
+     * grant loss revokes exactly as in the app. True when a run is armed.
+     * Blocking; IO only.
+     */
+    fun restoreForBackgroundWork(inventory: () -> List<FaceVisibleMedia>?): Boolean {
+        val (wanted, served) = synchronized(lock) {
+            (optedIn && !pausedByUser) to (scope != null && liveEpoch == scope?.epoch)
+        }
+        if (!wanted) return restoreRefused("not_opted_in")
+        if (!served) {
+            if (!photoGrantCurrent()) {
+                // Same rule as a publication: real loss of access revokes.
+                onGalleryPublication(null) { emptyList() }
+                return restoreRefused("grant_lost")
+            }
+            // Selected-photos access, nothing published yet or no trusted
+            // inventory: this cannot run in the background. Drop the periodic
+            // re-arm; the next foreground publication arms it again (#71 S2).
+            if (photoGrantToken() == null) { scheduler.disarm(); return restoreRefused("no_token") }
+            if (optInMemory.loadPublished() == null) {
+                scheduler.disarm(); return restoreRefused("no_publication")
+            }
+            val items = inventory() ?: run { scheduler.disarm(); return restoreRefused("no_inventory") }
+            onGalleryPublication("background-" + UUID.randomUUID()) { items }
+        }
+        val armed = synchronized(lock) {
+            optedIn && !pausedByUser && scope != null && liveEpoch == scope?.epoch
+        }
+        Log.i("ATLAS_FACE", "background_restore armed=$armed reused=$served")
+        if (armed) PeopleScanWorkRuntime.installForOptedInHost(provider)
+        return armed
+    }
+
+    /** #82: say which stored-state check refused a background restore. Fixed reason codes only. */
+    private fun restoreRefused(reason: String): Boolean {
+        Log.i("ATLAS_FACE", "background_restore armed=false reason=$reason")
+        return false
     }
 
     private enum class Carry { NONE, UNCHANGED, STAGE_BEHIND }
@@ -1245,9 +1382,11 @@ internal class PeopleDiscoveryHost(
             stagingEpoch = null
         }
         optInMemory.savePublished(null)
+        optInMemory.savePublishedVisual(null)
         faceCrops.clear()
         PeopleScanWorkRuntime.clear()
         scheduler.cancel()
+        scheduler.disarm()
         stopVisual(keepOptIn = false)
         changed()
     }
@@ -1433,7 +1572,7 @@ internal class PeopleDiscoveryHost(
         override val visualStage: PeopleVisualScanStep?
             get() {
                 if (visualStore == null || !synchronized(lock) { visualOptedIn }) return null
-                if (visualScope?.faceEpoch != owned.epoch) return null
+                if (visualScope?.faceEpoch != owned.epoch || visualScope?.staging == true) return null
                 return PeopleVisualScanStep { canContinue -> runVisualStep(canContinue) }
             }
 
@@ -1449,7 +1588,7 @@ internal class PeopleDiscoveryHost(
             val store = visualStore ?: return null
             val visual = visualScope?.takeIf { it.faceEpoch == owned.epoch } ?: return null
             // A guard that fails before any work still asks for a later batch.
-            if (!canContinue()) {
+            if (visual.staging || stagingEpoch != null || !canContinue()) {
                 return VisualScanResult(0, 0, held = true, stop = VisualScanStop.BUDGET_OR_GUARD)
             }
             val window = try { authorizedWindow(store, visual) }
@@ -1563,7 +1702,7 @@ internal class PeopleDiscoveryHost(
         }
 
         private fun visualStillQueued(): Boolean {
-            val visual = visualScope?.takeIf { it.faceEpoch == owned.epoch } ?: return false
+            val visual = visualScope?.takeIf { it.faceEpoch == owned.epoch && !it.staging } ?: return false
             if (!synchronized(lock) { visualOptedIn }) return false
             val progress = try { visualStore?.progress(visual.epoch) }
                 catch (_: SQLException) { null } ?: return false
