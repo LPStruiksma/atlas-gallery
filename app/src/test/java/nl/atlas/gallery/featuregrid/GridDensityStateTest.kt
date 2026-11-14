@@ -111,7 +111,8 @@ class GridDensityStateTest {
         assertEquals(GridDensity.MEDIUM, tap.settle())
         val pinchIn = GridPinchAccumulator(GridDensity.MEDIUM)
         repeat(5) { pinchIn.addZoomFactor(0.9f) }
-        assertEquals(GridDensity.SMALL, pinchIn.settle())
+        // The five-sample pinch spans two stops now that month overview exists.
+        assertEquals(GridDensity.MONTH, pinchIn.settle())
         val pinchOut = GridPinchAccumulator(GridDensity.MEDIUM)
         repeat(5) { pinchOut.addZoomFactor(1.1f) }
         assertEquals(GridDensity.LARGE, pinchOut.settle())
