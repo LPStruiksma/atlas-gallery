@@ -303,12 +303,30 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       sed -E 's/^[^(]*\( *([0-9]+)\).*/\1/' | sort -u
   }
   force_jobs() {
-    local id
-    for id in $(adb shell dumpsys jobscheduler | tr -d '\r' |
-        grep -oE 'JOB [^[:space:]]+/[0-9]+: [0-9a-f]+ @?[^[:space:]]*nl[.]atlas[.]gallery/' |
-        sed -E 's|^JOB [^[:space:]]+/([0-9]+):.*|\1|' | sort -u); do
-      adb shell cmd jobscheduler run -f nl.atlas.gallery "$id" >/dev/null 2>&1 || true
-    done
+    # Android 35 reports WorkManager jobs as:
+    # JOB androidx.work.systemjobscheduler:u0a150/4: ... @androidx.work.systemjobscheduler@nl.atlas.gallery/...
+    # Jobs registered in that namespace cannot be run via the default (null)
+    # namespace: cmd jobscheduler run -f nl.atlas.gallery 4 is a no-op.
+    local job namespace id result
+    while IFS= read -r job; do
+      namespace="${job#JOB }"
+      namespace="${namespace%%:*}"
+      id="${job%%:*}"
+      id="${id##*/}"
+      if [[ "$namespace" == androidx.work.systemjobscheduler ]]; then
+        result="$(adb shell cmd jobscheduler run -f --namespace "$namespace" nl.atlas.gallery "$id" 2>&1)" || {
+          echo "::warning::#43 could not run WorkManager job $namespace/$id: $result" >&2
+          continue
+        }
+      else
+        result="$(adb shell cmd jobscheduler run -f nl.atlas.gallery "$id" 2>&1)" || {
+          echo "::warning::#43 could not run WorkManager job $id: $result" >&2
+          continue
+        }
+      fi
+    done < <(adb shell dumpsys jobscheduler | tr -d '\r' |
+      grep -E '^ *JOB (androidx[.]work[.]systemjobscheduler:|#)[^[:space:]]*/[0-9]+: [0-9a-f]+ @?[^[:space:]]*nl[.]atlas[.]gallery/' |
+      sed -E 's/^ *//')
   }
   kill_app() {
     local pid; pid="$(app_pid)"
