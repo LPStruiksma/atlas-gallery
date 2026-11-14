@@ -2,6 +2,7 @@ package nl.atlas.gallery
 
 import nl.atlas.gallery.featurepersistence.PeopleSafBackupIO
 import nl.atlas.gallery.featurepersistence.NativePeopleNamesPreview
+
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -11,6 +12,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.activity.result.IntentSenderRequest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -1128,6 +1131,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // running scan even while another tab is shown. Nothing starts here.
     val discoveryHost = remember(context) { PeopleDiscoveryHost.forApp(context) }
     val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, media)
+    val diagnosticPeople = discovery.status?.ui
+    LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
+        diagnosticPeople?.eligible) {
+        if (diagnosticPeople != null) {
+            AtlasDiagnosticsRing.people(diagnosticPeople.phase.name,
+                diagnosticPeople.processed, diagnosticPeople.eligible)
+        }
+    }
     var peopleReviewOpen by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
@@ -2928,6 +2939,40 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
                             onDiagnostics = { statusOpen = true },
+                            onReadDiagnostics = {
+                                captureAtlasDiagnostics(context, media, grants,
+                                    discovery.status, discoveryHost, searchGrant)
+                            },
+                            onCopyDiagnostics = { report ->
+                                val clipboard = context.getSystemService(
+                                    android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("ATLAS diagnostics", report))
+                                Toast.makeText(context, "Diagnostics copied", Toast.LENGTH_SHORT).show()
+                            },
+                            onShareDiagnostics = { report ->
+                                try {
+                                    // FileProvider serves only this cache subdirectory.
+                                    val folder = File(context.cacheDir, "diagnostics")
+                                    if (!folder.isDirectory && !folder.mkdirs()) {
+                                        throw java.io.IOException("Cannot prepare report")
+                                    }
+                                    val reportFile = File(folder, "atlas-diagnostics.txt")
+                                    reportFile.writeText(report, Charsets.UTF_8)
+                                    val uri = FileProvider.getUriForFile(context,
+                                        context.packageName + ".diagnostics", reportFile)
+                                    val send = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        clipData = ClipData.newRawUri(null, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(send, "Share diagnostics")
+                                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "Could not share diagnostics",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            },
                             onReadLastCrash = { LastCrashRecorder.read(context) },
                             onCopyLastCrash = { report ->
                                 val clipboard = context.getSystemService(

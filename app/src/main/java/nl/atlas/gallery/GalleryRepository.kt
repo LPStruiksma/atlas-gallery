@@ -29,6 +29,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class GalleryRepository(private val context: Context) {
+    /** Aggregate count from the most recent completed scan, not media identity. */
+    @Volatile var lastReusedCount: Int? = null
+        private set
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
     fun load(
         cancellationSignal: CancellationSignal? = null,
@@ -40,6 +43,7 @@ class GalleryRepository(private val context: Context) {
         previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
     ): List<MediaRecord> = failGalleryScanOnHeapExhaustion {
+        lastReusedCount = null
         loadInventory(cancellationSignal, previous, checkActive)
     }
 
@@ -79,6 +83,7 @@ class GalleryRepository(private val context: Context) {
         if (!sameMediaProviderScanSnapshot(
                 versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd))
             throw GalleryProviderSnapshotChanged()
+        lastReusedCount = reuse.reused
         // Counts only: how much of the previous inventory this scan shared.
         android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
             "reused=${reuse.reused} ${heapUseLogFields()}")
@@ -395,6 +400,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         val scanStartedNanos = System.nanoTime()
         fun scanElapsedMilliseconds(): Long =
             ((System.nanoTime() - scanStartedNanos) / 1_000_000L).coerceAtLeast(0L)
+        var diagnosticOutcome = "SUPERSEDED"
+        var diagnosticRows: Int? = null
+        var diagnosticReused: Int? = null
         // The scope belongs to the scan, not whichever Activity grant happens
         // to be visible when an asynchronous MediaStore cursor finishes.
         val observedGrantAtStart = readGalleryMediaGrant(getApplication<Application>())
@@ -442,6 +450,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
+                        diagnosticRows = inventory.size
+                        diagnosticReused = repo.lastReusedCount
+                        diagnosticOutcome = "SUCCESS"
                         // A prior failed scan followed by this exact authorized
                         // publication is now observable without logging media.
                         android.util.Log.i("ATLAS_SCAN",
@@ -464,8 +475,14 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             } catch (cancelled: CancellationException) {
                 // ViewModel disposal is not an inventory error. Never publish
                 // a misleading retry banner or spin up another canceled scan.
+                diagnosticOutcome = "CANCELLED"
                 throw cancelled
+            } catch (oom: OutOfMemoryError) {
+                diagnosticOutcome = "OUT_OF_MEMORY"
+                throw oom
             } catch (e: Exception) {
+                diagnosticOutcome = if (refreshQueue.mayPublish(ticket))
+                    atlasScanFailureOutcome(e) else "SUPERSEDED"
                 inventoryDirty = true
                 // Ignore errors from a request superseded by a newer access
                 // scope: its result is no longer authoritative either.
@@ -508,6 +525,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     }
                 }
             } finally {
+                AtlasDiagnosticsRing.scan(scanElapsedMilliseconds(), diagnosticRows,
+                    diagnosticOutcome, reused = diagnosticReused)
                 // A notification during IO marks the inventory dirty. Explicit
                 // new requests (not arbitrary continuous observer churn) get
                 // coalesced into a guaranteed follow-up read.

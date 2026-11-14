@@ -1310,6 +1310,18 @@ class FaceIndexStore(
     }
 
     /**
+     * Epoch-fenced, read-only dirty/pending aggregate for diagnostics.
+     * Do not change the publication gate or read any identity rows.
+     */
+    fun clusterGenerationDiagnostics(epoch: String): Pair<Boolean, Int>? {
+        validEpoch(epoch)
+        val db = readableDatabase
+        if (currentEpoch(db) != epoch) return null
+        val state = generation(db)
+        return state.dirty to state.pending.coerceAtLeast(0)
+    }
+
+    /**
      * #580: true while membership published under other grouping rules waits
      * to be regrouped (see [regroupOnPolicyChange]). That publication needs
      * no photo and no model, only the stored vectors, so a host may run it at
