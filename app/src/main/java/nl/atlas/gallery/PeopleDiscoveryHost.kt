@@ -874,7 +874,7 @@ internal class PeopleDiscoveryHost(
         // run now, the next authorised publication can recover the choice.
         optInMemory.saveVisual(true)
         val published = s != null && photoGrantCurrent() &&
-            publishVisual(s.epoch, s.inventory)
+            (visualScope?.faceEpoch == s.epoch || publishVisual(s.epoch, s.inventory))
         if (published && !synchronized(lock) { pausedByUser }) {
             PeopleScanWorkRuntime.installForOptedInHost(provider)
             scheduler.start()
@@ -1101,12 +1101,13 @@ internal class PeopleDiscoveryHost(
                 Carry.UNCHANGED -> {
                     mode = "carried"
                     // The catalogue is exactly what this inventory would stage.
-                    regroupIfRulesChanged(synchronized(lock) { scope }!!.epoch)
                     val epoch = synchronized(lock) { scope }!!.epoch
                     if (synchronized(lock) { visualOptedIn } && visualScope?.faceEpoch != epoch) {
+                        // Restore visual progress before the potentially long face regroup.
                         if (token == null || !reviveVisual(epoch, token, sorted))
                             publishVisual(epoch, sorted)
                     }
+                    regroupIfRulesChanged(epoch)
                     true
                 }
                 Carry.STAGE_BEHIND -> {
