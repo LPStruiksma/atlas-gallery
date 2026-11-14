@@ -21,7 +21,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featuredesign.AtlasDarkRoute
 import org.junit.Assert.assertEquals
@@ -114,10 +116,24 @@ class ViewerLightSystemBarsTest {
 
         rule.onNodeWithTag("atlas-viewer-details-open").performClick()
         rule.onNodeWithTag("atlas-viewer-details").assertExists()
-        // The final metadata row must be scrollable into the area above the nav buttons.
-        rule.onNodeWithText("Resolution").performScrollTo()
-        rule.onNodeWithText("Resolution").assertIsDisplayed()
+        // This synthetic item has no modified timestamp, so Album is the final row.
+        // Scroll its value (below Type / Photo), not Resolution a few rows above.
+        val facts = viewerDetailsFacts(photo)
+        assertTrue("fixture must end at Album", facts.modifiedAtMillis == null)
+        val albumValue = rule.onNodeWithText(facts.album)
+        albumValue.performScrollTo()
+        albumValue.assertIsDisplayed()
         rule.waitForIdle()
+        // Bounds include the actual value, not just its label. The last row
+        // must clear Android's 3-button navigation area before the PNG is saved.
+        val albumBottom = albumValue.fetchSemanticsNode().boundsInWindow.bottom
+        val sheetBottom = rule.onNodeWithTag("atlas-viewer-details")
+            .fetchSemanticsNode().boundsInWindow.bottom
+        val navBottom = ViewCompat.getRootWindowInsets(requireNotNull(window).decorView)
+            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())?.bottom ?: -1
+        assertTrue("navigation inset unavailable: $navBottom", navBottom > 0)
+        assertTrue("Album value overlaps navigation: album=$albumBottom sheet=$sheetBottom nav=$navBottom",
+            albumBottom <= sheetBottom - navBottom)
         assertDarkNavigationPixels("details $mode")
         saveUiEvidence("680-details-$mode.png")
 
