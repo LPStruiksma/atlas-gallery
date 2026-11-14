@@ -456,12 +456,13 @@ class FaceIndexStore(
                                   frameMs: Long?) {
         val person = db.rawQuery("""SELECT person_key FROM people_model_carry
             WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
-                AND l=? AND t=? AND r=? AND b=?
-                AND frame_ms IS ?""",
+                AND ABS(l - ?) < 0.000001 AND ABS(t - ?) < 0.000001
+                AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001
+                AND ((frame_ms IS NULL AND ? IS NULL) OR frame_ms=?)""",
             arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
-                ordinal.toString(), box.left.toDouble().toString(),
-                box.top.toDouble().toString(), box.right.toDouble().toString(),
-                box.bottom.toDouble().toString(), frameMs?.toString())
+                ordinal.toString(), box.left.toString(), box.top.toString(),
+                box.right.toString(), box.bottom.toString(),
+                frameMs?.toString(), frameMs?.toString())
         ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
         if (person != null) {
             check(db.insertOrThrow("people_confirmed", null, ContentValues().apply {
