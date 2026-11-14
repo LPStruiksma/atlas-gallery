@@ -48,7 +48,21 @@ class PeopleScanProcessKillTest {
                 android.os.Build.FINGERPRINT.contains("emulator"))
     }
 
-    private fun fixtures() = GalleryRepository(target).load().filter {
+    /**
+     * Fixture setup only: right after the seed inserts, MediaProvider may still
+     * be publishing the rows, so a scan sees its generation move and the strict
+     * snapshot check refuses it (GalleryProviderSnapshotChanged, seen on CI).
+     * Rescan a bounded number of times, as the app would; the check stays strict.
+     */
+    private fun settledLoad(): List<MediaRecord> {
+        repeat(SETTLE_TRIES - 1) {
+            try { return GalleryRepository(target).load() }
+            catch (e: GalleryProviderSnapshotChanged) { Thread.sleep(500) }
+        }
+        return GalleryRepository(target).load()
+    }
+
+    private fun fixtures() = settledLoad().filter {
         it.relativePath == "Pictures/$FOLDER/" && it.name.startsWith(PREFIX)
     }
 
@@ -83,7 +97,7 @@ class PeopleScanProcessKillTest {
         assertEquals(PHOTOS, fixtures().size)
         // What GalleryViewModel keeps on disk (#505), under the grant of now.
         GalleryInventoryCacheFile(File(target.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))
-            .write(readGalleryMediaGrant(target), GalleryRepository(target).load())
+            .write(readGalleryMediaGrant(target), settledLoad())
         val inventory = requireNotNull(cachedFaceInventory(target)) { "cache not trusted" }
         // The app's own host: real preferences, real database, real WorkManager.
         val host = PeopleDiscoveryHost.forApp(target)
@@ -129,6 +143,7 @@ class PeopleScanProcessKillTest {
 
     private companion object {
         const val PHOTOS = 60
+        const val SETTLE_TRIES = 10
         const val FOLDER = "ATLAS-Kill43"
         const val PREFIX = "IMG_KILL43_"
     }

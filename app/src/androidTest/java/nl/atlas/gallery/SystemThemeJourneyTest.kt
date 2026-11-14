@@ -112,6 +112,20 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * light glyphs. Samples the bottom 48 px of a real screenshot.
      */
     private fun assertDarkBottomStrip(what: String) {
+        // Compose idle does not mean SurfaceFlinger composited the viewer: one
+        // CI shot still showed the light route below (#82, mean 0.789). Poll up
+        // to 5 s; the threshold is unchanged.
+        val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+        var mean = bottomStripMean()
+        while (mean >= 0.35 && android.os.SystemClock.uptimeMillis() < deadline) {
+            Thread.sleep(250L)
+            mean = bottomStripMean()
+        }
+        assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
+            mean < 0.35)
+    }
+
+    private fun bottomStripMean(): Double {
         val shot = requireNotNull(InstrumentationRegistry.getInstrumentation()
             .uiAutomation.takeScreenshot()) { "Screenshot acquisition failed" }
         try {
@@ -125,9 +139,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                     n++
                 }
             }
-            val mean = sum / n
-            assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
-                mean < 0.35)
+            return sum / n
         } finally {
             shot.recycle()
         }

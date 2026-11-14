@@ -1084,21 +1084,21 @@ internal class PeopleDiscoveryHost(
         val (wanted, served) = synchronized(lock) {
             (optedIn && !pausedByUser) to (scope != null && liveEpoch == scope?.epoch)
         }
-        if (!wanted) return false
+        if (!wanted) return restoreRefused("not_opted_in")
         if (!served) {
             if (!photoGrantCurrent()) {
                 // Same rule as a publication: real loss of access revokes.
                 onGalleryPublication(null) { emptyList() }
-                return false
+                return restoreRefused("grant_lost")
             }
             // Selected-photos access, nothing published yet or no trusted
             // inventory: this cannot run in the background. Drop the periodic
             // re-arm; the next foreground publication arms it again (#71 S2).
-            if (photoGrantToken() == null || optInMemory.loadPublished() == null) {
-                scheduler.disarm()
-                return false
+            if (photoGrantToken() == null) { scheduler.disarm(); return restoreRefused("no_token") }
+            if (optInMemory.loadPublished() == null) {
+                scheduler.disarm(); return restoreRefused("no_publication")
             }
-            val items = inventory() ?: run { scheduler.disarm(); return false }
+            val items = inventory() ?: run { scheduler.disarm(); return restoreRefused("no_inventory") }
             onGalleryPublication("background-" + UUID.randomUUID()) { items }
         }
         val armed = synchronized(lock) {
@@ -1107,6 +1107,12 @@ internal class PeopleDiscoveryHost(
         Log.i("ATLAS_FACE", "background_restore armed=$armed reused=$served")
         if (armed) PeopleScanWorkRuntime.installForOptedInHost(provider)
         return armed
+    }
+
+    /** #82: say which stored-state check refused a background restore. Fixed reason codes only. */
+    private fun restoreRefused(reason: String): Boolean {
+        Log.i("ATLAS_FACE", "background_restore armed=false reason=$reason")
+        return false
     }
 
     private enum class Carry { NONE, UNCHANGED, STAGE_BEHIND }
