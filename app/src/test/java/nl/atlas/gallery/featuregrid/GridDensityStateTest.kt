@@ -142,7 +142,7 @@ class GridDensityStateTest {
     }
 
     @Test fun densityLabelsAndFallbackAreStable() {
-        assertEquals(listOf(3, 4, 7), GridDensity.entries.map { it.columns })
+        assertEquals(listOf(3, 4, 7, 12, 28), GridDensity.entries.map { it.columns })
         assertEquals(GridDensity.MEDIUM, GridDensity.fromColumns(13))
     }
 
