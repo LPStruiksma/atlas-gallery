@@ -80,6 +80,11 @@ class PeopleScanProcessKillTest {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }, null, null)
         }
+        // The provider finishes publishing the new rows in the background; a scan
+        // started before that sees its generation move and refuses the snapshot
+        // (GalleryProviderSnapshotChanged, seen on CI). Wait for it, as an app would
+        // simply rescan. The snapshot check itself stays strict.
+        if (android.os.Build.VERSION.SDK_INT >= 30) MediaStore.waitForIdle(target.contentResolver)
         assertEquals(PHOTOS, fixtures().size)
         // What GalleryViewModel keeps on disk (#505), under the grant of now.
         GalleryInventoryCacheFile(File(target.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))

@@ -562,10 +562,14 @@ class FaceIndexStoreIdentityReviewTest {
     @Test fun sourceChangeDropsFactsForOldObservationsAndModelBumpClearsNames() = withStore { store ->
         val stored = scannedLibrary(store)
         val named = nameBiggest("epoch-A", stored)
-        val cluster = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        // Split off photo 2's face, never photo 1's: members are sorted by random
+        // observation UIDs, so members.first() picked photo 1 a third of the time,
+        // and then the photo 1 edit below invalidated no confirmation at all.
+        val split = faceOf(store, "epoch-A", 2)
+        assertTrue(stored.clusters.unknownClusters.any { it.members.size == 3 && split in it.members })
         // Split-off barrier and a rejection, so every v3 table holds rows.
         val withBarrier = requireNotNull(reviewPeopleCluster(named,
-            PeopleReviewAction.SplitPerson(ana, setOf(cluster.members.first()))))
+            PeopleReviewAction.SplitPerson(ana, setOf(split))))
         assertNotNull(commit(store, "epoch-A", stored.generation, withBarrier))
         assertEquals(2, count(store, "people_confirmed"))
         assertEquals(2, count(store, "people_cannot_link"))
@@ -573,8 +577,7 @@ class FaceIndexStoreIdentityReviewTest {
 
         val oldUid = store.embeddingRecords("epoch-A", media(1).key).single().nativeFaceUid
         val oldId = NativeFaceObservationId(oldUid)
-        assertTrue(oldId in withBarrier.clusters.reviews.confirmed ||
-            withBarrier.clusters.reviews.rejectedPeople.any { it.observation == oldId })
+        assertTrue(oldId in withBarrier.clusters.reviews.confirmed)
         // Photo 1 edited: its observation is rescanned under a new ID.
         val changed = listOf(media(1, rev = 2)) + (2..4).map { media(it) }
         grant(store, "epoch-B", changed)
