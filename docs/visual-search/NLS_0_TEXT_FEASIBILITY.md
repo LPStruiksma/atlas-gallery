@@ -41,7 +41,7 @@ As with the image tower in VS-S0, a single MLP output projection has activation 
 
 Latency is one query, batch 1. The Python tokenizer takes 0.02 ms; on the device it needs a SentencePiece implementation (a Kotlin port, or ONNX Runtime Extensions' tokenizer op), which is NLS-1 work. The checkpoint's logit parameters are t = 4.72 (scale 112.7) and b = −16.77; a per-image probability is `sigmoid(112.7 · cos − 16.77)`, which NLS-1 can use as an absolute "nothing matches" threshold.
 
-**Licence:** weights as VS-S0 (Apache-2.0, big_vision). The Gemma tokenizer file is the one big_vision's own SigLIP 2 and PaliGemma code loads from the same bucket (`gs://big_vision/gemma_tokenizer.model`, pinned by SHA-256 in `models.json`). The big_vision README says everything in big_vision, including models, is Apache-2.0, and `README_siglip2.md` names the Gemma tokenizer as part of the SigLIP 2 release. Review should confirm that this is enough before the tokenizer ships in the APK.
+**Licence:** weights as VS-S0 (Apache-2.0, big_vision). The Gemma tokenizer file is the one big_vision's own SigLIP 2 and PaliGemma code loads from the same bucket (`gs://big_vision/gemma_tokenizer.model`, pinned by SHA-256 in `models.json`). The big_vision README says everything in big_vision, including models, is Apache-2.0, and `README_siglip2.md` names the Gemma tokenizer as part of the SigLIP 2 release. Because the file is fetched from a bucket rather than from the repository, that statement alone is not proof of its redistribution licence: NLS-1 must confirm it before bundling the tokenizer in the APK (open item from the NLS-0 review).
 
 ## Benchmark
 
