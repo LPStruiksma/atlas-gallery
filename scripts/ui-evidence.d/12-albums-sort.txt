@@ -1,0 +1,10 @@
+# Issue #20 · Samsung parity R3/P5 Albums sort choice sheet.
+# Galaxy S24+ 1080x2340; all four selected choices in each app theme.
+albums-12-recent-light
+albums-12-name-light
+albums-12-count-light
+albums-12-custom-light
+albums-12-recent-dark
+albums-12-name-dark
+albums-12-count-dark
+albums-12-custom-dark
