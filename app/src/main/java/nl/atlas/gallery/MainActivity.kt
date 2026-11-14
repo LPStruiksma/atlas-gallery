@@ -2218,9 +2218,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(batchSelection == null) {
         if (batchSelection == null) albumPicker = null
     }
-    BackHandler(enabled = coverSession != null || declutterFolder != null ||
+    // Settings owns its Back stack (Diagnostics -> Settings -> origin). Do not let
+    // the general gallery Back handler race the Settings-specific handlers.
+    BackHandler(enabled = !settingsOpen && (coverSession != null || declutterFolder != null ||
         viewerUri != null || batchSelection != null || statusOpen ||
-        personFilter != null || album != null || tab != 0) {
+        personFilter != null || album != null || tab != 0)) {
         when {
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
