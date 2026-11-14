@@ -39,7 +39,7 @@ class ParityCaptureContractTest(unittest.TestCase):
 
     def test_all_required_capture_rows_have_real_instrumented_producers(self):
         rows = matrix.read_contract()
-        self.assertEqual(26, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(30, sum(bool(r["source_png"]) for r in rows))
         source = (ROOT / "app/src/androidTest/java/nl/atlas/gallery/"
                   "SystemThemeJourneyTest.kt").read_text(encoding="utf-8")
         for name in (
@@ -49,6 +49,15 @@ class ParityCaptureContractTest(unittest.TestCase):
         ):
             self.assertIn('saveUiEvidence("' + name + '")', source)
         self.assertIn('waitFor(hasTestTag("atlas-filmstrip"))', source)
+        additional = (ROOT / "app/src/androidTest/java/nl/atlas/gallery/"
+                      "ParityAdditionalThemeJourneyTest.kt").read_text(encoding="utf-8")
+        for name in (
+            "parity-24-header-away-$mode.png",
+            "parity-24-pinch-compact-$mode.png",
+        ):
+            self.assertIn('saveUiEvidence("' + name + '")', additional)
+        self.assertIn('"5 columns"', additional)
+        self.assertIn('"atlas-header-subtitle"', additional)
 
     def test_matrix_is_verified_and_uploaded_through_existing_ci_artifact(self):
         shell = (ROOT / "scripts/ci_ui_evidence.sh").read_text(encoding="utf-8")
