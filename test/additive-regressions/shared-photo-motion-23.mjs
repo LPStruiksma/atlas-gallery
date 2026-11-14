@@ -28,7 +28,7 @@ test("viewer motion is bounded to matching URI and access epoch", () => {
 test("return still uses the settled Viewer URI, and never shrinks to a different photo", () => {
   assert.match(main, /onExitSettledUri\s*=\s*\{ lastViewedUri ->/);
   assert.match(main, /pendingViewerReturn\s*=\s*PendingViewerReturn\(/);
-  assert.match(main, /sharedPhotoOrigin\?\.media\?\.uri == lastSettledViewerUri/);
+  assert.match(main, /origin\.media\.uri == lastSettledViewerUri/);
   assert.match(main, /SharedPhotoMotionLayer\(/);
 });
 
