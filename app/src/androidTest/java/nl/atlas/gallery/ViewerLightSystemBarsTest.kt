@@ -120,6 +120,10 @@ class ViewerLightSystemBarsTest {
         // Scroll its value (below Type / Photo), not Resolution a few rows above.
         val facts = viewerDetailsFacts(photo)
         assertTrue("fixture must end at Album", facts.modifiedAtMillis == null)
+        // The final-row value can be unplaced before the sheet scrolls.
+        // Bring its label into view first; still assert the value itself.
+        assertEquals("ATLAS-680", facts.album)
+        rule.onNodeWithText("Album", substring = false).performScrollTo()
         val albumValue = rule.onNodeWithText(facts.album, substring = false)
         albumValue.performScrollTo()
         albumValue.assertIsDisplayed()
