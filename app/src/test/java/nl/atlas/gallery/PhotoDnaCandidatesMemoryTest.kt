@@ -70,6 +70,10 @@ class PhotoDnaCandidatesMemoryTest {
         rows += photo(608, 121) // same id, other volume: a distinct file
         rows += photo(609, 5_000L)
         rows += photo(610, 5_000L)
+        // A bad catalogue row can repeat a canonical URI with a different id.
+        // Duplicate detection must not assume identical URIs imply identical ids.
+        rows += photo(611, 121, uri = "content://media/external/images/media/609")
+        rows += photo(612, 121, uri = "content://media/external/images/media/609")
         return rows
     }
 
@@ -84,8 +88,9 @@ class PhotoDnaCandidatesMemoryTest {
             assertEquals(budget.toString(), expected.records, actual.records)
             assertEquals(budget.toString(), expected.deferredFiles, actual.deferredFiles)
         }
+        source.forEach { assertEquals(it.uri.hashCode(), it.uriHashCodeWithoutAllocation()) }
         assertEquals(source.filter { legacyEligible(it, PhotoDnaBudget()) }
-            .filter { it.id != 607L }.map { it.uri },
+            .filter { it.id !in setOf(607L, 609L, 611L, 612L) }.map { it.uri },
             photoDnaDistinctEligible(source).map { it.uri })
     }
 
@@ -103,7 +108,9 @@ class PhotoDnaCandidatesMemoryTest {
     }
 
     @Test fun aQuarterMillionRowsPlanWithinBudgetAndMatchTheFormerPlanner() {
-        val source = (1L..250_000L).map { photo(it, size = 64L + it / 2) }
+        // One repeated URI must not force URI materialisation for 250k other rows.
+        val source = (1L..250_000L).map { photo(it, size = 64L + it / 2) } +
+            photo(1L, size = 64L)
         lateinit var result: PhotoDnaCandidates
         lateinit var legacy: PhotoDnaCandidates
         photoDnaCandidates(source); legacyCandidates(source) // warm up
@@ -116,6 +123,6 @@ class PhotoDnaCandidatesMemoryTest {
         assertTrue(result.records.size <= PhotoDnaBudget().maxFiles)
         assertEquals(legacy.records, result.records)
         assertEquals(legacy.deferredFiles, result.deferredFiles)
-        assertTrue("allocated ${newBytes / mib} MiB vs ${oldBytes / mib}", newBytes * 2 < oldBytes)
+        assertTrue("allocated ${newBytes / mib} MiB vs ${oldBytes / mib}", newBytes * 3 < oldBytes)
     }
 }
