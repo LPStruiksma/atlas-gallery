@@ -83,7 +83,8 @@ class MediaRecord(
      * prefix + id case. Hash collisions are resolved by exact URI comparisons.
      */
     internal fun uriHashCodeWithoutAllocation(): Int {
-        if (!uriIsPrefix || id < 0L) return uriPart.hashCode()
+        if (!uriIsPrefix) return uriPart.hashCode()
+        if (id < 0L) return uri.hashCode()
         var hash = uriPart.hashCode()
         var divisor = 1L
         while (id / divisor >= 10L) divisor *= 10L
