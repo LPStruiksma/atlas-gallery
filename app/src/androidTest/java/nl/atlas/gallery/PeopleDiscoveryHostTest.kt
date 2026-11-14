@@ -8,6 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
@@ -49,6 +53,7 @@ import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -86,6 +91,8 @@ class PeopleDiscoveryHostTest {
 
     @Volatile private var granted = true
     @Volatile private var charging = true
+    @Volatile private var batteryPercent = 100
+    @Volatile private var thermalStatus = 0
     private val decoded = AtomicInteger()
     private val scheduler = RecordingScheduler()
 
@@ -144,11 +151,73 @@ class PeopleDiscoveryHostTest {
                         480, 480, 0.4f + 0.02f * id, 0.5f, 0.8f + 0.01f * id)))
                 }
             },
-            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true) },
+            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true,
+                batteryPercent = batteryPercent, thermalStatus = thermalStatus) },
             scheduler = scheduler,
             publishClusters = publish?.invoke(store) ?: store::publishClustersIfDue,
             optInMemory = optIn
         )
+    }
+
+    /**
+     * #61: a genuine fake-media host batch remains safe unplugged, and the
+     * charging-constrained WorkManager chain is rearmed when manual mode ends.
+     * A separate screenshot test declares the light/dark rendered proof.
+     */
+    @Test fun manualUnpluggedScanRearmsChargingOnlyWorkAndHonorsStops() {
+        charging = false
+        batteryPercent = 80
+        thermalStatus = 0
+        val host = host()
+        val grant = "manual-unplugged"
+        host.setForegroundVisible(true)
+        val token = requireNotNull(host.beginManualForeground(grant, inventory))
+        assertTrue(host.manualScanActive(token))
+        assertTrue(scheduler.cancels.get() > 0)
+        val first = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true, isStopped = { false })
+        }
+        assertNotNull(first)
+        assertTrue("synthetic photo indexed", first!!.photosIndexed > 0)
+        val indexed = decoded.get()
+        assertEquals(0, scheduler.nexts.get())
+        assertEquals(0, scheduler.laters.get())
+
+        batteryPercent = 29
+        val low = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, low?.stop)
+        assertEquals(indexed, decoded.get())
+        assertEquals("Battery below 30%", host.manualHoldReason(token))
+
+        batteryPercent = 80
+        thermalStatus = 2
+        val hot = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { false },
+                manualForeground = true, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, hot?.stop)
+        assertEquals("Waiting for phone to cool", host.manualHoldReason(token))
+        assertEquals(indexed, decoded.get())
+
+        thermalStatus = 0
+        val startsBefore = scheduler.starts.get()
+        host.setForegroundVisible(false)
+        assertFalse(host.manualScanActive(token))
+        assertTrue("restore charging-only worker on foreground exit",
+            scheduler.starts.get() > startsBefore)
+        val workerHeld = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true }, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, workerHeld?.stop)
+        assertEquals(indexed, decoded.get())
+        // Old job's finally cannot rearm twice or end a newer token.
+        val startsAfter = scheduler.starts.get()
+        host.stopManualForeground(token)
+        assertEquals(startsAfter, scheduler.starts.get())
     }
 
     @After fun cleanUp() {
