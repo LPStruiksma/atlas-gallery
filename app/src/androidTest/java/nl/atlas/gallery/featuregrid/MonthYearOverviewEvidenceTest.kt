@@ -135,7 +135,10 @@ class MonthYearOverviewEvidenceTest {
             compose.runOnIdle {
                 dark.value = useDark
                 ratio.value = false
-                displayed.set(null)
+                // Do not clear the slot callback here: the first composition may
+                // already have published it, and an unchanged ready plan will
+                // not re-emit after this idle callback. A remounted theme clears
+                // its old slots through AtlasTimelineGallery.onDispose.
             }
             val theme = if (useDark) "dark" else "light"
             awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
