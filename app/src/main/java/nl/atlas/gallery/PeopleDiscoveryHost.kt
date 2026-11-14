@@ -1719,6 +1719,52 @@ internal class PeopleDiscoveryHost(
     }
 
     /**
+     * #62: scoped native names backup, distinct from the old V4 path-bearing
+     * format. Both calls are blocking and must run on Dispatchers.IO.
+     */
+    fun exportNamesBackup(galleryGrant: String?): ByteArray {
+        val epoch = displayEpoch(galleryGrant)
+            ?: error("People is unavailable; grant photo access and open People first")
+        return synchronized(reviewLock) {
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            val snapshot = store.exportNativeNamesSnapshot(epoch)
+                ?: error("People groups are updating; retry after publication")
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec.encode(snapshot)
+        }
+    }
+
+    fun importNamesBackup(
+        galleryGrant: String?, bytes: ByteArray, approvedChecksum: String
+    ): nl.atlas.gallery.featurepersistence.NativePeopleNamesImportResult {
+        val codec = nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec
+        require(codec.checksum(bytes) == approvedChecksum) {
+            "Selected names backup changed after the preview"
+        }
+        val snapshot = codec.decode(bytes)
+        val epoch = displayEpoch(galleryGrant)
+            ?: error("People is unavailable; grant photo access and open People first")
+        val result = synchronized(reviewLock) {
+            require(scopeCurrent(epoch)) { "People permission changed" }
+            val merged = store.importNativeNamesSnapshot(epoch, snapshot)
+            liveReview = null
+            liveHome = null
+            if (merged.applied > 0 && store.regroupPending(epoch)) {
+                var parts = 0
+                do {
+                    require(scopeCurrent(epoch)) { "People permission changed during restore" }
+                    check(store.materializeClusters(epoch)) { "People grouping cannot finish" }
+                    parts++
+                } while (store.clusterPublicationContinues(epoch) &&
+                    parts < MAX_REGROUP_PARTS)
+            }
+            merged
+        }
+        changed()
+        return result
+    }
+
+    /**
      * #580: the People numbers of the current scope (see [PeopleNumbers]):
      * counts of faces, groups and review taps, nothing that names a face or a
      * person. Null while the scope is gone or groups are mid-publication.
