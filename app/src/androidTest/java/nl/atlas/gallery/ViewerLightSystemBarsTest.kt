@@ -51,7 +51,7 @@ class ViewerLightSystemBarsTest {
         val mode = if (dark) "dark" else "light"
         val photo = MediaRecord(
             id = 680L, uri = "content://synthetic-atlas-test/images/680",
-            name = "Fictional-680.jpg", relativePath = "DCIM/Camera/",
+            name = "Fictional-680.jpg", relativePath = "DCIM/ATLAS-680/",
             sizeBytes = 1_234_567L, takenAtMillis = 1_600_000_000_000L,
             isVideo = false
         )
@@ -120,7 +120,7 @@ class ViewerLightSystemBarsTest {
         // Scroll its value (below Type / Photo), not Resolution a few rows above.
         val facts = viewerDetailsFacts(photo)
         assertTrue("fixture must end at Album", facts.modifiedAtMillis == null)
-        val albumValue = rule.onNodeWithText(facts.album)
+        val albumValue = rule.onNodeWithText(facts.album, substring = false)
         albumValue.performScrollTo()
         albumValue.assertIsDisplayed()
         rule.waitForIdle()
