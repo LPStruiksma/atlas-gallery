@@ -247,6 +247,9 @@ class PeopleForceStopRelaunchTest {
         assertTrue("visual toggle activates with synthetic fixture",
             scanner.setVisualIndex(true))
         assertTrue(choices.loadVisual())
+        val visualStatus = requireNotNull(scanner.visualStatus(epoch))
+        assertEquals("visual catalogue was staged before force-stop", PHOTOS, visualStatus.total)
+        assertNotNull(choices.loadPublishedVisual())
         waitFor("named People tile") { has("atlas-native-person-album") }
         capture("before")
     }
@@ -299,6 +302,11 @@ class PeopleForceStopRelaunchTest {
         assertTrue("face scan did not restart from zero", progress.processed >= PHOTOS)
         assertTrue("visual index choice remained on",
             scanner.visualStatus(epoch)?.enabled == true)
+        assertEquals("first Settings frame retains carried visual catalogue",
+            PHOTOS, scanner.visualStatus(epoch)?.total)
+        assertNotNull("carried visual publication must remain recorded",
+            choices.loadPublishedVisual())
+        assertEquals(epoch, choices.loadPublishedVisual()?.faceEpoch)
         capturePeopleAndSettings("after")
     }
 
