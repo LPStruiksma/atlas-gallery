@@ -1,0 +1,10 @@
+# #16 six-stop Samsung timeline zoom (MonthYearOverviewEvidenceTest).
+# S24+ 1080x2340 synthetic media; each theme follows 7 -> 12 -> 28 -> ratio.
+zoom-16-light-7
+zoom-16-light-12-month
+zoom-16-light-28-year
+zoom-16-light-original
+zoom-16-dark-7
+zoom-16-dark-12-month
+zoom-16-dark-28-year
+zoom-16-dark-original

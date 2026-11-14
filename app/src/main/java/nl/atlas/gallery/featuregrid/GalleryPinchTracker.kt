@@ -23,9 +23,10 @@ import kotlin.math.hypot
 class GalleryPinchTracker(
     private val initial: GalleryZoomStop,
     private val touchSlopPx: Float,
-    allowOriginal: Boolean = true
+    allowOriginal: Boolean = true,
+    allowOverview: Boolean = true
 ) {
-    private val ladder = GalleryZoomGesture(initial, allowOriginal)
+    private val ladder = GalleryZoomGesture(initial, allowOriginal, allowOverview)
     private var baselineSpan = Float.NaN
     private var lastSpan = Float.NaN
     private var lastCount = 0
