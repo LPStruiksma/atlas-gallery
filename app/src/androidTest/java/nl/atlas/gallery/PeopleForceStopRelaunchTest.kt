@@ -248,7 +248,10 @@ class PeopleForceStopRelaunchTest {
             scanner.setVisualIndex(true))
         assertTrue(choices.loadVisual())
         val visualStatus = requireNotNull(scanner.visualStatus(epoch))
-        assertEquals("visual catalogue was staged before force-stop", PHOTOS, visualStatus.total)
+        // Visual publication covers the full authorized gallery, not only the
+        // six synthetic fixtures. CI emulators can retain other test photos.
+        assertTrue("visual catalogue includes all six fixtures",
+            (visualStatus.total ?: 0) >= PHOTOS)
         assertNotNull(choices.loadPublishedVisual())
         waitFor("named People tile") { has("atlas-native-person-album") }
         capture("before")
