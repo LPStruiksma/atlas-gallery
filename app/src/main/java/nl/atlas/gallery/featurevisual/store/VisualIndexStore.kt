@@ -56,8 +56,8 @@ data class VisualIndexedVector(
 
 /**
  * App-private semantic index. Caller owns Android grant checking and provides
- * fresh, single-use permission epochs; a database reopen NEVER reinstates a
- * saved grant. All public APIs are serialised against synchronous revocation.
+ * fresh, single-use permission epochs; a database reopen keeps the previous
+ * epoch dormant, never readable until the host independently authorizes it. All public APIs are serialised against synchronous revocation.
  *
  * One catalogue row per image or keyframe, with source revision and an int8
  * embedding stored separately. A model/dimension bump clears all vectors;
@@ -79,8 +79,9 @@ class VisualIndexStore(context: Context) :
          * v2 (VS-S1c): `skips` records unreadable items per revision and model (#480).
          * v3 (VS-V2): `moments` holds video keyframe vectors; `failures` counts
          * unexpected failures per item and model (#482 follow-up).
+         * v4 (#67): a previously active visual epoch is reopened dormant.
          */
-        const val SCHEMA_VERSION = 3
+        const val SCHEMA_VERSION = 4
         const val MAX_MEDIA = 500_000
         const val MAX_BATCH = 1024
         const val DEFAULT_DIMENSION = 768
@@ -105,7 +106,7 @@ class VisualIndexStore(context: Context) :
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE control(
             singleton INTEGER PRIMARY KEY CHECK(singleton=1),
-            active_epoch TEXT, staging_epoch TEXT,
+            active_epoch TEXT, staging_epoch TEXT, dormant_epoch TEXT,
             model_version TEXT, dimension INTEGER, staged_count INTEGER NOT NULL DEFAULT 0)""")
         db.execSQL("INSERT INTO control(singleton) VALUES(1)")
         db.execSQL("CREATE TABLE epoch_history(epoch TEXT PRIMARY KEY NOT NULL)")
@@ -163,6 +164,12 @@ class VisualIndexStore(context: Context) :
 
     /** Refuse unrecognised migrations instead of deleting user-derived data. */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (newVersion == 4 && oldVersion in 1..3) {
+            if (oldVersion == 1) createSkips(db)
+            if (oldVersion <= 2) createMomentsAndFailures(db)
+            ensureDormantColumn(db)
+            return
+        }
         if (newVersion == 3 && oldVersion in 1..2) {
             if (oldVersion == 1) createSkips(db)
             createMomentsAndFailures(db)
@@ -175,14 +182,25 @@ class VisualIndexStore(context: Context) :
         throw SQLiteException("Unsupported visual index downgrade")
     }
 
+    private fun ensureDormantColumn(db: SQLiteDatabase) {
+        val exists = db.rawQuery("PRAGMA table_info(control)", null).use { columns ->
+            var present = false
+            val name = columns.getColumnIndexOrThrow("name")
+            while (columns.moveToNext()) if (columns.getString(name) == "dormant_epoch") present = true
+            present
+        }
+        if (!exists) db.execSQL("ALTER TABLE control ADD COLUMN dormant_epoch TEXT")
+    }
+
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
+        ensureDormantColumn(db)
         db.beginTransaction()
         try {
             // Neither an in-flight job nor a previous process proves a grant.
             db.delete("stage", null, null)
-            db.execSQL("""UPDATE control SET active_epoch=NULL, staging_epoch=NULL,
-                staged_count=0 WHERE singleton=1""")
+            db.execSQL("""UPDATE control SET dormant_epoch=COALESCE(active_epoch, dormant_epoch),
+                active_epoch=NULL, staging_epoch=NULL, staged_count=0 WHERE singleton=1""")
             db.execSQL("""UPDATE catalog SET state='queued', lease_token=NULL,
                 lease_epoch=NULL WHERE state='running'""")
             db.setTransactionSuccessful()
@@ -230,10 +248,34 @@ class VisualIndexStore(context: Context) :
 
     private fun clearScope(db: SQLiteDatabase) {
         db.delete("stage", null, null)
-        db.execSQL("""UPDATE control SET active_epoch=NULL, staging_epoch=NULL,
+        db.execSQL("""UPDATE control SET active_epoch=NULL, staging_epoch=NULL, dormant_epoch=NULL,
             staged_count=0 WHERE singleton=1""")
         db.execSQL("""UPDATE catalog SET state='queued', lease_token=NULL,
             lease_epoch=NULL WHERE state='running'""")
+    }
+
+    /**
+     * An epoch from a prior process stays unreadable until the host authorizes
+     * its one-time revival using the current full Android grant and face scope.
+     * The embedding model and dimension must still match the published index.
+     */
+    @Synchronized fun reviveDormantEpoch(modelVersion: String, dimension: Int): String? {
+        validToken(modelVersion)
+        require(dimension in 1..4096)
+        return write { db ->
+            val record = db.rawQuery("""SELECT active_epoch, staging_epoch, dormant_epoch,
+                model_version, dimension FROM control WHERE singleton=1""", null).use { c ->
+                check(c.moveToFirst())
+                listOf(c.getString(0), c.getString(1), c.getString(2), c.getString(3),
+                    if (c.isNull(4)) null else c.getInt(4).toString())
+            }
+            val dormant = record[2] ?: return@write null
+            if (record[0] != null || record[1] != null || record[3] != modelVersion ||
+                record[4] != dimension.toString()) return@write null
+            db.execSQL("UPDATE control SET active_epoch=?, dormant_epoch=NULL WHERE singleton=1",
+                arrayOf(dormant))
+            dormant
+        }
     }
 
     /** Must be called on loss/uncertainty of Android permission, not deferred. */
