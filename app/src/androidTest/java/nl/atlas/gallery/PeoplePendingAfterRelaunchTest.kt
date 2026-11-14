@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featureface.FaceFrameReader
 import nl.atlas.gallery.featureface.FaceVisibleMedia
+import nl.atlas.gallery.featureface.toDurableFaceKey
 import nl.atlas.gallery.featureface.embed.FaceEmbeddingPipeline
 import nl.atlas.gallery.featureface.onnx.OnnxFaceDetector
 import nl.atlas.gallery.featureface.onnx.OnnxFaceEmbedder
@@ -132,14 +133,15 @@ class PeoplePendingAfterRelaunchTest {
         val faceByPhoto = store.readableDatabase.rawQuery(
             """SELECT f.media_key, f.face_uid FROM faces f
                 JOIN catalog c ON c.media_key=f.media_key
-                WHERE c.state='processed' ORDER BY f.media_key""", null
+                WHERE c.state='processed'""", null
         ).use { cursor ->
-            buildMap<Long, nl.atlas.gallery.featureface.NativeFaceObservationId> {
-                while (cursor.moveToNext()) {
-                    val mediaKey = cursor.getString(0)
-                    val photoId = (1L..4L).single { mediaKey.contains("/$" + it.toString() + "#") }
-                    put(photoId, nl.atlas.gallery.featureface.NativeFaceObservationId(cursor.getString(1)))
-                }
+            val ids = HashMap<String, nl.atlas.gallery.featureface.NativeFaceObservationId>()
+            while (cursor.moveToNext()) {
+                ids[cursor.getString(0)] =
+                    nl.atlas.gallery.featureface.NativeFaceObservationId(cursor.getString(1))
+            }
+            (1L..4L).associateWith { id ->
+                requireNotNull(ids[photo(id).toDurableFaceKey().canonicalMediaKey])
             }
         }
         assertEquals(4, faceByPhoto.size)
