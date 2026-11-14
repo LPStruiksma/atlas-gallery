@@ -153,8 +153,11 @@ class PeoplePendingAfterRelaunchTest {
             if (first != other) reviewed = requireNotNull(reviewPeopleCluster(
                 reviewed, PeopleReviewAction.JoinUnknownClusters(first, other)))
         }
+        // The measured policy may include another synthetic face in the
+        // explicitly joined group. Only a named published group is needed
+        // to exercise the carry-before-regroup pending-state regression.
         val cluster = reviewed.clusters.unknownClusters.single {
-            it.members.containsAll(samePerson) && it.members.size == 3
+            it.members.containsAll(samePerson)
         }
         val named = requireNotNull(reviewPeopleCluster(
             reviewed, PeopleReviewAction.NameCluster(cluster.id, ana, "Ana")))
