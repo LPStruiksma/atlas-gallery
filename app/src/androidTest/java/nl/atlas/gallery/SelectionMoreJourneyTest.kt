@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsActions
@@ -105,17 +106,21 @@ class SelectionMoreJourneyTest {
         compose.onNodeWithTag("atlas-create-album-name").performTextInput(NEW_ALBUM)
         compose.waitForIdle()
         saveUiEvidence("more-568-create-album.png")
+        logMoveBoundary("before-confirm")
         // The emulator IME can consume a coordinate tap while it is open.
         // Activate the enabled Create button via its accessibility click action,
         // then require the dialog to close and the real MediaStore move to finish.
         compose.onNodeWithTag("atlas-create-album-confirm")
             .assertIsEnabled()
             .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        logMoveBoundary("after-confirm")
         waitUntil("new album dialog dismisses") {
             compose.onAllNodes(hasTestTag("atlas-create-album-confirm"))
                 .fetchSemanticsNodes().isEmpty()
         }
+        logMoveBoundary("dialog-dismissed")
         acceptWriteConsentUntil { fixtures.relativePathOf(ids[2]) == NEW_PATH }
+        logMoveBoundary("move-finished")
         assertEquals(NEW_PATH, fixtures.relativePathOf(ids[2]))
         assertEquals(fixtures.nameOf(2), fixtures.displayNameOf(ids[2]))
         waitFor(hasTestTag("atlas-nav-photos"))
@@ -226,7 +231,10 @@ class SelectionMoreJourneyTest {
                 val mediaRoots = roots.filter {
                     it.packageName?.toString()?.startsWith("com.android.providers.media") == true
                 }
-                if (mediaRoots.isNotEmpty()) mediaConsentWindowSeen = true
+                if (mediaRoots.isNotEmpty() && !mediaConsentWindowSeen) {
+                    mediaConsentWindowSeen = true
+                    logMoveBoundary("consent-window")
+                }
                 mediaRoots.firstNotNullOfOrNull { root ->
                     // API 35 uses uppercase ALLOW; compare case-insensitively.
                     button(root, "Allow") { label ->
@@ -234,12 +242,20 @@ class SelectionMoreJourneyTest {
                             label.startsWith("Allow ", ignoreCase = true)
                     }
                 }?.let {
-                    if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) clicks++
+                    if (it.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        clicks++
+                        logMoveBoundary("consent-allow-click")
+                    }
                 }
             }
             // The v2 Compose rule uses a test dispatcher for effect coroutines.
             // Release that dispatcher after the Android activity result/IO pass.
-            compose.waitForIdle()
+            try {
+                compose.waitForIdle()
+            } catch (failure: Throwable) {
+                logMoveBoundary("consent-compose-idle-failed")
+                throw failure
+            }
             Thread.sleep(300L)
         }
     }
@@ -271,10 +287,47 @@ class SelectionMoreJourneyTest {
             .joinToString(" | ") { it.take(240) }
     }
 
+    /** Log only state classes and synthetic fixture counts; never UI text or media identity. */
+    private fun logMoveBoundary(stage: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val automation = instrumentation.uiAutomation
+        val context = instrumentation.targetContext
+        val windows = runCatching {
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or android.accessibilityservice.AccessibilityServiceInfo
+                    .FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            val roots = automation.windows.mapNotNull { it.root } +
+                listOfNotNull(automation.rootInActiveWindow)
+            fun kind(pkg: String?): String = when {
+                pkg == context.packageName -> "app"
+                pkg?.startsWith("com.android.providers.media") == true -> "media-consent"
+                pkg == null -> "unknown"
+                else -> "other"
+            }
+            "active=" + kind(automation.rootInActiveWindow?.packageName?.toString()) +
+                " roots=" + roots.groupingBy { kind(it.packageName?.toString()) }
+                    .eachCount().toSortedMap()
+        }.getOrElse { "error=" + it.javaClass.simpleName }
+        val composeNodes = runCatching {
+            compose.onAllNodes(hasTestTag("atlas-create-album-confirm"))
+                .fetchSemanticsNodes().size.toString()
+        }.getOrElse { "error=" + it.javaClass.simpleName }
+        val lifecycle = runCatching { compose.activityRule.scenario.state.name }
+            .getOrElse { "error=" + it.javaClass.simpleName }
+        val media = runCatching {
+            "moved=" + (fixtures.relativePathOf(fixtures.ids[2]) == NEW_PATH) +
+                " newAlbumRows=" + fixtures.namesIn(NEW_PATH).size
+        }.getOrElse { "error=" + it.javaClass.simpleName }
+        Log.i("ATLAS_DIAG_MOVE", "stage=$stage lifecycle=$lifecycle " +
+            "composeConfirmNodes=$composeNodes windows=$windows $media")
+    }
+
     private fun waitUntil(what: String, condition: () -> Boolean) {
         try {
             compose.waitUntil(60_000L, condition)
         } catch (e: Throwable) {
+            if (what == "new album dialog dismisses") logMoveBoundary("dialog-wait-failed")
             throw AssertionError("Timed out: $what", e)
         }
     }
