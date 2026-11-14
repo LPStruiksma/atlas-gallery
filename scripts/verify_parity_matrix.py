@@ -12,6 +12,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -72,12 +73,45 @@ def png_digest(path):
     if not path.is_file():
         fail("Missing required source PNG " + path.name)
     raw = path.read_bytes()
-    if (len(raw) <= 1024 or raw[:8] != PNG_SIGNATURE or
-            raw[12:16] != b"IHDR"):
+    if len(raw) <= 1024 or raw[:8] != PNG_SIGNATURE:
         fail("Not a real PNG " + path.name)
-    width, height = struct.unpack(">II", raw[16:24])
+    offset = 8
+    width = height = None
+    image_data = []
+    ended = False
+    while offset < len(raw):
+        if offset + 12 > len(raw):
+            fail("Truncated PNG chunk in " + path.name)
+        length = struct.unpack(">I", raw[offset:offset + 4])[0]
+        kind = raw[offset + 4:offset + 8]
+        chunk_end = offset + 12 + length
+        if chunk_end > len(raw):
+            fail("Truncated PNG payload in " + path.name)
+        payload = raw[offset + 8:offset + 8 + length]
+        crc_expected = struct.unpack(">I", raw[offset + 8 + length:chunk_end])[0]
+        if zlib.crc32(kind + payload) & 0xFFFFFFFF != crc_expected:
+            fail("Bad PNG CRC in " + path.name)
+        if offset == 8:
+            if kind != b"IHDR" or length != 13:
+                fail("Missing PNG IHDR in " + path.name)
+            width, height = struct.unpack(">II", payload[:8])
+        elif kind == b"IDAT":
+            image_data.append(payload)
+        elif kind == b"IEND":
+            if length != 0 or chunk_end != len(raw):
+                fail("Invalid PNG end in " + path.name)
+            ended = True
+            break
+        offset = chunk_end
     if (width, height) != (1080, 2340):
         fail(f"Wrong resolution in {path.name}: {width}x{height}")
+    if not ended or not image_data:
+        fail("Missing PNG image data/end in " + path.name)
+    try:
+        if not zlib.decompress(b"".join(image_data)):
+            fail("Empty PNG image data in " + path.name)
+    except zlib.error as exc:
+        fail("Corrupt PNG image stream in " + path.name + ": " + str(exc))
     return hashlib.sha256(raw).hexdigest()
 
 
