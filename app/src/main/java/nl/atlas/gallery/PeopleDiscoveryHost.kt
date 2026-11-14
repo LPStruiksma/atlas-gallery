@@ -411,12 +411,19 @@ internal fun startedScanPhase(
     else -> FaceScanPhase.COMPLETE
 }
 
-/** #114: user-facing phase, separate from the worker's unchanged hold reason. */
+/**
+ * #114: the worker still holds a stale epoch, but Settings only reports a
+ * permission problem when Android photo access is actually absent. Keep
+ * in-flight publication counters out of both Settings rows.
+ */
 internal fun publicationStatusPhase(
     photoGrantCurrent: Boolean, scopedEpochReadable: Boolean,
     workerHold: FaceScanPhase?
-): FaceDiscoveryPhase = if (!photoGrantCurrent) FaceDiscoveryPhase.PERMISSION_REQUIRED
-    else FaceDiscoveryPhase.QUEUED
+): FaceDiscoveryPhase {
+    require(!scopedEpochReadable || workerHold == FaceScanPhase.PERMISSION_REQUIRED)
+    return if (!photoGrantCurrent) FaceDiscoveryPhase.PERMISSION_REQUIRED
+        else FaceDiscoveryPhase.QUEUED
+}
 
 /**
  * #508: the face catalogue's order, newest capture first (then the newest
