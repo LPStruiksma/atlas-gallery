@@ -130,9 +130,9 @@ class PeopleCatalogueCarryOverTest {
     }
 
     private fun visualLaunch(): Pair<String, String> {
-        val face = firstLaunch()
         val host = relaunch()
-        host.onGalleryPublication("gallery-2") { inventory }
+        host.start("gallery-1", inventory)
+        val face = requireNotNull(host.displayEpoch("gallery-1"))
         assertTrue(host.setVisualIndex(true))
         val visual = requireNotNull(memory.publishedVisual)
         assertEquals(face, visual.faceEpoch)
