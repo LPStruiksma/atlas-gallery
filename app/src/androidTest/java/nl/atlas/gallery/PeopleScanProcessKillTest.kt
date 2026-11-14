@@ -48,7 +48,28 @@ class PeopleScanProcessKillTest {
                 android.os.Build.FINGERPRINT.contains("emulator"))
     }
 
-    private fun fixtures() = GalleryRepository(target).load().filter {
+    // MediaStore can still increment its generation after publishing the last
+    // synthetic PNG. A torn catalogue is never acceptable; wait for a complete
+    // stable provider snapshot instead of bypassing the production fence.
+    private fun stableInventory(): List<MediaRecord> {
+        var lastSnapshotChange: GalleryProviderSnapshotChanged? = null
+        repeat(SNAPSHOT_ATTEMPTS) { attempt ->
+            try {
+                return GalleryRepository(target).load()
+            } catch (changed: GalleryProviderSnapshotChanged) {
+                lastSnapshotChange = changed
+                if (attempt + 1 < SNAPSHOT_ATTEMPTS) {
+                    android.os.SystemClock.sleep(SNAPSHOT_RETRY_MILLIS)
+                }
+            }
+        }
+        throw AssertionError(
+            "MediaStore did not provide a stable snapshot after $SNAPSHOT_ATTEMPTS scans",
+            lastSnapshotChange
+        )
+    }
+
+    private fun fixtures(inventory: List<MediaRecord> = stableInventory()) = inventory.filter {
         it.relativePath == "Pictures/$FOLDER/" && it.name.startsWith(PREFIX)
     }
 
@@ -80,10 +101,12 @@ class PeopleScanProcessKillTest {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }, null, null)
         }
-        assertEquals(PHOTOS, fixtures().size)
-        // What GalleryViewModel keeps on disk (#505), under the grant of now.
+        val stable = stableInventory()
+        assertEquals(PHOTOS, fixtures(stable).size)
+        // Cache only the same fully checked snapshot we asserted above. A
+        // second scan could span another asynchronous MediaStore generation.
         GalleryInventoryCacheFile(File(target.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))
-            .write(readGalleryMediaGrant(target), GalleryRepository(target).load())
+            .write(readGalleryMediaGrant(target), stable)
         val inventory = requireNotNull(cachedFaceInventory(target)) { "cache not trusted" }
         // The app's own host: real preferences, real database, real WorkManager.
         val host = PeopleDiscoveryHost.forApp(target)
@@ -128,6 +151,8 @@ class PeopleScanProcessKillTest {
     }
 
     private companion object {
+        const val SNAPSHOT_ATTEMPTS = 12
+        const val SNAPSHOT_RETRY_MILLIS = 250L
         const val PHOTOS = 60
         const val FOLDER = "ATLAS-Kill43"
         const val PREFIX = "IMG_KILL43_"
