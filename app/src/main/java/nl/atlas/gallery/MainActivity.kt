@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.featurepersistence.PeopleSafBackupIO
+import nl.atlas.gallery.featurepersistence.NativePeopleNamesPreview
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -1226,6 +1228,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var notification by remember { mutableStateOf<String?>(null) }
     // Transient SAF consent only; neither URI nor intent is persisted.
     var peopleCsvReview by remember { mutableStateOf(PeopleCsvReviewState()) }
+    // #62: no SAF URI, person names or review payload survives process death.
+    val peopleNamesIO = remember(context) { PeopleSafBackupIO(context.contentResolver) }
+    var confirmNamesExport by remember { mutableStateOf(false) }
+    var pendingNamesImport by remember {
+        mutableStateOf<Pair<Uri, NativePeopleNamesPreview>?>(null)
+    }
+
     // Only a transient deck, never persisted as an unattended delete job.
     var declutterFolder by remember { mutableStateOf<String?>(null) }
     var declutterSource by remember {
@@ -1302,6 +1311,88 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 Toast.LENGTH_SHORT).show()
         }
     }
+    // #62: Android owns destination and source selection. The old path-bearing
+    // V4 export format is NOT used here; only the native names codec may leave.
+    val exportNamesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(PeopleSafBackupIO.MIME_TYPE)
+    ) { uri ->
+        if (uri != null) atlasScope.launch {
+            val outcome = runCatching {
+                withContext(Dispatchers.IO) {
+                    peopleNamesIO.exportNamesToSelectedDocument(
+                        uri, discoveryHost, searchGrant, destinationRiskAcknowledged = true)
+                }
+            }
+            notification = outcome.fold(
+                onSuccess = { "Exported ${it.names} People names and ${it.reviewDecisions} reviews" },
+                onFailure = { "Names export failed (${it.javaClass.simpleName})" }
+            )
+        }
+    }
+    val importNamesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) atlasScope.launch {
+            val preview = runCatching {
+                withContext(Dispatchers.IO) { peopleNamesIO.previewNamesImport(uri) }
+            }
+            preview.onSuccess { pendingNamesImport = uri to it }
+                .onFailure { notification = "Invalid names backup (${it.javaClass.simpleName})" }
+        }
+    }
+    if (confirmNamesExport) {
+        AlertDialog(
+            onDismissRequest = { confirmNamesExport = false },
+            title = { Text("Export People names?") },
+            text = { Text(PeopleSafBackupIO.NAMES_EXPORT_WARNING) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmNamesExport = false
+                    exportNamesLauncher.launch(PeopleSafBackupIO.NAMES_SUGGESTED_NAME)
+                }) { Text("Choose file") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmNamesExport = false }) { Text("Cancel") }
+            }
+        )
+    }
+    pendingNamesImport?.let { selected ->
+        AlertDialog(
+            onDismissRequest = { pendingNamesImport = null },
+            title = { Text("Import People names?") },
+            text = {
+                Text("${selected.second.names} names and " +
+                    "${selected.second.reviewDecisions} review decisions. " +
+                    "SHA-256: ${selected.second.checksum}\n\n" +
+                    PeopleSafBackupIO.NAMES_IMPORT_WARNING)
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Consume the selection before launching IO: no replay.
+                    pendingNamesImport = null
+                    atlasScope.launch {
+                        val outcome = runCatching {
+                            withContext(Dispatchers.IO) {
+                                peopleNamesIO.importNamesFromSelectedDocument(
+                                    selected.first, discoveryHost, searchGrant,
+                                    approvedChecksum = selected.second.checksum,
+                                    explicitlyApproved = true
+                                )
+                            }
+                        }
+                        notification = outcome.fold(
+                            onSuccess = { "Names import: ${it.applied} applied, ${it.skipped} skipped" },
+                            onFailure = { "Names import failed (${it.javaClass.simpleName})" }
+                        )
+                    }
+                }) { Text("Import") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingNamesImport = null }) { Text("Cancel") }
+            }
+        )
+    }
+
     // Choosing a document NEVER starts a replacement. Explicit confirmation follows.
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) peopleCsvReview = peopleCsvReview.selected(
@@ -2825,6 +2916,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             },
                             onVisualIndex = { visualIndexOpen = true },
                             onPeopleNumbers = { peopleNumbersOpen = true },
+                            onExportNames = { confirmNamesExport = true },
+                            onImportNames = {
+                                importNamesLauncher.launch(arrayOf("*/*"))
+                            },
                             onPhotoDetails = { provenanceDetailsOpen = true },
                             onImportV4 = {
                                 importLauncher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
