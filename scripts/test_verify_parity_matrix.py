@@ -61,8 +61,8 @@ class ParityMatrixContractTest(unittest.TestCase):
     def test_real_matrix_rows_match_20_surfaces_and_both_themes(self):
         rows = matrix.read_contract()
         self.assertEqual(40, len(rows))
-        self.assertEqual(26, sum(bool(r["source_png"]) for r in rows))
-        self.assertEqual(14, sum(not r["source_png"] for r in rows))
+        self.assertEqual(30, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(10, sum(not r["source_png"] for r in rows))
 
     def test_missing_row_or_duplicate_pair_is_refused(self):
         rows = self.rows()
@@ -84,8 +84,8 @@ class ParityMatrixContractTest(unittest.TestCase):
         with (dest / "manifest.tsv").open(newline="", encoding="utf-8") as f:
             manifest = list(csv.DictReader(f, delimiter="\t"))
         self.assertEqual(40, len(manifest))
-        self.assertEqual(26, sum(r["status"] == "CAPTURED" for r in manifest))
-        self.assertEqual(14, sum(r["status"] == "NOT_CAPTURED" for r in manifest))
+        self.assertEqual(30, sum(r["status"] == "CAPTURED" for r in manifest))
+        self.assertEqual(10, sum(r["status"] == "NOT_CAPTURED" for r in manifest))
         self.assertEqual("a" * 40, manifest[0]["commit_sha"])
         for row in manifest:
             self.assertEqual("1080", row["width"])
