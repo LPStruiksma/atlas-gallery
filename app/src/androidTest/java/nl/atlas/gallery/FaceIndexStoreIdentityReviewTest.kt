@@ -590,17 +590,45 @@ class FaceIndexStoreIdentityReviewTest {
             it.first in after.clusters && it.second in after.clusters })
         assertEquals(mapOf(ana to "Ana"), after.names) // other photos still name Ana
 
-        // Embedder bump: every observation is new, so identity starts empty.
+        // #48: a model change invalidates old vectors but never erases typed names.
         grant(store, "epoch-C", changed, embedder = "$model-vNext")
         assertEquals(0, count(store, "embeddings"))
         assertEquals(0, count(store, "people_confirmed"))
         assertEquals(0, count(store, "people_cannot_link"))
         assertEquals(0, count(store, "people_rejected"))
-        assertEquals(0, count(store, "people_names"))
+        assertEquals(1, count(store, "people_names"))
         scanAll(store, "epoch-C", embedder = "$model-vNext") { 0 }
         val bumped = requireNotNull(store.peopleReview("epoch-C"))
-        assertTrue(bumped.names.isEmpty())
-        assertTrue(bumped.clusters.reviews.confirmed.isEmpty())
+        assertEquals(mapOf(ana to "Ana"), bumped.names)
+        // Source-matched, same-box confirmed faces return under their new UIDs.
+        assertEquals(2, bumped.clusters.reviews.confirmed.size)
+        assertTrue(bumped.clusters.reviews.confirmed.keys.none { it == oldId })
+        assertEquals(0, count(store, "people_cannot_link"))
+        assertEquals(0, count(store, "people_rejected"))
+    }
+
+    /** #48: only exact source + detector + box continuity can restore a confirmation. */
+    @Test fun modelBumpKeepsNamesButDoesNotCarryChangedFaceBox() = withStore { store ->
+        val original = scannedLibrary(store)
+        val named = nameBiggest("epoch-A", original)
+        assertNotNull(commit(store, "epoch-A", original.generation, named))
+        val oldConfirmed = store.peopleReview("epoch-A")!!.clusters.reviews.confirmed.keys
+        assertEquals(3, oldConfirmed.size)
+
+        grant(store, "epoch-B", (1..4).map { media(it) }, embedder = "$model-v2")
+        // The untouched user names survive immediately; old vectors and facts do not.
+        assertEquals(1, count(store, "people_names"))
+        assertEquals(0, count(store, "embeddings"))
+        assertEquals(0, count(store, "people_confirmed"))
+        val changedLease = requireNotNull(store.claim("epoch-B", 1000L))
+        assertTrue(store.completeEmbeddings(changedLease,
+            listOf(IndexedFaceBox(0.15f, 0.2f, 0.5f, 0.8f)),
+            listOf(vector(0)), "$model-v2"))
+        scanAll(store, "epoch-B", embedder = "$model-v2") { 0 }
+        val restored = requireNotNull(store.peopleReview("epoch-B"))
+        assertEquals(mapOf(ana to "Ana"), restored.names)
+        assertEquals(2, restored.clusters.reviews.confirmed.size)
+        assertTrue(restored.clusters.reviews.confirmed.keys.none { it in oldConfirmed })
     }
 
     @Test fun suppressedFactWriteRollsBackWholeReview() = withStore { store ->
