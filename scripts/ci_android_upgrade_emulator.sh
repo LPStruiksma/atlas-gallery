@@ -311,8 +311,8 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     while IFS= read -r job; do
       namespace="${job#JOB }"
       namespace="${namespace%%:*}"
-      id="${job%%:*}"
-      id="${id##*/}"
+      id="${job#*:/}"
+      id="${id%%:*}"
       if [[ "$namespace" == androidx.work.systemjobscheduler ]]; then
         result="$(adb shell cmd jobscheduler run -f --namespace "$namespace" nl.atlas.gallery "$id" 2>&1)" || {
           echo "::warning::#43 could not run WorkManager job $namespace/$id: $result" >&2
