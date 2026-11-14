@@ -71,6 +71,40 @@ class VisualIndexStoreTest {
             VisualVectorWrite(lease, if (i % 2 == 0) axisA else axisB)
         })
 
+    @Test fun reopenedEpochIsDormantUntilRevivedOnceWithSameModel() = withFile { context, _ ->
+        VisualIndexStore(context).use { store ->
+            publish(store, "visual-a", "model-a")
+            assertEquals(2, store.progress("visual-a")?.total)
+        }
+        VisualIndexStore(context).use { reopened ->
+            assertNull(reopened.progress("visual-a"))
+            assertTrue(reopened.loadActiveVectors("visual-a", "model-a").isEmpty())
+            assertNull("wrong model must not revive", reopened.reviveDormantEpoch("model-b", 4))
+            assertNull("wrong dimension must not revive", reopened.reviveDormantEpoch("model-a", 8))
+            assertEquals("visual-a", reopened.reviveDormantEpoch("model-a", 4))
+            assertEquals(2, reopened.progress("visual-a")?.total)
+            assertNull("revival is single-use", reopened.reviveDormantEpoch("model-a", 4))
+        }
+    }
+
+    @Test fun revocationAndNewPublicationDropDormantVisualEpoch() = withFile { context, _ ->
+        VisualIndexStore(context).use { publish(it, "visual-a", "model-a") }
+        VisualIndexStore(context).use { reopened ->
+            assertNull(reopened.progress("visual-a"))
+            reopened.invalidatePermissionScope()
+            assertNull(reopened.reviveDormantEpoch("model-a", 4))
+            publish(reopened, "visual-b", "model-a")
+        }
+        VisualIndexStore(context).use { reopened ->
+            assertNull(reopened.progress("visual-b"))
+            publish(reopened, "visual-c", "model-a")
+            assertNull("new snapshot discards the dormant predecessor",
+                reopened.reviveDormantEpoch("model-a", 4))
+            assertNull(reopened.progress("visual-b"))
+            assertNotNull(reopened.progress("visual-c"))
+        }
+    }
+
     @Test fun versionBumpAndChangedRevisionRequireReembedding() = withFile { context, _ ->
         VisualIndexStore(context).use { store ->
             publish(store, "grant-A", "siglip-v1")
