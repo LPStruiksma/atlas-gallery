@@ -11,7 +11,7 @@ import kotlin.math.roundToInt
 
 /** Chronology is a capability of the current sort, not a property of every album. */
 enum class TimelineSort { NEWEST, OLDEST, LARGEST, SMALLEST, RANDOM }
-enum class TimelineBucket { DAY, MONTH }
+enum class TimelineBucket { DAY, MONTH, YEAR }
 
 data class TimelineMedia(val key: String, val takenAtMillis: Long)
 
@@ -105,7 +105,11 @@ fun buildGridTimelineIndex(
         cancellationCheckpoint?.invoke()
         return GridTimelineIndex(slots, positions, headers, grouped = false)
     }
-    val bucket = if (density == GridDensity.SMALL) TimelineBucket.MONTH else TimelineBucket.DAY
+    val bucket = when (density) {
+        GridDensity.LARGE, GridDensity.MEDIUM -> TimelineBucket.DAY
+        GridDensity.SMALL, GridDensity.MONTH -> TimelineBucket.MONTH
+        GridDensity.YEAR -> TimelineBucket.YEAR
+    }
     val currentYear = LocalDate.now(clock.withZone(zone)).year
     val dayFormat = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
     val shortDayFormat = DateTimeFormatter.ofPattern("d MMM", locale)
@@ -115,14 +119,15 @@ fun buildGridTimelineIndex(
         if (timestamp == 0L) return "unknown" to "Unknown date"
         val local = try { Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate() }
         catch (_: DateTimeException) { return "unknown" to "Unknown date" }
-        return if (bucket == TimelineBucket.DAY) {
-            local.toString() to local.format(if (local.year == currentYear) shortDayFormat else dayFormat)
-        } else {
-            // ISO LocalDate years may have a sign and more than four digits.
-            // Drop only "-dd"; substring(0, 7) collapses distinct months for
-            // valid extreme timestamps (e.g. +292278994-07 vs -08).
-            local.withDayOfMonth(1).toString().dropLast(3) to
-                local.format(if (local.year == currentYear) shortMonthFormat else monthFormat)
+        return when (bucket) {
+            TimelineBucket.DAY -> local.toString() to
+                local.format(if (local.year == currentYear) shortDayFormat else dayFormat)
+            TimelineBucket.MONTH -> {
+                // Extended ISO years can exceed four digits; do not substring(0, 7).
+                local.withDayOfMonth(1).toString().dropLast(3) to
+                    local.format(if (local.year == currentYear) shortMonthFormat else monthFormat)
+            }
+            TimelineBucket.YEAR -> local.year.toString() to local.year.toString()
         }
     }
     // Only headers need localized strings. A 150k-photo day may have a single
@@ -134,8 +139,11 @@ fun buildGridTimelineIndex(
         if (timestamp == 0L) return unknownBucket
         val date = try { Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate() }
         catch (_: DateTimeException) { return unknownBucket }
-        return if (bucket == TimelineBucket.DAY) date.toEpochDay()
-        else date.year.toLong() * 12L + date.monthValue.toLong()
+        return when (bucket) {
+            TimelineBucket.DAY -> date.toEpochDay()
+            TimelineBucket.MONTH -> date.year.toLong() * 12L + date.monthValue.toLong()
+            TimelineBucket.YEAR -> date.year.toLong()
+        }
     }
     var cursor = 0
     while (cursor < items.size) {
