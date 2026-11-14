@@ -793,8 +793,7 @@ internal class PeopleDiscoveryHost(
             true
         }
         if (!stopped) return
-        // Do not strand opted-in background discovery after a manual run.
-        // WorkManager's request still requires charging; this merely re-arms it.
+        // Only current opt-in and scope can re-arm the charging-constrained job.
         val resumeBackground = synchronized(lock) {
             optedIn && !pausedByUser && scope != null &&
                 liveEpoch == scope?.epoch && stagingEpoch == null
