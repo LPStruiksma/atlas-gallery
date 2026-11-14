@@ -135,13 +135,17 @@ class ViewerLightSystemBarsTest {
         // Bounds include the actual value, not just its label. The last row
         // must clear Android's 3-button navigation area before the PNG is saved.
         val albumBottom = albumValue.fetchSemanticsNode().boundsInWindow.bottom
-        val sheetBottom = rule.onNodeWithTag("atlas-viewer-details")
-            .fetchSemanticsNode().boundsInWindow.bottom
-        val navBottom = ViewCompat.getRootWindowInsets(requireNotNull(window).decorView)
+        // The sheet semantics tag is a layout node, not the window's bottom edge.
+        // On an expanded sheet its local bounds can end well above the viewport,
+        // falsely failing an otherwise visible Album value. Compare against
+        // the actual window edge and preserve the full navigation-bar inset.
+        val decor = requireNotNull(window).decorView
+        val navBottom = ViewCompat.getRootWindowInsets(decor)
             ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())?.bottom ?: -1
         assertTrue("navigation inset unavailable: $navBottom", navBottom > 0)
-        assertTrue("Album value overlaps navigation: album=$albumBottom sheet=$sheetBottom nav=$navBottom",
-            albumBottom <= sheetBottom - navBottom)
+        val safeBottom = decor.height - navBottom
+        assertTrue("Album value overlaps navigation: album=$albumBottom safe=$safeBottom nav=$navBottom",
+            albumBottom <= safeBottom)
         assertDarkNavigationPixels("details $mode")
         saveUiEvidence("680-details-$mode.png")
 
