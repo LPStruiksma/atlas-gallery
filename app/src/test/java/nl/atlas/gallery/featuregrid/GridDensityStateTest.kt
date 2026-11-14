@@ -31,7 +31,9 @@ class GridDensityStateTest {
 
     @Test fun everyDensityChangeKeepsTheFocusedPixelVerticallyStable() {
         for (from in GridDensity.entries) for (to in GridDensity.entries) {
-            for (idx in listOf(57, 3_007, 75_321, 149_000)) {
+            // At 12/28 columns, media 57 is too close to the first row to
+            // centre at y=357; the separate bounds test covers that clamp.
+            for (idx in listOf(3_007, 75_321, 149_000)) {
                 val anchor = GridFocalAnchor("image-$idx", idx, 0.6f, 0.73f)
                 val focusY = 357f
                 val target = resolveGridAnchor(anchor, idx, to.columns, viewport, focusY)
