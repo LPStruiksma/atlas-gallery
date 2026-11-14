@@ -2023,43 +2023,71 @@ class FaceIndexStore(
         }
 
     /**
-     * VS-F1 (#468), read-only: the in-memory search corpus of the active
-     * [epoch] and embedder model, read in ONE epoch-gated transaction (see
-     * [authorizedEmbeddingRead]): every embedded face of a processed source at
-     * its current revision, minus faces reviewed NOT_A_FACE, with its box,
-     * published cluster anchor and the human review facts. Cluster anchors are
-     * left out while a publication is pending, so search never expands through
-     * partial membership. Null while revoked, superseded or never committed.
-     * Writes nothing; the caller holds the result only while the grant lasts.
+     * VS-F1 (#468), #64: read the current model's corpus in bounded keyset
+     * pages inside ONE epoch-gated transaction ([authorizedEmbeddingRead]).
+     * The count and every page see the same SQLite snapshot: a revoked grant,
+     * replaced model, edited source or changed review cannot mix generations.
+     *
+     * Only processed, exact-revision faces other than NOT_A_FACE are present.
+     * Cluster anchors are suppressed during partial publication. The packed
+     * corpus is the only retained vector representation; no result-set-sized
+     * cursor window or collection of decoded FloatArrays is materialised.
      */
     fun faceSearchCorpus(epoch: String): FaceSearchCorpus? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             val published = clusterGenerationClean(db)
             val facts = reviewFacts(db)
             meteredStatements++
-            db.rawQuery("""SELECT e.face_uid,e.vector,c.media_key,c.revision,
-                    f.l,f.t,f.r,f.b,m.anchor_uid,f.frame_ms
-                FROM embeddings e
+            // Count just the eligible keys (not vectors), to allocate the
+            // packed arrays once instead of doubling and then copying them.
+            val expected = db.rawQuery("""SELECT COUNT(*) FROM embeddings e
                 JOIN faces f ON f.face_uid=e.face_uid
                 JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
                     AND c.revision=e.source_revision
-                LEFT JOIN cluster_members m ON m.face_uid=e.face_uid
                 LEFT JOIN face_reviews r ON r.media_key=f.media_key AND r.ordinal=f.ordinal
-                WHERE e.model_version=? AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')
-                ORDER BY e.face_uid""", arrayOf(version)).use { c ->
-                // No c.count: on Android that walks the whole result an extra time.
-                val builder = FaceSearchCorpus.Builder(version)
-                while (c.moveToNext()) {
-                    meteredRowsRead++
-                    builder.add(NativeFaceObservationId(c.getString(0)),
-                        IndexedMedia(c.getString(2), c.getString(3)),
-                        IndexedFaceBox(c.getFloat(4), c.getFloat(5), c.getFloat(6), c.getFloat(7)),
-                        if (!published || c.isNull(8)) null else NativeFaceObservationId(c.getString(8)),
-                        FaceEmbeddingVectorCodec.decode(c.getBlob(1)),
-                        if (c.isNull(9)) null else c.getLong(9))
-                }
-                builder.build(facts, published)
+                WHERE e.model_version=? AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')""",
+                arrayOf(version)).use { c ->
+                check(c.moveToFirst()) { "Missing corpus count" }
+                c.getInt(0)
             }
+            require(expected <= FaceSearchCorpus.MAX_FACES) { "Face search corpus limit reached" }
+            val builder = FaceSearchCorpus.Builder(version, expected)
+            val pageSize = 256
+            var afterFaceUid = ""
+            var loaded = 0
+            do {
+                var pageRows = 0
+                meteredStatements++
+                db.rawQuery("""SELECT e.face_uid,e.vector,c.media_key,c.revision,
+                        f.l,f.t,f.r,f.b,m.anchor_uid,f.frame_ms
+                    FROM embeddings e
+                    JOIN faces f ON f.face_uid=e.face_uid
+                    JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                        AND c.revision=e.source_revision
+                    LEFT JOIN cluster_members m ON m.face_uid=e.face_uid
+                    LEFT JOIN face_reviews r ON r.media_key=f.media_key AND r.ordinal=f.ordinal
+                    WHERE e.face_uid>? AND e.model_version=?
+                        AND (r.decision IS NULL OR r.decision<>'NOT_A_FACE')
+                    ORDER BY e.face_uid LIMIT ?""",
+                    arrayOf(afterFaceUid, version, pageSize.toString())).use { c ->
+                    while (c.moveToNext()) {
+                        meteredRowsRead++
+                        val uid = c.getString(0)
+                        builder.add(NativeFaceObservationId(uid),
+                            IndexedMedia(c.getString(2), c.getString(3)),
+                            IndexedFaceBox(c.getFloat(4), c.getFloat(5), c.getFloat(6), c.getFloat(7)),
+                            if (!published || c.isNull(8)) null
+                                else NativeFaceObservationId(c.getString(8)),
+                            FaceEmbeddingVectorCodec.decode(c.getBlob(1)),
+                            if (c.isNull(9)) null else c.getLong(9))
+                        afterFaceUid = uid
+                        pageRows++
+                        loaded++
+                    }
+                }
+            } while (pageRows == pageSize)
+            check(loaded == expected) { "Corpus changed during snapshot read" }
+            builder.build(facts, published)
         }
 
     /**

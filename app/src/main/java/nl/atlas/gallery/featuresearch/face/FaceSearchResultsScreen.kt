@@ -307,6 +307,13 @@ private fun StateScreen(state: FaceSearchState, onOpenPeople: () -> Unit, onBack
                 Text("Nothing was kept. Search again once photo access and face discovery are on.")
                 OutlinedButton(onClick = onBack) { Text("Close") }
             }
+            FaceSearchState.Unavailable -> {
+                Text("Search unavailable, try again.",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag("atlas-face-results-unavailable"))
+                Text("This device ran out of memory preparing face search. No photo was changed.")
+                OutlinedButton(onClick = onBack) { Text("Close") }
+            }
             FaceSearchState.Failed -> {
                 Text("Face search couldn't finish.", style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.testTag("atlas-face-results-failed"))
