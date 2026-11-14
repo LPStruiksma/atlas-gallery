@@ -37,7 +37,7 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private val mode = if (dark) "dark" else "light"
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
-        .around(SharedPhotoNightRule(dark)).around(fixtures).around(compose)
+        .around(SharedPhotoNightRule(dark)).around(SharedPhotoScaleRule()).around(fixtures).around(compose)
 
     private val tile = SemanticsMatcher("authorized photo tile") { node ->
         val tag = node.config.getOrNull(SemanticsProperties.TestTag).orEmpty()
@@ -128,6 +128,34 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private fun counter() = compose.onNodeWithTag("atlas-photo-counter")
         .fetchSemanticsNode().config[SemanticsProperties.Text]
         .joinToString("") { it.text }
+}
+
+/**
+ * The standard CI emulator launches with disable-animations=true. Enable the
+ * two relevant Android scales ONLY for this synthetic transition journey and
+ * restore their exact previous values (including missing settings) afterward.
+ */
+private class SharedPhotoScaleRule : TestRule {
+    override fun apply(base: Statement, description: Description): Statement =
+        object : Statement() {
+            override fun evaluate() {
+                val animator = shell23("settings get global animator_duration_scale").trim()
+                val transition = shell23("settings get global transition_animation_scale").trim()
+                shell23("settings put global animator_duration_scale 1")
+                shell23("settings put global transition_animation_scale 1")
+                try { base.evaluate() }
+                finally {
+                    restore23("animator_duration_scale", animator)
+                    restore23("transition_animation_scale", transition)
+                }
+            }
+        }
+}
+
+private fun restore23(key: String, oldValue: String) {
+    if (oldValue == "null" || oldValue.isBlank())
+        shell23("settings delete global $key")
+    else shell23("settings put global $key $oldValue")
 }
 
 private class SharedPhotoNightRule(private val dark: Boolean) : TestRule {
