@@ -170,7 +170,7 @@ class PeoplePendingAfterRelaunchTest {
         val epoch = namedLibrary()
         // As a build that left people_matched behind: the next open refills it (#580).
         store.writableDatabase.execSQL(
-            "UPDATE people_matched_generation SET revision=-1 WHERE singleton=1")
+            "UPDATE people_matched_generation SET revision=NULL WHERE singleton=1")
         var host: PeopleDiscoveryHost? = null
         var seen: PeopleDiscoveryStatus? = null
         var served = false
