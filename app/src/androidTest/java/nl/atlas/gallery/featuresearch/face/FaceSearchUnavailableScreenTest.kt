@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.saveUiEvidence
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -38,6 +39,8 @@ class FaceSearchUnavailableScreenTest {
             "This device ran out of memory preparing face search. No photo was changed."
         ).assertExists()
         compose.onNodeWithTag("atlas-face-results-grid").assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("face-search-unavailable.png")
         compose.onNodeWithText("Close").assertExists().performClick()
         compose.runOnIdle { assertEquals(1, closes) }
     }
