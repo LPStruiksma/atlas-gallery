@@ -221,7 +221,9 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 waitFor(hasTestTag("atlas-header-back"))
                 settle()
                 saveUiEvidence("settings-664-diagnostics-$mode.png")
+                // Diagnostics Back must reveal Settings, not the Photos route.
                 compose.onNodeWithTag("atlas-header-back").performClick()
+                waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
                 waitFor(hasTestTag("atlas-settings-screen"))
             }
             compose.onNodeWithTag("atlas-header-back").performClick()
