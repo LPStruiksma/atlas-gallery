@@ -300,6 +300,7 @@ class FaceIndexStore(
         createSameUnknownTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
+        createModelCarryTable(db)
         ensureDormantEpochColumn(db)
         db.beginTransaction()
         try {
@@ -355,6 +356,7 @@ class FaceIndexStore(
             revision TEXT NOT NULL, $TAKEN_MS_COLUMN)""")
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
+        createModelCarryTable(db)
     }
     /**
      * VS-V1b: add the nullable video columns to a v1..v3 file that lacks
@@ -417,6 +419,55 @@ class FaceIndexStore(
     private fun createPeopleHidden(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_hidden(
             person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256))""")
+    }
+
+    /**
+     * #48: model-change journal is app-private metadata, not a vector or media
+     * backup. It is intentionally independent of faces so the old observation
+     * can be deleted atomically while its confirmation waits for re-embedding.
+     * No inferred matches, only exact media revision/detector/ordinal/box.
+     * Names remain in people_names even when no face can safely be restored.
+     */
+    private fun createModelCarryTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_model_carry(
+            media_key TEXT NOT NULL, revision TEXT NOT NULL,
+            detector_version TEXT NOT NULL, ordinal INTEGER NOT NULL,
+            l REAL NOT NULL, t REAL NOT NULL, r REAL NOT NULL, b REAL NOT NULL,
+            frame_ms INTEGER, person_key TEXT NOT NULL,
+            PRIMARY KEY(media_key,ordinal))""")
+    }
+
+    private fun captureModelCarry(db: SQLiteDatabase) {
+        db.execSQL("""INSERT OR REPLACE INTO people_model_carry
+            (media_key,revision,detector_version,ordinal,l,t,r,b,frame_ms,person_key)
+            SELECT f.media_key,c.revision,c.detector_version,f.ordinal,
+                f.l,f.t,f.r,f.b,f.frame_ms,p.person_key
+            FROM people_confirmed p
+            JOIN faces f ON f.face_uid=p.face_uid
+            JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+            JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+            WHERE NOT EXISTS(SELECT 1 FROM people_model_carry pc
+                WHERE pc.media_key=f.media_key AND pc.ordinal=f.ordinal)""")
+    }
+
+    /** Called only inside the current lease's atomic completion transaction. */
+    private fun restoreModelCarry(db: SQLiteDatabase, lease: IndexedFaceLease,
+                                  ordinal: Int, uid: String, box: IndexedFaceBox,
+                                  frameMs: Long?) {
+        val person = db.rawQuery("""SELECT person_key FROM people_model_carry
+            WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
+                AND l=? AND t=? AND r=? AND b=?
+                AND frame_ms IS ?""",
+            arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
+                ordinal.toString(), box.left.toDouble().toString(),
+                box.top.toDouble().toString(), box.right.toDouble().toString(),
+                box.bottom.toDouble().toString(), frameMs?.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        if (person != null) {
+            check(db.insertOrThrow("people_confirmed", null, ContentValues().apply {
+                put("face_uid", uid); put("person_key", person)
+            }) != -1L) { "Model carry confirmation was not saved" }
+        }
     }
 
     /**
@@ -489,8 +540,7 @@ class FaceIndexStore(
     /**
      * v3 identity review. Face-keyed rows reference `embeddings`, so they
      * cascade with the observation (source change, rescan, model bump).
-     * Person names are not face-keyed; a model bump clears them explicitly
-     * in [commitSnapshot]. `people_review_generation` changes on every
+     * Person names are not face-keyed: a model bump retains them (#48). `people_review_generation` changes on every
      * review commit and cluster publication (see [StoredPeopleReview]).
      */
     private fun createPeopleReviewTables(db: SQLiteDatabase) {
@@ -863,9 +913,10 @@ class FaceIndexStore(
                 db.execSQL("""UPDATE catalog SET state='queued', attempts=0, skip_reason=NULL,
                     lease=NULL, lease_epoch=NULL, lease_deadline=NULL""")
                 db.delete("faces", null, null) // cascades embeddings, memberships, facts
-                // Names belong to identities of the old model's observations.
-                db.delete("people_names", null, null)
-                db.delete("people_hidden", null, null)
+                // #48: preserve human decisions before the cascade removes old
+                // model vectors. Only unchanged media with an exact face box
+                // may receive a confirmation on the freshly embedded face.
+                captureModelCarry(db)
                 db.delete("people_home", null, null)
                 db.execSQL("UPDATE people_home_generation SET revision=NULL WHERE singleton=1")
             }
@@ -882,6 +933,11 @@ class FaceIndexStore(
                 arrayOf(detectorVersion, detectorVersion))
             db.execSQL("""DELETE FROM faces WHERE media_key IN
                 (SELECT media_key FROM catalog WHERE state!='processed')""")
+            // Do not re-attach to deleted, revised or re-detected photos.
+            db.execSQL("""DELETE FROM people_model_carry WHERE NOT EXISTS
+                (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
+                    AND c.revision=people_model_carry.revision
+                    AND c.detector_version=people_model_carry.detector_version)""")
             val pruned = modelChanged || totalChanges(db) != beforePrune
             // Even identical media may have an in-flight old-epoch lease.
             db.execSQL("""UPDATE catalog SET state='queued',
@@ -1087,7 +1143,10 @@ class FaceIndexStore(
                     put("face_uid", uid); put("source_revision", lease.media.revision)
                     put("model_version", embedderVersion); put("vector", encoded[ordinal])
                 })
+                restoreModelCarry(db, lease, ordinal, uid, box, frameMs.getOrNull(ordinal))
             }
+            // Rescanned media cannot claim an old decision again.
+            db.delete("people_model_carry", "media_key=?", arrayOf(lease.media.key))
             // D2-5p: never read or rewrite other photos' clusters here; the
             // work above and below is bounded by this photo's (<=32) faces.
             // Until a batch publishes, clusterState is unavailable.
