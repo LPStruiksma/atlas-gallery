@@ -90,6 +90,10 @@ import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.featuremedia.GridThumbnailPrefetch
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.SharedPhotoOrigins
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import java.time.ZoneId
 import java.util.Locale
 import kotlin.coroutines.coroutineContext
@@ -675,8 +679,10 @@ fun AtlasTimelineGallery(
                                 val media = items[slot.mediaIndex]
                                 val selecting = selectedMediaUris != null && onMediaToggle != null
                                 val isSelected = selecting && media.uri in selectedMediaUris.orEmpty()
+                                val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
                                 Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
                                     // The pointer long press belongs to the grid's drag
                                     // detector; TalkBack gets the same start as an action.
                                     .then(if (onSelectionChange != null && !selecting) Modifier.semantics {
@@ -694,7 +700,10 @@ fun AtlasTimelineGallery(
                                             // must never open the viewer mid-selection.
                                             val toggle = toggleCurrent
                                             if (selectionCurrent != null && toggle != null) toggle(media)
-                                            else openCurrent(media)
+                                            else {
+                                                SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
+                                                openCurrent(media)
+                                            }
                                         }
                                     )
                                     .then(if (selecting) Modifier.semantics { selected = isSelected }

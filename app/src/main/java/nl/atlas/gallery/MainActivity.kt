@@ -1223,6 +1223,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     var viewerUri by remember { mutableStateOf<String?>(null) }
     var viewerAccessEpoch by remember { mutableLongStateOf(-1L) }
+    // #23 ephemeral, grant-scoped visual handoff only. No thumbnail bitmap or URI
+    // survives a route close, permission transition or Activity recreation.
+    var sharedPhotoOrigin by remember { mutableStateOf<SharedPhotoOrigin?>(null) }
+    var lastSettledViewerUri by remember { mutableStateOf<String?>(null) }
+    var viewerExitShared by remember { mutableStateOf(false) }
     var pendingViewerReturn by remember {
         mutableStateOf<PendingViewerReturn?>(null, referentialEqualityPolicy())
     }
@@ -1809,6 +1814,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(personFilter, personBwFolderOnly) { personGridState.scrollToItem(0) }
 
     fun openViewer(items: List<MediaRecord>, uri: String) {
+        // A click can be delivered while a scoped-grant refresh is pending.
+        // Do not animate its decoded thumbnail across an access boundary.
+        val actual = readGalleryMediaGrant(context)
+        sharedPhotoOrigin = SharedPhotoOrigins.take(uri, publishedGallery.epoch)
+            ?.takeIf {
+                actual == grants && grants.hasAny &&
+                    publishedGallery.showable(grants)
+            }
+        lastSettledViewerUri = null
+        viewerExitShared = false
         viewerItems = items
         viewerAccessEpoch = publishedGallery.epoch
         viewerUri = uri
@@ -1817,6 +1832,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerUri = null
         viewerItems = null
         viewerAccessEpoch = -1L
+        sharedPhotoOrigin = null
+        lastSettledViewerUri = null
+        viewerExitShared = false
+        SharedPhotoOrigins.clear()
     }
     fun galleryAccessCurrent(): Boolean = grants.hasAny &&
         publishedGallery.showable(grants) && publishedGallery.epoch >= 0L
@@ -2454,6 +2473,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     if (contextItems != null && currentUri != null) {
       // #662: the viewer stays dark whatever the phone's setting, as on Samsung.
       AtlasDarkRoute {
+        SharedPhotoMotionLayer(
+            origin = sharedPhotoOrigin?.takeIf {
+                viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
+                    it.epoch == publishedGallery.epoch &&
+                    it.media.uri == currentUri
+            },
+            exiting = viewerExitShared,
+            onExitFinished = { if (viewerUri != null) closeViewer() }
+        ) {
         GalleryViewer(
             contextItems, currentUri,
             // Trash went through Android's own consent dialog; only RESULT_OK lands here.
@@ -2486,6 +2514,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 launchResult != PhotoEditorHandoff.Result.UNAVAILABLE
             },
             onExitSettledUri = { lastViewedUri ->
+                // This callback runs before onBack even on fast filmstrip scrubs.
+                // An exit must never contract towards the originally tapped
+                // cell if a different photo is now settled.
+                lastSettledViewerUri = lastViewedUri
                 if (viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
                     grants.hasAny &&
                     publishedGallery.showable(grants) &&
@@ -2548,8 +2580,22 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     nativePersonAlbum = NativePersonAlbumRequest(person.person, person.name)
                 }
             },
-            onBack = ::closeViewer
+            onBack = {
+                val origin = sharedPhotoOrigin
+                if (!viewerExitShared && origin != null &&
+                    origin.media.uri == lastSettledViewerUri &&
+                    viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
+                    grants.hasAny && publishedGallery.showable(grants) &&
+                    !sharedPhotoAnimationDisabled(context)) {
+                    viewerExitShared = true
+                } else if (!viewerExitShared) {
+                    // Far scrub, videos and missing measured cells use the
+                    // existing URI-accurate return anchor without fake motion.
+                    closeViewer()
+                }
+            }
         )
+        }
       }
         return
     }
