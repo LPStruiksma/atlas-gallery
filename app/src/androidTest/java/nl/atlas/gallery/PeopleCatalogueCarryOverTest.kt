@@ -13,6 +13,7 @@ import nl.atlas.gallery.featureface.onnx.OnnxFaceDetector
 import nl.atlas.gallery.featureface.onnx.OnnxFaceEmbedder
 import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.featurevisual.store.VisualIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,6 +39,9 @@ class PeopleCatalogueCarryOverTest {
     private val dir = File(target.cacheDir, "people-carry-" + UUID.randomUUID()).apply { mkdirs() }
     private val file = File(dir, "faces.db")
     private val stores = mutableListOf<FaceIndexStore>()
+    private val visualStores = mutableListOf<VisualIndexStore>()
+    private val visualFile = File(dir, "visual.db")
+    private lateinit var visualStore: VisualIndexStore
     private lateinit var store: FaceIndexStore
 
     @Volatile private var granted = true
@@ -48,12 +52,15 @@ class PeopleCatalogueCarryOverTest {
         var optIn: PeopleOptIn? = null
         var visual = false
         var published: PublishedFaceScope? = null
+        var publishedVisual: PublishedVisualScope? = null
         override fun load() = optIn
         override fun save(value: PeopleOptIn?) { optIn = value }
         override fun loadVisual() = visual
         override fun saveVisual(enabled: Boolean) { visual = enabled }
         override fun loadPublished() = published
         override fun savePublished(value: PublishedFaceScope?) { published = value }
+        override fun loadPublishedVisual() = publishedVisual
+        override fun savePublishedVisual(value: PublishedVisualScope?) { publishedVisual = value }
     }
     private val memory = Memory()
 
@@ -72,6 +79,8 @@ class PeopleCatalogueCarryOverTest {
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
         stores.clear()
+        visualStores.forEach { runCatching { it.close() } }
+        visualStores.clear()
         store = FaceIndexStore(object : ContextWrapper(target) {
             override fun getDatabasePath(name: String): File = file
             override fun openOrCreateDatabase(
@@ -83,8 +92,12 @@ class PeopleCatalogueCarryOverTest {
             ): SQLiteDatabase = SQLiteDatabase.openDatabase(
                 file.path, factory, SQLiteDatabase.CREATE_IF_NECESSARY, errorHandler)
         }).also { stores += it }
+        visualStore = VisualIndexStore(dbContext(visualFile)).also { visualStores += it }
         return PeopleDiscoveryHost(
             store = store,
+            visualStore = visualStore,
+            visualModelVersion = "synthetic-visual-v1",
+            visualDimension = 4,
             photoGrantCurrent = { granted },
             inferenceFactory = {
                 FaceEmbeddingPipeline.forOnnx(
@@ -104,9 +117,74 @@ class PeopleCatalogueCarryOverTest {
         )
     }
 
+    private fun dbContext(file: File): Context = object : ContextWrapper(target) {
+        override fun getDatabasePath(name: String): File = file
+        override fun openOrCreateDatabase(
+            name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?
+        ): SQLiteDatabase = SQLiteDatabase.openOrCreateDatabase(file, factory)
+        override fun openOrCreateDatabase(
+            name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?,
+            errorHandler: DatabaseErrorHandler?
+        ): SQLiteDatabase = SQLiteDatabase.openDatabase(
+            file.path, factory, SQLiteDatabase.CREATE_IF_NECESSARY, errorHandler)
+    }
+
+    private fun visualLaunch(): Pair<String, String> {
+        val face = firstLaunch()
+        val host = relaunch()
+        host.onGalleryPublication("gallery-2") { inventory }
+        assertTrue(host.setVisualIndex(true))
+        val visual = requireNotNull(memory.publishedVisual)
+        assertEquals(face, visual.faceEpoch)
+        assertEquals(6, visualStore.progress(visual.epoch)?.total)
+        return face to visual.epoch
+    }
+
+    @Test fun unchangedRelaunchRevivesVisualOnceWithoutRestaging() {
+        val (face, visual) = visualLaunch()
+        val host = relaunch()
+        assertNull(visualStore.progress(visual))
+        host.onGalleryPublication("gallery-3") { inventory }
+        assertEquals(face, host.displayEpoch("gallery-3"))
+        assertEquals(visual, memory.publishedVisual?.epoch)
+        assertEquals(6, host.visualStatus(face)?.total)
+        assertNotNull(host.visualSearchSource(face))
+        assertNull(visualStore.reviveDormantEpoch("synthetic-visual-v1", 4))
+    }
+
+    @Test fun differentGrantRejectsDormantVisual() {
+        val (_, visual) = visualLaunch()
+        token = "images+videos"
+        val host = relaunch()
+        host.onGalleryPublication("gallery-3") { inventory }
+        assertNull(visualStore.progress(visual))
+        assertNotEquals(visual, memory.publishedVisual?.epoch)
+    }
+
+    @Test fun selectedPhotosDoesNotCarryVisual() {
+        val (_, visual) = visualLaunch()
+        token = null
+        val host = relaunch()
+        host.onGalleryPublication("gallery-3") { inventory }
+        assertNull(visualStore.progress(visual))
+        assertNull(memory.publishedVisual)
+    }
+
+    @Test fun revokedGrantDropsVisualAcrossRelaunch() {
+        val (_, visual) = visualLaunch()
+        granted = false
+        relaunch().onGalleryPublication(null) { inventory }
+        assertNull(memory.publishedVisual)
+        assertNull(visualStore.progress(visual))
+        granted = true
+        relaunch().onGalleryPublication("gallery-3") { inventory }
+        assertNull(memory.publishedVisual)
+    }
+
     @After fun cleanUp() {
         PeopleScanWorkRuntime.clear()
         stores.forEach { runCatching { it.close() } }
+        visualStores.forEach { runCatching { it.close() } }
         dir.deleteRecursively()
     }
 
