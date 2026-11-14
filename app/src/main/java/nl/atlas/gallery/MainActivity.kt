@@ -940,8 +940,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var statusOpen by rememberSaveable { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = statusOpen) { statusOpen = false }
-    BackHandler(enabled = settingsOpen && !statusOpen) { settingsOpen = false }
+    // One callback owns the nested Settings navigation, so Android's Back
+    // dispatcher cannot select a stale Settings-close callback while leaving
+    // Diagnostics. The same rule is used by the visible header Back action.
+    BackHandler(enabled = settingsOpen || statusOpen) {
+        if (statusOpen) statusOpen = false else settingsOpen = false
+    }
     var albumReturnToAlbums by rememberSaveable { mutableStateOf(false) }
     // E2a (#439): Stories open over the Albums tab; no new primary destination.
     var storiesOpen by rememberSaveable { mutableStateOf(false) }
