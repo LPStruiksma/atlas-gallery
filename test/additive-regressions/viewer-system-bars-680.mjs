@@ -39,6 +39,7 @@ test('Details evidence scrolls to final value and checks navigation clearance (#
   assert.match(viewerTest, /albumValue\.performScrollTo\(\)/);
   assert.match(viewerTest, /albumValue\.fetchSemanticsNode\(\)\.boundsInWindow\.bottom/);
   assert.match(viewerTest, /getInsetsIgnoringVisibility\(WindowInsetsCompat\.Type\.navigationBars\(\)\)/);
-  assert.match(viewerTest, /albumBottom <= sheetBottom - navBottom/);
+  assert.match(viewerTest, /val safeBottom = decor.height - navBottom/);
+  assert.match(viewerTest, /albumBottom <= safeBottom/);
   assert.doesNotMatch(viewerTest, /onNodeWithText\("Resolution"\)\.performScrollTo\(\)/);
 });
