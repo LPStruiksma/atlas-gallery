@@ -1,0 +1,41 @@
+surface	theme	required	source_png	source_test	reason
+pictures-default	light	yes	theme-662-photos-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+pictures-default	dark	yes	theme-662-photos-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+pictures-pinch-compact	light	no		PinchRealRatioJourneyTest	Single-theme pinch evidence exists, but no paired system-theme compact-grid capture
+pictures-pinch-compact	dark	no		PinchRealRatioJourneyTest	Single-theme pinch evidence exists, but no paired system-theme compact-grid capture
+pictures-pinch-large	light	no		GridMotionFrameTimeTest	No independently asserted large-zoom stop under both system themes
+pictures-pinch-large	dark	no		GridMotionFrameTimeTest	No independently asserted large-zoom stop under both system themes
+pictures-original-ratio	light	no		PinchRealRatioJourneyTest	Original-ratio screenshot exists only without a controlled light/dark pair
+pictures-original-ratio	dark	no		PinchRealRatioJourneyTest	Original-ratio screenshot exists only without a controlled light/dark pair
+pictures-header-away	light	no		HeaderScrollAwayJourneyTest	Scroll-away screenshots exist but no controlled light/dark pair
+pictures-header-away	dark	no		HeaderScrollAwayJourneyTest	Scroll-away screenshots exist but no controlled light/dark pair
+albums-overview	light	yes	theme-662-albums-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+albums-overview	dark	yes	theme-662-albums-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+albums-detail	light	no		AlbumGridEvidenceTest	No controlled light/dark capture after entering a synthetic album detail
+albums-detail	dark	no		AlbumGridEvidenceTest	No controlled light/dark capture after entering a synthetic album detail
+people-overview	light	yes	theme-662-people-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+people-overview	dark	yes	theme-662-people-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+people-named	light	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
+people-named	dark	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
+people-hidden	light	no		PeopleSearchAppEvidenceTest	Hidden People route has only an uncontrolled-theme PNG
+people-hidden	dark	no		PeopleSearchAppEvidenceTest	Hidden People route has only an uncontrolled-theme PNG
+viewer-photo	light	yes	theme-662-viewer-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+viewer-photo	dark	yes	theme-662-viewer-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+viewer-details-people	light	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
+viewer-details-people	dark	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
+viewer-filmstrip	light	no		ViewerInteractionTest	Viewer capture does not assert an independently exposed filmstrip in both themes
+viewer-filmstrip	dark	no		ViewerInteractionTest	Viewer capture does not assert an independently exposed filmstrip in both themes
+search-person	light	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
+search-person	dark	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
+selection-more	light	yes	selection-pill-17-light-more.png	SelectionPillLightJourneyTest / SelectionPillDarkJourneyTest	
+selection-more	dark	yes	selection-pill-17-dark-more.png	SelectionPillLightJourneyTest / SelectionPillDarkJourneyTest	
+photo-dna	light	yes	theme-662-photo-dna-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+photo-dna	dark	yes	theme-662-photo-dna-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+declutter	light	yes	declutter-678-deck-light.png	DeclutterThemeEvidenceTest	
+declutter	dark	yes	declutter-678-deck-dark.png	DeclutterThemeEvidenceTest	
+settings	light	yes	settings-664-photos-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+settings	dark	yes	settings-664-photos-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+search-overview	light	yes	theme-662-search-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+search-overview	dark	yes	theme-662-search-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
+dialog-photo-details	light	yes	photo-details-34-after-light.png	PhotoDetailsDialogEvidenceTest	
+dialog-photo-details	dark	yes	photo-details-34-after-dark.png	PhotoDetailsDialogEvidenceTest	
