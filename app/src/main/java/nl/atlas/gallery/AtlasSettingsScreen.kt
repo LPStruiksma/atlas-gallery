@@ -53,6 +53,9 @@ internal fun AtlasSettingsScreen(
     onLinkV4: () -> Unit,
     onDiagnostics: () -> Unit,
     scanLoading: Boolean = false,
+    scanHasSavedOptIn: Boolean = false,
+    scanPhotoAccess: Boolean = true,
+    visualStatus: VisualIndexStatus? = null,
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
@@ -83,18 +86,9 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = if (scanLoading) "Restoring…" else when (scanPhase) {
-        FaceDiscoveryPhase.SCANNING -> "On · Pause"
-        FaceDiscoveryPhase.QUEUED -> "Starting"
-        FaceDiscoveryPhase.PAUSED -> "Paused · Resume"
-        FaceDiscoveryPhase.PERMISSION_REQUIRED -> "Permission required"
-        FaceDiscoveryPhase.BATTERY_LOW -> "Battery low"
-        FaceDiscoveryPhase.STORAGE_LOW -> "Storage low"
-        FaceDiscoveryPhase.FAILED -> "Needs attention"
-        FaceDiscoveryPhase.UNAVAILABLE, null -> "Unavailable"
-        FaceDiscoveryPhase.READY -> "Not started"
-        FaceDiscoveryPhase.FINISHED, FaceDiscoveryPhase.REVIEW_AVAILABLE -> "Finished"
-    }
+    val scanValue = if (scanLoading) "Restoring…" else faceScanSettingsValue(
+        scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .testTag("atlas-settings-screen")
@@ -106,7 +100,8 @@ internal fun AtlasSettingsScreen(
                 scanAction, scanValue)
             if (visualIndexOn != null) {
                 SettingsActionRow("Visual search index", "atlas-people-visual-index",
-                    onVisualIndex, if (visualIndexOn) "On" else "Off")
+                    onVisualIndex.takeIf { visualStatus != null }, visualIndexStatusText(visualIndexOn, visualStatus,
+                        scanPhase, scanLoading, scanPhotoAccess))
             }
             SettingsActionRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
         }
@@ -136,7 +131,7 @@ internal fun AtlasSettingsScreen(
                         modifier = Modifier.fillMaxWidth().padding(12.dp)
                             .testTag("atlas-settings-last-crash-text"),
                         style = MaterialTheme.typography.bodySmall,
-                        maxLines = 12, overflow = TextOverflow.Ellipsis)
+                        maxLines = 28, overflow = TextOverflow.Ellipsis)
                     if (last != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { onCopyLastCrash(last) },

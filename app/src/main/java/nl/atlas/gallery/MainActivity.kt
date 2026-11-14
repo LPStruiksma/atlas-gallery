@@ -1110,12 +1110,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         authorized = searchGrant != null, source = media)
     val latestPhotoDnaTokens = rememberUpdatedState(photoDnaTokens)
     val photoDnaGrant = grants
-    val photoDna = rememberPhotoDna(media, photoDnaTokens,
+    val photoDnaPlanning = rememberPhotoDna(media, photoDnaTokens,
         enabled = tab == 1 && photoDnaOpen) { record, check ->
         hashAuthorizedMedia(context.contentResolver, record,
             stillAuthorized = { readGalleryMediaGrant(context) == photoDnaGrant },
             checkCancelled = check)
     }
+    val photoDna = photoDnaPlanning.result
     // O(1) reference-identity generation: even replacing confirmed People with
     // an equal-count/different-label roster creates a new anonymous token.
     val peopleGeneration = remember(CatalogSourceKey(people)) {
@@ -2812,13 +2813,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
                             scanLoading = access && discovery.status == null,
+                            scanHasSavedOptIn = discoveryHost.hasSavedScanOptIn(),
+                            scanPhotoAccess = access,
+                            visualStatus = visualStatus,
                             onPauseScan = discovery.onPause.takeIf {
                                 discovery.status?.actions?.mayPauseScan == true
                             },
                             onResumeScan = discovery.onResume.takeIf {
                                 discovery.status?.actions?.mayResumeScan == true
                             },
-                            visualIndexOn = visualStatus?.enabled,
+                            visualIndexOn = visualStatus?.enabled ?:
+                                discoveryHost.hasSavedVisualOptIn().takeIf { it },
                             showPhotoDetails = provenance != null &&
                                 (provenance.missingPhotoFields.isNotEmpty() ||
                                     provenance.ignoredPhotoRows > 0),
@@ -2905,28 +2910,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         }
                         if (provenanceDetailsOpen && provenance != null) {
-                            AlertDialog(
-                                onDismissRequest = { provenanceDetailsOpen = false },
-                                confirmButton = {
-                                    TextButton(onClick = { provenanceDetailsOpen = false }) {
-                                        Text("Close")
-                                    }
-                                },
-                                title = { Text("Photo details") },
-                                text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("Checked ${provenance.observedPhotoRows} · " +
-                                            "partial ${provenance.weakPhotoRows} · " +
-                                            "omitted ${provenance.ignoredPhotoRows}")
-                                        provenance.missingPhotoFields.toSortedMap().forEach { (field, count) ->
-                                            Text("$field: $count (" +
-                                                "%.2f".format(Locale.US,
-                                                    count * 100.0 / provenance.observedPhotoRows.coerceAtLeast(1)) +
-                                                "%)")
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.testTag("atlas-people-details-dialog")
+                            PhotoDetailsDialog(
+                                content = photoDetailsContent(
+                                    checked = provenance.observedPhotoRows,
+                                    partial = provenance.weakPhotoRows,
+                                    skipped = provenance.ignoredPhotoRows,
+                                    missing = provenance.missingPhotoFields,
+                                    locale = Locale.getDefault()
+                                ),
+                                onClose = { provenanceDetailsOpen = false }
                             )
                         }
                     }
@@ -3163,7 +3155,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             },
                             onReviewRequested = ::requestPhotoDnaTrash,
                             // No tokens: a no-access message, never an endless spinner (#445).
-                            accessible = photoDnaTokens != null
+                            accessible = photoDnaTokens != null,
+                            // #42: a planning error is a Retry, not a quit.
+                            failed = photoDnaPlanning.failed,
+                            onRetry = photoDnaPlanning::retry
                         )
                     }
                     tab == 1 -> Column(Modifier.fillMaxSize()) {
@@ -3374,6 +3369,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     v4SyncSummary = v4SyncState
                                 ),
                                 actions = discovery.status?.actions ?: PeopleActionAvailability(),
+                                restoring = access && discovery.status == null &&
+                                    discoveryHost.discoveryOptedIn(),
                                 onOpenProfile = { id ->
                                     personBwFolderOnly = false
                                     personFilter = id

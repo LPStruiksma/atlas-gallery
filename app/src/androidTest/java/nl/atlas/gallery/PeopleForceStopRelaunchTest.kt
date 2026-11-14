@@ -175,6 +175,7 @@ class PeopleForceStopRelaunchTest {
             visualStore = visualStore,
             optInMemory = choices,
             photoGrantCurrent = { readGalleryMediaGrant(target).images },
+            photoGrantToken = { galleryPhotoGrantToken(target) },
             inferenceFactory = {
                 FaceEmbeddingPipeline.forOnnx(
                     OnnxFaceDetector.fromAssets(target.assets, scoreThreshold = 0.6f),
@@ -254,9 +255,38 @@ class PeopleForceStopRelaunchTest {
         assumeTrue(InstrumentationRegistry.getArguments().getString("atlasForceStopPhase") == "verify")
         assertNotNull("People opt-in persisted beyond the process", choices.load())
         assertTrue("visual choice persisted beyond the process", choices.loadVisual())
-        // The first frame must not be replaced by the first-time inventory spinner.
-        waitFor("Photos grid first frame") { has("atlas-timeline-grid") }
-        compose.onNodeWithTag("atlas-first-scan").assertDoesNotExist()
+        // #31 first frame: open People as soon as the bar exists and watch every
+        // check until the named person shows. A restored library must never
+        // pass through "No people" / "Discover faces", and must not take long.
+        val launched = SystemClock.elapsedRealtime()
+        waitFor("navigation bar") { has("atlas-nav-people") }
+        compose.onNodeWithTag("atlas-nav-people").performClick()
+        val seen = linkedSetOf<String>()
+        try {
+            compose.waitUntil(FIRST_PEOPLE_MS) {
+                if (has("atlas-people-empty")) seen += "No people"
+                if (compose.onAllNodesWithText("Discover faces").fetchSemanticsNodes()
+                        .isNotEmpty()) seen += "Discover faces"
+                has("atlas-native-person-album")
+            }
+        } catch (error: Throwable) {
+            throw AssertionError("named People not shown within $FIRST_PEOPLE_MS ms of " +
+                "relaunch; states seen: $seen", error)
+        }
+        val shownMs = SystemClock.elapsedRealtime() - launched
+        android.util.Log.i("ATLAS_RELAUNCH31", "people_first_named_ms=$shownMs seen=$seen")
+        assertTrue("People showed a not-started state after relaunch: $seen", seen.isEmpty())
+        // Settings straight after: the restored scan state, never "Restoring…".
+        compose.onNodeWithTag("atlas-header-more").performClick()
+        waitFor("Settings action") { has("atlas-library-status") }
+        compose.onNodeWithTag("atlas-library-status").performClick()
+        waitFor("real Settings") { has("atlas-settings-screen") }
+        assertTrue("Settings still restoring once People showed",
+            compose.onAllNodesWithText("Restoring…").fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodesWithText("Unavailable").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithTag("atlas-header-back").performClick()
+        // Back lands on People: captureLibrary opens Photos itself and checks the
+        // grid is not replaced by the first-time inventory spinner.
         captureLibrary("after")
         compose.onNodeWithTag("atlas-nav-people").performClick()
         waitFor("named People after a new process") { has("atlas-native-person-album") }
@@ -346,6 +376,8 @@ class PeopleForceStopRelaunchTest {
 
     private companion object {
         const val PHOTOS = 6
+        /** #31: relaunch to named People, on a slow CI emulator; logged as measured. */
+        const val FIRST_PEOPLE_MS = 8_000L
         const val FOLDER = "ATLAS-Relaunch31"
         const val NAME = "Synthetic Relaunch Person"
         const val MODEL = "ci-relaunch31-visual-v1"

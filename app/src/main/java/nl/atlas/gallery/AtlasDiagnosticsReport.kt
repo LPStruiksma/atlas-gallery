@@ -18,7 +18,7 @@ internal data class AtlasScanDiagnostic(
 /** No exception text or Android media identifiers enter the ring. */
 internal fun atlasScanFailureOutcome(error: Throwable): String = when (error) {
     is GalleryProviderSnapshotChanged -> "SNAPSHOT_CHANGED"
-    is OutOfMemoryError -> "OUT_OF_MEMORY"
+    is OutOfMemoryError, is GalleryScanOutOfMemory -> "OUT_OF_MEMORY"
     is java.util.concurrent.CancellationException -> "CANCELLED"
     is SecurityException -> "PERMISSION_DENIED"
     else -> "FAILED"

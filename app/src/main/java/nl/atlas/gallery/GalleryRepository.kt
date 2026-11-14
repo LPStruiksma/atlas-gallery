@@ -29,12 +29,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class GalleryRepository(private val context: Context) {
+    /** Aggregate count from the most recent completed scan, not media identity. */
+    @Volatile var lastReusedCount: Int? = null
+        private set
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
     fun load(
         cancellationSignal: CancellationSignal? = null,
+        /**
+         * The inventory on screen while this scan runs. Rows that did not
+         * change are answered with its objects, so the heap does not hold the
+         * library twice ([GalleryScanRecordReuse]).
+         */
+        previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
+    ): List<MediaRecord> = failGalleryScanOnHeapExhaustion {
+        lastReusedCount = null
+        loadInventory(cancellationSignal, previous, checkActive)
+    }
+
+    private fun loadInventory(
+        cancellationSignal: CancellationSignal?,
+        previous: List<MediaRecord>,
+        checkActive: () -> Unit
     ): List<MediaRecord> {
-        val result = ArrayList<MediaRecord>(4096)
+        val result = ArrayList<MediaRecord>(maxOf(4096, previous.size))
+        val reuse = GalleryScanRecordReuse(previous)
         // Snapshot versions once per mounted *specific* volume, never once per row.
         // An unknown provider version disables persistent presentation caching.
         val versionsAtStart = mediaProviderVersions()
@@ -48,12 +67,12 @@ class GalleryRepository(private val context: Context) {
         checkActive()
         appendMediaTypeOrRollbackOnDenial(result) {
             readMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, result,
-                cancellationSignal, checkActive, versionsAtStart, scanZone)
+                cancellationSignal, checkActive, versionsAtStart, scanZone, reuse)
         }
         checkActive()
         appendMediaTypeOrRollbackOnDenial(result) {
             readMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, result,
-                cancellationSignal, checkActive, versionsAtStart, scanZone)
+                cancellationSignal, checkActive, versionsAtStart, scanZone, reuse)
         }
         checkActive()
         // Refuse an internally mixed catalogue: ordinary edits change
@@ -64,6 +83,10 @@ class GalleryRepository(private val context: Context) {
         if (!sameMediaProviderScanSnapshot(
                 versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd))
             throw GalleryProviderSnapshotChanged()
+        lastReusedCount = reuse.reused
+        // Counts only: how much of the previous inventory this scan shared.
+        android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
+            "reused=${reuse.reused} ${heapUseLogFields()}")
         return result
     }
 
@@ -94,7 +117,8 @@ class GalleryRepository(private val context: Context) {
         uri: android.net.Uri, video: Boolean, target: MutableList<MediaRecord>,
         cancellationSignal: CancellationSignal?, checkActive: () -> Unit,
         providerVersions: Map<String, String?>,
-        scanZone: java.time.ZoneId
+        scanZone: java.time.ZoneId,
+        reuse: GalleryScanRecordReuse
     ) {
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
@@ -150,10 +174,10 @@ class GalleryRepository(private val context: Context) {
                 // rather than publish a fabricated URI or People identity.
                 val id = requireMediaStoreItemId(cursor.getLong(idxId))
                 val name = cursor.stringOr(idxName, "")
-                val folder = cursor.stringOr(idxPath, "")
+                val folder = reuse.shared(cursor.stringOr(idxPath, ""))
                 val modified = cursor.longOr(idxModified)
-                val volume = requireMountedMediaVolume(
-                    cursor.stringOr(idxVolume, ""), providerVersions.keys)
+                val volume = reuse.shared(requireMountedMediaVolume(
+                    cursor.stringOr(idxVolume, ""), providerVersions.keys))
                 // A missing/migrating mounted-volume mapping invalidates the
                 // entire scan. Never silently publish a partial People album.
                 val itemCollection = specificCollections[volume]
@@ -164,7 +188,7 @@ class GalleryRepository(private val context: Context) {
                 // Do not fabricate landscape ratio rows from missing metadata.
                 val orientationPresent =
                     idxOrientation >= 0 && !cursor.isNull(idxOrientation)
-                target.add(MediaRecord(
+                target.add(reuse.canonical(MediaRecord(
                     id = id,
                     uri = ContentUris.withAppendedId(itemCollection, id).toString(),
                     name = name, relativePath = folder,
@@ -182,7 +206,7 @@ class GalleryRepository(private val context: Context) {
                     isFavorite = cursor.longOr(idxFavorite) != 0L,
                     favoriteKnown = idxFavorite >= 0 && !cursor.isNull(idxFavorite),
                     dateSource = dates.source
-                ))
+                )))
             }
         }
     }
@@ -241,6 +265,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         }
     }
 
+    // #41: the cold-start scan waits for this before it picks the rows to
+    // share, or cache and scan would each hold a full copy of the library.
+    private var cachedInventoryLoad: Job? = null
+
     init {
         application.contentResolver.registerContentObserver(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, mediaObserver
@@ -258,7 +286,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
      * flow starts the real scan in parallel, which then replaces it.
      */
     private fun loadCachedInventory() {
-        viewModelScope.launch {
+        cachedInventoryLoad = viewModelScope.launch {
             val cached = try {
                 withContext(Dispatchers.IO) {
                     val readContext = currentCoroutineContext()
@@ -374,6 +402,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             ((System.nanoTime() - scanStartedNanos) / 1_000_000L).coerceAtLeast(0L)
         var diagnosticOutcome = "SUPERSEDED"
         var diagnosticRows: Int? = null
+        var diagnosticReused: Int? = null
         // The scope belongs to the scan, not whichever Activity grant happens
         // to be visible when an asynchronous MediaStore cursor finishes.
         val observedGrantAtStart = readGalleryMediaGrant(getApplication<Application>())
@@ -386,9 +415,16 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             var settleFailedSnapshot = false
             _busy.value = true
             try {
+                // The inventory on screen once the disk cache has settled;
+                // unchanged rows share its objects. On a cold start the cache
+                // decode and this scan start together: reading the screen
+                // before the cache is published would find it empty.
+                val shownAtStart = inventoryShownAfterCacheSettles(cachedInventoryLoad) {
+                    _publishedInventory.value.items
+                }
                 val inventory = withContext(Dispatchers.IO) {
                     val scanContext = currentCoroutineContext()
-                    repo.load(providerCancellation) { scanContext.ensureActive() }
+                    repo.load(providerCancellation, shownAtStart) { scanContext.ensureActive() }
                 }
                 // We are back on the owning main dispatcher. There is no
                 // suspension between the latest-request check and the atomic
@@ -415,6 +451,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
                         diagnosticRows = inventory.size
+                        diagnosticReused = repo.lastReusedCount
                         diagnosticOutcome = "SUCCESS"
                         // A prior failed scan followed by this exact authorized
                         // publication is now observable without logging media.
@@ -441,8 +478,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 diagnosticOutcome = "CANCELLED"
                 throw cancelled
             } catch (oom: OutOfMemoryError) {
-                // Record a fixed outcome while preserving the fatal JVM error.
-                diagnosticOutcome = atlasScanFailureOutcome(oom)
+                diagnosticOutcome = "OUT_OF_MEMORY"
                 throw oom
             } catch (e: Exception) {
                 diagnosticOutcome = if (refreshQueue.mayPublish(ticket))
@@ -489,10 +525,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     }
                 }
             } finally {
-                // A full repository scan reads fresh MediaStore rows: 0 reused.
-                // Do not claim this count for failed or superseded attempts.
                 AtlasDiagnosticsRing.scan(scanElapsedMilliseconds(), diagnosticRows,
-                    diagnosticOutcome, reused = diagnosticRows?.let { 0 })
+                    diagnosticOutcome, reused = diagnosticReused)
                 // A notification during IO marks the inventory dirty. Explicit
                 // new requests (not arbitrary continuous observer churn) get
                 // coalesced into a guaranteed follow-up read.

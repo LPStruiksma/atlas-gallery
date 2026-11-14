@@ -53,6 +53,7 @@ class AtlasDiagnosticsReportTest {
         assertEquals("SNAPSHOT_CHANGED",
             atlasScanFailureOutcome(GalleryProviderSnapshotChanged()))
         assertEquals("OUT_OF_MEMORY", atlasScanFailureOutcome(OutOfMemoryError("/DCIM/secret")))
+        assertEquals("OUT_OF_MEMORY", atlasScanFailureOutcome(GalleryScanOutOfMemory()))
         assertEquals("PERMISSION_DENIED",
             atlasScanFailureOutcome(SecurityException("content://secret")))
         assertEquals("CANCELLED",

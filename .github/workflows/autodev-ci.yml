@@ -26,3 +26,19 @@ jobs:
         run: |
           python3 scripts/verify_contract.py
           python3 -m unittest discover -s scripts -p 'test_verify_contract.py'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all additive .mjs source-contract tests
+        shell: bash
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          tests=(test/additive-regressions/*.mjs)
+          if (( ${#tests[@]} == 0 )); then
+            echo '::error::No additive .mjs source-contract tests found.'
+            exit 1
+          fi
+          echo "Discovered ${#tests[@]} additive .mjs source-contract test files:"
+          printf ' - %s\n' "${tests[@]}"
+          node --test "${tests[@]}"

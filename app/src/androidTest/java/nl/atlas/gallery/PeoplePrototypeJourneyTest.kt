@@ -47,6 +47,7 @@ import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -232,6 +233,22 @@ class PeoplePrototypeJourneyTest {
             compose.onAllNodesWithTag("atlas-people-unnamed").fetchSemanticsNodes().isEmpty())
         settle()
         saveUiEvidence("prototype-people-named.png")
+
+        // 3b. #39: a scan adds a face. Until the next publication the cluster
+        // generation is dirty, exactly as completeEmbeddings leaves it after
+        // a photo (dirty=1, pending+1). People keeps the last published person,
+        // also when the screen reads its status anew (a recreated Activity).
+        store.writableDatabase.execSQL(
+            "UPDATE cluster_generation SET dirty=1, pending=pending+1 WHERE singleton=1")
+        assertNotNull("People home is served while new faces wait", store.peopleHome(epoch1))
+        compose.activityRule.scenario.recreate()
+        openPeople()
+        waitForTag("atlas-native-person-album")
+        waitForText(NAME)
+        assertEquals("the named person stays during the scan", 1,
+            compose.onAllNodesWithTag("atlas-native-person-album").fetchSemanticsNodes().size)
+        settle()
+        saveUiEvidence("people-39-during-scan.png")
 
         // 4. The person page shows all of the identity's photos.
         compose.onNodeWithTag("atlas-native-person-album").performClick()
