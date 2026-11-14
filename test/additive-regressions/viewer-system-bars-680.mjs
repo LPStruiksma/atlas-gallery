@@ -34,6 +34,7 @@ test('API 35+ translucent navigation bar uses a restorable dark window backdrop 
 test('Details evidence scrolls to final value and checks navigation clearance (#680)', () => {
   assert.match(viewerTest, /val albumValue = rule\.onNodeWithText\(facts\.album, substring = false\)/);
   assert.match(viewerTest, /relativePath = "DCIM\/ATLAS-680\/"/);
+  assert.match(viewerTest, /onNodeWithTag\("atlas-viewer-details"\)\.performTouchInput \{ swipeUp\(\) \}/);
   assert.match(viewerTest, /onNodeWithText\("Album", substring = false\)\.performScrollTo\(\)/);
   assert.match(viewerTest, /albumValue\.performScrollTo\(\)/);
   assert.match(viewerTest, /albumValue\.fetchSemanticsNode\(\)\.boundsInWindow\.bottom/);

@@ -123,6 +123,10 @@ class ViewerLightSystemBarsTest {
         // The final-row value can be unplaced before the sheet scrolls.
         // Bring its label into view first; still assert the value itself.
         assertEquals("ATLAS-680", facts.album)
+        // The route opens a partially expanded sheet; expand its viewport
+        // as a user does before scrolling the final value into view.
+        rule.onNodeWithTag("atlas-viewer-details").performTouchInput { swipeUp() }
+        rule.waitForIdle()
         rule.onNodeWithText("Album", substring = false).performScrollTo()
         val albumValue = rule.onNodeWithText(facts.album, substring = false)
         albumValue.performScrollTo()
