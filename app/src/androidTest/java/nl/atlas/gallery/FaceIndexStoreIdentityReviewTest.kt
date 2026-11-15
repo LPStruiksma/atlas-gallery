@@ -522,10 +522,20 @@ class FaceIndexStoreIdentityReviewTest {
         ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
         db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
             arrayOf(secondVideoFace, ada.value))
-        assertTrue(count(store, "people_matched") >= 1)
+        // A matched-only photo must add one media item. Without this row an
+        // aggregate that ignores people_matched would falsely pass the video
+        // overlap assertion above.
+        val matchedOnlyPhoto = faceOf(store, "sort-A", 6).localHex
+        assertEquals(1, db.rawQuery(
+            "SELECT COUNT(*) FROM cluster_members WHERE face_uid=?",
+            arrayOf(matchedOnlyPhoto)
+        ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
+        db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
+            arrayOf(matchedOnlyPhoto, ada.value))
+        assertTrue(count(store, "people_matched") >= 2)
         val home = requireNotNull(store.peopleHome("sort-A"))
         assertEquals(setOf(ada, ben), home.people.keys)
-        assertEquals(3, home.people.getValue(ada).mediaCount)
+        assertEquals(4, home.people.getValue(ada).mediaCount)
         assertEquals(2, home.people.getValue(ben).mediaCount)
         assertEquals(100L, home.people.getValue(ada).firstAppearanceMs)
         assertEquals(900L, home.people.getValue(ada).mostRecentAppearanceMs)
