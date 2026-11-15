@@ -22,10 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PeopleOutline
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +56,11 @@ import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
+import nl.atlas.gallery.featurepeopleui.PeopleSortKey
+import nl.atlas.gallery.featurepeopleui.PeopleSortStats
+import nl.atlas.gallery.featurepeopleui.orderPeopleEntries
+import nl.atlas.gallery.featurepeopleui.PeopleSortEntry
 
 /**
  * People tab in Samsung Gallery style (#516, #643, OWNER_INTENT): the slim
@@ -89,6 +99,9 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    /** Persisted by the owning Activity; preferences contain only the enum. */
+    sortChoice: PeopleSortChoice = PeopleSortChoice(),
+    onSortChoice: (PeopleSortChoice) -> Unit = {},
     /**
      * #31: a kept opt-in whose catalogue is still being restored. Shows a
      * quiet page, never "No people" and "Discover faces" for a library that
@@ -109,16 +122,7 @@ fun PeopleHomeScreen(
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
-    // This remembers only a generic layout choice, never a private person name.
-    var profileOrder by remember { mutableStateOf(ReviewedPeopleOrder.AS_PROVIDED) }
-    val orderedProfiles = remember(state.profiles, profileOrder) {
-        // Stable partition: unnamed profiles trail named ones without erasing
-        // the chosen Original order, Most photos, or Name ordering.
-        val selectedOrder = orderReviewedPeopleProfiles(state.profiles, profileOrder)
-        val named = selectedOrder.filterNot { it.name.isBlank() }
-        val unnamed = selectedOrder.filter { it.name.isBlank() }
-        named + unnamed
-    }
+    var sortSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The native review snapshot is grant-scoped and never mixed with imported
     // V4 numeric IDs. Its confirmed names appear in the same People grid.
     val currentNative = nativePeopleReview?.takeIf {
@@ -146,25 +150,29 @@ fun PeopleHomeScreen(
         }
     }
     // Both sources retain their own click contract and identity type.
-    val tiles = orderedProfiles.map { PeopleGridTile.Imported(it) } +
-        nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles
+    val tiles = remember(state.profiles, nativeTiles, unnamedTiles, currentNative, sortChoice) {
+        val all = state.profiles.map { PeopleGridTile.Imported(it) } +
+            nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles
+        val keyed = all.mapIndexed { index, tile ->
+            val stats = when (tile) {
+                is PeopleGridTile.Imported -> PeopleSortStats(tile.profile.accessiblePhotos,
+                    tile.profile.firstAppearanceMs, tile.profile.mostRecentAppearanceMs)
+                is PeopleGridTile.Native -> currentNative?.people?.get(tile.tile.person)?.let {
+                    PeopleSortStats(it.mediaCount, it.firstAppearanceMs, it.mostRecentAppearanceMs)
+                } ?: PeopleSortStats(0, null, null)
+                is PeopleGridTile.Unnamed -> PeopleSortStats(0, null, null)
+            }
+            PeopleSortEntry(index, when (tile) {
+                is PeopleGridTile.Imported -> tile.profile.name
+                is PeopleGridTile.Native -> tile.tile.name
+                is PeopleGridTile.Unnamed -> ""
+            }, stats)
+        }
+        orderPeopleEntries(keyed, sortChoice).map { all[it.id] }
+    }
     val scan = peopleScanControls(discovery, actions, onStartDiscovery,
         onPauseDiscovery, onResumeDiscovery, onOpenReview)
     val overflow = buildList {
-        if (state.profiles.size > 1) {
-            ReviewedPeopleOrder.entries.forEach { option ->
-                add(AtlasHeaderMenuItem(
-                    label = when (option) {
-                        ReviewedPeopleOrder.AS_PROVIDED -> "Original order"
-                        ReviewedPeopleOrder.MOST_PHOTOS -> "Most photos"
-                        ReviewedPeopleOrder.NAME -> "Name"
-                    },
-                    testTag = "atlas-people-sort-${option.name}",
-                    checked = profileOrder == option,
-                    onClick = { profileOrder = option }
-                ))
-            }
-        }
         addAll(menuItems)
         if (onScanNow != null && !currentPermissionEpoch.isNullOrBlank() &&
             discovery.phase != FaceDiscoveryPhase.UNAVAILABLE &&
@@ -182,8 +190,15 @@ fun PeopleHomeScreen(
         AtlasGalleryHeader(
             title = "People",
             menuItems = overflow,
-            onOpenLibraryStatus = onOpenLibraryStatus
+            onOpenLibraryStatus = onOpenLibraryStatus,
+            actions = {
+                IconButton(onClick = { sortSheetOpen = true },
+                    modifier = Modifier.size(48.dp).testTag("atlas-people-sort-open")) {
+                    Icon(Icons.Filled.Sort, contentDescription = "Sort people")
+                }
+            }
         )
+        if (sortSheetOpen) PeopleSortSheet(sortChoice, onSortChoice) { sortSheetOpen = false }
         PeopleScanProgress(discovery)
         if (tiles.isEmpty()) {
             if (restoring) {
@@ -202,7 +217,7 @@ fun PeopleHomeScreen(
                 row.joinToString(":") { tile -> when (tile) {
                     is PeopleGridTile.Imported -> "v4-${tile.profile.personId}"
                     is PeopleGridTile.Native -> "native-${tile.tile.person.value}"
-                    // Position only: a private face uid is never a lazy (saveable) key.
+                    // An opaque face id is not a saved UI key; use the source row index.
                     is PeopleGridTile.Unnamed -> "unnamed-${unnamedTiles.indexOf(tile)}"
                 } }
             }) { row ->
@@ -224,6 +239,41 @@ fun PeopleHomeScreen(
                 }
             }
         }
+    }
+}
+
+/** Compact sheet; the sort icon is in the header, not the overflow menu. */
+@Composable
+private fun PeopleSortSheet(
+    selected: PeopleSortChoice,
+    onSelect: (PeopleSortChoice) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("atlas-people-sort-sheet")) {
+        Text("Sort people", style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        PeopleSortKey.entries.forEach { key ->
+            listOf(false, true).forEach { descending ->
+                val option = PeopleSortChoice(key, descending)
+                val text = when (key) {
+                    PeopleSortKey.MEDIA_COUNT -> if (descending) "Media count · most first" else "Media count · fewest first"
+                    PeopleSortKey.NAME -> if (descending) "Name · Z–A" else "Name · A–Z"
+                    PeopleSortKey.MOST_RECENT -> if (descending) "Most recent · newest first" else "Most recent · oldest first"
+                    PeopleSortKey.FIRST_APPEARANCE -> if (descending) "First appearance · newest first" else "First appearance · oldest first"
+                    PeopleSortKey.RANDOM -> if (descending) "Random · reverse" else "Random"
+                }
+                Row(Modifier.fillMaxWidth().clickable {
+                    onSelect(option); onDismiss()
+                }.testTag("atlas-people-sort-${key.name}-${if (descending) "desc" else "asc"}")
+                    .padding(horizontal = 24.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = selected == option, onClick = null)
+                    Text(text, modifier = Modifier.padding(start = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
     }
 }
 
