@@ -1,6 +1,6 @@
 # Visual search benchmark (VS-S0)
 
-Host-side tooling for the semantic-search-by-image model spike of [#468](https://github.com/LPStruiksma/atlas-native/issues/468). Findings: [`docs/visual-search/VS_S0_MODEL_SPIKE.md`](../../docs/visual-search/VS_S0_MODEL_SPIKE.md). None of this code ships in the APK or runs in CI, apart from the offline unit tests; the APK ships only the SigLIP 2 model file that `export_onnx.py` produces (see `app/src/main/assets/models/siglip2/SOURCE.md`) and the two pose models pinned in `models.json` (see `app/src/main/assets/models/blazepose/SOURCE.md`).
+Host-side tooling for the semantic-search-by-image model spike of [#468](https://github.com/LPStruiksma/atlas-native/issues/468). Findings: [`docs/visual-search/VS_S0_MODEL_SPIKE.md`](../../docs/visual-search/VS_S0_MODEL_SPIKE.md); text search feasibility (NLS-0, [#104](https://github.com/LPStruiksma/atlas-gallery/issues/104)): [`docs/visual-search/NLS_0_TEXT_FEASIBILITY.md`](../../docs/visual-search/NLS_0_TEXT_FEASIBILITY.md). None of this code ships in the APK or runs in CI, apart from the offline unit tests; the APK ships only the SigLIP 2 model file that `export_onnx.py` produces (see `app/src/main/assets/models/siglip2/SOURCE.md`) and the two pose models pinned in `models.json` (see `app/src/main/assets/models/blazepose/SOURCE.md`).
 
 | File | What |
 |---|---|
@@ -13,6 +13,10 @@ Host-side tooling for the semantic-search-by-image model spike of [#468](https:/
 | `pose_golden.py` | Golden values for the Kotlin pose port (VS-S2p): JVM parity data and the androidTest host descriptors for formula-drawn figures |
 | `bench.py` | Size, latency and retrieval metrics; writes the results JSON |
 | `run.sh` | End-to-end reproduction into `$VS_CACHE` (default `~/.cache/atlas-vs`) |
+| `text_tower.py` | NLS-0: SigLIP 2 B/16 text tower ported from the pinned checkpoint to PyTorch, checked against a numpy reference, exported to ONNX fp32/int8; Gemma tokenizer with the demo colab's preprocessing |
+| `build_relational.py` | NLS-0: builds the relational text-to-image benchmark from Open Images human annotations; writes `data/nls0_manifest.csv` and `data/nls0_judgments.csv` from `data/nls0_queries.json` |
+| `nls_bench.py` | NLS-0: text-to-image P@10, R@50, nDCG@10 and hard-negative error, plain cosine vs structured top-100 rerank |
+| `run_nls0.sh` | NLS-0 end-to-end reproduction |
 
 Offline tests (numpy only): `python3 -m unittest discover -s tools/visual_search_bench -p 'test_*.py'`.
 

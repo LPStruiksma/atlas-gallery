@@ -67,7 +67,16 @@
     ],
     "int8_keep_fp32": [
       "/tower/blocks/blocks.5/mlp/fc2/MatMul"
+    ],
+    "text_int8_keep_fp32": [
+      "/blocks.0/fc2/MatMul"
     ]
+  },
+  "gemma_tokenizer": {
+    "family": "Gemma SentencePiece tokenizer (256k), the SigLIP 2 text tokenizer",
+    "url": "https://storage.googleapis.com/big_vision/gemma_tokenizer.model",
+    "sha256": "6969e64047744a44bb3abfb5c50f8de0f7ed8b571d5444426ef931f651d1a0ef",
+    "licence": "Apache-2.0 (big_vision README 'License' @ 0127fb6b337ee2a27bf4e54dea79cff176527356 covers everything in big_vision including models; README_siglip2.md names the Gemma tokenizer as part of the SigLIP 2 release; big_vision pp/proj/paligemma/ops.py loads it from this bucket path)"
   },
   "siglip2_b32_256": {
     "family": "SigLIP 2 B/32 256, WebLI (multilingual)",
