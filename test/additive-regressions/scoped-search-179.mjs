@@ -25,6 +25,8 @@ assert.match(scoped, /fun scopedNameMatches\(/);
 assert.match(main, /AtlasSearch\(/); // Pictures, album, person, Search destination shell
 assert.match(main, /selectedScope = overviewScope/);
 assert.match(main, /onSearchWholeLibrary = \{ tab = 3 \}/);
+assert.match(main, /val scopedActive = overviewQuery\.isNotBlank\(\) &&\s*\(tab == 0 \|\| personFilter != null\)/);
+assert.match(main, /if \(searchActive\) key\(CatalogSourceKey\(visible\)\)/);
 assert.match(albums, /AtlasSearch\(/); // Albums list
 assert.match(albums, /scope == AtlasSearchScope\.LIBRARY\) onSearchWholeLibrary\?\.invoke\(\)/);
 assert.match(people, /AtlasSearch\(/); // People tab
