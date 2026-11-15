@@ -79,11 +79,16 @@ class PhotoDnaRouteAccessTest {
 
         result = planned
         waitFor(hasTestTag("photo-dna-exact-group"))
+        // Equal-byte copies all have the same keeper score: stable URI order
+        // chooses the first. A tap changes the saved choice asynchronously.
+        assertEquals(records[0].uri, planned.plan.exactGroups.single().suggestedKeeperUri)
         rule.onAllNodes(hasTestTag("photo-dna-keeper"))[0].assertIsSelected()
         rule.onAllNodes(hasTestTag("photo-dna-keeper"))[1].performClick()
         rule.onAllNodes(hasTestTag("photo-dna-keeper"))[1].assertIsSelected()
+        rule.waitUntil(20_000L) {
+            planned.plan.exactGroups.single().suggestedKeeperUri == records[1].uri
+        }
         val group = planned.plan.exactGroups.single()
-        assertEquals(records[1].uri, group.suggestedKeeperUri)
         val saved = CurationKeepStore(context).use {
             it.resolveCurrentlyValid(listOf(photoDnaKeepFamily(group)))
         }
