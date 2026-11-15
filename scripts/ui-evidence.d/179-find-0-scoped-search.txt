@@ -1,0 +1,5 @@
+# FIND-0 (#179): scoped search entry points captured by API35 synthetic UI tests.
+find-0-albums-scoped
+find-0-people-hidden-scoped
+find-0-people-scoped
+find-0-person-scoped
