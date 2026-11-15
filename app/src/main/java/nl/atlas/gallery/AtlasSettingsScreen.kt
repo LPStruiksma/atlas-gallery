@@ -124,11 +124,23 @@ internal fun AtlasSettingsScreen(
                         Triple("Visual index", "visual_photos_min", "photos/min"),
                         Triple("Java heap / maximum", "heap_fraction", "fraction")
                     )
-                    metrics.forEach { (title, metric, unit) ->
+                    val actionLabels = listOf(
+                        "App open → cached grid", "Grid scroll / fling", "Open photo",
+                        "Viewer swipe", "Face + visual indexing", "New photo appears",
+                        "Return from viewer", "Memory / stability", "Open People",
+                        "Open person / scroll", "Search", "Grid pinch zoom",
+                        "Viewer full-res zoom", "Video first frame", "Tabs / albums",
+                        "Selection", "Bulk actions", "People review", "Stories",
+                        "Details / favourite", "Duplicate / trash review", "Sort / Settings"
+                    )
+                    val allMetrics = metrics + actionLabels.mapIndexed { index, title ->
+                        Triple("A${index + 1} · $title", "action_a${index + 1}_ms", "ms")
+                    }
+                    allMetrics.forEach { (title, metric, unit) ->
                         val summary = performance.snapshot(metric)
                         val value = if (summary.count == 0) "Not measured" else
-                            "p50 %.2f · p95 %.2f %s · n=%d".format(
-                                java.util.Locale.US, summary.p50, summary.p95, unit, summary.count)
+                            "p50 %.2f · p90 %.2f · p95 %.2f %s · n=%d".format(
+                                java.util.Locale.US, summary.p50, summary.p90, summary.p95, unit, summary.count)
                         SettingsActionRow(title, "atlas-perf-$metric", value = value)
                     }
                 }
