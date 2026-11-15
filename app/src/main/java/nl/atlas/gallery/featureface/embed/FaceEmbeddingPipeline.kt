@@ -108,6 +108,12 @@ class PersistedFaceEmbeddingIndexPort(private val store: FaceIndexStore) : FaceS
 
     override fun completeEmbeddings(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
+        vectors: List<FloatArray>, embedderVersion: String
+    ): Boolean = completeEmbeddingFrames(lease, observations, vectors, embedderVersion,
+        observations.map { null })
+
+    override fun completeEmbeddings(
+        lease: FaceScanLease, observations: List<UnknownFaceBox>,
         vectors: List<FloatArray>, embedderVersion: String,
         qualityScores: List<nl.atlas.gallery.featureface.FaceQuality?>
     ): Boolean = completeEmbeddingFrames(lease, observations, vectors, embedderVersion,
