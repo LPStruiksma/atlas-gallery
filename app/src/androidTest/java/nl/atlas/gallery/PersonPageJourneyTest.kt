@@ -335,6 +335,31 @@ class PersonPageJourneyTest {
         assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
         settle()
         saveUiEvidence("person-named.png")
+        // DESIGN-3: the cover collapses out of the scrolling chrome while the
+        // compact bar keeps the name and overflow reachable.
+        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+            swipeUp(startY = bottom * 0.85f, endY = top + 20f, durationMillis = 450)
+        }
+        waitFor("collapsed person header") {
+            compose.onAllNodesWithTag("atlas-person-portrait", useUnmergedTree = true)
+                .fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithTag("atlas-header-title").assertExists()
+        compose.onNodeWithTag("atlas-header-more").assertExists()
+        settle()
+        saveUiEvidence("person-collapsed-dark.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
+        dark = false
+        settle()
+        saveUiEvidence("person-collapsed-light.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        dark = true
+        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+            swipeDown(startY = top + 20f, endY = bottom * 0.85f, durationMillis = 450)
+        }
+        waitForTag("atlas-person-portrait")
+        settle()
+        saveUiEvidence("person-expanded-after-scroll-dark.png")
 
         // ⋮ menu, then Merge with… lists Bo; the confirmation opens and is cancelled.
         compose.onNodeWithTag("atlas-header-more").performClick()
