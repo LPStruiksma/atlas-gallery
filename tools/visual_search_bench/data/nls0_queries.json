@@ -1,0 +1,612 @@
+{
+ "_note": "NLS-0 relational queries (#104). Each query: English + Dutch text, a category, and constraints over Open Images human annotations (see build_relational.py). Dutch written by the Dev seat; a native check is welcome. No content-category filtering: queries are chosen for compositional difficulty only.",
+ "queries": [
+  {
+   "id": "church_couple",
+   "cat": "count+attribute+setting",
+   "en": "A man and a woman inside a church.",
+   "nl": "Een man en een vrouw in een kerk.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Man": 1,
+      "Woman": 1
+     }
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Church",
+      "Chapel",
+      "Cathedral",
+      "Place of worship"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "church_door_people",
+   "cat": "relation+setting",
+   "en": "People standing in the doorway of a church.",
+   "nl": "Mensen die in de deuropening van een kerk staan.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 1,
+     "max": 5
+    },
+    {
+     "kind": "label",
+     "name": "Door"
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Church",
+      "Chapel",
+      "Cathedral",
+      "Place of worship"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "two_people_beach",
+   "cat": "count+setting",
+   "en": "Two people on a beach.",
+   "nl": "Twee mensen op het strand.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "label",
+     "name": "Beach"
+    }
+   ]
+  },
+  {
+   "id": "one_person_beach",
+   "cat": "count+setting",
+   "en": "A single person alone on a beach.",
+   "nl": "Eén persoon alleen op het strand.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 1
+    },
+    {
+     "kind": "label",
+     "name": "Beach"
+    }
+   ]
+  },
+  {
+   "id": "three_people_sea",
+   "cat": "count+setting",
+   "en": "Three people looking out over the sea.",
+   "nl": "Drie mensen die uitkijken over de zee.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 3
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Sea",
+      "Ocean"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "man_woman_sitting",
+   "cat": "count+attribute+pose",
+   "en": "A man and a woman sitting next to each other.",
+   "nl": "Een man en een vrouw die naast elkaar zitten.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Man": 1,
+      "Woman": 1
+     }
+    },
+    {
+     "kind": "label",
+     "name": "Sitting"
+    },
+    {
+     "kind": "side_by_side"
+    }
+   ]
+  },
+  {
+   "id": "man_woman_standing",
+   "cat": "count+attribute+pose",
+   "en": "A man and a woman standing side by side.",
+   "nl": "Een man en een vrouw die naast elkaar staan.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Man": 1,
+      "Woman": 1
+     }
+    },
+    {
+     "kind": "label",
+     "name": "Standing"
+    },
+    {
+     "kind": "side_by_side"
+    }
+   ]
+  },
+  {
+   "id": "two_women",
+   "cat": "count+attribute",
+   "en": "Two women standing together.",
+   "nl": "Twee vrouwen die samen staan.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Woman": 2
+     }
+    },
+    {
+     "kind": "label",
+     "name": "Standing"
+    }
+   ]
+  },
+  {
+   "id": "two_men",
+   "cat": "count+attribute",
+   "en": "Two men standing together.",
+   "nl": "Twee mannen die samen staan.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Man": 2
+     }
+    },
+    {
+     "kind": "label",
+     "name": "Standing"
+    }
+   ]
+  },
+  {
+   "id": "one_behind_other",
+   "cat": "spatial",
+   "en": "Two people, one standing far behind the other.",
+   "nl": "Twee mensen, de een staat ver achter de ander.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "not",
+     "of": {
+      "kind": "side_by_side"
+     }
+    }
+   ]
+  },
+  {
+   "id": "red_dress_sitting",
+   "cat": "attribute+pose",
+   "en": "A woman in a red dress sitting down.",
+   "nl": "Een vrouw in een rode jurk die zit.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Dress"
+    },
+    {
+     "kind": "label",
+     "name": "Red"
+    },
+    {
+     "kind": "label",
+     "name": "Sitting"
+    }
+   ]
+  },
+  {
+   "id": "red_dress_beside_man",
+   "cat": "attribute+relation",
+   "en": "A woman in a red dress beside a man.",
+   "nl": "Een vrouw in een rode jurk naast een man.",
+   "constraints": [
+    {
+     "kind": "gender",
+     "counts": {
+      "Man": 1,
+      "Woman": 1
+     }
+    },
+    {
+     "kind": "label",
+     "name": "Dress"
+    },
+    {
+     "kind": "label",
+     "name": "Red"
+    }
+   ]
+  },
+  {
+   "id": "crowd_behind",
+   "cat": "viewpoint+action",
+   "en": "A person photographed from behind in a crowd.",
+   "nl": "Iemand van achteren gefotografeerd in een menigte.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Crowd"
+    },
+    {
+     "kind": "from_behind"
+    }
+   ]
+  },
+  {
+   "id": "walking_behind",
+   "cat": "viewpoint+action",
+   "en": "A person walking, seen from behind.",
+   "nl": "Iemand die loopt, van achteren gezien.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Walking"
+    },
+    {
+     "kind": "from_behind"
+    }
+   ]
+  },
+  {
+   "id": "dog_jumping",
+   "cat": "action",
+   "en": "A dog jumping in the air.",
+   "nl": "Een hond die in de lucht springt.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Dog"
+    },
+    {
+     "kind": "label",
+     "name": "Jumping"
+    }
+   ]
+  },
+  {
+   "id": "two_hug",
+   "cat": "count+action",
+   "en": "Two people hugging.",
+   "nl": "Twee mensen die elkaar knuffelen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "label",
+     "name": "Hug"
+    }
+   ]
+  },
+  {
+   "id": "kiss",
+   "cat": "action",
+   "en": "Two people kissing.",
+   "nl": "Twee mensen die zoenen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "label",
+     "name": "Kiss"
+    }
+   ]
+  },
+  {
+   "id": "party_night_crowd",
+   "cat": "event+light+count",
+   "en": "A crowded outdoor party at night.",
+   "nl": "Een druk feest buiten 's nachts.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Party"
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Night",
+      "Evening",
+      "Darkness"
+     ]
+    },
+    {
+     "kind": "label",
+     "name": "Crowd"
+    }
+   ]
+  },
+  {
+   "id": "concert_night",
+   "cat": "event+light",
+   "en": "A concert stage at night.",
+   "nl": "Een concertpodium 's avonds.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Concert"
+    },
+    {
+     "kind": "label",
+     "name": "Night"
+    }
+   ]
+  },
+  {
+   "id": "dance_wedding",
+   "cat": "action+event",
+   "en": "People dancing at a wedding.",
+   "nl": "Mensen die dansen op een bruiloft.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Dance"
+    },
+    {
+     "kind": "label",
+     "name": "Wedding"
+    }
+   ]
+  },
+  {
+   "id": "bride_church",
+   "cat": "attribute+setting",
+   "en": "A bride inside a church.",
+   "nl": "Een bruid in een kerk.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Bride"
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Church",
+      "Chapel",
+      "Cathedral",
+      "Place of worship"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sitting_bench_alone",
+   "cat": "count+pose+object",
+   "en": "One person sitting alone on a bench.",
+   "nl": "Eén persoon die alleen op een bankje zit.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 1
+    },
+    {
+     "kind": "label",
+     "name": "Sitting"
+    },
+    {
+     "kind": "label",
+     "name": "Bench"
+    }
+   ]
+  },
+  {
+   "id": "cooking_kitchen",
+   "cat": "action+setting",
+   "en": "Someone cooking in a kitchen.",
+   "nl": "Iemand die in een keuken kookt.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Cooking"
+    },
+    {
+     "kind": "label",
+     "name": "Kitchen"
+    }
+   ]
+  },
+  {
+   "id": "riding_horse",
+   "cat": "count+action",
+   "en": "One person riding a horse.",
+   "nl": "Eén persoon die op een paard rijdt.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 1
+    },
+    {
+     "kind": "label",
+     "name": "Horse"
+    },
+    {
+     "kind": "label",
+     "name": "Equestrianism"
+    }
+   ]
+  },
+  {
+   "id": "snow_walking",
+   "cat": "action+setting",
+   "en": "People walking in the snow.",
+   "nl": "Mensen die in de sneeuw lopen.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Walking"
+    },
+    {
+     "kind": "label",
+     "name": "Snow"
+    }
+   ]
+  },
+  {
+   "id": "no_people_church",
+   "cat": "negation+setting",
+   "en": "The inside of a church with no people in it.",
+   "nl": "Het interieur van een kerk zonder mensen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 0
+    },
+    {
+     "kind": "any",
+     "names": [
+      "Church",
+      "Chapel",
+      "Cathedral",
+      "Place of worship"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "beach_no_people",
+   "cat": "negation+setting",
+   "en": "An empty beach without people.",
+   "nl": "Een leeg strand zonder mensen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 0
+    },
+    {
+     "kind": "label",
+     "name": "Beach"
+    }
+   ]
+  },
+  {
+   "id": "selfie_two",
+   "cat": "count+viewpoint",
+   "en": "A selfie of two people.",
+   "nl": "Een selfie van twee mensen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "label",
+     "name": "Selfie"
+    }
+   ]
+  },
+  {
+   "id": "running_street",
+   "cat": "action+setting",
+   "en": "A person running on a street.",
+   "nl": "Iemand die op straat rent.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Running"
+    },
+    {
+     "kind": "label",
+     "name": "Street"
+    }
+   ]
+  },
+  {
+   "id": "handstand_beach",
+   "cat": "action+setting",
+   "en": "Someone doing a handstand on the beach.",
+   "nl": "Iemand die een handstand doet op het strand.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Handstand"
+    },
+    {
+     "kind": "label",
+     "name": "Beach"
+    }
+   ]
+  },
+  {
+   "id": "holding_hands_two",
+   "cat": "count+action",
+   "en": "Two people holding hands.",
+   "nl": "Twee mensen die hand in hand lopen.",
+   "constraints": [
+    {
+     "kind": "people",
+     "min": 2
+    },
+    {
+     "kind": "label",
+     "name": "Holding hands"
+    }
+   ]
+  },
+  {
+   "id": "umbrella_rain_walking",
+   "cat": "action+object+weather",
+   "en": "Someone walking with an umbrella in the rain.",
+   "nl": "Iemand die met een paraplu door de regen loopt.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Walking"
+    },
+    {
+     "kind": "label",
+     "name": "Umbrella"
+    },
+    {
+     "kind": "label",
+     "name": "Rain"
+    }
+   ]
+  },
+  {
+   "id": "cycling_street",
+   "cat": "action+setting",
+   "en": "A person cycling on a city street.",
+   "nl": "Iemand die door een straat in de stad fietst.",
+   "constraints": [
+    {
+     "kind": "label",
+     "name": "Cycling"
+    },
+    {
+     "kind": "label",
+     "name": "Street"
+    }
+   ]
+  }
+ ],
+ "_dropped": "Owner examples without enough licensed joint annotations (fewer than 5 verified positives in Open Images V7): 'someone doing a cartwheel on grass' (1), 'a dog running on grass' (2), 'two people embracing in a dimly lit room' (0). Left to the on-device private benchmark."
+}
