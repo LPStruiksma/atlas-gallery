@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -79,7 +81,14 @@ class SearchOneFieldEvidenceTest {
     @Test fun compactSearchRestAndNoResultsInBothThemes() {
         var darkTheme by mutableStateOf(false)
         var queryReset by mutableStateOf(0)
+        var clearInputFocus: (() -> Unit)? = null
         compose.setContent {
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+            clearInputFocus = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+            }
             var filters by remember(queryReset) { mutableStateOf(LocalSearchFacets()) }
             AtlasGalleryTheme(dark = darkTheme) {
                 Scaffold(containerColor = MaterialTheme.colorScheme.background,
@@ -116,10 +125,14 @@ class SearchOneFieldEvidenceTest {
                 queryReset++
             }
             waitFor("atlas-search-field")
+            compose.runOnIdle { clearInputFocus?.invoke() }
             compose.waitForIdle()
             saveUiEvidence("design-4-search-rest-${if (dark) "dark" else "light"}.png")
             compose.onNodeWithTag("atlas-search-field").performTextInput("unlikely-match")
             waitFor("atlas-design-search-no-results")
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-ime-${if (dark) "dark" else "light"}.png")
+            compose.runOnIdle { clearInputFocus?.invoke() }
             compose.waitForIdle()
             saveUiEvidence("design-4-search-empty-${if (dark) "dark" else "light"}.png")
         }
