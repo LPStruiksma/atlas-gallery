@@ -462,9 +462,9 @@ class FaceIndexStoreIdentityReviewTest {
      * publication places the new face and keeps the review.
      */
     /**
-     * #178: synthetic authorized People DB, not a prefilled sorting fixture.
-     * Two faces in the same image and a confirmed/matched overlap count once.
-     * Dates are from the current catalog; zero/null are undated.
+     * #178: authorized synthetic People database, not prefilled sort statistics.
+     * A repeated face on one image counts once; the grant and source revision
+     * fence determine which media and dates appear. Zero dates are undated.
      */
     @Test fun peopleSortReadsDistinctCurrentMediaAndAppearanceDates() = withStore { store ->
         val rows = (1..6).map { media(it) }
