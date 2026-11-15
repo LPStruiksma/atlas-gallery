@@ -40,7 +40,7 @@ internal object PerformanceSession {
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private var peakHeapFraction = 0.0
-    private val processStartNanos = System.nanoTime()
+    private val processStartNanos = android.os.SystemClock.elapsedRealtimeNanos()
     private var firstGridReported = false
 
     fun viewerProbe(): ViewerTimingProbe = viewer
@@ -48,7 +48,7 @@ internal object PerformanceSession {
     @Synchronized fun firstGridFrame() {
         if (firstGridReported) return
         firstGridReported = true
-        val elapsed = (System.nanoTime() - processStartNanos) / 1_000_000.0
+        val elapsed = (android.os.SystemClock.elapsedRealtimeNanos() - processStartNanos) / 1_000_000.0
         aggregate.record("cold_start_ms", elapsed)
     }
 
