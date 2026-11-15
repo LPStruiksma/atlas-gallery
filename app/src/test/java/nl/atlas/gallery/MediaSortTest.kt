@@ -66,6 +66,23 @@ class MediaSortTest {
         assertNotEquals(original, sortMedia(many, ascending, 126L).map { it.id })
     }
 
+    @Test fun screenSpecificSelectableKeysRoundTripWithDirection() {
+        // A People consumer can add media count/relevance without extending the
+        // five built-in comparator keys or treating a sort as a button action.
+        val options = MediaSort.standardOptions.map {
+            MediaSortOption(it, mediaSortOptionLabel(it))
+        } + listOf(MediaSortOption("media_count", "Media count"),
+            MediaSortOption("relevance", "Relevance", directionSupported = false))
+        val chosen = MediaSortSelection("media_count", SortDirection.DESCENDING)
+        assertEquals("Media count", options.single { it.key == chosen.key }.label)
+        assertEquals(chosen, chosen.copy(direction = SortDirection.DESCENDING))
+        assertEquals(SortDirection.ASCENDING,
+            chosen.copy(direction = SortDirection.ASCENDING).direction)
+        assertEquals(null, chosen.asStandardSort())
+        assertEquals(false, options.single { it.key == "relevance" }.directionSupported)
+        assertEquals(MediaSort.default, MediaSort.default.asSelection().asStandardSort())
+    }
+
     @Test fun optionsAndExtrasDoNotLoseStandardKeys() {
         assertEquals(5, MediaSortKey.entries.size)
         assertEquals(5, MediaSort.standardOptions.size)
