@@ -50,7 +50,6 @@ object FaceQualityScorer {
         require(frameWidth > 0 && frameHeight > 0 && cropSize >= 3)
         require(cropRgbPlanar.size == 3 * cropSize * cropSize)
         require(sourceScale.isFinite() && sourceScale > 0f)
-        require(cropRgbPlanar.all { it.isFinite() && it in 0f..255f })
         val n = cropSize * cropSize
         val gray = DoubleArray(n) { i ->
             (0.2126 * cropRgbPlanar[i] + 0.7152 * cropRgbPlanar[n + i] +
