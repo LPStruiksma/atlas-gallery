@@ -461,6 +461,91 @@ class FaceIndexStoreIdentityReviewTest {
      * groups, and a review commits against that snapshot. The next
      * publication places the new face and keeps the review.
      */
+    /**
+     * #178: synthetic authorized People DB, not a prefilled sorting fixture.
+     * Two faces in the same image and a confirmed/matched overlap count once.
+     * Dates are from the current catalog; zero/null are undated.
+     */
+    @Test fun peopleSortReadsDistinctCurrentMediaAndAppearanceDates() = withStore { store ->
+        val rows = (1..6).map { media(it) }
+        val dates = longArrayOf(100L, 900L, 0L, 300L, 400L, 800L)
+        store.beginSnapshot("sort-A")
+        store.stageBatch("sort-A", rows, dates)
+        store.commitSnapshot("sort-A", "detector-1", model)
+        var now = 1_000L
+        while (true) {
+            val lease = store.claim("sort-A", now++) ?: break
+            val n = photo(lease.media.key)
+            val faceBoxes = if (n == 2) listOf(box,
+                IndexedFaceBox(0.55f, 0.2f, 0.9f, 0.8f)) else listOf(box)
+            val axis = when (n) { 1, 2, 3 -> 0; 4, 5 -> 5; else -> 9 }
+            assertTrue(store.completeEmbeddings(lease, faceBoxes,
+                List(faceBoxes.size) { vector(axis) }, model))
+        }
+        assertTrue(store.materializeClusters("sort-A"))
+        val first = requireNotNull(store.peopleReview("sort-A"))
+        val ada = PersonKey("sort-ada")
+        val ben = PersonKey("sort-ben")
+        val adaCluster = first.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 1) in it.members
+        }
+        val namedAda = requireNotNull(reviewPeopleCluster(uiState("sort-A", first),
+            PeopleReviewAction.NameCluster(adaCluster.id, ada, "Ada")))
+        assertNotNull(commit(store, "sort-A", first.generation, namedAda))
+        val next = requireNotNull(store.peopleReview("sort-A"))
+        val benCluster = next.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 4) in it.members
+        }
+        val namedBen = requireNotNull(reviewPeopleCluster(uiState("sort-A", next),
+            PeopleReviewAction.NameCluster(benCluster.id, ben, "Ben")))
+        assertNotNull(commit(store, "sort-A", next.generation, namedBen))
+        val home = requireNotNull(store.peopleHome("sort-A"))
+        assertEquals(setOf(ada, ben), home.people.keys)
+        assertEquals(3, home.people.getValue(ada).mediaCount)
+        assertEquals(2, home.people.getValue(ben).mediaCount)
+        assertEquals(100L, home.people.getValue(ada).firstAppearanceMs)
+        assertEquals(900L, home.people.getValue(ada).mostRecentAppearanceMs)
+        assertEquals(300L, home.people.getValue(ben).firstAppearanceMs)
+        assertEquals(400L, home.people.getValue(ben).mostRecentAppearanceMs)
+        assertTrue(home.people.getValue(ada).faceCount >= 3)
+
+        fun order(key: nl.atlas.gallery.featurepeopleui.PeopleSortKey,
+                  descending: Boolean): List<PersonKey> {
+            val keyed = home.people.entries.mapIndexed { index, (person, summary) ->
+                nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
+                    nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
+                        summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
+            }
+            val byIndex = home.people.keys.toList()
+            return nl.atlas.gallery.featurepeopleui.orderPeopleEntries(keyed,
+                nl.atlas.gallery.featurepeopleui.PeopleSortChoice(key, descending))
+                .map { byIndex[it.id] }
+        }
+        
+        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT, true))
+        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT, false))
+        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME, false))
+        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME, true))
+        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT, true))
+        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT, false))
+        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, true))
+        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, false))
+        assertEquals(order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, false).reversed(), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, true))
+
+        // The previous epoch is not a permission to read. An edited source
+        // removes its old observation while a fresh grant keeps others.
+        store.beginSnapshot("sort-B")
+        store.stageBatch("sort-B", rows.map {
+            if (it.key == media(2).key) media(2, 2) else it
+        }, dates)
+        store.commitSnapshot("sort-B", "detector-1", model)
+        assertNull(store.peopleHome("sort-A"))
+        val refreshed = requireNotNull(store.peopleHome("sort-B"))
+        assertEquals(2, refreshed.people.getValue(ada).mediaCount)
+        store.invalidatePermissionScope()
+        assertNull(store.peopleHome("sort-B"))
+    }
+
     @Test fun lastPublishedPeopleStayServedAndReviewableWhileNewFacesWait() = withStore { store ->
         // Photos 1..3: one person, named Ana; photos 4..6: an unnamed group of three.
         grant(store, "epoch-A", (1..6).map { media(it) })
