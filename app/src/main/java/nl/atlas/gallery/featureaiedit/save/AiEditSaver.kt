@@ -248,6 +248,11 @@ internal class AiEditSaver(
      * only this app's still-pending, exact-name row can be deleted. No original
      * URI is ever part of the journal's cleanup target.
      */
+    /** Called by AtlasApplication after process relaunch, serialized with saves. */
+    suspend fun recoverOnStartup() = withContext(Dispatchers.IO) {
+        saveMutex.withLock { recoverInterruptedSaves() }
+    }
+
     fun recoverInterruptedSaves() {
         for (pending in lineageStore.pending()) {
             val row = pendingItem(pending)
