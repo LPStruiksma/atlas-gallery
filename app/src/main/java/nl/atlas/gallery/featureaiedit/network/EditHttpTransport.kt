@@ -171,7 +171,8 @@ class EditHttpTransport(
     }
 
     private data class Payload(val bytes: ByteArray, val type: String)
-    private fun buildBody(body: EditHttpBody): Payload? = try {
+    private fun buildBody(body: EditHttpBody): Payload? {
+        return try {
         when (body) {
             is EditHttpBody.Json -> if (body.utf8.size > MAX_UPLOAD) null
                 else Payload(body.utf8, "application/json; charset=utf-8")
@@ -212,6 +213,7 @@ class EditHttpTransport(
             }
         }
     } catch (_: Exception) { null }
+    }
 
     private fun once(
         url: URL, method: EditHttpMethod, payload: Payload?,
