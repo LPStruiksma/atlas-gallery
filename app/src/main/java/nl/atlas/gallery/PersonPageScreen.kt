@@ -1,5 +1,11 @@
 package nl.atlas.gallery
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,6 +72,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
+import nl.atlas.gallery.featuredesign.LocalAtlasHeaderCollapsed
 import nl.atlas.gallery.featuregrid.AtlasRatioGallery
 import nl.atlas.gallery.featuregrid.AtlasTimelineGallery
 import nl.atlas.gallery.featuregrid.GalleryZoomStop
@@ -127,6 +134,10 @@ internal fun PersonPageScreen(
     val items = ui.items
     val selecting = selectedUris != null
     val title = ui.name ?: "Add name"
+    val count = items?.let { list ->
+        val videos = list.count { it.isVideo }
+        nl.atlas.gallery.featurepeopleui.personPageCount(list.size - videos, videos)
+    }
     val menu = buildList {
         add(AtlasHeaderMenuItem(if (ui.name == null) "Add name" else "Edit name",
             "atlas-person-edit-name", onClick = { onDialog(PersonPageDialog.EditName) }))
@@ -151,10 +162,18 @@ internal fun PersonPageScreen(
                 if (selecting) {
                     SelectionBar(selectedUris.orEmpty().size) { onSelectionChange(null) }
                 } else {
-                    AtlasGalleryHeader(title = "", onBack = onBack, menuItems = menu)
+                    AtlasGalleryHeader(title = if (LocalAtlasHeaderCollapsed.current) title else "",
+                        subtitle = if (LocalAtlasHeaderCollapsed.current) count else null,
+                        onBack = onBack, menuItems = menu)
                 }
-                PersonHeader(ui, title, items, portrait,
-                    onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }))
+                AnimatedVisibility(
+                    visible = !LocalAtlasHeaderCollapsed.current || selecting,
+                    enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                    exit = fadeOut(tween(200)) + shrinkVertically(tween(200))
+                ) {
+                    PersonHeader(ui, title, items, portrait,
+                        onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }))
+                }
                 if (!selecting) samePerson?.invoke()
             }
         }
@@ -217,6 +236,16 @@ internal fun PersonPageScreen(
                 entryDensity = returnDensity,
                 modifier = Modifier.fillMaxSize()
             )
+        }
+        if (items != null && items.isEmpty() && !selecting) {
+            Box(Modifier.align(Alignment.Center).fillMaxWidth()
+                .padding(horizontal = 24.dp).testTag("atlas-person-empty"),
+                contentAlignment = Alignment.Center) {
+                Text("No photos or videos",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center)
+            }
         }
         if (selecting) {
             Surface(
