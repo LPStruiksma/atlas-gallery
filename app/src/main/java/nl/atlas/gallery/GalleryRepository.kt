@@ -435,7 +435,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             val grant = readGalleryMediaGrant(getApplication<Application>())
             // Selected-media access can change without an observer notification.
             // Only full image+video grants are eligible for background deltas.
-            if (!grant.images || !grant.videos || grant.selected ||
+            if (!grant.images || !grant.videos ||
                 snapshot.fromCache || snapshot.observedGrant != grant) return@launch
             val hints = pendingChangedItems.values.toList()
             val observerRevision = mediaChangeVersion.get()
@@ -459,6 +459,14 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 _publishedInventory.value !== snapshot ||
                 observerRevision != mediaChangeVersion.get() || liveGrant != grant) {
                 inventoryDirty = true
+                return@launch
+            }
+            if (result.items === snapshot.items) {
+                publishedCheckpoint = result.checkpoint
+                pendingChangedItems.clear()
+                pendingUnknownChange = false
+                inventoryDirty = false
+                firstBurstObservedNanos = 0L
                 return@launch
             }
             val ticket = refreshQueue.request()
