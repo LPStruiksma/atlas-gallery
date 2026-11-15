@@ -1637,19 +1637,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         }.collectLatest { scrolling ->
             if (!scrolling) return@collectLatest
-            android.os.Trace.beginSection("atlas_grid_scroll")
-            try {
-                var previousFrameNs = 0L
-                while (true) {
-                    val frameNs = withFrameNanos { it }
-                    if (previousFrameNs != 0L && frameNs > previousFrameNs) {
-                        val frameMs = (frameNs - previousFrameNs) / 1_000_000.0
+            // A pending withFrameNanos on every frame keeps Compose's test clock
+            // non-idle during a held drag. Choreographer samples the same
+            // display frame timestamps without scheduling Compose animations.
+            val choreographer = android.view.Choreographer.getInstance()
+            var previousFrameNs = 0L
+            val callback = object : android.view.Choreographer.FrameCallback {
+                override fun doFrame(frameTimeNanos: Long) {
+                    if (previousFrameNs != 0L && frameTimeNanos > previousFrameNs) {
+                        val frameMs = (frameTimeNanos - previousFrameNs) / 1_000_000.0
                         PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs)
                         if (personFilter != null) PerformanceSession.recordActionMs(10, frameMs)
                     }
-                    previousFrameNs = frameNs
+                    previousFrameNs = frameTimeNanos
+                    choreographer.postFrameCallback(this)
                 }
+            }
+            android.os.Trace.beginSection("atlas_grid_scroll")
+            try {
+                choreographer.postFrameCallback(callback)
+                kotlinx.coroutines.awaitCancellation()
             } finally {
+                choreographer.removeFrameCallback(callback)
                 android.os.Trace.endSection()
             }
         }
