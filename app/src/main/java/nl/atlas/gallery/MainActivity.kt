@@ -2914,8 +2914,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
             // #514/#506: on the Photos grid the header is drawn over the grid and
             // scrolls away with it (Samsung); the grid then uses the full height.
-            val headerScrollsWithGrid = photosControls && !originalProportions &&
-                !settingsOpen && !statusOpen && (timelineEnabled || albumDetailOpen)
+            val headerScrollsWithGrid = photosControls && timelineEnabled && !originalProportions &&
+                !settingsOpen && !statusOpen
             // #644: Search is one field with its own ⋮ (Samsung), no title bar.
             val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
