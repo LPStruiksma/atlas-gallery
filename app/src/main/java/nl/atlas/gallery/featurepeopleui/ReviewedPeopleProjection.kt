@@ -76,15 +76,15 @@ fun buildReviewedPeopleProjection(
 
     val profiles = people.mapIndexed { index, person ->
         if ((index and 31) == 0) cancellationCheckpoint()
-        val matched = person.imagePaths.filter { it in unique }
+        val matched = person.imagePaths.distinct().filter { it in unique }
         PeopleProfileUi(
             personId = person.id,
             name = person.name,
             confirmedPhotoReferences = person.count,
             accessiblePhotos = matched.size,
             coverUri = matched.firstNotNullOfOrNull { unique[it]?.uri },
-            firstAppearanceMs = matched.mapNotNull { unique[it]?.dateTaken }.minOrNull(),
-            mostRecentAppearanceMs = matched.mapNotNull { unique[it]?.dateTaken }.maxOrNull()
+            firstAppearanceMs = matched.mapNotNull { unique[it]?.takenAtMillis?.takeIf { date -> date > 0L } }.minOrNull(),
+            mostRecentAppearanceMs = matched.mapNotNull { unique[it]?.takenAtMillis?.takeIf { date -> date > 0L } }.maxOrNull()
         )
     }
     cancellationCheckpoint()
