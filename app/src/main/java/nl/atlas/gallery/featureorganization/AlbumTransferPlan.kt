@@ -94,6 +94,103 @@ private fun freeName(name: String, lowerTaken: Set<String>): String {
 }
 
 /**
+ * Indexed successor slots for collision suffixes. Each occupied suffix points
+ * to the next number to try; path compression skips long consecutive runs in
+ * near-constant amortized work instead of rescanning 1..N for each photo.
+ *
+ * Families are case-insensitive (stem + final extension). A preexisting name
+ * is indexed only when it is a canonical generated suffix: "IMG(1).jpg"
+ * occupies suffix 1, while "IMG(001).jpg" and "IMG (1).jpg" do not.
+ * The latter can still be an exact source-name collision, handled by [taken].
+ */
+private class BatchDisplayNames(
+    takenNames: Set<String>,
+    private val onCandidateLookup: (() -> Unit)?
+) {
+    private data class Family(val base: String, val extension: String)
+
+    private val taken = takenNames.mapTo(HashSet()) { it.lowercase(Locale.ROOT) }
+    private val occupied = HashMap<Family, MutableMap<Long, Long>>()
+
+    init {
+        for (name in taken) indexCanonicalSuffix(name)
+    }
+
+    private fun family(base: String, extension: String) =
+        Family(base.lowercase(Locale.ROOT), extension.lowercase(Locale.ROOT))
+
+    private fun indexCanonicalSuffix(lowerName: String) {
+        val dot = lowerName.lastIndexOf('.').takeIf { it > 0 } ?: lowerName.length
+        val stem = lowerName.substring(0, dot)
+        val match = canonicalSuffix.matchEntire(stem) ?: return
+        val digits = match.groupValues[2]
+        val n = digits.toLongOrNull() ?: return
+        // Leading zeros are part of the filename, not a generated collision index.
+        if (digits != n.toString()) return
+        val key = family(match.groupValues[1], lowerName.substring(dot))
+        occupied.getOrPut(key) { HashMap() }[n] = n + 1
+    }
+
+    private fun nextUnused(slots: MutableMap<Long, Long>, start: Long): Long {
+        var n = start
+        while (true) {
+            n = slots[n] ?: break
+        }
+        var position = start
+        while (position != n) {
+            val next = slots[position] ?: break
+            slots[position] = n
+            position = next
+        }
+        return n
+    }
+
+    fun reserve(name: String): String {
+        onCandidateLookup?.invoke()
+        if (taken.add(name.lowercase(Locale.ROOT))) {
+            indexCanonicalSuffix(name.lowercase(Locale.ROOT))
+            return name
+        }
+
+        val dot = name.lastIndexOf('.').takeIf { it > 0 } ?: name.length
+        val stem = name.substring(0, dot)
+        val extension = name.substring(dot)
+        val match = numberedName.matchEntire(stem)
+        val base = match?.groupValues?.get(1) ?: stem
+        var n = (match?.groupValues?.get(2)?.toLongOrNull() ?: 0L) + 1
+        val slots = occupied.getOrPut(family(base, extension)) { HashMap() }
+
+        while (true) {
+            n = nextUnused(slots, n)
+            val candidate = "$base($n)$extension"
+            onCandidateLookup?.invoke()
+            val free = taken.add(candidate.lowercase(Locale.ROOT))
+            slots[n] = n + 1
+            if (free) return candidate
+            n++
+        }
+    }
+
+    companion object {
+        // Greedy base preserves whitespace before '(' as a distinct family.
+        private val canonicalSuffix = Regex("""^(.*)\\((\\d+)\\)$""")
+    }
+}
+
+/**
+ * A test-only observation seam counts exact name-membership probes, including
+ * the original filename. Production passes null and does not invoke callbacks.
+ */
+internal fun planAlbumTransferWithLookupCounter(
+    mode: AlbumTransferMode,
+    target: AlbumTransferTarget,
+    records: List<MediaRecord>,
+    takenNames: Set<String>,
+    onCandidateLookup: () -> Unit
+): AlbumTransferPlan =
+    buildAlbumTransfer(mode, target, records, takenNames, onCandidateLookup)
+
+/**
  * Plans a copy or move of [records] into [target]. [takenNames] are the
  * display names already in the target folder; each planned name is added so
  * two selected "IMG.jpg" from different albums never collide with each other.
@@ -103,8 +200,16 @@ fun planAlbumTransfer(
     target: AlbumTransferTarget,
     records: List<MediaRecord>,
     takenNames: Set<String>
+): AlbumTransferPlan = buildAlbumTransfer(mode, target, records, takenNames, null)
+
+private fun buildAlbumTransfer(
+    mode: AlbumTransferMode,
+    target: AlbumTransferTarget,
+    records: List<MediaRecord>,
+    takenNames: Set<String>,
+    onCandidateLookup: (() -> Unit)?
 ): AlbumTransferPlan {
-    val taken = takenNames.mapTo(HashSet()) { it.lowercase(Locale.ROOT) }
+    val names = BatchDisplayNames(takenNames, onCandidateLookup)
     val steps = ArrayList<AlbumTransferStep>(records.size)
     val alreadyThere = ArrayList<MediaRecord>()
     val otherVolume = ArrayList<MediaRecord>()
@@ -114,8 +219,7 @@ fun planAlbumTransfer(
             if (!sameVolume) { otherVolume += record; continue }
             if (record.relativePath == target.relativePath) { alreadyThere += record; continue }
         }
-        val name = freeName(record.name, taken)
-        taken += name.lowercase(Locale.ROOT)
+        val name = names.reserve(record.name)
         steps += AlbumTransferStep(record, name)
     }
     return AlbumTransferPlan(mode, target, steps, alreadyThere, otherVolume)
