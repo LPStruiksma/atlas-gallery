@@ -27,3 +27,7 @@ These pending rows are deliberately not invented or inferred from JVM tests. Add
 A1–A22 are fixed, allowlisted metric identifiers (action_a1_ms through action_a22_ms), shown in Settings as read-only p50/p90/p95, sample count and milliseconds. They do not constitute event instrumentation by themselves: each action shows **Not measured** until an actual start/end event is connected. No action-specific samples or owner-phone measurements have been captured here. A1 cold-start currently has a separate proxy metric; it is not silently copied into A1. The next PERF implementation must wire each concrete interaction using non-identifying timing boundaries, starting with A1–A11, and test the synthetic UI/emulator flow before claiming baseline numbers. Do not treat zero samples as zero latency.
 
 The current PR adds the 22-row display/allowlist and a bounded JVM regression test, but **does not yet satisfy the revised instrumentation scope of #121**. It is not eligible for independent acceptance until production hooks, exact-head JVM/emulator CI and a rendered Settings screenshot are supplied.
+
+## Partial worker throughput integration
+
+The face/visual worker reports positive completed indexing counts divided by measured stage elapsed time as process-local `photos/min` aggregates. Empty or held stages are omitted instead of being recorded as zero. This is not a measured owner-device baseline. Live A1–A11 boundaries and frame-jank hooks, exact-head JVM/emulator CI, and a rendered Settings screenshot remain required for acceptance.
