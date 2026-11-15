@@ -96,14 +96,17 @@ object SceneCountNegationRerank {
             emptyScene.containsMatchIn(text) -> CountConstraint.Exact(0)
             else -> {
                 val number = quantity.find(text)
+                // Dutch "een" is also the article "a": "een man en een vrouw"
+                // denotes a pair, not a single person from the first noun.
+                val pairedIndividuals = individual.findAll(text).count() >= 2
                 when {
-                    number != null -> {
+                    number != null && (numbers.getValue(number.groupValues[2]) > 1 || !pairedIndividuals) -> {
                         val value = numbers.getValue(number.groupValues[2])
                         if (number.groupValues[1].isNotEmpty()) CountConstraint.AtLeast(value)
                         else CountConstraint.Exact(value)
                     }
                     couple.containsMatchIn(text) -> CountConstraint.Exact(2)
-                    individual.findAll(text).count() >= 2 -> CountConstraint.Exact(2)
+                    pairedIndividuals -> CountConstraint.Exact(2)
                     singleton.containsMatchIn(text) || individual.containsMatchIn(text) ||
                         singleActor.containsMatchIn(text) -> CountConstraint.Exact(1)
                     crowd.containsMatchIn(text) -> CountConstraint.Crowd
