@@ -78,6 +78,7 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
         val token = machine.generate() ?: return
         publish()
         activeCoroutine = viewModelScope.launch {
+            val thisJob = kotlinx.coroutines.currentCoroutineContext()[Job]
             try {
                 // AIE-2 provider is fully offline and synthetic. Source is deliberately reduced
                 // to at most 4096 pixels, no EXIF, gallery database or other photo included.
@@ -136,8 +137,12 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
                 if (machine.onFailed(token,
                         "The selected photo or temporary result is unavailable.")) publish()
             } finally {
-                activeProviderJob = null
-                activeCoroutine = null
+                // A cancelled generation may finish cleanup after a user starts another.
+                // Its finally block must never erase the newer job's cancellation handles.
+                if (activeCoroutine === thisJob) {
+                    activeProviderJob = null
+                    activeCoroutine = null
+                }
             }
         }
     }
