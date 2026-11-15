@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const root = new URL('../../', import.meta.url);
+const read = path => readFileSync(new URL(path, root), 'utf8');
+const sort = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleSort.kt');
+const screen = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt');
+const store = read('app/src/main/java/nl/atlas/gallery/featurepersistence/FaceIndexStore.kt');
+const home = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleClusterReviewState.kt');
+const host = read('app/src/main/java/nl/atlas/gallery/PeopleDiscoveryHost.kt');
+const activity = read('app/src/main/java/nl/atlas/gallery/MainActivity.kt');
+const reviewed = read('app/src/main/java/nl/atlas/gallery/featurepeopleui/ReviewedPeopleProjection.kt');
+for (const key of ['MEDIA_COUNT', 'NAME', 'MOST_RECENT', 'FIRST_APPEARANCE', 'RANDOM']) {
+  assert.match(sort, new RegExp('\\b' + key + '\\b'));
+  assert.match(screen, new RegExp('PeopleSortKey\\.' + key));
+}
+assert.match(screen, /atlas-people-sort-open/);
+assert.match(screen, /ModalBottomSheet/);
+assert.match(screen, /sortChoice: PeopleSortChoice/);
+assert.match(screen, /PeopleGridTile\.Native/);
+assert.match(screen, /PeopleGridTile\.Imported/);
+assert.match(store, /SELECT COUNT\(\*\),\s*MIN\(NULLIF\(taken_ms,0\)\)/);
+assert.match(store, /FROM people_confirmed p[\s\S]*UNION[\s\S]*FROM people_matched pm/);
+assert.match(store, /p\.person_key=\?2/);
+assert.match(store, /pm\.person_key=\?2/);
+assert.match(home, /val mediaCount: Int = 0/);
+assert.match(host, /person\.mediaCount, person\.firstAppearanceMs/);
+assert.match(activity, /putString\("people_sort"/);
+assert.match(activity, /sortChoice = peopleSortChoice/);
+assert.match(reviewed, /imagePaths\.distinct\(\)/);
+assert.match(reviewed, /takenAtMillis/);
+console.log('people-sort-178 source contract OK');
