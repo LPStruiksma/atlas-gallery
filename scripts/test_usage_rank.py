@@ -23,7 +23,7 @@ class UsageRankingTest(unittest.TestCase):
         self.assertEqual(rows["A1"][4:7], (5, True, 20))
         self.assertEqual(rows["A3"][4:7], (1, True, 1))
         self.assertIsNone(rows["A2"][3])
-        self.assertIsNone(rows["A2"][6])
+        self.assertEqual(rows["A2"][4:6], (5, True))\n        self.assertIsNone(rows["A2"][6])
 
     def test_design_dwell_and_estimated_leverage(self):
         rows = {r[0]: r for r in rank.ranking(self.days, "design")}
