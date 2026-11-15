@@ -371,6 +371,16 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
   }
   adb shell dumpsys battery unplug
+  # Android's charging tracker can treat BATTERY_STATUS_CHARGING as true
+  # even when AC is false. If the worker starts during the seed and hits
+  # the app's unplugged guard, it schedules the five-minute HOLD_RETRY seen
+  # in the red API35 JobScheduler log. Model a genuinely discharging phone.
+  adb shell dumpsys battery set status 3
+  unplugged_battery="$(adb shell dumpsys battery)"
+  grep -q 'AC powered: false' <<<"$unplugged_battery" || {
+    echo "::error::#43 unplug did not clear AC power"; exit 1; }
+  grep -q 'status: 3' <<<"$unplugged_battery" || {
+    echo "::error::#43 unplug must report DISCHARGING"; exit 1; }
   adb logcat -c || true
   run_kill_phase seed seedBeforeKill
   adb logcat -c || true
