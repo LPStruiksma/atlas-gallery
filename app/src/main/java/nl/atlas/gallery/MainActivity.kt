@@ -3455,11 +3455,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         // #644: at rest Search shows only the field, recents and
                         // suggestions; results appear once there is a query.
                         // Key by identity, not Compose's structural List.equals over 150k rows.
-                        if (searchActive) key(CatalogSourceKey(visible)) {
+                        if (searchActive || overviewQuery.isNotBlank()) key(CatalogSourceKey(visible)) {
                         AtlasFeatureGrid(
                             items = visible,
                             state = searchGridState,
-                            busy = busy || sortPending || searchPending,
+                            busy = busy || sortPending || searchPending || scopedPending,
                             onOpen = { openViewer(visible, it.uri) },
                             viewKey = "search",
                             catalogueEpoch = publishedGallery.epoch,
