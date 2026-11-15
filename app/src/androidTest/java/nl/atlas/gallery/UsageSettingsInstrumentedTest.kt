@@ -2,11 +2,13 @@ package nl.atlas.gallery
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,7 +34,11 @@ class UsageSettingsInstrumentedTest {
         compose.onNodeWithTag("atlas-settings-usage-toggle").assertExists()
             .assertTextContains("Off", substring = true)
         compose.onNodeWithTag("atlas-settings-usage-export").assertExists()
-        compose.onNodeWithTag("atlas-settings-usage-clear").assertExists()
+        compose.onNodeWithTag("atlas-settings-usage-clear").performScrollTo()
+            .assertIsDisplayed()
+        // The evidence must show the usage controls, not the top of Settings.
+        compose.onNodeWithTag("atlas-settings-usage-toggle").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-settings-usage-export").assertIsDisplayed()
         val image = compose.onRoot().captureToImage()
         assertTrue(image.width > 0 && image.height > 0)
         compose.waitForIdle()
