@@ -86,7 +86,23 @@ internal class AiEditSaver(
     private fun compressPixels(input: Uri, format: AiEditImageFormat, output: OutputStream) {
         // ImageDecoder applies the candidate's orientation to actual pixels.
         // No downsampling: accept/save at the exact candidate output resolution.
-        val bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, input)) {
+        // AIE-3's mock working file is never published or exposed through a provider.
+        // Only canonical descendants of this app's dedicated working directory are readable.
+        // A file:// pointing anywhere else (including a path with symlinks) is rejected.
+        val source = when (input.scheme) {
+            "content" -> ImageDecoder.createSource(resolver, input)
+            "file" -> {
+                val root = File(context.cacheDir, "atlas-ai-edit").canonicalFile
+                val file = File(input.path ?: error("Missing AI edit cache path")).canonicalFile
+                check(file.path.startsWith(root.path + File.separator) &&
+                    file.isFile && file.extension == "png" &&
+                    file.length() in 1L..16_777_216L
+                ) { "Candidate is not in the app-private AI Edit working cache" }
+                ImageDecoder.createSource(file)
+            }
+            else -> error("Unsupported candidate URI")
+        }
+        val bitmap = ImageDecoder.decodeBitmap(source) {
                 decoder, _, _ -> decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         }
         try {
