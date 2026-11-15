@@ -37,3 +37,14 @@ test('AI Edit never submits automatically and saves only through AIE-4', () => {
   assert.match(source, /atlas-ai-edit-provider/);
   assert.doesNotMatch(source, /https?:\/\//);
 });
+
+test('AI Edit safe drawing and IME keep primary actions reachable', () => {
+  const screen = readFileSync(root + 'featureaiedit/ui/AiEditScreen.kt', 'utf8');
+  const evidence = readFileSync('app/src/androidTest/java/nl/atlas/gallery/AiEditUiEvidenceTest.kt', 'utf8');
+  assert.match(screen, /windowInsetsPadding\(WindowInsets\.safeDrawing\)/);
+  assert.match(screen, /imePadding\(\)/);
+  assert.match(screen, /verticalScroll\(rememberScrollState\(\)\)/);
+  assert.match(evidence, /boundsInWindow/);
+  assert.match(evidence, /WindowInsetsCompat\.Type\.systemBars\(\)/);
+  assert.match(evidence, /performScrollTo\(\)/);
+});
