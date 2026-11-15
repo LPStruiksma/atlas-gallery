@@ -14,6 +14,8 @@ const trash = source('app/src/main/java/nl/atlas/gallery/DeclutterScreen.kt');
 assert.match(search, /fun AtlasSearch\(/);
 assert.match(search, /AtlasSearchScope\.THIS_SCREEN/);
 assert.match(search, /AtlasSearchScope\.LIBRARY/);
+assert.match(search, /selectedScope: AtlasSearchScope\?/);
+assert.match(search, /val scope = selectedScope \?: localScope/);
 for (const tool of ['textTool', 'faceTool', 'imageTool', 'filtersTool', 'historyTool', 'suggestionsTool']) {
   assert.ok(search.includes(tool), 'extensible tool slot ' + tool);
 }
@@ -21,8 +23,12 @@ assert.match(scoped, /fun scopedMediaMatches\(/);
 assert.match(scoped, /searchWithFacets\(/);
 assert.match(scoped, /fun scopedNameMatches\(/);
 assert.match(main, /AtlasSearch\(/); // Pictures, album, person, Search destination shell
+assert.match(main, /selectedScope = overviewScope/);
+assert.match(main, /onSearchWholeLibrary = \{ tab = 3 \}/);
 assert.match(albums, /AtlasSearch\(/); // Albums list
+assert.match(albums, /scope == AtlasSearchScope\.LIBRARY\) onSearchWholeLibrary\?\.invoke\(\)/);
 assert.match(people, /AtlasSearch\(/); // People tab
+assert.match(people, /scope == AtlasSearchScope\.LIBRARY\) onSearchWholeLibrary\?\.invoke\(\)/);
 assert.match(stories, /AtlasSearch\(/); // Stories collection
 assert.match(trash, /AtlasSearch\(/); // Trash review
 console.log('FIND-0 shared-scoped-search contract passed');
