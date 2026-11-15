@@ -132,8 +132,14 @@ internal fun PhotosSortAction(order: SortOrder, onSort: (SortOrder) -> Unit, onS
     }
 }
 
-/** One extensible Samsung-style sheet; screens may append custom labels. */
-internal data class MediaSortOption(val key: MediaSortKey, val label: String)
+/** A screen may provide its own selectable key without changing the shared enum. */
+internal data class MediaSortOption(
+    val key: String,
+    val label: String,
+    val directionSupported: Boolean = true
+) {
+    constructor(key: MediaSortKey, label: String) : this(key.name.lowercase(), label)
+}
 internal data class MediaSortExtra(val id: String, val label: String, val onClick: () -> Unit)
 
 internal fun mediaSortOptionLabel(key: MediaSortKey): String = when (key) {
@@ -144,18 +150,26 @@ internal fun mediaSortOptionLabel(key: MediaSortKey): String = when (key) {
     MediaSortKey.RANDOM -> "Random"
 }
 
+/** The selection contract used by an extensible sheet, including custom keys. */
+internal data class MediaSortSelection(val key: String, val direction: SortDirection)
+internal fun MediaSort.asSelection() = MediaSortSelection(key.name.lowercase(), direction)
+internal fun MediaSortSelection.asStandardSort(): MediaSort? =
+    MediaSortKey.entries.firstOrNull { it.name.lowercase() == key }
+        ?.let { MediaSort(it, direction) }
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun MediaSortSheet(
-    selected: MediaSort,
+    selected: MediaSortSelection,
     options: List<MediaSortOption> = MediaSort.standardOptions.map {
         MediaSortOption(it, mediaSortOptionLabel(it))
     },
     extras: List<MediaSortExtra> = emptyList(),
-    onSort: (MediaSort) -> Unit,
+    onSort: (MediaSortSelection) -> Unit,
     onShuffle: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val selectedOption = options.firstOrNull { it.key == selected.key }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -171,14 +185,15 @@ internal fun MediaSortSheet(
                     .selectable(selected = selected.key == option.key,
                         role = Role.RadioButton,
                         onClick = { onSort(selected.copy(key = option.key)) })
-                    .testTag("atlas-media-sort-" + option.key.name.lowercase()),
+                    .testTag("atlas-media-sort-" + option.key),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(option.label, style = MaterialTheme.typography.bodyLarge)
                     RadioButton(selected = selected.key == option.key, onClick = null)
                 }
             }
-            if (selected.key != MediaSortKey.RANDOM) {
+            if (selectedOption?.directionSupported != false &&
+                selected.key != MediaSortKey.RANDOM.name.lowercase()) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text("Direction", style = MaterialTheme.typography.titleMedium)
                 SortDirection.entries.forEach { direction ->
@@ -194,7 +209,7 @@ internal fun MediaSortSheet(
                         RadioButton(selected = selected.direction == direction, onClick = null)
                     }
                 }
-            } else {
+            } else if (selected.key == MediaSortKey.RANDOM.name.lowercase()) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
                     .clickable { onShuffle() }
                     .semantics { role = Role.Button }
@@ -214,6 +229,21 @@ internal fun MediaSortSheet(
         }
     }
 }
+
+/** Standard Pictures adapts the extensible selector to its built-in comparator. */
+@Composable
+internal fun MediaSortSheet(
+    selected: MediaSort,
+    options: List<MediaSortOption> = MediaSort.standardOptions.map {
+        MediaSortOption(it, mediaSortOptionLabel(it))
+    },
+    extras: List<MediaSortExtra> = emptyList(),
+    onSort: (MediaSort) -> Unit,
+    onShuffle: () -> Unit,
+    onDismiss: () -> Unit
+) = MediaSortSheet(selected.asSelection(), options, extras,
+    onSort = { choice -> choice.asStandardSort()?.let(onSort) },
+    onShuffle = onShuffle, onDismiss = onDismiss)
 
 /** Pictures' new sort action; the historical SortOrder overload remains for other tests. */
 @Composable
