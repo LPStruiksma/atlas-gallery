@@ -259,7 +259,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             compose.onNodeWithTag("atlas-people-import-v4").assertDoesNotExist()
             settle()
             saveUiEvidence("settings-664-$tab-$mode.png")
-            compose.onNodeWithTag("atlas-settings-advanced").performClick()
+            compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
             listOf("atlas-people-import-v4", "atlas-people-link-v4",
                 "atlas-settings-diagnostics").forEach {
                 compose.onNodeWithTag(it).assertExists()
