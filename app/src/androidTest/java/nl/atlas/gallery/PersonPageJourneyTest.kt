@@ -252,6 +252,71 @@ class PersonPageJourneyTest {
         waitForTag("atlas-ratio-gallery")
     }
 
+    /**
+     * DESIGN-3: use enough synthetic MediaStore-backed tiles to make scrolling
+     * physically possible. The named-person journey has only a few items after
+     * splitting its six faces, so a swipe there cannot collapse its header.
+     * Repeating the licensed-by-test synthetic records changes no People data.
+     */
+    @Test fun personHeaderCollapsesAndExpandsOnScrollableSyntheticTimeline() {
+        val longTimeline = List(48) { records[it % records.size] }
+        val gridState = androidx.compose.foundation.lazy.grid.LazyGridState()
+        var dark by mutableStateOf(true)
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        compose.setContent {
+            if (!composing) return@setContent
+            AtlasGalleryTheme(dark = dark) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.onBackground) {
+                    PersonPageScreen(
+                        ui = PersonPageUi("Synthetic Ada", longTimeline, false, true),
+                        gridState = gridState,
+                        catalogueEpoch = 1L,
+                        portrait = { PersonPortraitFallback() },
+                        onBack = {},
+                        onOpen = {},
+                        onDialog = {},
+                        nameDialog = {},
+                        mergePicker = {},
+                        onHide = {},
+                        selectedUris = null,
+                        onSelectionChange = {},
+                        onRemoveSelected = null,
+                        confirmMerge = {}
+                    )
+                }
+            }
+        }
+        waitForTag("atlas-person-portrait")
+        waitFor("scrollable synthetic person timeline") { gridState.canScrollForward }
+        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+            swipeUp(startY = bottom * 0.85f, endY = top + 20f, durationMillis = 450)
+        }
+        waitFor("collapsed person header") {
+            compose.onAllNodesWithTag("atlas-person-portrait", useUnmergedTree = true)
+                .fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithTag("atlas-header-title").assertExists()
+        compose.onNodeWithTag("atlas-header-more").assertExists()
+        settle()
+        saveUiEvidence("person-collapsed-dark.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
+        dark = false
+        settle()
+        saveUiEvidence("person-collapsed-light.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        dark = true
+        for (attempt in 1..4) {
+            if (!(gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0)) break
+            compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+                swipeDown(startY = top + 20f, endY = bottom * 0.85f, durationMillis = 450)
+            }
+        }
+        waitForTag("atlas-person-portrait")
+        settle()
+        saveUiEvidence("person-expanded-after-scroll-dark.png")
+    }
+
     @Test fun nameOnThePersonPageThenReopenShowsTheNameAndHideSurvivesRestart() {
         var host by mutableStateOf(host())
         var grant by mutableStateOf<String?>("gallery-1")
@@ -337,32 +402,6 @@ class PersonPageJourneyTest {
         assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
         settle()
         saveUiEvidence("person-named.png")
-        // DESIGN-3: the cover collapses out of the scrolling chrome while the
-        // compact bar keeps the name and overflow reachable.
-        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
-            swipeUp(startY = bottom * 0.85f, endY = top + 20f, durationMillis = 450)
-        }
-        waitFor("collapsed person header") {
-            compose.onAllNodesWithTag("atlas-person-portrait", useUnmergedTree = true)
-                .fetchSemanticsNodes().isEmpty()
-        }
-        compose.onNodeWithTag("atlas-header-title").assertExists()
-        compose.onNodeWithTag("atlas-header-more").assertExists()
-        settle()
-        saveUiEvidence("person-collapsed-dark.png")
-        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
-        dark = false
-        settle()
-        saveUiEvidence("person-collapsed-light.png")
-        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
-        dark = true
-        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
-            swipeDown(startY = top + 20f, endY = bottom * 0.85f, durationMillis = 450)
-        }
-        waitForTag("atlas-person-portrait")
-        settle()
-        saveUiEvidence("person-expanded-after-scroll-dark.png")
-
         // ⋮ menu, then Merge with… lists Bo; the confirmation opens and is cancelled.
         compose.onNodeWithTag("atlas-header-more").performClick()
         waitForTag("atlas-person-merge")
