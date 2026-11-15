@@ -141,7 +141,7 @@ internal val darkGalleryColors = darkColorScheme(
     surfaceDim = AtlasColor.Ink,
     surfaceContainerLowest = AtlasTokens.Colors.Dark.SurfaceLowest,
     surfaceContainerLow = AtlasTokens.Colors.Dark.SurfaceLow,
-    surfaceContainer = Color(0xFF1D272C),
+    surfaceContainer = AtlasTokens.Colors.InkRaised,
     surfaceContainerHigh = AtlasTokens.Colors.Dark.SurfaceHigh,
     surfaceContainerHighest = AtlasTokens.Colors.Dark.SurfaceVariant
 )
