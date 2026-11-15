@@ -166,7 +166,7 @@ class JustifiedRowsPerfTest {
         }
         fun median(values: List<Long>) = values.sorted()[values.size / 2]
         println("PERF19 250k synthetic JVM n=7 baseline median_ns=${median(baseline.map { it.first })} candidate median_ns=${median(candidate.map { it.first })}")
-        println("PERF19 heap_delta_bytes_proxy baseline=${median(baseline.map { it.second })} candidate=${median(candidate.map { it.second })}")
+        println("PERF19 heap_delta_bytes_proxy baseline=${median(baseline.map { it.second!! })} candidate=${median(candidate.map { it.second!! })}")
         println("PERF19 allocated_bytes=unmeasured (Android JVM test source set has no ThreadMXBean)")
     }
 }
