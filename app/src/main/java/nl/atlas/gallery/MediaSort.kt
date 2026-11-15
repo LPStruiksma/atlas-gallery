@@ -68,13 +68,15 @@ private fun String.indexOfFirstDigitEnd(from: Int): Int {
 
 /** Stable comparator: direction flips the requested key, never the ID tie-break. */
 fun mediaComparator(sort: MediaSort, seed: Long, locale: Locale = Locale.getDefault()): Comparator<MediaRecord> {
-    val collator = Collator.getInstance(locale).apply { strength = Collator.SECONDARY }
+    val collator = if (sort.key == MediaSortKey.FILE_NAME)
+        Collator.getInstance(locale).apply { strength = Collator.SECONDARY }
+    else null
     val direction = if (sort.direction == SortDirection.ASCENDING) 1 else -1
     return Comparator { a, b ->
         val primary = when (sort.key) {
             MediaSortKey.DATE_CREATED -> a.takenAtMillis.compareTo(b.takenAtMillis)
             MediaSortKey.DATE_MODIFIED -> a.modifiedAtSeconds.compareTo(b.modifiedAtSeconds)
-            MediaSortKey.FILE_NAME -> naturalNameCompare(a.name, b.name, collator)
+            MediaSortKey.FILE_NAME -> naturalNameCompare(a.name, b.name, checkNotNull(collator))
             MediaSortKey.SIZE -> a.sizeBytes.compareTo(b.sizeBytes)
             MediaSortKey.RANDOM -> shuffleSortKey(a.randomShuffleDiscriminator(), seed)
                 .compareTo(shuffleSortKey(b.randomShuffleDiscriminator(), seed))
