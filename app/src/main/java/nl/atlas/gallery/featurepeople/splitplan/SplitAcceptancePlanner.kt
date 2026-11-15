@@ -249,7 +249,8 @@ object SplitAcceptancePlanner {
         }
 
         val released = ArrayList<SplitReleaseConfirmation>()
-        val remaining = owners.associateWith { input.confirmed.values.count { p -> p == it } }.toMutableMap()
+        // A separate scan per owner would be quadratic for a large library.
+        val remaining = input.confirmed.values.groupingBy { it }.eachCount().toMutableMap()
         for ((face, owner) in input.confirmed.entries.sortedBy { it.key.localHex }) {
             val group = groupOf.getValue(face)
             if (group < 0 || nameByGroup[group] == owner) continue
