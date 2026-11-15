@@ -271,9 +271,10 @@ fun LocalSearchControls(
         // Using produceState for matching as well keeps posting scans and sort
         // off Compose's frame. A changed query starts with an empty value,
         // rather than briefly showing the previous query's private names.
+        val typedSuggestions = filters.text
         val suggestions by androidx.compose.runtime.produceState<List<SearchSuggestion>>(
             initialValue = emptyList(), key1 = indexedSuggestions,
-            key2 = filters.text, key3 = currentPermissionEpoch
+            key2 = typedSuggestions, key3 = currentPermissionEpoch
         ) {
             value = emptyList()
             val index = indexedSuggestions
@@ -281,7 +282,7 @@ fun LocalSearchControls(
                 // A short debounce prevents stale work while typing rapidly.
                 kotlinx.coroutines.delay(20)
                 value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                    index.search(filters.text)
+                    index.search(typedSuggestions)
                 }
             }
         }
