@@ -83,8 +83,8 @@ object FaceQualityScorer {
             count++
         }
         val lapMean = lapSum / count
-        val LAPLACIAN_VARIANCE = max(0.0, lapSq / count - lapMean * lapMean)
-        val sharp = (ln(1.0 + LAPLACIAN_VARIANCE) / ln(1.0 + 900.0)).coerceIn(0.0, 1.0)
+        val laplacianVariance = max(0.0, lapSq / count - lapMean * lapMean)
+        val sharp = (ln(1.0 + laplacianVariance) / ln(1.0 + 900.0)).coerceIn(0.0, 1.0)
 
         val shortSide = min(detection.width, detection.height) * sourceScale
         val size = (shortSide / MIN_FACE_SHORT_EDGE_PX).toDouble().coerceIn(0.0, 1.0)
@@ -92,7 +92,6 @@ object FaceQualityScorer {
         val p = detection.landmarks
         require(p.size == 10 && p.all { it.isFinite() })
         val eyeCenterX = (p[0] + p[2]) / 2.0
-        val eyeCenterY = (p[1] + p[3]) / 2.0
         val eyeDistance = hypot((p[2] - p[0]).toDouble(), (p[3] - p[1]).toDouble())
         val noseOffset = abs(p[4] - eyeCenterX) / max(eyeDistance, 1.0)
         val mouthCenterX = (p[6] + p[8]) / 2.0
