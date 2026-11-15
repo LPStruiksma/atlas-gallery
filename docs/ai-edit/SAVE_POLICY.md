@@ -19,15 +19,24 @@ The ordinary Samsung/system Edit handoff is not changed.
   original `DATE_TAKEN` when known so timeline presentation places related
   photos near one another. A same-folder race with another process may still
   cause provider renaming; inspect `displayName` when UI is integrated.
-- Insert with `IS_PENDING=1`, write pixels and allowlisted metadata, persist
-  local lineage, then publish `IS_PENDING=0`. An exception before publication
-  deletes the new row; it never deletes/rewrites the original.
+- Before insertion, write a durable journal intent containing a random
+  `atlas-ai-pending-<UUID>.<ext>` temporary filename, not the collision-prone
+  final `_AI_n` filename. Insert with `IS_PENDING=1`, record the exact row
+  URI, write pixels/allowlisted EXIF and lineage, and atomically rename to
+  `<source-stem>_AI_<n>.<ext>` while publishing `IS_PENDING=0`.
+  An exception before publication cleans up only its identified pending row;
+  it never deletes/rewrites an original or an unrelated pending image.
 - `AiEditLineageStore` uses an app-private **no-backup** SQLite database. It
   records saved URI, original URI and revision, provider/model/version, prompt,
   settings, timestamp and candidate parent. No credential or endpoint field.
-  The journal registers exact volume/path/name **before** MediaStore insert,
-  allowing a relaunch to reclaim a still-pending owned row even if the process
-  died before its URI was journaled. Published rows remain, retaining lineage.
+  Before MediaStore insert, the journal records volume/path and the
+  token-bearing temporary name. If the process dies **after the insert but
+  before `recordInserted`**, recovery may reclaim only the exact token-named
+  app-owned row; a same-folder final-name collision cannot match it. Once
+  `recordInserted` commits, recovery uses the exact URI, including after
+  the final-name rename. Published rows remain with lineage. Legacy journals
+  with only a non-unique final name and no URI fail closed: recovery drops the
+  unbound intent rather than risking deletion of unrelated media.
 - `onRefresh` and `onFocus(newUri)` run on the main dispatcher after
   publishing. The `saveForGallery` adapter calls existing
   `GalleryViewModel.refresh()`, and clears viewer metadata cache. AI Edit
