@@ -29,7 +29,8 @@ test('AI Edit never submits automatically and saves only through AIE-4', () => {
   const path = root + 'featureaiedit/ui/AiEditScreen.kt';
   assert.ok(existsSync(path));
   const source = readFileSync(path, 'utf8');
-  assert.match(source, /AiEditSaver/);
+  const viewModel = readFileSync(root + 'featureaiedit/ui/AiEditViewModel.kt', 'utf8');
+  assert.match(viewModel, /AiEditSaver/);
   assert.match(source, /onGenerate =/);
   assert.match(source, /onAccept =/);
   assert.match(source, /atlas-ai-edit-compare/);
