@@ -254,7 +254,7 @@ private fun UnnamedGroupTile(
             .then(if (onOpenReview != null) Modifier.clickable { onOpenReview() } else Modifier)
             .testTag("atlas-people-unnamed"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         PortraitCircle { nativePortrait(tile.face) }
         PeopleTileCaption("Add name", tile.faceCount, unnamed = true)
@@ -373,7 +373,7 @@ private fun NativeProfileTile(
             } else Modifier)
             .testTag("atlas-native-person-album"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         PortraitCircle {
             val face = tile.face
@@ -394,7 +394,7 @@ private fun ProfileTile(
         modifier = modifier.clickable { onOpen(person.personId) }
             .testTag("atlas-people-profile-${person.personId}"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         PortraitCircle { portrait(person) }
         PeopleTileCaption(person.name.ifBlank { "Add name" }, person.accessiblePhotos,
