@@ -39,8 +39,8 @@ class SettingsDesignJourneyTest {
         }
         for (dark in listOf(false, true)) {
             compose.runOnIdle { darkTheme.value = dark }
-            // Return the same scrollable tree to the expanded title.
-            compose.onNodeWithTag("atlas-settings-face-scanning").performScrollTo()
+            // Return to the top of the scrollable content in each theme.
+            compose.onNodeWithTag("atlas-settings-large-title").performScrollTo()
             val theme = if (dark) "dark" else "light"
             compose.onNodeWithTag("atlas-settings-screen").assertExists()
             compose.onNodeWithTag("atlas-settings-large-title").assertIsDisplayed()
