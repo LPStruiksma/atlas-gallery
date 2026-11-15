@@ -53,4 +53,13 @@ assert.match(faceResults, /scopedMediaMatches\(/);
 assert.match(faceResults, /AtlasSearch\(/);
 assert.match(findSimilar, /scopedMediaMatches\(/);
 assert.match(visualResults, /AtlasSearch\(/);
+
+// Regression: folder/person scope escalation cannot leave the narrow route active.
+assert.match(main, /onScopeChange = \{ requested ->[\s\S]*?requested == AtlasSearchScope\.LIBRARY[\s\S]*?personFilter = null[\s\S]*?albumRoute = null[\s\S]*?tab = 3/);
+assert.match(main, /scopedMediaMatches\(overviewBase, sorted, people, overviewQuery,\s*AtlasSearchScope\.THIS_SCREEN/);
+// Global Search remains inline even when expanded chrome is dismissed.
+assert.match(search, /persistentInline: Boolean = false/);
+assert.match(search, /if \(persistentInline\) \{\s*contents\(\)/);
+assert.match(main, /tab == 3 -> \{\s*AtlasSearch\([\s\S]*?persistentInline = true,[\s\S]*?textTool = \{\s*LocalSearchControls\(/);
+
 console.log('FIND-0 shared-scoped-search contract passed');
