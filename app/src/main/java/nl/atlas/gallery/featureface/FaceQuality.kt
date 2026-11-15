@@ -6,6 +6,7 @@ import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.PI
 import nl.atlas.gallery.featureface.onnx.YuNetFace
 
 /**
@@ -97,7 +98,7 @@ object FaceQualityScorer {
         val mouthCenterX = (p[6] + p[8]) / 2.0
         val symmetry = (1.0 - (noseOffset + abs(p[4] - mouthCenterX) / max(eyeDistance, 1.0))).coerceIn(0.0, 1.0)
         val rollRadians = abs(atan2((p[3] - p[1]).toDouble(), (p[2] - p[0]).toDouble()))
-        val roll = (1.0 - rollRadians / (Math.PI / 3.0)).coerceIn(0.0, 1.0)
+        val roll = (1.0 - rollRadians / (PI / 3.0)).coerceIn(0.0, 1.0)
         val pose = 0.7 * symmetry + 0.3 * roll
 
         val margin = 2.0
