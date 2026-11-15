@@ -19,7 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
 import nl.atlas.gallery.featurepeopleui.PeopleHomePerson
-import java.io.File
+import java.io.ByteArrayOutputStream
 import java.text.NumberFormat
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
@@ -115,9 +115,11 @@ class PeopleSortJourneyTest {
         compose.onNodeWithContentDescription("$longName, 2 photos, 1 video").assertExists()
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
         assertEquals(true, bitmap.width > 0 && bitmap.height > 0)
-        // Only synthetic artwork and names. Kept on the test emulator for review evidence.
-        val output = File(context.cacheDir,
-            "people-count-${if (dark) "dark" else "light"}.png")
-        output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        // The existing CI evidence puller collects this shell-owned, non-MediaStore path.
+        // Only synthetic portraits and names are rendered.
+        val encoded = ByteArrayOutputStream()
+        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, encoded))
+        writeUiEvidenceFile(uiEvidenceDisplayName(
+            "people-count-${if (dark) "dark" else "light"}.png"), encoded.toByteArray())
     }
 }
