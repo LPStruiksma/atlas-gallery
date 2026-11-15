@@ -47,7 +47,6 @@ import android.provider.MediaStore
 import androidx.compose.runtime.saveable.rememberSaveable
 import android.os.Build
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Info
@@ -131,7 +130,6 @@ fun GalleryViewer(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe? = null,
     onEdit: ((MediaRecord) -> Boolean)? = null,
-    onAiEdit: ((MediaRecord) -> Unit)? = null,
     // Optional immutable catalogue-scoped return anchor. Keep onBack LAST
     // so all existing GalleryViewer(items, uri) { ... } callers retain meaning.
     onExitSettledUri: ((String) -> Unit)? = null,
@@ -157,7 +155,7 @@ fun GalleryViewer(
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
-        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
+        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
             favouriteOverrides, photoPeople, onBack)
     }
@@ -169,7 +167,6 @@ private fun GalleryViewerSnapshot(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe?,
     onEdit: ((MediaRecord) -> Boolean)?,
-    onAiEdit: ((MediaRecord) -> Unit)?,
     onExitSettledUri: ((String) -> Unit)?,
     faceSearch: ViewerFaceSearch?,
     faceHighlights: Map<String, List<IndexedFaceBox>>,
@@ -261,7 +258,6 @@ private fun GalleryViewerSnapshot(
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
-    var aiEditMenuOpen by remember { mutableStateOf(false) }
     // Pending consent requests survive activity recreation while Android's dialog is open.
     var pendingFavouriteUri by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingFavouriteValue by rememberSaveable { mutableStateOf(false) }
@@ -724,21 +720,6 @@ private fun GalleryViewerSnapshot(
                     modifier = Modifier.testTag("atlas-viewer-find-similar")
                 ) {
                     Icon(Icons.Outlined.ImageSearch, "Find similar", tint = Color.White)
-                }
-                // AI Edit is inside the viewer overflow, never another permanent pencil.
-                if (onAiEdit != null && !current.isVideo &&
-                    PhotoEditorHandoff.eligible(current)) Box {
-                    IconButton(onClick = { aiEditMenuOpen = true },
-                        modifier = Modifier.testTag("atlas-viewer-more")) {
-                        Icon(Icons.Filled.MoreVert, "More photo actions", tint = Color.White)
-                    }
-                    DropdownMenu(expanded = aiEditMenuOpen,
-                        onDismissRequest = { aiEditMenuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("AI Edit") },
-                            modifier = Modifier.testTag("atlas-viewer-ai-edit"),
-                            onClick = { aiEditMenuOpen = false; onAiEdit(current) })
-                    }
                 }
                 IconButton(
                     onClick = {

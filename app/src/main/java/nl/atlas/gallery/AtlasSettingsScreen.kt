@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,8 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import android.content.Context
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,15 +63,6 @@ internal fun AtlasSettingsScreen(
     scanStatusNote: String? = null
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
-    val context = LocalContext.current
-    val aiEditPreferences = remember(context) {
-        context.getSharedPreferences("atlas-ai-edit", Context.MODE_PRIVATE)
-    }
-    var aiProviderDialog by remember { mutableStateOf(false) }
-    var aiProviderLabel by remember {
-        mutableStateOf(if (aiEditPreferences.getString("provider", "atlas-synthetic-mock")
-            == "atlas-synthetic-mock") "Synthetic Mock (offline)" else "Not configured")
-    }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
@@ -107,13 +95,6 @@ internal fun AtlasSettingsScreen(
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
-        }
-        SettingsGroup("AI Edit", "atlas-settings-ai-edit") {
-            SettingsActionRow("Default AI Edit provider", "atlas-ai-edit-settings-provider",
-                onClick = { aiProviderDialog = true }, value = aiProviderLabel)
-            Text("AI Edit sends no photo on opening. Generate is always a separate action.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 10.dp))
         }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
@@ -157,23 +138,6 @@ internal fun AtlasSettingsScreen(
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
         }
     }
-    if (aiProviderDialog) AlertDialog(
-        onDismissRequest = { aiProviderDialog = false },
-        title = { Text("Default AI Edit provider") },
-        text = { Text("Only Synthetic Mock (offline) is available. No upload or paid inference.") },
-        confirmButton = {
-            TextButton(onClick = {
-                aiEditPreferences.edit().putString("provider", "atlas-synthetic-mock").apply()
-                aiProviderLabel = "Synthetic Mock (offline)"
-                aiProviderDialog = false
-            }, modifier = Modifier.testTag("atlas-ai-edit-settings-select-mock")) {
-                Text("Use Synthetic Mock")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { aiProviderDialog = false }) { Text("Cancel") }
-        }
-    )
 }
 
 @Composable

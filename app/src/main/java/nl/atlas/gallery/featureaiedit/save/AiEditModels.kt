@@ -44,8 +44,6 @@ internal object AiEditNaming {
  * A candidate is a working copy, never the original. The source must be a
  * MediaStore image; candidate may be another content URI supplied by the editor.
  * Source revisions are explicit to avoid confusing identical URI / changed bytes.
- * AIE-3 may pass a temporary file URI; AiEditSaver verifies its canonical location inside
- * the app-private AI Edit working cache before opening it.
  */
 data class AiEditCandidate(
     val originalUri: Uri,
@@ -63,7 +61,7 @@ data class AiEditCandidate(
 ) {
     init {
         require(originalUri.scheme == "content" && originalUri.authority == "media")
-        require(candidateUri.scheme == "content" || candidateUri.scheme == "file")
+        require(candidateUri.scheme == "content")
         require(originalUri != candidateUri) { "Do not re-encode the original in-place" }
         require(originalRevision.isNotBlank() && originalRevision.length <= 256)
         require(provider.isNotBlank() && provider.length <= 128)
