@@ -48,13 +48,13 @@ class AiEditProvenanceJourneyTest {
         val records = fixtures.records
         val grant = GalleryMediaGrant(images = true, videos = false, selected = false)
         val tokens = requireNotNull(photoDnaTokensOrNull(grant, 196L, true, records))
-        val result = planPhotoDna(records, tokens) { record ->
+        val result = planPhotoDna(records, tokens, hash = { record ->
             hashCurationBytes(record.sizeBytes,
                 openAuthorized = {
                     fixtures.bytes[record.uri]?.let(::ByteArrayInputStream)
                 },
                 stillAuthorized = { true })
-        }
+        })
         var opened by mutableStateOf<String?>(null)
         compose.setContent {
             AtlasEvidenceHarness(edgeToEdge = true) {
