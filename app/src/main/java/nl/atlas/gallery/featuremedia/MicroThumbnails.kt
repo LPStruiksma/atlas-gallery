@@ -75,9 +75,10 @@ internal object MicroThumbnails {
             microThumbnailDiskBudgetBytes(0L)
         )
         store = microStore
+        val filesPath = context.filesDir.absolutePath
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val total = runCatching {
-                android.os.StatFs(context.filesDir.absolutePath).totalBytes
+                android.os.StatFs(filesPath).totalBytes
             }.getOrDefault(0L)
             microStore.updateBudget(microThumbnailDiskBudgetBytes(total))
         }
