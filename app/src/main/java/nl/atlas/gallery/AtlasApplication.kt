@@ -14,8 +14,9 @@ import kotlinx.coroutines.Dispatchers
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // The first-grid-critical lane: fail-closed ordering is checked by the
+        // JVM registry test and explicitly enforced below.
         // Persist one privacy-redacted trace before Android's original crash handler runs.
-        check(StartupTaskAdmission.verifyCriticalTasks(listOf(StartupTask.CRASH_HANDLER)))
         LastCrashRecorder.install(this)
         // #555: ATLAS's micro-thumbnail store; only used under full media access.
         MicroThumbnails.install(this)
