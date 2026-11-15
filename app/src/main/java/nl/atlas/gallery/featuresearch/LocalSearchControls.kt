@@ -254,22 +254,22 @@ fun LocalSearchControls(
                     .testTag("atlas-search-query-limit")
             )
         }
-        // Build the immutable index away from Compose. Until it is ready, keep
-        // the legacy small-catalog fallback so suggestions never disappear on
-        // a publication change. Grant and source identity fence every result.
+        // Never let a late index from an older grant or source publication
+        // surface private names in a new one. Until built, suggestions stay
+        // empty (no large per-keystroke fallback scan on the UI thread).
         val suggestionKey = CatalogSourceKey(suggestionSources)
-        val suggestionIndex by androidx.compose.runtime.produceState<IndexedSearchSuggestions?>(
+        val indexedSuggestions by androidx.compose.runtime.produceState<IndexedSearchSuggestions?>(
             initialValue = null, key1 = currentPermissionEpoch, key2 = suggestionKey
         ) {
             value = null
-            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                IndexedSearchSuggestions(suggestionSources)
+            if (!currentPermissionEpoch.isNullOrBlank()) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    IndexedSearchSuggestions(suggestionSources)
+                }
             }
         }
-        val suggestions = remember(suggestionIndex, suggestionKey, filters.text) {
-            val current = suggestionIndex
-            if (current != null) current.search(filters.text)
-            else planLocalSearchSuggestions(suggestionSources, filters.text)
+        val suggestions = remember(indexedSuggestions, suggestionKey, filters.text) {
+            indexedSuggestions?.search(filters.text).orEmpty()
         }
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
