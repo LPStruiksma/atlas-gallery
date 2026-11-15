@@ -116,13 +116,16 @@ class SplitDraftReducerTest {
         assertEquals(original.groups[0].id, toThird.groups[0].id)
         assertFalse(toThird.canConfirm)
         val toUnsure = move(toThird, listOf(3, 4), b, SplitDraftLocation.Unsure)
-        val fromUnsure = move(toUnsure, listOf(7, 3, 4), SplitDraftLocation.Unsure, a)
-        assertTrue(fromUnsure.canConfirm)
-        assertEquals(listOf(id(3), id(4), id(7)), fromUnsure.groups[0].members)
-        assertEquals(listOf(id(8)), fromUnsure.unsure)
-        assertEquals(listOf(id(1), id(2), id(5), id(6)), fromUnsure.groups[2].members)
-        assertEquals(original.groups.map { it.id }, fromUnsure.groups.map { it.id })
-        assertPartition(fromUnsure, (1..8).map(::id).toSet())
+        val fromUnsure = move(toUnsure, listOf(7, 3), SplitDraftLocation.Unsure, a)
+        assertFalse(fromUnsure.canConfirm) // group B still needs a member
+        val restored = move(fromUnsure, listOf(4), SplitDraftLocation.Unsure, b)
+        assertTrue(restored.canConfirm)
+        assertEquals(listOf(id(3), id(7)), restored.groups[0].members)
+        assertEquals(listOf(id(4)), restored.groups[1].members)
+        assertEquals(listOf(id(8)), restored.unsure)
+        assertEquals(listOf(id(1), id(2), id(5), id(6)), restored.groups[2].members)
+        assertEquals(original.groups.map { it.id }, restored.groups.map { it.id })
+        assertPartition(restored, (1..8).map(::id).toSet())
     }
 
     @Test fun foreignDuplicateStaleAndWrongSourceMovesAreAtomicNoOps() {
