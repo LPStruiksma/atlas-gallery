@@ -109,6 +109,7 @@ internal fun PersonPageScreen(
     ui: PersonPageUi,
     gridState: LazyGridState,
     catalogueEpoch: Long,
+    searching: Boolean = false,
     /** #584: a new opening of the page starts at the grid; a retarget keeps the stop. */
     opening: Long = 0L,
     portrait: @Composable () -> Unit,
@@ -199,6 +200,7 @@ internal fun PersonPageScreen(
                 sort = TimelineSort.NEWEST,
                 gridState = gridState,
                 onOpen = onOpen,
+                busy = searching,
                 viewKey = "people",
                 catalogueEpoch = catalogueEpoch,
                 // #642: a person's photos are spread over many days; merge the
