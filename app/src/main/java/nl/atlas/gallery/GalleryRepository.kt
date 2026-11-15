@@ -16,7 +16,6 @@ import android.os.Handler
 import android.database.ContentObserver
 import android.os.Build
 import android.provider.MediaStore
-import kotlinx.coroutines.delay
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
