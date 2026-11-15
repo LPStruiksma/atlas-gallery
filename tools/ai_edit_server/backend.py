@@ -160,10 +160,12 @@ class DiffusersBackend(Backend):
         with self._load_lock:
             if self._pipeline is None:
                 import torch
-                from diffusers import DiffusionPipeline
+                from diffusers import FluxKontextPipeline, QwenImageEditPipeline
                 if not torch.cuda.is_available():
                     raise BackendError("A CUDA GPU is required for this backend")
-                self._pipeline = DiffusionPipeline.from_pretrained(
+                pipeline_class = (QwenImageEditPipeline if self.model == "qwen"
+                                  else FluxKontextPipeline)
+                self._pipeline = pipeline_class.from_pretrained(
                     self.model_id, torch_dtype=torch.bfloat16
                 ).to("cuda")
             return self._pipeline
@@ -250,6 +252,9 @@ class ComfyBackend(Backend):
         return params
 
     def _fetch(self, method, path, body=None, content_type=None):
+        remaining = self._deadline - time.monotonic()
+        if remaining <= 0:
+            raise BackendError("ComfyUI job exceeded the configured timeout")
         url = self.base + path
         headers = {"Accept": "application/json"}
         if self.token:
@@ -258,7 +263,7 @@ class ComfyBackend(Backend):
             headers["Content-Type"] = content_type
         req = Request(url, data=body, headers=headers, method=method)
         try:
-            with self.opener.open(req, timeout=30) as response:
+            with self.opener.open(req, timeout=min(30, remaining)) as response:
                 return response.read(30_000_001)
         except (HTTPError, URLError, TimeoutError) as exc:
             raise BackendError("ComfyUI connection or workflow failure") from exc
@@ -275,9 +280,9 @@ class ComfyBackend(Backend):
     def _upload(self, data, filename):
         boundary = "atlas-" + uuid.uuid4().hex
         body = (
-            ("--" + boundary + '\r\nContent-Disposition: form-data; name="image"; filename="' +
-             filename + '"\r\nContent-Type: image/png\r\n\r\n').encode()
-            + data + ("\r\n--" + boundary + "--\r\n").encode()
+            ("--" + boundary + '\\r\\nContent-Disposition: form-data; name="image"; filename="' +
+             filename + '"\\r\\nContent-Type: image/png\\r\\n\\r\\n').encode()
+            + data + ("\\r\\n--" + boundary + "--\\r\\n").encode()
         )
         reply = self._fetch("POST", "/upload/image", body,
                             "multipart/form-data; boundary=" + boundary)
@@ -309,6 +314,7 @@ class ComfyBackend(Backend):
                 ImageOps.exif_transpose(source).convert("RGB").save(output, format="PNG")
                 return output.getvalue()
 
+        self._deadline = time.monotonic() + self.timeout_seconds
         if cancelled.is_set():
             raise Cancelled()
         values = {
@@ -333,8 +339,13 @@ class ComfyBackend(Backend):
         prompt_id = submitted.get("prompt_id")
         if not isinstance(prompt_id, str) or not prompt_id:
             raise BackendError("ComfyUI did not enqueue a prompt")
-        deadline = time.monotonic() + self.timeout_seconds
-        while time.monotonic() < deadline:
+        if cancelled.is_set():
+            try:
+                self._json("POST", "/queue", {"delete": [prompt_id]})
+            except BackendError:
+                pass
+            raise Cancelled()
+        while time.monotonic() < self._deadline:
             if cancelled.is_set():
                 # A queued prompt may be removed; never interrupt another user's
                 # currently running workflow with ComfyUI's global /interrupt.

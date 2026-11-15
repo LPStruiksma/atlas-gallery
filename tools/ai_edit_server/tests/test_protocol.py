@@ -5,6 +5,9 @@ Also collected by pytest: python -m pytest tools/ai_edit_server/tests -q.
 import base64
 import http.client
 import json
+import struct
+import zlib
+import binascii
 import threading
 import time
 import unittest
@@ -159,6 +162,20 @@ class ProtocolConformance(unittest.TestCase):
                 body, mime = multipart(fields, files)
                 status, _, _ = self.call("POST", "/v1/edits", body, mime)
                 self.assertEqual(status, expected)
+
+    def test_structurally_corrupt_images_are_not_accepted(self):
+        # These retain valid magic bytes and dimensions, but are not images.
+        cases = [
+            PNG[:-7],
+            PNG[:29] + bytes([PNG[29] ^ 1]) + PNG[30:],
+            b"\\xff\\xd8\\xff\\xc0\\x00\\x11\\x08\\x00\\x01\\x00\\x01" + b"\\x00" * 12,
+        ]
+        for payload in cases:
+            with self.subTest(length=len(payload)):
+                mime = "image/jpeg" if payload.startswith(b"\\xff\\xd8") else "image/png"
+                status, response = self.submit(files=[("image", mime, payload)])
+                self.assertEqual(status, 415)
+                self.assertEqual(response["error"]["code"], "invalid_image")
 
     def test_content_size_and_unknown_job(self):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port)

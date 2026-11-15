@@ -5,6 +5,7 @@ No third-party packages, network inference or real images are needed for fake mo
 from __future__ import annotations
 
 import argparse
+import binascii
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from email import policy
@@ -15,6 +16,7 @@ import json
 import math
 import os
 import struct
+import zlib
 import threading
 import time
 from datetime import datetime, timezone
@@ -42,36 +44,105 @@ def now_iso():
 
 
 def image_info(data):
-    """Return (mime, width, height) for PNG/JPEG without decoding pixels."""
-    if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
-        if data[12:16] != b"IHDR":
-            raise Problem(415, "invalid_image", "Invalid PNG header")
-        width, height = struct.unpack(">II", data[16:24])
+    """Check complete PNG/JPEG structure before accepting image bytes.
+
+    Fake mode stays dependency-free; GPU/Comfy backends still decode pixels via
+    Pillow before inference. Reject truncated and corrupt synthetic uploads.
+    """
+    if data.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
         mime = "image/png"
-    elif data.startswith(b"\xff\xd8"):
+        offset = 8
+        width = height = 0
+        idat = bytearray()
+        saw_ihdr = saw_iend = False
+        while offset + 12 <= len(data):
+            length = struct.unpack(">I", data[offset:offset + 4])[0]
+            kind = data[offset + 4:offset + 8]
+            end = offset + 12 + length
+            if end > len(data):
+                break
+            chunk = data[offset + 8:offset + 8 + length]
+            expected = int.from_bytes(data[offset + 8 + length:end], "big")
+            actual = binascii.crc32(kind + chunk) & 0xFFFFFFFF
+            if expected != actual:
+                break
+            if not saw_ihdr:
+                if kind != b"IHDR" or length != 13:
+                    break
+                width, height = struct.unpack(">II", chunk[:8])
+                if not width or not height or chunk[10] != 0 or chunk[11] != 0:
+                    break
+                saw_ihdr = True
+            elif kind == b"IDAT":
+                idat.extend(chunk)
+            elif kind == b"IEND":
+                saw_iend = length == 0 and end == len(data)
+                break
+            offset = end
+        if not (saw_ihdr and saw_iend and idat):
+            raise Problem(415, "invalid_image", "Malformed PNG image")
+        try:
+            decoder = zlib.decompressobj()
+            raw = decoder.decompress(bytes(idat), MAX_UPLOAD_BYTES + 1)
+            raw += decoder.flush(MAX_UPLOAD_BYTES + 1 - len(raw))
+            if not decoder.eof or decoder.unused_data or len(raw) > MAX_UPLOAD_BYTES:
+                raise ValueError("Invalid or oversized PNG pixel stream")
+        except (ValueError, zlib.error) as exc:
+            raise Problem(415, "invalid_image", "Malformed PNG image") from exc
+    elif data.startswith(b"\\xff\\xd8"):
         mime = "image/jpeg"
         offset = 2
         width = height = 0
-        while offset + 4 < len(data):
+        saw_scan = False
+        saw_eoi = False
+        while offset < len(data):
             if data[offset] != 0xFF:
                 break
-            marker = data[offset + 1]
-            offset += 2
-            if marker in (0xD8, 0xD9):
+            while offset < len(data) and data[offset] == 0xFF:
+                offset += 1
+            if offset >= len(data):
+                break
+            marker = data[offset]
+            offset += 1
+            if marker == 0xD9:
+                saw_eoi = offset == len(data)
+                break
+            if marker == 0xD8 or marker == 0x01 or 0xD0 <= marker <= 0xD7:
                 continue
             if offset + 2 > len(data):
                 break
-            segment = int.from_bytes(data[offset:offset + 2], "big")
-            if segment < 2 or offset + segment > len(data):
+            length = int.from_bytes(data[offset:offset + 2], "big")
+            if length < 2 or offset + length > len(data):
                 break
             if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
-                          0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF) and segment >= 7:
+                          0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                if length < 8:
+                    break
                 height = int.from_bytes(data[offset + 3:offset + 5], "big")
                 width = int.from_bytes(data[offset + 5:offset + 7], "big")
-                break
-            offset += segment
-        if width == 0:
-            raise Problem(415, "invalid_image", "Could not read JPEG dimensions")
+            if marker == 0xDA:
+                # Entropy-coded bytes have escaped FF00 and restart markers.
+                offset += length
+                saw_scan = True
+                while offset < len(data):
+                    if data[offset] != 0xFF:
+                        offset += 1
+                        continue
+                    marker_offset = offset
+                    while offset < len(data) and data[offset] == 0xFF:
+                        offset += 1
+                    if offset >= len(data):
+                        break
+                    next_marker = data[offset]
+                    if next_marker == 0 or 0xD0 <= next_marker <= 0xD7:
+                        offset += 1
+                        continue
+                    offset = marker_offset
+                    break
+                continue
+            offset += length
+        if not (width and height and saw_scan and saw_eoi):
+            raise Problem(415, "invalid_image", "Malformed JPEG image")
     else:
         raise Problem(415, "unsupported_image", "Use a PNG or JPEG image")
     if width <= 0 or height <= 0:
