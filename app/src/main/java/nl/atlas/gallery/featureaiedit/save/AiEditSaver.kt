@@ -148,21 +148,25 @@ internal class AiEditSaver(
         }
 
     /**
-     * Owns the single-writer journal sequence; a process death between insert
-     * and URI registration is repaired by matching the prewritten volume/folder/name.
+     * Journal a token-specific temporary filename before insert. The final
+     * _AI_n name is not a safe recovery identity: another app-owned insert
+     * can legitimately have that name before the URI is recorded.
      */
     private fun saveBlocking(candidate: AiEditCandidate): AiEditSaveResult {
         recoverInterruptedSaves()
         val source = sourceFacts(candidate.originalUri)
         val name = AiEditNaming.next(source.name, candidate.format, existingNames(source))
         val token = UUID.randomUUID().toString()
-        lineageStore.registerIntent(token, source.volume, source.relativePath, name)
+        val temporaryName = AiEditNaming.pendingName(token, candidate.format)
+        lineageStore.registerIntent(token, source.volume, source.relativePath, temporaryName)
         var inserted: Uri? = null
         var published = false
         try {
             inserted = resolver.insert(collection(source.volume),
-                pendingValues(source, name, candidate.format))
+                pendingValues(source, temporaryName, candidate.format))
                 ?: error("MediaStore refused the new AI edit")
+            // After this durable write, recovery uses the exact URI even
+            // when MediaStore has renamed the image for publication.
             lineageStore.recordInserted(token, inserted.toString())
             afterInsert(inserted)
             resolver.openOutputStream(inserted, "w")?.use {
@@ -185,6 +189,9 @@ internal class AiEditSaver(
             // rolls this back during recovery.
             lineageStore.put(lineage)
             val update = ContentValues().apply {
+                // Rename and publish together: there is no unjournaled
+                // interval with a collision-prone final filename.
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
                 put(MediaStore.Images.Media.IS_PENDING, 0)
             }
             check(resolver.update(inserted, update, null, null) == 1) {
@@ -198,15 +205,17 @@ internal class AiEditSaver(
         } catch (failure: Throwable) {
             if (!published) {
                 try {
-                    val target = inserted ?: pendingItem(
-                        AiEditLineageStore.PendingSave(token, source.volume,
-                            source.relativePath, name, null))?.first
-                    if (target != null) {
-                        check(resolver.delete(target, null, null) == 1) {
+                    val row = pendingItem(AiEditLineageStore.PendingSave(
+                        token, source.volume, source.relativePath,
+                        temporaryName, inserted?.toString()))
+                    if (row?.second == true) {
+                        check(resolver.delete(row.first, null, null) == 1) {
                             "Could not delete failed AI edit pending row"
                         }
                     }
-                    lineageStore.finishIntent(token, discardLineage = true)
+                    // A provider may have published before raising an error.
+                    // Never delete a published row or its existing lineage.
+                    lineageStore.finishIntent(token, discardLineage = row?.second != false)
                 } catch (cleanupFailure: Throwable) {
                     // Keep the journal for process-death recovery on next open.
                     failure.addSuppressed(cleanupFailure)
@@ -244,9 +253,10 @@ internal class AiEditSaver(
     ): AiEditSaveResult = save(candidate, onRefresh = { gallery.refresh() }, onFocus = onFocus)
 
     /**
-     * Reopen a journal after process death. A published item is never removed;
-     * only this app's still-pending, exact-name row can be deleted. No original
-     * URI is ever part of the journal's cleanup target.
+     * Reopen a journal after process death. Before recordInserted, only a
+     * token-bound temporary filename proves ownership. After recordInserted,
+     * use the exact URI (regardless of the final DISPLAY_NAME). An old
+     * name-only journal cannot prove identity and must fail closed.
      */
     /** Called by AtlasApplication after process relaunch, serialized with saves. */
     suspend fun recoverOnStartup() = withContext(Dispatchers.IO) {
@@ -258,8 +268,8 @@ internal class AiEditSaver(
             val row = pendingItem(pending)
             when {
                 row == null -> {
-                    // The row may already have been deleted before a prior
-                    // recovery process died. Never retain dangling lineage.
+                    // The row was deleted already, or is a legacy unbound
+                    // intent. Never guess based on a common final filename.
                     lineageStore.finishIntent(pending.token, discardLineage = true)
                 }
                 row.second -> {
@@ -277,25 +287,53 @@ internal class AiEditSaver(
     }
 
     private fun pendingItem(pending: AiEditLineageStore.PendingSave): Pair<Uri, Boolean>? {
-        // Inspect only exact folder/name on the original volume, including
-        // pending rows. OWNER_PACKAGE_NAME prevents deleting other apps' data.
-        val scoped = MediaStore.setIncludePending(collection(pending.volume))
+        if (pending.insertedUri != null) {
+            // A recorded URI is authoritative even after final-name rename.
+            // Reject any other collection, owner or folder before deletion.
+            val recorded = Uri.parse(pending.insertedUri)
+            val id = runCatching { ContentUris.parseId(recorded) }.getOrNull()
+                ?: return null
+            if (recorded != ContentUris.withAppendedId(collection(pending.volume), id))
+                return null
+            val projection = arrayOf(MediaStore.Images.Media.IS_PENDING,
+                MediaStore.Images.Media.OWNER_PACKAGE_NAME,
+                MediaStore.Images.Media.RELATIVE_PATH)
+            val cursor = resolver.query(MediaStore.setIncludePending(recorded),
+                projection, null, null, null)
+                ?: error("Cannot inspect recorded interrupted AI edit")
+            return cursor.use {
+                if (!it.moveToFirst()) return@use null
+                if (it.getString(1) != context.packageName ||
+                    it.getString(2) != pending.relativePath) return@use null
+                recorded to (it.getInt(0) != 0)
+            }
+        }
+
+        // Crash after intent and before URI journal: only a persisted UUID
+        // encoded in the *temporary* name is an acceptable recovery target.
+        // Old journals containing a final _AI_n name are never deleted by
+        // name because any app-owned row could occupy that filename.
+        if (!AiEditNaming.isTokenNamedPendingRow(pending.token, pending.displayName))
+            return null
         val projection = arrayOf(MediaStore.Images.Media._ID,
             MediaStore.Images.Media.IS_PENDING,
             MediaStore.Images.Media.OWNER_PACKAGE_NAME)
+        val scoped = MediaStore.setIncludePending(collection(pending.volume))
         val cursor = resolver.query(scoped, projection,
             MediaStore.Images.Media.RELATIVE_PATH + " = ? AND " +
                 MediaStore.Images.Media.DISPLAY_NAME + " = ?",
             arrayOf(pending.relativePath, pending.displayName), null)
-            ?: error("Cannot inspect interrupted MediaStore saves")
-        return cursor.use { cursor ->
+            ?: error("Cannot inspect token-named interrupted AI edit")
+        return cursor.use {
             var found: Pair<Uri, Boolean>? = null
-            while (cursor.moveToNext()) {
-                if (cursor.getString(2) != context.packageName) continue
-                val uri = ContentUris.withAppendedId(collection(pending.volume), cursor.getLong(0))
-                if (pending.insertedUri != null && uri.toString() != pending.insertedUri) continue
-                found = uri to (cursor.getInt(1) != 0)
-                break
+            while (it.moveToNext()) {
+                if (it.getString(2) != context.packageName) continue
+                // Never pick an arbitrary row if the provider returned
+                // multiple matches for the same supposedly unique token.
+                check(found == null) { "Ambiguous token-named interrupted AI edit" }
+                val uri = ContentUris.withAppendedId(
+                    collection(pending.volume), it.getLong(0))
+                found = uri to (it.getInt(1) != 0)
             }
             found
         }
