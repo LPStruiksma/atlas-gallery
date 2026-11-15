@@ -77,14 +77,16 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
                 .maxValue() > 12f
         }
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
-        // Use an adjacent-step pinch; the previous 150 -> 30 px sweep
-        // crossed the compact 7-column stop into Month/Year overview.
+        // One ladder stop: a 150 -> 100 px span is a 1/1.5 zoom factor, i.e.
+        // progress 1.0 (GalleryZoomGesture). The former 150 -> 30 px pinch
+        // (~4 stops) only reached 7 columns because SMALL used to be the last
+        // stop; since #110 adds Month/Year it overshoots past 7 columns.
         grid.performTouchInput {
             pinch(
                 start0 = center - Offset(150f, 0f),
-                end0 = center - Offset(75f, 0f),
+                end0 = center - Offset(100f, 0f),
                 start1 = center + Offset(150f, 0f),
-                end1 = center + Offset(75f, 0f),
+                end1 = center + Offset(100f, 0f),
                 durationMillis = 400L
             )
         }

@@ -46,7 +46,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import java.util.Locale
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
@@ -134,8 +133,7 @@ fun PeopleHomeScreen(
             .map { entry ->
                 val cover = currentNative?.people?.get(entry.person)?.coverFaceUid
                     ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
-                NativePersonTile(entry.person, entry.name,
-                    currentNative?.people?.get(entry.person)?.faceCount ?: 0, cover)
+                NativePersonTile(entry.person, entry.name, cover)
             }
     }
     // #579: unnamed groups of 3+ faces follow the named people, largest
@@ -232,7 +230,6 @@ fun PeopleHomeScreen(
 private data class NativePersonTile(
     val person: PersonKey,
     val name: String,
-    val faceCount: Int,
     val face: NativeFaceObservationId?
 )
 
@@ -255,25 +252,12 @@ private fun UnnamedGroupTile(
             .then(if (onOpenReview != null) Modifier.clickable { onOpenReview() } else Modifier)
             .testTag("atlas-people-unnamed"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PortraitCircle { nativePortrait(tile.face) }
-        PeopleTileCaption("Add name", tile.faceCount, unnamed = true)
+        Text("Add name", style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-/** All People sources use the same centred two-line caption, never a guessed total. */
-@Composable
-private fun PeopleTileCaption(name: String, count: Int, unnamed: Boolean = false) {
-    Text(name, modifier = Modifier.testTag("atlas-people-tile-name"),
-        style = MaterialTheme.typography.bodyMedium,
-        textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        color = if (unnamed) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface)
-    Text(String.format(Locale.US, "%,d", count),
-        modifier = Modifier.testTag("atlas-people-tile-count"),
-        style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Samsung's plain empty People page: one icon, one line, and the opt-in when real. */
@@ -375,13 +359,14 @@ private fun NativeProfileTile(
             } else Modifier)
             .testTag("atlas-native-person-album"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PortraitCircle {
             val face = tile.face
             if (face != null) nativePortrait(face) else DefaultPortrait()
         }
-        PeopleTileCaption(tile.name, tile.faceCount)
+        Text(tile.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -396,11 +381,14 @@ private fun ProfileTile(
         modifier = modifier.clickable { onOpen(person.personId) }
             .testTag("atlas-people-profile-${person.personId}"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PortraitCircle { portrait(person) }
-        PeopleTileCaption(person.name.ifBlank { "Add name" }, person.accessiblePhotos,
-            unnamed = person.name.isBlank())
+        Text(person.name.ifBlank { "Add name" },
+            style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurface)
     }
 }
 
