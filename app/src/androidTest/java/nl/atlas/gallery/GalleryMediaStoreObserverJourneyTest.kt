@@ -64,7 +64,7 @@ class GalleryMediaStoreObserverJourneyTest {
     private val fixtures = SyntheticHeaderFixtures(sizes = List(72) { 48 to 48 })
     private val compose = createAndroidComposeRule<MainActivity>()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(emulatorOnly)
-        .around(fixtures).around(compose)
+        .around(S24DisplayRule()).around(fixtures).around(compose)
 
     private val mediaTags = SemanticsMatcher("rendered timeline media tags") { node ->
         node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
