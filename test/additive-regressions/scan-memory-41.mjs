@@ -15,7 +15,11 @@ const report = read('app/src/main/java/nl/atlas/gallery/LastCrashRecorder.kt');
 assert.match(repo, /failGalleryScanOnHeapExhaustion \{/);
 assert.match(repo, /target\.add\(reuse\.canonical\(MediaRecord\(/);
 assert.match(repo, /reuse\.shared\(cursor\.stringOr\(idxPath, ""\)\)/);
-assert.match(repo, /repo\.load\(providerCancellation, shownAtStart\)/);
+// Full scans now return their provider checkpoint along with the reused rows;
+// both the ViewModel and the old load() API still go through the same bounded scan.
+assert.match(repo, /repo\.loadWithCheckpoint\(providerCancellation, shownAtStart\)/);
+assert.match(repo, /loadWithCheckpoint\(cancellationSignal, previous, checkActive\)\.items/);
+assert.match(repo, /loadInventory\(cancellationSignal, previous, checkActive\)/);
 // Cold start: the scan picks its previous rows only after the cache load settled.
 assert.match(repo, /cachedInventoryLoad = viewModelScope\.launch \{/);
 assert.match(repo, /val shownAtStart = inventoryShownAfterCacheSettles\(cachedInventoryLoad\) \{\s*_publishedInventory\.value\.items/);

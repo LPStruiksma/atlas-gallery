@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import android.app.Application
 import android.content.ContentUris
 import android.content.Context
+import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import java.security.MessageDigest
@@ -26,7 +27,33 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+
+internal data class GalleryMediaCheckpoint(
+    val versions: Map<String, String?>,
+    val generations: Map<String, Long?>
+)
+internal data class GalleryMediaScan(
+    val items: List<MediaRecord>, val checkpoint: GalleryMediaCheckpoint
+)
+internal class GalleryDeltaUnavailable : RuntimeException("Incremental provider query unavailable")
+
+/** Only an item URI, never a collection URI or ambiguous numeric ID, is a deletion hint. */
+internal data class GalleryItemHint(val uri: Uri, val video: Boolean, val id: Long, val volume: String)
+internal fun galleryItemHintOrNull(uri: Uri): GalleryItemHint? {
+    if (uri.scheme != "content" || uri.authority != "media") return null
+    val segments = uri.pathSegments
+    if (segments.size != 4 || segments[2] != "media") return null
+    val video = when (segments[1]) {
+        "images" -> false
+        "video" -> true
+        else -> return null
+    }
+    val id = segments[3].toLongOrNull()?.takeIf { it > 0L } ?: return null
+    val volume = segments[0].takeIf { it.isNotBlank() } ?: return null
+    return GalleryItemHint(uri, video, id, volume)
+}
 
 class GalleryRepository(private val context: Context) {
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
@@ -39,7 +66,14 @@ class GalleryRepository(private val context: Context) {
          */
         previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
-    ): List<MediaRecord> = failGalleryScanOnHeapExhaustion {
+    ): List<MediaRecord> =
+        loadWithCheckpoint(cancellationSignal, previous, checkActive).items
+
+    internal fun loadWithCheckpoint(
+        cancellationSignal: CancellationSignal? = null,
+        previous: List<MediaRecord> = emptyList(),
+        checkActive: () -> Unit = {}
+    ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
         loadInventory(cancellationSignal, previous, checkActive)
     }
 
@@ -47,7 +81,7 @@ class GalleryRepository(private val context: Context) {
         cancellationSignal: CancellationSignal?,
         previous: List<MediaRecord>,
         checkActive: () -> Unit
-    ): List<MediaRecord> {
+    ): GalleryMediaScan {
         val result = ArrayList<MediaRecord>(maxOf(4096, previous.size))
         val reuse = GalleryScanRecordReuse(previous)
         // Snapshot versions once per mounted *specific* volume, never once per row.
@@ -82,7 +116,91 @@ class GalleryRepository(private val context: Context) {
         // Counts only: how much of the previous inventory this scan shared.
         android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
             "reused=${reuse.reused} ${heapUseLogFields()}")
-        return result
+        return GalleryMediaScan(result, GalleryMediaCheckpoint(versionsAtEnd, generationsAtEnd))
+    }
+
+    /**
+     * Generation-indexed MediaStore changes, plus exact notified item probes
+     * for deletes. No whole-library cursor is opened. On API 29, missing
+     * generations, provider replacement or ambiguous deletions the caller
+     * must use the existing authoritative full scan.
+     */
+    internal fun loadIncremental(
+        previous: List<MediaRecord>,
+        checkpoint: GalleryMediaCheckpoint,
+        hints: List<GalleryItemHint>,
+        checkActive: () -> Unit = {}
+    ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+            checkpoint.versions.isEmpty() ||
+            checkpoint.generations.keys != checkpoint.versions.keys)
+            throw GalleryDeltaUnavailable()
+        val versions = mediaProviderVersions()
+        val generations = mediaProviderGenerations(versions.keys)
+        if (versions != checkpoint.versions || generations.keys != versions.keys ||
+            generations.any { (volume, current) ->
+                current == null || current < (checkpoint.generations[volume] ?: Long.MAX_VALUE)
+            }) throw GalleryDeltaUnavailable()
+        val changes = LinkedHashMap<GalleryMediaDeltaKey, GalleryMediaDeltaChange>()
+        // The delta merge itself preserves unchanged record objects. Avoid
+        // sorting all 150k previous records just to canonicalize a tiny cursor.
+        val reuse = GalleryScanRecordReuse()
+        val zone = java.time.ZoneId.systemDefault()
+        val maxChanges = 256
+        for ((volume, since) in checkpoint.generations) {
+            val generation = since ?: throw GalleryDeltaUnavailable()
+            for (video in listOf(false, true)) {
+                checkActive()
+                val rows = ArrayList<MediaRecord>()
+                val collection = if (video) MediaStore.Video.Media.getContentUri(volume)
+                    else MediaStore.Images.Media.getContentUri(volume)
+                readMedia(collection, video, rows, null, checkActive, versions, zone, reuse,
+                    "${MediaStore.MediaColumns.GENERATION_ADDED} > ? OR " +
+                        "${MediaStore.MediaColumns.GENERATION_MODIFIED} > ?",
+                    arrayOf(generation.toString(), generation.toString()), maxChanges)
+                for (row in rows) {
+                    val key = GalleryMediaDeltaKey.of(row)
+                    changes[key] = GalleryMediaDeltaChange(key, row)
+                    if (changes.size > maxChanges) throw GalleryDeltaUnavailable()
+                }
+            }
+        }
+        // Item callbacks can describe an absent row (deleted) that no
+        // generation query can return. Never infer its volume from an ID if
+        // several mounted volumes reuse that number.
+        for (hint in hints) {
+            checkActive()
+            val rows = ArrayList<MediaRecord>(1)
+            readMedia(hint.uri, hint.video, rows, null, checkActive, versions, zone, reuse,
+                maxRows = 1)
+            if (rows.isNotEmpty()) {
+                val row = rows.single()
+                if (row.id != hint.id ||
+                    (hint.volume != "external" && hint.volume != row.volumeName))
+                    throw GalleryDeltaUnavailable()
+                val key = GalleryMediaDeltaKey.of(row)
+                changes[key] = GalleryMediaDeltaChange(key, row)
+            } else {
+                val possible = previous.filter {
+                    it.id == hint.id && it.isVideo == hint.video &&
+                        (hint.volume == "external" || it.volumeName == hint.volume)
+                }
+                if (possible.size > 1) throw GalleryDeltaUnavailable()
+                possible.singleOrNull()?.let { deleted ->
+                    val key = GalleryMediaDeltaKey.of(deleted)
+                    changes[key] = GalleryMediaDeltaChange(key, null)
+                }
+            }
+            if (changes.size > maxChanges) throw GalleryDeltaUnavailable()
+        }
+        val endVersions = mediaProviderVersions()
+        val endGenerations = mediaProviderGenerations(endVersions.keys)
+        if (!sameMediaProviderScanSnapshot(versions, endVersions, generations, endGenerations))
+            throw GalleryProviderSnapshotChanged()
+        GalleryMediaScan(
+            mergeGalleryMediaDelta(previous, changes.values.toList()),
+            GalleryMediaCheckpoint(endVersions, endGenerations)
+        )
     }
 
     private fun mediaProviderVersions(): Map<String, String?> =
@@ -113,7 +231,10 @@ class GalleryRepository(private val context: Context) {
         cancellationSignal: CancellationSignal?, checkActive: () -> Unit,
         providerVersions: Map<String, String?>,
         scanZone: java.time.ZoneId,
-        reuse: GalleryScanRecordReuse
+        reuse: GalleryScanRecordReuse,
+        selection: String? = null,
+        selectionArgs: Array<String>? = null,
+        maxRows: Int = Int.MAX_VALUE
     ) {
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
@@ -142,7 +263,7 @@ class GalleryRepository(private val context: Context) {
             else MediaStore.Images.Media.getContentUri(volume)
         }
         val cursor = requireMediaCatalogueCursor(
-            context.contentResolver.query(uri, projection.toTypedArray(), null, null,
+            context.contentResolver.query(uri, projection.toTypedArray(), selection, selectionArgs,
                 "${MediaStore.MediaColumns.DATE_ADDED} DESC", cancellationSignal))
         cursor.use { cursor ->
             val idxId = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -163,6 +284,7 @@ class GalleryRepository(private val context: Context) {
             val idxDuration = if (video) cursor.getColumnIndex(MediaStore.Video.Media.DURATION) else -1
             var rowIndex = 0
             while (cursor.moveToNext()) {
+                if (rowIndex >= maxRows) throw GalleryDeltaUnavailable()
                 checkGalleryScanCancellation(rowIndex++, checkActive)
                 // NULL getLong() becomes zero; zero/negative IDs are not
                 // addressable MediaStore items. Reject the entire cursor
@@ -245,6 +367,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     private var inventoryCacheWrite: Job? = null
     @Volatile private var inventoryDirty = true
     private val mediaChangeVersion = AtomicLong(0L)
+    // Bound to the exact most recently published full/delta scan, never the
+    // last completed but rejected IO query or an unvalidated disk cache.
+    private var publishedCheckpoint: GalleryMediaCheckpoint? = null
+    private val pendingChangedItems = LinkedHashMap<String, GalleryItemHint>()
+    private var pendingUnknownChange = false
+    private var incrementalJob: Job? = null
+    private var firstBurstObservedNanos = 0L
     // Prevent an unbounded automatic rescan loop on a busy import/reindex.
     // A second provider change requires a later explicit refresh/resume.
     private val automaticRetryBudget = GalleryAutomaticRetryBudget()
@@ -255,9 +384,129 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     // The explicit Refresh button still forces a full inventory rebuild.
     private val mediaObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
-            mediaChangeVersion.incrementAndGet()
-            inventoryDirty = true
+            mediaChanged(emptyList(), 0)
         }
+
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            mediaChanged(if (uri == null) emptyList() else listOf(uri), 0)
+        }
+
+        override fun onChange(selfChange: Boolean, uris: Collection<Uri>, flags: Int) {
+            mediaChanged(uris, flags)
+        }
+    }
+
+    /** One bounded 120 ms coalescing window for a camera burst. */
+    private fun mediaChanged(uris: Collection<Uri>, flags: Int) {
+        mediaChangeVersion.incrementAndGet()
+        inventoryDirty = true
+        if (firstBurstObservedNanos == 0L) firstBurstObservedNanos = System.nanoTime()
+        val knownMutation = Build.VERSION.SDK_INT >= 30 && flags and
+            (ContentResolver.NOTIFY_INSERT or ContentResolver.NOTIFY_UPDATE or
+                ContentResolver.NOTIFY_DELETE) != 0
+        if (uris.isEmpty()) pendingUnknownChange = true
+        for (uri in uris) {
+            val hint = galleryItemHintOrNull(uri)
+            if (hint != null) {
+                // Insert/update changes are found by generation without one
+                // additional query for each camera burst item. Exact item
+                // probes are needed only when deletion may have occurred.
+                if (!knownMutation ||
+                    flags and ContentResolver.NOTIFY_DELETE != 0)
+                    pendingChangedItems[uri.toString()] = hint
+            } else {
+                // A collection callback does not name the changed row. Even
+                // NOTIFY_INSERT is not proof that a generation-filter query
+                // will discover it on every provider: use the full scan.
+                pendingUnknownChange = true
+            }
+        }
+        if (pendingChangedItems.size > 64) pendingUnknownChange = true
+        incrementalJob?.cancel()
+        incrementalJob = viewModelScope.launch {
+            delay(120)
+            if (clearing || mediaAccessRevoked) return@launch
+            if (_busy.value) {
+                // Do not discard a callback while a full scan is in flight.
+                // Queue exactly one authoritative follow-up via the existing
+                // refresh gate; its finally block starts the queued scan.
+                refresh()
+                return@launch
+            }
+            if (pendingUnknownChange) {
+                refresh() // no safely identifiable delta: authoritative scan
+                return@launch
+            }
+            val snapshot = _publishedInventory.value
+            val checkpoint = publishedCheckpoint ?: return@launch
+            val grant = readGalleryMediaGrant(getApplication<Application>())
+            // Selected-media access can change without an observer notification.
+            // Only full image+video grants are eligible for background deltas.
+            if (!grant.images || !grant.videos ||
+                snapshot.fromCache || snapshot.observedGrant != grant) return@launch
+            val hints = pendingChangedItems.values.toList()
+            val observerRevision = mediaChangeVersion.get()
+            val result = try {
+                withContext(Dispatchers.IO) {
+                    val context = currentCoroutineContext()
+                    repo.loadIncremental(snapshot.items, checkpoint, hints) {
+                        context.ensureActive()
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Unsupported provider filters, snapshot churn and ambiguous
+                // IDs fail closed to the existing fully validated inventory read.
+                if (!clearing && !mediaAccessRevoked) refresh()
+                return@launch
+            }
+            val liveGrant = readGalleryMediaGrant(getApplication<Application>())
+            if (clearing || mediaAccessRevoked || _busy.value ||
+                _publishedInventory.value !== snapshot ||
+                observerRevision != mediaChangeVersion.get() || liveGrant != grant) {
+                inventoryDirty = true
+                return@launch
+            }
+            if (result.items === snapshot.items) {
+                publishedCheckpoint = result.checkpoint
+                pendingChangedItems.clear()
+                pendingUnknownChange = false
+                inventoryDirty = false
+                firstBurstObservedNanos = 0L
+                return@launch
+            }
+            val ticket = refreshQueue.request()
+            if (refreshQueue.begin() != ticket) {
+                refresh()
+                return@launch
+            }
+            // Main dispatcher: no suspend from the final provider/grant/
+            // observer check through publication of the matched epoch+items.
+            _publishedInventory.value = GalleryPublishedInventory(
+                ticket, result.items, grant, incremental = true
+            )
+            publishedCheckpoint = result.checkpoint
+            pendingChangedItems.clear()
+            pendingUnknownChange = false
+            inventoryDirty = false
+            _error.value = null
+            refreshQueue.finish(ticket)
+            saveInventoryCache(grant, result.items)
+            val elapsed = ((System.nanoTime() - firstBurstObservedNanos) /
+                1_000_000L).coerceAtLeast(0L)
+            firstBurstObservedNanos = 0L
+            android.util.Log.i("ATLAS_SCAN",
+                "event=delta_published changed=${hints.size} elapsed_ms=$elapsed")
+        }
+    }
+
+    private fun cancelIncremental() {
+        incrementalJob?.cancel()
+        incrementalJob = null
+        pendingChangedItems.clear()
+        pendingUnknownChange = false
+        firstBurstObservedNanos = 0L
     }
 
     // #41: the cold-start scan waits for this before it picks the rows to
@@ -315,6 +564,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     override fun onCleared() {
         clearing = true
+        cancelIncremental()
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         // Abort a blocked provider query BEFORE clearing its coroutine scope.
@@ -331,6 +581,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
      */
     fun revokeMediaAccess() {
         if (mediaAccessRevoked) return
+        cancelIncremental()
+        publishedCheckpoint = null
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = true
@@ -365,6 +617,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     /** The returned ticket identifies the earliest safe grant-scope result. */
     fun refreshForAccessChange(): Long {
+        cancelIncremental()
+        publishedCheckpoint = null
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = false
@@ -379,6 +633,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     fun refresh() {
         if (mediaAccessRevoked) return
+        cancelIncremental()
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         refreshQueue.request()
@@ -414,10 +669,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 val shownAtStart = inventoryShownAfterCacheSettles(cachedInventoryLoad) {
                     _publishedInventory.value.items
                 }
-                val inventory = withContext(Dispatchers.IO) {
+                val scan = withContext(Dispatchers.IO) {
                     val scanContext = currentCoroutineContext()
-                    repo.load(providerCancellation, shownAtStart) { scanContext.ensureActive() }
+                    repo.loadWithCheckpoint(providerCancellation, shownAtStart) {
+                        scanContext.ensureActive()
+                    }
                 }
+                val inventory = scan.items
                 // We are back on the owning main dispatcher. There is no
                 // suspension between the latest-request check and the atomic
                 // epoch+catalog publication. A request queued while IO ran
@@ -439,6 +697,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         _publishedInventory.value = GalleryPublishedInventory(
                             ticket, inventory, observedGrantAtStart
                         )
+                        publishedCheckpoint = scan.checkpoint
+                        pendingChangedItems.clear()
+                        pendingUnknownChange = false
+                        firstBurstObservedNanos = 0L
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
@@ -515,6 +777,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 _busy.value = false
                 activeScan.finish(ticket)
                 val newerRequestQueued = refreshQueue.finish(ticket)
+                // An observer callback during IO marks the snapshot dirty.
+                // Its debounced job either requests a follow-up while busy
+                // or runs a delta once the scan has completed.
                 // The current job was canceled on grant supersession, but
                 // the owning ViewModel scope is still alive and MUST launch
                 // the latest queued scan. Never restart after onCleared().
