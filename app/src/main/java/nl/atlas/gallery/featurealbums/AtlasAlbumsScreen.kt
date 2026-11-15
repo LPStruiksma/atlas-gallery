@@ -61,6 +61,9 @@ import nl.atlas.gallery.featuredesign.AtlasScrollAwayHeader
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuredesign.AtlasSpace
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 import java.text.NumberFormat
 
 private fun mediaSummary(album: AlbumSummary): String {
@@ -284,6 +287,12 @@ fun AtlasAlbumsScreen(
      */
     onReorderAlbums: ((List<AlbumSummary>) -> Unit)? = null
 ) {
+    var searchText by remember { mutableStateOf("") }
+    var searchScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
+    val displayedAlbums = remember(AlbumPresentationListKey(albums), searchText, searchScope) {
+        if (searchScope == AtlasSearchScope.LIBRARY) albums
+        else scopedNamedMatches(albums, searchText) { it.title }
+    }
     // One compact header: secondary destinations share its sole overflow.
     val header: @Composable () -> Unit = {
         AtlasGalleryHeader(
@@ -298,12 +307,16 @@ fun AtlasAlbumsScreen(
                 if (onOpenHideAlbums != null) add(AtlasHeaderMenuItem(
                     "Hide albums", "atlas-albums-menu-hide", onClick = onOpenHideAlbums))
             },
-            actions = { AtlasAlbumSortMenu(sort, onSort) }
+            actions = {
+                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    onScopeChange = { searchScope = it })
+                AtlasAlbumSortMenu(sort, onSort)
+            }
         )
     }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // The grid draws the header itself so it can scroll away (#506).
-        if (isLoading || loadIssue != null || albums.isEmpty()) header()
+        if (isLoading || loadIssue != null || albums.isEmpty() || displayedAlbums.isEmpty()) header()
         // An in-progress permission/source refresh must not expose old covers.
         if (isLoading) {
             AtlasGalleryLoading("Gathering albums on this device…")
@@ -359,7 +372,7 @@ fun AtlasAlbumsScreen(
         }
         AlbumGrid(
             header = header,
-            albums = albums,
+            albums = displayedAlbums,
             mediaFilter = mediaFilter,
             onOpenAlbum = onOpenAlbum,
             coverIllustration = coverIllustration,
