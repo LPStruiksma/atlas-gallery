@@ -12,9 +12,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,9 +57,13 @@ class UnknownGroupDesignEvidenceTest {
         )
     }
 
-    @Test fun groupFacesNameAndActionFitTogetherLightDarkWithKeyboard() {
+    @Test fun lightS24LayoutAndTyping() = capture(dark = false)
+
+    @Test fun darkS24LayoutAndTyping() = capture(dark = true)
+
+    private fun capture(dark: Boolean) {
         val state = review()
-        var dark by mutableStateOf(false)
+        val mode = if (dark) "dark" else "light"
         compose.setContent {
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(),
@@ -91,24 +92,17 @@ class UnknownGroupDesignEvidenceTest {
                 }
             }
         }
-        for (isDark in listOf(false, true)) {
-            val mode = if (isDark) "dark" else "light"
-            compose.runOnIdle { dark = isDark }
-            compose.waitForIdle()
-            for (index in 1..6) {
-                compose.onNodeWithTag("atlas-group-face-$index").assertIsDisplayed()
-            }
-            compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
-            compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
-            saveUiEvidence("group-sheet-266-ready-$mode.png")
-            compose.onNodeWithTag("atlas-group-name").performTextInput("Morgan")
-            compose.waitForIdle()
-            compose.onNodeWithTag("atlas-group-face-1").assertIsDisplayed()
-            compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
-            saveUiEvidence("group-sheet-266-typing-$mode.png")
-            // Reset input for the next theme, with a new committed reference.
-            compose.onNodeWithTag("atlas-group-name")
-                .performTextInput("") // no-op: leave valid named draft, never commit it
+        compose.waitForIdle()
+        for (index in 1..6) {
+            compose.onNodeWithTag("atlas-group-face-$index").assertIsDisplayed()
         }
+        compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
+        saveUiEvidence("group-sheet-266-ready-$mode.png")
+        compose.onNodeWithTag("atlas-group-name").performTextInput("Morgan")
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-group-face-1").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
+        saveUiEvidence("group-sheet-266-typing-$mode.png")
     }
 }
