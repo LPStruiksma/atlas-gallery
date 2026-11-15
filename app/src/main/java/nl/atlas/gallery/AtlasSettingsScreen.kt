@@ -64,6 +64,14 @@ internal fun AtlasSettingsScreen(
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
     var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    if (performanceExpanded) {
+        // Refresh only on opening, not on every recomposition of Settings.
+        remember(performanceExpanded) {
+            PerformanceSession.updateViewer()
+            PerformanceSession.sampleHeap()
+            true
+        }
+    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -110,8 +118,6 @@ internal fun AtlasSettingsScreen(
                     value = if (performanceExpanded) "Hide" else "Show")
                 if (performanceExpanded) {
                     // Explicit read, not a hot polling loop or a MediaStore query.
-                    PerformanceSession.updateViewer()
-                    PerformanceSession.sampleHeap()
                     val metrics = listOf(
                         Triple("Cold start → cached grid", "cold_start_ms", "ms"),
                         Triple("Viewer preview", "viewer_ms", "ms"),
