@@ -1,0 +1,33 @@
+{
+  "seq_len": 64,
+  "vocab": 256000,
+  "dim": 768,
+  "t": 4.724453449249268,
+  "b": -16.771724700927734,
+  "logit_scale_exp_t": 112.66890226978421,
+  "params_m": 282.3,
+  "embedding_table_params_m": 196.6,
+  "tokenizer_sha256": "6969e64047744a44bb3abfb5c50f8de0f7ed8b571d5444426ef931f651d1a0ef",
+  "fp32_mb": 1129.3,
+  "fp32_sha256": "c486ffadaac89dc7d556e6714e7815599458549204ba6b3dfa895c7ffdd8768d",
+  "parity_torch_vs_numpy_min_cos": 0.9999999353542557,
+  "parity_onnx_fp32_vs_numpy_min_cos": 0.9999996775556922,
+  "int8_plain": {
+    "mb": 872.9,
+    "sha256": "9debf1ea11fa3d1fddafcb4454a2af773cad5735754aa950e3382044d799eb74",
+    "cos_to_fp32_min": 0.8574990034103394,
+    "cos_to_fp32_mean": 0.9346065521240234
+  },
+  "int8": {
+    "mb": 880.0,
+    "sha256": "40c75320e76e8f53e9fae1b6782b3b10ecc6f93305d33b08c98a772c3212597e",
+    "cos_to_fp32_min": 0.9950351715087891,
+    "cos_to_fp32_mean": 0.9974735975265503
+  },
+  "int8_gather": {
+    "mb": 290.2,
+    "sha256": "6fd97706a61981eb1a8d2444777209f0768162d3172c74a73134fbc1f78c0da6",
+    "cos_to_fp32_min": 0.9933124780654907,
+    "cos_to_fp32_mean": 0.9964399337768555
+  }
+}
