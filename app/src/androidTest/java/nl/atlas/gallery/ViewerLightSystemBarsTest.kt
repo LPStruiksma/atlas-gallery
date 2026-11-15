@@ -114,6 +114,22 @@ class ViewerLightSystemBarsTest {
         assertDarkNavigationPixels("viewer $mode")
         saveUiEvidence("680-viewer-$mode.png")
 
+        try {
+            rotateViewerEvidenceLandscape()
+            rule.waitUntil(10_000L) {
+                rule.onNodeWithTag("atlas-viewer").fetchSemanticsNode().boundsInRoot
+                    .let { it.width > it.height }
+            }
+            assertViewerChromeClearsLandscapeCutout(requireNotNull(window), rule)
+            saveUiEvidence("viewer-142-photo-landscape-cutout-$mode.png")
+        } finally {
+            restoreViewerEvidencePortrait()
+        }
+        rule.waitUntil(10_000L) {
+            rule.onNodeWithTag("atlas-viewer").fetchSemanticsNode().boundsInRoot
+                .let { it.height > it.width }
+        }
+
         rule.onNodeWithTag("atlas-viewer-details-open").performClick()
         rule.onNodeWithTag("atlas-viewer-details").assertExists()
         // This synthetic item has no modified timestamp, so Album is the final row.
@@ -200,6 +216,33 @@ class ViewerLightSystemBarsTest {
             shot.recycle()
         }
     }
+}
+
+internal fun rotateViewerEvidenceLandscape() {
+    viewerEvidenceShell("wm set-user-rotation lock 1")
+}
+
+internal fun restoreViewerEvidencePortrait() {
+    viewerEvidenceShell("wm set-user-rotation lock 0")
+    viewerEvidenceShell("wm set-user-rotation free")
+}
+
+private fun viewerEvidenceShell(command: String) {
+    val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+    android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
+}
+
+private fun assertViewerChromeClearsLandscapeCutout(window: Window, rule: androidx.compose.ui.test.junit4.ComposeTestRule) {
+    val insets = ViewCompat.getRootWindowInsets(window.decorView)
+        ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.displayCutout())
+        ?: error("Landscape display-cutout insets unavailable")
+    assertTrue("Pixel emulator profile must expose a landscape cutout: $insets",
+        insets.left > 0 || insets.right > 0)
+    val back = rule.onNodeWithTag("atlas-back").fetchSemanticsNode().boundsInWindow
+    val details = rule.onNodeWithTag("atlas-viewer-details-open").fetchSemanticsNode().boundsInWindow
+    assertTrue("Back overlaps left cutout: $back / $insets", back.left >= insets.left)
+    assertTrue("Details overlaps right cutout: $details / $insets",
+        details.right <= window.decorView.width - insets.right)
 }
 
 private tailrec fun Context.testActivity(): Activity? = when (this) {
