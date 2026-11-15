@@ -46,6 +46,7 @@ fun AtlasSearch(
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
     var scope by remember { mutableStateOf(initialScope) }
+    // The host is responsible for restoring a route's scope when it changes.
     Column(modifier.testTag("atlas-search-shared")) {
         if (!expanded) {
             IconButton(
