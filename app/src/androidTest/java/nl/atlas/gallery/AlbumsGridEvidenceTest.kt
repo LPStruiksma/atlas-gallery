@@ -50,14 +50,22 @@ class AlbumsGridEvidenceTest {
             compose.onAllNodes(hasTestTag("atlas-nav-albums")).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
-        // LazyVerticalGrid exposes composed cards, not all nine synthetic folders.
-        // Check actual MediaStore inventory separately from viewport semantics.
-        waitForAlbumsStage("visible Albums grid cards (at least six)") {
-            compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 6
+        // LazyVerticalGrid exposes only composed cards. The old two-column
+        // baseline may expose three or four, while the candidate must expose
+        // six; that viewport assertion remains strict for the proposed UI.
+        waitForAlbumsStage("first three pinned Albums cards") {
+            compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 3
+        }
+        if (revision != "before") {
+            waitForAlbumsStage("visible Albums grid cards (at least six)") {
+                compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 6
+            }
         }
         compose.waitForIdle()
         val nodes = compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes()
-        assertTrue("Expected six visible synthetic albums", nodes.size >= 6)
+        if (revision != "before") {
+            assertTrue("Expected six visible synthetic albums", nodes.size >= 6)
+        }
         val pinned = nodes.take(3).map { it.config.toString() }
         assertTrue(pinned.any { it.contains("Camera") })
         assertTrue(pinned.any { it.contains("Screenshots") })
