@@ -242,22 +242,32 @@ fun AtlasTimelineGallery(
     // Tracks the layout actually selected for the grid, including an immediate
     // cache hit before the asynchronous latestPlan pointer is updated.
     var displayedPlan by remember { mutableStateOf<TimelinePlan?>(null, androidx.compose.runtime.referentialEqualityPolicy()) }
+    // Async sorting briefly supplies an empty list before a new publication's
+    // sorted/hidden-photo projection lands. Carry the captured anchor over
+    // that transient state without ever rendering an obsolete media plan.
+    val retainedIncrementalFocus = remember { arrayOfNulls<IncrementalScrollFocus>(1) }
     val incrementalFocus = remember(sourceKey) {
-        val former = displayedPlan
-        val layout = gridState.layoutInfo
-        if (!preserveScrollOnIncremental || former == null ||
-            former.source === items || former.density != density || former.sort != sort ||
-            former.geometry.timeline.slots.size != layout.totalItemsCount ||
-            !former.bounds.matchesMeasuredViewport(
-                layout.viewportSize.width, layout.viewportSize.height)) null
-        else layout.visibleItemsInfo.firstNotNullOfOrNull { visible ->
-            val mediaSlot = former.geometry.timeline.slots.getOrNull(visible.index)
-                as? TimelineSlot.Media ?: return@firstNotNullOfOrNull null
-            val oldItem = former.source.getOrNull(mediaSlot.mediaIndex)
-                ?: return@firstNotNullOfOrNull null
-            IncrementalScrollFocus(
-                oldItem.uri, .5f, visible.offset.y + visible.size.height / 2f
-            )
+        if (!preserveScrollOnIncremental) {
+            retainedIncrementalFocus[0] = null
+            null
+        } else retainedIncrementalFocus[0] ?: run {
+            val former = displayedPlan
+            val layout = gridState.layoutInfo
+            if (former == null || former.source === items ||
+                former.density != density || former.sort != sort ||
+                !gridState.canScrollBackward ||
+                former.geometry.timeline.slots.size != layout.totalItemsCount ||
+                !former.bounds.matchesMeasuredViewport(
+                    layout.viewportSize.width, layout.viewportSize.height)) null
+            else layout.visibleItemsInfo.firstNotNullOfOrNull { visible ->
+                val mediaSlot = former.geometry.timeline.slots.getOrNull(visible.index)
+                    as? TimelineSlot.Media ?: return@firstNotNullOfOrNull null
+                val oldItem = former.source.getOrNull(mediaSlot.mediaIndex)
+                    ?: return@firstNotNullOfOrNull null
+                IncrementalScrollFocus(
+                    oldItem.uri, .5f, visible.offset.y + visible.size.height / 2f
+                ).also { retainedIncrementalFocus[0] = it }
+            }
         }
     }
     var lastReanchoredPublication by remember {
@@ -469,6 +479,8 @@ fun AtlasTimelineGallery(
                 // Keep the previous plan available only for capturing a new
                 // source's anchor. It is NEVER rendered after source change.
                 if (ready != null) displayedPlan = ready
+                if (ready != null && ready.source.isNotEmpty())
+                    retainedIncrementalFocus[0] = null
                 val target = ready?.incrementalScrollTarget
                 if (target != null && ready.publication == sourceKey &&
                     lastReanchoredPublication != sourceKey) {
