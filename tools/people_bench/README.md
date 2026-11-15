@@ -68,3 +68,6 @@ with `judge_autoadd.py` judges adding later faces to named people without asking
 Phase 1 path: name each recurring person, let sure faces join, count what stays loose and what is asked.
 
 `PeopleBench.kt` also takes ad-hoc policies (`p:0.45,0.45,1,0.35,3,1`, see its header) for tuning.
+
+`jvm/SplitBench.kt` runs the assisted split proposer (SPLIT-0, #105) on clean, merged, look-alike and
+same-author profiles built from the reference labels; method, numbers and command: `docs/people/SPLIT_BENCH.md`.
