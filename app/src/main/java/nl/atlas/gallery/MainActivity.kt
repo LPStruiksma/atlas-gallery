@@ -346,7 +346,7 @@ class MainActivity : ComponentActivity() {
         try {
             setContent {
                 val galleryVm: GalleryViewModel = viewModel()
-            val inventory by galleryVm.publishedInventory.collectAsIdentityState()
+                val inventory by galleryVm.publishedInventory.collectAsIdentityState()
             CompositionLocalProvider(LocalGalleryPublicationEpoch provides inventory.epoch) {
                 val dark = isSystemInDarkTheme()
                 AtlasSystemBarIcons(dark)
