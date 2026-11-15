@@ -737,6 +737,7 @@ fun AtlasTimelineGallery(
             TimelineFastScrollLayer(
                 items = items,
                 sort = sort,
+                mediaSort = mediaSort,
                 gridState = gridState,
                 sourceKey = sourceKey,
                 timelineFor = { info ->
@@ -766,6 +767,7 @@ fun AtlasTimelineGallery(
 private fun TimelineFastScrollLayer(
     items: List<MediaRecord>,
     sort: TimelineSort,
+    mediaSort: nl.atlas.gallery.MediaSort?,
     gridState: LazyGridState,
     sourceKey: GridCatalogIdentity,
     timelineFor: (LazyGridLayoutInfo) -> GridTimelineIndex?,
