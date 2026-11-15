@@ -14,6 +14,8 @@ Signed releases are published on [GitHub Releases](https://github.com/LPStruiksm
 
 No personal photos, videos, face embeddings, People databases, private evaluation material, credentials or signing keys go into commits, test fixtures, CI logs or artifacts. Tests use synthetic or licensed media. Measurements on the owner's phone report aggregates only.
 
+**AI Edit exception:** only a user-started remote AI edit may send the explicitly selected photo, prompt and optional user-chosen mask/references to their configured provider; automatic indexing, People, search and background analysis remain on-device (see [AI Edit architecture](docs/ai-edit/ARCHITECTURE.md)).
+
 ## Build and CI
 
 - Kotlin, Jetpack Compose, Coil 3, Media3, ONNX Runtime; Android API 36; Gradle 8.13.
