@@ -122,7 +122,9 @@ internal fun PersonPageScreen(
     onRemoveSelected: (() -> Unit)?,
     confirmMerge: @Composable (NativePersonAlbum) -> Unit,
     /** #580: the person's open "Same person?" question, drawn under the header. */
-    samePerson: (@Composable () -> Unit)? = null
+    samePerson: (@Composable () -> Unit)? = null,
+    /** Only a named person with current faces may open the profile chooser. */
+    onChangePortrait: (() -> Unit)? = null
 ) {
     val items = ui.items
     val selecting = selectedUris != null
@@ -130,6 +132,8 @@ internal fun PersonPageScreen(
     val menu = buildList {
         add(AtlasHeaderMenuItem(if (ui.name == null) "Add name" else "Edit name",
             "atlas-person-edit-name", onClick = { onDialog(PersonPageDialog.EditName) }))
+        if (onChangePortrait != null) add(AtlasHeaderMenuItem(
+            "Change profile picture", "atlas-person-change-picture", onClick = onChangePortrait))
         add(AtlasHeaderMenuItem("Merge with…", "atlas-person-merge",
             onClick = { onDialog(PersonPageDialog.MergePicker) }))
         add(AtlasHeaderMenuItem("Remove from this person", "atlas-person-remove",
