@@ -123,6 +123,12 @@ internal fun NativePersonAlbumRoute(
     }
     var dialog by remember(request) { mutableStateOf<PersonPageDialog?>(null) }
     var selected by remember(request) { mutableStateOf<Set<String>?>(null) }
+    var choosingCover by remember(request) { mutableStateOf(false) }
+    val chosenCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
+        value = request.person?.let { person ->
+            withContext(Dispatchers.IO) { host.currentPersonCover(galleryGrant, person) }
+        }
+    }
     val scope = rememberCoroutineScope()
 
     /** Build the action from the live snapshot now; commit it on IO. */
@@ -178,7 +184,9 @@ internal fun NativePersonAlbumRoute(
         gridState = gridState,
         catalogueEpoch = catalogueEpoch,
         opening = request.opening,
-        portrait = { portrait(facts?.coverFace) },
+        portrait = { portrait(
+            chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+                ?: facts?.coverFace) },
         onBack = onBack,
         onOpen = { record -> media?.let { onOpen(it.items, record) } },
         dialog = dialog,
@@ -227,6 +235,8 @@ internal fun NativePersonAlbumRoute(
         selectedUris = selected,
         onSelectionChange = { selected = it },
         samePerson = samePersonCard,
+        onChangePortrait = if (request.person != null && !facts?.faces.isNullOrEmpty())
+            ({ choosingCover = true }) else null,
         onRemoveSelected = run {
             val chosen = selected
             val current = facts
@@ -241,6 +251,31 @@ internal fun NativePersonAlbumRoute(
             })
         }
     )
+    val coverPerson = request.person
+    if (choosingCover && coverPerson != null && facts != null && epoch != null) {
+        PersonFaceCoverChooser(
+            faces = facts.faces,
+            selectedUid = chosenCover,
+            portrait = { portrait(it) },
+            onChoose = { face ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        host.choosePersonCover(galleryGrant, coverPerson, face.localHex)
+                    }
+                    if (saved) choosingCover = false
+                }
+            },
+            onAutomatic = if (chosenCover != null) ({
+                scope.launch {
+                    val cleared = withContext(Dispatchers.IO) {
+                        host.choosePersonCover(galleryGrant, coverPerson, null)
+                    }
+                    if (cleared) choosingCover = false
+                }
+            }) else null,
+            onDismiss = { choosingCover = false }
+        )
+    }
 }
 
 /** One resolved person page: its records and the faces each one holds. */
