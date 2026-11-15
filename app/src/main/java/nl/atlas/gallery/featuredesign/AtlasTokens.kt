@@ -46,6 +46,11 @@ object AtlasTokens {
             val SeekInactive = Color(0xFF888888)
             val SelectionAccent = Color(0xFFB5E7DA)
         }
+        object People {
+            val PortraitMuted = Color(0xFF8B95A1)
+            val PortraitLight = Color(0xFFADBAC7)
+            val PortraitDark = Color(0xFF2A303A)
+        }
         object Selection {
             val Accent = Color(0xFF3E91FF)
         }
