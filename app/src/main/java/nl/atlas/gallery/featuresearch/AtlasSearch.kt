@@ -36,6 +36,7 @@ fun AtlasSearch(
     modifier: Modifier = Modifier,
     initialExpanded: Boolean = false,
     initialScope: AtlasSearchScope = AtlasSearchScope.THIS_SCREEN,
+    selectedScope: AtlasSearchScope? = null,
     showQueryField: Boolean = true,
     onScopeChange: (AtlasSearchScope) -> Unit = {},
     textTool: (@Composable () -> Unit)? = null,
@@ -46,13 +47,17 @@ fun AtlasSearch(
     suggestionsTool: (@Composable () -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
-    var scope by remember { mutableStateOf(initialScope) }
+    var localScope by remember { mutableStateOf(initialScope) }
+    val scope = selectedScope ?: localScope
+    val selectScope: (AtlasSearchScope) -> Unit = {
+        localScope = it
+        onScopeChange(it)
+    }
     val close = {
         expanded = false
         onQueryChange("")
         if (scope != initialScope) {
-            scope = initialScope
-            onScopeChange(initialScope)
+            selectScope(initialScope)
         }
     }
     val contents: @Composable () -> Unit = {
@@ -77,8 +82,7 @@ fun AtlasSearch(
                 FilterChip(
                     selected = scope == AtlasSearchScope.THIS_SCREEN,
                     onClick = {
-                        scope = AtlasSearchScope.THIS_SCREEN
-                        onScopeChange(scope)
+                        selectScope(AtlasSearchScope.THIS_SCREEN)
                     },
                     label = { Text("This screen") },
                     modifier = Modifier.testTag("atlas-search-scope-screen")
@@ -86,8 +90,7 @@ fun AtlasSearch(
                 FilterChip(
                     selected = scope == AtlasSearchScope.LIBRARY,
                     onClick = {
-                        scope = AtlasSearchScope.LIBRARY
-                        onScopeChange(scope)
+                        selectScope(AtlasSearchScope.LIBRARY)
                     },
                     label = { Text("Whole library") },
                     modifier = Modifier.testTag("atlas-search-scope-library")
