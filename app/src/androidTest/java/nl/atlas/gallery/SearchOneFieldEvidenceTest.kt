@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +73,51 @@ class SearchOneFieldEvidenceTest {
             1_500_000_000_000L + id * 86_400_000L, id % 5 == 0L)
     }
     private val uris = mapOf("p1" to photos.filter { it.id % 2 == 0L }.map { it.uri }.toSet())
+
+    // DESIGN-4 captures the same synthetic Search route in each system theme.
+    // These are newly generated CI artifacts, not assertions that pixels were inspected.
+    @Test fun compactSearchRestAndNoResultsInBothThemes() {
+        listOf(false, true).forEach { dark ->
+            compose.setContent {
+                var filters by remember { mutableStateOf(LocalSearchFacets()) }
+                AtlasGalleryTheme(dark = dark) {
+                    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+                        bottomBar = {
+                            AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {})
+                        }) { padding ->
+                        Column(Modifier.fillMaxSize().padding(padding).padding(top = 12.dp)
+                            .imePadding()) {
+                            LocalSearchControls(
+                                filters = filters, people = emptyList(),
+                                history = EphemeralSearchHistory(permissionEpoch = "synthetic"),
+                                onlyTheseFacesAvailable = false,
+                                onFiltersChange = { filters = it },
+                                onSubmittedQuery = {}, onClearHistory = {},
+                                currentPermissionEpoch = "synthetic",
+                                onSearchByFace = {}, onFindSimilar = {},
+                                namedPeople = people,
+                                personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
+                                hasResults = false
+                            )
+                            if (filters.text.isNotBlank()) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("No results", modifier =
+                                        Modifier.testTag("atlas-design-search-no-results"))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            waitFor("atlas-search-field")
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-rest-${if (dark) "dark" else "light"}.png")
+            compose.onNodeWithTag("atlas-search-field").performTextInput("unlikely-match")
+            waitFor("atlas-design-search-no-results")
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-empty-${if (dark) "dark" else "light"}.png")
+        }
+    }
 
     @Test fun restRecentsTypingAndPersonResults() {
         var library = 0
