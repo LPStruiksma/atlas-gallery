@@ -777,9 +777,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 _busy.value = false
                 activeScan.finish(ticket)
                 val newerRequestQueued = refreshQueue.finish(ticket)
-                // A callback may arrive while the scan is busy, before
-                // the 120ms debounce. If that delay is still active after
-                // the scan settles, the pending callback remains queued.
+                // A callback during the scan marks the inventory dirty.
+                // If its debounce already returned while busy, the request
+                // gate ensures a queued full follow-up is not lost.
                 // The current job was canceled on grant supersession, but
                 // the owning ViewModel scope is still alive and MUST launch
                 // the latest queued scan. Never restart after onCleared().
