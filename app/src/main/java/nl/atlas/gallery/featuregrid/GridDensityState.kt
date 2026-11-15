@@ -6,11 +6,13 @@ import kotlin.math.ln
 import kotlin.math.roundToLong
 import kotlin.math.sign
 
-/** A small, deliberate phone timeline scale. No Samsung source or vendor code. */
+/** Samsung-style timeline levels, including chronological month/year overviews. */
 enum class GridDensity(val columns: Int, val accessibleName: String) {
     LARGE(3, "Large thumbnails"),
     MEDIUM(4, "Medium thumbnails"),
-    SMALL(7, "Small thumbnails");
+    SMALL(7, "Small thumbnails"),
+    MONTH(12, "Month overview"),
+    YEAR(28, "Year overview");
 
     companion object {
         fun fromColumns(columns: Int): GridDensity = entries.firstOrNull { it.columns == columns } ?: MEDIUM

@@ -5,7 +5,7 @@ import org.junit.Test
 
 class GalleryZoomLadderTest {
     @Test fun everySquareLevelMapsWithoutChangingExistingDensityIdentity() {
-        assertEquals(listOf(3, 4, 7), GridDensity.entries.map { it.columns })
+        assertEquals(listOf(3, 4, 7, 12, 28), GridDensity.entries.map { it.columns })
         for (density in GridDensity.entries)
             assertEquals(density, GalleryZoomStop.forDensity(density).squareDensityOrNull())
         assertNull(GalleryZoomStop.ORIGINAL.squareDensityOrNull())
@@ -20,7 +20,7 @@ class GalleryZoomLadderTest {
         assertEquals(GalleryZoomStop.LARGE, close.settle())
     }
 
-    @Test fun missingHostDestinationPreservesExistingThreeStops() {
+    @Test fun missingHostDestinationKeepsOriginalRowsUnavailable() {
         val guarded = GalleryZoomGesture(GalleryZoomStop.LARGE, allowOriginal = false)
         repeat(9) { guarded.addZoomFactor(1.3f) }
         assertEquals(GalleryZoomStop.LARGE, guarded.settle())
@@ -32,7 +32,7 @@ class GalleryZoomLadderTest {
     @Test fun pinchCanCrossMoreThanOneLevelAndClampAtEndpoints() {
         val inward = GalleryZoomGesture(GalleryZoomStop.ORIGINAL)
         repeat(12) { inward.addZoomFactor(0.78f) }
-        assertEquals(GalleryZoomStop.SMALL, inward.settle())
+        assertEquals(GalleryZoomStop.YEAR, inward.settle())
         val outward = GalleryZoomGesture(GalleryZoomStop.SMALL)
         repeat(12) { outward.addZoomFactor(1.28f) }
         assertEquals(GalleryZoomStop.ORIGINAL, outward.settle())

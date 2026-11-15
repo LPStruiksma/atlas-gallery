@@ -1,0 +1,4 @@
+# #79: Settings Android Back returns to the visible originating main tab.
+# S24+ 1080x2340; synthetic MediaStore image; never real phone media.
+settings-back-79-people
+settings-back-79-search

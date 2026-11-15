@@ -1,7 +1,7 @@
 package nl.atlas.gallery.featuregrid
 
 /**
- * Tiny completed-layout cache for back-and-forth 3/4/7 timeline pinches.
+ * Tiny completed-layout cache for back-and-forth 3/4/7/12/28 timeline pinches.
  *
  * Own this instance with Compose remember(source publication, sort, measured
  * viewport, timezone, locale, header height). This deliberately does not

@@ -22,7 +22,9 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 declared_dir="${ATLAS_UI_EVIDENCE_DECLARED_DIR:-$script_dir/ui-evidence.d}"
 # #577: tests store evidence under a camera-style name dated 2001-01-01.
-remote_dir=/sdcard/Pictures/ATLAS-UI-Evidence
+# #703: in shell-owned scratch space, not shared storage, so MediaStore never
+# indexes a screenshot and later tests never see one (UI_EVIDENCE_DEVICE_DIR).
+remote_dir=/data/local/tmp/atlas-ui-evidence
 prefix=IMG_20010101_000000_
 name_re='^[A-Za-z0-9][A-Za-z0-9_-]*$'
 
@@ -108,6 +110,17 @@ for n in sorted(pulled):
         fail(f"Invalid image {p}")
 print(f"PASS: {len(declared)} real PNG screenshots")
 '
+    # Only the real canonical declared set is a parity-matrix run. The
+    # ATLAS_UI_EVIDENCE_DECLARED_DIR override is used by host-only tests for
+    # arbitrary fixture names; those tests may not claim parity evidence.
+    # The normal emulator aggregate never sets this override.
+    if [[ -z "${ATLAS_UI_EVIDENCE_DECLARED_DIR:-}" ]]; then
+      python3 -m unittest discover -s "$script_dir" -p "test_verify_parity_matrix.py"
+      python3 -m unittest discover -s "$script_dir" -p "test_parity_audit_capture_contract.py"
+      python3 "$script_dir/verify_parity_matrix.py" ui-evidence
+    else
+      echo "NOTICE: custom declaration set; no parity matrix artifact generated"
+    fi
     # Some review seats cannot download Actions artifacts; print every
     # screenshot as base64 so it can be decoded from the job log.
     for shot in ui-evidence/*.png; do
