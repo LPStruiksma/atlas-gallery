@@ -1,6 +1,10 @@
 package nl.atlas.gallery.featuremedia
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -11,6 +15,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** Synthetic data only: a full second catalogue is never allocated by these tests. */
 class BoundedMicroWarmTest {
@@ -185,6 +191,41 @@ class BoundedMicroWarmTest {
                 })
         }
         assertEquals(19, made)
+    }
+
+    @Test fun cancellationSignalsInFlightProviderCallAndThumbnailDecode() = runBlocking {
+        // No Android runtime or real media required: both operations emulate a
+        // blocking provider call that returns only when its signal is cancelled.
+        for (phase in listOf("provider-query", "thumbnail-decode")) {
+            val entered = CountDownLatch(1)
+            val signalCancelled = CountDownLatch(1)
+            val releaseBlockingCall = CountDownLatch(1)
+            val worker = launch(Dispatchers.IO) {
+                val watcher = CoroutineScope(coroutineContext)
+                    .watchMicroWarmCancellation {
+                        signalCancelled.countDown()
+                        releaseBlockingCall.countDown()
+                    }
+                try {
+                    entered.countDown()
+                    check(releaseBlockingCall.await(10, TimeUnit.SECONDS)) {
+                        "$phase remained blocked after cancellation"
+                    }
+                    coroutineContext.ensureActive()
+                } finally {
+                    watcher.cancel()
+                }
+            }
+            try {
+                assertTrue("$phase did not start", entered.await(3, TimeUnit.SECONDS))
+                worker.cancel()
+                assertTrue("$phase was not signalled while blocked",
+                    signalCancelled.await(3, TimeUnit.SECONDS))
+            } finally {
+                releaseBlockingCall.countDown()
+                worker.cancelAndJoin()
+            }
+        }
     }
 
     @Test fun coroutineCancellationStopsMidStream() = runBlocking {
