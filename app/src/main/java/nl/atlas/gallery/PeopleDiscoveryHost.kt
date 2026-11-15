@@ -2504,12 +2504,22 @@ internal fun PeopleReviewRoute(
     var after by remember(galleryGrant) { mutableStateOf<IndexedFacePageCursor?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var page by remember { mutableStateOf<PeopleReviewPage?>(null, referentialEqualityPolicy()) }
-    LaunchedEffect(galleryGrant, liveEpoch, after, reload) {
+    // A batch can publish observations/groups without changing the permission
+    // epoch. Refresh on the host change signal too, or an initially empty (or
+    // temporarily missing) page stays on screen for the entire review visit.
+    // Do not expose an old page in the composition before the IO reload starts.
+    var loadedVersion by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(galleryGrant, liveEpoch, after, reload, version) {
+        loadedVersion = null
         page = null
-        page = withContext(Dispatchers.IO) { host.reviewPage(galleryGrant, after) }
+        val fresh = withContext(Dispatchers.IO) { host.reviewPage(galleryGrant, after) }
+        page = fresh
+        loadedVersion = version
     }
     val scope = rememberCoroutineScope()
-    val current = page?.takeIf { it.queue.permissionEpoch == liveEpoch }
+    val current = page?.takeIf {
+        loadedVersion == version && it.queue.permissionEpoch == liveEpoch
+    }
     UnknownFacesReviewScreen(
         queue = current?.queue,
         currentPermissionEpoch = liveEpoch,
