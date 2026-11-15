@@ -67,7 +67,7 @@ class SettingsDesignJourneyTest {
             // Keep the large title in the layout, so this also checks the overlay.
             compose.onNodeWithTag("atlas-settings-large-title").performScrollTo()
             compose.onNodeWithTag("atlas-settings-compact-title").assertDoesNotExist()
-            compose.onNodeWithTag("atlas-library-people-tools").performTouchInput {
+            compose.onNodeWithTag("atlas-settings-large-title").performTouchInput {
                 swipeUp(startY = bottom * 0.85f, endY = top + 16f, durationMillis = 450)
             }
             compose.waitForIdle()
