@@ -422,6 +422,20 @@ internal fun startedScanPhase(
 }
 
 /**
+ * #114: the worker still holds a stale epoch, but Settings only reports a
+ * permission problem when Android photo access is actually absent. Keep
+ * in-flight publication counters out of both Settings rows.
+ */
+internal fun publicationStatusPhase(
+    photoGrantCurrent: Boolean, scopedEpochReadable: Boolean,
+    workerHold: FaceScanPhase?
+): FaceDiscoveryPhase {
+    require(!scopedEpochReadable || workerHold == FaceScanPhase.PERMISSION_REQUIRED)
+    return if (!photoGrantCurrent) FaceDiscoveryPhase.PERMISSION_REQUIRED
+        else FaceDiscoveryPhase.QUEUED
+}
+
+/**
  * #508: the face catalogue's order, newest capture first (then the newest
  * MediaStore id). Stable, so equal rows keep the gallery's order.
  */
@@ -1758,14 +1772,35 @@ internal class PeopleDiscoveryHost(
                     VisualIndexStatus(enabled = visualOn, mayEnable = false) else null,
                 provenance = scoped.provenance)
         }
+        // If the worker has already held the old scope for a new publication,
+        // avoid querying stale epoch counters entirely.
+        if (liveEpoch != scoped.epoch) {
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(photoGrantCurrent(),
+                scopedEpochReadable = false, workerHold = null),
+                observedPermissionEpoch = display)
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
+        }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
+        // An epoch swap invalidates counters but not the Android photo grant.
+        // Hide stale counts and show Starting while the worker remains held.
+        val grantCurrent = photoGrantCurrent()
         if (progress == null || counts == null) {
-            val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.PERMISSION_REQUIRED,
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(grantCurrent,
+                scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
-            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability())
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
         }
         val hold = conditions(scoped.epoch).holdReason()
+        if (hold == FaceScanPhase.PERMISSION_REQUIRED) {
+            val ui = FaceDiscoveryUiState(publicationStatusPhase(grantCurrent,
+                scopedEpochReadable = true, workerHold = hold),
+                observedPermissionEpoch = display)
+            return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
+                visual = visualStatus(null))
+        }
         val manualWait = if (manualForegroundActive) {
             val p = power()
             ManualFaceScanGuard(p.batteryPercent, p.thermalStatus,
