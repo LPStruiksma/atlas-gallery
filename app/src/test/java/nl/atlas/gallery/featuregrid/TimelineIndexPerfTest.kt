@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featuregrid
 
-import java.lang.management.ManagementFactory
 import java.time.Clock
 import java.time.DateTimeException
 import java.time.Instant
@@ -98,33 +97,67 @@ class TimelineIndexPerfTest {
     }
 
     private data class Sample(
-        val wallMs: Double, val cpuMs: Double?, val allocatedBytes: Long?, val heapDeltaBytes: Long
+        val wallMs: Double, val cpuMs: Double?, val allocatedBytes: Long?, val heapDeltaBytes: Long?
     )
+
+    // Android's unit-test compile classpath omits java.lang.management, even
+    // though Gradle's test worker runs on a desktop JVM. Reflect only on that
+    // optional desktop API; absent CPU/allocation counters are reported as n/a.
+    private fun mxThread(): Any? = runCatching {
+        Class.forName("java.lang.management.ManagementFactory")
+            .getMethod("getThreadMXBean").invoke(null)
+    }.getOrNull()
+
+    private fun heapBytes(): Long? = runCatching {
+        val bean = Class.forName("java.lang.management.ManagementFactory")
+            .getMethod("getMemoryMXBean").invoke(null)
+        val memory = Class.forName("java.lang.management.MemoryMXBean")
+            .getMethod("getHeapMemoryUsage").invoke(bean)
+        (Class.forName("java.lang.management.MemoryUsage")
+            .getMethod("getUsed").invoke(memory) as Number).toLong()
+    }.getOrNull()
+
+    private fun cpuNanos(bean: Any?): Long? {
+        if (bean == null) return null
+        return runCatching {
+            val type = Class.forName("java.lang.management.ThreadMXBean")
+            if (type.getMethod("isCurrentThreadCpuTimeSupported").invoke(bean) != true) return null
+            (type.getMethod("getCurrentThreadCpuTime").invoke(bean) as Number).toLong()
+        }.getOrNull()
+    }
+
+    private fun allocatedBytes(bean: Any?): Long? {
+        if (bean == null) return null
+        return runCatching {
+            val type = Class.forName("com.sun.management.ThreadMXBean")
+            if (!type.isInstance(bean)) return null
+            if (type.getMethod("isThreadAllocatedMemorySupported").invoke(bean) != true) return null
+            if (type.getMethod("isThreadAllocatedMemoryEnabled").invoke(bean) != true) return null
+            (type.getMethod("getThreadAllocatedBytes", java.lang.Long.TYPE)
+                .invoke(bean, Thread.currentThread().id) as Number).toLong()
+        }.getOrNull()
+    }
 
     private fun measure(build: () -> GridTimelineIndex): Sample {
         // Pre-collection is outside the timed region. Heap delta is observational
-        // (GC may run during the build); allocated bytes are per-thread when supported.
+        // (GC may run during build); allocated bytes are per-thread when available.
         System.gc()
-        val runtime = ManagementFactory.getMemoryMXBean()
-        val threads = ManagementFactory.getThreadMXBean()
-        val allocations = threads as? com.sun.management.ThreadMXBean
-        val tid = Thread.currentThread().id
-        val heap0 = runtime.heapMemoryUsage.used
-        val cpu0 = if (threads.isCurrentThreadCpuTimeSupported) threads.currentThreadCpuTime else -1L
-        val allocation0 = if (allocations?.isThreadAllocatedMemorySupported == true &&
-            allocations.isThreadAllocatedMemoryEnabled) allocations.getThreadAllocatedBytes(tid) else -1L
+        val threads = mxThread()
+        val heap0 = heapBytes()
+        val cpu0 = cpuNanos(threads)
+        val allocation0 = allocatedBytes(threads)
         val wall0 = System.nanoTime()
         val result = build()
         val wall1 = System.nanoTime()
-        val cpu1 = if (cpu0 >= 0) threads.currentThreadCpuTime else -1L
-        val allocation1 = if (allocation0 >= 0) allocations!!.getThreadAllocatedBytes(tid) else -1L
-        val heap1 = runtime.heapMemoryUsage.used
+        val cpu1 = cpuNanos(threads)
+        val allocation1 = allocatedBytes(threads)
+        val heap1 = heapBytes()
         assertTrue(result.mediaCount > 0)
         return Sample(
             (wall1 - wall0) / 1_000_000.0,
-            if (cpu0 >= 0 && cpu1 >= 0) (cpu1 - cpu0) / 1_000_000.0 else null,
-            if (allocation0 >= 0 && allocation1 >= 0) allocation1 - allocation0 else null,
-            heap1 - heap0
+            if (cpu0 != null && cpu1 != null) (cpu1 - cpu0) / 1_000_000.0 else null,
+            if (allocation0 != null && allocation1 != null) allocation1 - allocation0 else null,
+            if (heap0 != null && heap1 != null) heap1 - heap0 else null
         )
     }
 
@@ -143,7 +176,7 @@ class TimelineIndexPerfTest {
             "wall_ms[${formatMetric(samples.map { it.wallMs })}] " +
             "cpu_ms[${formatMetric(cpu)}] " +
             "allocated_bytes[${formatMetric(allocated)}] " +
-            "heap_delta_bytes[${formatMetric(samples.map { it.heapDeltaBytes.toDouble() })}]"
+            "heap_delta_bytes[${formatMetric(samples.mapNotNull { it.heapDeltaBytes?.toDouble() })}]"
         )
     }
 
