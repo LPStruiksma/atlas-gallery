@@ -32,10 +32,10 @@ import javax.crypto.spec.SecretKeySpec
  */
 class SceneFeedbackLedger(
     private val persistence: SceneFeedbackPersistence,
-    private val clockMillis: () -> Long = System::currentTimeMillis,
     private val newKey: () -> ByteArray = {
         ByteArray(32).also { SecureRandom().nextBytes(it) }
-    }
+    },
+    private val clockMillis: () -> Long = System::currentTimeMillis
 ) {
     companion object {
         const val MAX_ENTRIES = 256
@@ -160,7 +160,10 @@ class SceneFeedbackLedger(
     }
 
     private fun canonicalQuery(raw: String): String? {
-        if (raw.length > MAX_QUERY_LENGTH) return null
+        if (raw.length > MAX_QUERY_LENGTH ||
+            raw.any { it == '\u0000' || (Character.isISOControl(it) && !it.isWhitespace()) } ||
+            !Charsets.UTF_8.newEncoder().canEncode(raw)
+        ) return null
         val canonical = Normalizer.normalize(raw, Normalizer.Form.NFKC)
             .trim().lowercase(Locale.ROOT).replace(SPACES, " ")
         return canonical.takeIf { it.isNotBlank() && it.length <= MAX_QUERY_LENGTH }
