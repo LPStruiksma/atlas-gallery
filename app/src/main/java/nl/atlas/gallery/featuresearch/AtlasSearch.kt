@@ -39,6 +39,7 @@ fun AtlasSearch(
     initialScope: AtlasSearchScope = AtlasSearchScope.THIS_SCREEN,
     selectedScope: AtlasSearchScope? = null,
     showQueryField: Boolean = true,
+    showScopeChips: Boolean = true,
     onScopeChange: (AtlasSearchScope) -> Unit = {},
     textTool: (@Composable () -> Unit)? = null,
     faceTool: (@Composable () -> Unit)? = null,
@@ -79,7 +80,7 @@ fun AtlasSearch(
                     Icon(Icons.Filled.Close, contentDescription = "Close search")
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (showScopeChips) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = scope == AtlasSearchScope.THIS_SCREEN,
                     onClick = {
