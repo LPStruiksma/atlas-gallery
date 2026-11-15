@@ -10,9 +10,10 @@ import kotlin.math.ceil
 class PerformanceAggregates(private val capacity: Int = 256) {
     init { require(capacity in 1..4096) }
 
-    data class Summary(val count: Int, val p50: Double?, val p95: Double?)
+    data class Summary(val count: Int, val p50: Double?, val p90: Double?, val p95: Double?)
     private val keys = setOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
-        "face_photos_min", "visual_photos_min", "heap_fraction")
+        "face_photos_min", "visual_photos_min", "heap_fraction") +
+        (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
 
     @Synchronized fun record(metric: String, value: Double): Boolean {
@@ -25,10 +26,10 @@ class PerformanceAggregates(private val capacity: Int = 256) {
 
     @Synchronized fun snapshot(metric: String): Summary {
         val sorted = samples[metric]?.sorted().orEmpty()
-        if (sorted.isEmpty()) return Summary(0, null, null)
+        if (sorted.isEmpty()) return Summary(0, null, null, null)
         fun percentile(fraction: Double) =
             sorted[(ceil(sorted.size * fraction).toInt() - 1).coerceIn(sorted.indices)]
-        return Summary(sorted.size, percentile(0.50), percentile(0.95))
+        return Summary(sorted.size, percentile(0.50), percentile(0.90), percentile(0.95))
     }
 
     @Synchronized fun metricNames(): List<String> = samples.keys.sorted()
