@@ -269,6 +269,7 @@ private fun PeopleTileCaption(name: String, count: Int, unnamed: Boolean = false
         color = if (unnamed) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface)
     Text(String.format(Locale.US, "%,d", count),
+        modifier = Modifier.testTag("atlas-people-tile-count"),
         style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
