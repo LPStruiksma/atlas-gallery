@@ -4,7 +4,7 @@ Source: [standing performance target #119](https://github.com/LPStruiksma/atlas-
 
 ## Method
 
-All metrics are **process-local, numeric-only**, bounded to 256 recent samples per metric, with nearest-rank p50/p95 and counts. No filenames, media URIs, photos, People identities, persistent logs, network telemetry or private fixtures. Missing samples appear as **Not measured**, not zero. The Android Trace section is `atlas_activity_content`, and contains no identifiers.
+All metrics are **process-local, numeric-only**, bounded to 256 recent samples per metric, with nearest-rank p50/p90/p95 and counts. No filenames, media URIs, photos, People identities, persistent logs, network telemetry or private fixtures. Missing samples appear as **Not measured**, not zero. The Android Trace section is `atlas_activity_content`, and contains no identifiers.
 
 Open **Settings → Advanced options → Performance** to read the latest anonymous summaries. These are observational diagnostics, not a benchmark: `firstGridFrame` currently records the next Compose frame after an authorized non-empty Photos grid is mounted; this is not a verified hardware presentation fence. The viewer statistic is filmstrip selection → first Coil preview as already defined by `ViewerTimingProbe`, not tap → full image. Any scope lacking a live production hook remains explicitly unmeasured. JVM tests prove ring-buffer and percentile math but not device frame latency.
 
@@ -21,3 +21,9 @@ For comparable S24+ numbers: launch from force-stop three times with cached cata
 | Peak Java heap at 250k | < 60% of heap limit | Pending device stress run |
 
 These pending rows are deliberately not invented or inferred from JVM tests. Add dated aggregate-only results after a real measurement and record device/build, sample count, cache state and units.
+
+## User-action inventory coverage (#119)
+
+A1–A22 are fixed, allowlisted metric identifiers (action_a1_ms through action_a22_ms), shown in Settings as read-only p50/p90/p95, sample count and milliseconds. They do not constitute event instrumentation by themselves: each action shows **Not measured** until an actual start/end event is connected. No action-specific samples or owner-phone measurements have been captured here. A1 cold-start currently has a separate proxy metric; it is not silently copied into A1. The next PERF implementation must wire each concrete interaction using non-identifying timing boundaries, starting with A1–A11, and test the synthetic UI/emulator flow before claiming baseline numbers. Do not treat zero samples as zero latency.
+
+The current PR adds the 22-row display/allowlist and a bounded JVM regression test, but **does not yet satisfy the revised instrumentation scope of #121**. It is not eligible for independent acceptance until production hooks, exact-head JVM/emulator CI and a rendered Settings screenshot are supplied.
