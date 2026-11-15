@@ -65,9 +65,21 @@ internal object MicroThumbnailWarmer {
                     source.sweepOrphans(store, gate)
                 }
             ) { media, key ->
-                val made = makeAndStore(resolver, store, MicroThumbnailData(media, key))
-                made?.recycle()
-                made != null
+                var made: android.graphics.Bitmap? = null
+                try {
+                    made = makeAndStore(resolver, store, MicroThumbnailData(media, key))
+                    // A grant can disappear during a long ImageDecoder call.
+                    // Do not leave a copy written after revoke/stop.
+                    if (!gate()) {
+                        store.remove(key)
+                        false
+                    } else made != null
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    store.remove(key)
+                    throw cancelled
+                } finally {
+                    made?.recycle()
+                }
             }
         }
     }
