@@ -325,7 +325,7 @@ private fun UnknownGroupHeader(
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(64.dp)) { preview(group.members.first()) }
+                Box(Modifier.size(64.dp).testTag("atlas-group-face-1")) { preview(group.members.first()) }
                 Text(
                     if (group.members.size == 1) "1 face in this group"
                     else "${group.members.size} faces in this group",
