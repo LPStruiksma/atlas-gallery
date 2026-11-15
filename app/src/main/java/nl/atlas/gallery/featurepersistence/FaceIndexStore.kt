@@ -618,8 +618,8 @@ class FaceIndexStore(
     }
 
     /**
-     * PERF-11: covering path for person-linked media keyset traversal.
-     * Created idempotently for existing v3 files; no review facts are changed.
+     * PERF-11: explicit lookup index for person-linked media traversal.
+     * Created idempotently for existing v3 files, preserving review facts.
      */
     private fun createPersonMediaIndexes(db: SQLiteDatabase) {
         db.execSQL("""CREATE INDEX IF NOT EXISTS faces_by_uid_media
