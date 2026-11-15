@@ -269,10 +269,12 @@ internal class AiEditSaver(
         val projection = arrayOf(MediaStore.Images.Media._ID,
             MediaStore.Images.Media.IS_PENDING,
             MediaStore.Images.Media.OWNER_PACKAGE_NAME)
-        return resolver.query(scoped, projection,
+        val cursor = resolver.query(scoped, projection,
             MediaStore.Images.Media.RELATIVE_PATH + " = ? AND " +
                 MediaStore.Images.Media.DISPLAY_NAME + " = ?",
-            arrayOf(pending.relativePath, pending.displayName), null)?.use { cursor ->
+            arrayOf(pending.relativePath, pending.displayName), null)
+            ?: error("Cannot inspect interrupted MediaStore saves")
+        return cursor.use { cursor ->
             var found: Pair<Uri, Boolean>? = null
             while (cursor.moveToNext()) {
                 if (cursor.getString(2) != context.packageName) continue
@@ -282,7 +284,7 @@ internal class AiEditSaver(
                 break
             }
             found
-        } ?: error("Cannot inspect interrupted MediaStore saves")
+        }
     }
 
     /**
