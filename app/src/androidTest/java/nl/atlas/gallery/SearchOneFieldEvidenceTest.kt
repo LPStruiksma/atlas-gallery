@@ -74,40 +74,46 @@ class SearchOneFieldEvidenceTest {
     }
     private val uris = mapOf("p1" to photos.filter { it.id % 2 == 0L }.map { it.uri }.toSet())
 
-    // DESIGN-4 captures the same synthetic Search route in each system theme.
-    // These are newly generated CI artifacts, not assertions that pixels were inspected.
+    // DESIGN-4 captures both themes in one composition: createComposeRule permits
+    // setContent only once per test, so switch the theme through Compose state.
     @Test fun compactSearchRestAndNoResultsInBothThemes() {
-        listOf(false, true).forEach { dark ->
-            compose.setContent {
-                var filters by remember { mutableStateOf(LocalSearchFacets()) }
-                AtlasGalleryTheme(dark = dark) {
-                    Scaffold(containerColor = MaterialTheme.colorScheme.background,
-                        bottomBar = {
-                            AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {})
-                        }) { padding ->
-                        Column(Modifier.fillMaxSize().padding(padding).padding(top = 12.dp)
-                            .imePadding()) {
-                            LocalSearchControls(
-                                filters = filters, people = emptyList(),
-                                history = EphemeralSearchHistory(permissionEpoch = "synthetic"),
-                                onlyTheseFacesAvailable = false,
-                                onFiltersChange = { filters = it },
-                                onSubmittedQuery = {}, onClearHistory = {},
-                                currentPermissionEpoch = "synthetic",
-                                onSearchByFace = {}, onFindSimilar = {},
-                                namedPeople = people,
-                                personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
-                                hasResults = false
-                            )
-                            if (filters.text.isNotBlank()) {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("No results", modifier =
-                                        Modifier.testTag("atlas-design-search-no-results"))
-                                }
+        var darkTheme by mutableStateOf(false)
+        var queryReset by mutableStateOf(0)
+        compose.setContent {
+            var filters by remember(queryReset) { mutableStateOf(LocalSearchFacets()) }
+            AtlasGalleryTheme(dark = darkTheme) {
+                Scaffold(containerColor = MaterialTheme.colorScheme.background,
+                    bottomBar = {
+                        AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {})
+                    }) { padding ->
+                    Column(Modifier.fillMaxSize().padding(padding).padding(top = 12.dp)
+                        .imePadding()) {
+                        LocalSearchControls(
+                            filters = filters, people = emptyList(),
+                            history = EphemeralSearchHistory(permissionEpoch = "synthetic"),
+                            onlyTheseFacesAvailable = false,
+                            onFiltersChange = { filters = it },
+                            onSubmittedQuery = {}, onClearHistory = {},
+                            currentPermissionEpoch = "synthetic",
+                            onSearchByFace = {}, onFindSimilar = {},
+                            namedPeople = people,
+                            personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
+                            hasResults = false
+                        )
+                        if (filters.text.isNotBlank()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No results", modifier =
+                                    Modifier.testTag("atlas-design-search-no-results"))
                             }
                         }
                     }
                 }
+            }
+        }
+        listOf(false, true).forEach { dark ->
+            compose.runOnIdle {
+                darkTheme = dark
+                queryReset++
             }
             waitFor("atlas-search-field")
             compose.waitForIdle()
