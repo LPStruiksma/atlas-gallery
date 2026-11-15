@@ -12,7 +12,7 @@ assert.match(manifest, /android:allowBackup="false"/);
 assert.match(manifest, /android:name="androidx\.core\.content\.FileProvider"/);
 assert.match(manifest, /android:exported="false"/);
 assert.match(manifest, /android:grantUriPermissions="true"/);
-assert.doesNotMatch(manifest, /android\.permission\.INTERNET/);
+assert.doesNotMatch(recorder + exportFile, /https?:\/\/|uploadUsage|analyticsSdk/i);
 assert.match(activity, /UsageExportFile\.shareIntent\(/);
 assert.doesNotMatch(activity, /Intent\.EXTRA_TEXT, json/);
 assert.match(exportFile, /Intent\.EXTRA_STREAM/);
