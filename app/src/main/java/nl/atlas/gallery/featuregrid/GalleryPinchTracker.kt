@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -109,6 +110,53 @@ internal fun pinchSpan(xs: FloatArray, ys: FloatArray): Triple<Float, Float, Flo
 }
 
 /**
+ * Reusable pressed-pointer measurement. One instance is allocated per gesture,
+ * never per event. The exact mean Euclidean distance from the centroid requires
+ * two scans: first find the centroid, then the distances around that centroid.
+ * The traversal and Float operation order match the old filter/arrays/Triple
+ * implementation, including non-finite coordinates and finger lifts.
+ */
+internal class PinchEventMeasurement {
+    var pressedCount: Int = 0
+        private set
+    var spanPx: Float = Float.NaN
+        private set
+    var centroidX: Float = Float.NaN
+        private set
+    var centroidY: Float = Float.NaN
+        private set
+
+    fun read(changes: List<PointerInputChange>) {
+        var count = 0
+        var cx = 0f
+        var cy = 0f
+        for (change in changes) {
+            if (change.pressed) {
+                count++
+                cx += change.position.x
+                cy += change.position.y
+            }
+        }
+        pressedCount = count
+        if (count == 0) {
+            spanPx = Float.NaN
+            centroidX = Float.NaN
+            centroidY = Float.NaN
+            return
+        }
+        cx /= count
+        cy /= count
+        var span = 0f
+        for (change in changes) {
+            if (change.pressed) span += hypot(change.position.x - cx, change.position.y - cy)
+        }
+        spanPx = span / count
+        centroidX = cx
+        centroidY = cy
+    }
+}
+
+/**
  * Parent-level pinch detector. It observes the Initial pass, before the tile
  * clickables and the lazy list's scrollable see the event, so a child can
  * never consume the second finger (the #465/#475 failure). Single-finger taps
@@ -125,16 +173,13 @@ internal fun Modifier.galleryPinchLadder(
 ): Modifier = pointerInput(*keys) {
     awaitEachGesture {
         val tracker = newTracker(viewConfiguration.touchSlop)
+        val sample = PinchEventMeasurement()
         try {
         do {
             val event = awaitPointerEvent(PointerEventPass.Initial)
-            val pressed = event.changes.filter { it.pressed }
-            val sample = pinchSpan(
-                FloatArray(pressed.size) { pressed[it].position.x },
-                FloatArray(pressed.size) { pressed[it].position.y }
-            )
-            val consume = tracker.onSample(pressed.size, sample?.first ?: Float.NaN,
-                sample?.second ?: Float.NaN, sample?.third ?: Float.NaN)
+            sample.read(event.changes)
+            val consume = tracker.onSample(sample.pressedCount, sample.spanPx,
+                sample.centroidX, sample.centroidY)
             if (consume) event.changes.forEach { it.consume() }
             if (consume && onZoom != null) onZoom(tracker.zoom, Offset(tracker.focusX, tracker.focusY))
         } while (event.changes.any { it.pressed })
