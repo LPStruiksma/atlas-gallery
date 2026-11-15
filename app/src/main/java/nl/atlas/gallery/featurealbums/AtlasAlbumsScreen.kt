@@ -288,10 +288,8 @@ fun AtlasAlbumsScreen(
     onReorderAlbums: ((List<AlbumSummary>) -> Unit)? = null
 ) {
     var searchText by remember { mutableStateOf("") }
-    var searchScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
-    val displayedAlbums = remember(AlbumPresentationListKey(albums), searchText, searchScope) {
-        if (searchScope == AtlasSearchScope.LIBRARY) albums
-        else scopedNamedMatches(albums, searchText) { it.title }
+    val displayedAlbums = remember(AlbumPresentationListKey(albums), searchText) {
+        scopedNamedMatches(albums, searchText) { it.title }
     }
     // One compact header: secondary destinations share its sole overflow.
     val header: @Composable () -> Unit = {
@@ -309,7 +307,7 @@ fun AtlasAlbumsScreen(
             },
             actions = {
                 AtlasSearch(query = searchText, onQueryChange = { searchText = it },
-                    onScopeChange = { searchScope = it })
+                    onScopeChange = { })
                 AtlasAlbumSortMenu(sort, onSort)
             }
         )
