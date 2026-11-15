@@ -259,16 +259,20 @@ fun LocalSearchControls(
         // entire catalog on the Compose thread after each typed character.
         val suggestionKey = CatalogSourceKey(suggestionSources)
         val publicationKey = currentPermissionEpoch to suggestionKey
-        val indexedSuggestions by androidx.compose.runtime.produceState<IndexedSearchSuggestions?>(
-            initialValue = null, key1 = publicationKey
+        val indexState by androidx.compose.runtime.produceState(
+            initialValue = Pair<Any?, IndexedSearchSuggestions?>(null, null),
+            key1 = publicationKey
         ) {
-            value = null
+            value = Pair(null, null)
             if (!currentPermissionEpoch.isNullOrBlank()) {
-                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     IndexedSearchSuggestions(suggestionSources)
                 }
+                value = Pair(publicationKey, index)
             }
         }
+        val indexedSuggestions = if (indexState.first == publicationKey)
+            indexState.second else null
         // Using produceState for matching as well keeps posting scans and sort
         // off Compose's frame. A changed query starts with an empty value,
         // rather than briefly showing the previous query's private names.
