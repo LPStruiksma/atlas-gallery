@@ -1,36 +1,36 @@
 # AIE-4: accepted image save, EXIF and local lineage
 
-**Scope:** \`featureaiedit/save\` in \`app/src\`; no provider calls, credentials,
+**Scope:** `featureaiedit/save` in `app/src`; no provider calls, credentials,
 new permissions, or edits to the source. Called only after a user chooses Accept.
 The ordinary Samsung/system Edit handoff is not changed.
 
 ## Contract
 
-- \`AiEditSaver.save(candidate, onRefresh, onFocus)\` takes a selected
-  \`content://media/...\` original and a separate candidate \`content:\` URI.
+- `AiEditSaver.save(candidate, onRefresh, onFocus)` takes a selected
+  `content://media/...` original and a separate candidate `content:` URI.
   It verifies the original's image MIME, folder and actual volume.
 - The accepted bitmap is decoded at full output resolution, with orientation
   applied to pixels, then encoded into a **new** MediaStore image. JPEG uses
   quality 100, PNG and Android 11+ WebP are lossless. Encoding JPEG a second
   time can incur a small quality loss; a future lossless JPEG metadata path
   should be benchmarked before replacing the safe re-encode.
-- Use the original's mounted volume and \`RELATIVE_PATH\`; choose the first
-  available \`<source-stem>_AI_<n>.<ext>\` name in that folder. Preserve the
-  original \`DATE_TAKEN\` when known so timeline presentation places related
+- Use the original's mounted volume and `RELATIVE_PATH`; choose the first
+  available `<source-stem>_AI_<n>.<ext>` name in that folder. Preserve the
+  original `DATE_TAKEN` when known so timeline presentation places related
   photos near one another. A same-folder race with another process may still
-  cause provider renaming; inspect \`displayName\` when UI is integrated.
-- Insert with \`IS_PENDING=1\`, write pixels and allowlisted metadata, persist
-  local lineage, then publish \`IS_PENDING=0\`. An exception before publication
+  cause provider renaming; inspect `displayName` when UI is integrated.
+- Insert with `IS_PENDING=1`, write pixels and allowlisted metadata, persist
+  local lineage, then publish `IS_PENDING=0`. An exception before publication
   deletes the new row; it never deletes/rewrites the original.
-- \`AiEditLineageStore\` uses an app-private **no-backup** SQLite database. It
+- `AiEditLineageStore` uses an app-private **no-backup** SQLite database. It
   records saved URI, original URI and revision, provider/model/version, prompt,
   settings, timestamp and candidate parent. No credential or endpoint field.
   The journal registers exact volume/path/name **before** MediaStore insert,
   allowing a relaunch to reclaim a still-pending owned row even if the process
   died before its URI was journaled. Published rows remain, retaining lineage.
-- \`onRefresh\` and \`onFocus(newUri)\` run on the main dispatcher after
-  publishing. The \`saveForGallery\` adapter calls existing
-  \`GalleryViewModel.refresh()\`, and clears viewer metadata cache. AI Edit
+- `onRefresh` and `onFocus(newUri)` run on the main dispatcher after
+  publishing. The `saveForGallery` adapter calls existing
+  `GalleryViewModel.refresh()`, and clears viewer metadata cache. AI Edit
   navigation must **hold the new URI as a pending focus target** until the
   refreshed gallery snapshot contains it; the original URI is returned as
   the anchor. The AIE UI unit wires those callbacks to its viewer state.
@@ -44,16 +44,16 @@ or a provider candidate's hidden metadata. On the saved copy:
 | --- | --- |
 | DateTime / DateTimeOriginal / DateTimeDigitized | Copied from original if present |
 | Orientation | Set to normal (orientation is applied to pixels) |
-| GPS latitude/longitude/altitude and references | **Discarded by default**; opt-in \`keepGps=true\` copies only these from the original |
-| Software | \`ATLAS AI Edit\` |
-| ImageDescription | Bounded \`provider/model\` identifiers |
+| GPS latitude/longitude/altitude and references | **Discarded by default**; opt-in `keepGps=true` copies only these from the original |
+| Software | `ATLAS AI Edit` |
+| ImageDescription | Bounded `provider/model` identifiers |
 | Camera serials, MakerNote, UserComment, other personal EXIF | Not copied |
 | Prompt/settings/source lineage | Private SQLite only, not embedded or uploaded |
 | Authentication tokens | Never accepted by this API, never written |
 
-\`createSanitizedUploadCopy(original)\` returns a JPEG in app cache whose
+`createSanitizedUploadCopy(original)` returns a JPEG in app cache whose
 metadata is **entirely stripped**, including capture dates and GPS. A remote
-adapter must only transmit this copy and delete the file in a \`finally\` block.
+adapter must only transmit this copy and delete the file in a `finally` block.
 It does not initiate network transfer, and does not silently upload originals.
 
 ## Test and integration boundaries
