@@ -13,6 +13,8 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
+from .corpus import materialize
+
 VOTES = {"A", "B", "tie", "both_bad"}
 
 def _safe_output(root: Path, value: str) -> Path:
@@ -56,8 +58,22 @@ def create_pairwise(cases: list[dict], records: list[dict], out: Path, *,
             destination = images / filename
             shutil.copyfile(source, destination)
             images_for_pair.append((label, "pair-assets/" + filename))
+        # Reproducible hash-verified local context for preservation judgment.
+        source_path, mask_path = materialize(case, out / "fixtures")
+        context_images = []
+        for label, asset, suffix in (
+                ("Original source", source_path, "source.png"),
+                ("Edit mask (white = editable)", mask_path, "mask.png")):
+            filename = f"{identifier}-{suffix}"
+            shutil.copyfile(asset, images / filename)
+            context_images.append((label, "pair-assets/" + filename))
         key[identifier] = {"case_id": case["id"], "A": a["provider"],
                            "B": b["provider"]}
+        context = "".join(
+            f'<figure><img loading="lazy" src="{html.escape(path, quote=True)}" '
+            f'alt="{html.escape(label, quote=True)}"><figcaption>{html.escape(label)}</figcaption></figure>'
+            for label, path in context_images
+        )
         pictures = "".join(
             f'<figure><img loading="lazy" src="{html.escape(path, quote=True)}" '
             f'alt="Candidate {label}"><figcaption>Candidate {label}</figcaption></figure>'
@@ -73,7 +89,9 @@ def create_pairwise(cases: list[dict], records: list[dict], out: Path, *,
             f'<section><header><span>{html.escape(case["category"])}</span>'
             f'<span>Pair {identifier}</span></header>'
             f'<p>{html.escape(case["instruction"])}</p>'
-            f'<div class="pictures">{pictures}</div><div class="buttons">{options}</div>'
+            f'<div class="pictures context">{context}</div>'
+            f'<div class="pictures candidates">{pictures}</div>'
+            f'<div class="buttons">{options}</div>'
             f'</section>'
         )
     # Static HTML; no scripts, images, endpoints, or provider names are fetched remotely.
@@ -96,6 +114,7 @@ button.selected{background:#276e69;border:2px solid #a3e0d6}
 </style></head><body>
 <h1>Blind pairwise image review</h1>
 <p class="note">Choose better adherence and preservation, considering artifacts.
+The original source and white-on-black editable mask appear before candidates A/B.
 Labels A/B are randomly balanced and do not reveal the provider. Skip uncertain
 pairs; download your votes when finished. Keep the decoding key private.</p>
 <button id="export">Download votes as JSON</button>

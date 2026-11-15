@@ -8,7 +8,7 @@ import unittest
 from argparse import Namespace
 from pathlib import Path
 
-from tools.ai_edit_bench.bench import run, scorecards
+from tools.ai_edit_bench.bench import run, run_adapter, scorecards
 from tools.ai_edit_bench.corpus import PROMPTS, generate_manifest, materialize, read_manifest
 from tools.ai_edit_bench.review import create_pairwise, decode_votes
 
@@ -53,12 +53,12 @@ class BenchmarkTests(unittest.TestCase):
 
     def test_refusals_degradations_and_errors_are_not_quality(self):
         cases = self.cases[:4]
-        provider = "offline-test"
+        provider = "mock-alpha"
         base = {"provider": provider, "degraded": False, "accepted": False,
                 "cost_usd": 0.25, "latency_ms": 20}
         records = [
             dict(base, case_id=cases[0]["id"], outcome="completed",
-                 adherence=0.8, accepted=True, unchanged_ssim=0.9),
+                 adherence=0.8, accepted=True, evidence="MOCK_ONLY", unchanged_ssim=0.9),
             dict(base, case_id=cases[1]["id"], outcome="completed",
                  adherence=0.1, degraded=True),
             dict(base, case_id=cases[2]["id"], outcome="refused"),
@@ -84,13 +84,31 @@ class BenchmarkTests(unittest.TestCase):
         cases = self.cases[:2]
         r = [
             {"case_id": cases[0]["id"], "provider": "offline", "outcome": "completed",
-             "accepted": True, "cost_usd": 0.2},
+             "accepted": False, "cost_usd": 0.2},
             {"case_id": cases[1]["id"], "provider": "offline", "outcome": "refused"},
         ]
         q = scorecards(cases, r)["quality_scorecard"]["offline"]
         self.assertIsNone(q["cost_usd_total"])
         self.assertIsNone(q["cost_per_accepted_usd"])
         self.assertEqual(q["unpriced_attempts"], 1)
+
+    def test_external_adapter_cannot_self_certify_acceptance(self):
+        case = self.cases[0]
+        external = {"case_id": case["id"], "provider": "real-provider",
+                    "outcome": "completed", "accepted": True, "cost_usd": 1.0}
+        with self.assertRaisesRegex(ValueError, "unverified"):
+            scorecards([case], [external])
+        with self.assertRaisesRegex(ValueError, "MOCK_ONLY"):
+            scorecards([case], [dict(external, evidence="MOCK_ONLY")])
+        with tempfile.TemporaryDirectory() as temp:
+            def adapter(_case, _source, _mask, _out):
+                return dict(external, evidence="MOCK_ONLY")
+            records = run_adapter([case], Path(temp), adapter)
+            self.assertFalse(records[0]["accepted"])
+            self.assertNotIn("evidence", records[0])
+            q = scorecards([case], records)["quality_scorecard"]["real-provider"]
+            self.assertEqual(q["human_or_mock_accepted"], 0)
+            self.assertIsNone(q["cost_per_accepted_usd"])
 
     def test_malformed_values_and_duplicates_fail_closed(self):
         case = self.cases[0]
@@ -151,6 +169,14 @@ class BenchmarkTests(unittest.TestCase):
             self.assertNotIn("SECRET_PROVIDER_TWO", page)
             self.assertNotIn('src="a.png"', page)
             self.assertNotIn('src="b.png"', page)
+            self.assertIn("Original source", page)
+            self.assertIn("Edit mask (white = editable)", page)
+            self.assertIn("Candidate A", page)
+            self.assertIn("Candidate B", page)
+            self.assertIn('class="pictures context"', page)
+            for suffix in ("source.png", "mask.png", "a.png", "b.png"):
+                self.assertTrue(list((out / "pair-assets").glob("*-" + suffix)), suffix)
+            self.assertLess(page.index("Original source"), page.index("Candidate A"))
             identifier, mapping = next(iter(key.items()))
             result = decode_votes({"schema_version": 1, "pairs": key},
                                   {"schema_version": 1, "votes": {identifier: "A"}})

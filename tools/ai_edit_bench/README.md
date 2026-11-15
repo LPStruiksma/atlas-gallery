@@ -16,7 +16,7 @@ The dry run creates:
 - corpus_manifest.json: **156** deterministic cases: 12 for each of 12 editing categories (object add/remove/replace, background, lighting/time, style, repair/colourisation, portrait identity, text, spatial relations, multi-person, high-res detail), plus 12 lawful sensitive/unconventional cases.
 - results.json: mock output records for two fictional providers, with intentionally simulated outcomes, latency, costs and scores.
 - scorecards.json and report.md: per-provider quality plus separate **per-category** refusal/degradation/error counts and rates.
-- review.html and pair-assets/: local provider-blind A/B comparisons. Results download in-browser as blind-votes.json.
+- review.html and pair-assets/: local provider-blind A/B comparisons with original source and white-on-black edit mask. Results download in-browser as blind-votes.json.
 - pairwise-key.json: **keep away from reviewers**. It maps opaque pair IDs to provider labels for later unblinding.
 - mock-assets/: synthesized generated PNGs; only in the output folder, never committed.
 
@@ -35,7 +35,7 @@ Cases use deterministic synthetic:// URLs and SHA-256 of source/mask PNG bytes. 
 | Latency | Adapter-measured elapsed milliseconds per attempt, including refusals/errors; report mean and sample size. Dry-run timings are simulated, **not measured**. |
 | Cost per accepted | Sum of all attempt costs (including refused, degraded, errored/retried) divided by confirmed accepted edits. Unknown price anywhere makes cost N/A; zero accepted makes it N/A. |
 
-Quality means include **completed and non-degraded** edits only; missing metric values are excluded from each specific metric denominator and show N/A for n=0. Accepted edits require explicit human or clearly marked mock acceptance, not just an automatic high judge score. Restriction rates use **all attempts in each provider/category**, with refusal, degraded and error statuses in distinct columns. There is no ATLAS-side censorship filter; provider refusal is an observed event and is recorded separately, including for lawful sensitive cases.
+Quality means include **completed and non-degraded** edits only; missing metric values are excluded from each specific metric denominator and show N/A for n=0. External acceptance assertions are rejected; the harness does not yet join independent human acceptance votes to provider attempts, so external cost/accepted stays N/A. Only internally generated mock dry runs contain simulated acceptance, which must never inform provider purchasing. Restriction rates use **all attempts in each provider/category**, with refusal, degraded and error statuses in distinct columns. There is no ATLAS-side censorship filter; provider refusal is an observed event and is recorded separately, including for lawful sensitive cases.
 
 ## Connecting an adapter / judge
 
@@ -49,7 +49,7 @@ Owner approval of spend, device/media exposure and provider policy is **not** gr
 
     edit(case, source_path, mask_path, output_dir) -> dict
 
-It returns provider (str), outcome ('completed'|'refused'|'error'), degraded (bool), accepted (human confirmed bool), latency_ms, cost_usd, optional output_path (a path **within** output_dir), output_width and output_height. Use explicit null for unmeasured fields. Case has id, category, difficulty, sensitive, instruction, source and edit_mask (url, sha256, license). Each invocation processes only this one synthetic fixture/mask, not the gallery. The runner does not infer provider capabilities or silently fall back.
+It returns provider (str), outcome ('completed'|'refused'|'error'), degraded (bool), latency_ms, cost_usd, optional output_path (a path **within** output_dir), output_width and output_height. Use explicit null for unmeasured fields. Case has id, category, difficulty, sensitive, instruction, source and edit_mask (url, sha256, license). Each invocation processes only this one synthetic fixture/mask, not the gallery. The runner does not infer provider capabilities or silently fall back.
 
 A local judge is an independent callable:
 
@@ -62,7 +62,7 @@ An existing provider result batch can be scored without executing code from an a
     python3 -m tools.ai_edit_bench --results /path/to/records.json \
       --out /tmp/atlas-offline-report
 
-Records are a JSON array using the above adapter schema, with case_id added. Pairwise assets must be relative to the output directory. Duplicate provider+case, unknown case IDs, malformed scores and attempts with quality metrics on refusals fail closed.
+Records are a JSON array using the above adapter schema, with case_id added. External records cannot assert accepted=True or claim MOCK_ONLY provenance; independent human acceptance ingestion is future work. Pairwise assets must be relative to the output directory. Duplicate provider+case, unknown case IDs, malformed scores and attempts with quality metrics on refusals fail closed.
 
 ## Blind human review
 

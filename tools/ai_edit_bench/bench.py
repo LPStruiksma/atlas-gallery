@@ -41,6 +41,11 @@ def validate_record(record: dict, case_ids: set[str]) -> None:
         raise ValueError("noncompleted result cannot be accepted")
     if type(record.get("accepted", False)) is not bool:
         raise ValueError("accepted must be boolean")
+    # Only internally generated dry-run mocks may carry simulated acceptance.
+    if record.get("accepted") and record.get("evidence") != "MOCK_ONLY":
+        raise ValueError("external acceptance is unverified; use a separate human vote")
+    if record.get("evidence") == "MOCK_ONLY" and record.get("provider") not in {"mock-alpha", "mock-beta"}:
+        raise ValueError("MOCK_ONLY marker reserved for synthetic providers")
     for key in ("latency_ms", "cost_usd"):
         if record.get(key) is not None and not _number(record[key]):
             raise ValueError(f"invalid {key}")
@@ -84,7 +89,8 @@ def scorecards(cases: list[dict], records: list[dict]) -> dict:
     quality, restrictions = {}, {}
     for provider, group in sorted(grouped.items()):
         clean = [r for r in group if r["outcome"] == "completed" and not r.get("degraded", False)]
-        accepted = [r for r in clean if r.get("accepted", False)]
+        accepted = [r for r in clean if r.get("accepted", False)
+                    and r.get("evidence") == "MOCK_ONLY"]
         priced = all(r.get("cost_usd") is not None for r in group)
         total_cost = sum(r["cost_usd"] for r in group) if priced else None
         latencies = [r["latency_ms"] for r in group if r.get("latency_ms") is not None]
@@ -186,6 +192,9 @@ def run_adapter(cases: list[dict], output_dir: Path, adapter, judge=None) -> lis
         source_path, mask_path = materialize(case, fixtures)
         record = dict(adapter(case, source_path, mask_path, output_dir))
         record["case_id"] = case["id"]
+        # Provider claims cannot establish independent human approval.
+        record["accepted"] = False
+        record.pop("evidence", None)
         if record.get("outcome") == "completed" and judge:
             scores = judge(case, record, source_path, mask_path)
             if not isinstance(scores, dict):
@@ -212,7 +221,8 @@ def markdown_report(report: dict, *, dry_run: bool) -> str:
              "",
              "Refusals, degraded generations and errors are separate from quality; "
              "only completed, non-degraded outputs enter quality means. "
-             "Missing metrics stay N/A. Cost/accepted includes all priced attempts.",
+             "Missing metrics stay N/A. $/accepted is simulated in dry runs; "
+             "external human acceptance has not been verified and remains N/A.",
              "", "## Quality scorecard", "",
              "| Provider | Clean / tried | Adherence (n) | Identity (n) | "
              "Outside SSIM (n) | LPIPS ↓ (n) | Detail (n) | Artifact rate (n) | "
@@ -274,6 +284,11 @@ def run(args) -> dict:
                               _import_plugin(args.judge) if args.judge else None)
     else:
         raise ValueError("choose --dry-run, --results, or explicitly approved --adapter")
+    # Imported records cannot self-assert internal synthetic provenance.
+    if not args.dry_run:
+        for record in records:
+            if record.get("evidence") == "MOCK_ONLY" or record.get("provider") in {"mock-alpha", "mock-beta"}:
+                raise ValueError("external records cannot claim simulated mock provenance")
     report = scorecards(cases, records)
     report["mode"] = "synthetic-mock" if args.dry_run else "external"
     report["corpus_size"] = len(cases)
