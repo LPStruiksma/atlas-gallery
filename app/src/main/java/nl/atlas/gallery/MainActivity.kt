@@ -1572,7 +1572,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             val worker = currentCoroutineContext()
             val matches = withContext(Dispatchers.Default) {
                 scopedMediaMatches(overviewBase, sorted, people, overviewQuery,
-                    overviewScope, cancellationCheckpoint = { worker.ensureActive() })
+                    AtlasSearchScope.THIS_SCREEN, cancellationCheckpoint = { worker.ensureActive() })
             }
             worker.ensureActive()
             scopedResult = ScopedMediaSearchSnapshot(overviewBase, sorted, people,
@@ -2969,7 +2969,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
                             selectedScope = overviewScope,
-                            onScopeChange = { overviewScope = it }
+                            onScopeChange = { requested ->
+                                if (requested == AtlasSearchScope.LIBRARY) {
+                                    // A folder/person header cannot silently turn into a library viewer.
+                                    // The existing Search tab owns library-wide facets and suggestions.
+                                    personFilter = null
+                                    albumRoute = null
+                                    album = null
+                                    overviewQuery = ""
+                                    tab = 3
+                                } else {
+                                    overviewScope = AtlasSearchScope.THIS_SCREEN
+                                }
+                            }
                         )
                         if (photosControls && !settingsOpen) PhotosSortAction(
                             order = sort, onSort = { sort = it }, onShuffle = { randomSeed++ })
@@ -3397,6 +3409,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
                             initialExpanded = true,
+                            persistentInline = true,
                             initialScope = AtlasSearchScope.LIBRARY,
                             selectedScope = overviewScope,
                             showQueryField = false,
