@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
@@ -133,7 +134,7 @@ fun PeopleHomeScreen(
             .map { entry ->
                 val cover = currentNative?.people?.get(entry.person)?.coverFaceUid
                     ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
-                NativePersonTile(entry.person, entry.name, cover)
+                NativePersonTile(entry.person, entry.name, entry.faceCount, cover)
             }
     }
     // #579: unnamed groups of 3+ faces follow the named people, largest
@@ -230,6 +231,7 @@ fun PeopleHomeScreen(
 private data class NativePersonTile(
     val person: PersonKey,
     val name: String,
+    val faceCount: Int,
     val face: NativeFaceObservationId?
 )
 
@@ -255,9 +257,20 @@ private fun UnnamedGroupTile(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PortraitCircle { nativePortrait(tile.face) }
-        Text("Add name", style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PeopleTileCaption("Add name", tile.faceCount, unnamed = true)
     }
+}
+
+/** All People sources use the same centred two-line caption, never a guessed total. */
+@Composable
+private fun PeopleTileCaption(name: String, count: Int, unnamed: Boolean = false) {
+    Text(name, style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        color = if (unnamed) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurface)
+    Text(String.format(Locale.US, "%,d", count),
+        style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Samsung's plain empty People page: one icon, one line, and the opt-in when real. */
@@ -365,8 +378,7 @@ private fun NativeProfileTile(
             val face = tile.face
             if (face != null) nativePortrait(face) else DefaultPortrait()
         }
-        Text(tile.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis)
+        PeopleTileCaption(tile.name, tile.faceCount)
     }
 }
 
@@ -384,11 +396,8 @@ private fun ProfileTile(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PortraitCircle { portrait(person) }
-        Text(person.name.ifBlank { "Add name" },
-            style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface)
+        PeopleTileCaption(person.name.ifBlank { "Add name" }, person.accessiblePhotos,
+            unnamed = person.name.isBlank())
     }
 }
 
