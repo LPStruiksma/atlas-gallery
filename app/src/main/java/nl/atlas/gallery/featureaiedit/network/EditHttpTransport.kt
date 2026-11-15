@@ -15,7 +15,7 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLException
 import kotlin.math.min
 
-/** No Android dependency: tested against JDK's local HttpServer through an injected fake connector.
+/** No Android dependency: tested against a loopback fake server through an injected connector.
  * Only an explicitly selected provider host may receive credentials or media. */
 data class EditHttpConfig(
     val baseUrl: String,
