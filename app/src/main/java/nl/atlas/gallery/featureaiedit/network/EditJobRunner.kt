@@ -212,11 +212,6 @@ internal object EditJobJournal {
 class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     private val cancellation = EditRequestCancellation()
 
-    override fun onStopped() {
-        cancellation.cancel()
-        super.onStopped()
-    }
-
     // Pre-Android 12 expedited WorkManager runs as a foreground service.
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
