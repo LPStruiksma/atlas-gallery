@@ -8,3 +8,7 @@ person-same-joined
 people-numbers
 person-auto-added
 people-same-queue
+# DESIGN-3 synthetic person header scroll evidence, dark and light.
+person-collapsed-dark
+person-collapsed-light
+person-expanded-after-scroll-dark
