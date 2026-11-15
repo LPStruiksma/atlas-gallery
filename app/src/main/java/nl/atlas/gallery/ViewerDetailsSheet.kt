@@ -16,6 +16,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
+import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
+import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.featureaiedit.save.aiEditProvenanceGroups
+import nl.atlas.gallery.featureaiedit.save.aiEditProvenanceFor
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -86,6 +90,24 @@ internal fun ViewerDetailsSheet(
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
+    var provenance by remember(media.uri) { mutableStateOf<AiEditProvenanceGroup?>(null) }
+    LaunchedEffect(media.uri) {
+        provenance = withContext(Dispatchers.IO) {
+            runCatching {
+                val store = AiEditLineageStore(context.applicationContext)
+                // Single-photo facts do not resolve other MediaStore members without
+                // the gallery's current authorization; the row itself is local evidence.
+                val parent = store.get(media.uri)
+                if (parent != null && parent.originalUri != media.uri)
+                    AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
+                else {
+                    val children = store.all().filter { it.originalUri == media.uri && it.editedUri != media.uri }
+                        .map { it.editedUri }.distinct().sorted()
+                    if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
+                }
+            }.getOrNull()
+        }
+    }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {
         mutableStateOf<ViewerDimensions?>(null)
     }
@@ -143,6 +165,13 @@ internal fun ViewerDetailsSheet(
                 Spacer(Modifier.height(16.dp))
             }
             ViewerDetailRow("Name", facts.filename)
+            provenance?.let { group ->
+                if (group.originalUri == media.uri) {
+                    ViewerDetailRow("AI versions (${group.editedUris.size})", "Saved AI edits")
+                } else {
+                    ViewerDetailRow("Edited from…", "Original photo (AI edit)")
+                }
+            }
             facts.relativeFolder?.let { ViewerDetailRow("Path", it) }
             facts.fileSize?.let { ViewerDetailRow("Size", it) }
             val resolution = when {
