@@ -15,6 +15,7 @@ import android.os.Handler
 import android.database.ContentObserver
 import android.os.Build
 import android.provider.MediaStore
+import kotlinx.coroutines.delay
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,31 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+internal data class GalleryMediaCheckpoint(
+    val versions: Map<String, String?>,
+    val generations: Map<String, Long?>
+)
+internal data class GalleryMediaScan(
+    val items: List<MediaRecord>, val checkpoint: GalleryMediaCheckpoint
+)
+internal class GalleryDeltaUnavailable : RuntimeException("Incremental provider query unavailable")
+
+/** Only an item URI, never a collection URI or ambiguous numeric ID, is a deletion hint. */
+internal data class GalleryItemHint(val uri: Uri, val video: Boolean, val id: Long, val volume: String)
+internal fun galleryItemHintOrNull(uri: Uri): GalleryItemHint? {
+    if (uri.scheme != "content" || uri.authority != "media") return null
+    val segments = uri.pathSegments
+    if (segments.size != 4 || segments[2] != "media") return null
+    val video = when (segments[1]) {
+        "images" -> false
+        "video" -> true
+        else -> return null
+    }
+    val id = segments[3].toLongOrNull()?.takeIf { it > 0L } ?: return null
+    val volume = segments[0].takeIf { it.isNotBlank() } ?: return null
+    return GalleryItemHint(uri, video, id, volume)
+}
+
 class GalleryRepository(private val context: Context) {
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
     fun load(
@@ -39,7 +65,14 @@ class GalleryRepository(private val context: Context) {
          */
         previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
-    ): List<MediaRecord> = failGalleryScanOnHeapExhaustion {
+    ): List<MediaRecord> =
+        loadWithCheckpoint(cancellationSignal, previous, checkActive).items
+
+    internal fun loadWithCheckpoint(
+        cancellationSignal: CancellationSignal? = null,
+        previous: List<MediaRecord> = emptyList(),
+        checkActive: () -> Unit = {}
+    ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
         loadInventory(cancellationSignal, previous, checkActive)
     }
 
@@ -47,7 +80,7 @@ class GalleryRepository(private val context: Context) {
         cancellationSignal: CancellationSignal?,
         previous: List<MediaRecord>,
         checkActive: () -> Unit
-    ): List<MediaRecord> {
+    ): GalleryMediaScan {
         val result = ArrayList<MediaRecord>(maxOf(4096, previous.size))
         val reuse = GalleryScanRecordReuse(previous)
         // Snapshot versions once per mounted *specific* volume, never once per row.
@@ -82,7 +115,89 @@ class GalleryRepository(private val context: Context) {
         // Counts only: how much of the previous inventory this scan shared.
         android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
             "reused=${reuse.reused} ${heapUseLogFields()}")
-        return result
+        return GalleryMediaScan(result, GalleryMediaCheckpoint(versionsAtEnd, generationsAtEnd))
+    }
+
+    /**
+     * Generation-indexed MediaStore changes, plus exact notified item probes
+     * for deletes. No whole-library cursor is opened. On API 29, missing
+     * generations, provider replacement or ambiguous deletions the caller
+     * must use the existing authoritative full scan.
+     */
+    internal fun loadIncremental(
+        previous: List<MediaRecord>,
+        checkpoint: GalleryMediaCheckpoint,
+        hints: List<GalleryItemHint>,
+        checkActive: () -> Unit = {}
+    ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+            checkpoint.versions.isEmpty() ||
+            checkpoint.generations.keys != checkpoint.versions.keys)
+            throw GalleryDeltaUnavailable()
+        val versions = mediaProviderVersions()
+        val generations = mediaProviderGenerations(versions.keys)
+        if (versions != checkpoint.versions || generations.keys != versions.keys ||
+            generations.any { (volume, current) ->
+                current == null || current < (checkpoint.generations[volume] ?: Long.MAX_VALUE)
+            }) throw GalleryDeltaUnavailable()
+        val changes = LinkedHashMap<GalleryMediaDeltaKey, GalleryMediaDeltaChange>()
+        val reuse = GalleryScanRecordReuse(previous)
+        val zone = java.time.ZoneId.systemDefault()
+        val maxChanges = 256
+        for ((volume, since) in checkpoint.generations) {
+            val generation = since ?: throw GalleryDeltaUnavailable()
+            for (video in listOf(false, true)) {
+                checkActive()
+                val rows = ArrayList<MediaRecord>()
+                val collection = if (video) MediaStore.Video.Media.getContentUri(volume)
+                    else MediaStore.Images.Media.getContentUri(volume)
+                readMedia(collection, video, rows, null, checkActive, versions, zone, reuse,
+                    "${MediaStore.MediaColumns.GENERATION_ADDED} > ? OR " +
+                        "${MediaStore.MediaColumns.GENERATION_MODIFIED} > ?",
+                    arrayOf(generation.toString(), generation.toString()), maxChanges)
+                for (row in rows) {
+                    val key = GalleryMediaDeltaKey.of(row)
+                    changes[key] = GalleryMediaDeltaChange(key, row)
+                    if (changes.size > maxChanges) throw GalleryDeltaUnavailable()
+                }
+            }
+        }
+        // Item callbacks can describe an absent row (deleted) that no
+        // generation query can return. Never infer its volume from an ID if
+        // several mounted volumes reuse that number.
+        for (hint in hints) {
+            checkActive()
+            val rows = ArrayList<MediaRecord>(1)
+            readMedia(hint.uri, hint.video, rows, null, checkActive, versions, zone, reuse,
+                maxRows = 1)
+            if (rows.isNotEmpty()) {
+                val row = rows.single()
+                if (row.id != hint.id ||
+                    (hint.volume != "external" && hint.volume != row.volumeName))
+                    throw GalleryDeltaUnavailable()
+                val key = GalleryMediaDeltaKey.of(row)
+                changes[key] = GalleryMediaDeltaChange(key, row)
+            } else {
+                val possible = previous.filter {
+                    it.id == hint.id && it.isVideo == hint.video &&
+                        (hint.volume == "external" || it.volumeName == hint.volume)
+                }
+                if (possible.size > 1) throw GalleryDeltaUnavailable()
+                possible.singleOrNull()?.let { deleted ->
+                    val key = GalleryMediaDeltaKey.of(deleted)
+                    changes[key] = GalleryMediaDeltaChange(key, null)
+                }
+            }
+            if (changes.size > maxChanges) throw GalleryDeltaUnavailable()
+        }
+        val endVersions = mediaProviderVersions()
+        val endGenerations = mediaProviderGenerations(endVersions.keys)
+        if (!sameMediaProviderScanSnapshot(versions, endVersions, generations, endGenerations))
+            throw GalleryProviderSnapshotChanged()
+        GalleryMediaScan(
+            mergeGalleryMediaDelta(previous, changes.values.toList()),
+            GalleryMediaCheckpoint(endVersions, endGenerations)
+        )
     }
 
     private fun mediaProviderVersions(): Map<String, String?> =
@@ -113,7 +228,10 @@ class GalleryRepository(private val context: Context) {
         cancellationSignal: CancellationSignal?, checkActive: () -> Unit,
         providerVersions: Map<String, String?>,
         scanZone: java.time.ZoneId,
-        reuse: GalleryScanRecordReuse
+        reuse: GalleryScanRecordReuse,
+        selection: String? = null,
+        selectionArgs: Array<String>? = null,
+        maxRows: Int = Int.MAX_VALUE
     ) {
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
@@ -142,7 +260,7 @@ class GalleryRepository(private val context: Context) {
             else MediaStore.Images.Media.getContentUri(volume)
         }
         val cursor = requireMediaCatalogueCursor(
-            context.contentResolver.query(uri, projection.toTypedArray(), null, null,
+            context.contentResolver.query(uri, projection.toTypedArray(), selection, selectionArgs,
                 "${MediaStore.MediaColumns.DATE_ADDED} DESC", cancellationSignal))
         cursor.use { cursor ->
             val idxId = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -163,6 +281,7 @@ class GalleryRepository(private val context: Context) {
             val idxDuration = if (video) cursor.getColumnIndex(MediaStore.Video.Media.DURATION) else -1
             var rowIndex = 0
             while (cursor.moveToNext()) {
+                if (rowIndex >= maxRows) throw GalleryDeltaUnavailable()
                 checkGalleryScanCancellation(rowIndex++, checkActive)
                 // NULL getLong() becomes zero; zero/negative IDs are not
                 // addressable MediaStore items. Reject the entire cursor
