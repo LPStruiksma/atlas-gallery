@@ -339,9 +339,9 @@ private fun UnknownGroupHeader(
                         preview(face)
                     }
                 }
-                TextButton(onClick = { showAll = true }) {
-                    Text("See all faces")
-                }
+            }
+            TextButton(onClick = { showAll = true }) {
+                Text("See all faces")
             }
         }
     }
