@@ -193,7 +193,8 @@ fun AtlasTimelineGallery(
      */
     header: (@Composable () -> Unit)? = null,
     /** Tests and screenshots: keep the fast-scroll handle shown and grabbable. */
-    fastScrollAlwaysShown: Boolean = false
+    fastScrollAlwaysShown: Boolean = false,
+    mediaSort: nl.atlas.gallery.MediaSort? = null
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE) }
@@ -354,7 +355,7 @@ fun AtlasTimelineGallery(
                     val projection = ArrayList<TimelineMedia>(items.size)
                     items.forEachIndexed { i, media ->
                         if ((i and 511) == 0) parent.ensureActive()
-                        projection.add(TimelineMedia(media.uri, media.takenAtMillis))
+                        projection.add(TimelineMedia(media.uri, if (mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED) media.modifiedAtSeconds * 1000L else media.takenAtMillis))
                     }
                     val index = buildGridTimelineIndex(projection, sort, density, zone, locale,
                         mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
@@ -792,8 +793,11 @@ private fun TimelineFastScrollLayer(
     val destination = tl?.scrubTarget(shownFraction)
     // The bubble follows the ACTIVE sort: dates, size buckets or position.
     val label = destination?.let { target ->
-        fastScrollBubbleLabel(sort, target.dateLabel,
-            items.getOrNull(target.mediaIndex)?.sizeBytes ?: 0L, target.mediaIndex, items.size)
+        val media = items.getOrNull(target.mediaIndex)
+        if (mediaSort != null) fastScrollBubbleLabel(mediaSort, target.dateLabel,
+            media?.sizeBytes ?: 0L, media?.name.orEmpty(), target.mediaIndex, items.size)
+        else fastScrollBubbleLabel(sort, target.dateLabel,
+            media?.sizeBytes ?: 0L, target.mediaIndex, items.size)
     }
     TimelineFastScroller(
         fraction = shownFraction,
