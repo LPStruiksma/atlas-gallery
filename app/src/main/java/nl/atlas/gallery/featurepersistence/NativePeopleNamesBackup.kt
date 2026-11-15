@@ -19,7 +19,9 @@ data class NativePeopleNamesSnapshot(
     val cannotLink: Set<Pair<String, String>>,
     val rejected: Set<Pair<String, String>>,
     val sameUnknown: Set<Pair<String, String>>,
-    val faceDecisions: Map<String, String>
+    val faceDecisions: Map<String, String>,
+    /** One explicit person → opaque selected face UID, never a path or image. */
+    val coverOverrides: Map<String, String> = emptyMap()
 )
 
 data class NativePeopleNamesPreview(
@@ -31,7 +33,7 @@ data class NativePeopleNamesImportResult(val applied: Int, val skipped: Int)
 object NativePeopleNamesBackupCodec {
     const val MAX_BYTES = 32 * 1024 * 1024
     private const val MAX_ENTRIES = 250_000
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val DIGEST = 32
     private val magic = "ATLAS-NATIVE-PEOPLE-NAMES\n".toByteArray(Charsets.US_ASCII)
     private val face = Regex("[0-9a-f]{32}")
@@ -51,7 +53,7 @@ object NativePeopleNamesBackupCodec {
 
     fun decisionCount(s: NativePeopleNamesSnapshot): Int =
         s.confirmed.size + s.cannotLink.size + s.rejected.size +
-            s.sameUnknown.size + s.faceDecisions.size
+            s.sameUnknown.size + s.faceDecisions.size + s.coverOverrides.size
 
     fun encode(snapshot: NativePeopleNamesSnapshot): ByteArray {
         validate(snapshot)
@@ -83,6 +85,7 @@ object NativePeopleNamesBackupCodec {
             pairs(snapshot.rejected)
             pairs(snapshot.sameUnknown)
             map(snapshot.faceDecisions)
+            map(snapshot.coverOverrides)
         }
         val body = output.toByteArray()
         require(body.size <= MAX_BYTES - DIGEST) { "Names backup is too large" }
@@ -104,7 +107,8 @@ object NativePeopleNamesBackupCodec {
                 val header = ByteArray(magic.size)
                 reader.readFully(header)
                 require(header.contentEquals(magic)) { "Not an ATLAS native names backup" }
-                require(reader.readInt() == VERSION) {
+                val version = reader.readInt()
+                require(version == 1 || version == VERSION) {
                     "Unsupported names backup version; nothing was imported"
                 }
                 var total = 0
@@ -136,7 +140,7 @@ object NativePeopleNamesBackupCodec {
                     }
                 }
                 NativePeopleNamesSnapshot(map(), set(), map(), pairs(), pairs(),
-                    pairs(), map()).also {
+                    pairs(), map(), if (version >= 2) map() else emptyMap()).also {
                     require(reader.available() == 0) { "Trailing names backup payload" }
                 }
             }
@@ -173,6 +177,8 @@ object NativePeopleNamesBackupCodec {
             faceId(a); faceId(b)
             require(a < b) { "Unordered same-person pair" }
         }
+        s.coverOverrides.forEach { (person, face) -> personKey(person); faceId(face) }
+        require(s.coverOverrides.keys.all { it in s.names }) { "Cover person has no name" }
         s.faceDecisions.forEach { (face, decision) ->
             faceId(face)
             require(decision == "LATER" || decision == "NOT_A_FACE") {
