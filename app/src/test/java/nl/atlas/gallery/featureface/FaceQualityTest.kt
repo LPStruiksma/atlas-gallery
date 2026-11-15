@@ -38,6 +38,12 @@ class FaceQualityTest {
     @Test fun frontalLandmarksBeatAsymmetricProfile() {
         assertTrue(score().score > score(face = face(noseX = 92f)).score)
     }
+    @Test fun edgeTruncationReducesScore() {
+        val centered = face()
+        val cut = YuNetFace(0f, 0f, 160f, 160f, 0.99f, centered.landmarks)
+        assertTrue(score(face = centered).score > score(face = cut).score)
+    }
+
     @Test fun smallFaceIsFlaggedAndPenalized() {
         val small = score(face = face(shortEdge = 64f))
         assertTrue(small.belowSizeFloor)
