@@ -49,6 +49,9 @@ import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNameMatches
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 
@@ -109,6 +112,8 @@ fun PeopleHomeScreen(
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
+    var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
+    var searchScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
     // This remembers only a generic layout choice, never a private person name.
     var profileOrder by remember { mutableStateOf(ReviewedPeopleOrder.AS_PROVIDED) }
     val orderedProfiles = remember(state.profiles, profileOrder) {
@@ -146,8 +151,17 @@ fun PeopleHomeScreen(
         }
     }
     // Both sources retain their own click contract and identity type.
-    val tiles = orderedProfiles.map { PeopleGridTile.Imported(it) } +
-        nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles
+    val tiles = (orderedProfiles.map { PeopleGridTile.Imported(it) } +
+        nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles).filter { tile ->
+        if (searchText.isBlank() || searchScope == AtlasSearchScope.LIBRARY) true
+        else when (tile) {
+            is PeopleGridTile.Imported -> tile.profile.name.isNotBlank() &&
+                scopedNameMatches(tile.profile.name, searchText)
+            is PeopleGridTile.Native -> tile.tile.name.isNotBlank() &&
+                scopedNameMatches(tile.tile.name, searchText)
+            is PeopleGridTile.Unnamed -> false
+        }
+    }
     val scan = peopleScanControls(discovery, actions, onStartDiscovery,
         onPauseDiscovery, onResumeDiscovery, onOpenReview)
     val overflow = buildList {
@@ -182,7 +196,9 @@ fun PeopleHomeScreen(
         AtlasGalleryHeader(
             title = "People",
             menuItems = overflow,
-            onOpenLibraryStatus = onOpenLibraryStatus
+            onOpenLibraryStatus = onOpenLibraryStatus,
+            actions = { AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                onScopeChange = { searchScope = it }) }
         )
         PeopleScanProgress(discovery)
         if (tiles.isEmpty()) {
