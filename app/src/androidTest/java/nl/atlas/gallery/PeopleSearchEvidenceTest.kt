@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -116,7 +117,7 @@ class PeopleSearchAppEvidenceTest {
         waitFor(compose, hasTestTag("atlas-settings-screen"))
         compose.onNodeWithTag("atlas-people-numbers-open").assertExists()
         compose.onNodeWithTag("atlas-people-import-v4").assertDoesNotExist()
-        compose.onNodeWithTag("atlas-settings-advanced").performClick()
+        compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
         listOf("atlas-people-import-v4", "atlas-people-link-v4",
             "atlas-settings-diagnostics").forEach {
             compose.onNodeWithTag(it).assertExists()
