@@ -2854,6 +2854,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectedAlbum != null && !busy &&
                 !sortPending && !albumSelectionPending
             // Albums supplies its own photographic heading; other routes share one shell.
+            val albumDetailOpen = photosControls && album != null && albumReturnToAlbums
             val galleryHeader: @Composable () -> Unit = {
                 AtlasGalleryHeader(
                     title = when {
@@ -2865,7 +2866,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         tab == 3 -> "Search"
                         else -> "Photos"
                     },
-                    subtitle = if (photosControls && !settingsOpen && !statusOpen)
+                    subtitle = if (albumDetailOpen)
+                        NumberFormat.getIntegerInstance().format(visible.size) +
+                            if (visible.size == 1) " item" else " items"
+                    else if (photosControls && !settingsOpen && !statusOpen)
                         photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
                     else null,
                     onBack = when {
@@ -2910,8 +2914,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
             // #514/#506: on the Photos grid the header is drawn over the grid and
             // scrolls away with it (Samsung); the grid then uses the full height.
-            val headerScrollsWithGrid = photosControls && timelineEnabled && !originalProportions &&
-                !settingsOpen && !statusOpen
+            val headerScrollsWithGrid = photosControls && !originalProportions &&
+                !settingsOpen && !statusOpen && (timelineEnabled || albumDetailOpen)
             // #644: Search is one field with its own ⋮ (Samsung), no title bar.
             val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
