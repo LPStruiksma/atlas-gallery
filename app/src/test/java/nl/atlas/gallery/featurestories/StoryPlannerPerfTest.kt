@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featurestories
 
-import java.lang.management.ManagementFactory
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -250,15 +249,31 @@ class StoryPlannerPerfTest {
         val cpu: Long?, val alloc: Long?, val heapDelta: Long)
 
     private fun measure(run: () -> StoryDeck): Measure {
-        val mx = ManagementFactory.getThreadMXBean()
-        val allocBean = mx as? com.sun.management.ThreadMXBean
-        val thread = Thread.currentThread().id
-        fun cpu(): Long? = if (mx.isCurrentThreadCpuTimeSupported &&
-            mx.isThreadCpuTimeEnabled) mx.currentThreadCpuTime.takeIf { it >= 0 } else null
-        fun allocated(): Long? =
-            if (allocBean?.isThreadAllocatedMemorySupported == true &&
-                allocBean.isThreadAllocatedMemoryEnabled)
-                allocBean.getThreadAllocatedBytes(thread).takeIf { it >= 0 } else null
+        // Android's boot classpath excludes java.lang.management and com.sun.management.
+        // Reflectively probe optional desktop-JVM counters instead of importing them.
+        val mx: Any? = runCatching {
+            val factory = Class.forName("java.lang.management.ManagementFactory")
+            factory.getMethod("getThreadMXBean").invoke(null)
+        }.getOrNull()
+        fun metric(method: String, vararg args: Any): Any? = runCatching {
+            val bean = mx ?: return@runCatching null
+            val types = args.map { when (it) {
+                is Long -> java.lang.Long.TYPE
+                else -> error("Unsupported management argument")
+            } }.toTypedArray()
+            bean.javaClass.getMethod(method, *types).invoke(bean, *args)
+        }.getOrNull()
+        fun cpu(): Long? {
+            if (metric("isCurrentThreadCpuTimeSupported") != true ||
+                metric("isThreadCpuTimeEnabled") != true) return null
+            return (metric("getCurrentThreadCpuTime") as? Long)?.takeIf { it >= 0L }
+        }
+        fun allocated(): Long? {
+            if (metric("isThreadAllocatedMemorySupported") != true ||
+                metric("isThreadAllocatedMemoryEnabled") != true) return null
+            return (metric("getThreadAllocatedBytes", Thread.currentThread().id) as? Long)
+                ?.takeIf { it >= 0L }
+        }
         fun heap(): Long = Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }
         val c0 = cpu(); val a0 = allocated(); val h0 = heap()
         val t0 = System.nanoTime()
