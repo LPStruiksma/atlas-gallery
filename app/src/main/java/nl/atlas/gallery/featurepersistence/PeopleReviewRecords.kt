@@ -30,7 +30,10 @@ data class StoredPeopleReview(
 data class StoredPersonSummary(
     val name: String,
     val faceCount: Int,
-    val coverFaceUid: String
+    val coverFaceUid: String,
+    val mediaCount: Int = 0,
+    val firstAppearanceMs: Long? = null,
+    val mostRecentAppearanceMs: Long? = null
 )
 
 /**
