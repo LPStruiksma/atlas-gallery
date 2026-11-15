@@ -3263,6 +3263,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             hidden = hiddenAlbums,
                             onToggle = ::toggleHiddenAlbum,
                             onClose = { hideAlbumsOpen = false },
+                            onSearchWholeLibrary = { hideAlbumsOpen = false; tab = 3 },
                             coverRenderer = { record, modifier ->
                                 MediaPreview(record, modifier, ContentScale.Crop, 512)
                             }
@@ -3494,6 +3495,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 catalogueEpoch = publishedGallery.epoch,
                                 onBack = { nativePersonAlbum = null },
                                 onOpen = { items, record -> openViewer(items, record.uri) },
+                                facetPeople = people,
+                                onSearchWholeLibrary = { nativePersonAlbum = null; tab = 3 },
                                 // #551: a merge or first name follows the surviving person.
                                 onRetarget = { nativePersonAlbum = it }
                             )
@@ -3503,7 +3506,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 host = discoveryHost,
                                 people = discovery.status?.people,
                                 onBack = { hiddenPeopleOpen = false },
-                                onOpen = { nativePersonAlbum = it }
+                                onOpen = { nativePersonAlbum = it },
+                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 }
                             )
                         } else if (people.isNotEmpty() && permittedCovers == null) {
                             Text("Matching your reviewed People to accessible photos…",
