@@ -9,7 +9,11 @@ data class PeopleSortChoice(val key: PeopleSortKey = PeopleSortKey.MEDIA_COUNT,
 data class PeopleSortStats(val mediaCount: Int, val firstMs: Long?, val recentMs: Long?) {
     init { require(mediaCount >= 0) }
 }
-data class PeopleSortEntry(val id: Int, val name: String, val stats: PeopleSortStats)
+data class PeopleSortEntry(
+    val id: Int, val name: String, val stats: PeopleSortStats,
+    /** Transient source-qualified identity; never saved in sort preferences. */
+    val randomKey: String = id.toString()
+)
 
 /**
  * No media reads here. Indexed database / reviewed V4 projection supply the statistics.
@@ -26,18 +30,26 @@ fun orderPeopleEntries(
         else -> null
     }
     val randomOrder = if (choice.key == PeopleSortKey.RANDOM) {
-        // The permutation is derived from stable (source, person) identifiers,
-        // not visible list positions. A V4/native publication changes neither
-        // the existing identities nor the random order of unrelated people.
-        entries.map { it.id }.sorted().shuffled(kotlin.random.Random(seed))
-            .withIndex().associate { it.value to it.index }
+        // Stable per-identity ranks, not a shuffled list: inserting a new
+        // identity cannot change the relative order of existing identities.
+        // Source-qualified keys are transient and are not stored or logged.
+        entries.associate { entry ->
+            val rank = ("$seed:" + entry.randomKey).fold(0x811c9dc5.toInt()) { hash, char ->
+                (hash xor char.code) * 16777619
+            }
+            entry.id to (rank.toLong() and 0xffffffffL)
+        }
     } else emptyMap()
     return entries.sortedWith(Comparator { a, b ->
         val named = a.name.isNotBlank().compareTo(b.name.isNotBlank())
         if (named != 0) return@Comparator -named
         if (choice.key == PeopleSortKey.RANDOM) {
-            val order = (randomOrder[a.id] ?: 0).compareTo(randomOrder[b.id] ?: 0)
-            return@Comparator if (choice.descending) -order else order
+            val order = (randomOrder[a.id] ?: 0L).compareTo(randomOrder[b.id] ?: 0L)
+            if (order != 0) return@Comparator if (choice.descending) -order else order
+            // Hash collisions do not depend on where a tile was inserted.
+            val tie = a.randomKey.compareTo(b.randomKey)
+            if (tie != 0) return@Comparator if (choice.descending) -tie else tie
+            return@Comparator a.id.compareTo(b.id)
         }
         if (choice.key == PeopleSortKey.NAME) {
             val order = a.name.lowercase(Locale.ROOT).compareTo(b.name.lowercase(Locale.ROOT))
