@@ -6,7 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SceneFacetGateTest {
-    private data class Scene(val id: String, val frameMs: Long?, val score: Float) : SceneFacetGate.HasMediaKey {\n        override val mediaKey: String get() = id\n    }
+    private data class Scene(val id: String, val frameMs: Long?, val score: Float) : SceneFacetGate.HasMediaKey {
+        override val mediaKey: String get() = id
+    }
     private fun scene(id: String, frameMs: Long? = null, score: Float = 0.9f) =
         Scene(id, frameMs, score)
 
