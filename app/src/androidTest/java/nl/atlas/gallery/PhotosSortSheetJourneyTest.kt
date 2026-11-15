@@ -92,8 +92,12 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
     }
 
     private fun back() {
-        // Capture both sides of the Back handoff without changing the gesture,
-        // dismissing system overlays, or weakening the sheet assertion.
+        // #82: on CI a launcher ANR dialog ("Application Not Responding:
+        // com.android.launcher3") took window focus just before the final Back,
+        // consumed it, and the sheet correctly stayed open (PR #115 shard 0,
+        // ATLAS_SORT_BACK log). Only press Back once ATLAS holds focus; the
+        // gesture and the sheet assertion are unchanged.
+        awaitAppFocus()
         val before = describeFocus()
         android.util.Log.i("ATLAS_SORT_BACK", "before Android Back: $before")
         val accepted = try {
@@ -103,6 +107,15 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
             android.util.Log.i("ATLAS_SORT_BACK", "after Android Back: ${describeFocus()}")
         }
         assertTrue("Android Back action accepted (before: $before)", accepted)
+    }
+
+    private fun awaitAppFocus() {
+        val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
+        while (!APP_FOCUS.containsMatchIn(describeFocus()) &&
+            android.os.SystemClock.uptimeMillis() < deadline) {
+            clearSystemAnrDialogs(attempts = 1)
+            Thread.sleep(250L)
+        }
     }
 
     private fun SortOrder.tag() = "atlas-photos-sort-${name.lowercase()}"
@@ -130,3 +143,6 @@ private class PhotosSortNightModeRule(private val dark: Boolean) : TestRule {
             .use { it.readBytes().decodeToString() }
     }
 }
+
+/** `dumpsys window` focus line naming an ATLAS window (see [describeFocus]). */
+private val APP_FOCUS = Regex("""mCurrentFocus=Window\{\S+ u\d+ nl\.atlas\.gallery/""")
