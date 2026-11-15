@@ -3049,7 +3049,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         )
                     }
                     tab == 0 -> {
-                        LaunchedEffect(publishedGallery.epoch, visible) {
+                        LaunchedEffect(publishedGallery.epoch, CatalogSourceKey(visible)) {
                             if (visible.isNotEmpty()) {
                                 withFrameNanos { }
                                 PerformanceSession.firstGridFrame()
