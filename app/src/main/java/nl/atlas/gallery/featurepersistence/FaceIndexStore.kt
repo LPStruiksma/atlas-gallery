@@ -581,7 +581,8 @@ class FaceIndexStore(
 
     /**
      * COVER-3: user-authored profile face selection. The source fingerprint
-     * survives a face-UID/model replacement, unlike a foreign key to embeddings.
+     * survives a face-UID/model/detector replacement when the source revision,
+     * ordinal, frame and exact face box still match, unlike a foreign key to embeddings.
      * Never expose these media keys in a backup; only the opaque face UID.
      * A selected face is displayed solely after live grant, model, source and
      * CURRENT person-membership checks.
@@ -596,7 +597,7 @@ class FaceIndexStore(
             frame_ms INTEGER)""")
     }
 
-    /** Exact source fingerprint plus live confirmed OR published matched membership. */
+    /** Exact source/face geometry plus current confirmed or published matched membership. */
     private fun resolvedPersonCover(db: SQLiteDatabase, version: String, person: String): String? =
         db.rawQuery("""SELECT f.face_uid FROM people_cover_override o
             JOIN faces f ON f.media_key=o.media_key AND f.ordinal=o.ordinal
@@ -604,7 +605,7 @@ class FaceIndexStore(
                 AND ABS(f.r-o.r)<0.000001 AND ABS(f.b-o.b)<0.000001
                 AND f.frame_ms IS o.frame_ms
             JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
-                AND c.revision=o.source_revision AND c.detector_version=o.detector_version
+                AND c.revision=o.source_revision
             JOIN embeddings e ON e.face_uid=f.face_uid AND e.model_version=?
                 AND e.source_revision=c.revision
             WHERE o.person_key=? AND EXISTS(
@@ -660,11 +661,11 @@ class FaceIndexStore(
         for (person in people) {
             val uid = resolvedPersonCover(db, version, person)
             if (uid == null) {
-                // Retain the user choice while an unchanged source awaits re-embedding.
+                // Retain the choice during a same-source detector/model rescan;
+                // only matching geometry and current membership can restore it.
                 val sourcePending = db.rawQuery("""SELECT 1 FROM people_cover_override o
                     JOIN catalog c ON c.media_key=o.media_key
                         AND c.revision=o.source_revision
-                        AND c.detector_version=o.detector_version
                     WHERE o.person_key=? AND c.state IN ('queued','running') LIMIT 1""",
                     arrayOf(person)).use { it.moveToFirst() }
                 if (pruneMissing && !sourcePending)
@@ -1060,15 +1061,15 @@ class FaceIndexStore(
                 arrayOf(detectorVersion, detectorVersion))
             db.execSQL("""DELETE FROM faces WHERE media_key IN
                 (SELECT media_key FROM catalog WHERE state!='processed')""")
-            // Do not re-attach to deleted, revised or re-detected photos.
+            // A new detector may recover the exact same face geometry and person;
+            // a deleted or revised source must never inherit the choice.
             db.execSQL("""DELETE FROM people_model_carry WHERE NOT EXISTS
                 (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
                     AND c.revision=people_model_carry.revision
                     AND c.detector_version=people_model_carry.detector_version)""")
             db.execSQL("""DELETE FROM people_cover_override WHERE NOT EXISTS
                 (SELECT 1 FROM catalog c WHERE c.media_key=people_cover_override.media_key
-                    AND c.revision=people_cover_override.source_revision
-                    AND c.detector_version=people_cover_override.detector_version)""")
+                    AND c.revision=people_cover_override.source_revision)""")
             val pruned = modelChanged || totalChanges(db) != beforePrune
             // Even identical media may have an in-flight old-epoch lease.
             db.execSQL("""UPDATE catalog SET state='queued',
