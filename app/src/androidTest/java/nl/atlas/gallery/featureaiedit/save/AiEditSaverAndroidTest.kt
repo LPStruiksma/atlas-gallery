@@ -71,9 +71,10 @@ class AiEditSaverAndroidTest {
     private fun exif(uri: Uri): ExifInterface =
         resolver.openInputStream(uri)!!.use { ExifInterface(it) }
 
-    private fun value(uri: Uri, field: String): String = resolver.query(uri,
-        arrayOf(field), null, null, null)!!.use {
-        assertTrue(it.moveToFirst())
+    private fun value(uri: Uri, field: String): String = resolver.query(
+        MediaStore.setIncludePending(uri), arrayOf(field), null, null, null
+    )!!.use {
+        assertTrue("MediaStore row must remain queryable after recovery: $uri", it.moveToFirst())
         it.getString(0)
     }
 
