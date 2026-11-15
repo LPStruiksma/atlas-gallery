@@ -116,7 +116,8 @@ private const val MB = 1024L * 1024L
  * is 20% of the app heap class, which on a phone with a 256 MB heap holds
  * only about two screens of 400 px tiles. Grid tiles are GPU-backed hardware
  * bitmaps, so a high-RAM phone can afford RAM/48 (12 GB → 256 MB). Low-RAM
- * devices keep Coil's default.
+ * devices keep Coil's default. A small app heap caps the cache at half its
+ * capacity even on high-RAM devices.
  */
 internal fun thumbnailMemoryCacheBytes(totalRamBytes: Long, heapClassMb: Int, lowRam: Boolean): Long {
     val coilDefault = (heapClassMb.coerceAtLeast(16) * MB * 0.20).toLong()
