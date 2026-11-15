@@ -67,11 +67,17 @@ internal fun PhotoDnaReviewScreen(
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Original + AI versions (${family.editedUris.size})",
                         style = MaterialTheme.typography.titleSmall)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LazyRow(modifier = Modifier.testTag("photo-dna-provenance-tiles"),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(listOf(family.originalUri) + family.editedUris) { uri ->
                             Column(Modifier.width(144.dp)) {
                                 Box(Modifier.fillMaxWidth().height(112.dp)
-                                    .clickable { onOpenProvenancePhoto(uri) }) {
+                                    .clickable { onOpenProvenancePhoto(uri) }
+                                    .testTag(if (uri == family.originalUri) {
+                                        "photo-dna-provenance-original"
+                                    } else {
+                                        "photo-dna-provenance-edit-${uri.substringAfterLast('/')}"
+                                    })) {
                                     provenanceThumbnail(uri, Modifier.fillMaxSize())
                                 }
                                 Text(if (uri == family.originalUri) "Original" else "AI edit",
