@@ -480,7 +480,8 @@ private fun UnknownIdentityGroupCard(
             }
         }
 
-        TextButton(enabled = enabled, onClick = { searching = !searching }) {
+        TextButton(enabled = enabled, onClick = { searching = !searching },
+            modifier = Modifier.testTag("${destinationTagPrefix}-toggle-search")) {
             Text(if (searching) "Hide person search" else "Find a person")
         }
         if (searching) {
