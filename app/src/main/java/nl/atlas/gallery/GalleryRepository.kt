@@ -414,9 +414,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 if (!knownMutation ||
                     flags and ContentResolver.NOTIFY_DELETE != 0)
                     pendingChangedItems[uri.toString()] = hint
-            } else if (!knownMutation ||
-                flags and ContentResolver.NOTIFY_DELETE != 0) {
-                // A collection-level delete cannot identify which ID vanished.
+            } else {
+                // A collection callback does not name the changed row. Even
+                // NOTIFY_INSERT is not proof that a generation-filter query
+                // will discover it on every provider: use the full scan.
                 pendingUnknownChange = true
             }
         }
@@ -424,7 +425,14 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         incrementalJob?.cancel()
         incrementalJob = viewModelScope.launch {
             delay(120)
-            if (clearing || mediaAccessRevoked || _busy.value) return@launch
+            if (clearing || mediaAccessRevoked) return@launch
+            if (_busy.value) {
+                // Do not discard a callback while a full scan is in flight.
+                // Queue exactly one authoritative follow-up via the existing
+                // refresh gate; its finally block starts the queued scan.
+                refresh()
+                return@launch
+            }
             if (pendingUnknownChange) {
                 refresh() // no safely identifiable delta: authoritative scan
                 return@launch
@@ -769,6 +777,11 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 _busy.value = false
                 activeScan.finish(ticket)
                 val newerRequestQueued = refreshQueue.finish(ticket)
+                // A scan can finish before the 120ms observer debounce fires.
+                // The just-completed result is then stale, even if no new
+                // request was queued when this scan began. Let the debounced
+                // observer handle the next delta after busy clears; it will
+                // use the checkpoint only if the full scan was publishable.
                 // The current job was canceled on grant supersession, but
                 // the owning ViewModel scope is still alive and MUST launch
                 // the latest queued scan. Never restart after onCleared().
