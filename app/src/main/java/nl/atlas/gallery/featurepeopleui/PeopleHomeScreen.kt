@@ -134,7 +134,8 @@ fun PeopleHomeScreen(
             .map { entry ->
                 val cover = currentNative?.people?.get(entry.person)?.coverFaceUid
                     ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
-                NativePersonTile(entry.person, entry.name, entry.faceCount, cover)
+                NativePersonTile(entry.person, entry.name,
+                    currentNative?.people?.get(entry.person)?.faceCount ?: 0, cover)
             }
     }
     // #579: unnamed groups of 3+ faces follow the named people, largest
