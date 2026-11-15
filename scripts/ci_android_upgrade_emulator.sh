@@ -16,14 +16,14 @@ capture_albums_grid() {
   local revision="$1" mode="$2" original capture night
   [[ "$revision" == "before" || "$revision" == "after" ]] || return 2
   [[ "$mode" == "light" || "$mode" == "dark" ]] || return 2
-  original="$(adb shell cmd uimode night | tr -d '\\r' | sed -n 's/^Night mode: //p')"
+  original="$(adb shell cmd uimode night | tr -d '\r' | sed -n 's/^Night mode: //p')"
   night=no
   [[ "$mode" == "dark" ]] && night=yes
   adb shell cmd uimode night "$night" >/dev/null
   capture="/tmp/atlas-albums-$revision-$mode.txt"
-  adb shell am instrument -w -r -e atlasAlbumsRevision "$revision" \\
-    -e atlasAlbumsTheme "$mode" \\
-    -e class "nl.atlas.gallery.AlbumsGridEvidenceTest#threeColumnsAndPinnedAlbumsScreenshot" \\
+  adb shell am instrument -w -r -e atlasAlbumsRevision "$revision" \
+    -e atlasAlbumsTheme "$mode" \
+    -e class "nl.atlas.gallery.AlbumsGridEvidenceTest#threeColumnsAndPinnedAlbumsScreenshot" \
     "$RUNNER" > "$capture" 2>&1 || true
   cat "$capture"
   if [[ "$original" == "yes" || "$original" == "no" || "$original" == "auto" ]]; then
