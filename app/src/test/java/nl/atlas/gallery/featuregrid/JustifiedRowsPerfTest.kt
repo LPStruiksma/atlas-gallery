@@ -2,7 +2,6 @@ package nl.atlas.gallery.featuregrid
 
 import org.junit.Assert.*
 import org.junit.Test
-import java.lang.management.ManagementFactory
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -140,22 +139,17 @@ class JustifiedRowsPerfTest {
         val after = planRatioRows(items, options)
         assertIdentical(before, after)
 
-        val bean = ManagementFactory.getThreadMXBean()
-        val allocated = bean as? com.sun.management.ThreadMXBean
-        if (allocated != null && allocated.isThreadAllocatedMemorySupported &&
-            !allocated.isThreadAllocatedMemoryEnabled) {
-            allocated.isThreadAllocatedMemoryEnabled = true
-        }
-        val threadId = Thread.currentThread().id
-        fun measure(plan: () -> RatioLayout): Pair<Long, Long?> {
-            val startBytes = if (allocated?.isThreadAllocatedMemoryEnabled == true)
-                allocated.getThreadAllocatedBytes(threadId) else -1L
+        // Android JVM test compile classpath lacks java.lang.management and
+        // com.sun.management. Heap occupancy is a noisy proxy, NOT allocated bytes.
+        fun measure(plan: () -> RatioLayout): Pair<Long, Long> {
+            val runtime = Runtime.getRuntime()
+            val before = runtime.totalMemory() - runtime.freeMemory()
             val start = System.nanoTime()
             val layout = plan()
             val nanos = System.nanoTime() - start
             assertEquals(items.size, layout.mediaCount)
-            val endBytes = if (startBytes >= 0L) allocated!!.getThreadAllocatedBytes(threadId) else -1L
-            return nanos to (if (startBytes >= 0L && endBytes >= 0L) endBytes - startBytes else null)
+            val after = runtime.totalMemory() - runtime.freeMemory()
+            return nanos to (after - before)
         }
         // Alternating order controls JIT and GC drift; no hard real-time threshold in CI.
         repeat(3) { measure { reference(items, options) }; measure { planRatioRows(items, options) } }
@@ -172,8 +166,7 @@ class JustifiedRowsPerfTest {
         }
         fun median(values: List<Long>) = values.sorted()[values.size / 2]
         println("PERF19 250k synthetic JVM n=7 baseline median_ns=${median(baseline.map { it.first })} candidate median_ns=${median(candidate.map { it.first })}")
-        val beforeBytes = baseline.mapNotNull { it.second }
-        val afterBytes = candidate.mapNotNull { it.second }
-        println("PERF19 allocated_bytes baseline=${if (beforeBytes.size == 7) median(beforeBytes).toString() else "unavailable"} candidate=${if (afterBytes.size == 7) median(afterBytes).toString() else "unavailable"}")
+        println("PERF19 heap_delta_bytes_proxy baseline=${median(baseline.map { it.second })} candidate=${median(candidate.map { it.second })}")
+        println("PERF19 allocated_bytes=unmeasured (Android JVM test source set has no ThreadMXBean)")
     }
 }
