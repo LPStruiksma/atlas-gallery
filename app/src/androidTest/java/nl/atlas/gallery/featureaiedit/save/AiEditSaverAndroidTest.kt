@@ -126,26 +126,69 @@ class AiEditSaverAndroidTest {
         assertNull(store.get(uri.toString()))
     }
 
-    @Test fun interruptedSaveJournalIsRecoveredWithoutTouchingOriginal() {
+    @Test fun interruptedSaveBeforeRecordInsertedReclaimsOnlyTokenNamedRow() {
         val original = image("original-" + UUID.randomUUID() + ".jpg", Color.RED)
         val before = bytes(original)
-        val fileName = "interrupted_AI_1.jpg"
         val volume = value(original, MediaStore.Images.Media.VOLUME_NAME)
+        val finalName = "interrupted-" + UUID.randomUUID() + "_AI_1.jpg"
         val token = UUID.randomUUID().toString()
-        store.registerIntent(token, volume, folder, fileName)
-        val pending = requireNotNull(resolver.insert(MediaStore.Images.Media.getContentUri(volume),
-            ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+        val temporaryName = AiEditNaming.pendingName(token, AiEditImageFormat.JPEG)
+        store.registerIntent(token, volume, folder, temporaryName)
+        val collection = MediaStore.Images.Media.getContentUri(volume)
+        fun insertPending(name: String): Uri =
+            requireNotNull(resolver.insert(collection, ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, folder)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            })).also { created += it }
+
+        // An unrelated app-owned row occupies the desired *final* filename.
+        // Crash after insert but before recordInserted: only the token name is
+        // durable, not the inserted URI. Recovery must delete our row alone.
+        val unrelated = insertPending(finalName)
+        val interrupted = insertPending(temporaryName)
+        AiEditSaver(context, store).recoverInterruptedSaves()
+
+        assertNull("Interrupted token-named row must be reclaimed",
+            resolver.query(MediaStore.setIncludePending(interrupted),
+                arrayOf(MediaStore.Images.Media._ID), null, null, null)?.use {
+                if (it.moveToFirst()) it.getLong(0) else null
+            })
+        assertEquals("Unrelated app-owned pending image must survive", "1",
+            resolver.query(MediaStore.setIncludePending(unrelated),
+                arrayOf(MediaStore.Images.Media.IS_PENDING), null, null, null)!!.use {
+                assertTrue(it.moveToFirst())
+                it.getString(0)
+            })
+        assertArrayEquals(before, bytes(original))
+        assertFalse(store.pending().any { it.token == token })
+    }
+
+    @Test fun preInsertCrashCannotDeleteLegacySameNamePendingImage() {
+        val original = image("legacy-original-" + UUID.randomUUID() + ".jpg", Color.RED)
+        val volume = value(original, MediaStore.Images.Media.VOLUME_NAME)
+        val filename = "unrelated-" + UUID.randomUUID() + "_AI_1.jpg"
+        val token = UUID.randomUUID().toString()
+        // A legacy intent records only an ordinary output name. No inserted
+        // URI is durable, so there is no proof a same-name row belongs to it.
+        store.registerIntent(token, volume, folder, filename)
+        val unrelated = requireNotNull(resolver.insert(
+            MediaStore.Images.Media.getContentUri(volume), ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                 put(MediaStore.Images.Media.RELATIVE_PATH, folder)
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }))
-        created += pending
-        // Intentionally no recordInserted: simulate death immediately after insert.
+        created += unrelated
         AiEditSaver(context, store).recoverInterruptedSaves()
-        assertNull(resolver.query(pending, arrayOf(MediaStore.Images.Media._ID),
-            null, null, null)?.use { if (it.moveToFirst()) it.getLong(0) else null })
-        assertArrayEquals(before, bytes(original))
+        assertEquals("A name-only legacy journal must not delete unrelated media", "1",
+            resolver.query(MediaStore.setIncludePending(unrelated),
+                arrayOf(MediaStore.Images.Media.IS_PENDING), null, null, null)!!.use {
+                assertTrue(it.moveToFirst())
+                it.getString(0)
+            })
+        assertFalse(store.pending().any { it.token == token })
     }
 
 
