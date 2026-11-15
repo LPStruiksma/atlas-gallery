@@ -2525,7 +2525,13 @@ internal fun PeopleReviewRoute(
         currentPermissionEpoch = liveEpoch,
         currentSourceGeneration = current?.queue?.sourceGeneration,
         liveReviewStateAtAction = {
-            page?.takeIf { host.scopeCurrent(it.queue.permissionEpoch) }?.let {
+            // A tap captured before a same-epoch batch update is stale even
+            // before Compose receives the change signal and recomposes.
+            page?.takeIf {
+                loadedVersion == host.changes.value &&
+                    it.queue.permissionEpoch == liveEpoch &&
+                    host.scopeCurrent(it.queue.permissionEpoch)
+            }?.let {
                 NativeReviewActionSnapshot(
                     NativeReviewScope(it.queue.permissionEpoch, it.queue.sourceGeneration),
                     it.queue)
