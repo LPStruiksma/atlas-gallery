@@ -22,9 +22,11 @@ internal fun aiEditProvenanceGroups(
         it.editedUri != it.originalUri &&
             it.editedUri in visibleUris && it.originalUri in visibleUris
     }
-    val editedKeys = edits.mapTo(HashSet()) { it.editedUri }
+    // An original may itself be edited, or part of a duplicate/cyclic record.
+    // Neither should be inferred as a root of a safe provenance family.
+    val editedKeys = rows.mapTo(HashSet()) { it.editedUri }
     return edits.groupBy { it.originalUri }
-        .filterKeys { it !in editedKeys } // never infer an original from a cycle
+        .filterKeys { it !in editedKeys }
         .map { (original, children) ->
             AiEditProvenanceGroup(original, children.map { it.editedUri }.distinct().sorted())
         }.filter { it.editedUris.isNotEmpty() }
