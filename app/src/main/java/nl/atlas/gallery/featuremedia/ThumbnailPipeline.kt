@@ -121,8 +121,12 @@ private const val MB = 1024L * 1024L
 internal fun thumbnailMemoryCacheBytes(totalRamBytes: Long, heapClassMb: Int, lowRam: Boolean): Long {
     val coilDefault = (heapClassMb.coerceAtLeast(16) * MB * 0.20).toLong()
     if (lowRam || totalRamBytes <= 0L) return coilDefault
+    // A large physical-RAM device may still have a small app heap.
+    // Coil's decoded software bitmaps count against this heap; do not let
+    // the cache alone exhaust it during fast multi-row grid changes.
     val byRam = (totalRamBytes / 48).coerceAtMost(256 * MB)
-    return maxOf(coilDefault, byRam)
+    val byHeap = (heapClassMb.coerceAtLeast(16) * MB) / 2
+    return maxOf(coilDefault, minOf(byRam, byHeap))
 }
 
 internal fun thumbnailMemoryCacheBytes(context: Context): Long {
