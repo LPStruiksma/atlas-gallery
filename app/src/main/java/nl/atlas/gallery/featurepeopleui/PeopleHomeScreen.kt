@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
@@ -404,10 +405,11 @@ private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
 internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? = peopleStatusLine(state)
 
 @Composable
-private fun PortraitCircle(content: @Composable () -> Unit) {
+private fun PortraitCircle(decorative: Boolean = false, content: @Composable () -> Unit) {
     Box(
         Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .then(if (decorative) Modifier.clearAndSetSemantics { } else Modifier),
         contentAlignment = Alignment.Center
     ) { content() }
 }
@@ -453,7 +455,9 @@ private fun NativeProfileTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle {
+        // The named tile speaks the person's name and media counts; portrait alt text
+        // must not be appended to its merged TalkBack description.
+        PortraitCircle(decorative = true) {
             val face = tile.face
             if (face != null) nativePortrait(face) else DefaultPortrait()
         }
@@ -489,7 +493,7 @@ private fun ProfileTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle { portrait(person) }
+        PortraitCircle(decorative = true) { portrait(person) }
         Column(horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(person.name.ifBlank { "Add name" }, modifier = Modifier.fillMaxWidth(),
