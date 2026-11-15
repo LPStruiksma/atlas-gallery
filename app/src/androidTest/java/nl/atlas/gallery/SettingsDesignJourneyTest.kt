@@ -40,6 +40,8 @@ class SettingsDesignJourneyTest {
         }
         for (dark in listOf(false, true)) {
             compose.runOnIdle { darkTheme.value = dark }
+            // Return the same scrollable tree to the expanded title.
+            compose.onNodeWithTag("atlas-settings-face-scanning").performScrollTo()
             val theme = if (dark) "dark" else "light"
             compose.onNodeWithTag("atlas-settings-screen").assertExists()
             compose.onNodeWithTag("atlas-settings-large-title").assertIsDisplayed()
@@ -65,12 +67,7 @@ class SettingsDesignJourneyTest {
             compose.waitForIdle()
             saveUiEvidence("settings-135-scrolled-$theme.png")
 
-            // Reset scroll through re-composition by recreating on next run;
-            // each theme must begin at the expanded title on an independent tree.
-            if (!dark) {
-                compose.onNodeWithTag("atlas-settings-face-scanning").performScrollTo()
-                compose.onNodeWithTag("atlas-settings-large-title").assertExists()
-            }
+            // The next iteration scrolls back to People and rechecks the title.
         }
     }
 }
