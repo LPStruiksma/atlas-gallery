@@ -69,9 +69,11 @@ class OnnxFaceEmbedder private constructor(
             bitmap.getPixels(it, 0, window.width, window.left, window.top, window.width, window.height)
         }
         SFaceAlignment.warpToRgbPlanar(pixels, window, m, input)
+        // Run SFace before scoring: inference consumes the same mutable tensor.
+        val embedding = SFaceEmbedding(run(input), SFaceModel.EMBEDDER_VERSION)
         val quality = FaceQualityScorer.score(face, bitmap.width, bitmap.height, input,
             SFaceModel.INPUT_SIZE, sourceScale)
-        SFaceEmbedding(run(input), SFaceModel.EMBEDDER_VERSION) to quality
+        embedding to quality
     }
 
     /** Embeds every face of one frame, in order; a face with degenerate landmarks maps to null. */
