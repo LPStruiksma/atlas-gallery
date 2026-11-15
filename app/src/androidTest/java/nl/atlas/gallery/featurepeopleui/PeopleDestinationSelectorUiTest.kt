@@ -237,4 +237,32 @@ class PeopleDestinationSelectorUiTest {
                 (commands.single().action as PeopleReviewAction.AssignCluster).person)
         }
     }
+    @Test fun seventyHomonymsDoNotAppearUntilQueryAndCanExpandWithoutPages() {
+        val scope = ReviewReferenceKey(Any())
+        val catalog = (1..70).map { n ->
+            NativePersonAlbum(PersonKey("synthetic-many-$n"), "Morgan",
+                listOf(face(n)), emptyList())
+        }
+        compose.setContent {
+            MaterialTheme {
+                PeopleDestinationSelector(
+                    selectionScope = scope, candidates = catalog,
+                    selectedPosition = null, onSelect = {}, enabled = true,
+                    tagPrefix = "atlas-search70",
+                    preview = { Text("Synthetic face") }
+                )
+            }
+        }
+        compose.onNodeWithTag("atlas-search70-option-1").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-search70-search").performTextInput("Morgan")
+        compose.onNodeWithTag("atlas-search70-option-1").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-5").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-6").assertDoesNotExist()
+        compose.onNodeWithText("Show more matches").performClick()
+        compose.onNodeWithTag("atlas-search70-option-6").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-10").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-11").assertDoesNotExist()
+        compose.onNodeWithText("Choice page", substring = true).assertDoesNotExist()
+    }
+
 }
