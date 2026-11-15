@@ -35,6 +35,7 @@ fun AtlasSearch(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     initialExpanded: Boolean = false,
+    persistentInline: Boolean = false,
     initialScope: AtlasSearchScope = AtlasSearchScope.THIS_SCREEN,
     selectedScope: AtlasSearchScope? = null,
     showQueryField: Boolean = true,
@@ -54,7 +55,7 @@ fun AtlasSearch(
         onScopeChange(it)
     }
     val close = {
-        expanded = false
+        expanded = persistentInline
         onQueryChange("")
         if (scope != initialScope) {
             selectScope(initialScope)
@@ -105,7 +106,9 @@ fun AtlasSearch(
         }
     }
     Column(modifier.testTag("atlas-search-shared")) {
-        if (initialExpanded) {
+        if (persistentInline) {
+            contents()
+        } else if (initialExpanded) {
             if (expanded) contents() else IconButton(
                 onClick = { expanded = true },
                 modifier = Modifier.testTag("atlas-search-expand")
