@@ -1,6 +1,8 @@
 package nl.atlas.gallery.featurepeopleui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.saveUiEvidence
 import org.junit.Rule
 import org.junit.Test
 
@@ -44,9 +47,10 @@ class UnknownFacesReviewScreenStateTest {
     @Test fun absentOrStalePageShowsUsefulReturnPathWithoutLeakingRows() {
         var displayedPage by mutableStateOf<NativeFaceReviewQueue?>(null)
         var activeEpoch by mutableStateOf("grant-A")
+        var dark by mutableStateOf(false)
         var backedOut = false
         compose.setContent {
-            MaterialTheme {
+            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
                 UnknownFacesReviewScreen(
                     queue = displayedPage,
                     currentPermissionEpoch = activeEpoch,
@@ -63,16 +67,25 @@ class UnknownFacesReviewScreenStateTest {
         compose.onNodeWithText(
             "Review is unavailable until the current photo selection and face index are confirmed."
         ).assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-pending-light.png")
 
         compose.runOnIdle { displayedPage = page("grant-A", "index-A") }
         compose.onNodeWithText(message).assertDoesNotExist()
         compose.onNodeWithText("Unknown face").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-ready-light.png")
+        compose.runOnIdle { dark = true }
+        compose.waitForIdle()
+        saveUiEvidence("people-260-ready-dark.png")
 
         // A replaced grant must suppress every row, not keep a stale thumbnail.
         compose.runOnIdle { activeEpoch = "grant-B" }
         compose.onNodeWithText(message).assertExists()
         compose.onNodeWithText("Unknown face").assertDoesNotExist()
         compose.onNodeWithTag("atlas-review-scope-pending").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-pending-dark.png")
         compose.onNodeWithText("Back to People").performClick()
         compose.runOnIdle { assertTrue(backedOut) }
     }
