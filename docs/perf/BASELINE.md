@@ -4,7 +4,7 @@ Source: [standing performance target #119](https://github.com/LPStruiksma/atlas-
 
 ## Method
 
-All metrics are **process-local, numeric-only**, bounded to 256 recent samples per metric, with nearest-rank p50/p95 and counts. No filenames, media URIs, photos, People identities, persistent logs, network telemetry or private fixtures. Missing samples appear as **Not measured**, not zero. The Android Trace sections are `atlas_activity_content` and `atlas_viewer_open`, and never contain identifiers.
+All metrics are **process-local, numeric-only**, bounded to 256 recent samples per metric, with nearest-rank p50/p95 and counts. No filenames, media URIs, photos, People identities, persistent logs, network telemetry or private fixtures. Missing samples appear as **Not measured**, not zero. The Android Trace section is `atlas_activity_content`, and contains no identifiers.
 
 Open **Settings → Advanced options → Performance** to read the latest anonymous summaries. These are observational diagnostics, not a benchmark: `firstGridFrame` currently records the next Compose frame after an authorized non-empty Photos grid is mounted; this is not a verified hardware presentation fence. The viewer statistic is filmstrip selection → first Coil preview as already defined by `ViewerTimingProbe`, not tap → full image. Any scope lacking a live production hook remains explicitly unmeasured. JVM tests prove ring-buffer and percentile math but not device frame latency.
 
