@@ -134,10 +134,6 @@ internal fun PersonPageScreen(
     val items = ui.items
     val selecting = selectedUris != null
     val title = ui.name ?: "Add name"
-    val count = items?.let { list ->
-        val videos = list.count { it.isVideo }
-        nl.atlas.gallery.featurepeopleui.personPageCount(list.size - videos, videos)
-    }
     val menu = buildList {
         add(AtlasHeaderMenuItem(if (ui.name == null) "Add name" else "Edit name",
             "atlas-person-edit-name", onClick = { onDialog(PersonPageDialog.EditName) }))
