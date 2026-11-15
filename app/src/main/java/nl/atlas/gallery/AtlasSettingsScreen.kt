@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,10 +65,14 @@ internal fun AtlasSettingsScreen(
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
     var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    // Aggregate is not Compose state; refresh the read-only report once its
+    // latest preview and heap samples have been forwarded.
+    var performanceReadVersion by remember { mutableIntStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
         if (performanceExpanded) {
             PerformanceSession.updateViewer()
             PerformanceSession.sampleHeap()
+            performanceReadVersion++
         }
     }
     val scanAction = when (scanPhase) {
@@ -119,7 +124,7 @@ internal fun AtlasSettingsScreen(
                     val metrics = listOf(
                         Triple("Cold start → cached grid", "cold_start_ms", "ms"),
                         Triple("Viewer preview", "viewer_ms", "ms"),
-                        Triple("Grid frame", "grid_frame_ms", "ms"),
+                        Triple("Grid frame (active scroll)", "grid_frame_ms", "ms"),
                         Triple("Face scan", "face_photos_min", "photos/min"),
                         Triple("Visual index", "visual_photos_min", "photos/min"),
                         Triple("Java heap / maximum", "heap_fraction", "fraction")
@@ -136,13 +141,25 @@ internal fun AtlasSettingsScreen(
                     val allMetrics = metrics + actionLabels.mapIndexed { index, title ->
                         Triple("A${index + 1} · $title", "action_a${index + 1}_ms", "ms")
                     }
-                    allMetrics.forEach { (title, metric, unit) ->
-                        val summary = performance.snapshot(metric)
+                    val measurements = remember(performanceReadVersion) {
+                        allMetrics.map { spec -> spec to performance.snapshot(spec.second) }
+                    }
+                    measurements.forEach { (spec, summary) ->
+                        val (title, metric, unit) = spec
                         val value = if (summary.count == 0) "Not measured" else
                             "p50 %.2f · p90 %.2f · p95 %.2f %s · n=%d".format(
                                 java.util.Locale.US, summary.p50, summary.p90, summary.p95, unit, summary.count)
-                        SettingsActionRow(title, "atlas-perf-$metric", value = value)
+                        SettingsMetricRow(title, "atlas-perf-$metric", value)
                     }
+                    val jank = remember(performanceReadVersion) {
+                        performance.positiveFraction("grid_frame_over_budget") to
+                            performance.snapshot("grid_frame_over_budget").count
+                    }
+                    val jankLabel = if (jank.first == null) "Not measured" else
+                        "%.1f%% over display frame budget · n=%d".format(
+                            java.util.Locale.US, jank.first!! * 100.0, jank.second)
+                    SettingsMetricRow("Grid frame budget violations",
+                        "atlas-perf-grid-jank", jankLabel)
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
@@ -218,5 +235,14 @@ private fun SettingsActionRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun SettingsMetricRow(label: String, tag: String, value: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(value, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
