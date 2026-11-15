@@ -1282,7 +1282,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Transient only: search text must not enter Android saved instance state.
     var overviewQuery by remember { mutableStateOf("") }
     var overviewScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
-    var overviewRouteKey by remember { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -1551,7 +1550,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Compose remember keys here: their structural equals() can compare
     // 150,000 MediaRecords on the UI thread after a catalogue refresh.
     val overviewRoute = "$tab:$album:$albumVolume:$personFilter:$nativePersonAlbum:$storiesOpen:$photoDnaOpen"
-    if (overviewRouteKey != overviewRoute) {
+    LaunchedEffect(overviewRoute, searchGrant) {
         overviewRouteKey = overviewRoute
         overviewQuery = ""
         overviewScope = if (tab == 3) AtlasSearchScope.LIBRARY else AtlasSearchScope.THIS_SCREEN
