@@ -46,6 +46,24 @@ class IndexedSearchSuggestionsTest {
         assertTrue(index.search("fictional" + " ".repeat(MAX_SEARCH_QUERY_CHARS)).isEmpty())
     }
 
+    @Test fun oneCharacterTokensKeepScanIdentityAndRanking() {
+        val sources = listOf(
+            person(8, "Zed Alpha"),
+            person(3, "A Zed"),
+            album("Zed Alpha", "Pictures/Zed/", "sdcard"),
+            person(8, "Duplicate identity must keep the first source"),
+            album("Unrelated", "Pictures/Other/")
+        )
+        val index = IndexedSearchSuggestions(sources)
+
+        // One-character tokens deliberately have no bigram posting and use
+        // the all-entry fallback. Keep that path under the same exact parity
+        // contract as posted queries, including mixed one/two-character terms.
+        for (query in listOf("z", "a z", "z al")) {
+            assertEquals(planLocalSearchSuggestions(sources, query), index.search(query))
+        }
+    }
+
     @Test fun benchmark250kSyntheticRowsWithEqualResults() {
         val sources = (0 until 250_000).map { i ->
             if (i % 10 == 0) album("Fictional Album ${i % 1000}", "Synthetic/$i/")
