@@ -48,9 +48,11 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
         try {
             val grant = readGalleryMediaGrant(context)
             if (!microThumbnailsAllowed(grant.images, grant.videos, grant.selected) ||
-                !MicroThumbnails.active || !ThumbnailPipeline.autoWarm ||
-                !microWarmCharging(context) || !microWarmThermalSafe(context))
+                !MicroThumbnails.active || !ThumbnailPipeline.autoWarm)
                 return@withContext Result.success()
+            // An environmental pause is not a completed first fill.
+            if (!microWarmCharging(context) || !microWarmThermalSafe(context))
+                return@withContext Result.retry()
 
             val coroutine = currentCoroutineContext()
             val providerSignal = CancellationSignal()
@@ -59,29 +61,32 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
             }
             try {
                 var gateChecks = 0
+                var pausedForPower = false
                 val gate = {
                     coroutine.ensureActive()
                     // Permission and cancellation are checked on every row,
                     // before eviction and before decoding. WorkManager owns
                     // the charging constraint; poll battery/thermal every 64
                     // checks as a second defense against constraint races.
+                    val powerReady = if (gateChecks++ % 64 != 0) true else
+                        microWarmCharging(context) && microWarmThermalSafe(context)
+                    if (!powerReady) pausedForPower = true
                     !isStopped && readGalleryMediaGrant(context) == grant &&
-                        MicroThumbnails.active && ThumbnailPipeline.autoWarm &&
-                        (gateChecks++ % 64 != 0 ||
-                            (microWarmCharging(context) && microWarmThermalSafe(context)))
+                        MicroThumbnails.active && ThumbnailPipeline.autoWarm && powerReady
                 }
                 MicroThumbnails.store?.let { store ->
                     MicroWarmMediaSource(context, grant, store).use { source ->
                         if (!source.scan(providerSignal, gate))
-                            return@withContext Result.success()
+                            return@withContext if (pausedForPower) Result.retry() else Result.success()
                         coroutine.ensureActive()
-                        if (!gate()) return@withContext Result.success()
+                        if (!gate())
+                            return@withContext if (pausedForPower) Result.retry() else Result.success()
                         MicroThumbnailWarmer.warmPaged(
                             context.contentResolver, source, gate = gate
                         )
                     }
                 }
-                Result.success()
+                if (pausedForPower) Result.retry() else Result.success()
             } finally {
                 cancelProvider?.dispose()
                 providerSignal.cancel()
