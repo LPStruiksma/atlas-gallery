@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
@@ -34,6 +35,60 @@ import org.junit.runner.RunWith
 class PeopleStatusEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+
+    /** #61: real themed Compose rendering with an explicit unplugged foreground state. */
+    @Test fun manualUnpluggedProgressAndBatteryWaitAreRenderedInBothThemes() {
+        var dark by mutableStateOf(false)
+        var showPeople by mutableStateOf(true)
+        val epoch = "synthetic-manual-61"
+        compose.setContent {
+            AtlasGalleryTheme(dark = dark) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Box(Modifier.fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        if (showPeople) {
+                            PeopleHomeScreen(
+                                state = PeopleHomeUiState(discovery = FaceDiscoveryUiState(
+                                    phase = FaceDiscoveryPhase.SCANNING,
+                                    processed = 3, eligible = 10,
+                                    observedPermissionEpoch = epoch)),
+                                currentPermissionEpoch = epoch,
+                                onOpenProfile = {}, onScanNow = {})
+                        } else {
+                            AtlasSettingsScreen(
+                                scanPhase = FaceDiscoveryPhase.BATTERY_LOW,
+                                scanStatusNote = "Battery below 30%",
+                                onPauseScan = null, onResumeScan = null,
+                                visualIndexOn = null, showPhotoDetails = false,
+                                versionName = "synthetic", onVisualIndex = {},
+                                onPeopleNumbers = {}, onPhotoDetails = {},
+                                onImportV4 = {}, onLinkV4 = {}, onDiagnostics = {},
+                                scanHasSavedOptIn = true, onScanNow = {})
+                        }
+                    }
+                }
+            }
+        }
+        for (theme in listOf(false, true)) {
+            val suffix = if (theme) "dark" else "light"
+            compose.runOnIdle { dark = theme; showPeople = true }
+            compose.waitForIdle()
+            compose.onNodeWithTag("atlas-people-progress").assertExists()
+            compose.onNodeWithTag("atlas-people-status").assertExists()
+            compose.onNodeWithTag("atlas-header-more").performClick()
+            compose.onNodeWithTag("atlas-people-scan-now").assertExists()
+            // Close overflow to leave actual progress visible in the evidence.
+            compose.onNodeWithTag("atlas-header-more").performClick()
+            saveUiEvidence("people-61-scan-now-unplugged-$suffix.png")
+
+            compose.runOnIdle { showPeople = false }
+            compose.waitForIdle()
+            compose.onNodeWithTag("atlas-settings-scan-now").assertExists()
+            assertTrue(compose.onAllNodesWithText("Battery below 30%")
+                .fetchSemanticsNodes().isNotEmpty())
+            saveUiEvidence("people-61-settings-battery-low-$suffix.png")
+        }
+    }
 
     @Test fun eachWorkerStatusIsReadableInPeopleAndSettingsLightAndDark() {
         val cases = listOf(
