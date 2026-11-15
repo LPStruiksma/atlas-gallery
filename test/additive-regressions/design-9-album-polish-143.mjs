@@ -21,7 +21,7 @@ assert.match(main, /subtitle = if \(albumDetailOpen\)/);
 assert.match(main, /header = if \(headerScrollsWithGrid\)/);
 assert.match(theme, /saveUiEvidence\("parity-24-albums-detail-\$mode\.png"\)/);
 // Keep bounded waits and the one-step zoom that still asserts actual seven-column UI.
-assert.match(albumEvidence, /compose\.waitUntil\\(120_000L\\)/);
+assert.match(albumEvidence, /compose\.waitUntil\(120_000L\)/);
 assert.match(parityEvidence, /end0 = center - Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /end1 = center \+ Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /SemanticsMatcher\.expectValue\(SemanticsProperties\.StateDescription, "7 columns"\)/);
