@@ -866,6 +866,8 @@ private fun rememberAsyncAlbumCoverPage(
 @Composable
 private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val context = LocalContext.current
+    val usageRecorder = remember(context) { UsageRecorder(context.applicationContext) }
+    var usageRecording by remember { mutableStateOf(usageRecorder.enabled()) }
     // The source list and successful grant epoch MUST be collected together.
     // Collecting two StateFlows separately can expose an obsolete album for
     // a frame after the grant-completion signal arrives ahead of its list.
