@@ -6,8 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -32,16 +34,18 @@ class AlbumsGridEvidenceTest {
         .around(fixture).around(compose)
 
     @Test fun threeColumnsAndPinnedAlbumsScreenshot() {
-        compose.waitUntil(120_000L) {
+        waitForAlbumsStage("Albums navigation") {
             compose.onAllNodes(hasTestTag("atlas-nav-albums")).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
-        compose.waitUntil(120_000L) {
-            compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 9
+        // LazyVerticalGrid exposes composed cards, not all nine synthetic folders.
+        // Check actual MediaStore inventory separately from viewport semantics.
+        waitForAlbumsStage("visible Albums grid cards (at least six)") {
+            compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 6
         }
         compose.waitForIdle()
         val nodes = compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes()
-        assertTrue("Expected six synthetic albums", nodes.size >= 6)
+        assertTrue("Expected six visible synthetic albums", nodes.size >= 6)
         val pinned = nodes.take(3).map { it.config.toString() }
         assertTrue(pinned.any { it.contains("Camera") })
         assertTrue(pinned.any { it.contains("Screenshots") })
@@ -65,15 +69,51 @@ class AlbumsGridEvidenceTest {
         compose.waitForIdle()
         saveUiEvidence("albums-sort.png")
     }
+    private fun waitForAlbumsStage(stage: String, condition: () -> Boolean) {
+        try {
+            compose.waitUntil(120_000L, condition)
+        } catch (error: ComposeTimeoutException) {
+            val nav = compose.onAllNodes(hasTestTag("atlas-nav-albums")).fetchSemanticsNodes().size
+            val cards = compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes()
+            val labels = cards.map { it.config.toString().take(160) }
+            val inventory = fixture.inventoryDiagnostic()
+            val detail = "Albums evidence stage=$stage; nav=$nav; visibleCards=${cards.size}; " +
+                "cardSemantics=$labels; MediaStore=$inventory"
+            Log.e("ATLAS_ALBUM_EVIDENCE", detail, error)
+            throw AssertionError(detail, error)
+        }
+    }
 }
 
 private class AlbumGridFixture : TestRule {
     private val inserted = mutableListOf<Uri>()
+    private var targetContext: android.content.Context? = null
+
+    fun inventoryDiagnostic(): String {
+        val target = targetContext ?: return "fixture not started"
+        val columns = arrayOf(MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.RELATIVE_PATH, MediaStore.MediaColumns.IS_PENDING)
+        return runCatching {
+            val found = mutableListOf<String>()
+            target.contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                columns, "display_name LIKE ?", arrayOf("ATLAS_FAKE_%"), null)?.use { cursor ->
+                val name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+                val folder = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
+                val pending = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.IS_PENDING)
+                while (cursor.moveToNext()) {
+                    found += "${cursor.getString(name)}@${cursor.getString(folder)}" +
+                        "(pending=${cursor.getInt(pending)})"
+                }
+            }
+            "inserted=${inserted.size}; queried=${found.size}; entries=$found"
+        }.getOrElse { "query failed: ${it.javaClass.simpleName}: ${it.message}" }
+    }
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
             override fun evaluate() {
                 val instrumentation = InstrumentationRegistry.getInstrumentation()
                 val target = instrumentation.targetContext
+                targetContext = target
                 listOf(Manifest.permission.READ_MEDIA_IMAGES,
                     Manifest.permission.READ_MEDIA_VIDEO).forEach {
                     instrumentation.uiAutomation.grantRuntimePermission(target.packageName, it)
