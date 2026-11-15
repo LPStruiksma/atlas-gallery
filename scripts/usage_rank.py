@@ -160,8 +160,7 @@ def markdown(days, inventory):
         "|---|---|---:|---:|---:|---:|---|",
     ]
     for id_, name, rate, f, l, measured, score, unit in ranking(days, inventory):
-        out.append(f"| {id_} | {name} | {rate:.2f if False else ''} | | | | |" if False else
-                   f"| {id_} | {name} | {format(rate, '.2f') if rate is not None else '—'} | {f if f is not None else '—'} | {l}{' measured' if measured else ' estimated'} | {score if score is not None else '—'} | {unit} |")
+        out.append(f"| {id_} | {name} | {format(rate, '.2f') if rate is not None else '—'} | {f if f is not None else '—'} | {l}{' measured' if measured else ' estimated'} | {score if score is not None else '—'} | {unit} |")
     out += ["", "— = not observed, not zero. L estimated is a prior, not a measurement.",
             "F bands (actions/day): <0.25=1, <1=2, <5=3, <20=4, >=20=5; "
             "design uses screen seconds/day: <1=1, <10=2, <60=3, <300=4, >=300=5.",
