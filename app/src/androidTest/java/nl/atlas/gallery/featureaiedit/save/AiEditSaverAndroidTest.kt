@@ -141,11 +141,51 @@ class AiEditSaverAndroidTest {
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }))
         created += pending
-        store.recordInserted(token, pending.toString())
+        // Intentionally no recordInserted: simulate death immediately after insert.
         AiEditSaver(context, store).recoverInterruptedSaves()
         assertNull(resolver.query(pending, arrayOf(MediaStore.Images.Media._ID),
             null, null, null)?.use { if (it.moveToFirst()) it.getLong(0) else null })
         assertArrayEquals(before, bytes(original))
+    }
+
+
+    @Test fun recoveryAfterRowDeletionAlsoRemovesDanglingLocalLineage() {
+        val token = UUID.randomUUID().toString()
+        val original = image("deleted-source-" + UUID.randomUUID() + ".jpg", Color.RED)
+        val volume = value(original, MediaStore.Images.Media.VOLUME_NAME)
+        val filename = "deleted_AI_1.jpg"
+        store.registerIntent(token, volume, folder, filename)
+        val pending = requireNotNull(resolver.insert(MediaStore.Images.Media.getContentUri(volume),
+            ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, folder)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }))
+        created += pending
+        store.recordInserted(token, pending.toString())
+        store.put(AiEditLineage(
+            editedUri = pending.toString(), originalUri = original.toString(),
+            originalRevision = "synthetic", provider = "synthetic",
+            model = "synthetic", modelVersion = "test", prompt = "synthetic",
+            settingsJson = "{}", createdAtMillis = 123L, candidateParentUri = null
+        ))
+        assertEquals(1, resolver.delete(pending, null, null))
+        AiEditSaver(context, store).recoverInterruptedSaves()
+        assertNull("No lineage may outlive a deleted interrupted row",
+            store.get(pending.toString()))
+    }
+
+    @Test fun explicitKeepGpsCopiesOnlySourceCoordinates() = runBlocking {
+        val original = image("gps-source-" + UUID.randomUUID() + ".jpg", Color.RED, withExif = true)
+        val candidate = image("gps-candidate-" + UUID.randomUUID() + ".jpg", Color.BLUE)
+        val saved = AiEditSaver(context, store).save(
+            recipe(original, candidate, keepGps = true))
+        created += saved.uri
+        assertEquals(exif(original).getAttribute(ExifInterface.TAG_GPS_LATITUDE),
+            exif(saved.uri).getAttribute(ExifInterface.TAG_GPS_LATITUDE))
+        assertEquals("ATLAS AI Edit",
+            exif(saved.uri).getAttribute(ExifInterface.TAG_SOFTWARE))
     }
 
     @Test fun uploadCopyRemovesPersonalMetadataBeforeNetworkAdaptersReceiveIt() {
