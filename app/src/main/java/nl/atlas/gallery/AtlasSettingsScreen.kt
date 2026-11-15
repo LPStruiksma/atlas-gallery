@@ -59,6 +59,10 @@ internal fun AtlasSettingsScreen(
     onShareLastCrash: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
+    usageEnabled: Boolean = false,
+    onUsageToggle: (Boolean) -> Unit = {},
+    onExportUsage: () -> Unit = {},
+    onClearUsage: () -> Unit = {},
     onScanNow: (() -> Unit)? = null,
     scanStatusNote: String? = null
 ) {
@@ -107,6 +111,12 @@ internal fun AtlasSettingsScreen(
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
                 }
+                SettingsActionRow("Record usage for tuning",
+                    "atlas-settings-usage-toggle",
+                    onClick = { onUsageToggle(!usageEnabled) },
+                    value = if (usageEnabled) "On" else "Off")
+                SettingsActionRow("Export usage", "atlas-settings-usage-export", onExportUsage)
+                SettingsActionRow("Clear usage", "atlas-settings-usage-clear", onClearUsage)
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
                     onClick = { crashExpanded = !crashExpanded },
