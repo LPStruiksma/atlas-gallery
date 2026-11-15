@@ -1563,7 +1563,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         mutableStateOf<ScopedMediaSearchSnapshot?>(null, referentialEqualityPolicy())
     }
     val scopedActive = overviewQuery.isNotBlank() &&
-        (tab == 0 || personFilter != null || tab == 3)
+        (tab == 0 || personFilter != null)
     LaunchedEffect(CatalogSourceKey(overviewBase), CatalogSourceKey(sorted),
         CatalogSourceKey(people), publishedGallery.epoch, overviewQuery,
         overviewScope, scopedActive) {
@@ -3233,7 +3233,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             key(CatalogSourceKey(visible)) {
                                 AtlasFeatureGrid(
                                     items = visible, state = photosGridState,
-                                    busy = busy || sortPending || albumSelectionPending,
+                                    busy = busy || sortPending || albumSelectionPending || scopedPending,
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
                                     catalogueEpoch = publishedGallery.epoch,
@@ -3457,7 +3457,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         // #644: at rest Search shows only the field, recents and
                         // suggestions; results appear once there is a query.
                         // Key by identity, not Compose's structural List.equals over 150k rows.
-                        if (searchActive || overviewQuery.isNotBlank()) key(CatalogSourceKey(visible)) {
+                        if (searchActive) key(CatalogSourceKey(visible)) {
                         AtlasFeatureGrid(
                             items = visible,
                             state = searchGridState,
