@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import org.junit.Rule
@@ -59,10 +61,11 @@ class SettingsDesignJourneyTest {
             compose.runOnIdle { check(diagnosticsOpened == if (dark) 2 else 1) }
             compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
 
-            // Force actual content displacement past the 64px collapse threshold.
-            // A swipe on the outer Box is not a scroll gesture on its Column;
-            // performScrollTo on Version can also be a no-op when already visible.
+            // The scrollable Column owns gestures, not the outer tagged Box.
+            // Swipe on its large title (a descendant) to move the scroll state
+            // beyond the 64px collapse threshold, then assert the compact title.
             compose.onNodeWithTag("atlas-settings-large-title").performScrollTo()
+            compose.onNodeWithTag("atlas-settings-large-title").performTouchInput { swipeUp() }
             compose.onNodeWithTag("atlas-settings-version").performScrollTo()
                 .assertIsDisplayed()
             compose.onNodeWithTag("atlas-settings-compact-title").assertExists()
