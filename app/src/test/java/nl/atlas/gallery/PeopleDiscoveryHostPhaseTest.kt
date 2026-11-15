@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import nl.atlas.gallery.featureface.FaceBatchStop
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceVisibleMedia
+import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,6 +19,40 @@ class PeopleDiscoveryHostPhaseTest {
     @Test fun lostPermissionShowsEvenWhenTheQueueDrained() {
         assertEquals(FaceScanPhase.PERMISSION_REQUIRED,
             startedScanPhase(false, 0, 0, 4, FaceScanPhase.PERMISSION_REQUIRED))
+    }
+
+    /** #114: publication is a worker hold, not an Android permission loss. */
+    @Test fun scopedEpochBehindActiveStoreWithGrantCurrentShowsStarting() {
+        val phase = publicationStatusPhase(
+            photoGrantCurrent = true, scopedEpochReadable = false,
+            workerHold = FaceScanPhase.PERMISSION_REQUIRED)
+        assertEquals(FaceDiscoveryPhase.QUEUED, phase)
+        assertEquals("Starting", faceScanSettingsValue(phase, false, true))
+        assertEquals("Starting", visualIndexStatusText(true,
+            VisualIndexStatus(enabled = true, mayEnable = false),
+            phase, false))
+    }
+
+    @Test fun realGrantLossStillShowsPermissionRequiredForBothSettingsRows() {
+        val phase = publicationStatusPhase(
+            photoGrantCurrent = false, scopedEpochReadable = false,
+            workerHold = FaceScanPhase.PERMISSION_REQUIRED)
+        assertEquals(FaceDiscoveryPhase.PERMISSION_REQUIRED, phase)
+        assertEquals("Permission required", faceScanSettingsValue(phase, false, true,
+            photoAccess = false))
+        assertEquals("Permission required", visualIndexStatusText(true,
+            VisualIndexStatus(enabled = true, mayEnable = false), phase, false,
+            photoAccess = false))
+    }
+
+    @Test fun heldLiveEpochWithGrantCurrentDoesNotClaimPermissionLoss() {
+        val phase = publicationStatusPhase(
+            photoGrantCurrent = true, scopedEpochReadable = true,
+            workerHold = FaceScanPhase.PERMISSION_REQUIRED)
+        assertEquals(FaceDiscoveryPhase.QUEUED, phase)
+        assertEquals("Starting", faceScanSettingsValue(phase, false, true))
+        assertEquals("Starting", visualIndexStatusText(true,
+            VisualIndexStatus(enabled = true, mayEnable = false), phase, false))
     }
 
     @Test fun pendingQueueDoesNotPretendAnInactiveWorkerIsScanning() {

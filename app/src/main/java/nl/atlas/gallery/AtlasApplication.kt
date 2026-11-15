@@ -10,12 +10,22 @@ import nl.atlas.gallery.featuremedia.ThumbnailPipeline
 import nl.atlas.gallery.featuremedia.runningUnderInstrumentation
 import nl.atlas.gallery.featuremedia.thumbnailMemoryCacheBytes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import nl.atlas.gallery.featureaiedit.save.AiEditSaver
 
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         // Persist one privacy-redacted trace before Android's original crash handler runs.
         LastCrashRecorder.install(this)
+        // Finish interrupted AI-copy cleanup after process death. No gallery
+        // scanning or upload is triggered; pending writes remain unpublished.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { AiEditSaver(this@AtlasApplication).recoverOnStartup() }
+                .onFailure { android.util.Log.w("ATLAS_AI_SAVE", "Pending edit recovery deferred") }
+        }
         // #555: ATLAS's micro-thumbnail store; only used under full media access.
         MicroThumbnails.install(this)
         ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()
