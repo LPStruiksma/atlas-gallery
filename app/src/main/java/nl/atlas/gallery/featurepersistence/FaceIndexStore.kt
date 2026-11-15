@@ -11,6 +11,7 @@ import java.util.UUID
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import nl.atlas.gallery.featureface.NativeFaceObservationId
+import nl.atlas.gallery.featureface.FaceQuality
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterDiagnostics
@@ -49,7 +50,8 @@ data class IndexedFaceLease(
  * [frameMs] (VS-V1b) is the keyframe time of a face in a video, null for a photo.
  */
 data class IndexedFaceObservation(
-    val nativeFaceUid: String, val box: IndexedFaceBox, val frameMs: Long? = null
+    val nativeFaceUid: String, val box: IndexedFaceBox, val frameMs: Long? = null,
+    val quality: FaceQuality? = null
 ) {
     init {
         require(nativeFaceUid.matches(Regex("[0-9a-f]{32}")))
@@ -184,6 +186,9 @@ class FaceIndexStore(
         const val SCHEMA_VERSION = 3
         /** Bound variables per [faceMedia] statement (SQLite's old limit is 999). */
         private const val FACE_MEDIA_CHUNK = 500
+        private const val QUALITY_SCORE_COLUMN = "quality_score REAL CHECK(quality_score IS NULL OR (quality_score>=0 AND quality_score<=1))"
+        private const val QUALITY_VERSION_COLUMN = "quality_version INTEGER CHECK(quality_version IS NULL OR quality_version>0)"
+        private const val QUALITY_SIZE_COLUMN = "quality_below_size_floor INTEGER CHECK(quality_below_size_floor IS NULL OR quality_below_size_floor IN (0,1))"
         private const val FRAME_MS_COLUMN =
             "frame_ms INTEGER CHECK(frame_ms IS NULL OR frame_ms>=0)"
         private const val SKIP_REASON_COLUMN =
@@ -295,6 +300,7 @@ class FaceIndexStore(
         createClusterGeneration(db)
         createPeopleHidden(db)
         ensureVideoColumns(db)
+        ensureQualityColumns(db)
         createPeopleHomeTables(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
@@ -345,6 +351,7 @@ class FaceIndexStore(
             face_uid TEXT NOT NULL UNIQUE CHECK(length(face_uid)=32),
             l REAL NOT NULL, t REAL NOT NULL, r REAL NOT NULL, b REAL NOT NULL,
             $FRAME_MS_COLUMN,
+            $QUALITY_SCORE_COLUMN, $QUALITY_VERSION_COLUMN, $QUALITY_SIZE_COLUMN,
             PRIMARY KEY(media_key, ordinal))""")
         db.execSQL("""CREATE TABLE face_reviews(
             media_key TEXT NOT NULL, ordinal INTEGER NOT NULL,
@@ -398,6 +405,19 @@ class FaceIndexStore(
         check(has("catalog", "taken_ms") && has("stage", "taken_ms")) {
             "Face index newest-first columns are missing"
         }
+    }
+
+    /** Compatible additive v3 upgrade; old scores remain NULL until a charging rescan. */
+    private fun ensureQualityColumns(db: SQLiteDatabase) {
+        val found = db.rawQuery("PRAGMA table_info(faces)", null).use { c ->
+            val names = mutableSetOf<String>()
+            val index = c.getColumnIndexOrThrow("name")
+            while (c.moveToNext()) names += c.getString(index)
+            names
+        }
+        if ("quality_score" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SCORE_COLUMN")
+        if ("quality_version" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_VERSION_COLUMN")
+        if ("quality_below_size_floor" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SIZE_COLUMN")
     }
 
     private fun createClusterGeneration(db: SQLiteDatabase) {
@@ -708,6 +728,7 @@ class FaceIndexStore(
         }
         createPeopleReviewTables(db)
         ensureVideoColumns(db)
+        ensureQualityColumns(db)
     }
     override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         throw SQLiteException("Unsupported face index downgrade; no table reset")
@@ -1072,9 +1093,11 @@ class FaceIndexStore(
      * permission epoch, source revision, model version and opaque lease.
      */
     fun complete(lease: IndexedFaceLease, boxes: List<IndexedFaceBox>,
-                 frameMs: List<Long?> = emptyList()): Boolean {
+                 frameMs: List<Long?> = emptyList(),
+                 qualityScores: List<FaceQuality?> = emptyList()): Boolean {
         require(boxes.size <= 32) { "Unbounded face detector output" }
         requireFrames(boxes.size, frameMs)
+        requireQuality(boxes.size, qualityScores)
         validEpoch(lease.permissionEpoch); validVersion(lease.detectorVersion)
         validMedia(lease.media)
         return write { db ->
@@ -1093,6 +1116,7 @@ class FaceIndexStore(
                     put("l",b.left.toDouble());put("t",b.top.toDouble())
                     put("r",b.right.toDouble());put("b",b.bottom.toDouble())
                     putFrame(this, frameMs, index)
+                    putQuality(this, qualityScores, index)
                 })
             }
             db.execSQL("""UPDATE catalog SET state='processed',
@@ -1119,10 +1143,12 @@ class FaceIndexStore(
     fun completeEmbeddings(
         lease: IndexedFaceLease, boxes: List<IndexedFaceBox>,
         vectors: List<FloatArray>, embedderVersion: String,
-        frameMs: List<Long?> = emptyList()
+        frameMs: List<Long?> = emptyList(),
+        qualityScores: List<FaceQuality?> = emptyList()
     ): Boolean {
         require(boxes.size <= 32 && boxes.size == vectors.size) { "Embedding/box count mismatch" }
         requireFrames(boxes.size, frameMs)
+        requireQuality(boxes.size, qualityScores)
         validEpoch(lease.permissionEpoch); validVersion(lease.detectorVersion)
         validVersion(embedderVersion); validMedia(lease.media)
         val encoded = vectors.map(FaceEmbeddingVectorCodec::encode)
@@ -1142,6 +1168,7 @@ class FaceIndexStore(
                     put("l", box.left.toDouble()); put("t", box.top.toDouble())
                     put("r", box.right.toDouble()); put("b", box.bottom.toDouble())
                     putFrame(this, frameMs, ordinal)
+                    putQuality(this, qualityScores, ordinal)
                 })
                 db.insertOrThrow("embeddings", null, ContentValues().apply {
                     put("face_uid", uid); put("source_revision", lease.media.revision)
@@ -1181,6 +1208,22 @@ class FaceIndexStore(
     private fun requireFrames(boxes: Int, frameMs: List<Long?>) =
         require((frameMs.isEmpty() || frameMs.size == boxes) &&
             frameMs.all { it == null || it >= 0 }) { "Invalid video frame positions" }
+    private fun requireQuality(boxes: Int, qualityScores: List<FaceQuality?>) =
+        require(qualityScores.isEmpty() || qualityScores.size == boxes) { "Quality/box count mismatch" }
+
+    private fun putQuality(values: ContentValues, qualityScores: List<FaceQuality?>, ordinal: Int) {
+        val q = qualityScores.getOrNull(ordinal)
+        if (q == null) {
+            values.putNull("quality_score")
+            values.putNull("quality_version")
+            values.putNull("quality_below_size_floor")
+        } else {
+            values.put("quality_score", q.score.toDouble())
+            values.put("quality_version", q.qualityVersion)
+            values.put("quality_below_size_floor", if (q.belowSizeFloor) 1 else 0)
+        }
+    }
+
     private fun putFrame(values: ContentValues, frameMs: List<Long?>, ordinal: Int) {
         val at = frameMs.getOrNull(ordinal)
         if (at == null) values.putNull("frame_ms") else values.put("frame_ms", at)
@@ -2279,16 +2322,23 @@ class FaceIndexStore(
     /** Never return boxes from an old permission epoch or unprocessed source. */
     fun observationRecords(epoch: String, key: String): List<IndexedFaceObservation> {
         validEpoch(epoch)
-        return readableDatabase.rawQuery("""SELECT f.face_uid,f.l,f.t,f.r,f.b,f.frame_ms FROM faces f
+        return readableDatabase.rawQuery("""SELECT f.face_uid,f.l,f.t,f.r,f.b,f.frame_ms,f.quality_score,
+                    f.quality_version,f.quality_below_size_floor FROM faces f
             JOIN catalog m ON m.media_key=f.media_key AND m.state='processed'
             JOIN control c ON c.singleton=1 AND c.active_epoch=?
             WHERE f.media_key=? ORDER BY f.ordinal""", arrayOf(epoch,key)).use { c ->
                 buildList { while (c.moveToNext())
                     add(IndexedFaceObservation(c.getString(0), IndexedFaceBox(
                         c.getFloat(1),c.getFloat(2),c.getFloat(3),c.getFloat(4)),
-                        if (c.isNull(5)) null else c.getLong(5))) }
+                        if (c.isNull(5)) null else c.getLong(5),
+                        if (c.isNull(6) || c.isNull(7)) null else FaceQuality(
+                            c.getFloat(6), c.getInt(7), !c.isNull(8) && c.getInt(8) != 0))) }
         }
     }
+
+    /** Grant-scoped, nullable quality read. A legacy observation has no score. */
+    fun qualityRecords(epoch: String, key: String): List<FaceQuality?> =
+        observationRecords(epoch, key).map { it.quality }
 
     /** Compatibility projection for the earlier P box-only index contract. */
     fun observations(epoch: String, key: String): List<IndexedFaceBox> =
