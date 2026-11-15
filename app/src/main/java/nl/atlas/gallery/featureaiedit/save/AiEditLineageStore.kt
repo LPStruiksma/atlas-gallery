@@ -94,6 +94,30 @@ internal class AiEditLineageStore(context: Context) {
         }
     }
 
+    /** Read only persisted, completed edit relationships; never changes MediaStore. */
+    fun all(): List<AiEditLineage> = db { database ->
+        database.query("edit_lineage", arrayOf(
+            "edited_uri", "original_uri", "original_revision", "provider",
+            "model", "model_version", "prompt", "settings_json", "created_at",
+            "candidate_parent_uri"
+        ), null, null, null, null, "created_at ASC").use { cursor ->
+            val rows = ArrayList<AiEditLineage>()
+            while (cursor.moveToNext()) rows += AiEditLineage(
+                editedUri = cursor.getString(0),
+                originalUri = cursor.getString(1),
+                originalRevision = cursor.getString(2),
+                provider = cursor.getString(3),
+                model = cursor.getString(4),
+                modelVersion = cursor.getString(5),
+                prompt = cursor.getString(6),
+                settingsJson = cursor.getString(7),
+                createdAtMillis = cursor.getLong(8),
+                candidateParentUri = if (cursor.isNull(9)) null else cursor.getString(9)
+            )
+            rows
+        }
+    }
+
     fun pending(): List<PendingSave> = db { database ->
         database.query("pending_save", arrayOf(
             "token", "volume", "relative_path", "display_name", "inserted_uri"
