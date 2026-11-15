@@ -153,7 +153,8 @@ fun PeopleHomeScreen(
     }
     // Both sources retain their own click contract and identity type.
     val tiles = remember(state.profiles, nativeTiles, unnamedTiles, currentNative, sortChoice) {
-        val all = state.profiles.map { PeopleGridTile.Imported(it) } +
+        val all: List<PeopleGridTile> =
+            state.profiles.map { PeopleGridTile.Imported(it) } +
             nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles
         val keyed = all.mapIndexed { index, tile ->
             val stats = when (tile) {
