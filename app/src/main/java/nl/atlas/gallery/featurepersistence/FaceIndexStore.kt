@@ -1051,9 +1051,16 @@ class FaceIndexStore(
             }
             db.execSQL("""DELETE FROM catalog WHERE NOT EXISTS
                 (SELECT 1 FROM stage WHERE stage.media_key=catalog.media_key)""")
-            // Journal confirmed membership before a detector-only rescan too.
-            // Restoring still requires the exact unchanged source and face box.
-            if (!modelChanged) captureModelCarry(db)
+            // Only a detector transition needs a carry journal. An unchanged
+            // grant must leave the published review generation stable (#39/#543).
+            if (!modelChanged) {
+                val detectorChanged = db.rawQuery(
+                    """SELECT 1 FROM catalog c JOIN stage s ON s.media_key=c.media_key
+                        WHERE c.detector_version!=? AND c.revision=s.revision
+                        LIMIT 1""", arrayOf(detectorVersion)
+                ).use { it.moveToFirst() }
+                if (detectorChanged) captureModelCarry(db)
+            }
             // Changed media or detector invalidates all prior boxes/review decisions.
             db.execSQL("""UPDATE catalog SET
                 revision=(SELECT revision FROM stage WHERE stage.media_key=catalog.media_key),
