@@ -96,7 +96,8 @@ interface FaceInferenceReservation : Closeable {
 }
 
 /** A detector's box and SFace vector remain paired through geometry sorting. */
-class FaceEmbeddedDetection(val bounds: FacePixelBounds, vector: FloatArray) {
+class FaceEmbeddedDetection(val bounds: FacePixelBounds, vector: FloatArray,
+    val quality: FaceQuality? = null) {
     private val stored = vector.copyOf()
     val vector: FloatArray get() = stored.copyOf()
 }
@@ -112,7 +113,8 @@ interface FaceEmbeddingReservation : FaceInferenceReservation {
 interface FaceScanEmbeddingIndexPort : FaceScanIndexPort {
     fun completeEmbeddings(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String
+        vectors: List<FloatArray>, embedderVersion: String,
+        qualityScores: List<FaceQuality?> = emptyList()
     ): Boolean
 
     /**
@@ -121,10 +123,11 @@ interface FaceScanEmbeddingIndexPort : FaceScanIndexPort {
      */
     fun completeEmbeddingFrames(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>
+        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>,
+        qualityScores: List<FaceQuality?> = emptyList()
     ): Boolean {
         check(frameMs.all { it == null }) { "This face index cannot store video positions" }
-        return completeEmbeddings(lease, observations, vectors, embedderVersion)
+        return completeEmbeddings(lease, observations, vectors, embedderVersion, qualityScores)
     }
 }
 
@@ -215,11 +218,13 @@ private data class ScannedFaces(
     val vectors: List<FloatArray> = emptyList(),
     val embedderVersion: String? = null,
     /** Per box: null for a photo, the keyframe time for a video. */
-    val frameMs: List<Long?> = boxes.map { null }
+    val frameMs: List<Long?> = boxes.map { null },
+    val quality: List<FaceQuality?> = boxes.map { null }
 )
 
 /** One face of one frame, before the per-source cap and ordering. */
-private class FrameFace(val box: UnknownFaceBox, val vector: FloatArray?, val frameMs: Long?) {
+private class FrameFace(val box: UnknownFaceBox, val vector: FloatArray?, val frameMs: Long?,
+    val quality: FaceQuality? = null) {
     val area: Float get() = (box.right - box.left) * (box.bottom - box.top)
 }
 
@@ -315,7 +320,7 @@ class FaceScanEngine(
                     if (embedding != null) {
                         embedding.detectAndEmbed(frame).mapTo(faces) { detection ->
                             FrameFace(FaceGeometry.normalize(frame.widthPixels, frame.heightPixels,
-                                listOf(detection.bounds)).single(), detection.vector, timed.frameMs)
+                                listOf(detection.bounds)).single(), detection.vector, timed.frameMs, detection.quality)
                         }
                     } else {
                         FaceGeometry.normalize(frame.widthPixels, frame.heightPixels,
@@ -328,7 +333,8 @@ class FaceScanEngine(
                     val kept = SourceFaces.select(faces)
                     check(kept.size <= FaceDiscoveryContract.MAX_FACES_PER_IMAGE)
                     if (embedding != null) ScannedFaces(kept.map { it.box },
-                        kept.map { it.vector!! }, embedding.embedderVersion, kept.map { it.frameMs })
+                        kept.map { it.vector!! }, embedding.embedderVersion, kept.map { it.frameMs },
+                        kept.map { it.quality })
                     else ScannedFaces(kept.map { it.box }, frameMs = kept.map { it.frameMs })
                 }
             }
@@ -378,7 +384,8 @@ class FaceScanEngine(
         // Durable transaction is the final authority on epoch, revision, model and lease.
         val completed = if (found.embedderVersion != null) {
             (index as FaceScanEmbeddingIndexPort).completeEmbeddingFrames(
-                lease, found.boxes, found.vectors, found.embedderVersion, found.frameMs)
+                lease, found.boxes, found.vectors, found.embedderVersion, found.frameMs,
+                found.quality)
         } else index.completeFrames(lease, found.boxes, found.frameMs)
         return if (completed) FaceScanStepResult(FaceScanStep.INDEXED, found.boxes.size, decodedFrames)
         else FaceScanStepResult(FaceScanStep.RELEASED_STALE)
