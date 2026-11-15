@@ -45,7 +45,7 @@ class SettingsBackNavigationJourneyTest {
     @Test fun diagnosticsIsDismissedBeforeSettingsAndHeaderBackKeepsPeople() {
         select("people")
         openSettings("people")
-        compose.onNodeWithTag("atlas-settings-advanced").performClick()
+        compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
         waitFor(hasTestTag("atlas-settings-diagnostics"))
         compose.onNodeWithTag("atlas-settings-diagnostics").performScrollTo().performClick()
         waitFor(hasTestTag("atlas-header-title") and hasText("Library status"))
