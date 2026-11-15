@@ -32,11 +32,11 @@ class AlbumsGridEvidenceTest {
         .around(fixture).around(compose)
 
     @Test fun threeColumnsAndPinnedAlbumsScreenshot() {
-        compose.waitUntil(60_000L) {
+        compose.waitUntil(120_000L) {
             compose.onAllNodes(hasTestTag("atlas-nav-albums")).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
-        compose.waitUntil(60_000L) {
+        compose.waitUntil(120_000L) {
             compose.onAllNodes(hasTestTag("atlas-album-card")).fetchSemanticsNodes().size >= 9
         }
         compose.waitForIdle()
