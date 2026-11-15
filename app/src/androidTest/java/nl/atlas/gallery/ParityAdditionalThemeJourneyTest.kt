@@ -77,12 +77,14 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
                 .maxValue() > 12f
         }
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
+        // Use an adjacent-step pinch; the previous 150 -> 30 px sweep
+        // crossed the compact 7-column stop into Month/Year overview.
         grid.performTouchInput {
             pinch(
                 start0 = center - Offset(150f, 0f),
-                end0 = center - Offset(30f, 0f),
+                end0 = center - Offset(75f, 0f),
                 start1 = center + Offset(150f, 0f),
-                end1 = center + Offset(30f, 0f),
+                end1 = center + Offset(75f, 0f),
                 durationMillis = 400L
             )
         }
