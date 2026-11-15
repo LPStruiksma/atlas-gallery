@@ -50,6 +50,7 @@ for (const revision of ['before', 'after']) {
 // A disposable seed-time scan cannot leave a deferred five-minute chain behind.
 assert.ok(killFixture.includes('cancelUniqueWork(PeopleScanWorkScheduler.UNIQUE_NAME)'));
 assert.ok(killFixture.includes('.result.get(30, TimeUnit.SECONDS)'));
+assert.ok(runner.includes('adb shell dumpsys battery set status 3'));
 assert.ok(runner.includes('adb shell dumpsys battery set ac 1'));
 assert.ok(runner.includes('wait_restore_in_new_pid'));
 console.log('DESIGN-9 Albums polish source contract OK');
