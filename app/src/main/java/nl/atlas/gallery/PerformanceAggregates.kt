@@ -47,9 +47,8 @@ internal object PerformanceSession {
 
     @Synchronized fun firstGridFrame() {
         if (firstGridReported) return
-        firstGridReported = true
         val elapsed = (android.os.SystemClock.elapsedRealtimeNanos() - processStartNanos) / 1_000_000.0
-        aggregate.record("cold_start_ms", elapsed)
+        if (aggregate.record("cold_start_ms", elapsed)) firstGridReported = true
     }
 
     @Synchronized fun updateViewer() {
@@ -63,7 +62,7 @@ internal object PerformanceSession {
         lastForwardedViewer = samples.lastOrNull()
     }
 
-    fun sampleHeap() {
+    @Synchronized fun sampleHeap() {
         val runtime = Runtime.getRuntime()
         val maximum = runtime.maxMemory()
         if (maximum > 0) {
