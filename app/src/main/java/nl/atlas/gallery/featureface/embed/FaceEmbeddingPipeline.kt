@@ -122,6 +122,12 @@ class PersistedFaceEmbeddingIndexPort(private val store: FaceIndexStore) : FaceS
     /** VS-V1b: video faces carry their keyframe time into the same atomic completion. */
     override fun completeEmbeddingFrames(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
+        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>
+    ): Boolean = completeEmbeddingFrames(lease, observations, vectors, embedderVersion,
+        frameMs, emptyList())
+
+    override fun completeEmbeddingFrames(
+        lease: FaceScanLease, observations: List<UnknownFaceBox>,
         vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>,
         qualityScores: List<nl.atlas.gallery.featureface.FaceQuality?>
     ): Boolean = store.completeEmbeddings(
