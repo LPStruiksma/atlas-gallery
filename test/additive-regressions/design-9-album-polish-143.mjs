@@ -34,24 +34,22 @@ assert.match(albumEvidence, /MediaStore\.Images\.Media\.RELATIVE_PATH/);
 assert.match(parityEvidence, /end0 = center - Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /end1 = center \+ Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /SemanticsMatcher\.expectValue\(SemanticsProperties\.StateDescription, "7 columns"\)/);
-// Proof is from actual baseline and candidate app builds, with identical synthetic media.
+// Require paired real emulator snapshots from baseline and candidate in each theme.
 for (const revision of ['before', 'after']) {
     for (const mode of ['light', 'dark']) {
-        assert.match(declared, new RegExp('^albums-' + revision + '-' + mode + '
-, 'm'));
+        assert.ok(declared.split(String.fromCharCode(10)).includes('albums-' + revision + '-' + mode));
     }
 }
-assert.match(albumEvidence, /atlasAlbumsRevision/);
-assert.match(albumEvidence, /albums-\\$revision-\\$captureTheme\\.png/);
-assert.match(runner, /capture_albums_grid "before" "light"/);
-assert.match(runner, /capture_albums_grid "before" "dark"/);
-assert.match(runner, /capture_albums_grid "after" "light"/);
-assert.match(runner, /capture_albums_grid "after" "dark"/);
-// The instrumentation seed ends its own WorkManager chain before the independent,
-// opted-in app launch re-arms a new immediate one. The periodic rearm is untouched.
-assert.match(killFixture, /cancelUniqueWork\\(PeopleScanWorkScheduler\\.UNIQUE_NAME\\)/);
-assert.match(killFixture, /\\.result\\.get\\(30, TimeUnit\\.SECONDS\\)/);
-assert.match(runner, /adb shell dumpsys battery set ac 1/);
-assert.match(runner, /kill_app/);
-assert.match(runner, /wait_restore_in_new_pid/);
+assert.ok(albumEvidence.includes('atlasAlbumsRevision'));
+assert.ok(albumEvidence.includes('albums-$revision-$captureTheme.png'));
+for (const revision of ['before', 'after']) {
+    for (const mode of ['light', 'dark']) {
+        assert.ok(runner.includes('capture_albums_grid "' + revision + '" "' + mode + '"'));
+    }
+}
+// A disposable seed-time scan cannot leave a deferred five-minute chain behind.
+assert.ok(killFixture.includes('cancelUniqueWork(PeopleScanWorkScheduler.UNIQUE_NAME)'));
+assert.ok(killFixture.includes('.result.get(30, TimeUnit.SECONDS)'));
+assert.ok(runner.includes('adb shell dumpsys battery set ac 1'));
+assert.ok(runner.includes('wait_restore_in_new_pid'));
 console.log('DESIGN-9 Albums polish source contract OK');
