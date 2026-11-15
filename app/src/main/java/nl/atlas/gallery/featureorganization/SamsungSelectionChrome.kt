@@ -26,7 +26,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -168,8 +167,8 @@ fun SamsungSelectionBottomBar(
         // Tablet layouts stay compact; narrow phones divide available width
         // equally among the actual actions rather than overflowing the edge.
         val pillWidth = minOf(maxWidth, 360.dp)
-        val directTransfer = moreActions.firstOrNull { it.testTag == "atlas-selection-move-to-album" }
-            ?: moreActions.firstOrNull { it.testTag == "atlas-selection-copy-to-album" }
+        val directTransfer = moreActions.firstOrNull { it.testTag == "atlas-selection-copy-to-album" }
+            ?: moreActions.firstOrNull { it.testTag == "atlas-selection-move-to-album" }
         // Keep both Copy and Move available from More for existing navigation
         // and accessibility, while the direct action offers the common Move path.
         val overflowActions = moreActions
@@ -193,8 +192,7 @@ fun SamsungSelectionBottomBar(
                     onTrash, Modifier.weight(1f))
                 if (directTransfer != null) SelectionPillAction(
                     if (directTransfer.testTag == "atlas-selection-move-to-album") "Move" else "Copy",
-                    if (directTransfer.testTag == "atlas-selection-move-to-album")
-                        Icons.Outlined.DriveFileMove else Icons.Outlined.ContentCopy,
+                    Icons.Outlined.ContentCopy,
                     active, "atlas-selection-transfer",
                     directTransfer.onClick, Modifier.weight(1f))
                 if (onFavourite != null && directTransfer == null) SelectionPillFavourite(
