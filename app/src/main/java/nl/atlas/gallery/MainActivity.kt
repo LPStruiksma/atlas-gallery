@@ -81,6 +81,7 @@ import java.util.Locale
 import androidx.compose.ui.window.Dialog
 import java.time.ZoneId
 import java.util.UUID
+import nl.atlas.gallery.featureaiedit.ui.AiEditScreen
 import nl.atlas.gallery.featurealbums.AlbumBucketKey
 import nl.atlas.gallery.featurealbums.AlbumCoverPageSession
 import nl.atlas.gallery.featurealbums.AlbumCoverPageCursor
@@ -1242,6 +1243,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         mutableStateOf<List<MediaRecord>?>(null, referentialEqualityPolicy())
     }
     var viewerUri by remember { mutableStateOf<String?>(null) }
+    // AIE-3: persist only an explicit single-photo edit route and its private session token.
+    // No gallery URI is submitted to a provider from state restoration or background scanning.
+    var aiEditSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var aiEditSession by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingAiSavedUri by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerAccessEpoch by remember { mutableLongStateOf(-1L) }
     // #23 ephemeral, grant-scoped visual handoff only. No thumbnail bitmap or URI
     // survives a route close, permission transition or Activity recreation.
@@ -1859,6 +1865,24 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     fun galleryAccessCurrent(): Boolean = grants.hasAny &&
         publishedGallery.showable(grants) && publishedGallery.epoch >= 0L
+    fun openAiEdit(photo: MediaRecord) {
+        // The exact media item must still belong to this authorized publication.
+        val actual = readGalleryMediaGrant(context)
+        if (photo.isVideo || Uri.parse(photo.uri).authority != MediaStore.AUTHORITY ||
+            actual != grants || !galleryAccessCurrent() ||
+            media.none { it.uri == photo.uri }) return
+        aiEditSession = UUID.randomUUID().toString()
+        aiEditSourceUri = photo.uri
+    }
+    // Focus only once the new MediaStore copy has appeared in the refreshed catalogue.
+    LaunchedEffect(pendingAiSavedUri, CatalogSourceKey(media), publishedGallery.epoch) {
+        val focus = pendingAiSavedUri
+        if (focus != null && aiEditSourceUri == null && galleryAccessCurrent() &&
+            media.any { it.uri == focus }) {
+            openViewer(media, focus)
+            pendingAiSavedUri = null
+        }
+    }
     // Batch Trash is always Android's own consent dialog (createTrashRequest);
     // ATLAS never deletes directly. Only RESULT_OK means anything changed.
     val batchTrashLauncher = rememberLauncherForActivityResult(
@@ -2475,6 +2499,36 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
+    val selectedForAiEdit = aiEditSourceUri
+    if (selectedForAiEdit != null) {
+        val approved = galleryAccessCurrent() && readGalleryMediaGrant(context) == grants &&
+            media.any { it.uri == selectedForAiEdit && !it.isVideo }
+        if (approved && aiEditSession != null) {
+            AiEditScreen(
+                sourceUri = Uri.parse(selectedForAiEdit),
+                sessionId = aiEditSession!!,
+                onRefresh = { vm.refresh() },
+                onSaved = { newUri -> pendingAiSavedUri = newUri.toString() },
+                onExit = {
+                    aiEditSourceUri = null
+                    aiEditSession = null
+                    if (pendingAiSavedUri != null) closeViewer()
+                }
+            )
+        } else {
+            // Process-death restore may precede a fresh scan/grant. Do not decode while
+            // permission or membership is unresolved, and do not silently drop the draft.
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(24.dp), verticalArrangement = Arrangement.Center) {
+                Text("The selected photo is not currently accessible.")
+                TextButton(onClick = { aiEditSourceUri = null; aiEditSession = null }) {
+                    Text("Back to gallery")
+                }
+            }
+        }
+        return
+    }
+
     val contextItems = viewerItems
     // GalleryViewer can retain a decoded image after its original permission
     // publication is replaced. Hide the full-screen route synchronously at
@@ -2517,6 +2571,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
                 vm.refresh()
             },
+            onAiEdit = { photo -> openAiEdit(photo) },
             onEdit = { photo ->
                 val launchResult = PhotoEditorHandoff.launch(context, photo)
                 when (launchResult) {
@@ -2746,15 +2801,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     // Android 10 has no consent-mediated trash or favourite request.
                     onTrash = if (Build.VERSION.SDK_INT >= 30) ({ trashBatch() }) else null,
                     onFavourite = if (Build.VERSION.SDK_INT >= 30) ({ favouriteBatch() }) else null,
-                    // #568 Samsung More: Copy, then Move (needs Android 11 write consent).
-                    moreActions = if (Build.VERSION.SDK_INT >= 30) listOf(
+                    // AIE-3 is only offered for ONE selected image, inside More. The
+                    // Samsung copy/move actions remain unchanged, including on Android 10.
+                    moreActions = (
+                        photosSelection.uris.singleOrNull()
+                            ?.takeIf { live }
+                            ?.let { uri -> visible.firstOrNull { it.uri == uri && !it.isVideo } }
+                            ?.let { photo ->
+                                listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
+                                    openAiEdit(photo)
+                                    batchSelection = null
+                                })
+                            } ?: emptyList()
+                    ) + (if (Build.VERSION.SDK_INT >= 30) listOf(
                         SelectionMoreAction("Copy to album", "atlas-selection-copy-to-album") {
                             albumPicker = AlbumTransferMode.COPY
                         },
                         SelectionMoreAction("Move to album", "atlas-selection-move-to-album") {
                             albumPicker = AlbumTransferMode.MOVE
                         }
-                    ) else emptyList()
+                    ) else emptyList())
                 )
             } else CompositionLocalProvider(LocalAtlasTabBackdrop provides tabBackdrop) {
                 AtlasGalleryNavigation(
