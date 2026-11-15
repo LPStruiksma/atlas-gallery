@@ -16,7 +16,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
@@ -64,7 +63,7 @@ class GalleryMediaStoreObserverJourneyTest {
         .around(fixtures).around(compose)
 
     private val mediaTags = SemanticsMatcher("rendered timeline media tags") { node ->
-        node.config.getOrNull(SemanticsProperties.TestTag)
+        node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
             ?.startsWith("atlas-timeline-media-") == true
     }
 
@@ -113,7 +112,7 @@ class GalleryMediaStoreObserverJourneyTest {
             compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(48)
             compose.waitForIdle()
             val anchoredTag = compose.onAllNodes(mediaTags).fetchSemanticsNodes()
-                .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+                .mapNotNull { it.config.getOrElseNullable(SemanticsProperties.TestTag) { null } }
                 .first()
             val beforeY = compose.onNodeWithTag(anchoredTag)
                 .getUnclippedBoundsInRoot().top.value
@@ -129,7 +128,7 @@ class GalleryMediaStoreObserverJourneyTest {
             // the ViewModel flow emission.
             compose.waitUntil(12_000L) {
                 val nodes = compose.onAllNodes(mediaTags).fetchSemanticsNodes()
-                nodes.any { it.config.getOrNull(SemanticsProperties.TestTag) == anchoredTag }
+                nodes.any { it.config.getOrElseNullable(SemanticsProperties.TestTag) { null } == anchoredTag }
             }
             compose.waitForIdle()
             val afterY = compose.onNodeWithTag(anchoredTag)
