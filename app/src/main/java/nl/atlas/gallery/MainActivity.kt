@@ -163,6 +163,11 @@ import nl.atlas.gallery.featurepeopleui.PeopleProfileUi
 import nl.atlas.gallery.featurepeopleui.ReviewedPeopleProjection
 import nl.atlas.gallery.featurepeopleui.buildReviewedPeopleProjection
 import nl.atlas.gallery.featurepeopleui.currentReviewedPeopleProjectionOrNull
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.LocalSearchControls
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
 import nl.atlas.gallery.featuresearch.face.FaceSearchSession
@@ -1274,6 +1279,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val searchGridState = rememberLazyGridState()
     val personGridState = rememberLazyGridState()
 
+    // Transient only: search text must not enter Android saved instance state.
+    var overviewQuery by remember { mutableStateOf("") }
+    var overviewScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
+    var overviewRouteKey by remember { mutableStateOf("") }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -1540,13 +1550,48 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Selecting an already-built list is O(1). Do not use List-valued
     // Compose remember keys here: their structural equals() can compare
     // 150,000 MediaRecords on the UI thread after a catalogue refresh.
+    val overviewRoute = "$tab:$album:$albumVolume:$personFilter:$nativePersonAlbum:$storiesOpen:$photoDnaOpen"
+    if (overviewRouteKey != overviewRoute) {
+        overviewRouteKey = overviewRoute
+        overviewQuery = ""
+        overviewScope = AtlasSearchScope.THIS_SCREEN
+    }
+    val overviewBase = when {
+        personFilter != null -> selectedPersonPhotos.orEmpty()
+        tab == 3 -> if (!searchActive) sorted else searched.orEmpty()
+        else -> albumItems
+    }
+    var scopedResult by remember {
+        mutableStateOf<ScopedMediaSearchSnapshot?>(null, referentialEqualityPolicy())
+    }
+    val scopedActive = overviewQuery.isNotBlank() &&
+        (tab == 0 || personFilter != null || (tab == 3 && searchActive))
+    LaunchedEffect(CatalogSourceKey(overviewBase), CatalogSourceKey(sorted),
+        CatalogSourceKey(people), publishedGallery.epoch, overviewQuery,
+        overviewScope, scopedActive) {
+        scopedResult = null
+        if (scopedActive && searchGrant != null) {
+            val worker = currentCoroutineContext()
+            val matches = withContext(Dispatchers.Default) {
+                scopedMediaMatches(overviewBase, sorted, people, overviewQuery,
+                    overviewScope, cancellationCheckpoint = { worker.ensureActive() })
+            }
+            worker.ensureActive()
+            scopedResult = ScopedMediaSearchSnapshot(overviewBase, sorted, people,
+                publishedGallery.epoch.toString(), overviewQuery, overviewScope, matches)
+        }
+    }
+    val currentScopedResult = currentScopedMediaSearchOrNull(scopedResult,
+        overviewBase, sorted, people, publishedGallery.epoch.toString(), overviewQuery, overviewScope)
+    val scopedVisible = if (!scopedActive) overviewBase else currentScopedResult.orEmpty()
+    val scopedPending = scopedActive && currentScopedResult == null
     val visible = when {
         // Face search results are the viewer's list while that route is open.
         faceStep == FaceSearchStep.Results -> faceResults?.records.orEmpty()
         similarStep == FindSimilarStep.Results -> similarResults?.records.orEmpty()
-        personFilter != null -> selectedPersonPhotos.orEmpty()
-        tab == 3 -> if (!searchActive) sorted else searched.orEmpty()
-        else -> albumItems
+        personFilter != null -> scopedVisible
+        tab == 3 -> scopedVisible
+        else -> scopedVisible
     }
     // Revoke/reselect invalidates the ratio index synchronously by identity
     // before any previous image positions can be reused in a different scope.
@@ -2903,6 +2948,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         }
                     ) else emptyList(),
                     actions = {
+                        if ((photosControls || personFilter != null) && !settingsOpen && !statusOpen) AtlasSearch(
+                            query = overviewQuery,
+                            onQueryChange = { overviewQuery = it },
+                            onScopeChange = { overviewScope = it }
+                        )
                         if (photosControls && !settingsOpen) PhotosSortAction(
                             order = sort, onSort = { sort = it }, onShuffle = { randomSeed++ })
                     }
@@ -3034,7 +3084,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         PeopleAlbumContent(
                             visible = visible,
                             gridState = personGridState,
-                            busy = busy || sortPending || personAlbumPending,
+                            busy = busy || sortPending || personAlbumPending || scopedPending,
                             catalogueEpoch = publishedGallery.epoch,
                             blackAndWhiteFolderOnly = personBwFolderOnly,
                             onBack = { personFilter = null },
@@ -3105,7 +3155,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     gridState = timelineGridState,
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
-                                    busy = busy || sortPending || albumSelectionPending,
+                                    busy = busy || sortPending || albumSelectionPending || scopedPending,
                                     catalogueEpoch = publishedGallery.epoch,
                                     onDisplayedSlots = { timelineDisplayed = it },
                                     header = if (headerScrollsWithGrid) ({
@@ -3323,6 +3373,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         )
                     }
                     tab == 3 -> {
+                        AtlasSearch(
+                            query = overviewQuery,
+                            onQueryChange = { overviewQuery = it },
+                            initialExpanded = true,
+                            initialScope = AtlasSearchScope.LIBRARY,
+                            onScopeChange = { overviewScope = it }
+                        )
                         LocalSearchControls(
                             // #654: no title bar above Search (#644), so the field
                             // keeps a little air under the status bar.
