@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featureaiedit.settings
 
+import android.content.pm.ApplicationInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -22,7 +23,8 @@ class ProviderCredentialVaultAndroidTest {
                 .listFiles().orEmpty().filter { it.extension == "enc" }
             assertTrue(stored.isNotEmpty())
             assertTrue(stored.all { !it.readBytes().toString(Charsets.ISO_8859_1).contains(secret) })
-            assertFalse(vault.isBackedUp())
+            assertTrue(stored.all { it.canonicalPath.startsWith(context.noBackupFilesDir.canonicalPath + File.separator) })
+            assertEquals(0, context.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
         } finally {
             vault.delete(id)
         }
