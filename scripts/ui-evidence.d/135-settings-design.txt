@@ -1,0 +1,8 @@
+# #135 DESIGN-5 Settings: S24+ 1080×2340 emulator, synthetic preferences only.
+# Capture actual rendered before/after against main and inspect both modes at Review.
+settings-135-main-light
+settings-135-main-dark
+settings-135-advanced-light
+settings-135-advanced-dark
+settings-135-scrolled-light
+settings-135-scrolled-dark
