@@ -57,7 +57,7 @@ internal object PerformanceSession {
         val last = lastForwardedViewer
         val start = if (last == null) 0 else {
             val index = samples.indexOfLast { it === last }
-            if (index < 0) samples.size else index + 1
+            if (index < 0) 0 else index + 1
         }
         samples.drop(start).forEach { aggregate.record("viewer_ms", it.firstPreviewMs) }
         lastForwardedViewer = samples.lastOrNull()
