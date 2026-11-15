@@ -2947,6 +2947,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         if ((photosControls || personFilter != null) && !settingsOpen && !statusOpen) AtlasSearch(
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
+                            selectedScope = overviewScope,
                             onScopeChange = { overviewScope = it }
                         )
                         if (photosControls && !settingsOpen) PhotosSortAction(
@@ -3340,6 +3341,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onOpenStories = { storiesOpen = true },
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
+                            onSearchWholeLibrary = { tab = 3 },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
                                 albumVolume = route.volumeName
@@ -3374,6 +3376,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onQueryChange = { overviewQuery = it },
                             initialExpanded = true,
                             initialScope = AtlasSearchScope.LIBRARY,
+                            selectedScope = overviewScope,
                             showQueryField = false,
                             onScopeChange = { overviewScope = it },
                             textTool = {
@@ -3563,6 +3566,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 },
                                 menuItems = peopleMenu,
                                 onOpenLibraryStatus = { settingsOpen = true },
+                                onSearchWholeLibrary = { tab = 3 },
                                 portrait = { profile ->
                                     val record = profile.coverUri?.let {
                                         permittedCovers?.authorizedCoversByUri?.get(it)
