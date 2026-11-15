@@ -16,9 +16,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.saveUiEvidence
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /**
  * Synthetic-only UI regression: X can retain the exact same private face_uid
@@ -28,7 +30,9 @@ import org.junit.Test
  * This test deliberately has no MediaStore grants, user photos, detector or DB.
  */
 class UnknownFacesReviewScreenStateTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    // Match the fixed S24+ dimensions required by the UI-evidence capture helper.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     private fun page(epoch: String, generation: String): NativeFaceReviewQueue {
         val candidate = DetectedFaceReviewCandidate(
