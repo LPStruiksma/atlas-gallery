@@ -71,7 +71,11 @@ sealed interface SplitPlanResult {
 }
 
 /** An existing confirmed owner stays with this group; no new name is invented. */
-data class SplitKeptName(val groupKey: String, val person: PersonKey)
+data class SplitKeptName(
+    val groupKey: String,
+    val person: PersonKey,
+    val members: List<NativeFaceObservationId>
+)
 
 /** Members of a newly unnamed identity after explicit unconfirmation, if any. */
 data class SplitUnnamedGroup(val groupKey: String, val members: List<NativeFaceObservationId>)
@@ -94,7 +98,7 @@ data class SplitReleaseConfirmation(
  * - Re-read permission/source generation, membership, confirmed owners, fact
  *   sets and GLOBAL counts in the same serialized review transaction. Re-run
  *   this planner on those values at that boundary and refuse stale approval.
- * - Interpret keptNames as retained existing identities, unnamedGroups as
+ * - Interpret keptNames (with complete membership) as retained existing identities, unnamedGroups as
  *   new unknown identities, releaseConfirmations as explicit owner decisions,
  *   unsureStayWithSource as NEVER moved, and newCannotLinks as new facts.
  *   Do not silently confirm unconfirmed faces or rename any existing person.
@@ -296,7 +300,7 @@ object SplitAcceptancePlanner {
         ) return reject(SplitPlanRejection.FACT_LIMIT_EXCEEDED)
 
         val kept = nameByGroup.entries.sortedBy { groups[it.key].key }.map {
-            SplitKeptName(groups[it.key].key, it.value)
+            SplitKeptName(groups[it.key].key, it.value, readonly(groups[it.key].members))
         }
         val unnamed = groups.indices.filter { it !in nameByGroup }.map {
             SplitUnnamedGroup(groups[it].key, readonly(groups[it].members))
