@@ -143,7 +143,9 @@ class GalleryRepository(private val context: Context) {
                 current == null || current < (checkpoint.generations[volume] ?: Long.MAX_VALUE)
             }) throw GalleryDeltaUnavailable()
         val changes = LinkedHashMap<GalleryMediaDeltaKey, GalleryMediaDeltaChange>()
-        val reuse = GalleryScanRecordReuse(previous)
+        // The delta merge itself preserves unchanged record objects. Avoid
+        // sorting all 150k previous records just to canonicalize a tiny cursor.
+        val reuse = GalleryScanRecordReuse()
         val zone = java.time.ZoneId.systemDefault()
         val maxChanges = 256
         for ((volume, since) in checkpoint.generations) {
@@ -407,7 +409,12 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         for (uri in uris) {
             val hint = galleryItemHintOrNull(uri)
             if (hint != null) {
-                pendingChangedItems[uri.toString()] = hint
+                // Insert/update changes are found by generation without one
+                // additional query for each camera burst item. Exact item
+                // probes are needed only when deletion may have occurred.
+                if (!knownMutation ||
+                    flags and ContentResolver.NOTIFY_DELETE != 0)
+                    pendingChangedItems[uri.toString()] = hint
             } else if (!knownMutation ||
                 flags and ContentResolver.NOTIFY_DELETE != 0) {
                 // A collection-level delete cannot identify which ID vanished.
