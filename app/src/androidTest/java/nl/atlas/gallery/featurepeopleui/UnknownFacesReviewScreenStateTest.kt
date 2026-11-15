@@ -8,6 +8,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -36,6 +39,42 @@ class UnknownFacesReviewScreenStateTest {
         return NativeFaceReviewQueue(
             epoch, generation, listOf(candidate), 1, hasMore = false
         )
+    }
+
+    @Test fun absentOrStalePageShowsUsefulReturnPathWithoutLeakingRows() {
+        var displayedPage by mutableStateOf<NativeFaceReviewQueue?>(null)
+        var activeEpoch by mutableStateOf("grant-A")
+        var backedOut = false
+        compose.setContent {
+            MaterialTheme {
+                UnknownFacesReviewScreen(
+                    queue = displayedPage,
+                    currentPermissionEpoch = activeEpoch,
+                    currentSourceGeneration = "index-A",
+                    liveReviewStateAtAction = { null },
+                    reviewBackendReady = false,
+                    onDecide = {},
+                    onClose = { backedOut = true }
+                )
+            }
+        }
+        val message = "Faces aren't ready to review yet. Check face discovery in People."
+        compose.onNodeWithText(message).assertExists()
+        compose.onNodeWithText(
+            "Review is unavailable until the current photo selection and face index are confirmed."
+        ).assertDoesNotExist()
+
+        compose.runOnIdle { displayedPage = page("grant-A", "index-A") }
+        compose.onNodeWithText(message).assertDoesNotExist()
+        compose.onNodeWithText("Unknown face").assertExists()
+
+        // A replaced grant must suppress every row, not keep a stale thumbnail.
+        compose.runOnIdle { activeEpoch = "grant-B" }
+        compose.onNodeWithText(message).assertExists()
+        compose.onNodeWithText("Unknown face").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-review-scope-pending").assertExists()
+        compose.onNodeWithText("Back to People").performClick()
+        compose.runOnIdle { assertTrue(backedOut) }
     }
 
     @Test fun regrantWithSameNativeUidDropsOldRememberedPreview() {
