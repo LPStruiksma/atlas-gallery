@@ -36,6 +36,24 @@ class PeopleSortTest {
         assertEquals(listOf(1, 2, 3, 5, 4), ids(PeopleSortKey.FIRST_APPEARANCE, false))
     }
 
+    @Test fun addingAnImportedPersonDoesNotReshuffleUnrelatedRandomIdentities() {
+        val original = listOf(
+            PeopleSortEntry(0, "Ada", PeopleSortStats(3, null, null), "native:ada"),
+            PeopleSortEntry(1, "Ben", PeopleSortStats(1, null, null), "native:ben"),
+            PeopleSortEntry(2, "Zoe", PeopleSortStats(2, null, null), "native:zoe")
+        )
+        // Index IDs change, but the underlying native identities do not.
+        val inserted = listOf(PeopleSortEntry(0, "Imported", PeopleSortStats(1, null, null),
+            "v4:43")) + original.mapIndexed { index, row -> row.copy(id = index + 1) }
+        for (descending in listOf(false, true)) {
+            val choice = PeopleSortChoice(PeopleSortKey.RANDOM, descending)
+            val before = orderPeopleEntries(original, choice, seed = 7).map { it.randomKey }
+            val after = orderPeopleEntries(inserted, choice, seed = 7).map { it.randomKey }
+                .filter { it != "v4:43" }
+            assertEquals(before, after)
+        }
+    }
+
     @Test fun randomIsReproducibleAndReversibleForNamedEntries() {
         val choice = PeopleSortChoice(PeopleSortKey.RANDOM, false)
         val forward = orderPeopleEntries(rows, choice, seed = 7).map { it.id }
