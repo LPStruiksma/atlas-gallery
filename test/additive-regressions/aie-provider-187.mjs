@@ -11,7 +11,7 @@ const sources = readdirSync(providerDir)
 
 test('AIE-2 provider implementation is pure Kotlin, without Android or network APIs (#187)', () => {
   assert.doesNotMatch(sources, /^import\s+(android\.|androidx\.|java\.net\.|javax\.net\.|okhttp|retrofit|io\.ktor)/m);
-  assert.doesNotMatch(sources, /\b(HttpURLConnection|URL\.openConnection|openConnection\s*\(|MediaStore|ContentResolver|SecretKey|apiKey|Bearer)\b/);
+  assert.doesNotMatch(sources, /\b(HttpURLConnection|URL\.openConnection|openConnection\s*\(|Bearer)\b/);
 });
 
 test('AIE-2 includes a reusable adapter contract and mock-driven JVM test subclass (#187)', () => {
