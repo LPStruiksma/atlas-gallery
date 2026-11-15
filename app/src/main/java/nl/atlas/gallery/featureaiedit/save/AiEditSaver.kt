@@ -256,13 +256,22 @@ internal class AiEditSaver(
     fun recoverInterruptedSaves() {
         for (pending in lineageStore.pending()) {
             val row = pendingItem(pending)
-            if (row != null && row.second) {
-                check(resolver.delete(row.first, null, null) == 1) {
-                    "Could not reclaim interrupted AI edit"
+            when {
+                row == null -> {
+                    // The row may already have been deleted before a prior
+                    // recovery process died. Never retain dangling lineage.
+                    lineageStore.finishIntent(pending.token, discardLineage = true)
                 }
-                lineageStore.finishIntent(pending.token, discardLineage = true)
-            } else {
-                lineageStore.finishIntent(pending.token, discardLineage = false)
+                row.second -> {
+                    check(resolver.delete(row.first, null, null) == 1) {
+                        "Could not reclaim interrupted AI edit"
+                    }
+                    lineageStore.finishIntent(pending.token, discardLineage = true)
+                }
+                else -> {
+                    // Published between save and journal cleanup: keep lineage.
+                    lineageStore.finishIntent(pending.token, discardLineage = false)
+                }
             }
         }
     }
