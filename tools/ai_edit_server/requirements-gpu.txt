@@ -1,0 +1,7 @@
+# GPU mode only. Never used by fake / CI.
+torch>=2.5,<3
+diffusers>=0.36,<1
+transformers>=4.45,<6
+accelerate>=1,<2
+safetensors>=0.4,<1
+Pillow>=10,<13
