@@ -6,13 +6,34 @@ import android.os.BatteryManager
 import android.content.Context
 import android.content.IntentFilter
 import android.os.Process
+import android.os.CancellationSignal
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaRecord
 import java.util.concurrent.Executors
 import kotlin.coroutines.coroutineContext
+
+/**
+ * Cancels blocking provider IPC as soon as the parent coroutine is cancelled,
+ * not when its blocked worker thread finally completes. The child is suspended
+ * without occupying a thread and resumes on Default independently of IO.
+ */
+internal fun CoroutineScope.watchMicroWarmCancellation(onCancel: () -> Unit): Job =
+    launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
+        try {
+            awaitCancellation()
+        } finally {
+            onCancel()
+        }
+    }
 
 /**
  * #555: fills the micro-thumbnail store in the background, newest photos
@@ -51,6 +72,7 @@ internal object MicroThumbnailWarmer {
     suspend fun warmPaged(
         resolver: ContentResolver,
         source: MicroWarmMediaSource,
+        signal: CancellationSignal,
         gate: () -> Boolean,
         yieldWhile: () -> Boolean = { ThumbnailPipeline.gridScrolling }
     ): Report = withContext(dispatcher) {
@@ -67,7 +89,7 @@ internal object MicroThumbnailWarmer {
             ) { media, key ->
                 var made: android.graphics.Bitmap? = null
                 try {
-                    made = makeAndStore(resolver, store, MicroThumbnailData(media, key))
+                    made = makeAndStore(resolver, store, MicroThumbnailData(media, key), signal)
                     // A grant can disappear during a long ImageDecoder call.
                     // Do not leave a copy written after revoke/stop.
                     if (!gate()) {
