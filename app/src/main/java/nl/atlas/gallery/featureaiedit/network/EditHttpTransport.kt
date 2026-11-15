@@ -156,6 +156,9 @@ class EditHttpTransport(
             base.rawQuery != null || target.rawQuery != null ||
             base.port != target.port || base.port !in -1..65535 ||
             base.rawPath.isNullOrBlank() || !base.rawPath.endsWith("/") ||
+            !target.rawPath.startsWith(base.rawPath) ||
+            target.rawPath.contains("..") || target.rawPath.contains("%2e", true) ||
+            target.rawPath.contains("%2f", true) ||
             path.isBlank() || path.contains('\\') || target.normalize() != target)
             null else target.toURL()
     } catch (_: Exception) { null }
