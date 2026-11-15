@@ -484,7 +484,8 @@ class FaceIndexStoreIdentityReviewTest {
         assertEquals(published, store.peopleReviewGeneration("epoch-B"))
         val home = requireNotNull(store.peopleHome("epoch-B")) { "People home is served during a scan" }
         assertEquals(published, home.generation)
-        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid),
+        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid,
+            mediaCount = 3, firstAppearanceMs = null, mostRecentAppearanceMs = null),
             home.people.getValue(ana))
         assertEquals(listOf(group), home.unnamed)
         val review = requireNotNull(store.peopleReview("epoch-B")) {
