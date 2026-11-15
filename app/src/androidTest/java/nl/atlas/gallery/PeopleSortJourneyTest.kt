@@ -51,11 +51,8 @@ class PeopleSortJourneyTest {
         }
         compose.onNodeWithTag("atlas-people-sort-open").performClick()
         compose.onNodeWithTag("atlas-people-sort-sheet").assertExists()
-        // All choices are represented in one bottom sheet, with both directions.
+        // Each selection dismisses; the icon opens the next sheet.
         PeopleSortKey.entries.forEach { key ->
-            compose.onNodeWithTag("atlas-people-sort-open").apply {
-                // The sheet may already be open after the initial launch.
-            }
             compose.onNodeWithTag("atlas-people-sort-${key.name}-asc")
                 .performClick()
             compose.runOnIdle { assertEquals(PeopleSortChoice(key, false), chosen) }
