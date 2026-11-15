@@ -5,21 +5,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ThumbnailSizingTest {
-    @Test fun usesActualCellPixelSizeWithoutDownsamplingAtRest() {
-        assertEquals(400, thumbnailDecodePixels(cellPixels = 400, displayPixels = 1080))
-        assertEquals(731, thumbnailDecodePixels(cellPixels = 731, displayPixels = 1440))
+    @Test fun preservesSharpOversamplingAcrossZoomLevels() {
+        assertEquals(96, thumbnailDecodePixels(40, 40))
+        assertEquals(160, thumbnailDecodePixels(100, 100))
+        assertEquals(288, thumbnailDecodePixels(100, 175))
+        assertEquals(288, thumbnailDecodePixels(175, 100))
+        assertEquals(608, thumbnailDecodePixels(400, 400))
+        assertEquals(900, thumbnailDecodePixels(900, 900))
     }
 
-    @Test fun clipsInvalidAndOversizedCellToDisplayBounds() {
-        assertEquals(1, thumbnailDecodePixels(cellPixels = 0, displayPixels = 1080))
-        assertEquals(1, thumbnailDecodePixels(cellPixels = -9, displayPixels = 1080))
-        assertEquals(1080, thumbnailDecodePixels(cellPixels = 3000, displayPixels = 1080))
-        assertEquals(1, thumbnailDecodePixels(cellPixels = Int.MAX_VALUE, displayPixels = 0))
-    }
-
-    @Test fun staysPixelExactAtEveryZoomCellWidth() {
-        for (cell in listOf(72, 128, 196, 312, 480, 720, 1080)) {
-            assertEquals(cell, thumbnailDecodePixels(cellPixels = cell, displayPixels = 1080))
-        }
+    @Test fun handlesUnknownDimensionsAndPreservesMemoryBuckets() {
+        assertEquals(400, thumbnailDecodePixels(0, 400))
+        assertEquals(400, thumbnailDecodePixels(400, -1))
+        assertEquals(96, thumbnailDecodePixels(1, 1))
+        assertEquals(160, thumbnailDecodePixels(101, 101))
+        assertEquals(900, thumbnailDecodePixels(Int.MAX_VALUE, Int.MAX_VALUE))
     }
 }
