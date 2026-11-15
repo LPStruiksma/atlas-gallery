@@ -64,7 +64,7 @@ class AiEditSaverAndroidTest {
             provider = "synthetic-provider", model = "pixel-only", modelVersion = "test-v1",
             prompt = "Make these synthetic pixels blue",
             settingsJson = "{\"temperature\":0}",
-            format = AiEditImageFormat.PNG, keepGps = keepGps, createdAtMillis = 123456L
+            format = AiEditImageFormat.JPEG, keepGps = keepGps, createdAtMillis = 123456L
         )
 
     private fun bytes(uri: Uri): ByteArray = resolver.openInputStream(uri)!!.use { it.readBytes() }
@@ -89,9 +89,9 @@ class AiEditSaverAndroidTest {
         assertArrayEquals("Original MediaStore bytes must never change", before, bytes(original))
         assertNotEquals(original, result.uri)
         assertEquals(folder, value(result.uri, MediaStore.Images.Media.RELATIVE_PATH))
-        assertTrue(value(result.uri, MediaStore.Images.Media.DISPLAY_NAME).endsWith("_AI_1.png"))
+        assertTrue(value(result.uri, MediaStore.Images.Media.DISPLAY_NAME).endsWith("_AI_1.jpg"))
         assertEquals("0", value(result.uri, MediaStore.Images.Media.IS_PENDING))
-        assertEquals("image/png", value(result.uri, MediaStore.Images.Media.MIME_TYPE))
+        assertEquals("image/jpeg", value(result.uri, MediaStore.Images.Media.MIME_TYPE))
         val editedExif = exif(result.uri)
         assertEquals("2020:01:02 03:04:05",
             editedExif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL))
