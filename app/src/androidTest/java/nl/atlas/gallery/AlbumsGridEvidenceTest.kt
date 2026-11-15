@@ -50,6 +50,14 @@ class AlbumsGridEvidenceTest {
         assertTrue(pinned.any { it.contains("Camera") })
         assertTrue(pinned.any { it.contains("Screenshots") })
         assertTrue(pinned.any { it.contains("Black and White") })
+        // The synthetic S24 display is 360dp wide. Two columns still expose
+        // six cards when scrolled, so a count-only assertion missed this
+        // regression. Verify the actual first-row geometry before capturing.
+        val firstRow = nodes.take(3).map { it.boundsInRoot }
+        assertTrue("Three pinned covers must share top row at S24 size",
+            firstRow.maxOf { it.top } - firstRow.minOf { it.top } < 4f)
+        assertTrue("Pinned covers must occupy three distinct left-to-right columns",
+            firstRow[0].left < firstRow[1].left && firstRow[1].left < firstRow[2].left)
         saveUiEvidence("albums-after-populated.png")
         // Stories and Photo DNA live only in the Albums overflow (spec §3).
         compose.onNodeWithTag("atlas-header-more").performClick()
