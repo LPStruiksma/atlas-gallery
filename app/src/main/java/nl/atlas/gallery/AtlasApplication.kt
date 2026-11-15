@@ -17,42 +17,42 @@ class AtlasApplication : Application() {
         super.onCreate()
         Trace.beginSection("atlas.startup.critical")
         try {
-        // The first-grid-critical lane: fail-closed ordering is checked by the
-        // JVM registry test and explicitly enforced below.
-        // Persist one privacy-redacted trace before Android's original crash handler runs.
-        LastCrashRecorder.install(this)
-        // #555: ATLAS's micro-thumbnail store; only used under full media access.
-        MicroThumbnails.install(this)
-        ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()
-        readGalleryMediaGrant(this).let { MicroThumbnails.applyGrant(it.images, it.videos, it.selected) }
-        // This registers a lazy factory; the expensive ImageLoader is built only on demand.
-        SingletonImageLoader.setSafe { context ->
-            ImageLoader.Builder(context)
-                .components {
-                    add(VideoFrameDecoder.Factory())
-                }
-                // #555: hold several screens of tiles, sized to the device class (Samsung T1).
-                .memoryCache {
-                    MemoryCache.Builder().maxSizeBytes(thumbnailMemoryCacheBytes(context)).build()
-                }
-                // Run Coil's interceptor chain on Main, so every caller resumes
-                // on Main after fetch/decode (which stay on Dispatchers.IO).
-                // In the app every execute() caller and every AsyncImage job is
-                // already on Main, so nothing changes there. Under Compose UI
-                // tests, the composition's interceptor is not a
-                // CoroutineDispatcher, so coil-compose launches AsyncImagePainter
-                // jobs on Dispatchers.Unconfined. Without this, they resumed on an
-                // IO worker and updated painter/Compose state there, racing
-                // SnapshotStateObserver on Main (#530: "null cannot be cast to
-                // DerivedState" in recordInvalidation).
-                .interceptorCoroutineContext(Dispatchers.Main.immediate)
-                .build()
-        }
-        check(StartupTaskAdmission.verifyCriticalTasks(listOf(
-            StartupTask.CRASH_HANDLER, StartupTask.MICRO_THUMBNAIL_STORE,
-            StartupTask.THUMBNAIL_FLAGS, StartupTask.MEDIA_GRANT,
-            StartupTask.IMAGE_LOADER_FACTORY
-        )))
+            // The first-grid-critical lane: fail-closed ordering is checked by the
+            // JVM registry test and explicitly enforced below.
+            // Persist one privacy-redacted trace before Android's original crash handler runs.
+            LastCrashRecorder.install(this)
+            // #555: ATLAS's micro-thumbnail store; only used under full media access.
+            MicroThumbnails.install(this)
+            ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()
+            readGalleryMediaGrant(this).let { MicroThumbnails.applyGrant(it.images, it.videos, it.selected) }
+            // This registers a lazy factory; the expensive ImageLoader is built only on demand.
+            SingletonImageLoader.setSafe { context ->
+                ImageLoader.Builder(context)
+                    .components {
+                        add(VideoFrameDecoder.Factory())
+                    }
+                    // #555: hold several screens of tiles, sized to the device class (Samsung T1).
+                    .memoryCache {
+                        MemoryCache.Builder().maxSizeBytes(thumbnailMemoryCacheBytes(context)).build()
+                    }
+                    // Run Coil's interceptor chain on Main, so every caller resumes
+                    // on Main after fetch/decode (which stay on Dispatchers.IO).
+                    // In the app every execute() caller and every AsyncImage job is
+                    // already on Main, so nothing changes there. Under Compose UI
+                    // tests, the composition's interceptor is not a
+                    // CoroutineDispatcher, so coil-compose launches AsyncImagePainter
+                    // jobs on Dispatchers.Unconfined. Without this, they resumed on an
+                    // IO worker and updated painter/Compose state there, racing
+                    // SnapshotStateObserver on Main (#530: "null cannot be cast to
+                    // DerivedState" in recordInvalidation).
+                    .interceptorCoroutineContext(Dispatchers.Main.immediate)
+                    .build()
+            }
+            check(StartupTaskAdmission.verifyCriticalTasks(listOf(
+                StartupTask.CRASH_HANDLER, StartupTask.MICRO_THUMBNAIL_STORE,
+                StartupTask.THUMBNAIL_FLAGS, StartupTask.MEDIA_GRANT,
+                StartupTask.IMAGE_LOADER_FACTORY
+            )))
         } finally {
             Trace.endSection()
         }
