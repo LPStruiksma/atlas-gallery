@@ -34,8 +34,9 @@ abstract class ImageEditProviderContract {
     @Test fun failuresKeepTypedKindAndRetryability() {
         val result = providerFor(Fixture.FAILURE).submit(request()).await()
         assertTrue(result is EditOutcome.Failed)
-        assertEquals(FailureKind.NETWORK, (result as EditOutcome.Failed).kind)
-        assertTrue(result.retryable)
+        val failure = result as EditOutcome.Failed
+        assertEquals(FailureKind.NETWORK, failure.kind)
+        assertTrue(failure.retryable)
     }
 
     @Test fun cancellationIsIdempotentAndTerminal() {
