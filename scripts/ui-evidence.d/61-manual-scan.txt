@@ -1,0 +1,5 @@
+# #61: synthetic unplugged manual scanning and explicit wait; light and dark.
+people-61-scan-now-unplugged-light
+people-61-scan-now-unplugged-dark
+people-61-settings-battery-low-light
+people-61-settings-battery-low-dark
