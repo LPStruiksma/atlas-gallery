@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
@@ -424,11 +425,11 @@ fun UnknownFaceReviewCard(
     }
     // Stable, nonsensitive test tag. Never log a private MediaStore source key.
     Card(modifier = modifier.fillMaxWidth().testTag("atlas-unknown-face-review"),
-        shape = RoundedCornerShape(24.dp)) {
+        shape = RoundedCornerShape(AtlasTokens.Radii.PersonCard)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.fillMaxWidth().height(168.dp)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest,
-                    RoundedCornerShape(18.dp)),
+                    RoundedCornerShape(AtlasTokens.Radii.PersonCover)),
                 contentAlignment = Alignment.Center) { sourcePreview() }
             Text(candidate.title, style = MaterialTheme.typography.titleMedium)
             Text(candidate.explanation, style = MaterialTheme.typography.bodySmall,
