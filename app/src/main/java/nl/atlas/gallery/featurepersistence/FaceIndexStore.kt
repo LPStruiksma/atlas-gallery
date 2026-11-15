@@ -427,7 +427,8 @@ class FaceIndexStore(
      * #48: model-change journal is app-private metadata, not a vector or media
      * backup. It is intentionally independent of faces so the old observation
      * can be deleted atomically while its confirmation waits for re-embedding.
-     * No inferred matches, only exact media revision/detector/ordinal/box.
+     * No inferred matches: exact media revision, ordinal, frame and box.
+     * A changed detector may restore membership only if it finds that same face.
      * Names remain in people_names even when no face can safely be restored.
      */
     private fun createModelCarryTable(db: SQLiteDatabase) {
@@ -459,11 +460,11 @@ class FaceIndexStore(
         // SQLite's rawQuery selectionArgs cannot safely represent a nullable
         // video timestamp: use two fixed SQL shapes, never interpolate content.
         val sql = """SELECT person_key FROM people_model_carry
-            WHERE media_key=? AND revision=? AND detector_version=? AND ordinal=?
+            WHERE media_key=? AND revision=? AND ordinal=?
                 AND ABS(l - ?) < 0.000001 AND ABS(t - ?) < 0.000001
                 AND ABS(r - ?) < 0.000001 AND ABS(b - ?) < 0.000001""" +
             if (frameMs == null) " AND frame_ms IS NULL" else " AND frame_ms=?"
-        val args = arrayOf(lease.media.key, lease.media.revision, lease.detectorVersion,
+        val args = arrayOf(lease.media.key, lease.media.revision,
             ordinal.toString(), box.left.toString(), box.top.toString(),
             box.right.toString(), box.bottom.toString())
         val person = db.rawQuery(sql, if (frameMs == null) args else args + frameMs.toString())
@@ -1050,6 +1051,9 @@ class FaceIndexStore(
             }
             db.execSQL("""DELETE FROM catalog WHERE NOT EXISTS
                 (SELECT 1 FROM stage WHERE stage.media_key=catalog.media_key)""")
+            // Journal confirmed membership before a detector-only rescan too.
+            // Restoring still requires the exact unchanged source and face box.
+            if (!modelChanged) captureModelCarry(db)
             // Changed media or detector invalidates all prior boxes/review decisions.
             db.execSQL("""UPDATE catalog SET
                 revision=(SELECT revision FROM stage WHERE stage.media_key=catalog.media_key),
@@ -1065,8 +1069,7 @@ class FaceIndexStore(
             // a deleted or revised source must never inherit the choice.
             db.execSQL("""DELETE FROM people_model_carry WHERE NOT EXISTS
                 (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
-                    AND c.revision=people_model_carry.revision
-                    AND c.detector_version=people_model_carry.detector_version)""")
+                    AND c.revision=people_model_carry.revision)""")
             db.execSQL("""DELETE FROM people_cover_override WHERE NOT EXISTS
                 (SELECT 1 FROM catalog c WHERE c.media_key=people_cover_override.media_key
                     AND c.revision=people_cover_override.source_revision)""")
