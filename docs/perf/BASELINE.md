@@ -1,33 +1,50 @@
 # PERF-0 — aggregate-only performance baseline
 
-Source: [standing performance target #119](https://github.com/LPStruiksma/atlas-gallery/issues/119), [instrumentation unit #121](https://github.com/LPStruiksma/atlas-gallery/issues/121).
+Source: [performance track #119](https://github.com/LPStruiksma/atlas-gallery/issues/119), [instrumentation unit #121](https://github.com/LPStruiksma/atlas-gallery/issues/121).
 
-## Method
+## Measurement and privacy boundary
 
-All metrics are **process-local, numeric-only**, bounded to 256 recent samples per metric, with nearest-rank p50/p90/p95 and counts. No filenames, media URIs, photos, People identities, persistent logs, network telemetry or private fixtures. Missing samples appear as **Not measured**, not zero. The Android Trace section is `atlas_activity_content`, and contains no identifiers.
+The process-local `PerformanceAggregates` store retains at most 256 numeric samples per allowlisted metric. It reports nearest-rank p50/p90/p95 with counts; zero samples show **Not measured**, not a fabricated zero. It never stores media URIs, filenames, person identities, search text, bitmap bytes, persistent analytics or network telemetry. The named `android.os.Trace` sections contain only constant labels (`atlas_activity_content` and `atlas_grid_scroll`).
 
-Open **Settings → Advanced options → Performance** to read the latest anonymous summaries. These are observational diagnostics, not a benchmark: `firstGridFrame` currently records the next Compose frame after an authorized non-empty Photos grid is mounted; this is not a verified hardware presentation fence. The viewer statistic is filmstrip selection → first Coil preview as already defined by `ViewerTimingProbe`, not tap → full image. Any scope lacking a live production hook remains explicitly unmeasured. JVM tests prove ring-buffer and percentile math but not device frame latency.
+**Settings → Advanced options → Performance** shows the latest read-only aggregate rows (multi-line, so units and sample counts are visible). Opening the Performance section forwards pending viewer samples and samples peak Java heap once; there is no continuous polling while Settings is open.
 
-For comparable S24+ numbers: launch from force-stop three times with cached catalogue, warm cache deliberately between runs, collect p50 and p95 with n; run one fixed scripted grid fling and compare frame budget violations against total frames; open the same synthetic viewer set; run face/visual indexing on charge with the same permitted corpus; record peak `(totalMemory-freeMemory)/maxMemory` while browsing 250k items. Collect only aggregates and test conditions. No owner-device samples have been captured in this PR.
+Grid frame intervals come from consecutive `withFrameNanos` callbacks while a Photos, Search or person grid is actively scrolling. The callback uses Compose's frame clock, backed by Choreographer on Android, and does not run while idle. `grid_frame_over_budget` records a 0/1 sample using the current display refresh rate (`1000 / Hz` milliseconds); Settings reports the fraction over budget with its own count. These are sampled frame-clock intervals, **not** a Perfetto/JankStats end-to-end GPU presentation trace, and sampling only active scrolls does not establish a whole-app jank rate.
 
-## Targets and baseline status
+The viewer probe reports selection/pager entry → first Coil preview. This is neither finger-down-to-display latency nor full-resolution image decode. The cold-start proxy ends at the next Compose frame following a mounted non-empty Photos grid, not a hardware presentation fence. Scanner throughput measures **successful positive** face or visual stage completions per measured stage duration; empty, held or zero-duration work is omitted. Peak heap fraction is `(totalMemory - freeMemory) / maxMemory`, sampled on demand.
 
-| Metric | Goal (#119) | PERF-0 device baseline |
+## A1–A22 coverage
+
+| Action | Live timing boundary in PERF-0 | Status |
 |---|---|---|
-| Cold start → cached grid | p50 ≤ 500 ms | Pending owner-device samples |
-| Grid frames above budget | < 1% | Pending frame-jank capture |
-| Viewer tap → full image | p50 ≤ 150 ms | Pending full-image event (preview-only probe exists) |
-| Face + visual indexing | +30% photos/min vs baseline | Pending throughput hooks and run |
-| Peak Java heap at 250k | < 60% of heap limit | Pending device stress run |
+| A1 App open → cached grid | Process start → first Compose Photos grid frame | Proxy wired |
+| A2 Grid scroll / fling | Consecutive active-scroll Compose frame intervals | Wired |
+| A3 Open photo | Initial viewer page entry → preview-ready | Preview proxy wired |
+| A4 Viewer swipe | Subsequent page entry or filmstrip selection → preview-ready | Preview proxy wired |
+| A5 Face + visual indexing | Successful bounded worker stage elapsed time | Wired |
+| A6 New photo appears | Published, authorized non-cached catalogue → next Compose frame | Publication proxy wired |
+| A7 Return from viewer | Viewer close → next Compose frame | Proxy wired |
+| A8 Memory / stability | Duration of on-demand Java heap sample | Sampling proxy wired |
+| A9 Open People | People-tab selection → next Compose frame | Wired |
+| A10 Open person / scroll | Reviewed-person entry → next Compose frame; person-grid frame intervals | Wired |
+| A11 Search | Search-tab selection → next Compose frame | Wired |
+| A12–A22 | Fixed keys and Settings rows only; no source hooks | Explicit follow-up |
 
-These pending rows are deliberately not invented or inferred from JVM tests. Add dated aggregate-only results after a real measurement and record device/build, sample count, cache state and units.
+Every wired action records milliseconds under `action_aN_ms`. Only measurements actually seen in a running process have samples. The A3/A4 split is assigned when samples are forwarded, using the first completed viewer-preview sample after an open as A3. Sampling may miss interrupted gestures or image loads; it does not manufacture completions.
 
-## User-action inventory coverage (#119)
+## Targets versus measured device baseline
 
-A1–A22 are fixed, allowlisted metric identifiers (action_a1_ms through action_a22_ms), shown in Settings as read-only p50/p90/p95, sample count and milliseconds. They do not constitute event instrumentation by themselves: each action shows **Not measured** until an actual start/end event is connected. No action-specific samples or owner-phone measurements have been captured here. A1 cold-start currently has a separate proxy metric; it is not silently copied into A1. The next PERF implementation must wire each concrete interaction using non-identifying timing boundaries, starting with A1–A11, and test the synthetic UI/emulator flow before claiming baseline numbers. Do not treat zero samples as zero latency.
+| Metric | Target (#119) | Real S24+ device baseline |
+|---|---|---|
+| Cold start → cached grid | p50 ≤ 500 ms | Pending device runs |
+| Grid frames above refresh budget | < 1% | Pending representative scroll runs |
+| Viewer tap → **full** image | p50 ≤ 150 ms | Not measured: preview proxy only |
+| Face + visual indexing | +30% photos/min versus earlier baseline | Pending matched-corpus device runs |
+| Peak Java heap at 250k media | < 60% maximum heap | Pending device stress run |
 
-The current PR adds the 22-row display/allowlist and a bounded JVM regression test, but **does not yet satisfy the revised instrumentation scope of #121**. It is not eligible for independent acceptance until production hooks, exact-head JVM/emulator CI and a rendered Settings screenshot are supplied.
+To compare future device results: force-stop/relaunch three times with the same authorized cached catalogue; record p50/p95 and n; repeat a fixed scripted grid fling and its refresh Hz; open a synthetic viewer set; run permitted face and visual work under comparable charging/thermal state; and sample heap using an agreed 250k-item test corpus. Record build SHA, device, cache/permission conditions, units, timestamps and counts, **never** identifying media. Do not backfill these pending cells from a JVM unit test, screenshot or proxy metric.
 
-## Partial worker throughput integration
+## Verification and acceptance
 
-The face/visual worker reports positive completed indexing counts divided by measured stage elapsed time as process-local `photos/min` aggregates. Empty or held stages are omitted instead of being recorded as zero. This is not a measured owner-device baseline. Live A1–A11 boundaries and frame-jank hooks, exact-head JVM/emulator CI, and a rendered Settings screenshot remain required for acceptance.
+Deterministic JVM tests cover percentile/ring-buffer bounds, unknown keys, frame over-budget ratios, and initial-viewer/swipe preview samples. `PerformanceSettingsJourneyTest` exercises the real Settings destination with synthetic MediaStore fixtures and declares two screenshot artifacts: `perf-0-settings-top.png` and `perf-0-settings-actions.png`.
+
+The code and tests on this PR are **not automatically evidence of a green run**. The exact-head Android build/JVM checks must pass, followed by the API35 emulator shards, screenshot artifact validation, an independent CLEAN Review and a checked merge join. The PR's current draft/dev state must not be called accepted until the required CI and rendered images actually exist. No owner-phone measurements are claimed.
