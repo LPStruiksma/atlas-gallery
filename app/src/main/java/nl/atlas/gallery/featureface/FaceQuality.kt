@@ -3,7 +3,6 @@ package nl.atlas.gallery.featureface
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
-import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.PI
@@ -26,7 +25,7 @@ data class FaceQuality(
 }
 
 object FaceQualityScorer {
-    const val VERSION = 1
+    const val VERSION = 2
     const val MIN_FACE_SHORT_EDGE_PX = 112
 
     /**
@@ -84,7 +83,10 @@ object FaceQualityScorer {
         }
         val lapMean = lapSum / count
         val laplacianVariance = max(0.0, lapSq / count - lapMean * lapMean)
-        val sharp = (ln(1.0 + laplacianVariance) / ln(1.0 + 900.0)).coerceIn(0.0, 1.0)
+        // A saturating ratio stays bounded without flattening every variance
+        // above a hard threshold to the same value. In particular, genuinely
+        // high-frequency detail can still outrank a lower-frequency pattern.
+        val sharp = laplacianVariance / (laplacianVariance + 900.0)
 
         val shortSide = min(detection.width, detection.height) * sourceScale
         val size = (shortSide / MIN_FACE_SHORT_EDGE_PX).toDouble().coerceIn(0.0, 1.0)

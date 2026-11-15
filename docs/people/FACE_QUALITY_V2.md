@@ -1,4 +1,4 @@
-# COVER-0 face-quality v1
+# COVER-0 face-quality v2
 
 This signal ranks **observations of the same person** for an opt-in best-shot
 cover; it must never become an identity score or an attractiveness comparison.
@@ -6,13 +6,13 @@ cover; it must never become an identity score or an attractiveness comparison.
 The existing YuNet detection and SFace 112x112 aligned RGB crop supply all
 signals; no extra model, photo decode, frame sampler or network request.
 The score is clamped to [0,1] and stored per face alongside its existing
-photo/video `frame_ms`, with `quality_version=1`.
+photo/video `frame_ms`, with `quality_version=2`.
 
 | Feature | Weight | Calculation |
 | --- | ---: | --- |
 | YuNet confidence | 0.10 | clamped detector score |
 | Face size | 0.20 | shorter face-box side / 112, capped at one |
-| Sharpness | 0.25 | log-scaled variance of a four-neighbour Laplacian, normalized to 900 |
+| Sharpness | 0.25 | four-neighbour Laplacian variance / (variance + 900), preserving ordering without a hard cap |
 | Exposure and contrast | 0.20 | mean-luminance balance × unclipped-pixel fraction × standard deviation / 48 |
 | Frontalness and roll | 0.20 | 70% nose/mouth/eye symmetry plus 30% eye-line roll |
 | Truncation | 0.05 | zero when the face touches the two-pixel decoded-frame border |
