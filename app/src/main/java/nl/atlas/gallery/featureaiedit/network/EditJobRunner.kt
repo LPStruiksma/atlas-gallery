@@ -383,10 +383,11 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     private fun imageSignatureValid(file: File): Boolean {
         return try {
         if (!file.isFile || file.length() !in 1..32_000_000L) return false
-        val header = file.inputStream().use { it.readNBytes(8) }
-        (header.size >= 3 && header[0] == 0xff.toByte() &&
+        val header = ByteArray(8)
+        val read = file.inputStream().use { it.read(header) }
+        (read >= 3 && header[0] == 0xff.toByte() &&
             header[1] == 0xd8.toByte() && header[2] == 0xff.toByte()) ||
-            (header.size == 8 && header.contentEquals(byteArrayOf(
+            (read == 8 && header.contentEquals(byteArrayOf(
                 0x89.toByte(), 80, 78, 71, 13, 10, 26, 10)))
     } catch (_: Exception) { false }
     }
