@@ -18,8 +18,6 @@ import java.text.DateFormat
 import java.util.Date
 import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
 import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
-import nl.atlas.gallery.featureaiedit.save.aiEditProvenanceGroups
-import nl.atlas.gallery.featureaiedit.save.aiEditProvenanceFor
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
