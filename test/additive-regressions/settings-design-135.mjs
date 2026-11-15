@@ -22,11 +22,10 @@ test("#135 settings has One UI-like grouped hierarchy and theme-backed rows", ()
 });
 
 test("#135 emulator verifies both themes, scroll collapse, advanced actions and captures", () => {
-  for (const token of ["AtlasGalleryTheme(dark = dark)", "settings-135-main-light.png",
-    "settings-135-main-dark.png", "settings-135-advanced-light.png",
-    "settings-135-advanced-dark.png", "settings-135-scrolled-light.png",
-    "settings-135-scrolled-dark.png", "atlas-settings-compact-title",
-    "atlas-settings-advanced", "atlas-settings-diagnostics", "onNodeWithTag"]) {
+  for (const token of ["AtlasGalleryTheme(dark = dark)", "settings-135-main-$theme.png",
+    "settings-135-advanced-$theme.png", "settings-135-scrolled-$theme.png",
+    "atlas-settings-compact-title", "atlas-settings-advanced",
+    "atlas-settings-diagnostics", "onNodeWithTag"]) {
     assert.ok(journey.includes(token), "missing Settings emulator assertion: " + token);
   }
   for (const item of ["settings-135-main-light", "settings-135-main-dark",
