@@ -38,7 +38,7 @@ class AlbumsGridEvidenceTest {
         // The CI runner invokes this same fixture against the baseline and
         // candidate APKs under both system themes. Ordinary suite execution
         // still validates three-column geometry and the menu/sort journeys.
-        val args = InstrumentationRegistry.getInstrumentation().arguments
+        val args = InstrumentationRegistry.getArguments()
         val revision = args.getString("atlasAlbumsRevision")
         val captureTheme = args.getString("atlasAlbumsTheme")
         assertTrue("Unrecognized Albums capture revision",
