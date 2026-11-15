@@ -38,7 +38,7 @@ class PerformanceAggregates(private val capacity: Int = 256) {
 internal object PerformanceSession {
     val aggregate = PerformanceAggregates()
     private val viewer = ViewerTimingProbe()
-    private var forwardedViewerSamples = 0
+    private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private val processStartNanos = System.nanoTime()
     private var firstGridReported = false
 
@@ -53,11 +53,13 @@ internal object PerformanceSession {
 
     @Synchronized fun updateViewer() {
         val samples = viewer.snapshot()
-        if (samples.size < forwardedViewerSamples) forwardedViewerSamples = 0
-        samples.drop(forwardedViewerSamples).forEach {
-            aggregate.record("viewer_ms", it.firstPreviewMs)
+        val last = lastForwardedViewer
+        val start = if (last == null) 0 else {
+            val index = samples.indexOfLast { it === last }
+            if (index < 0) samples.size else index + 1
         }
-        forwardedViewerSamples = samples.size
+        samples.drop(start).forEach { aggregate.record("viewer_ms", it.firstPreviewMs) }
+        lastForwardedViewer = samples.lastOrNull()
     }
 
     fun sampleHeap() {
