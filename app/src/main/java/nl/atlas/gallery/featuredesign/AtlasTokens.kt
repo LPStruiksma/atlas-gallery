@@ -36,6 +36,20 @@ object AtlasTokens {
             val SurfaceHigh = Color(0xFF243035)
             val Pill = Color(0xFF262B30)
         }
+        object Viewer {
+            val FilmstripTrack = Color(0xFF2A2A2A)
+            val Favourite = Color(0xFFFF4D5E)
+            val Backdrop = Color(0xFF171A20)
+            val ActionPill = Color(0xB3202124)
+            val MediaTrack = Color(0xFF292929)
+            val Scrim = Color(0xA0000000)
+            val SeekInactive = Color(0xFF888888)
+            val SelectionAccent = Color(0xFFB5E7DA)
+        }
+        object Shell {
+            val DarkSurface = Color(0xFF171B21)
+            val DarkAccent = Viewer.SelectionAccent
+        }
         object Light {
             val PrimaryContainer = Color(0xFFBDEDE2)
             val OnPrimaryContainer = Color(0xFF00382F)
