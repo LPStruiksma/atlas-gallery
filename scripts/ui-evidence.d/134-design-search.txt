@@ -3,3 +3,5 @@ design-4-search-rest-light
 design-4-search-rest-dark
 design-4-search-empty-light
 design-4-search-empty-dark
+design-4-search-ime-light
+design-4-search-ime-dark
