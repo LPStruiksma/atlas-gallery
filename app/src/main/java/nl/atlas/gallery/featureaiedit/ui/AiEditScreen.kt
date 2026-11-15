@@ -210,7 +210,7 @@ internal fun AiEditScreenContent(
                         contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
                     if (hasPreview && !showOriginal) {
                         Box(Modifier.fillMaxSize().drawWithContent {
-                            clipRect(right = size.width * split) { drawContent() }
+                            clipRect(right = size.width * split) { this@drawWithContent.drawContent() }
                         }) {
                             AsyncImage(model = selectedCandidateUri,
                                 contentDescription = "AI edit candidate preview",
