@@ -11,7 +11,7 @@ const theme = readFileSync('app/src/androidTest/java/nl/atlas/gallery/SystemThem
 assert.match(albums, /coverRenderer\(album\.coverMedia, Modifier\.fillMaxSize\(\)\)/);
 assert.match(albums, /albumPinRank\(album\.title\)/);
 assert.match(albums, /onReorderAlbums\?\.invoke\(moveUnpinnedAlbum/);
-assert.match(albums, /GridCells\.Adaptive\(minSize = 112\.dp\)/);
+assert.match(albums, /GridCells\.Adaptive\(minSize = 96\.dp\)/);
 assert.match(albums, /horizontalArrangement = Arrangement\.spacedBy\(12\.dp\)/);
 assert.match(albums, /val coverCorner = RoundedCornerShape\(AtlasSpace\.CoverCorner\)/);
 assert.match(albums, /style = MaterialTheme\.typography\.titleSmall/);
@@ -26,6 +26,7 @@ assert.match(albumEvidence, /waitForAlbumsStage\("Albums navigation"\)/);
 assert.match(albumEvidence, /waitForAlbumsStage\("visible Albums grid cards \(at least six\)"\)/);
 assert.match(albumEvidence, /\.fetchSemanticsNodes\(\)\.size >= 6/);
 assert.match(albumEvidence, /fun inventoryDiagnostic\(\): String/);
+assert.match(albumEvidence, /Three pinned covers must share top row at S24 size/);
 assert.match(albumEvidence, /MediaStore\.Images\.Media\.RELATIVE_PATH/);
 assert.match(parityEvidence, /end0 = center - Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /end1 = center \+ Offset\(100f, 0f\)/);
