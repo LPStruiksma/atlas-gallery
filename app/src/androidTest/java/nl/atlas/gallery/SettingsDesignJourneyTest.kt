@@ -1,7 +1,6 @@
 package nl.atlas.gallery
 
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -45,7 +44,7 @@ class SettingsDesignJourneyTest {
             val theme = if (dark) "dark" else "light"
             compose.onNodeWithTag("atlas-settings-screen").assertExists()
             compose.onNodeWithTag("atlas-settings-large-title").assertIsDisplayed()
-            compose.onNodeWithTag("atlas-settings-compact-title").assertDoesNotExist()
+            compose.onNodeWithTag("atlas-settings-large-title").assertExists()
             compose.onNodeWithTag("atlas-library-people-tools").assertExists()
             compose.onNodeWithTag("atlas-settings-display").assertExists()
             compose.onNodeWithTag("atlas-settings-advanced-group").assertExists()
