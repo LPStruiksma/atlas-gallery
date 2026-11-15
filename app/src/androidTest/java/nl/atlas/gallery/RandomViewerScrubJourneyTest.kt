@@ -57,7 +57,7 @@ class RandomViewerScrubJourneyTest {
         // Photos -> Random, then the fixture album (it inherits the order).
         waitFor(hasText("photos & videos", substring = true))
         compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-random").performClick()
+        compose.onNodeWithTag("atlas-media-sort-random").performClick()
         waitFor(hasText("photos & videos", substring = true))
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         val card = hasTestTag("atlas-album-card") and hasText(FOLDER, substring = true)
