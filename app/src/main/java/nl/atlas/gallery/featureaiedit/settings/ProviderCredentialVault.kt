@@ -92,6 +92,4 @@ class ProviderCredentialVault(context: Context) {
         if (target.exists()) check(target.delete())
     }
 
-    /** For device-reset or test cleanup only; never used by an ordinary settings action. */
-    fun isBackedUp(): Boolean = false
 }
