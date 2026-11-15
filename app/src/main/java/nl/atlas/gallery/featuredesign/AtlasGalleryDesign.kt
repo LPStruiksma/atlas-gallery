@@ -564,9 +564,9 @@ fun AtlasGalleryHeader(
             AnimatedVisibility(
                 visible = !subtitle.isNullOrBlank() && !LocalAtlasHeaderCollapsed.current,
                 enter = fadeIn(atlasTween<Float>(AtlasMotionKind.HEADER)) +
-                    expandVertically(atlasTween<Int>(AtlasMotionKind.HEADER)),
+                    expandVertically(atlasTween<androidx.compose.ui.unit.IntSize>(AtlasMotionKind.HEADER)),
                 exit = fadeOut(atlasTween<Float>(AtlasMotionKind.HEADER)) +
-                    shrinkVertically(atlasTween<Int>(AtlasMotionKind.HEADER))
+                    shrinkVertically(atlasTween<androidx.compose.ui.unit.IntSize>(AtlasMotionKind.HEADER))
             ) {
                 Text(
                     subtitle.orEmpty(),
