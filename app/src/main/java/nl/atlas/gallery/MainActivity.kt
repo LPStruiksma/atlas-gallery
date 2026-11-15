@@ -1554,7 +1554,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     if (overviewRouteKey != overviewRoute) {
         overviewRouteKey = overviewRoute
         overviewQuery = ""
-        overviewScope = AtlasSearchScope.THIS_SCREEN
+        overviewScope = if (tab == 3) AtlasSearchScope.LIBRARY else AtlasSearchScope.THIS_SCREEN
     }
     val overviewBase = when {
         personFilter != null -> selectedPersonPhotos.orEmpty()
