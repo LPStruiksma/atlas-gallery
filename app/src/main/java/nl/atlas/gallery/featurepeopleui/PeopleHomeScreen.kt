@@ -92,6 +92,7 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    onSearchWholeLibrary: (() -> Unit)? = null,
     /**
      * #31: a kept opt-in whose catalogue is still being restored. Shows a
      * quiet page, never "No people" and "Discover faces" for a library that
@@ -197,7 +198,9 @@ fun PeopleHomeScreen(
             menuItems = overflow,
             onOpenLibraryStatus = onOpenLibraryStatus,
             actions = { AtlasSearch(query = searchText, onQueryChange = { searchText = it },
-                onScopeChange = { }) }
+                onScopeChange = { scope ->
+                    if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                }) }
         )
         PeopleScanProgress(discovery)
         if (tiles.isEmpty()) {
