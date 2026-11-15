@@ -43,7 +43,7 @@ class UsageAggregates {
     @Synchronized fun screen(day: LocalDate, id: String, seconds: Long): Boolean {
         if (!validScreen(id) || seconds < 0 || seconds > MAX_SCREEN_SECONDS) return false
         val r = row(day)
-        r.screens[id] = ((r.screens[id] ?: 0) + seconds).coerceAtMost(MAX_SCREEN_SECONDS)
+        r.screens[id] = ((r.screens[id] ?: 0L) + seconds).coerceAtMost(MAX_SCREEN_SECONDS)
         return true
     }
 
