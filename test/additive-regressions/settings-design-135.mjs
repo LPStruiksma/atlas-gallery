@@ -8,7 +8,7 @@ const journey = read("app/src/androidTest/java/nl/atlas/gallery/SettingsDesignJo
 const evidence = read("scripts/ui-evidence.d/135-settings-design.txt");
 
 test("#135 settings has One UI-like grouped hierarchy and theme-backed rows", () => {
-  for (const token of ["SettingsGroup", "SettingsActionRow",
+  for (const token of ["SettingsGroup", "SettingsActionRow", "HorizontalDivider",
     "RoundedCornerShape(22.dp)", "heightIn(min = 64.dp)", "MaterialTheme.colorScheme.surfaceContainer",
     "MaterialTheme.colorScheme.onSurfaceVariant", "MaterialTheme.typography.titleSmall",
     "MaterialTheme.typography.bodyLarge", "atlas-settings-large-title",
