@@ -2950,7 +2950,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         ActivityScreen(media.size, people.size, busy, error, vm::refresh)
                     }
                     settingsOpen -> {
-                        PerformanceSession.updateViewer()
                         val visualStatus = discovery.status?.visual
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
