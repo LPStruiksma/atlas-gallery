@@ -65,7 +65,8 @@ suspend fun runPeopleScanRun(
     try {
         while (true) {
             // Null: no granted host session; nothing asked for a next batch.
-            val batch = runPeopleScanBatch(context, thermalAllowed, isStopped) ?: break
+            val batch = runPeopleScanBatch(context, thermalAllowed = thermalAllowed,
+                isStopped = isStopped) ?: break
             photos += batch.photosIndexed
             batches++
             // #43: one count per batch, so a run cut off by process death still
@@ -108,6 +109,7 @@ suspend fun runPeopleScanBatch(
     context: Context,
     /** Injectable for the API35 thermal test; production reads PowerManager. */
     thermalAllowed: () -> Boolean = { thermalAllowsScan(context.applicationContext) },
+    manualForeground: Boolean = false,
     isStopped: () -> Boolean
 ): FaceBatchResult? {
     val appContext = context.applicationContext
@@ -121,7 +123,7 @@ suspend fun runPeopleScanBatch(
         null
     } ?: return null
     try {
-        if (!safeToStep(session, thermalAllowed(), isStopped())) {
+        if (!safeToStep(session, thermalAllowed(), isStopped(), manualForeground)) {
             // Refused at its start (thermal, power, pause, stale scope): the
             // host decides whether a delayed retry keeps the run alive.
             val held = FaceBatchResult(0, 0, 0, nl.atlas.gallery.featureface.FaceBatchStop.HELD)
@@ -134,7 +136,7 @@ suspend fun runPeopleScanBatch(
             clockElapsedMs = { SystemClock.elapsedRealtime() },
             step = {
                 jobContext.ensureActive()
-                if (!safeToStep(session, thermalAllowed(), isStopped())) {
+                if (!safeToStep(session, thermalAllowed(), isStopped(), manualForeground)) {
                     FaceScanStepResult(FaceScanStep.HELD)
                 } else {
                     session.engine.scanOne(session.epoch)
@@ -145,7 +147,7 @@ suspend fun runPeopleScanBatch(
         // Second stage: its own bounded step, rechecking every guard per item,
         // so a thermal or grant change mid-batch stops it before the next image.
         val guard = {
-            jobContext.isActive && safeToStep(session, thermalAllowed(), isStopped())
+            jobContext.isActive && safeToStep(session, thermalAllowed(), isStopped(), manualForeground)
         }
         // The step checks the guard before any work and reports a hold, so a
         // run whose faces are done still comes back for its visual queue.

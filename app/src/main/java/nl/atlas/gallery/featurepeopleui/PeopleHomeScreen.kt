@@ -77,6 +77,7 @@ fun PeopleHomeScreen(
     v4OneTimeImportMode: ReviewedV4ImportMode = ReviewedV4ImportMode.REPLACES,
     modifier: Modifier = Modifier,
     onStartDiscovery: (() -> Unit)? = null,
+    onScanNow: (() -> Unit)? = null,
     onPauseDiscovery: (() -> Unit)? = null,
     onResumeDiscovery: (() -> Unit)? = null,
     onOpenReview: (() -> Unit)? = null,
@@ -165,6 +166,11 @@ fun PeopleHomeScreen(
             }
         }
         addAll(menuItems)
+        if (onScanNow != null && !currentPermissionEpoch.isNullOrBlank() &&
+            discovery.phase != FaceDiscoveryPhase.UNAVAILABLE &&
+            discovery.phase != FaceDiscoveryPhase.PERMISSION_REQUIRED) {
+            add(AtlasHeaderMenuItem("Scan now", "atlas-people-scan-now", onClick = onScanNow))
+        }
         // #643: scan and review are People actions, so they sit in ⋮ rather
         // than as buttons on the page. The empty page keeps "Discover faces".
         if (scan.start != null && tiles.isNotEmpty()) add(AtlasHeaderMenuItem(
@@ -303,7 +309,7 @@ private fun peopleScanControls(
  */
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
-    val line = peopleProgressLine(state) ?: return
+    val line = state.statusNote ?: peopleProgressLine(state) ?: return
     Column(Modifier.fillMaxWidth().semantics { stateDescription = line }
         .testTag("atlas-people-progress-line")) {
         Text(line,
@@ -311,8 +317,8 @@ private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
                 .semantics { stateDescription = line }.testTag("atlas-people-status"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (state.phase == FaceDiscoveryPhase.SCANNING ||
-            state.phase == FaceDiscoveryPhase.GROUPING) {
+        if (state.statusNote == null && (state.phase == FaceDiscoveryPhase.SCANNING ||
+            state.phase == FaceDiscoveryPhase.GROUPING)) {
             val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
             val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
             if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
