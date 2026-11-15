@@ -18,8 +18,7 @@ from .corpus import generate_manifest, materialize, png_bytes, read_manifest
 OUTCOMES = {"completed", "refused", "error"}
 METRICS = ("adherence", "identity_similarity", "unchanged_ssim", "unchanged_lpips",
            "detail_score", "artifact_tag")
-SCALED = {"adherence", "identity_similarity", "unchanged_ssim", "unchanged_lpips",
-          "detail_score"}
+SCALED = {"adherence", "identity_similarity", "unchanged_ssim", "detail_score"}
 # Smaller-is-better: LPIPS and artifact tag are not inverted into a single score.
 
 def _number(value, *, minimum=0, maximum=None):
@@ -45,6 +44,8 @@ def validate_record(record: dict, case_ids: set[str]) -> None:
     for key in ("latency_ms", "cost_usd"):
         if record.get(key) is not None and not _number(record[key]):
             raise ValueError(f"invalid {key}")
+    if record.get("unchanged_lpips") is not None and not _number(record["unchanged_lpips"]):
+        raise ValueError("invalid unchanged_lpips")
     for key in SCALED:
         if record.get(key) is not None and not _number(record[key], maximum=1):
             raise ValueError(f"invalid {key}")
