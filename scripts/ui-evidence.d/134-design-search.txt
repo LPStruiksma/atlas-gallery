@@ -1,0 +1,5 @@
+# DESIGN-4 synthetic light/dark Search evidence (SearchOneFieldEvidenceTest).
+design-4-search-rest-light
+design-4-search-rest-dark
+design-4-search-empty-light
+design-4-search-empty-dark
