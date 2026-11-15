@@ -1,7 +1,9 @@
 package nl.atlas.gallery.featurevisual.nls.feedback
 
 import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -203,4 +205,38 @@ class SceneFeedbackLedgerTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun unsupportedAtomicMoveFailsWithoutChangingLastCommittedFeedback() {
+        val directory = Files.createTempDirectory("nls-feedback-no-atomic-move").toFile()
+        try {
+            val file = File(directory, "feedback.bin")
+            val initial = SceneFeedbackLedger(FileSceneFeedbackPersistence(file)) { 10_000_000_000L }
+            assertTrue(initial.optIn(permission))
+            assertTrue(initial.markMissingMoment("first synthetic scene", permission))
+            val originalBytes = file.readBytes()
+            val originalRows = initial.feedback(permission)
+
+            // Simulate a filesystem that cannot provide atomic replacement.
+            val noAtomicMove = FileSceneFeedbackPersistence(file) { from, to ->
+                throw AtomicMoveNotSupportedException(from.path, to.path, "unsupported in test")
+            }
+            val reopened = SceneFeedbackLedger(noAtomicMove) { 10_000_000_000L }
+            assertEquals(originalRows, reopened.feedback(permission))
+            var rejected = false
+            try {
+                reopened.markMissingMoment("second synthetic scene", permission)
+            } catch (_: AtomicMoveNotSupportedException) {
+                rejected = true
+            }
+            assertTrue("Never downgrade to a non-atomic replacement", rejected)
+            assertArrayEquals(originalBytes, file.readBytes())
+            assertFalse(File(directory, "feedback.bin.tmp").exists())
+            assertEquals(originalRows, reopened.feedback(permission))
+            assertEquals(originalRows, SceneFeedbackLedger(FileSceneFeedbackPersistence(file)) {
+                10_000_000_000L
+            }.feedback(permission))
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
 }
