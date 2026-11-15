@@ -169,8 +169,14 @@ class GalleryPinchPerfTest {
         val optimized = GalleryPinchTracker(GalleryZoomStop.MEDIUM, 21f)
         val reused = PinchEventMeasurement()
         val before = measure(events) { changes ->
-            val sample = legacyRead(changes)
-            old.onSample(sample.count, sample.span, sample.cx, sample.cy)
+            // The exact former production path; no fixture-wrapper allocation.
+            val pressed = changes.filter { it.pressed }
+            val sample = pinchSpan(
+                FloatArray(pressed.size) { pressed[it].position.x },
+                FloatArray(pressed.size) { pressed[it].position.y }
+            )
+            old.onSample(pressed.size, sample?.first ?: Float.NaN,
+                sample?.second ?: Float.NaN, sample?.third ?: Float.NaN)
         }
         val after = measure(events) { changes ->
             reused.read(changes)
