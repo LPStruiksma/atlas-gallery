@@ -3093,7 +3093,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             // The timeline's own publication key fences stale
                             // plans. Keep this composable mounted across deltas
                             // so it can preserve the visible media scroll anchor.
-                            key("photos-timeline") {
+                            key(if (albumRoute == null) "photos-timeline" else CatalogSourceKey(visible)) {
                                 AtlasTimelineGallery(
                                     items = visible,
                                     sort = when (sort) {
@@ -3108,7 +3108,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     viewKey = "photos",
                                     busy = busy || sortPending || albumSelectionPending,
                                     catalogueEpoch = publishedGallery.epoch,
-                                    preserveScrollOnIncremental = publishedGallery.incremental,
+                                    preserveScrollOnIncremental = publishedGallery.incremental && albumRoute == null,
                                     onDisplayedSlots = { timelineDisplayed = it },
                                     header = if (headerScrollsWithGrid) ({
                                         Box(Modifier.fillMaxWidth().background(DeepBg)) {
