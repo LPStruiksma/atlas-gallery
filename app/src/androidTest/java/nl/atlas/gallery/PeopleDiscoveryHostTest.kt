@@ -452,8 +452,8 @@ class PeopleDiscoveryHostTest {
         val group = host.reviewPage("gallery-7")!!.clusters!!.clusters.unknownClusters.first()
         val person = PersonKey("native-" + group.id.anchor.localHex)
 
-        compose.onAllNodesWithText("New person's name")[0].performTextInput("Synthetic Ada")
-        compose.onAllNodesWithText("Name this group")[0].performClick()
+        compose.onAllNodesWithText("Name this person")[0].performTextInput("Synthetic Ada")
+        compose.onAllNodesWithText("Create person")[0].performClick()
         waitFor("name committed") {
             store.peopleReview(epoch)?.names?.get(person) == "Synthetic Ada"
         }
