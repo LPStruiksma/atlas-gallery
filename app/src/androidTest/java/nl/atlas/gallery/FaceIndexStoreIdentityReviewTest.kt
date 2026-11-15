@@ -476,11 +476,11 @@ class FaceIndexStoreIdentityReviewTest {
         while (true) {
             val lease = store.claim("sort-A", now++) ?: break
             val n = photo(lease.media.key)
-            val faceBoxes = if (n == 2) listOf(box,
+            val boxes = if (n == 2) listOf(box,
                 IndexedFaceBox(0.55f, 0.2f, 0.9f, 0.8f)) else listOf(box)
             val axis = when (n) { 1, 2, 3 -> 0; 4, 5 -> 5; else -> 9 }
-            assertTrue(store.completeEmbeddings(lease, faceBoxes,
-                List(faceBoxes.size) { vector(axis) }, model))
+            assertTrue(store.completeEmbeddings(lease, boxes,
+                List(boxes.size) { vector(axis) }, model))
         }
         assertTrue(store.materializeClusters("sort-A"))
         val first = requireNotNull(store.peopleReview("sort-A"))
@@ -511,27 +511,30 @@ class FaceIndexStoreIdentityReviewTest {
 
         fun order(key: nl.atlas.gallery.featurepeopleui.PeopleSortKey,
                   descending: Boolean): List<PersonKey> {
-            val keyed = home.people.entries.mapIndexed { index, (person, summary) ->
+            val byIndex = home.people.keys.toList()
+            val keyed = home.people.entries.mapIndexed { index, (_, summary) ->
                 nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
                     nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
                         summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
             }
-            val byIndex = home.people.keys.toList()
             return nl.atlas.gallery.featurepeopleui.orderPeopleEntries(keyed,
                 nl.atlas.gallery.featurepeopleui.PeopleSortChoice(key, descending))
                 .map { byIndex[it.id] }
         }
-        
-        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT, true))
-        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT, false))
-        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME, false))
-        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME, true))
-        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT, true))
-        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT, false))
-        assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, true))
-        assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, false))
-        assertEquals(order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, false).reversed(),
-            order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, true))
+        val mediaCount = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT
+        val name = nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME
+        val recent = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT
+        val firstDate = nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE
+        val random = nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM
+        assertEquals(listOf(ada, ben), order(mediaCount, true))
+        assertEquals(listOf(ben, ada), order(mediaCount, false))
+        assertEquals(listOf(ada, ben), order(name, false))
+        assertEquals(listOf(ben, ada), order(name, true))
+        assertEquals(listOf(ada, ben), order(recent, true))
+        assertEquals(listOf(ben, ada), order(recent, false))
+        assertEquals(listOf(ben, ada), order(firstDate, true))
+        assertEquals(listOf(ada, ben), order(firstDate, false))
+        assertEquals(order(random, false).reversed(), order(random, true))
 
         // The previous epoch is not a permission to read. An edited source
         // removes its old observation while a fresh grant keeps others.
