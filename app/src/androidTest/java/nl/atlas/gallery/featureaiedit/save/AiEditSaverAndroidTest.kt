@@ -192,6 +192,40 @@ class AiEditSaverAndroidTest {
     }
 
 
+    @Test fun recoveryFindsRecordedUriAfterPublishRenameAndKeepsLineage() {
+        val original = image("published-original-" + UUID.randomUUID() + ".jpg", Color.RED)
+        val volume = value(original, MediaStore.Images.Media.VOLUME_NAME)
+        val token = UUID.randomUUID().toString()
+        val temporaryName = AiEditNaming.pendingName(token, AiEditImageFormat.JPEG)
+        val finalName = "published-" + UUID.randomUUID() + "_AI_1.jpg"
+        store.registerIntent(token, volume, folder, temporaryName)
+        val published = requireNotNull(resolver.insert(
+            MediaStore.Images.Media.getContentUri(volume), ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, temporaryName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, folder)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }))
+        created += published
+        store.recordInserted(token, published.toString())
+        store.put(AiEditLineage(
+            editedUri = published.toString(), originalUri = original.toString(),
+            originalRevision = "synthetic", provider = "synthetic",
+            model = "synthetic", modelVersion = "test", prompt = "synthetic",
+            settingsJson = "{}", createdAtMillis = 123L, candidateParentUri = null
+        ))
+        assertEquals(1, resolver.update(published, ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, finalName)
+            put(MediaStore.Images.Media.IS_PENDING, 0)
+        }, null, null))
+        AiEditSaver(context, store).recoverInterruptedSaves()
+        assertEquals("0", value(published, MediaStore.Images.Media.IS_PENDING))
+        assertEquals(finalName, value(published, MediaStore.Images.Media.DISPLAY_NAME))
+        assertNotNull("Published lineage must survive final-name rename",
+            store.get(published.toString()))
+        assertFalse(store.pending().any { it.token == token })
+    }
+
     @Test fun recoveryAfterRowDeletionAlsoRemovesDanglingLocalLineage() {
         val token = UUID.randomUUID().toString()
         val original = image("deleted-source-" + UUID.randomUUID() + ".jpg", Color.RED)
