@@ -104,6 +104,12 @@ class FakeBackend(Backend):
     def __init__(self, delay_seconds=0):
         self.delay_seconds = delay_seconds
 
+    def capabilities(self):
+        caps = super().capabilities()
+        # Fake passes through JPEG inputs without converting them to PNG.
+        caps["features"]["output_formats"] = ["image/png", "image/jpeg"]
+        return caps
+
     def parameters(self):
         return [parameter("fake_outcome", "enum",
                           choices=["success", "refused", "error"], default="success")]
@@ -226,8 +232,10 @@ class ComfyBackend(Backend):
         self.timeout_seconds = timeout_seconds
         self.opener = build_opener(_NoRedirect())
         self.supports_mask = "ATLAS_MASK" in self.template
-        self.max_references = sum("ATLAS_REFERENCE_" + str(n) in self.template
-                                  for n in range(4))
+        refs = ["ATLAS_REFERENCE_" + str(n) in self.template for n in range(4)]
+        if refs != sorted(refs, reverse=True):
+            raise ValueError("Comfy reference placeholders must be contiguous from zero")
+        self.max_references = sum(refs)
         self.supports_seed = "ATLAS_SEED" in self.template
 
     def parameters(self):

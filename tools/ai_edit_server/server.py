@@ -12,6 +12,7 @@ from email.parser import BytesParser
 import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 import struct
 import threading
@@ -153,7 +154,7 @@ def read_form(content_type, body, backend):
         if kind == "integer":
             valid = type(value) is int
         elif kind == "number":
-            valid = type(value) in (int, float)
+            valid = type(value) in (int, float) and math.isfinite(value)
         elif kind == "enum":
             valid = type(value) is str and value in spec["enum"]
         else:
@@ -338,7 +339,10 @@ class Handler(BaseHTTPRequestHandler):
         bearer = self.headers.get("Authorization", "")
         token = (bearer[7:] if bearer.startswith("Bearer ")
                  else self.headers.get("X-Atlas-Token", ""))
-        return bool(token) and hmac.compare_digest(token, self.server.token)
+        try:
+            return bool(token) and hmac.compare_digest(token, self.server.token)
+        except (TypeError, ValueError):
+            return False
 
     def _handle(self):
         try:
