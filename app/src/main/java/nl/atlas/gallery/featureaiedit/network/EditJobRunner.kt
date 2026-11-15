@@ -160,6 +160,15 @@ object EditJobRunner {
         WorkManager.getInstance(app).enqueue(work)
     }
 
+    /** Only completed app-private outputs can be opened by the editor/save flow. */
+    fun cachedResult(context: Context, id: String): File? {
+        val data = EditJobJournal.read(EditJobJournal.directory(context, id)) ?: return null
+        if (data.optString("state") != "done" || data.optString("resultName") != id + ".bin")
+            return null
+        return File(context.cacheDir, "ai_edit_outputs/" + id + ".bin")
+            .takeIf { it.isFile && it.length() in 1..32_000_000L }
+    }
+
     fun snapshot(context: Context, id: String): EditJobState? {
         val data = EditJobJournal.read(EditJobJournal.directory(context, id)) ?: return null
         return EditJobState(data.optString("state"), data.optString("failure").takeIf { it.isNotBlank() },
@@ -371,7 +380,8 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             features.getJSONArray("input_formats").toString().contains("image/png")
     } catch (_: Exception) { false }
 
-    private fun imageSignatureValid(file: File): Boolean = try {
+    private fun imageSignatureValid(file: File): Boolean {
+        return try {
         if (!file.isFile || file.length() !in 1..32_000_000L) return false
         val header = file.inputStream().use { it.readNBytes(8) }
         (header.size >= 3 && header[0] == 0xff.toByte() &&
@@ -379,6 +389,7 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             (header.size == 8 && header.contentEquals(byteArrayOf(
                 0x89.toByte(), 80, 78, 71, 13, 10, 26, 10)))
     } catch (_: Exception) { false }
+    }
 
     private fun fail(folder: File, code: String) {
         EditJobJournal.change(folder) {
@@ -386,7 +397,10 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 it.put("state", "error")
                 it.put("failure", code)
             }
+            it.remove("instruction")
         }
+        File(folder, "selected.png").delete()
+        File(folder, "selected.jpg").delete()
     }
 }
 
