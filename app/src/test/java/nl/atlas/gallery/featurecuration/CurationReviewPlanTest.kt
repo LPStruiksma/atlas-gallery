@@ -41,6 +41,26 @@ class CurationReviewPlanTest {
         check(pending.requiresFreshFullByteVerification)
     }
 
+    @Test fun equalScoreKeeperIsStableAcrossShuffledInputAndProtectionTies() {
+        val a = media("a")
+        val b = media("b")
+        val c = media("c")
+        // Each tie tier uses URI order, not encounter order, bytes or timestamps.
+        val cases = listOf(
+            listOf(a, b, c) to a.uri,
+            listOf(a.copy(favorite = true), b.copy(favorite = true), c) to a.uri,
+            listOf(a, b.copy(userKept = true), c.copy(userKept = true)) to b.uri,
+            listOf(a.copy(peopleProtected = true), b.copy(peopleProtected = true), c) to a.uri
+        )
+        for ((assets, expected) in cases) {
+            for (order in listOf(assets, assets.reversed(), listOf(assets[1], assets[2], assets[0]))) {
+                val group = CurationReviewPlan.build("grant1", order, emptyList()).exactGroups.single()
+                check(group.suggestedKeeperUri == expected)
+                check(group.members.map { it.uri } == listOf(a.uri, b.uri, c.uri))
+            }
+        }
+    }
+
     @Test fun favoritesPeopleKeepAndProtectedFolderNeverStage() {
         val a = media("a")
         val b = media("b")
