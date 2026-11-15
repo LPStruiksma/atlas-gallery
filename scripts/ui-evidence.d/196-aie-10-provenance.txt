@@ -1,0 +1,6 @@
+# AIE-10 / #196: synthetic original and two saved edits in Photo DNA,
+# plus the real viewer's original and AI-edited Details states (S24+).
+aie-10-photo-dna-family-start
+aie-10-photo-dna-family-end
+aie-10-viewer-original-details
+aie-10-viewer-edited-details
