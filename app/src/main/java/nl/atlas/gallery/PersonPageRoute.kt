@@ -202,12 +202,15 @@ internal fun NativePersonAlbumRoute(
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
-            items = visibleMedia,
+            // Keep the timeline/header composition stable while the worker
+            // narrows this person's already-authorized list.
+            items = if (media == null) null else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
             mayHide = request.target is PersonPageTarget.Named
         ),
         gridState = gridState,
         catalogueEpoch = catalogueEpoch,
+        searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
         portrait = { portrait(facts?.coverFace) },
         onBack = onBack,
