@@ -41,15 +41,20 @@ internal fun mergeGalleryMediaDelta(
     val pending = LinkedHashMap<GalleryMediaDeltaKey, MediaRecord?>()
     changes.forEach { pending[it.key] = it.record }
     val result = ArrayList<MediaRecord>(previous.size + pending.size)
+    var modified = false
     for (before in previous) {
         val key = GalleryMediaDeltaKey.of(before)
         if (pending.containsKey(key)) {
             val now = pending.remove(key)
-            if (now != null) result.add(if (before == now) before else now)
+            if (now == null) modified = true
+            else if (before == now) result.add(before)
+            else { modified = true; result.add(now) }
         } else {
             result.add(before)
         }
     }
-    pending.values.filterNotNullTo(result)
-    return result
+    for (newItem in pending.values) {
+        if (newItem != null) { result.add(newItem); modified = true }
+    }
+    return if (modified) result else previous
 }
