@@ -20,4 +20,12 @@ assert.match(exportFile, /FLAG_GRANT_READ_URI_PERMISSION/);
 assert.match(exportFile, /atlas-usage-/);
 assert.match(recorder, /UsageExportFile\.clear/);
 assert.match(tests, /everyExportStringIsEitherAClosedIdOrADay/);
+// Every selected-item bulk button must count one closed A17 intent, never a URI.
+// These are user taps, not assertions that Android's consent or transfer completed.
+assert.match(activity, /onShare = \\{\\s*usageRecorder\\.action\\("A17"\\)\\s*shareBatch\\(\\)/);
+assert.match(activity, /onTrash = if \\(Build\\.VERSION\\.SDK_INT >= 30\\) \\(\\{\\s*usageRecorder\\.action\\("A17"\\)\\s*trashBatch\\(\\)/);
+assert.match(activity, /onFavourite = if \\(Build\\.VERSION\\.SDK_INT >= 30\\) \\(\\{\\s*usageRecorder\\.action\\("A17"\\)\\s*favouriteBatch\\(\\)/);
+assert.match(activity, /SelectionMoreAction\\("Copy to album", "atlas-selection-copy-to-album"\\) \\{\\s*usageRecorder\\.action\\("A17"\\)/);
+assert.match(activity, /SelectionMoreAction\\("Move to album", "atlas-selection-move-to-album"\\) \\{\\s*usageRecorder\\.action\\("A17"\\)/);
+assert.match(recorder, /if \\(!enabled\\(\\)\\) return/);
 console.log('USAGE-0 named export contract OK');
