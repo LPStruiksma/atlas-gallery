@@ -113,9 +113,14 @@ interface FaceEmbeddingReservation : FaceInferenceReservation {
 interface FaceScanEmbeddingIndexPort : FaceScanIndexPort {
     fun completeEmbeddings(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String,
-        qualityScores: List<FaceQuality?> = emptyList()
+        vectors: List<FloatArray>, embedderVersion: String
     ): Boolean
+
+    /** Quality-aware additive completion; legacy ports may ignore quality. */
+    fun completeEmbeddings(
+        lease: FaceScanLease, observations: List<UnknownFaceBox>,
+        vectors: List<FloatArray>, embedderVersion: String, qualityScores: List<FaceQuality?>
+    ): Boolean = completeEmbeddings(lease, observations, vectors, embedderVersion)
 
     /**
      * VS-V1b: [frameMs] gives each observation's video position (null for a
