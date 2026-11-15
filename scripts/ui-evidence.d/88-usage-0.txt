@@ -1,0 +1,2 @@
+# USAGE-0 opt-in controls in Settings > Advanced, synthetic test host
+usage0-settings-advanced.png
