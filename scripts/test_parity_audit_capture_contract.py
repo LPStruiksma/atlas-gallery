@@ -56,7 +56,9 @@ class ParityCaptureContractTest(unittest.TestCase):
             "parity-24-pinch-compact-$mode.png",
         ):
             self.assertIn('saveUiEvidence("' + name + '")', additional)
-        self.assertIn('"5 columns"', additional)
+        self.assertIn('"4 columns"', additional)
+        self.assertIn('"7 columns"', additional)
+        self.assertNotIn('"5 columns"', additional)
         self.assertIn('"atlas-header-subtitle"', additional)
 
     def test_matrix_is_verified_and_uploaded_through_existing_ci_artifact(self):
