@@ -10,10 +10,13 @@ import nl.atlas.gallery.featuremedia.ThumbnailPipeline
 import nl.atlas.gallery.featuremedia.runningUnderInstrumentation
 import nl.atlas.gallery.featuremedia.thumbnailMemoryCacheBytes
 import kotlinx.coroutines.Dispatchers
+import android.os.Trace
 
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        Trace.beginSection("atlas.startup.critical")
+        try {
         // The first-grid-critical lane: fail-closed ordering is checked by the
         // JVM registry test and explicitly enforced below.
         // Persist one privacy-redacted trace before Android's original crash handler runs.
@@ -50,5 +53,8 @@ class AtlasApplication : Application() {
             StartupTask.THUMBNAIL_FLAGS, StartupTask.MEDIA_GRANT,
             StartupTask.IMAGE_LOADER_FACTORY
         )))
+        } finally {
+            Trace.endSection()
+        }
     }
 }
