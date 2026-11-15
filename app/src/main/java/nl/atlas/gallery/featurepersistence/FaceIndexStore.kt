@@ -2017,7 +2017,7 @@ class FaceIndexStore(
                     CROSS JOIN faces f ON f.face_uid=pm.face_uid
                     CROSS JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
                         AND c.revision=e.source_revision
-                    WHERE pm.person_key=?2 AND (?3 IS NULL OR c.media_key>?3))
+                    WHERE pm.person_key=?2 AND (?3='' OR c.media_key>?3))
                 ORDER BY media_key LIMIT ?4""",
                 arrayOf(version, person.value, afterMediaKey ?: "", pageSize.toString())).use { c ->
                 buildList {
