@@ -3,7 +3,6 @@ package nl.atlas.gallery.featureface
 import nl.atlas.gallery.featureface.onnx.YuNetFace
 import org.junit.Assert.*
 import org.junit.Test
-import kotlin.math.roundToInt
 
 /** Synthetic crop only: no real people or user media. */
 class FaceQualityTest {
@@ -13,7 +12,7 @@ class FaceQualityTest {
             val x = i % n
             val y = i / n
             val pattern = if (blur) {
-                if ((x / 20 + y / 20) % 2 == 0) 1 else -1
+                if ((x / 28 + y / 28) % 2 == 0) 1 else -1
             } else {
                 if ((x / 3 + y / 3) % 2 == 0) 1 else -1
             }
