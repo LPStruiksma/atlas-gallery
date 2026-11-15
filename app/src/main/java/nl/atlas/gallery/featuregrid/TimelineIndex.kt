@@ -149,12 +149,12 @@ fun buildGridTimelineIndex(
     // boundary timestamp again when the outer loop advances. The sparse-day
     // lookahead carries it forward as well. No O(n) ordinal cache is allocated.
     var cursor = 0
-    var nextRunOrdinal = if (items.isNotEmpty()) bucketOrdinal(items[0].takenAtMillis)
-        else unknownBucket
+    var nextRunOrdinal = unknownBucket
     while (cursor < items.size) {
         if ((cursor and 1023) == 0) cancellationCheckpoint?.invoke()
         val timestamp = items[cursor].takenAtMillis
-        val ordinal = nextRunOrdinal
+        // Run the cancellation callback before the first date conversion, as before.
+        val ordinal = if (cursor == 0) bucketOrdinal(timestamp) else nextRunOrdinal
         val (groupKey, label) = groupFor(timestamp)
         var end = cursor + 1
         var afterRunOrdinal = unknownBucket
