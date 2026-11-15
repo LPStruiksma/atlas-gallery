@@ -36,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -201,10 +202,10 @@ internal val DeepBg: Color
 private val Surface: Color
     // #662: unchanged #171B21 in dark; the theme's container colour in light.
     @Composable @ReadOnlyComposable get() =
-        if (LocalAtlasDark.current) Color(0xFF171B21) else MaterialTheme.colorScheme.surfaceContainer
+        if (LocalAtlasDark.current) AtlasTokens.Colors.Shell.DarkSurface else MaterialTheme.colorScheme.surfaceContainer
 private val Mint: Color
     @Composable @ReadOnlyComposable get() =
-        if (LocalAtlasDark.current) Color(0xFFB5E7DA) else MaterialTheme.colorScheme.primary
+        if (LocalAtlasDark.current) AtlasTokens.Colors.Shell.DarkAccent else MaterialTheme.colorScheme.primary
 
 /**
  * VS-S2b (#468): the published visual index of the live face scope
