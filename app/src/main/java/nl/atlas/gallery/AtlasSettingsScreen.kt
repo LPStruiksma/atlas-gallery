@@ -58,10 +58,12 @@ internal fun AtlasSettingsScreen(
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
-    onImportNames: () -> Unit = {}
+    onImportNames: () -> Unit = {},
+    performance: PerformanceAggregates = PerformanceSession.aggregate
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
+    var performanceExpanded by rememberSaveable { mutableStateOf(false) }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -102,6 +104,29 @@ internal fun AtlasSettingsScreen(
                     "atlas-people-link-v4", onLinkV4)
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
+                }
+                SettingsActionRow("Performance", "atlas-settings-performance",
+                    onClick = { performanceExpanded = !performanceExpanded },
+                    value = if (performanceExpanded) "Hide" else "Show")
+                if (performanceExpanded) {
+                    // Explicit read, not a hot polling loop or a MediaStore query.
+                    PerformanceSession.updateViewer()
+                    PerformanceSession.sampleHeap()
+                    val metrics = listOf(
+                        Triple("Cold start → cached grid", "cold_start_ms", "ms"),
+                        Triple("Viewer preview", "viewer_ms", "ms"),
+                        Triple("Grid frame", "grid_frame_ms", "ms"),
+                        Triple("Face scan", "face_photos_min", "photos/min"),
+                        Triple("Visual index", "visual_photos_min", "photos/min"),
+                        Triple("Java heap / maximum", "heap_fraction", "fraction")
+                    )
+                    metrics.forEach { (title, metric, unit) ->
+                        val summary = performance.snapshot(metric)
+                        val value = if (summary.count == 0) "Not measured" else
+                            "p50 %.2f · p95 %.2f %s · n=%d".format(
+                                java.util.Locale.US, summary.p50, summary.p95, unit, summary.count)
+                        SettingsActionRow(title, "atlas-perf-$metric", value = value)
+                    }
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
