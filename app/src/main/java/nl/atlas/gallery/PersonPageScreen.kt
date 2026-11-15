@@ -163,7 +163,6 @@ internal fun PersonPageScreen(
                     SelectionBar(selectedUris.orEmpty().size) { onSelectionChange(null) }
                 } else {
                     AtlasGalleryHeader(title = if (LocalAtlasHeaderCollapsed.current) title else "",
-                        subtitle = if (LocalAtlasHeaderCollapsed.current) count else null,
                         onBack = onBack, menuItems = menu)
                 }
                 AnimatedVisibility(
