@@ -302,32 +302,12 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     face_log | grep 'background_restore armed=true' |
       sed -E 's/^[^(]*\( *([0-9]+)\).*/\1/' | sort -u
   }
-  force_jobs() {
-    # Android 35 reports WorkManager jobs as:
-    # JOB androidx.work.systemjobscheduler:u0a150/4: ... @androidx.work.systemjobscheduler@nl.atlas.gallery/...
-    # Jobs registered in that namespace cannot be run via the default (null)
-    # namespace: cmd jobscheduler run -f nl.atlas.gallery 4 is a no-op.
-    local job namespace id result
-    while IFS= read -r job; do
-      namespace="${job#JOB }"
-      namespace="${namespace%%:*}"
-      id="${job#*/}"
-      id="${id%%:*}"
-      if [[ "$namespace" == androidx.work.systemjobscheduler ]]; then
-        result="$(adb shell cmd jobscheduler run -f --namespace "$namespace" nl.atlas.gallery "$id" 2>&1)" || {
-          echo "::warning::#43 could not run WorkManager job $namespace/$id: $result" >&2
-          continue
-        }
-      else
-        result="$(adb shell cmd jobscheduler run -f nl.atlas.gallery "$id" 2>&1)" || {
-          echo "::warning::#43 could not run WorkManager job $id: $result" >&2
-          continue
-        }
-      fi
-    done < <(adb shell dumpsys jobscheduler | tr -d '\r' |
-      grep -E '^ *JOB (androidx[.]work[.]systemjobscheduler:|#)[^[:space:]]*/[0-9]+: [0-9a-f]+ @?[^[:space:]]*nl[.]atlas[.]gallery/' |
-      sed -E 's/^ *//')
-  }
+  # #43: Do not force-run WorkManager jobs. On API35 the periodic six-hour
+  # PeopleScanRearmWorker appears beside the one-time scan in JobScheduler.
+  # 'cmd jobscheduler run -f' bypasses JobScheduler's latency, but WorkManager
+  # still enforces its own next-run time, so every forced invocation merely
+  # reschedules the periodic worker (new job ID each time). The process start
+  # and scan must instead come from real, eligible work after charging.
   kill_app() {
     local pid; pid="$(app_pid)"
     [[ -z "$pid" ]] && return 0
@@ -337,14 +317,14 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   }
   wait_restore_in_new_pid() {
     local known="$1"
-    for _ in $(seq 1 24); do
-      force_jobs
-      for _ in $(seq 1 5); do
-        local p; for p in $(restore_pids); do
-          if ! grep -qx "$p" <<<"$known"; then echo "$p"; return 0; fi
-        done
-        sleep 1
+    # Preserve the 120-second bound but let JobScheduler honor WorkManager
+    # constraints, retry backoff and minimum latency. A forced invocation of
+    # the six-hour rearm is not proof of real post-kill resurrection.
+    for _ in $(seq 1 120); do
+      local p; for p in $(restore_pids); do
+        if ! grep -qx "$p" <<<"$known"; then echo "$p"; return 0; fi
       done
+      sleep 1
     done
     return 1
   }
