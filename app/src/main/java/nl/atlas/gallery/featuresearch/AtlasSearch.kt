@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,12 +24,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
 /**
- * One shared Samsung-style AtlasSearch shell. Overviews show a subtle icon
- * at rest; Search starts expanded. All tools are optional composition slots
- * so FIND-1/2/3 can extend this panel without duplicating the chrome.
- *
- * The host owns the query and both source sets. Switching scope does not
- * silently change permissions; an explicit library option is the only escape.
+ * Single shared search surface, with an icon-anchored expansion on overview
+ * headers and an inline form on the global Search destination. The optional
+ * tool slots let subsequent FIND units extend it without parallel chrome.
+ * The caller owns the query, grant and exact screen/library source boundary.
  */
 @Composable
 fun AtlasSearch(
@@ -46,65 +46,75 @@ fun AtlasSearch(
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
     var scope by remember { mutableStateOf(initialScope) }
-    // The host is responsible for restoring a route's scope when it changes.
+    val close = {
+        expanded = false
+        onQueryChange("")
+        if (scope != initialScope) {
+            scope = initialScope
+            onScopeChange(initialScope)
+        }
+    }
+    val contents: @Composable () -> Unit = {
+        Column(
+            Modifier.widthIn(max = 360.dp).testTag("atlas-search-expanded"),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { onQueryChange(boundSearchQueryInput(it)) },
+                    singleLine = true,
+                    placeholder = { Text("Search") },
+                    leadingIcon = { Icon(Icons.Filled.Search, null) },
+                    modifier = Modifier.weight(1f).testTag("atlas-scoped-search-field")
+                )
+                IconButton(onClick = close) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close search")
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = scope == AtlasSearchScope.THIS_SCREEN,
+                    onClick = {
+                        scope = AtlasSearchScope.THIS_SCREEN
+                        onScopeChange(scope)
+                    },
+                    label = { Text("This screen") },
+                    modifier = Modifier.testTag("atlas-search-scope-screen")
+                )
+                FilterChip(
+                    selected = scope == AtlasSearchScope.LIBRARY,
+                    onClick = {
+                        scope = AtlasSearchScope.LIBRARY
+                        onScopeChange(scope)
+                    },
+                    label = { Text("Whole library") },
+                    modifier = Modifier.testTag("atlas-search-scope-library")
+                )
+            }
+            textTool?.invoke()
+            faceTool?.invoke()
+            imageTool?.invoke()
+            filtersTool?.invoke()
+            historyTool?.invoke()
+            suggestionsTool?.invoke()
+        }
+    }
     Column(modifier.testTag("atlas-search-shared")) {
-        if (!expanded) {
+        if (initialExpanded) {
+            if (expanded) contents() else IconButton(
+                onClick = { expanded = true },
+                modifier = Modifier.testTag("atlas-search-expand")
+            ) { Icon(Icons.Filled.Search, "Search") }
+        } else {
             IconButton(
                 onClick = { expanded = true },
                 modifier = Modifier.testTag("atlas-search-expand")
-            ) {
-                Icon(Icons.Filled.Search, contentDescription = "Search this screen")
-            }
-        } else {
-            Column(
-                Modifier.fillMaxWidth().testTag("atlas-search-expanded"),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { onQueryChange(boundSearchQueryInput(it)) },
-                        singleLine = true,
-                        placeholder = { Text("Search") },
-                        leadingIcon = { Icon(Icons.Filled.Search, null) },
-                        modifier = Modifier.weight(1f).testTag("atlas-scoped-search-field")
-                    )
-                    IconButton(onClick = {
-                        expanded = false
-                        onQueryChange("")
-                        if (scope != initialScope) {
-                            scope = initialScope
-                            onScopeChange(initialScope)
-                        }
-                    }) { Icon(Icons.Filled.Close, contentDescription = "Close search") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = scope == AtlasSearchScope.THIS_SCREEN,
-                        onClick = {
-                            scope = AtlasSearchScope.THIS_SCREEN
-                            onScopeChange(scope)
-                        },
-                        label = { Text("This screen") },
-                        modifier = Modifier.testTag("atlas-search-scope-screen")
-                    )
-                    FilterChip(
-                        selected = scope == AtlasSearchScope.LIBRARY,
-                        onClick = {
-                            scope = AtlasSearchScope.LIBRARY
-                            onScopeChange(scope)
-                        },
-                        label = { Text("Whole library") },
-                        modifier = Modifier.testTag("atlas-search-scope-library")
-                    )
-                }
-                textTool?.invoke()
-                faceTool?.invoke()
-                imageTool?.invoke()
-                filtersTool?.invoke()
-                historyTool?.invoke()
-                suggestionsTool?.invoke()
-            }
+            ) { Icon(Icons.Filled.Search, "Search this screen") }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = close
+            ) { contents() }
         }
     }
 }
