@@ -96,6 +96,36 @@ class PersonCoverOverrideAndroidTest {
             }
         } finally { file.parentFile?.deleteRecursively() }
     }
+    @Test fun detectorUpgradePreservesOnlyExactSourceFaceForSamePerson() {
+        val file = dbFile()
+        try {
+            FaceIndexStore(context(file)).use { db ->
+                grant(db, "epoch-A"); scan(db, "epoch-A")
+                val selected = name(db, "epoch-A").last()
+                assertTrue(db.setPersonCoverOverride("epoch-A", person, selected))
+
+                // The detector version changes, but the same source/box/ordinal
+                // is observed again and the person is still confirmed.
+                db.beginSnapshot("epoch-B")
+                db.stageBatch("epoch-B", (1..3).map(::media))
+                db.commitSnapshot("epoch-B", "detector-2")
+                assertNull(db.personCoverOverride("epoch-B", person))
+                scan(db, "epoch-B")
+                val remapped = db.personCoverOverride("epoch-B", person)
+                assertNotNull("Exact face should survive detector upgrade", remapped)
+                assertNotEquals(selected, remapped)
+                assertEquals(remapped, db.peopleHome("epoch-B")!!.people[person]!!.coverFaceUid)
+
+                // A genuinely changed source revision must not inherit a choice.
+                db.beginSnapshot("epoch-C")
+                db.stageBatch("epoch-C", (1..3).map {
+                    if (it == 3) IndexedMedia(media(it).key, "generation:2") else media(it)
+                })
+                db.commitSnapshot("epoch-C", "detector-2")
+                assertNull(db.personCoverOverride("epoch-C", person))
+            }
+        } finally { file.parentFile?.deleteRecursively() }
+    }
     @Test fun survivesRelaunchRescanModelChangeAndBackupRestore() {
         val file = dbFile()
         var chosen = ""
