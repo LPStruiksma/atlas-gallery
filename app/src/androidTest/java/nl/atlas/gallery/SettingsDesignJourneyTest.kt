@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import org.junit.Rule
@@ -61,9 +63,10 @@ class SettingsDesignJourneyTest {
 
             compose.onNodeWithTag("atlas-settings-version").performScrollTo()
                 .assertIsDisplayed()
-            // The compact title requires an actual scroll beyond the 64px threshold.
+            // Scroll the viewport explicitly: performScrollTo on an already-visible
+            // row is a no-op and does not establish the 64px collapse threshold.
             compose.onNodeWithTag("atlas-settings-large-title").performScrollTo()
-            compose.onNodeWithTag("atlas-settings-version").performScrollTo()
+            compose.onNodeWithTag("atlas-settings-screen").performTouchInput { swipeUp() }
             compose.onNodeWithTag("atlas-settings-compact-title").assertExists()
             compose.waitForIdle()
             saveUiEvidence("settings-135-scrolled-$theme.png")
