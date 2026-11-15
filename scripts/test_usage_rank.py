@@ -23,7 +23,7 @@ class UsageRankingTest(unittest.TestCase):
         self.assertEqual(rows["A1"][4:7], (5, True, 20))
         self.assertEqual(rows["A3"][4:7], (1, True, 1))
         self.assertIsNone(rows["A2"][3])
-        self.assertEqual(rows["A2"][4:6], (5, True))
+        self.assertEqual(rows["A2"][4:6], (5, False))
         self.assertIsNone(rows["A2"][6])
 
     def test_timing_only_days_do_not_change_measured_leverage(self):
@@ -42,6 +42,12 @@ class UsageRankingTest(unittest.TestCase):
         self.assertEqual(augmented[4:6], original[4:6])
         self.assertEqual(augmented[3], 3)  # 5 A1 actions / 2 active days
         self.assertEqual(augmented[6], 15)
+
+    def test_jank_is_measured_when_action_is_observed(self):
+        observed = [{"day": "2026-11-13", "actions": {"A2": 5},
+                     "performance": {"A2": {"jank_percent": 2.5}}}]
+        row = {r[0]: r for r in rank.ranking(observed, "perf")}["A2"]
+        self.assertEqual(row[3:7], (4, 5, True, 20))
 
     def test_design_dwell_and_estimated_leverage(self):
         rows = {r[0]: r for r in rank.ranking(self.days, "design")}
