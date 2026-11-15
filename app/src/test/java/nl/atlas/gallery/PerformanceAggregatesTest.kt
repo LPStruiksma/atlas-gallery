@@ -12,6 +12,7 @@ class PerformanceAggregatesTest {
         val row = samples.snapshot("grid_frame_ms")
         assertEquals(5, row.count)
         assertEquals(30.0, row.p50!!, 0.0)
+        assertEquals(50.0, row.p90!!, 0.0)
         assertEquals(50.0, row.p95!!, 0.0)
     }
 
@@ -41,6 +42,13 @@ class PerformanceAggregatesTest {
         assertFalse(samples.record("file:///private/photo.jpg", 5.0))
         assertTrue(samples.record("grid_frame_ms", 8.0))
         assertEquals(listOf("grid_frame_ms"), samples.metricNames())
+    }
+
+    @Test fun allActionKeysAreAllowedButArbitraryNamesAreNot() {
+        val samples = PerformanceAggregates(capacity = 2)
+        for (i in 1..22) assertTrue(samples.record("action_a${i}_ms", i.toDouble()))
+        assertFalse(samples.record("action_a23_ms", 23.0))
+        assertEquals(22, samples.metricNames().size)
     }
 
     @Test(expected = IllegalArgumentException::class)
