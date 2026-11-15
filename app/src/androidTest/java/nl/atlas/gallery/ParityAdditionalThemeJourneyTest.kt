@@ -77,12 +77,14 @@ abstract class ParityAdditionalThemeJourney(private val dark: Boolean) {
                 .maxValue() > 12f
         }
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
+        // One ladder stop: a 150 -> 100 px span is a 1/1.5 zoom factor,
+        // which reaches the compact 7-column level without overshooting Month/Year.
         grid.performTouchInput {
             pinch(
                 start0 = center - Offset(150f, 0f),
-                end0 = center - Offset(30f, 0f),
+                end0 = center - Offset(100f, 0f),
                 start1 = center + Offset(150f, 0f),
-                end1 = center + Offset(30f, 0f),
+                end1 = center + Offset(100f, 0f),
                 durationMillis = 400L
             )
         }
