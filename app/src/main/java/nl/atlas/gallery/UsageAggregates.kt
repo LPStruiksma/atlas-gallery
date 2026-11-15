@@ -202,11 +202,17 @@ class UsageAggregates {
                     require(minutes.isFinite() && minutes > 0.0 &&
                         minutes <= MAX_SCREEN_SECONDS / 60.0 &&
                         rate.isFinite() && rate >= 0.0 && rate <= 100_000_000.0)
+                    // Refuse corrupted partial-second or impossible aggregate values;
+                    // otherwise re-export could divide by zero or exceed scanner bounds.
+                    val seconds = (minutes * 60).roundToLong()
+                    val photos = (minutes * rate).roundToLong()
+                    require(seconds in 1..MAX_SCREEN_SECONDS &&
+                        photos in 0..100_000_000L)
                     val row = log.row(day)
                     row.scannerObserved = true
                     // Nearest integer preserves small completed batches across reloads.
-                    row.scanSeconds = (minutes * 60).roundToLong()
-                    row.scannedPhotos = (minutes * rate).roundToLong()
+                    row.scanSeconds = seconds
+                    row.scannedPhotos = photos
                 }
             }
             return log
