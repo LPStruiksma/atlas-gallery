@@ -122,8 +122,9 @@ class EditHttpTransport(
         if ((request.method == EditHttpMethod.POST) != (request.body != null) ||
             (downloadTo != null && request.method != EditHttpMethod.GET))
             return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
-        val payload = if (request.body == null) null else buildBody(request.body)
-            ?: return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
+        val payload = request.body?.let { buildBody(it) }
+        if (request.body != null && payload == null)
+            return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
         val deadline = clockMs() + config.overallTimeoutMs
         var attempt = 0
         while (true) {
