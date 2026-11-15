@@ -51,6 +51,18 @@ class PerformanceAggregatesTest {
         assertEquals(22, samples.metricNames().size)
     }
 
+    @Test fun frameBudgetRatioUsesOnlyBoundedValidatedSamples() {
+        val samples = PerformanceAggregates(capacity = 4)
+        assertEquals(null, samples.positiveFraction("grid_frame_over_budget"))
+        for (value in listOf(1.0, 0.0, 1.0, 1.0, 0.0)) {
+            assertTrue(samples.record("grid_frame_over_budget", value))
+        }
+        assertFalse(samples.record("grid_frame_over_budget", Double.NaN))
+        assertEquals(4, samples.snapshot("grid_frame_over_budget").count)
+        assertEquals(0.5, samples.positiveFraction("grid_frame_over_budget")!!, 0.0)
+        assertEquals(null, samples.positiveFraction("unknown"))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsUnboundedCapacity() { PerformanceAggregates(capacity = 5000) }
 }
