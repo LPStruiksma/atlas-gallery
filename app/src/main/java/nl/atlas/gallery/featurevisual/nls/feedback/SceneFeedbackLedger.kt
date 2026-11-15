@@ -8,7 +8,6 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.SecureRandom
@@ -274,7 +273,16 @@ interface SceneFeedbackPersistence {
  * The Android wrapper below uses noBackupFilesDir, so Android Auto Backup
  * cannot silently copy feedback to a cloud backup.
  */
-class FileSceneFeedbackPersistence(private val file: File) : SceneFeedbackPersistence {
+class FileSceneFeedbackPersistence internal constructor(
+    private val file: File,
+    private val atomicReplace: (File, File) -> Unit
+) : SceneFeedbackPersistence {
+    /** Production writes require atomic replacement; the injectable seam tests failure paths. */
+    constructor(file: File) : this(file, { from, to ->
+        Files.move(from.toPath(), to.toPath(),
+            StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        Unit
+    })
     override fun read(): ByteArray? {
         if (!file.exists()) return null
         if (file.length() > 32 * 1024) return ByteArray(0) // decoded as malformed, then erased
@@ -291,12 +299,8 @@ class FileSceneFeedbackPersistence(private val file: File) : SceneFeedbackPersis
                 it.write(bytes)
                 it.fd.sync()
             }
-            try {
-                Files.move(temp.toPath(), file.toPath(),
-                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (_: AtomicMoveNotSupportedException) {
-                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            }
+            // Never fall back to a non-atomic move: preserve the prior file on failure.
+            atomicReplace(temp, file)
         } finally {
             temp.delete()
         }
