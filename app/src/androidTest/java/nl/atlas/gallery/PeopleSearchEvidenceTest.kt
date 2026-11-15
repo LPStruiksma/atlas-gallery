@@ -25,6 +25,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -89,6 +90,13 @@ class PeopleSearchAppEvidenceTest {
             "Choose V4 export", "Connect V4")
         compose.waitForIdle()
         saveUiEvidence("people-empty.png")
+        // FIND-0: People list search exists even with no reviewed names.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        waitFor(compose, hasTestTag("atlas-scoped-search-field"))
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.waitForIdle()
+        saveUiEvidence("find-0-people-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
 
         compose.onNodeWithTag("atlas-header-more").performClick()
         // #584: Samsung's People ⋮ → Hidden.
@@ -106,6 +114,13 @@ class PeopleSearchAppEvidenceTest {
         waitFor(compose, androidx.compose.ui.test.hasText("No hidden people"))
         compose.waitForIdle()
         saveUiEvidence("people-hidden.png")
+        // Hidden People shares the same name search without changing hidden state.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        waitFor(compose, hasTestTag("atlas-scoped-search-field"))
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.waitForIdle()
+        saveUiEvidence("find-0-people-hidden-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
         dismissWithBack(compose, hasTestTag("atlas-people-hidden"))
         waitFor(compose, hasTestTag("atlas-people-home"))
 
