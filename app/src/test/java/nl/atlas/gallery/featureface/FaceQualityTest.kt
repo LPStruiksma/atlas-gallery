@@ -14,7 +14,7 @@ class FaceQualityTest {
             val pattern = if (blur) {
                 if ((x / 28 + y / 28) % 2 == 0) 1 else -1
             } else {
-                if ((x / 3 + y / 3) % 2 == 0) 1 else -1
+                if ((x + y) % 2 == 0) 1 else -1
             }
             (exposure + pattern * contrast).coerceIn(0, 255).toFloat()
         }
