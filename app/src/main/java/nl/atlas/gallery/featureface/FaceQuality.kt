@@ -30,7 +30,7 @@ object FaceQualityScorer {
 
     /**
      * Weighted arithmetic score, each factor in [0,1]:
-     * YuNet confidence 10%, original-pixel face size 20%, 112x112 crop
+     * YuNet confidence 10%, bounded decoded-frame face size 20%, 112x112 crop
      * Laplacian sharpness 25%, crop exposure/contrast 20%, landmark pose
      * (frontalness + roll) 20%, and frame-edge truncation 5%.
      *
