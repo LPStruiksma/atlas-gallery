@@ -13,7 +13,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,10 +47,6 @@ fun AtlasSearch(
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
     var scope by remember { mutableStateOf(initialScope) }
-    LaunchedEffect(initialScope) {
-        scope = initialScope
-        onScopeChange(initialScope)
-    }
     Column(modifier.testTag("atlas-search-shared")) {
         if (!expanded) {
             IconButton(
