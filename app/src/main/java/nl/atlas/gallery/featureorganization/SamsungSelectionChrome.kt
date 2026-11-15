@@ -170,7 +170,7 @@ fun SamsungSelectionBottomBar(
         val directTransfer = moreActions.firstOrNull { it.testTag == "atlas-selection-copy-to-album" }
             ?: moreActions.firstOrNull { it.testTag == "atlas-selection-move-to-album" }
         // Keep both Copy and Move available from More for existing navigation
-        // and accessibility, while the direct action offers the common Move path.
+        // and accessibility, while the direct action offers the common Copy path.
         val overflowActions = moreActions
         Surface(
             modifier = Modifier.width(pillWidth).height(AtlasTabPillHeight)
