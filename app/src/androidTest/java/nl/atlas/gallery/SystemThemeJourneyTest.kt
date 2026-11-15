@@ -127,6 +127,12 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             hasText("ATLAS-Theme-Fixture", substring = true))
         settle()
         saveUiEvidence("parity-24-albums-detail-$mode.png")
+        // The scroll-away header keeps the album title reachable in compact form.
+        val detailTitle = hasTestTag("atlas-header-title") and
+            hasText("ATLAS-Theme-Fixture", substring = true)
+        compose.onNodeWithTag("atlas-photos-sort").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-header-back").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-header-title").assertIsDisplayed()
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-nav-people"))
         compose.onNodeWithTag("atlas-nav-people").performClick()
