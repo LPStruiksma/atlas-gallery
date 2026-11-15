@@ -100,7 +100,7 @@ private fun freeName(name: String, lowerTaken: Set<String>): String {
  *
  * Families are case-insensitive (stem + final extension). A preexisting name
  * is indexed only when it is a canonical generated suffix: "IMG(1).jpg"
- * occupies suffix 1, while "IMG(001).jpg" and "IMG (1).jpg" do not.
+ * occupies suffix 1, while "IMG(001).jpg" does not; "IMG (1).jpg" is in a separate family.
  * The latter can still be an exact source-name collision, handled by [taken].
  */
 private class BatchDisplayNames(
@@ -173,7 +173,7 @@ private class BatchDisplayNames(
 
     companion object {
         // Greedy base preserves whitespace before '(' as a distinct family.
-        private val canonicalSuffix = Regex("""^(.*)\\((\\d+)\\)$""")
+        private val canonicalSuffix = Regex("""^(.*)\((\d+)\)$""")
     }
 }
 
