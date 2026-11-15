@@ -18,6 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -25,9 +29,16 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.PersonEntry
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.face.FaceReferenceChooser
 import nl.atlas.gallery.featurevisual.search.VisualSearchResultsScreen
 
@@ -58,9 +69,12 @@ fun FindSimilarRoute(
     onOpen: (List<MediaRecord>, MediaRecord, Map<String, Long>) -> Unit,
     onOpenSettings: () -> Unit,
     onClose: () -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null,
     thumbnail: suspend (MediaRecord) -> ImageBitmap?
 ) {
     val scope = rememberCoroutineScope()
+    var resultQuery by remember(step) { mutableStateOf("") }
     val close by rememberUpdatedState(onClose)
     LaunchedEffect(session, portVersion) {
         withContext(Dispatchers.IO) { session.revalidate() }
