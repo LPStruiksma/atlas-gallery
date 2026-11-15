@@ -49,7 +49,7 @@ def image_info(data):
     Fake mode stays dependency-free; GPU/Comfy backends still decode pixels via
     Pillow before inference. Reject truncated and corrupt synthetic uploads.
     """
-    if data.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
         mime = "image/png"
         offset = 8
         width = height = 0
@@ -89,7 +89,7 @@ def image_info(data):
                 raise ValueError("Invalid or oversized PNG pixel stream")
         except (ValueError, zlib.error) as exc:
             raise Problem(415, "invalid_image", "Malformed PNG image") from exc
-    elif data.startswith(b"\\xff\\xd8"):
+    elif data.startswith(b"\xff\xd8"):
         mime = "image/jpeg"
         offset = 2
         width = height = 0

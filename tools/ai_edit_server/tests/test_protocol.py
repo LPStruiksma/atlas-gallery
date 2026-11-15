@@ -168,11 +168,11 @@ class ProtocolConformance(unittest.TestCase):
         cases = [
             PNG[:-7],
             PNG[:29] + bytes([PNG[29] ^ 1]) + PNG[30:],
-            b"\\xff\\xd8\\xff\\xc0\\x00\\x11\\x08\\x00\\x01\\x00\\x01" + b"\\x00" * 12,
+            b"\xff\xd8\xff\xc0\x00\x11\x08\x00\x01\x00\x01" + b"\x00" * 12,
         ]
         for payload in cases:
             with self.subTest(length=len(payload)):
-                mime = "image/jpeg" if payload.startswith(b"\\xff\\xd8") else "image/png"
+                mime = "image/jpeg" if payload.startswith(b"\xff\xd8") else "image/png"
                 status, response = self.submit(files=[("image", mime, payload)])
                 self.assertEqual(status, 415)
                 self.assertEqual(response["error"]["code"], "invalid_image")

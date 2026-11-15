@@ -185,6 +185,8 @@ class DiffusersBackend(Backend):
             "num_inference_steps": request.options.get("steps", 28),
             "guidance_scale": request.options.get("guidance_scale", 2.5),
         }
+        if self.model == "qwen":
+            args["negative_prompt"] = " "
         if "seed" in request.options:
             args["generator"] = torch.Generator(device="cuda").manual_seed(
                 request.options["seed"]
@@ -233,6 +235,7 @@ class ComfyBackend(Backend):
         self.token = token
         self.timeout_seconds = timeout_seconds
         self.opener = build_opener(_NoRedirect())
+        self._deadline = None
         self.supports_mask = "ATLAS_MASK" in self.template
         refs = ["ATLAS_REFERENCE_" + str(n) in self.template for n in range(4)]
         if refs != sorted(refs, reverse=True):
@@ -252,7 +255,7 @@ class ComfyBackend(Backend):
         return params
 
     def _fetch(self, method, path, body=None, content_type=None):
-        remaining = self._deadline - time.monotonic()
+        remaining = self._deadline - time.monotonic() if self._deadline is not None else self.timeout_seconds
         if remaining <= 0:
             raise BackendError("ComfyUI job exceeded the configured timeout")
         url = self.base + path
