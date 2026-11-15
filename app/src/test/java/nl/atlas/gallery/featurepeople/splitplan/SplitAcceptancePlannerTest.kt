@@ -78,11 +78,16 @@ class SplitAcceptancePlannerTest {
             confirmed = (1..4).associate { id(it) to a }
         )
         val output = plan(snapshot)
-        assertEquals(listOf(SplitKeptName("keep", a)), output.keptNames)
+        assertEquals(listOf(SplitKeptName("keep", a, listOf(id(1), id(2), id(3)))),
+            output.keptNames)
         assertEquals(listOf(SplitUnnamedGroup("new", listOf(id(4), id(5)))),
             output.unnamedGroups)
         assertEquals(listOf(SplitReleaseConfirmation(id(4), a)), output.releaseConfirmations)
         assertEquals(listOf(id(6)), output.unsureStayWithSource)
+        val accounted = output.keptNames.flatMap { it.members } +
+            output.unnamedGroups.flatMap { it.members } + output.unsureStayWithSource
+        assertEquals((1..6).map(::id).toSet(), accounted.toSet())
+        assertEquals(6, accounted.size)
         assertEquals(4, output.newCannotLinks.size)
     }
 
@@ -94,7 +99,8 @@ class SplitAcceptancePlannerTest {
                 group("drop", 4, 5, 6), group("a", 1, 2, 3)),
             sourcePerson = a, confirmed = confirmed
         ))
-        assertEquals(listOf(SplitKeptName("a", a), SplitKeptName("b", b)),
+        assertEquals(listOf(SplitKeptName("a", a, listOf(id(1), id(2), id(3))),
+            SplitKeptName("b", b, listOf(id(7), id(8), id(9)))),
             output.keptNames)
         assertEquals(listOf("drop"), output.unnamedGroups.map { it.groupKey })
         assertEquals(listOf(SplitReleaseConfirmation(id(4), a)), output.releaseConfirmations)
