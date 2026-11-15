@@ -258,7 +258,9 @@ fun LocalSearchControls(
         // While it builds, display no private suggestions; never search the
         // entire catalog on the Compose thread after each typed character.
         val suggestionKey = CatalogSourceKey(suggestionSources)
-        val publicationKey = currentPermissionEpoch to suggestionKey
+        val publicationKey = remember(currentPermissionEpoch, suggestionKey) {
+            currentPermissionEpoch to suggestionKey
+        }
         val indexState by androidx.compose.runtime.produceState(
             initialValue = Pair<Any?, IndexedSearchSuggestions?>(null, null),
             key1 = publicationKey
