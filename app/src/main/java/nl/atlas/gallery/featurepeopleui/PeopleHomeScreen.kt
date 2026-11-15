@@ -2,6 +2,8 @@ package nl.atlas.gallery.featurepeopleui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -252,6 +254,7 @@ private fun PeopleSortSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("atlas-people-sort-sheet")) {
         Text("Sort people", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
         PeopleSortKey.entries.forEach { key ->
             listOf(false, true).forEach { descending ->
                 val option = PeopleSortChoice(key, descending)
@@ -274,6 +277,7 @@ private fun PeopleSortSheet(
             }
         }
         Spacer(Modifier.height(20.dp))
+        }
     }
 }
 
