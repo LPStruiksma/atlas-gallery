@@ -58,10 +58,12 @@ class GalleryIncrementalDeltaTest {
     @Test fun modifiedGenerationReplacesOnlyItsOwnRecord() {
         val prior = row(3); val unaffected = row(4)
         val newer = row(3, generation = 5)
-        val result = mergeGalleryMediaDelta(listOf(prior, unaffected), listOf(\n            GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(newer), newer)))
+        val result = mergeGalleryMediaDelta(listOf(prior, unaffected), listOf(
+            GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(newer), newer)))
         assertSame(newer, result[0])
         assertSame(unaffected, result[1])
-        assertSame(prior, mergeGalleryMediaDelta(listOf(prior), listOf(\n            GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(prior), row(3))))[0])
+        assertSame(prior, mergeGalleryMediaDelta(listOf(prior), listOf(
+            GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(prior), row(3))))[0])
     }
 
     @Test fun deleteAndReplaceBatchIsAtomicAndDeduplicated() {
