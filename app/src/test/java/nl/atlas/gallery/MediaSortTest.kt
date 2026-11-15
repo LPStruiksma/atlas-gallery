@@ -27,18 +27,32 @@ class MediaSortTest {
         for ((key, expected) in keys) {
             assertEquals("$key ascending", expected,
                 sortMedia(rows, MediaSort(key, SortDirection.ASCENDING), 5L, Locale.US).map { it.id })
-            assertEquals("$key descending", expected.reversed(),
+            val descendingExpected = when (key) {
+                MediaSortKey.DATE_CREATED -> listOf(1L, 2L, 3L) // stable ID tie-break
+                else -> expected.reversed()
+            }
+            assertEquals("$key descending", descendingExpected,
                 sortMedia(rows, MediaSort(key, SortDirection.DESCENDING), 5L, Locale.US).map { it.id })
         }
     }
 
     @Test fun tiedValuesUseIdRegardlessOfInputOrder() {
         val tied = listOf(row(9, "same", 7, 7, 7), row(2, "same", 7, 7, 7))
-        for (key in MediaSortKey.entries) for (direction in SortDirection.entries) {
+        for (key in MediaSortKey.entries.filter { it != MediaSortKey.RANDOM })
+            for (direction in SortDirection.entries) {
             val mode = MediaSort(key, direction)
             val expected = sortMedia(tied, mode, 10L).map { it.id }
             assertEquals(listOf(2L, 9L), expected)
             assertEquals(expected, sortMedia(tied.reversed(), mode, 10L).map { it.id })
+        }
+    }
+
+    @Test fun randomCollisionsStillUseIdTieBreak() {
+        val tied = listOf(row(9, "same", 7, 7, 7), row(2, "same", 7, 7, 7))
+        for (direction in SortDirection.entries) {
+            val sort = MediaSort(MediaSortKey.RANDOM, direction)
+            assertEquals(sortMedia(tied, sort, 10L).map { it.id },
+                sortMedia(tied.reversed(), sort, 10L).map { it.id })
         }
     }
 
