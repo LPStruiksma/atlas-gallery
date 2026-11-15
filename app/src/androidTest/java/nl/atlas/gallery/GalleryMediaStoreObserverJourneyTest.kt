@@ -4,10 +4,13 @@ import android.Manifest
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
@@ -32,6 +35,7 @@ import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.util.concurrent.TimeUnit
+import java.util.Collections
 import kotlin.math.abs
 
 /**
@@ -72,6 +76,21 @@ class GalleryMediaStoreObserverJourneyTest {
         val resolver = instrumentation.targetContext.contentResolver
         val vm = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         val disposable = mutableListOf<Uri>()
+        // Observe the provider's real URI/flag shape, not a mocked callback.
+        // Store ONLY the flag bits and whether a URI identifies an exact row.
+        val notifications = Collections.synchronizedList(mutableListOf<Pair<Int, Boolean>>())
+        val trace = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                notifications += 0 to false
+            }
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                notifications += 0 to (uri != null && galleryItemHintOrNull(uri) != null)
+            }
+            override fun onChange(selfChange: Boolean, uris: Collection<Uri>, flags: Int) {
+                notifications += flags to uris.any { galleryItemHintOrNull(it) != null }
+            }
+        }
+        resolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, trace)
         try {
             compose.waitUntil(90_000L) {
                 val publication = vm.publishedInventory.value
@@ -102,6 +121,13 @@ class GalleryMediaStoreObserverJourneyTest {
                     SystemClock.elapsedRealtimeNanos() - writtenAt)
             }
             val medianMs = samples.sorted()[samples.size / 2]
+            val observerTrace = synchronized(notifications) { notifications.toList() }
+            val exactNotifications = observerTrace.count { it.second }
+            Log.i("ATLAS_PERF10", "event=provider_observer callbacks=${observerTrace.size} " +
+                "item_uris=$exactNotifications collection_or_unknown=${observerTrace.size - exactNotifications} " +
+                "flags=${observerTrace.map { it.first }.distinct().sorted()}")
+            assertTrue("API35 must notify at least one exact image URI for the delta path",
+                exactNotifications > 0)
             Log.i("ATLAS_PERF10", "event=insert_to_rendered samples_ms=$samples p50_ms=$medianMs")
             assertTrue("API35 insert-to-rendered p50=$medianMs ms, samples=$samples; target <=1000 ms",
                 medianMs <= 1_000L)
@@ -176,6 +202,7 @@ class GalleryMediaStoreObserverJourneyTest {
             }
             Log.i("ATLAS_PERF10", "event=busy_observer_followup published=true")
         } finally {
+            resolver.unregisterContentObserver(trace)
             disposable.forEach { uri ->
                 runCatching { resolver.delete(uri, null, null) }
             }
