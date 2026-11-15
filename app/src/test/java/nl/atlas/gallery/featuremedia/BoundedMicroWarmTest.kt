@@ -142,6 +142,34 @@ class BoundedMicroWarmTest {
         assertTrue(store.contains(valid.first()))
     }
 
+    @Test fun completeCatalogueSweepReclaimsDeletedRevisionsBeforeNewWrite() = runBlocking {
+        val store = MicroThumbnailStore(temp.newFolder("sweep"), 30)
+        val deletedKeys = listOf("removed-1", "removed-2", "removed-3")
+        deletedKeys.forEach { store.write(it, ByteArray(10)) }
+        val live = (1L..3L).map(::photo)
+        val kept = live.map { microThumbnailDiskKey(it)!! }
+        var sweeps = 0
+        val made = mutableListOf<Long>()
+        SyntheticPages(3, 1) { i -> live[2 - i] }.use { reader ->
+            fillMicroStorePaged(store, reader, 3,
+                oldest = { SyntheticPages(3, 1) { i -> live[i] } },
+                active = { true }, yieldWhile = { false },
+                sweepOrphans = {
+                    sweeps++
+                    store.retainOnly(kept)
+                    true
+                },
+                make = { media, key ->
+                    made += media.id
+                    store.write(key, ByteArray(10))
+                })
+        }
+        assertEquals(1, sweeps)
+        assertEquals(listOf(3L, 2L, 1L), made)
+        deletedKeys.forEach { assertFalse(store.contains(it)) }
+        kept.forEach { assertTrue(store.contains(it)) }
+    }
+
     @Test fun grantLossStopsBeforeNextPageOrWrite() = runBlocking {
         val store = MicroThumbnailStore(temp.newFolder("grant"), Long.MAX_VALUE)
         var grant = true
