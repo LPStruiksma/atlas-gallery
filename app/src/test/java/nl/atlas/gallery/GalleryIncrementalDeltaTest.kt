@@ -48,7 +48,7 @@ class GalleryIncrementalDeltaTest {
         val photo = row(9)
         val video = row(9, video = true)
         val external = row(9, volume = "aaaa-bbbb")
-        val result = mergeGalleryMediaDelta(listOf(photo, video), listOf(external))
+        val result = mergeGalleryMediaDelta(listOf(photo, video), listOf(\n            GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(external), external)))
         assertEquals(3, result.size)
         assertSame(photo, result[0])
         assertSame(video, result[1])
