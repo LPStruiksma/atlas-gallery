@@ -16,7 +16,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.readGalleryMediaGrant
-import java.util.concurrent.atomic.AtomicReference
 
 /** Deferred first-fill work carries no photo IDs or grants across processes. */
 internal object MicroThumbnailWarmScheduler {
@@ -44,15 +43,6 @@ private fun microWarmThermalSafe(context: Context): Boolean {
 
 internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerParameters) :
     CoroutineWorker(context, parameters) {
-    private val inFlightSignal = AtomicReference<CancellationSignal?>(null)
-
-    // WorkManager may stop the worker while its coroutine is still blocked
-    // inside a synchronous provider call. Signal it without waiting for IO.
-    override fun onStopped() {
-        inFlightSignal.get()?.cancel()
-        super.onStopped()
-    }
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val context = applicationContext
         try {
@@ -66,10 +56,9 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
 
             val coroutine = currentCoroutineContext()
             val providerSignal = CancellationSignal()
-            inFlightSignal.set(providerSignal)
-            if (isStopped) providerSignal.cancel()
-            // A child resumes on Default on cancellation even when this IO
-            // thread is blocked by MediaStore.query or loadThumbnail.
+            // CoroutineWorker.onStopped() is final: WorkManager cancels its
+            // work future, which cancels doWork's parent Job. This child
+            // resumes on Default even if IO is blocked in query/loadThumbnail.
             val cancelProvider = CoroutineScope(coroutine)
                 .watchMicroWarmCancellation { providerSignal.cancel() }
             try {
@@ -102,7 +91,6 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
                 if (pausedForPower) Result.retry() else Result.success()
             } finally {
                 cancelProvider.cancel()
-                inFlightSignal.compareAndSet(providerSignal, null)
                 providerSignal.cancel()
             }
         } catch (cancelled: CancellationException) {
