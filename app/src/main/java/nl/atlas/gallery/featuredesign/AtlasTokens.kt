@@ -46,6 +46,9 @@ object AtlasTokens {
             val SeekInactive = Color(0xFF888888)
             val SelectionAccent = Color(0xFFB5E7DA)
         }
+        object Selection {
+            val Accent = Color(0xFF3E91FF)
+        }
         object Shell {
             val DarkSurface = Color(0xFF171B21)
             val DarkAccent = Viewer.SelectionAccent
