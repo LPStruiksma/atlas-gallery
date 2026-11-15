@@ -82,14 +82,14 @@ internal fun AtlasSettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-        if (showLargeTitle) {
-            Text("Settings",
+        // Keep the expanded title in the scroll layout even after collapse,
+        // otherwise removing it would shift content and oscillate at the threshold.
+        Text("Settings",
                 Modifier.fillMaxWidth().padding(start = 8.dp, top = 12.dp, bottom = 8.dp)
                     .testTag("atlas-settings-large-title"),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Light,
                 color = MaterialTheme.colorScheme.onBackground)
-        }
         SettingsGroup("People", "atlas-library-people-tools") {
             SettingsActionRow("Face scanning", "atlas-settings-face-scanning",
                 scanAction, scanValue)
