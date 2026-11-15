@@ -126,6 +126,36 @@ class SplitAcceptancePlannerTest {
         ), SplitPlanRejection.UNSAFE_NAME_RETENTION)
     }
 
+    @Test fun foreignConfirmedUnsureCannotSilentlyStayWithNamedSource() {
+        // The other owner still wins its group (3/4 confirmed votes), but
+        // the fourth confirmed face is in Unsure and cannot become source-owned.
+        val confirmed = (1..3).associate { id(it) to a } +
+            (4..7).associate { id(it) to b }
+        val input = snapshot(
+            groups = listOf(group("source", 1, 2, 3), group("other", 4, 5, 6)),
+            sourcePerson = a, unsure = listOf(id(7)), confirmed = confirmed
+        )
+        assertEquals("CROSS_OWNER_UNSURE",
+            (SplitAcceptancePlanner.plan(input) as? SplitPlanResult.Rejected)?.reason?.name)
+
+        // An unnamed source cannot silently retain an already-confirmed owner either.
+        val unnamedSource = input.copy(sourcePerson = null)
+        assertEquals("CROSS_OWNER_UNSURE",
+            (SplitAcceptancePlanner.plan(unnamedSource) as? SplitPlanResult.Rejected)?.reason?.name)
+    }
+
+    @Test fun sameSourceConfirmedUnsureRemainsUntouched() {
+        val input = snapshot(
+            groups = listOf(group("keep", 1, 2, 3), group("new", 4, 5)),
+            sourcePerson = a, unsure = listOf(id(6)),
+            confirmed = (1..3).associate { id(it) to a } + (id(6) to a)
+        )
+        val output = plan(input)
+        assertEquals(listOf(id(6)), output.unsureStayWithSource)
+        assertTrue(output.releaseConfirmations.isEmpty())
+        assertEquals(listOf(a), output.keptNames.map { it.person })
+    }
+
     @Test fun groupNameClaimTieIsAmbiguousAndMustReject() {
         rejected(snapshot(
             groups = listOf(group("one", 1, 2, 3, 4), group("two", 5)),
