@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import android.app.Application
 import android.content.ContentUris
 import android.content.Context
+import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
 import java.security.MessageDigest
@@ -27,6 +28,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 internal data class GalleryMediaCheckpoint(
@@ -364,6 +366,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     private var inventoryCacheWrite: Job? = null
     @Volatile private var inventoryDirty = true
     private val mediaChangeVersion = AtomicLong(0L)
+    // Bound to the exact most recently published full/delta scan, never the
+    // last completed but rejected IO query or an unvalidated disk cache.
+    private var publishedCheckpoint: GalleryMediaCheckpoint? = null
+    private val pendingChangedItems = LinkedHashMap<String, GalleryItemHint>()
+    private var pendingUnknownChange = false
+    private var incrementalJob: Job? = null
+    private var firstBurstObservedNanos = 0L
     // Prevent an unbounded automatic rescan loop on a busy import/reindex.
     // A second provider change requires a later explicit refresh/resume.
     private val automaticRetryBudget = GalleryAutomaticRetryBudget()
@@ -374,9 +383,108 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     // The explicit Refresh button still forces a full inventory rebuild.
     private val mediaObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
-            mediaChangeVersion.incrementAndGet()
-            inventoryDirty = true
+            mediaChanged(emptyList(), 0)
         }
+
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            mediaChanged(if (uri == null) emptyList() else listOf(uri), 0)
+        }
+
+        override fun onChange(selfChange: Boolean, uris: Collection<Uri>, flags: Int) {
+            mediaChanged(uris, flags)
+        }
+    }
+
+    /** One bounded 120 ms coalescing window for a camera burst. */
+    private fun mediaChanged(uris: Collection<Uri>, flags: Int) {
+        mediaChangeVersion.incrementAndGet()
+        inventoryDirty = true
+        if (firstBurstObservedNanos == 0L) firstBurstObservedNanos = System.nanoTime()
+        val knownMutation = Build.VERSION.SDK_INT >= 30 && flags and
+            (ContentResolver.NOTIFY_INSERT or ContentResolver.NOTIFY_UPDATE or
+                ContentResolver.NOTIFY_DELETE) != 0
+        if (uris.isEmpty()) pendingUnknownChange = true
+        for (uri in uris) {
+            val hint = galleryItemHintOrNull(uri)
+            if (hint != null) {
+                pendingChangedItems[uri.toString()] = hint
+            } else if (!knownMutation ||
+                flags and ContentResolver.NOTIFY_DELETE != 0) {
+                // A collection-level delete cannot identify which ID vanished.
+                pendingUnknownChange = true
+            }
+        }
+        if (pendingChangedItems.size > 64) pendingUnknownChange = true
+        incrementalJob?.cancel()
+        incrementalJob = viewModelScope.launch {
+            delay(120)
+            if (clearing || mediaAccessRevoked || _busy.value) return@launch
+            if (pendingUnknownChange) {
+                refresh() // no safely identifiable delta: authoritative scan
+                return@launch
+            }
+            val snapshot = _publishedInventory.value
+            val checkpoint = publishedCheckpoint ?: return@launch
+            val grant = readGalleryMediaGrant(getApplication<Application>())
+            // Selected-media access can change without an observer notification.
+            // Only full image+video grants are eligible for background deltas.
+            if (!grant.images || !grant.videos || grant.selected ||
+                snapshot.fromCache || snapshot.observedGrant != grant) return@launch
+            val hints = pendingChangedItems.values.toList()
+            val observerRevision = mediaChangeVersion.get()
+            val result = try {
+                withContext(Dispatchers.IO) {
+                    val context = currentCoroutineContext()
+                    repo.loadIncremental(snapshot.items, checkpoint, hints) {
+                        context.ensureActive()
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Unsupported provider filters, snapshot churn and ambiguous
+                // IDs fail closed to the existing fully validated inventory read.
+                if (!clearing && !mediaAccessRevoked) refresh()
+                return@launch
+            }
+            val liveGrant = readGalleryMediaGrant(getApplication<Application>())
+            if (clearing || mediaAccessRevoked || _busy.value ||
+                _publishedInventory.value !== snapshot ||
+                observerRevision != mediaChangeVersion.get() || liveGrant != grant) {
+                inventoryDirty = true
+                return@launch
+            }
+            val ticket = refreshQueue.request()
+            if (refreshQueue.begin() != ticket) {
+                refresh()
+                return@launch
+            }
+            // Main dispatcher: no suspend from the final provider/grant/
+            // observer check through publication of the matched epoch+items.
+            _publishedInventory.value = GalleryPublishedInventory(
+                ticket, result.items, grant
+            )
+            publishedCheckpoint = result.checkpoint
+            pendingChangedItems.clear()
+            pendingUnknownChange = false
+            inventoryDirty = false
+            _error.value = null
+            refreshQueue.finish(ticket)
+            saveInventoryCache(grant, result.items)
+            val elapsed = ((System.nanoTime() - firstBurstObservedNanos) /
+                1_000_000L).coerceAtLeast(0L)
+            firstBurstObservedNanos = 0L
+            android.util.Log.i("ATLAS_SCAN",
+                "event=delta_published changed=${hints.size} elapsed_ms=$elapsed")
+        }
+    }
+
+    private fun cancelIncremental() {
+        incrementalJob?.cancel()
+        incrementalJob = null
+        pendingChangedItems.clear()
+        pendingUnknownChange = false
+        firstBurstObservedNanos = 0L
     }
 
     // #41: the cold-start scan waits for this before it picks the rows to
@@ -434,6 +542,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     override fun onCleared() {
         clearing = true
+        cancelIncremental()
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         // Abort a blocked provider query BEFORE clearing its coroutine scope.
@@ -450,6 +559,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
      */
     fun revokeMediaAccess() {
         if (mediaAccessRevoked) return
+        cancelIncremental()
+        publishedCheckpoint = null
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = true
@@ -484,6 +595,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     /** The returned ticket identifies the earliest safe grant-scope result. */
     fun refreshForAccessChange(): Long {
+        cancelIncremental()
+        publishedCheckpoint = null
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = false
@@ -498,6 +611,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     fun refresh() {
         if (mediaAccessRevoked) return
+        cancelIncremental()
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         refreshQueue.request()
@@ -533,10 +647,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 val shownAtStart = inventoryShownAfterCacheSettles(cachedInventoryLoad) {
                     _publishedInventory.value.items
                 }
-                val inventory = withContext(Dispatchers.IO) {
+                val scan = withContext(Dispatchers.IO) {
                     val scanContext = currentCoroutineContext()
-                    repo.load(providerCancellation, shownAtStart) { scanContext.ensureActive() }
+                    repo.loadWithCheckpoint(providerCancellation, shownAtStart) {
+                        scanContext.ensureActive()
+                    }
                 }
+                val inventory = scan.items
                 // We are back on the owning main dispatcher. There is no
                 // suspension between the latest-request check and the atomic
                 // epoch+catalog publication. A request queued while IO ran
@@ -558,6 +675,10 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         _publishedInventory.value = GalleryPublishedInventory(
                             ticket, inventory, observedGrantAtStart
                         )
+                        publishedCheckpoint = scan.checkpoint
+                        pendingChangedItems.clear()
+                        pendingUnknownChange = false
+                        firstBurstObservedNanos = 0L
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
