@@ -2974,8 +2974,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     // A folder/person header cannot silently turn into a library viewer.
                                     // The existing Search tab owns library-wide facets and suggestions.
                                     personFilter = null
-                                    albumRoute = null
                                     album = null
+                                    albumVolume = null
+                                    albumReturnToAlbums = false
                                     overviewQuery = ""
                                     tab = 3
                                 } else {
