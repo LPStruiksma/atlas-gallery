@@ -254,28 +254,36 @@ private fun PeopleSortSheet(
     onSelect: (PeopleSortChoice) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("atlas-people-sort-sheet")) {
+    ModalBottomSheet(onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("atlas-people-sort-sheet")) {
         Text("Sort people", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             PeopleSortKey.entries.forEach { key ->
-            listOf(false, true).forEach { descending ->
-                val option = PeopleSortChoice(key, descending)
-                val text = when (key) {
-                    PeopleSortKey.MEDIA_COUNT -> if (descending) "Media count · most first" else "Media count · fewest first"
-                    PeopleSortKey.NAME -> if (descending) "Name · Z–A" else "Name · A–Z"
-                    PeopleSortKey.MOST_RECENT -> if (descending) "Most recent · newest first" else "Most recent · oldest first"
-                    PeopleSortKey.FIRST_APPEARANCE -> if (descending) "First appearance · newest first" else "First appearance · oldest first"
-                    PeopleSortKey.RANDOM -> if (descending) "Random · reverse" else "Random"
-                }
-                Row(Modifier.fillMaxWidth().clickable {
-                    onSelect(option); onDismiss()
-                }.testTag("atlas-people-sort-${key.name}-${if (descending) "desc" else "asc"}")
-                    .padding(horizontal = 24.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = selected == option, onClick = null)
-                    Text(text, modifier = Modifier.padding(start = 12.dp),
-                        style = MaterialTheme.typography.bodyMedium)
+                listOf(false, true).forEach { descending ->
+                    val option = PeopleSortChoice(key, descending)
+                    val label = when (key) {
+                        PeopleSortKey.MEDIA_COUNT -> if (descending)
+                            "Media count · most first" else "Media count · fewest first"
+                        PeopleSortKey.NAME -> if (descending) "Name · Z–A" else "Name · A–Z"
+                        PeopleSortKey.MOST_RECENT -> if (descending)
+                            "Most recent · newest first" else "Most recent · oldest first"
+                        PeopleSortKey.FIRST_APPEARANCE -> if (descending)
+                            "First appearance · newest first" else "First appearance · oldest first"
+                        PeopleSortKey.RANDOM -> if (descending) "Random · reverse" else "Random"
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            onSelect(option)
+                            onDismiss()
+                        }.testTag("atlas-people-sort-${key.name}-${if (descending) "desc" else "asc"}")
+                            .padding(horizontal = 24.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selected == option, onClick = null)
+                        Text(label, modifier = Modifier.padding(start = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
             Spacer(Modifier.height(20.dp))
