@@ -16,6 +16,6 @@ assert.match(albums, /style = MaterialTheme\.typography\.titleSmall/);
 assert.match(albums, /style = MaterialTheme\.typography\.labelMedium/);
 assert.match(main, /val albumDetailOpen = photosControls && album != null && albumReturnToAlbums/);
 assert.match(main, /subtitle = if \(albumDetailOpen\)/);
-assert.match(main, /AtlasScrollAwayHeader\(.*?gridState = (?:timelineGridState|photosGridState)/s);
-assert.match(theme, /saveUiEvidence\("design-9-album-detail-collapsed-\$mode\.png"\)/);
+assert.match(main, /header = if \(headerScrollsWithGrid\)/);
+assert.match(theme, /saveUiEvidence\("parity-24-albums-detail-\$mode\.png"\)/);
 console.log('DESIGN-9 Albums polish source contract OK');
