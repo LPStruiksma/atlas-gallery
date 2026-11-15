@@ -660,7 +660,15 @@ class FaceIndexStore(
         for (person in people) {
             val uid = resolvedPersonCover(db, version, person)
             if (uid == null) {
-                if (pruneMissing) db.delete("people_cover_override", "person_key=?", arrayOf(person))
+                // Retain the user choice while an unchanged source awaits re-embedding.
+                val sourcePending = db.rawQuery("""SELECT 1 FROM people_cover_override o
+                    JOIN catalog c ON c.media_key=o.media_key
+                        AND c.revision=o.source_revision
+                        AND c.detector_version=o.detector_version
+                    WHERE o.person_key=? AND c.state IN ('queued','running') LIMIT 1""",
+                    arrayOf(person)).use { it.moveToFirst() }
+                if (pruneMissing && !sourcePending)
+                    db.delete("people_cover_override", "person_key=?", arrayOf(person))
             } else {
                 db.execSQL("""UPDATE people_cover_override SET face_uid=?
                     WHERE person_key=? AND face_uid<>?""", arrayOf(uid, person, uid))
