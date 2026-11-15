@@ -9,6 +9,8 @@ const scoped = source('app/src/main/java/nl/atlas/gallery/featuresearch/ScopedSe
 const main = source('app/src/main/java/nl/atlas/gallery/MainActivity.kt');
 const albums = source('app/src/main/java/nl/atlas/gallery/featurealbums/AtlasAlbumsScreen.kt');
 const people = source('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt');
+const stories = source('app/src/main/java/nl/atlas/gallery/featurestories/AtlasStoriesScreen.kt');
+const trash = source('app/src/main/java/nl/atlas/gallery/DeclutterScreen.kt');
 assert.match(search, /fun AtlasSearch\(/);
 assert.match(search, /AtlasSearchScope\.THIS_SCREEN/);
 assert.match(search, /AtlasSearchScope\.LIBRARY/);
@@ -21,4 +23,6 @@ assert.match(scoped, /fun scopedNameMatches\(/);
 assert.match(main, /AtlasSearch\(/); // Pictures, album, person, Search destination shell
 assert.match(albums, /AtlasSearch\(/); // Albums list
 assert.match(people, /AtlasSearch\(/); // People tab
+assert.match(stories, /AtlasSearch\\(/); // Stories collection
+assert.match(trash, /AtlasSearch\\(/); // Trash review
 console.log('FIND-0 shared-scoped-search contract passed');
