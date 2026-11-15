@@ -314,7 +314,7 @@ fun AtlasAlbumsScreen(
     }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // The grid draws the header itself so it can scroll away (#506).
-        if (isLoading || loadIssue != null || albums.isEmpty() || displayedAlbums.isEmpty()) header()
+        if (isLoading || loadIssue != null || albums.isEmpty()) header()
         // An in-progress permission/source refresh must not expose old covers.
         if (isLoading) {
             AtlasGalleryLoading("Gathering albums on this device…")
