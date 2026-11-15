@@ -150,10 +150,11 @@ internal fun PersonPageScreen(
     var originalProportions by rememberSaveable(opening) { mutableStateOf(false) }
     var returnDensity by remember(opening) { mutableStateOf<GridDensity?>(null) }
     // #584: the app root colour, like Photos and People (one dark theme).
-    Box(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-person-page")) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        .testTag("atlas-person-page")) {
         val header: @Composable () -> Unit = {
             // Keep Back and ⋮ clear of the status bar, like the album page.
-            Column(Modifier.fillMaxWidth().background(DeepBg)
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()) {
                 if (selecting) {
                     SelectionBar(selectedUris.orEmpty().size) { onSelectionChange(null) }
