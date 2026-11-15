@@ -1,6 +1,9 @@
 package nl.atlas.gallery.featurepeopleui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
@@ -51,7 +54,8 @@ class UnknownFacesReviewScreenStateTest {
         var backedOut = false
         compose.setContent {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                UnknownFacesReviewScreen(
+                Surface(Modifier.fillMaxSize()) {
+                    UnknownFacesReviewScreen(
                     queue = displayedPage,
                     currentPermissionEpoch = activeEpoch,
                     currentSourceGeneration = "index-A",
@@ -59,7 +63,8 @@ class UnknownFacesReviewScreenStateTest {
                     reviewBackendReady = false,
                     onDecide = {},
                     onClose = { backedOut = true }
-                )
+                    )
+                }
             }
         }
         val message = "Faces aren't ready to review yet. Check face discovery in People."
