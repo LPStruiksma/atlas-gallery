@@ -120,9 +120,10 @@ def score_region_pillow(case: dict, record: dict, source_path: Path,
     if not output_name:
         return {}
     output = Path(output_name)
-    if not output.is_absolute():
-        # Adapter must pass an absolute output path to this standalone judge.
-        raise ValueError("score_region_pillow expects an absolute output_path")
+    root = source_path.parent.parent.resolve()
+    output = (root / output).resolve()
+    if not output.is_relative_to(root):
+        raise ValueError("output_path escapes experiment folder")
     with (Image.open(source_path) as src, Image.open(mask_path) as mask,
           Image.open(output) as edited):
         if src.size != edited.size or src.size != mask.size:
