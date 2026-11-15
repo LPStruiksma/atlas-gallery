@@ -24,9 +24,9 @@ class ScopedSearchTest {
     }
 
     @Test fun scopedSnapshotRejectsChangedSourceAndPermission() {
-        val screen = emptyList<MediaRecord>()
-        val library = emptyList<MediaRecord>()
-        val people = emptyList<PersonEntry>()
+        val screen = arrayListOf<MediaRecord>()
+        val library = arrayListOf<MediaRecord>()
+        val people = arrayListOf<PersonEntry>()
         val snapshot = ScopedMediaSearchSnapshot(screen, library, people, "epoch-1", "2019",
             AtlasSearchScope.THIS_SCREEN, screen)
         assertSame(screen, currentScopedMediaSearchOrNull(snapshot, screen, library,
@@ -36,7 +36,7 @@ class ScopedSearchTest {
         assertEquals(null, currentScopedMediaSearchOrNull(snapshot, screen, library,
             people, "epoch-1", "2019", AtlasSearchScope.LIBRARY))
         assertEquals(null, currentScopedMediaSearchOrNull(snapshot,
-            emptyList<MediaRecord>(), library, people, "epoch-1", "2019",
+            arrayListOf<MediaRecord>(), library, people, "epoch-1", "2019",
             AtlasSearchScope.THIS_SCREEN))
     }
 }
