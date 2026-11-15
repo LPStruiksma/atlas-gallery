@@ -430,7 +430,11 @@ fun AtlasTimelineGallery(
             val ready = currentOrCachedGridPlan(
                 latestPlan, recentPlans.peek(density), ::matchingPlan
             ) ?: displayedPlan?.takeIf {
-                it.source === items && it.publication == sourceKey && it.sort == sort &&
+                // During a density handoff, keep only the preceding mounted
+                // plan. An unrelated state recomposition must not resurrect
+                // an old density once its gesture has settled.
+                zoomSettleTo != null &&
+                    it.source === items && it.publication == sourceKey && it.sort == sort &&
                     it.bounds == bounds && it.density != density
             }
             // #507: arriving from original rows, start at their drawn photo size.
