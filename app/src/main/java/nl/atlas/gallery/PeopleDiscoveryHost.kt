@@ -1889,7 +1889,8 @@ internal class PeopleDiscoveryHost(
         PeopleHomeSummary(epoch, "$epoch|${stored.generation}",
             stored.people.mapValues { (_, person) ->
                 PeopleHomePerson(person.name, person.faceCount, person.coverFaceUid,
-                    person.mediaCount, person.firstAppearanceMs, person.mostRecentAppearanceMs)
+                    person.mediaCount, person.firstAppearanceMs, person.mostRecentAppearanceMs,
+                    person.photoCount, person.videoCount)
             }, stored.unnamed.map { PeopleHomeGroup(it.anchorUid, it.faceCount) })
             .also { liveHome = LiveHome(it, stored.generation) }
     }

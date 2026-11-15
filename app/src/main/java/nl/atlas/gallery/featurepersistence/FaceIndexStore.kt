@@ -1786,35 +1786,50 @@ class FaceIndexStore(
             // #178: exact distinct media per person. Every arm starts at the
             // person-key index, not the entire 500k-row catalogue. A video with
             // multiple faces/frames counts once; dates come from the published
-            // catalog. This executes on the caller's IO thread, never Compose.
+            // catalog. frame_ms distinguishes video from photo observations.
+            // The same grouped media keys drive both the split and sort total.
+            // This executes on the caller's IO thread, never Compose.
             // We deliberately do not materialize private media identifiers in
             // PeopleHomeSummary, or use faceCount as a proxy for photo count.
             for ((person, summary) in people.toMap()) {
                 meteredStatements++
                 val stats = db.rawQuery("""SELECT COUNT(*),
-                        MIN(NULLIF(taken_ms,0)), MAX(NULLIF(taken_ms,0))
+                        MIN(NULLIF(taken_ms,0)), MAX(NULLIF(taken_ms,0)),
+                        COALESCE(SUM(CASE WHEN is_video=0 THEN 1 ELSE 0 END),0),
+                        COALESCE(SUM(is_video),0)
                     FROM (
-                        SELECT c.media_key,c.taken_ms FROM people_confirmed p
-                        CROSS JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
-                        CROSS JOIN faces f ON f.face_uid=e.face_uid
-                        CROSS JOIN catalog c ON c.media_key=f.media_key
-                            AND c.state='processed' AND c.revision=e.source_revision
-                        WHERE p.person_key=?2
-                        UNION
-                        SELECT c.media_key,c.taken_ms FROM people_matched pm
-                        CROSS JOIN embeddings e ON e.face_uid=pm.face_uid AND e.model_version=?1
-                        CROSS JOIN faces f ON f.face_uid=e.face_uid
-                        CROSS JOIN catalog c ON c.media_key=f.media_key
-                            AND c.state='processed' AND c.revision=e.source_revision
-                        WHERE pm.person_key=?2
+                        SELECT media_key, MAX(taken_ms) AS taken_ms,
+                            MAX(is_video) AS is_video FROM (
+                            SELECT c.media_key,c.taken_ms,
+                                CASE WHEN f.frame_ms IS NOT NULL THEN 1 ELSE 0 END AS is_video
+                            FROM people_confirmed p
+                            CROSS JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
+                            CROSS JOIN faces f ON f.face_uid=e.face_uid
+                            CROSS JOIN catalog c ON c.media_key=f.media_key
+                                AND c.state='processed' AND c.revision=e.source_revision
+                            WHERE p.person_key=?2
+                            UNION
+                            SELECT c.media_key,c.taken_ms,
+                                CASE WHEN f.frame_ms IS NOT NULL THEN 1 ELSE 0 END AS is_video
+                            FROM people_matched pm
+                            CROSS JOIN embeddings e ON e.face_uid=pm.face_uid AND e.model_version=?1
+                            CROSS JOIN faces f ON f.face_uid=e.face_uid
+                            CROSS JOIN catalog c ON c.media_key=f.media_key
+                                AND c.state='processed' AND c.revision=e.source_revision
+                            WHERE pm.person_key=?2
+                        ) GROUP BY media_key
                     )""", arrayOf(version, person.value)).use { cursor ->
                     check(cursor.moveToFirst())
-                    Triple(cursor.getInt(0),
-                        if (cursor.isNull(1)) null else cursor.getLong(1),
-                        if (cursor.isNull(2)) null else cursor.getLong(2))
+                    val total = cursor.getInt(0)
+                    val photos = cursor.getInt(3)
+                    val videos = cursor.getInt(4)
+                    check(photos.toLong() + videos.toLong() == total.toLong())
+                    summary.copy(mediaCount = total,
+                        firstAppearanceMs = if (cursor.isNull(1)) null else cursor.getLong(1),
+                        mostRecentAppearanceMs = if (cursor.isNull(2)) null else cursor.getLong(2),
+                        photoCount = photos, videoCount = videos)
                 }
-                people[person] = summary.copy(mediaCount = stats.first,
-                    firstAppearanceMs = stats.second, mostRecentAppearanceMs = stats.third)
+                people[person] = stats
             }
             // #579: unnamed groups. Published membership never holds a
             // confirmed face, so each row here is an unknown face.

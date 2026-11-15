@@ -9,6 +9,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.graphics.asAndroidBitmap
+import android.graphics.Bitmap
+import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
+import nl.atlas.gallery.featurepeopleui.PeopleHomePerson
+import java.io.File
+import java.text.NumberFormat
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -64,5 +76,48 @@ class PeopleSortJourneyTest {
                 compose.onNodeWithTag("atlas-people-sort-open").performClick()
         }
         compose.onNodeWithTag("atlas-people-sort-open").assertExists()
+    }
+
+    @Test fun peopleCountGridLightTheme() = renderPeopleCounts(dark = false)
+
+    @Test fun peopleCountGridDarkTheme() = renderPeopleCounts(dark = true)
+
+    private fun renderPeopleCounts(dark: Boolean) {
+        val epoch = "synthetic-epoch"
+        val generation = "synthetic-generation"
+        val longName = "Synthetic person with a very long name that must be ellipsized"
+        val native = PeopleHomeSummary(epoch, generation, mapOf(
+            PersonKey("video-only") to PeopleHomePerson("Video only", 1, "a".repeat(32),
+                mediaCount = 45, photoCount = 0, videoCount = 45),
+            PersonKey("long-name") to PeopleHomePerson(longName, 1, "b".repeat(32),
+                mediaCount = 3, photoCount = 2, videoCount = 1)
+        ))
+        compose.setContent {
+            AtlasGalleryTheme(dark = dark) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    PeopleHomeScreen(
+                        state = PeopleHomeUiState(profiles = listOf(
+                            PeopleProfileUi(1, "Synthetic Ada", 12305, 12305))),
+                        onOpenProfile = {},
+                        currentPermissionEpoch = epoch,
+                        nativePeopleReview = native,
+                        nativePeopleSourceGeneration = generation
+                    )
+                }
+            }
+        }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val locale = context.resources.configuration.locales[0]
+        val amount = NumberFormat.getInstance(locale).format(12305)
+        compose.onNodeWithTag("atlas-people-profile-1")
+            .assertContentDescriptionEquals("Synthetic Ada, $amount photos")
+        compose.onNodeWithContentDescription("Video only, 45 videos").assertExists()
+        compose.onNodeWithContentDescription("$longName, 2 photos, 1 video").assertExists()
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        assertEquals(true, bitmap.width > 0 && bitmap.height > 0)
+        // Only synthetic artwork and names. Kept on the test emulator for review evidence.
+        val output = File(context.cacheDir,
+            "people-count-${if (dark) "dark" else "light"}.png")
+        output.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 }
