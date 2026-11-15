@@ -3143,6 +3143,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     gridState = timelineGridState,
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
+                                    mediaSort = sort,
                                     busy = busy || sortPending || albumSelectionPending,
                                     catalogueEpoch = publishedGallery.epoch,
                                     onDisplayedSlots = { timelineDisplayed = it },
