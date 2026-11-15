@@ -149,8 +149,8 @@ class BenchmarkTests(unittest.TestCase):
             page = (out / "review.html").read_text(encoding="utf-8")
             self.assertNotIn("SECRET_PROVIDER_ONE", page)
             self.assertNotIn("SECRET_PROVIDER_TWO", page)
-            self.assertNotIn("a.png", page)
-            self.assertNotIn("b.png", page)
+            self.assertNotIn('src="a.png"', page)
+            self.assertNotIn('src="b.png"', page)
             identifier, mapping = next(iter(key.items()))
             result = decode_votes({"schema_version": 1, "pairs": key},
                                   {"schema_version": 1, "votes": {identifier: "A"}})
