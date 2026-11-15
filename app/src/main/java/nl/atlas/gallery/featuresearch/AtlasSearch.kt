@@ -50,6 +50,7 @@ fun AtlasSearch(
     var scope by remember { mutableStateOf(initialScope) }
     LaunchedEffect(initialScope) {
         scope = initialScope
+        onScopeChange(initialScope)
     }
     Column(modifier.testTag("atlas-search-shared")) {
         if (!expanded) {
