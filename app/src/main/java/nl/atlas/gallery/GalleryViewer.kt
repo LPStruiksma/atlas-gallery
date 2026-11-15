@@ -59,6 +59,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
@@ -677,9 +678,11 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.TopCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color(0xB8000000), Color.Transparent)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .testTag("atlas-viewer-top-chrome"),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ViewerPill {
@@ -735,7 +738,10 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.BottomCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .testTag("atlas-viewer-bottom-chrome"),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BoxWithConstraints(Modifier.fillMaxWidth().height(STRIP_HEIGHT)) {
@@ -1493,7 +1499,8 @@ internal fun VideoPage(
         })
         AnimatedVisibility(chromeVisible,
             modifier = Modifier.align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .padding(start = 14.dp, end = 14.dp, bottom = 164.dp),
             enter = CHROME_ENTER, exit = CHROME_EXIT
         ) {
