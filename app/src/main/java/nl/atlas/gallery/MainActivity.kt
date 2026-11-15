@@ -868,16 +868,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val context = LocalContext.current
     val usageRecorder = remember(context) { UsageRecorder(context.applicationContext) }
     var usageRecording by remember { mutableStateOf(usageRecorder.enabled()) }
-    val usageScreenStart = remember { android.os.SystemClock.elapsedRealtime() }
-    DisposableEffect(usageRecorder, usageRecording) {
-        onDispose {
-            if (usageRecording) {
-                val elapsedSeconds =
-                    (android.os.SystemClock.elapsedRealtime() - usageScreenStart) / 1000L
-                usageRecorder.screen("D1", elapsedSeconds.coerceAtLeast(0L))
-            }
-        }
-    }
 
     // The source list and successful grant epoch MUST be collected together.
     // Collecting two StateFlows separately can expose an obsolete album for
