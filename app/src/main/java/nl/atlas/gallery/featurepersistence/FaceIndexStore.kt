@@ -618,15 +618,12 @@ class FaceIndexStore(
     }
 
     /**
-     * PERF-11: read-only covering paths for per-person media pagination.
-     * Idempotent on existing v3 files; no rows or review generations change.
-     * The new indices are optional to older builds and safe to retain on revert.
+     * PERF-11: covering path for person-linked media keyset traversal.
+     * Created idempotently for existing v3 files; no review facts are changed.
      */
     private fun createPersonMediaIndexes(db: SQLiteDatabase) {
         db.execSQL("""CREATE INDEX IF NOT EXISTS faces_by_uid_media
             ON faces(face_uid,media_key)""")
-        db.execSQL("""CREATE INDEX IF NOT EXISTS embeddings_model
-            ON embeddings(face_uid,model_version,source_revision)""")
     }
 
     /**
