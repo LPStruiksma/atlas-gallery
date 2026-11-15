@@ -6,3 +6,7 @@ parity-24-people-hidden-light
 parity-24-people-hidden-dark
 parity-24-viewer-filmstrip-light
 parity-24-viewer-filmstrip-dark
+parity-24-header-away-light
+parity-24-header-away-dark
+parity-24-pinch-compact-light
+parity-24-pinch-compact-dark
