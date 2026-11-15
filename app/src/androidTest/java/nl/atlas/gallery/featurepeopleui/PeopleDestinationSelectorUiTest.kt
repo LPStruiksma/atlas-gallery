@@ -105,6 +105,7 @@ class PeopleDestinationSelectorUiTest {
             .performScrollTo().performClick()
         compose.onNodeWithTag("atlas-group-1-destination-assign")
             .performScrollTo().performClick()
+        compose.onNodeWithTag("atlas-group-1-destination-confirm").performClick()
         compose.runOnIdle { assertEquals(1, commands.size) }
     }
 
