@@ -20,8 +20,13 @@ assert.match(main, /val albumDetailOpen = photosControls && album != null && alb
 assert.match(main, /subtitle = if \(albumDetailOpen\)/);
 assert.match(main, /header = if \(headerScrollsWithGrid\)/);
 assert.match(theme, /saveUiEvidence\("parity-24-albums-detail-\$mode\.png"\)/);
-// Keep bounded waits and the one-step zoom that still asserts actual seven-column UI.
-assert.match(albumEvidence, /compose\.waitUntil\(120_000L\)/);
+// Keep bounded, stage-identified waits, lazy-grid semantics and inventory diagnostics.
+assert.match(albumEvidence, /compose\.waitUntil\(120_000L, condition\)/);
+assert.match(albumEvidence, /waitForAlbumsStage\("Albums navigation"\)/);
+assert.match(albumEvidence, /waitForAlbumsStage\("visible Albums grid cards \(at least six\)"\)/);
+assert.match(albumEvidence, /\.fetchSemanticsNodes\(\)\.size >= 6/);
+assert.match(albumEvidence, /fun inventoryDiagnostic\(\): String/);
+assert.match(albumEvidence, /MediaStore\.Images\.Media\.RELATIVE_PATH/);
 assert.match(parityEvidence, /end0 = center - Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /end1 = center \+ Offset\(100f, 0f\)/);
 assert.match(parityEvidence, /SemanticsMatcher\.expectValue\(SemanticsProperties\.StateDescription, "7 columns"\)/);
