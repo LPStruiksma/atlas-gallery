@@ -60,6 +60,7 @@ enum class SplitPlanRejection {
     AMBIGUOUS_NAME,
     UNSAFE_NAME_RETENTION,
     CROSS_OWNER_GROUP,
+    CROSS_OWNER_UNSURE,
     REJECTED_NAMED_MEMBER,
     CONFIRMED_PERSON_EMPTIED,
     FACT_LIMIT_EXCEEDED
@@ -101,6 +102,7 @@ data class SplitReleaseConfirmation(
  * - Interpret keptNames (with complete membership) as retained existing identities, unnamedGroups as
  *   new unknown identities, releaseConfirmations as explicit owner decisions,
  *   unsureStayWithSource as NEVER moved, and newCannotLinks as new facts.
+ *   A confirmed Unsure face must belong to sourcePerson, or planning rejects.
  *   Do not silently confirm unconfirmed faces or rename any existing person.
  * - Apply all review/membership/name/cannot-link/rejection changes in ONE
  *   persisted transaction with ONE checkpoint/Undo. If a step fails, roll
@@ -190,6 +192,15 @@ object SplitAcceptancePlanner {
         if (input.existingRejectedPeople.any { input.confirmed[it.observation] == it.person }) {
             return reject(SplitPlanRejection.CONTRADICTORY_REVIEW_FACTS)
         }
+
+        // Unsure stays with the source and has no release or re-home intent.
+        // Keeping another owner's confirmation here would be an implicit
+        // ownership change, even if that owner wins a different named group.
+        if (input.unsure.any { face ->
+                val owner = input.confirmed[face]
+                owner != null && owner != input.sourcePerson
+            }
+        ) return reject(SplitPlanRejection.CROSS_OWNER_UNSURE)
 
         // A same-unknown path through Unsure can connect TWO proposed groups.
         // Test the full transitive closure, not merely direct conflicting pairs.
