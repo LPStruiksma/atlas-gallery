@@ -38,7 +38,7 @@ data class CurationReviewRequest(
  * separate Android system Trash consent. This composable does NONE of that.
  */
 @Composable
-fun PhotoDnaReviewScreen(
+internal fun PhotoDnaReviewScreen(
     plan: CurationReviewPlan,
     thumbnail: @Composable (CurationAsset, Modifier) -> Unit,
     onReviewRequested: (CurationReviewRequest) -> Unit,
