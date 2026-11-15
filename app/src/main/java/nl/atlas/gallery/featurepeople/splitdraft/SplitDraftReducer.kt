@@ -130,7 +130,7 @@ class SplitDraftState private constructor(
 
         // Reject duplicates and unknown/wrong-source faces as one all-or-nothing action.
         val picked = action.faces.toHashSet()
-        if (picked.size != action.faces.size || !source.containsAll(picked)) return this
+        if (picked.size != action.faces.size || !source.toHashSet().containsAll(picked)) return this
 
         val updatedGroups = groups.map { group ->
             var result: List<NativeFaceObservationId> = group.members
