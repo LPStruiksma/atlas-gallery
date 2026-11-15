@@ -9,7 +9,7 @@ from pathlib import Path
 
 PERF = {
     "A1": ("Open app to cached grid", 5, "#122, #128", 500, "p50_ms"),
-    "A2": ("Scroll / fling Pictures grid", 5, "#123", None, None),
+    "A2": ("Scroll / fling Pictures grid", 5, "#123", 1, "jank_percent"),
     "A3": ("Open photo from grid", 4, "#124", 150, "p50_ms"),
     "A4": ("Swipe between viewer photos", 4, "#138", None, None),
     "A5": ("Background face and visual indexing", 4, "#125, #126", None, None),
@@ -116,7 +116,7 @@ def leverage(metrics, spec):
     if target is None or key not in metrics:
         return estimate, False
     ratio = metrics[key] / target
-    # Slowdown bands: <=0.75, (0.75,1], (1,1.5], (1.5,2], >2.
+    # Slowdown bands: <0.75, [0.75,1), [1,1.5), [1.5,2), >=2.
     return level(ratio, (0.75, 1.0, 1.5, 2.0)), True
 
 def ranking(days, inventory):
