@@ -8,8 +8,8 @@ Refusals, degraded generations and errors are separate from quality; only comple
 
 | Provider | Clean / tried | Adherence (n) | Identity (n) | Outside SSIM (n) | LPIPS ↓ (n) | Detail (n) | Artifact rate (n) | Resolution W×H | Latency ms | $/accepted |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| mock-alpha | 128/156 | 0.870 (128) | 0.930 (28) | 0.970 (128) | 0.030 (128) | 0.800 (128) | 0.000 (128) | 129×96 | 25.5 | 0.0000 |
-| mock-beta | 128/156 | 0.870 (128) | 0.930 (28) | 0.970 (128) | 0.030 (128) | 0.800 (128) | 0.000 (128) | 129×96 | 25.5 | 0.0000 |
+| mock-alpha | 128/156 | 0.870 (128) | 0.930 (28) | 0.970 (128) | 0.030 (128) | 0.800 (128) | 0.000 (128) | 128×96 | 25.5 | 0.0000 |
+| mock-beta | 128/156 | 0.870 (128) | 0.930 (28) | 0.970 (128) | 0.030 (128) | 0.800 (128) | 0.000 (128) | 128×96 | 25.5 | 0.0000 |
 
 ## Restriction scorecard (not quality)
 
