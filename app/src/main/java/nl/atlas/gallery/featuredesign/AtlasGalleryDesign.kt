@@ -2,6 +2,7 @@ package nl.atlas.gallery.featuredesign
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -419,9 +421,15 @@ private fun AtlasTabItem(
     val ink = MaterialTheme.colorScheme.onSurface
     // 11sp labels still meet text contrast over a white tile behind the dark pill.
     val tint = if (selected) ink else ink.copy(alpha = 0.78f)
+    val emphasis by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.92f,
+        animationSpec = atlasTween<Float>(AtlasMotionKind.TAB),
+        label = "atlas-tab-emphasis"
+    )
     Column(
         modifier
             .fillMaxHeight()
+            .graphicsLayer { scaleX = emphasis; scaleY = emphasis }
             .clip(CircleShape)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .testTag("atlas-nav-" + destination.name.lowercase()),
@@ -553,8 +561,10 @@ fun AtlasGalleryHeader(
             // the row keeps its 56 dp, so nothing below it moves.
             AnimatedVisibility(
                 visible = !subtitle.isNullOrBlank() && !LocalAtlasHeaderCollapsed.current,
-                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
-                exit = fadeOut(tween(200)) + shrinkVertically(tween(200))
+                enter = fadeIn(atlasTween<Float>(AtlasMotionKind.HEADER)) +
+                    expandVertically(atlasTween<Int>(AtlasMotionKind.HEADER)),
+                exit = fadeOut(atlasTween<Float>(AtlasMotionKind.HEADER)) +
+                    shrinkVertically(atlasTween<Int>(AtlasMotionKind.HEADER))
             ) {
                 Text(
                     subtitle.orEmpty(),
