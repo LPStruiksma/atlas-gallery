@@ -264,7 +264,8 @@ private fun UnnamedGroupTile(
 /** All People sources use the same centred two-line caption, never a guessed total. */
 @Composable
 private fun PeopleTileCaption(name: String, count: Int, unnamed: Boolean = false) {
-    Text(name, style = MaterialTheme.typography.bodyMedium,
+    Text(name, modifier = Modifier.testTag("atlas-people-tile-name"),
+        style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
         color = if (unnamed) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface)
