@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -211,7 +210,7 @@ internal fun AiEditScreenContent(
                         contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
                     if (hasPreview && !showOriginal) {
                         Box(Modifier.fillMaxSize().drawWithContent {
-                            clipRect(right = size.width * split) { this@drawWithContent.drawContent() }
+                            clipRect(right = size.width * split) { drawContent() }
                         }) {
                             AsyncImage(model = selectedCandidateUri,
                                 contentDescription = "AI edit candidate preview",
