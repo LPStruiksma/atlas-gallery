@@ -174,7 +174,7 @@ fun PeopleHomeScreen(
             }, stats, randomKey = when (tile) {
                 is PeopleGridTile.Imported -> "v4:${tile.profile.personId}"
                 is PeopleGridTile.Native -> "native:${tile.tile.person.value}"
-                is PeopleGridTile.Unnamed -> "unnamed:${tile.face.value}"
+                is PeopleGridTile.Unnamed -> "unnamed:${tile.face.localHex}"
             })
         }
         orderPeopleEntries(keyed, sortChoice).map { all[it.id] }
