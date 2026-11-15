@@ -296,6 +296,7 @@ class FaceIndexStore(
         createPeopleHidden(db)
         ensureVideoColumns(db)
         createPeopleHomeTables(db)
+        createPeopleCoverTable(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
         createReviewTallyTable(db)
@@ -356,6 +357,7 @@ class FaceIndexStore(
             revision TEXT NOT NULL, $TAKEN_MS_COLUMN)""")
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
+        createPeopleCoverTable(db)
         createModelCarryTable(db)
     }
     /**
@@ -574,6 +576,119 @@ class FaceIndexStore(
             revision INTEGER NOT NULL DEFAULT 0)""")
         db.execSQL("INSERT OR IGNORE INTO people_review_generation(singleton) VALUES(1)")
         createPeopleHomeTables(db)
+    }
+
+
+    /**
+     * COVER-3: user-authored profile face selection. The source fingerprint
+     * survives a face-UID/model replacement, unlike a foreign key to embeddings.
+     * Never expose these media keys in a backup; only the opaque face UID.
+     * A selected face is displayed solely after live grant, model, source and
+     * CURRENT person-membership checks.
+     */
+    private fun createPeopleCoverTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_cover_override(
+            person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256),
+            face_uid TEXT NOT NULL CHECK(length(face_uid)=32),
+            media_key TEXT NOT NULL, source_revision TEXT NOT NULL,
+            detector_version TEXT NOT NULL, ordinal INTEGER NOT NULL,
+            l REAL NOT NULL, t REAL NOT NULL, r REAL NOT NULL, b REAL NOT NULL,
+            frame_ms INTEGER)""")
+    }
+
+    /** Exact source fingerprint plus live confirmed OR published matched membership. */
+    private fun resolvedPersonCover(db: SQLiteDatabase, version: String, person: String): String? =
+        db.rawQuery("""SELECT f.face_uid FROM people_cover_override o
+            JOIN faces f ON f.media_key=o.media_key AND f.ordinal=o.ordinal
+                AND ABS(f.l-o.l)<0.000001 AND ABS(f.t-o.t)<0.000001
+                AND ABS(f.r-o.r)<0.000001 AND ABS(f.b-o.b)<0.000001
+                AND f.frame_ms IS o.frame_ms
+            JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                AND c.revision=o.source_revision AND c.detector_version=o.detector_version
+            JOIN embeddings e ON e.face_uid=f.face_uid AND e.model_version=?
+                AND e.source_revision=c.revision
+            WHERE o.person_key=? AND EXISTS(
+                SELECT 1 FROM people_names n WHERE n.person_key=o.person_key)
+                AND (
+                    EXISTS(SELECT 1 FROM people_confirmed pc
+                        WHERE pc.face_uid=f.face_uid AND pc.person_key=o.person_key)
+                    OR EXISTS(SELECT 1 FROM people_matched pm
+                        WHERE pm.face_uid=f.face_uid AND pm.person_key=o.person_key))
+            LIMIT 1""", arrayOf(version, person)).use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+
+    /**
+     * Store only a face that belongs to this named person *now*. No stale
+     * chooser, permission epoch or face ID can attach an unrelated portrait.
+     * The fingerprint intentionally outlives an embedding/model UID change.
+     */
+    private fun storePersonCover(db: SQLiteDatabase, version: String,
+                                 person: String, uid: String): Boolean {
+        if (!uid.matches(FACE_UID)) return false
+        val values = db.rawQuery("""SELECT f.media_key,c.revision,c.detector_version,
+                f.ordinal,f.l,f.t,f.r,f.b,f.frame_ms
+            FROM faces f JOIN embeddings e ON e.face_uid=f.face_uid AND e.model_version=?
+            JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                AND c.revision=e.source_revision
+            WHERE f.face_uid=? AND EXISTS(SELECT 1 FROM people_names n
+                    WHERE n.person_key=?)
+                AND (EXISTS(SELECT 1 FROM people_confirmed pc
+                    WHERE pc.face_uid=f.face_uid AND pc.person_key=?)
+                OR EXISTS(SELECT 1 FROM people_matched pm
+                    WHERE pm.face_uid=f.face_uid AND pm.person_key=?))""",
+            arrayOf(version, uid, person, person, person)).use { c ->
+            if (!c.moveToFirst()) null else ContentValues().apply {
+                put("person_key", person); put("face_uid", uid)
+                put("media_key", c.getString(0)); put("source_revision", c.getString(1))
+                put("detector_version", c.getString(2)); put("ordinal", c.getInt(3))
+                put("l", c.getDouble(4)); put("t", c.getDouble(5))
+                put("r", c.getDouble(6)); put("b", c.getDouble(7))
+                if (c.isNull(8)) putNull("frame_ms") else put("frame_ms", c.getLong(8))
+            }
+        } ?: return false
+        return db.insertWithOnConflict("people_cover_override", null, values,
+            SQLiteDatabase.CONFLICT_REPLACE) != -1L
+    }
+
+    /** Drop choices once membership is authoritative; not during a model rescan. */
+    private fun reconcilePersonCovers(db: SQLiteDatabase, version: String,
+                                      pruneMissing: Boolean) {
+        val people = db.rawQuery("SELECT person_key FROM people_cover_override", null).use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(0)) }
+        }
+        for (person in people) {
+            val uid = resolvedPersonCover(db, version, person)
+            if (uid == null) {
+                if (pruneMissing) db.delete("people_cover_override", "person_key=?", arrayOf(person))
+            } else {
+                db.execSQL("""UPDATE people_cover_override SET face_uid=?
+                    WHERE person_key=? AND face_uid<>?""", arrayOf(uid, person, uid))
+            }
+        }
+    }
+
+    /** Grant-gated current selection. A missing or removed face is automatic. */
+    fun personCoverOverride(epoch: String, person: PersonKey): String? =
+        authorizedEmbeddingRead(epoch, null) { db, version ->
+            if (!servable(db)) null else resolvedPersonCover(db, version, person.value)
+        }
+
+    /** Returns false without mutation for a stale grant, face or person. */
+    fun setPersonCoverOverride(epoch: String, person: PersonKey, faceUid: String?): Boolean {
+        validEpoch(epoch)
+        if (faceUid != null && !faceUid.matches(FACE_UID)) return false
+        return write { db ->
+            val version = storedEmbedderVersion(db)
+            if (currentEpoch(db) != epoch || version == null || !servable(db)) return@write false
+            if (faceUid == null) {
+                db.delete("people_cover_override", "person_key=?", arrayOf(person.value))
+            } else if (!storePersonCover(db, version, person.value, faceUid)) return@write false
+            bumpReviewRevision(db, reviewRevision(db))
+            refreshPeopleHome(db, version)
+            markMatchedCurrent(db)
+            true
+        }
     }
 
     /**
@@ -942,6 +1057,10 @@ class FaceIndexStore(
                 (SELECT 1 FROM catalog c WHERE c.media_key=people_model_carry.media_key
                     AND c.revision=people_model_carry.revision
                     AND c.detector_version=people_model_carry.detector_version)""")
+            db.execSQL("""DELETE FROM people_cover_override WHERE NOT EXISTS
+                (SELECT 1 FROM catalog c WHERE c.media_key=people_cover_override.media_key
+                    AND c.revision=people_cover_override.source_revision
+                    AND c.detector_version=people_cover_override.detector_version)""")
             val pruned = modelChanged || totalChanges(db) != beforePrune
             // Even identical media may have an in-flight old-epoch lease.
             db.execSQL("""UPDATE catalog SET state='queued',
@@ -1491,6 +1610,7 @@ class FaceIndexStore(
             check(clean) { "Cluster publication fence was not cleared" }
             bumpReviewRevision(db, reviewRevision(db))
             refreshPeopleHome(db, version)
+            reconcilePersonCovers(db, version, pruneMissing = scanFinished && !more)
             markMatchedCurrent(db)
             if (!more) finishedPublication = state
             true
@@ -1610,7 +1730,11 @@ class FaceIndexStore(
                 pairs("SELECT face_a,face_b FROM people_cannot_link"),
                 pairs("SELECT face_uid,person_key FROM people_rejected"),
                 pairs("SELECT face_a,face_b FROM people_same_unknown"),
-                faceDecisions)
+                faceDecisions,
+                names.keys.associateWith { resolvedPersonCover(db,
+                    storedEmbedderVersion(db) ?: "", it) }.mapNotNull { (person, face) ->
+                    face?.let { person to it }
+                }.toMap())
         }
 
     /**
@@ -1734,6 +1858,9 @@ class FaceIndexStore(
                     }, SQLiteDatabase.CONFLICT_REPLACE) != -1L)
                 applied++
             }
+            for ((person, uid) in incoming.coverOverrides) {
+                if (storePersonCover(db, version, person, uid)) applied++ else skipped++
+            }
             if (applied > 0) {
                 bumpReviewRevision(db, reviewRevision(db))
                 if (reGroup) {
@@ -1742,6 +1869,7 @@ class FaceIndexStore(
                         WHERE singleton=1""")
                 } else {
                     refreshPeopleHome(db, version)
+                    reconcilePersonCovers(db, version, pruneMissing = true)
                     markMatchedCurrent(db)
                 }
             }
@@ -1779,8 +1907,10 @@ class FaceIndexStore(
                 else db.rawQuery(PEOPLE_HOME_SELECT, arrayOf(version))
             cursor.use { c ->
                 while (c.moveToNext()) {
-                    people[PersonKey(c.getString(0))] =
-                        StoredPersonSummary(c.getString(1), c.getInt(2), c.getString(3))
+                    val person = PersonKey(c.getString(0))
+                    val choice = resolvedPersonCover(db, version, person.value)
+                    people[person] = StoredPersonSummary(c.getString(1), c.getInt(2),
+                        choice ?: c.getString(3))
                 }
             }
             // #579: unnamed groups. Published membership never holds a
@@ -1886,6 +2016,7 @@ class FaceIndexStore(
                 arrayOf<Any>(membership.size))
             bumpReviewRevision(db, revision)
             refreshPeopleHome(db, clusters.modelVersion)
+            reconcilePersonCovers(db, clusters.modelVersion, pruneMissing = true)
             markMatchedCurrent(db)
             if (tally != null) {
                 db.execSQL("INSERT OR IGNORE INTO people_review_tally(kind) VALUES(?)",
