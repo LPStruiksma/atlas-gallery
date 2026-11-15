@@ -82,7 +82,9 @@ fun buildReviewedPeopleProjection(
             name = person.name,
             confirmedPhotoReferences = person.count,
             accessiblePhotos = matched.size,
-            coverUri = matched.firstNotNullOfOrNull { unique[it]?.uri }
+            coverUri = matched.firstNotNullOfOrNull { unique[it]?.uri },
+            firstAppearanceMs = matched.mapNotNull { unique[it]?.dateTaken }.minOrNull(),
+            mostRecentAppearanceMs = matched.mapNotNull { unique[it]?.dateTaken }.maxOrNull()
         )
     }
     cancellationCheckpoint()
