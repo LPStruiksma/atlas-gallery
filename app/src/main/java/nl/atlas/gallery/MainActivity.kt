@@ -1565,7 +1565,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         mutableStateOf<ScopedMediaSearchSnapshot?>(null, referentialEqualityPolicy())
     }
     val scopedActive = overviewQuery.isNotBlank() &&
-        (tab == 0 || personFilter != null || (tab == 3 && searchActive))
+        (tab == 0 || personFilter != null || tab == 3)
     LaunchedEffect(CatalogSourceKey(overviewBase), CatalogSourceKey(sorted),
         CatalogSourceKey(people), publishedGallery.epoch, overviewQuery,
         overviewScope, scopedActive) {
