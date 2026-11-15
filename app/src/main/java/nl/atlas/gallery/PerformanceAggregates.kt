@@ -44,6 +44,13 @@ internal object PerformanceSession {
     private val processStartNanos = android.os.SystemClock.elapsedRealtimeNanos()
     private var firstGridReported = false
 
+    /** Records only successful, positive work as aggregate throughput. */
+    fun recordThroughput(metric: String, completed: Int, elapsedMs: Long): Boolean {
+        if (metric != "face_photos_min" && metric != "visual_photos_min") return false
+        if (completed <= 0 || elapsedMs <= 0) return false
+        return aggregate.record(metric, completed * 60_000.0 / elapsedMs)
+    }
+
     fun viewerProbe(): ViewerTimingProbe = viewer
 
     @Synchronized fun firstGridFrame() {
