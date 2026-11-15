@@ -21,6 +21,7 @@ class UsageAggregates {
         val actions = mutableMapOf<String, Int>()
         val screens = mutableMapOf<String, Long>()
         val timing = mutableMapOf<String, ArrayDeque<Double>>()
+        val cachedTiming = mutableMapOf<String, Timing>()
         val frameCounts = mutableMapOf<String, Long>()
         val jankCounts = mutableMapOf<String, Long>()
         var scanSeconds = 0L
@@ -52,6 +53,7 @@ class UsageAggregates {
         if (!validAction(id) || !latencyMs.isFinite() || latencyMs < 0 ||
             latencyMs > MAX_LATENCY_MS || frameCount < 0 || jankFrames !in 0..frameCount) return false
         val r = row(day)
+        r.cachedTiming.remove(id)
         val samples = r.timing.getOrPut(id) { ArrayDeque() }
         samples.addLast(latencyMs)
         if (samples.size > 256) samples.removeFirst()
@@ -86,7 +88,7 @@ class UsageAggregates {
                 if (frames == 0L) 0.0 else 100.0 * jank / frames)
         }
         Day(date.toString(), r.actions.toSortedMap(), r.screens.toSortedMap(),
-            timings.toSortedMap(), r.scanSeconds / 60.0,
+            (r.cachedTiming + timings).toSortedMap(), r.scanSeconds / 60.0,
             if (r.scanSeconds == 0L) 0.0 else r.scannedPhotos * 60.0 / r.scanSeconds)
     }
 
@@ -107,6 +109,10 @@ class UsageAggregates {
                     .put("p90_ms", percentile(.9))
                     .put("jank_percent", if (frames == 0L) 0.0
                         else 100.0 * (r.jankCounts[id] ?: 0L) / frames))
+            }
+            r.cachedTiming.toSortedMap().forEach { (id, summary) ->
+                if (!timings.has(id)) timings.put(id, JSONObject().put("p50_ms", summary.p50)
+                    .put("p90_ms", summary.p90).put("jank_percent", summary.jankPercent))
             }
             val scanner = JSONObject().put("minutes", r.scanSeconds / 60.0)
                 .put("photos_per_minute", if (r.scanSeconds == 0L) 0.0
@@ -161,9 +167,7 @@ class UsageAggregates {
                     val jank = summary.getDouble("jank_percent")
                     require(p50.isFinite() && p90.isFinite() && p50 >= 0 && p90 >= p50 &&
                         p90 <= MAX_LATENCY_MS && jank.isFinite() && jank in 0.0..100.0)
-                    log.row(day).timing[key] = ArrayDeque<Double>().apply { add(p50); add(p90) }
-                    log.row(day).frameCounts[key] = 100
-                    log.row(day).jankCounts[key] = jank.toLong()
+                    log.row(day).cachedTiming[key] = Timing(p50, p90, jank)
                 }
                 val scanner = item.getJSONObject("scanner")
                 require(scanner.length() == 2)
