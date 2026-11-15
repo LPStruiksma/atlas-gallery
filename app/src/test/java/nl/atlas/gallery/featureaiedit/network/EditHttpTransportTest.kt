@@ -40,6 +40,8 @@ class EditHttpTransportTest {
             "https://evil.example/v1/capabilities")) is EditHttpResult.Failed)
         assertTrue(transport.execute(config(), EditHttpRequest(EditHttpMethod.GET,
             "//evil.example/steal")) is EditHttpResult.Failed)
+        assertTrue(transport.execute(config(), EditHttpRequest(EditHttpMethod.GET,
+            "../admin")) is EditHttpResult.Failed)
         assertEquals(0, calls.get())
     }
 
@@ -93,6 +95,45 @@ class EditHttpTransportTest {
         assertEquals(FailureCode.TIMEOUT, (result as EditHttpResult.Failed).code)
         assertFalse(result.toString().contains("MY_TEST_SECRET"))
         assertFalse(result.toString().contains("editor.example"))
+    }
+
+
+    @Test fun authenticationAndInvalidRequestsMapToFixedCodes() = withServer { server ->
+        server.createContext("/v1/") { exchange ->
+            val status = when (exchange.requestURI.path) {
+                "/v1/auth" -> 401
+                "/v1/quota" -> 429
+                "/v1/invalid" -> 422
+                else -> 500
+            }
+            exchange.sendResponseHeaders(status, -1)
+            exchange.close()
+        }
+        fun failure(path: String) = transport(server).execute(config(),
+            EditHttpRequest(EditHttpMethod.GET, path)) as EditHttpResult.Failed
+        assertEquals(FailureCode.AUTH, failure("auth").code)
+        assertEquals(FailureCode.QUOTA, failure("quota").code)
+        assertEquals(FailureCode.INVALID_REQUEST, failure("invalid").code)
+        assertFalse(failure("invalid").retryable)
+    }
+
+    @Test fun binaryDownloadWritesOnlyCompletedOutputFile() = withServer { server ->
+        server.createContext("/v1/") { exchange ->
+            val bytes = byteArrayOf(1, 2, 3, 4, 5)
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+            exchange.close()
+        }
+        val target = java.io.File.createTempFile("aie-5-", ".bin")
+        target.delete()
+        try {
+            val result = transport(server).execute(config(),
+                EditHttpRequest(EditHttpMethod.GET, "edits/abc/result"), downloadTo = target)
+            assertTrue(result is EditHttpResult.Success)
+            assertArrayEquals(byteArrayOf(1, 2, 3, 4, 5), target.readBytes())
+        } finally {
+            target.delete()
+        }
     }
 
     @Test fun multipartAndAuthAreSentOnlyToChosenHost() = withServer { server ->
