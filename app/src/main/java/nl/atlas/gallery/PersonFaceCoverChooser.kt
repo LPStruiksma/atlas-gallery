@@ -78,7 +78,7 @@ internal fun PersonFaceCoverChooser(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize().testTag("atlas-person-cover-grid")) {
-                    itemsIndexed(faces, key = { index, _ -> index }) { index, face ->
+                    itemsIndexed(faces, key = { _, face -> face.localHex }) { index, face ->
                         val selected = face.localHex == selectedUid
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable(role = Role.Button,
