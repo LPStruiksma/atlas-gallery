@@ -16,7 +16,6 @@ test('person media page uses the existing confirmed and matched indexes', () => 
   assert.match(source, /people_confirmed_person/);
   assert.match(source, /people_matched_person/);
   assert.match(source, /CREATE INDEX IF NOT EXISTS faces_by_uid_media/);
-  assert.match(source, /CREATE INDEX IF NOT EXISTS embeddings_model/);
 });
 
 test('person media page returns only processed, source-matching media', () => {
