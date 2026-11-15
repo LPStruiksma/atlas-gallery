@@ -23,7 +23,25 @@ class UsageRankingTest(unittest.TestCase):
         self.assertEqual(rows["A1"][4:7], (5, True, 20))
         self.assertEqual(rows["A3"][4:7], (1, True, 1))
         self.assertIsNone(rows["A2"][3])
-        self.assertEqual(rows["A2"][4:6], (5, True))\n        self.assertIsNone(rows["A2"][6])
+        self.assertEqual(rows["A2"][4:6], (5, True))
+        self.assertIsNone(rows["A2"][6])
+
+    def test_timing_only_days_do_not_change_measured_leverage(self):
+        # A1's active observations remain stable despite stray timing-only rows.
+        baseline = [{"day": "2026-11-13", "actions": {"A1": 5},
+                     "performance": {"A1": {"p50_ms": 1000}}}]
+        timing_only = [
+            {"day": "2026-11-14",
+             "performance": {"A1": {"p50_ms": 10}}},
+            {"day": "2026-11-15", "actions": {"A3": 1},
+             "performance": {"A1": {"p50_ms": 10}}},
+        ]
+        original = {row[0]: row for row in rank.ranking(baseline, "perf")}["A1"]
+        augmented = {row[0]: row for row in rank.ranking(baseline + timing_only, "perf")}["A1"]
+        self.assertEqual(original[4:6], (5, True))
+        self.assertEqual(augmented[4:6], original[4:6])
+        self.assertEqual(augmented[3], 3)  # 5 A1 actions / 2 active days
+        self.assertEqual(augmented[6], 15)
 
     def test_design_dwell_and_estimated_leverage(self):
         rows = {r[0]: r for r in rank.ranking(self.days, "design")}
