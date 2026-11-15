@@ -35,5 +35,7 @@ class UsageSettingsInstrumentedTest {
         compose.onNodeWithTag("atlas-settings-usage-clear").assertExists()
         val image = compose.onRoot().captureToImage()
         assertTrue(image.width > 0 && image.height > 0)
+        compose.waitForIdle()
+        saveUiEvidence("usage0-settings-advanced.png")
     }
 }
