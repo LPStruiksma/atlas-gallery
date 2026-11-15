@@ -2596,8 +2596,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     faceStep = FaceSearchStep.PickFace(photo, fromChooser = false)
                 }
             ),
-            faceHighlights = faceResults?.takeIf { contextItems === it.records }
-                ?.boxesByUri.orEmpty(),
+            faceHighlights = faceResults?.takeIf { result ->
+                contextItems === result.records ||
+                    (faceStep == FaceSearchStep.Results && contextItems.isNotEmpty() &&
+                        contextItems.all { row -> result.records.any { it.uri == row.uri } })
+            }?.boxesByUri.orEmpty(),
             // "Find similar" from gallery browsing (any photo or video frame),
             // not from inside another search's results.
             findSimilar = if (faceStep != null || similarStep != null) null else
@@ -2657,7 +2660,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             step = similarRoute,
             photos = sorted,
             onStep = { similarStep = it },
-            onOpen = { items, record, _ -> if (items === visible) openViewer(items, record.uri) },
+            onOpen = { items, record, _ ->
+                val current = similarResults
+                if (current != null && galleryAccessCurrent() &&
+                    items.any { it.uri == record.uri } &&
+                    items.all { row -> current.records.any { it.uri == row.uri } }) {
+                    openViewer(items, record.uri)
+                }
+            },
             // #643: the Visual search index switch lives in Settings.
             onOpenSettings = {
                 closeFindSimilar()
@@ -2669,6 +2679,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 similarReturn = similarOrigin
                 closeFindSimilar()
             },
+            facetPeople = people,
+            onSearchWholeLibrary = { closeFindSimilar(); tab = 3 },
             thumbnail = { record ->
                 withContext(Dispatchers.IO) {
                     AppFindSimilarPort.thumbnail(context, record.uri)?.asImageBitmap()
@@ -2687,7 +2699,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             step = faceRoute,
             photos = sorted,
             onStep = { faceStep = it },
-            onOpen = { items, record -> if (items === visible) openViewer(items, record.uri) },
+            onOpen = { items, record ->
+                val current = faceResults
+                if (current != null && galleryAccessCurrent() &&
+                    items.any { it.uri == record.uri } &&
+                    items.all { row -> current.records.any { it.uri == row.uri } }) {
+                    openViewer(items, record.uri)
+                }
+            },
             onOpenAlbum = { person, name ->
                 closeFaceSearch()
                 tab = 2
@@ -2705,7 +2724,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 val origin = faceOrigin
                 closeFaceSearch()
                 if (origin != null && origin.first === visible) openViewer(origin.first, origin.second)
-            }
+            },
+            facetPeople = people,
+            onSearchWholeLibrary = { closeFaceSearch(); tab = 3 }
         )
         return
     }
