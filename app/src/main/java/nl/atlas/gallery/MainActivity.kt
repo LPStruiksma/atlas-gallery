@@ -1589,8 +1589,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // Face search results are the viewer's list while that route is open.
         faceStep == FaceSearchStep.Results -> faceResults?.records.orEmpty()
         similarStep == FindSimilarStep.Results -> similarResults?.records.orEmpty()
-        personFilter != null -> scopedVisible
-        tab == 3 -> scopedVisible
         else -> scopedVisible
     }
     // Revoke/reselect invalidates the ratio index synchronously by identity
@@ -3378,9 +3376,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onQueryChange = { overviewQuery = it },
                             initialExpanded = true,
                             initialScope = AtlasSearchScope.LIBRARY,
-                            onScopeChange = { overviewScope = it }
-                        )
-                        LocalSearchControls(
+                            onScopeChange = { overviewScope = it },
+                            textTool = {
+                                LocalSearchControls(
                             // #654: no title bar above Search (#644), so the field
                             // keeps a little air under the status bar.
                             modifier = Modifier.padding(top = 12.dp),
@@ -3442,6 +3440,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     Icon(Icons.Filled.Person, null,
                                         Modifier.fillMaxSize().padding(6.dp))
                                 }
+                            }
+                                )
                             }
                         )
                         // Preserve direct reviewed-People album navigation alongside
