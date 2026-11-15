@@ -36,6 +36,7 @@ fun AtlasSearch(
     modifier: Modifier = Modifier,
     initialExpanded: Boolean = false,
     initialScope: AtlasSearchScope = AtlasSearchScope.THIS_SCREEN,
+    showQueryField: Boolean = true,
     onScopeChange: (AtlasSearchScope) -> Unit = {},
     textTool: (@Composable () -> Unit)? = null,
     faceTool: (@Composable () -> Unit)? = null,
@@ -59,7 +60,7 @@ fun AtlasSearch(
             Modifier.widthIn(max = 360.dp).testTag("atlas-search-expanded"),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(Modifier.fillMaxWidth()) {
+            if (showQueryField) Row(Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { onQueryChange(boundSearchQueryInput(it)) },
