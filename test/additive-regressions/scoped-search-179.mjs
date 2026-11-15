@@ -23,6 +23,6 @@ assert.match(scoped, /fun scopedNameMatches\(/);
 assert.match(main, /AtlasSearch\(/); // Pictures, album, person, Search destination shell
 assert.match(albums, /AtlasSearch\(/); // Albums list
 assert.match(people, /AtlasSearch\(/); // People tab
-assert.match(stories, /AtlasSearch\\(/); // Stories collection
-assert.match(trash, /AtlasSearch\\(/); // Trash review
+assert.match(stories, /AtlasSearch\(/); // Stories collection
+assert.match(trash, /AtlasSearch\(/); // Trash review
 console.log('FIND-0 shared-scoped-search contract passed');
