@@ -197,6 +197,7 @@ fun AtlasGalleryTheme(
     dark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+  AtlasMotionEnvironment {
   CompositionLocalProvider(LocalAtlasDark provides dark) {
     MaterialTheme(
         colorScheme = if (dark) darkGalleryColors else lightGalleryColors,
@@ -213,6 +214,7 @@ fun AtlasGalleryTheme(
         ),
         content = content
     )
+  }
   }
 }
 
