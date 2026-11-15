@@ -530,7 +530,8 @@ class FaceIndexStoreIdentityReviewTest {
         assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT, false))
         assertEquals(listOf(ben, ada), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, true))
         assertEquals(listOf(ada, ben), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE, false))
-        assertEquals(order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, false).reversed(), order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, true))
+        assertEquals(order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, false).reversed(),
+            order(nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM, true))
 
         // The previous epoch is not a permission to read. An edited source
         // removes its old observation while a fresh grant keeps others.
