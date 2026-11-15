@@ -33,7 +33,7 @@ data class ProviderProfile(
 }
 
 class ProviderSettingsStore(context: Context) {
-    private val preferences = context.applicationContext.getSharedPreferences(
+    private val preferences = context.getSharedPreferences(
         "atlas_ai_edit_endpoints_v1", Context.MODE_PRIVATE)
     private val vault = ProviderCredentialVault(context.applicationContext)
 
