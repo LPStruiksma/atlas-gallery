@@ -1763,7 +1763,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 val projection = ArrayList<TimelineMedia>(source.size)
                 source.forEachIndexed { i, item ->
                     if ((i and 511) == 0) worker.ensureActive()
-                    projection.add(TimelineMedia(item.uri, item.takenAtMillis))
+                    projection.add(TimelineMedia(item.uri, if (sort.key == MediaSortKey.DATE_MODIFIED && item.modifiedAtSeconds > 0L && item.modifiedAtSeconds <= Long.MAX_VALUE / 1000L) item.modifiedAtSeconds * 1000L else item.takenAtMillis))
                 }
                 buildGridTimelineIndex(projection, timelineSort, density,
                     ZoneId.systemDefault(), Locale.getDefault()) {
