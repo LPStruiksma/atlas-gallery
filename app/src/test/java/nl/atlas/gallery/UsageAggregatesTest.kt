@@ -29,9 +29,40 @@ class UsageAggregatesTest {
         val stats = log.days().single().latency["A3"]!!
         assertEquals(30.0, stats.p50, 0.0)
         assertEquals(50.0, stats.p90, 0.0)
-        assertEquals(2.0, stats.jankPercent, 0.0)
-        assertEquals(2.0, log.days().single().scannerMinutes, 0.0)
-        assertEquals(18.0, log.days().single().photosPerMinute, 0.0)
+        assertEquals(2.0, stats.jankPercent!!, 0.0)
+        assertEquals(2.0, log.days().single().scannerMinutes!!, 0.0)
+        assertEquals(18.0, log.days().single().photosPerMinute!!, 0.0)
+    }
+
+    @Test fun absentMeasurementsAreNotExportedAsZeros() {
+        val log = UsageAggregates()
+        val day = LocalDate.of(2026, 11, 15)
+        assertTrue(log.action(day, "A1"))
+        assertTrue(log.performance(day, "A3", 40.0, 0, 0))
+        assertFalse(log.scanner(day, 0, 2))
+        val saved = org.json.JSONObject(log.toJson()).getJSONArray("days").getJSONObject(0)
+        assertEquals(0, saved.getJSONObject("scanner").length())
+        assertFalse(saved.getJSONObject("performance").getJSONObject("A3").has("jank_percent"))
+        assertNull(log.days().single().scannerMinutes)
+        assertNull(log.days().single().photosPerMinute)
+        assertNull(log.days().single().latency["A3"]!!.jankPercent)
+
+        val restored = UsageAggregates.fromJson(log.toJson())
+        assertNull(restored.days().single().scannerMinutes)
+        assertNull(restored.days().single().latency["A3"]!!.jankPercent)
+
+        // A real scan with no completed photos is an observed zero throughput.
+        assertTrue(restored.scanner(day, 7, 0))
+        assertEquals(0.0, restored.days().single().photosPerMinute!!, 0.0)
+    }
+
+    @Test fun smallScannerBatchSurvivesRoundTripWithoutTruncatingPhotoCount() {
+        val log = UsageAggregates()
+        val day = LocalDate.of(2026, 11, 15)
+        assertTrue(log.scanner(day, 7, 3))
+        val restored = UsageAggregates.fromJson(log.toJson())
+        assertEquals(7.0 / 60.0, restored.days().single().scannerMinutes!!, 1e-9)
+        assertEquals(3.0 * 60.0 / 7, restored.days().single().photosPerMinute!!, 1e-9)
     }
 
     @Test fun rollingRetentionAndClear() {
