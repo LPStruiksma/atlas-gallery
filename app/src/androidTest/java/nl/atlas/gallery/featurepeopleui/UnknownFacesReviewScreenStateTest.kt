@@ -56,13 +56,13 @@ class UnknownFacesReviewScreenStateTest {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
                 Surface(Modifier.fillMaxSize()) {
                     UnknownFacesReviewScreen(
-                    queue = displayedPage,
-                    currentPermissionEpoch = activeEpoch,
-                    currentSourceGeneration = "index-A",
-                    liveReviewStateAtAction = { null },
-                    reviewBackendReady = false,
-                    onDecide = {},
-                    onClose = { backedOut = true }
+                        queue = displayedPage,
+                        currentPermissionEpoch = activeEpoch,
+                        currentSourceGeneration = "index-A",
+                        liveReviewStateAtAction = { null },
+                        reviewBackendReady = false,
+                        onDecide = {},
+                        onClose = { backedOut = true }
                     )
                 }
             }
