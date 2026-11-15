@@ -18,10 +18,10 @@ function rawColors(source) {
   // A literal colour constructor is the banned spelling. Mask comments and
   // strings to avoid false positives from docs or example text.
   const code = source
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/[^\n]*/g, " ")
     .replace(/"""[\s\S]*?"""/g, " ")
-    .replace(/"(?:\\.|[^"\\])*"/g, " ");
+    .replace(/"(?:\\.|[^"\\])*"/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ");
   return [...code.matchAll(/\bColor\s*\(\s*(?:0[xX][0-9A-Fa-f_]+|\d+[uU]?[lL]?)\s*\)/g)].map(match => match[0]);
 }
 
