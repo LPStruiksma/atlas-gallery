@@ -9,16 +9,24 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -164,10 +172,19 @@ internal fun AiEditScreenContent(
         AiEditPhase.Refused, AiEditPhase.Result
     )
 
-    Surface(Modifier.fillMaxSize().testTag("atlas-ai-edit-screen"),
-        color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Surface(
+        Modifier.fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .imePadding()
+            .testTag("atlas-ai-edit-screen"),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            // The controls may be taller than the usable screen on compact phones or
+            // with the IME open. Keep the preview visible and scroll controls instead.
+            val controlsMaxHeight = maxHeight * 0.62f
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, enabled = state.phase != AiEditPhase.Accepting,
                     modifier = Modifier.testTag("atlas-ai-edit-back")) {
@@ -229,6 +246,12 @@ internal fun AiEditScreenContent(
                     style = MaterialTheme.typography.labelMedium
                 )
             }
+            Column(
+                Modifier.fillMaxWidth()
+                    .heightIn(max = controlsMaxHeight)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             if (hasPreview) {
                 Slider(value = split, onValueChange = { split = it }, valueRange = 0f..1f,
                     modifier = Modifier.testTag("atlas-ai-edit-split"))
@@ -305,7 +328,8 @@ internal fun AiEditScreenContent(
                             Text("Try another provider")
                         }
                         TextButton(onClick = onChangePrompt) { Text("Change prompt") }
-                        TextButton(onClick = onGenerate, enabled = mayGenerate) { Text("Retry") }
+                        TextButton(onClick = onGenerate, enabled = mayGenerate,
+                            modifier = Modifier.testTag("atlas-ai-edit-retry")) { Text("Retry") }
                     }
                 }
                 AiEditPhase.Failed -> {
@@ -313,7 +337,8 @@ internal fun AiEditScreenContent(
                         modifier = Modifier.testTag("atlas-ai-edit-failed"))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = onChangePrompt) { Text("Change prompt") }
-                        TextButton(onClick = onGenerate, enabled = mayGenerate) { Text("Retry") }
+                        TextButton(onClick = onGenerate, enabled = mayGenerate,
+                            modifier = Modifier.testTag("atlas-ai-edit-retry")) { Text("Retry") }
                         if (state.selectedCandidate != null) Button(onClick = onAccept) {
                             Text("Accept existing result")
                         }
@@ -326,8 +351,11 @@ internal fun AiEditScreenContent(
                 AiEditPhase.Saved -> {
                     Text("Saved as a new photo. Your original is unchanged.",
                         modifier = Modifier.testTag("atlas-ai-edit-saved"))
-                    Button(onClick = onBack) { Text("Done") }
+                    Button(onClick = onBack,
+                        modifier = Modifier.testTag("atlas-ai-edit-done")) { Text("Done") }
                 }
+            }
+            }
             }
         }
     }
