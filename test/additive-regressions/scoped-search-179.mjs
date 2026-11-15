@@ -11,6 +11,9 @@ const albums = source('app/src/main/java/nl/atlas/gallery/featurealbums/AtlasAlb
 const people = source('app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt');
 const stories = source('app/src/main/java/nl/atlas/gallery/featurestories/AtlasStoriesScreen.kt');
 const trash = source('app/src/main/java/nl/atlas/gallery/DeclutterScreen.kt');
+const nativePerson = source('app/src/main/java/nl/atlas/gallery/PersonPageRoute.kt');
+const personPage = source('app/src/main/java/nl/atlas/gallery/PersonPageScreen.kt');
+const hiddenAlbums = source('app/src/main/java/nl/atlas/gallery/featurealbums/HideAlbumsScreen.kt');
 assert.match(search, /fun AtlasSearch\(/);
 assert.match(search, /AtlasSearchScope\.THIS_SCREEN/);
 assert.match(search, /AtlasSearchScope\.LIBRARY/);
@@ -33,4 +36,13 @@ assert.match(people, /AtlasSearch\(/); // People tab
 assert.match(people, /scope == AtlasSearchScope\.LIBRARY\) onSearchWholeLibrary\?\.invoke\(\)/);
 assert.match(stories, /AtlasSearch\(/); // Stories collection
 assert.match(trash, /AtlasSearch\(/); // Trash review
+// Native person pages and secondary list routes must not bypass search.
+assert.match(nativePerson, /scopedMediaMatches\(/);
+assert.match(nativePerson, /facetPeople: List<PersonEntry>/);
+assert.match(personPage, /searchAction: \(@Composable \(\) -> Unit\)\?/);
+assert.match(personPage, /AtlasSearch\(/);
+assert.match(personPage, /scopedNamedMatches\(/);
+assert.match(hiddenAlbums, /AtlasSearch\(/);
+assert.match(hiddenAlbums, /scopedNamedMatches\(/);
+assert.match(main, /facetPeople = people/);
 console.log('FIND-0 shared-scoped-search contract passed');
