@@ -113,7 +113,6 @@ fun PeopleHomeScreen(
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
     var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
-    var searchScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
     // This remembers only a generic layout choice, never a private person name.
     var profileOrder by remember { mutableStateOf(ReviewedPeopleOrder.AS_PROVIDED) }
     val orderedProfiles = remember(state.profiles, profileOrder) {
@@ -153,7 +152,7 @@ fun PeopleHomeScreen(
     // Both sources retain their own click contract and identity type.
     val tiles = (orderedProfiles.map { PeopleGridTile.Imported(it) } +
         nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles).filter { tile ->
-        if (searchText.isBlank() || searchScope == AtlasSearchScope.LIBRARY) true
+        if (searchText.isBlank()) true
         else when (tile) {
             is PeopleGridTile.Imported -> tile.profile.name.isNotBlank() &&
                 scopedNameMatches(tile.profile.name, searchText)
@@ -198,7 +197,7 @@ fun PeopleHomeScreen(
             menuItems = overflow,
             onOpenLibraryStatus = onOpenLibraryStatus,
             actions = { AtlasSearch(query = searchText, onQueryChange = { searchText = it },
-                onScopeChange = { searchScope = it }) }
+                onScopeChange = { }) }
         )
         PeopleScanProgress(discovery)
         if (tiles.isEmpty()) {
