@@ -53,6 +53,7 @@ class UsageAggregates {
         if (!validAction(id) || !latencyMs.isFinite() || latencyMs < 0 ||
             latencyMs > MAX_LATENCY_MS || frameCount < 0 || jankFrames !in 0..frameCount) return false
         val r = row(day)
+        // A new sample starts a fresh bounded window after restore.
         r.cachedTiming.remove(id)
         val samples = r.timing.getOrPut(id) { ArrayDeque() }
         samples.addLast(latencyMs)
