@@ -1817,6 +1817,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(personFilter, personBwFolderOnly) { personGridState.scrollToItem(0) }
 
     fun openViewer(items: List<MediaRecord>, uri: String) {
+        usageRecorder.action("A3") // Closed ID only, never the media URI.
         // A click can be delivered while a scoped-grant refresh is pending.
         // Do not animate its decoded thumbnail across an access boundary.
         val actual = readGalleryMediaGrant(context)
@@ -1832,6 +1833,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerUri = uri
     }
     fun closeViewer() {
+        if (viewerUri != null) usageRecorder.action("A7")
         viewerUri = null
         viewerItems = null
         viewerAccessEpoch = -1L
@@ -2245,6 +2247,68 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(batchSelection == null) {
         if (batchSelection == null) albumPicker = null
     }
+
+    // Session-only screen ID selection: never retain routes, names or URI sequences.
+    val usageScreenId = when {
+        viewerUri != null -> "D2"
+        settingsOpen || statusOpen -> "D17"
+        peopleReviewOpen -> "D13"
+        photoDnaOpen -> "D18"
+        storiesOpen -> "D15"
+        batchSelection != null -> "D9"
+        nativePersonAlbum != null || personFilter != null -> "D8"
+        album != null || tab == 1 -> "D5"
+        tab == 2 -> "D6"
+        tab == 3 -> "D7"
+        else -> "D1"
+    }
+    val usageLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(usageScreenId, usageRecording, usageLifecycleOwner) {
+        var started: Long? = if (usageRecording &&
+            usageLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        ) android.os.SystemClock.elapsedRealtime() else null
+        fun stop() {
+            val since = started ?: return
+            started = null
+            val durationMs = (android.os.SystemClock.elapsedRealtime() - since).coerceAtLeast(0)
+            if (usageRecording && durationMs >= 1000) {
+                usageRecorder.screen(usageScreenId, durationMs / 1000)
+            }
+        }
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> if (usageRecording && started == null) {
+                    started = android.os.SystemClock.elapsedRealtime()
+                }
+                Lifecycle.Event.ON_STOP -> stop()
+                else -> Unit
+            }
+        }
+        usageLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            stop()
+            usageLifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    LaunchedEffect(usageRecorder) {
+        if (usageRecording) usageRecorder.action("A1")
+    }
+    // Count scroll starts, never per-item observations.
+    LaunchedEffect(usageRecording, tab, settingsOpen, viewerUri, albumRoute) {
+        if (usageRecording && tab == 0 && !settingsOpen && viewerUri == null) {
+            snapshotFlow {
+                photosGridState.isScrollInProgress ||
+                    photosTimelineGridState.isScrollInProgress ||
+                    albumTimelineGridState.isScrollInProgress
+            }.distinctUntilChanged().collect { scrolling ->
+                if (scrolling) usageRecorder.action("A2")
+            }
+        }
+    }
+    LaunchedEffect(batchSelection != null) {
+        if (batchSelection != null) usageRecorder.action("A16")
+    }
+
     // This later, general BackHandler takes precedence over the earlier
     // Settings handler. Close the visible Settings (or Diagnostics) route
     // before modifying any of the originating tab's background state.
@@ -2749,12 +2813,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 },
                 onSelect = { destination ->
                     // A primary-tab tap always opens that tab's unfiltered entry point.
-                    tab = when (destination) {
+                    val nextTab = when (destination) {
                         AtlasDestination.PHOTOS -> 0
                         AtlasDestination.ALBUMS -> 1
                         AtlasDestination.PEOPLE -> 2
                         AtlasDestination.SEARCH -> 3
                     }
+                    if (nextTab != tab) {
+                        usageRecorder.action("A15")
+                        if (nextTab == 2) usageRecorder.action("A9")
+                        if (nextTab == 3) usageRecorder.action("A11")
+                    }
+                    tab = nextTab
                     statusOpen = false
                     settingsOpen = false
                     storiesOpen = false
@@ -2887,7 +2957,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         settingsOpen -> "Close Settings"
                         else -> "All albums"
                     },
-                    onOpenLibraryStatus = if (statusOpen || settingsOpen) null else ({ settingsOpen = true }),
+                    onOpenLibraryStatus = if (statusOpen || settingsOpen) null else ({
+                        usageRecorder.action("A22")
+                        settingsOpen = true
+                    }),
                     menuItems = if (photosControls && !settingsOpen && !statusOpen) photosHeaderMenu(
                         timelineSelected = timelineEnabled && !originalProportions,
                         canDeclutter = canDeclutter,
@@ -2907,7 +2980,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     ) else emptyList(),
                     actions = {
                         if (photosControls && !settingsOpen) PhotosSortAction(
-                            order = sort, onSort = { sort = it }, onShuffle = { randomSeed++ })
+                            order = sort, onSort = {
+                                usageRecorder.action("A22")
+                                sort = it
+                            }, onShuffle = {
+                                usageRecorder.action("A22")
+                                randomSeed++
+                            })
                     }
                 )
             }
@@ -3313,8 +3392,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 albumSort = AlbumSort.CUSTOM
                                 persistAlbumSort(AlbumSort.CUSTOM)
                             },
-                            onOpenStories = { storiesOpen = true },
-                            onOpenPhotoDna = { photoDnaOpen = true },
+                            onOpenStories = {
+                                usageRecorder.action("A19")
+                                storiesOpen = true
+                            },
+                            onOpenPhotoDna = {
+                                usageRecorder.action("A21")
+                                photoDnaOpen = true
+                            },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
@@ -3366,6 +3451,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     latestPeopleGeneration.value)
                             },
                             onSubmittedQuery = { term ->
+                                usageRecorder.action("A11") // No search text.
                                 searchSession = searchSession.submit(
                                     term,
                                     currentSearchSession?.photoScopeEpoch,
@@ -3502,6 +3588,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 restoring = access && discovery.status == null &&
                                     discoveryHost.discoveryOptedIn(),
                                 onOpenProfile = { id ->
+                                    usageRecorder.action("A10")
                                     personBwFolderOnly = false
                                     personFilter = id
                                 },
@@ -3512,7 +3599,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 onScanNow = discovery.onScanNow.takeIf { access },
                                 onPauseDiscovery = discovery.onPause,
                                 onResumeDiscovery = discovery.onResume,
-                                onOpenReview = { peopleReviewOpen = true },
+                                onOpenReview = {
+                                    usageRecorder.action("A18")
+                                    peopleReviewOpen = true
+                                },
                                 // Native reviewed people (#434): the host's snapshot of
                                 // names that still hold a confirmed face, opened as a
                                 // grant-resolved person album.
