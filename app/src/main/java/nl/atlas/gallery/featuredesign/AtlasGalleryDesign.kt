@@ -88,22 +88,22 @@ import androidx.compose.ui.unit.sp
 /** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
 /** Compatibility aliases: source values now live in AtlasTokens. */
 object AtlasColor {
-    val Ink get() = AtlasTokens.Colors.Ink
-    val InkRaised get() = AtlasTokens.Colors.InkRaised
-    val Mist get() = AtlasTokens.Colors.Mist
-    val Paper get() = AtlasTokens.Colors.Paper
-    val Tidal get() = AtlasTokens.Colors.Tidal
-    val DeepTidal get() = AtlasTokens.Colors.DeepTidal
-    val WarmGray get() = AtlasTokens.Colors.WarmGray
-    val QuietGray get() = AtlasTokens.Colors.QuietGray
+    val Ink = AtlasTokens.Colors.Ink
+    val InkRaised = AtlasTokens.Colors.InkRaised
+    val Mist = AtlasTokens.Colors.Mist
+    val Paper = AtlasTokens.Colors.Paper
+    val Tidal = AtlasTokens.Colors.Tidal
+    val DeepTidal = AtlasTokens.Colors.DeepTidal
+    val WarmGray = AtlasTokens.Colors.WarmGray
+    val QuietGray = AtlasTokens.Colors.QuietGray
 }
 
 object AtlasSpace {
-    val Gutter get() = AtlasTokens.Spacing.Gutter
-    val Section get() = AtlasTokens.Spacing.Section
-    val TileGap get() = AtlasTokens.Spacing.TileGap
-    val MinimumTarget get() = AtlasTokens.Spacing.MinimumTarget
-    val CoverCorner get() = AtlasTokens.Radii.Cover
+    val Gutter = AtlasTokens.Spacing.Gutter
+    val Section = AtlasTokens.Spacing.Section
+    val TileGap = AtlasTokens.Spacing.TileGap
+    val MinimumTarget = AtlasTokens.Spacing.MinimumTarget
+    val CoverCorner = AtlasTokens.Radii.Cover
 }
 
 /*
