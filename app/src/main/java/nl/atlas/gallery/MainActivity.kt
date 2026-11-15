@@ -2868,7 +2868,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     },
                     subtitle = if (albumDetailOpen)
                         NumberFormat.getIntegerInstance().format(visible.size) +
-                            if (visible.size == 1) " item" else " items"
+                            (if (visible.size == 1) " item" else " items")
                     else if (photosControls && !settingsOpen && !statusOpen)
                         photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
                     else null,
