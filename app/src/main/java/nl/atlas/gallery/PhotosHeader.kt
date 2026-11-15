@@ -131,3 +131,103 @@ internal fun PhotosSortAction(order: SortOrder, onSort: (SortOrder) -> Unit, onS
         }
     }
 }
+
+/** One extensible Samsung-style sheet; screens may append custom labels. */
+internal data class MediaSortOption(val key: MediaSortKey, val label: String)
+internal data class MediaSortExtra(val id: String, val label: String, val onClick: () -> Unit)
+
+internal fun mediaSortOptionLabel(key: MediaSortKey): String = when (key) {
+    MediaSortKey.DATE_CREATED -> "Date created"
+    MediaSortKey.DATE_MODIFIED -> "Date modified"
+    MediaSortKey.FILE_NAME -> "File name"
+    MediaSortKey.SIZE -> "Size"
+    MediaSortKey.RANDOM -> "Random"
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun MediaSortSheet(
+    selected: MediaSort,
+    options: List<MediaSortOption> = MediaSort.standardOptions.map {
+        MediaSortOption(it, mediaSortOptionLabel(it))
+    },
+    extras: List<MediaSortExtra> = emptyList(),
+    onSort: (MediaSort) -> Unit,
+    onShuffle: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.testTag("atlas-photos-sort-sheet")
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Text("Sort by", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(12.dp))
+            options.forEach { option ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .selectable(selected = selected.key == option.key,
+                        role = Role.RadioButton,
+                        onClick = { onSort(selected.copy(key = option.key)) })
+                    .testTag("atlas-media-sort-" + option.key.name.lowercase()),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(option.label, style = MaterialTheme.typography.bodyLarge)
+                    RadioButton(selected = selected.key == option.key, onClick = null)
+                }
+            }
+            if (selected.key != MediaSortKey.RANDOM) {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Text("Direction", style = MaterialTheme.typography.titleMedium)
+                SortDirection.entries.forEach { direction ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        .selectable(selected = selected.direction == direction,
+                            role = Role.RadioButton,
+                            onClick = { onSort(selected.copy(direction = direction)) })
+                        .testTag("atlas-media-sort-direction-" + direction.name.lowercase()),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (direction == SortDirection.ASCENDING) "Ascending" else "Descending",
+                            style = MaterialTheme.typography.bodyLarge)
+                        RadioButton(selected = selected.direction == direction, onClick = null)
+                    }
+                }
+            } else {
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .clickable { onShuffle() }
+                    .semantics { role = Role.Button }
+                    .testTag("atlas-photos-reshuffle"),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Shuffle again", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            extras.forEach { extra ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .clickable { extra.onClick(); onDismiss() }
+                    .testTag("atlas-media-sort-extra-" + extra.id),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(extra.label, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+    }
+}
+
+/** Pictures' new sort action; the historical SortOrder overload remains for other tests. */
+@Composable
+internal fun PhotosSortAction(sort: MediaSort, onSort: (MediaSort) -> Unit, onShuffle: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    IconButton(onClick = { expanded = true },
+        modifier = Modifier.size(AtlasSpace.MinimumTarget).testTag("atlas-photos-sort")) {
+        Icon(Icons.AutoMirrored.Filled.Sort,
+            contentDescription = "Sort: ${mediaSortOptionLabel(sort.key)}")
+    }
+    if (expanded) MediaSortSheet(
+        selected = sort,
+        onSort = { onSort(it); expanded = false },
+        onShuffle = { onShuffle(); expanded = false },
+        onDismiss = { expanded = false }
+    )
+}
