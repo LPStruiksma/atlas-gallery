@@ -39,6 +39,7 @@ internal object PerformanceSession {
     val aggregate = PerformanceAggregates()
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
+    private var peakHeapFraction = 0.0
     private val processStartNanos = System.nanoTime()
     private var firstGridReported = false
 
@@ -67,7 +68,8 @@ internal object PerformanceSession {
         val maximum = runtime.maxMemory()
         if (maximum > 0) {
             val allocated = runtime.totalMemory() - runtime.freeMemory()
-            aggregate.record("heap_fraction", allocated.toDouble() / maximum)
+            peakHeapFraction = maxOf(peakHeapFraction, allocated.toDouble() / maximum)
+            aggregate.record("heap_fraction", peakHeapFraction)
         }
     }
 }
