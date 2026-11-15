@@ -343,8 +343,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
-        setContent {
-            val galleryVm: GalleryViewModel = viewModel()
+        try {
+            setContent {
+                val galleryVm: GalleryViewModel = viewModel()
             val inventory by galleryVm.publishedInventory.collectAsIdentityState()
             CompositionLocalProvider(LocalGalleryPublicationEpoch provides inventory.epoch) {
                 val dark = isSystemInDarkTheme()
@@ -360,7 +361,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        android.os.Trace.endSection()
+        } finally {
+            android.os.Trace.endSection()
+        }
     }
 }
 
@@ -1816,7 +1819,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(personFilter, personBwFolderOnly) { personGridState.scrollToItem(0) }
 
     fun openViewer(items: List<MediaRecord>, uri: String) {
-        android.os.Trace.beginSection("atlas_viewer_open")
         // A click can be delivered while a scoped-grant refresh is pending.
         // Do not animate its decoded thumbnail across an access boundary.
         val actual = readGalleryMediaGrant(context)
@@ -1830,7 +1832,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerItems = items
         viewerAccessEpoch = publishedGallery.epoch
         viewerUri = uri
-        android.os.Trace.endSection()
     }
     fun closeViewer() {
         viewerUri = null
