@@ -462,7 +462,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             // Main dispatcher: no suspend from the final provider/grant/
             // observer check through publication of the matched epoch+items.
             _publishedInventory.value = GalleryPublishedInventory(
-                ticket, result.items, grant
+                ticket, result.items, grant, incremental = true
             )
             publishedCheckpoint = result.checkpoint
             pendingChangedItems.clear()
