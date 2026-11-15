@@ -15,7 +15,7 @@ assert.match(quality, /object FaceQualityScorer/);
 assert.match(quality, /LAPLACIAN|laplacian/i);
 assert.match(quality, /MIN_FACE_SHORT_EDGE_PX/);
 assert.match(quality, /qualityVersion|VERSION/);
-assert.match(pipeline, /FaceQualityScorer\.score/);
+assert.match(pipeline, /embedWithQuality/);
 assert.match(engine, /found\.quality/);
 assert.match(store, /quality_score REAL/);
 assert.match(store, /quality_version INTEGER/);
