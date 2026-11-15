@@ -63,6 +63,11 @@ class UsageAggregatesTest {
         val restored = UsageAggregates.fromJson(log.toJson())
         assertEquals(7.0 / 60.0, restored.days().single().scannerMinutes!!, 1e-9)
         assertEquals(3.0 * 60.0 / 7, restored.days().single().photosPerMinute!!, 1e-9)
+        val corrupted = log.toJson().replace("\"minutes\":0.11666666666666667",
+            "\"minutes\":0.0000000001")
+        assertThrows(IllegalArgumentException::class.java) {
+            UsageAggregates.fromJson(corrupted)
+        }
     }
 
     @Test fun rollingRetentionAndClear() {
