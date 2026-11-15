@@ -61,6 +61,9 @@ class SettingsDesignJourneyTest {
 
             compose.onNodeWithTag("atlas-settings-version").performScrollTo()
                 .assertIsDisplayed()
+            // The compact title requires an actual scroll beyond the 64px threshold.
+            compose.onNodeWithTag("atlas-settings-large-title").performScrollTo()
+            compose.onNodeWithTag("atlas-settings-version").performScrollTo()
             compose.onNodeWithTag("atlas-settings-compact-title").assertExists()
             compose.waitForIdle()
             saveUiEvidence("settings-135-scrolled-$theme.png")
