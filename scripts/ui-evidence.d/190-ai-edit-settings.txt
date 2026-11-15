@@ -1,0 +1,4 @@
+# AIE-5 (#190): real Compose Settings, synthetic temporary preferences only.
+aie-5-first-use
+aie-5-provider-list
+aie-5-byok-form
