@@ -130,12 +130,15 @@ internal class PinchEventMeasurement {
         var count = 0
         var cx = 0f
         var cy = 0f
-        for (change in changes) {
+        var index = 0
+        while (index < changes.size) {
+            val change = changes[index]
             if (change.pressed) {
                 count++
                 cx += change.position.x
                 cy += change.position.y
             }
+            index++
         }
         pressedCount = count
         if (count == 0) {
@@ -147,8 +150,11 @@ internal class PinchEventMeasurement {
         cx /= count
         cy /= count
         var span = 0f
-        for (change in changes) {
+        index = 0
+        while (index < changes.size) {
+            val change = changes[index]
             if (change.pressed) span += hypot(change.position.x - cx, change.position.y - cy)
+            index++
         }
         spanPx = span / count
         centroidX = cx
