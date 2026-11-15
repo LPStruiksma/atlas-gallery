@@ -66,6 +66,17 @@ object AtlasTokens {
         }
     }
 
+    object SyntheticArt {
+        // Fictional showcase artwork only; no Samsung or user media.
+        val AlbumPalettes = listOf(
+            listOf(Color(0xFF46686D), Color(0xFFB6C4B4), Color(0xFF40675E)),
+            listOf(Color(0xFF99856D), Color(0xFFE2BFA1), Color(0xFF595A4B)),
+            listOf(Color(0xFF4E657F), Color(0xFFD5BDB0), Color(0xFF596786)),
+            listOf(Color(0xFF6E736B), Color(0xFFC5C2AF), Color(0xFF454E48))
+        )
+        val Highlight = Color(0xFFFFF0D0)
+    }
+
     object Spacing {
         val Gutter = 18.dp
         val Section = 28.dp
