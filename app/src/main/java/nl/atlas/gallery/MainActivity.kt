@@ -161,6 +161,8 @@ import nl.atlas.gallery.featurepeopleui.PeopleActionAvailability
 import nl.atlas.gallery.featurepeopleui.PeopleHomeScreen
 import nl.atlas.gallery.featurepeopleui.PeopleHomeUiState
 import nl.atlas.gallery.featurepeopleui.PeopleProfileUi
+import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
+import nl.atlas.gallery.featurepeopleui.PeopleSortKey
 import nl.atlas.gallery.featurepeopleui.ReviewedPeopleProjection
 import nl.atlas.gallery.featurepeopleui.buildReviewedPeopleProjection
 import nl.atlas.gallery.featurepeopleui.currentReviewedPeopleProjectionOrNull
@@ -989,6 +991,24 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     fun persistAlbumSort(sort: AlbumSort) {
         albumOrderStore.edit().putString("sort", sort.name).apply()
+    }
+    // Only a key and direction live in preferences: never a person identity.
+    var peopleSortChoice by remember {
+        mutableStateOf(albumOrderStore.getString("people_sort", null)
+            ?.split(':')?.takeIf { it.size == 2 }?.let { parts ->
+                val key = PeopleSortKey.entries.firstOrNull { it.name == parts[0] }
+                val direction = when (parts[1]) {
+                    "desc" -> true
+                    "asc" -> false
+                    else -> null
+                }
+                if (key != null && direction != null) PeopleSortChoice(key, direction)
+                else null
+            } ?: PeopleSortChoice())
+    }
+    fun persistPeopleSort(choice: PeopleSortChoice) {
+        albumOrderStore.edit().putString("people_sort",
+            choice.key.name + if (choice.descending) ":desc" else ":asc").apply()
     }
     // #568 Samsung hidden albums (GRID:A7): app-private, like the album order.
     var hiddenAlbums by remember {
@@ -3046,6 +3066,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
+                            scanStatusNote = discovery.status?.ui?.statusNote,
+                            onScanNow = discovery.onScanNow.takeIf { access },
                             scanLoading = access && discovery.status == null,
                             scanHasSavedOptIn = discoveryHost.hasSavedScanOptIn(),
                             scanPhotoAccess = access,
@@ -3574,6 +3596,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 samePersonQueueOpen = false
                             }
                             PeopleHomeScreen(
+                                sortChoice = peopleSortChoice,
+                                onSortChoice = { choice ->
+                                    peopleSortChoice = choice
+                                    persistPeopleSort(choice)
+                                },
                                 state = PeopleHomeUiState(
                                     discovery = discovery.status?.ui ?: FaceDiscoveryUiState(),
                                     profiles = profiles,
@@ -3591,6 +3618,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // refresh: a refresh is not face discovery.
                                 currentPermissionEpoch = discovery.status?.displayEpoch,
                                 onStartDiscovery = discovery.onStart,
+                                onScanNow = discovery.onScanNow.takeIf { access },
                                 onPauseDiscovery = discovery.onPause,
                                 onResumeDiscovery = discovery.onResume,
                                 onOpenReview = { peopleReviewOpen = true },

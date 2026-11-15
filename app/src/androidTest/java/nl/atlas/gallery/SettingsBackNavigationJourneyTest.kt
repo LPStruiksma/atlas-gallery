@@ -1,12 +1,14 @@
 package nl.atlas.gallery
 
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -45,8 +47,8 @@ class SettingsBackNavigationJourneyTest {
         openSettings("people")
         compose.onNodeWithTag("atlas-settings-advanced").performClick()
         waitFor(hasTestTag("atlas-settings-diagnostics"))
-        compose.onNodeWithTag("atlas-settings-diagnostics").performClick()
-        waitFor(hasTestTag("atlas-header-title"))
+        compose.onNodeWithTag("atlas-settings-diagnostics").performScrollTo().performClick()
+        waitFor(hasTestTag("atlas-header-title") and hasText("Library status"))
         compose.onNodeWithTag("atlas-settings-screen").assertDoesNotExist()
 
         // Nested Advanced -> Diagnostics must go back to Settings first.

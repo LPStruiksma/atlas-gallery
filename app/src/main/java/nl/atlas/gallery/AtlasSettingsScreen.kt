@@ -60,6 +60,8 @@ internal fun AtlasSettingsScreen(
     onShareLastCrash: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
+    onScanNow: (() -> Unit)? = null,
+    scanStatusNote: String? = null,
     performance: PerformanceAggregates = PerformanceSession.aggregate
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
@@ -80,7 +82,7 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = if (scanLoading) "Restoring…" else faceScanSettingsValue(
+    val scanValue = scanStatusNote ?: if (scanLoading) "Restoring…" else faceScanSettingsValue(
         scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
 
     Column(
@@ -92,6 +94,8 @@ internal fun AtlasSettingsScreen(
         SettingsGroup("People", "atlas-library-people-tools") {
             SettingsActionRow("Face scanning", "atlas-settings-face-scanning",
                 scanAction, scanValue)
+            SettingsActionRow("Scan now", "atlas-settings-scan-now", onScanNow,
+                if (onScanNow == null) "Photo access required" else "Foreground · works on battery")
             if (visualIndexOn != null) {
                 SettingsActionRow("Visual search index", "atlas-people-visual-index",
                     onVisualIndex.takeIf { visualStatus != null }, visualIndexStatusText(visualIndexOn, visualStatus,
