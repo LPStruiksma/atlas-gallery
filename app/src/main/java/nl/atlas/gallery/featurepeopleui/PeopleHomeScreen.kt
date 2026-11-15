@@ -258,7 +258,7 @@ private fun PeopleSortSheet(
         Text("Sort people", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-        PeopleSortKey.entries.forEach { key ->
+            PeopleSortKey.entries.forEach { key ->
             listOf(false, true).forEach { descending ->
                 val option = PeopleSortChoice(key, descending)
                 val text = when (key) {
@@ -278,8 +278,7 @@ private fun PeopleSortSheet(
                         style = MaterialTheme.typography.bodyMedium)
                 }
             }
-        }
-        Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
