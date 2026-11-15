@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -108,7 +109,7 @@ internal fun PeopleDestinationSelector(
     preview: @Composable (NativeFaceObservationId) -> Unit
 ) {
     var filter by remember(selectionScope, candidates) { mutableStateOf("") }
-    var expanded by remember(selectionScope, candidates) { mutableStateOf(false) }
+    var visibleLimit by remember(selectionScope, candidates) { mutableIntStateOf(5) }
     val query = filter.trim()
     val matching = if (query.isBlank()) emptyList() else candidates.withIndex()
         .filter { it.value.name.contains(query, ignoreCase = true) }
@@ -118,7 +119,7 @@ internal fun PeopleDestinationSelector(
             onValueChange = {
                 if (it.length <= 80) {
                     filter = it
-                    expanded = false
+                    visibleLimit = 5
                     onSelect(null)
                 }
             },
@@ -132,7 +133,7 @@ internal fun PeopleDestinationSelector(
             Text("No people match that name.",
                 style = MaterialTheme.typography.bodySmall)
         }
-        matching.take(if (expanded) 20 else 5).forEach { choice ->
+        matching.take(visibleLimit).forEach { choice ->
             val album = choice.value
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -157,8 +158,8 @@ internal fun PeopleDestinationSelector(
                 }
             }
         }
-        if (!expanded && matching.size > 5) {
-            TextButton(onClick = { expanded = true }) {
+        if (matching.size > visibleLimit) {
+            TextButton(onClick = { visibleLimit += 5 }) {
                 Text("Show more matches")
             }
         }
