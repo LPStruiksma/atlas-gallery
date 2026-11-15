@@ -3,7 +3,7 @@ package nl.atlas.gallery.featuregrid
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
-import java.lang.management.ManagementFactory
+import androidx.compose.ui.input.pointer.PointerType
 import java.util.Random
 import org.junit.Assert.*
 import org.junit.Test
@@ -22,7 +22,15 @@ class GalleryPinchPerfTest {
             pressed = pressed,
             previousUptimeMillis = 9L,
             previousPosition = Offset(x, y),
-            previousPressed = pressed
+            previousPressed = pressed,
+            pressure = 1f,
+            isInitiallyConsumed = false,
+            type = PointerType.Touch,
+            historical = emptyList(),
+            scrollDelta = Offset.Zero,
+            scaleFactor = 1f,
+            panOffset = Offset.Zero,
+            originalEventPosition = Offset(x, y)
         )
 
     private fun stream(): List<List<PointerInputChange>> {
@@ -121,15 +129,27 @@ class GalleryPinchPerfTest {
     )
 
     private fun threadBytes(): Long? {
-        val bean = ManagementFactory.getThreadMXBean() as? com.sun.management.ThreadMXBean
-            ?: return null
-        if (!bean.isThreadAllocatedMemorySupported) return null
+        // Android unit-test compilation excludes java.management/jdk.management.
+        // Resolve these optional JDK-only counters reflectively on the CI host;
+        // do not add an Android runtime dependency.
         return try {
-            if (!bean.isThreadAllocatedMemoryEnabled) bean.isThreadAllocatedMemoryEnabled = true
-            bean.getThreadAllocatedBytes(Thread.currentThread().id).takeIf { it >= 0L }
-        } catch (_: SecurityException) {
+            val factory = Class.forName("java.lang.management.ManagementFactory")
+            val threadMx = Class.forName("com.sun.management.ThreadMXBean")
+            val bean = factory.getMethod("getThreadMXBean").invoke(null) ?: return null
+            if (!threadMx.isInstance(bean)) return null
+            if (threadMx.getMethod("isThreadAllocatedMemorySupported")
+                    .invoke(bean) != true) return null
+            if (threadMx.getMethod("isThreadAllocatedMemoryEnabled")
+                    .invoke(bean) != true) {
+                threadMx.getMethod("setThreadAllocatedMemoryEnabled",
+                    Boolean::class.javaPrimitiveType).invoke(bean, true)
+            }
+            (threadMx.getMethod("getThreadAllocatedBytes",
+                Long::class.javaPrimitiveType).invoke(bean, Thread.currentThread().id)
+                as? Long)?.takeIf { it >= 0L }
+        } catch (_: Exception) {
             null
-        } catch (_: UnsupportedOperationException) {
+        } catch (_: LinkageError) {
             null
         }
     }
