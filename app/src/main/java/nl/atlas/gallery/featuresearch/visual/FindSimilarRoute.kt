@@ -102,6 +102,33 @@ fun FindSimilarRoute(
                     Problem(state, onOpenSettings, onClose)
                 } else {
                     val results = state as? FindSimilarState.Results
+                    val source = results?.records
+                    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
+                        null, results, resultQuery, facetPeople
+                    ) {
+                        value = null
+                        if (results != null && source != null && resultQuery.isNotBlank()) {
+                            val worker = currentCoroutineContext()
+                            val matches = withContext(Dispatchers.Default) {
+                                scopedMediaMatches(source, source, facetPeople, resultQuery,
+                                    cancellationCheckpoint = { worker.ensureActive() })
+                            }
+                            value = ScopedMediaSearchSnapshot(source, source, facetPeople,
+                                results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN, matches)
+                        }
+                    }
+                    val filteredRecords = when {
+                        results == null -> null
+                        resultQuery.isBlank() -> source
+                        source == null -> null
+                        else -> currentScopedMediaSearchOrNull(searchSnapshot, source, source,
+                            facetPeople, results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN)
+                    }
+                    val visibleMedia = filteredRecords?.let { records ->
+                        val allowed = records.mapTo(HashSet()) { it.uri }
+                        results?.hits?.filter { it.record.uri in allowed }
+                            ?.mapTo(HashSet()) { it.hit.media }
+                    }
                     VisualSearchResultsScreen(
                         state = ui,
                         poseEnabled = results?.poseEnabled == true,
@@ -109,13 +136,23 @@ fun FindSimilarRoute(
                         onOpen = { media ->
                             val shown = session.state.value as? FindSimilarState.Results
                             val hit = shown?.hitFor(media) ?: return@VisualSearchResultsScreen
+                            val currentList = if (resultQuery.isBlank()) shown.records
+                                else filteredRecords?.takeIf { results === shown }
                             scope.launch {
-                                // Re-check the grant at tap time, not only the last frame.
-                                if (withContext(Dispatchers.IO) { session.revalidate() })
-                                    onOpen(shown.records, hit.record, shown.startPositions)
+                                // Revalidate the grant AND identity of the ranked result.
+                                if (withContext(Dispatchers.IO) { session.revalidate() } &&
+                                    session.state.value === shown && currentList != null &&
+                                    currentList.any { it.uri == hit.record.uri }) {
+                                    onOpen(currentList, hit.record, shown.startPositions)
+                                }
                             }
                         },
                         onBack = onClose,
+                        searchQuery = resultQuery,
+                        onSearchQueryChange = { resultQuery = it },
+                        onSearchWholeLibrary = onSearchWholeLibrary,
+                        visibleMedia = visibleMedia,
+                        filtering = resultQuery.isNotBlank() && filteredRecords == null,
                         thumbnail = { media ->
                             (session.state.value as? FindSimilarState.Results)
                                 ?.hitFor(media)?.record?.let { thumbnail(it) }
