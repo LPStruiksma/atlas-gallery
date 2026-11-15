@@ -70,8 +70,17 @@ def image_info(data):
                 if kind != b"IHDR" or length != 13:
                     break
                 width, height = struct.unpack(">II", chunk[:8])
-                if not width or not height or chunk[10] != 0 or chunk[11] != 0:
+                if not width or not height or width * height > 16_777_216:
                     break
+                bit_depth, color_type = chunk[8], chunk[9]
+                valid_depths = {
+                    0: (1, 2, 4, 8, 16), 2: (8, 16),
+                    3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16),
+                }
+                if (bit_depth not in valid_depths.get(color_type, ()) or
+                    chunk[10] != 0 or chunk[11] != 0 or chunk[12] not in (0, 1)):
+                    break
+                interlace = chunk[12]
                 saw_ihdr = True
             elif kind == b"IDAT":
                 idat.extend(chunk)
@@ -81,12 +90,33 @@ def image_info(data):
             offset = end
         if not (saw_ihdr and saw_iend and idat):
             raise Problem(415, "invalid_image", "Malformed PNG image")
+        # An intact zlib trailer alone does not prove the raster is complete.
+        # Verify expected scanline lengths and filter bytes, including Adam7.
+        channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[color_type]
+        passes = ([(0, 0, 1, 1)] if interlace == 0 else [
+            (0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8), (2, 0, 4, 4),
+            (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2)])
+        rows = []
+        for x, y, dx, dy in passes:
+            pw = (width - x + dx - 1) // dx if width > x else 0
+            ph = (height - y + dy - 1) // dy if height > y else 0
+            if pw and ph:
+                rows.extend([(pw * channels * bit_depth + 7) // 8 + 1] * ph)
+        expected_size = sum(rows)
+        if expected_size > 135_000_000:
+            raise Problem(415, "invalid_image", "PNG decompressed raster exceeds limit")
         try:
             decoder = zlib.decompressobj()
-            raw = decoder.decompress(bytes(idat), MAX_UPLOAD_BYTES + 1)
-            raw += decoder.flush(MAX_UPLOAD_BYTES + 1 - len(raw))
-            if not decoder.eof or decoder.unused_data or len(raw) > MAX_UPLOAD_BYTES:
-                raise ValueError("Invalid or oversized PNG pixel stream")
+            raw = decoder.decompress(bytes(idat), expected_size + 1)
+            raw += decoder.flush(max(1, expected_size + 1 - len(raw)))
+            if (not decoder.eof or decoder.unused_data or decoder.unconsumed_tail or
+                len(raw) != expected_size):
+                raise ValueError("Invalid PNG pixel stream length")
+            position = 0
+            for stride in rows:
+                if raw[position] not in (0, 1, 2, 3, 4):
+                    raise ValueError("Invalid PNG row filter")
+                position += stride
         except (ValueError, zlib.error) as exc:
             raise Problem(415, "invalid_image", "Malformed PNG image") from exc
     elif data.startswith(b"\xff\xd8"):
@@ -94,6 +124,7 @@ def image_info(data):
         offset = 2
         width = height = 0
         saw_scan = False
+        saw_scan_data = False
         saw_eoi = False
         while offset < len(data):
             if data[offset] != 0xFF:
@@ -126,6 +157,7 @@ def image_info(data):
                 saw_scan = True
                 while offset < len(data):
                     if data[offset] != 0xFF:
+                        saw_scan_data = True
                         offset += 1
                         continue
                     marker_offset = offset
@@ -135,13 +167,15 @@ def image_info(data):
                         break
                     next_marker = data[offset]
                     if next_marker == 0 or 0xD0 <= next_marker <= 0xD7:
+                        if next_marker == 0:
+                            saw_scan_data = True
                         offset += 1
                         continue
                     offset = marker_offset
                     break
                 continue
             offset += length
-        if not (width and height and saw_scan and saw_eoi):
+        if not (width and height and saw_scan and saw_scan_data and saw_eoi):
             raise Problem(415, "invalid_image", "Malformed JPEG image")
     else:
         raise Problem(415, "unsupported_image", "Use a PNG or JPEG image")

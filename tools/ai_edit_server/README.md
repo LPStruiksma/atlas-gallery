@@ -38,7 +38,7 @@ ATLAS_BACKEND=qwen python3 -m tools.ai_edit_server.server --host 127.0.0.1 --por
 # Or ATLAS_BACKEND=flux, subject to its license
 ~~~
 
-The initial real edit causes a potentially large Hugging Face model download; this NEVER occurs for fake or CI. Direct Diffusers adapters currently implement only single-image instructions with optional steps, guidance_scale and seed. They explicitly reject masks, references or unknown parameters. They serialize generation on a single worker. An in-progress CUDA call may be impossible to abort without stopping the process; HTTP cancellation suppresses result publication and is not a GPU refund.
+The initial real edit causes a potentially large Hugging Face model download; this NEVER occurs for fake or CI. Direct Diffusers adapters implement single-image instructions, steps and seed. Qwen-Image-Edit exposes `true_cfg_scale` (default 4.0, with a negative prompt), while FLUX.1 Kontext exposes embedded `guidance_scale` (default 2.5); these options are deliberately distinct. They explicitly reject masks, references or unknown parameters. They serialize generation on a single worker. An in-progress CUDA call may be impossible to abort without stopping the process; HTTP cancellation suppresses result publication and is not a GPU refund.
 
 ### Indicative GPU rental prices in USD per GPU-hour (checked 2026-11-15)
 

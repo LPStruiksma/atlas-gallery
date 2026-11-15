@@ -44,7 +44,7 @@ Example fake response:
 }
 ~~~
 
-Advanced parameters have a name and type (integer, number, or enum), optional minimum and maximum or enum options, and an optional default. A missing cost estimate is null and MUST NOT be interpreted as free GPU time. Image-edit implementations advertise only options they actually parse. The direct Diffusers adapters currently support one instruction-driven image, seed, steps and guidance, not masks, references or multi-turn. ComfyUI flags mask/references/seed only when its configured API-format workflow contains the relevant placeholders. No adapter quietly ignores unsupported input or silently falls back to another provider.
+Advanced parameters have a name and type (integer, number, or enum), optional minimum and maximum or enum options, and an optional default. A missing cost estimate is null and MUST NOT be interpreted as free GPU time. Image-edit implementations advertise only options they actually parse. The direct Diffusers adapters support one instruction-driven image, seed and steps; Qwen exposes `true_cfg_scale` whereas FLUX Kontext exposes `guidance_scale`. Neither supports masks, references or multi-turn in this server. ComfyUI flags mask/references/seed only when its configured API-format workflow contains the relevant placeholders. No adapter quietly ignores unsupported input or silently falls back to another provider.
 
 ## POST /v1/edits
 
