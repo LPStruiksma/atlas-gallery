@@ -255,7 +255,10 @@ fun AtlasStoriesScreen(
     }
     // An expired permission or catalogue publication closes the player, not just its image.
     val position = playback.resolvedOrNull(deck, currentGrantEpoch, currentCatalogRevision)
-    val opened = position?.let { p -> cards.firstOrNull { it.key == p.storyKey } }
+    val opened = position?.let { p ->
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+            .firstOrNull { it.key == p.storyKey }
+    }
     if (position != null && opened != null) {
         StoryPlayback(
             story = opened,
