@@ -12,6 +12,17 @@ enum class AiEditImageFormat(val extension: String, val mimeType: String) {
 
 /** No Android dependencies; makes deterministic, folder-scoped unique names. */
 internal object AiEditNaming {
+    /**
+     * The pre-insert journal records this unguessable, temporary MediaStore name
+     * instead of the final collision-prone _AI_n name. The exact token is
+     * persisted before insert, so death before recordInserted is recoverable.
+     */
+    fun pendingName(token: String, format: AiEditImageFormat): String =
+        "atlas-ai-pending-$token.${format.extension}"
+
+    fun isTokenNamedPendingRow(token: String, displayName: String): Boolean =
+        AiEditImageFormat.values().any { pendingName(token, it) == displayName }
+
     fun next(originalName: String, format: AiEditImageFormat, existing: Set<String>): String {
         require(originalName.isNotBlank()) { "An original display name is required" }
         val file = originalName.substringAfterLast('/')
