@@ -43,6 +43,8 @@ internal class MicroWarmMediaSource(
     private val dbFile = File(app.cacheDir, "atlas-micro-warm-stage.db")
     private val db: SQLiteDatabase
     private var completed = false
+    private var acceptedVersions: Map<String, String?> = emptyMap()
+    private var acceptedGenerations: Map<String, Long?> = emptyMap()
     var totalItems: Int = 0
         private set
 
@@ -77,9 +79,11 @@ internal class MicroWarmMediaSource(
             if (grant.videos && !scanKind(
                     MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true,
                     versions, zone, signal, gate)) return false
-            if (!gate() || !sameMediaProviderScanSnapshot(
+            if (!gate()) return false
+            if (!sameMediaProviderScanSnapshot(
                     versions, providerVersions(),
-                    generations, providerGenerations(versions.keys))) return false
+                    generations, providerGenerations(versions.keys)))
+                throw IllegalStateException("Media provider snapshot changed")
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -88,6 +92,8 @@ internal class MicroWarmMediaSource(
         // screenshots together with JPEG/video rows across both collections.
         db.execSQL("CREATE INDEX micro_warm_order ON media(taken DESC, row_id ASC)")
         db.execSQL("CREATE INDEX micro_warm_paths ON media(cache_path)")
+        acceptedVersions = versions
+        acceptedGenerations = generations
         completed = true
         return gate()
     }
@@ -251,15 +257,24 @@ internal class MicroWarmMediaSource(
      * A partial media-type grant must not erase valid files from the other
      * type; a constraint change immediately aborts this cleanup.
      */
+    private fun snapshotStillCurrent(): Boolean =
+        sameMediaProviderScanSnapshot(
+            acceptedVersions, providerVersions(),
+            acceptedGenerations, providerGenerations(acceptedVersions.keys))
+
     fun sweepOrphans(store: MicroThumbnailStore, gate: () -> Boolean): Boolean {
-        if (!completed || !grant.images || !grant.videos || !gate()) return false
+        if (!completed || !grant.images || !grant.videos ||
+            !gate() || !snapshotStillCurrent()) return false
         val lookup = db.compileStatement("SELECT COUNT(*) FROM media WHERE cache_path=?")
         var deleted = false
+        var visited = 0
         try {
             for (folder in store.root.listFiles().orEmpty()) {
-                if (!gate()) return false
+                if (!gate() || !snapshotStillCurrent()) return false
                 for (file in folder.listFiles().orEmpty()) {
                     if (!gate()) return false
+                    if (++visited % MICRO_WARM_PAGE_SIZE == 0 && !snapshotStillCurrent())
+                        return false
                     if (!file.isFile || !file.name.endsWith(".jpg")) continue
                     lookup.clearBindings()
                     lookup.bindString(1, file.path)
