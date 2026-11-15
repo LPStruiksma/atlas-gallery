@@ -43,6 +43,35 @@ internal object MicroThumbnailWarmer {
             .put("ms_per_generated", if (generated == 0) 0.0 else Math.round(millis * 10.0 / generated) / 10.0)
     }
 
+    /**
+     * Deferred charging fill. The provider is scanned into a *disk-backed*
+     * global order; only one bounded page of MediaRecord is materialized here.
+     * The UI's in-memory list path [warm] is deliberately unchanged.
+     */
+    suspend fun warmPaged(
+        resolver: ContentResolver,
+        source: MicroWarmMediaSource,
+        gate: () -> Boolean,
+        yieldWhile: () -> Boolean = { ThumbnailPipeline.gridScrolling }
+    ): Report = withContext(dispatcher) {
+        val store = MicroThumbnails.store
+        if (store == null || !MicroThumbnails.active || !gate())
+            return@withContext Report(0, 0, 0, 0)
+        source.openNewest().use { reader ->
+            fillMicroStorePaged(
+                store, reader, source.totalItems, oldest = { source.openOldest() },
+                active = { MicroThumbnails.active }, yieldWhile = yieldWhile,
+                gate = gate, sweepOrphans = {
+                    source.sweepOrphans(store, gate)
+                }
+            ) { media, key ->
+                val made = makeAndStore(resolver, store, MicroThumbnailData(media, key))
+                made?.recycle()
+                made != null
+            }
+        }
+    }
+
     suspend fun warm(
         resolver: ContentResolver,
         items: List<MediaRecord>,
@@ -177,3 +206,114 @@ internal fun microWarmPlan(missing: Int, charging: Boolean): MicroWarmPlan =
 
 internal const val MICRO_WARM_LARGE_MISSING = 3_000
 internal const val MICRO_WARM_BATTERY_LIMIT = 512
+
+
+/** A bounded producer over one global, stable newest-first or oldest-first order. */
+internal interface MicroWarmPageReader : java.io.Closeable {
+    /** Returns at most [MICRO_WARM_PAGE_SIZE] rows, or empty when exhausted. */
+    fun nextPage(): List<MediaRecord>
+}
+
+internal const val MICRO_WARM_PAGE_SIZE = 128
+
+/**
+ * Streaming equivalent of [fillMicroStore]. The second reader starts at the
+ * global oldest row, not at the end of a single page. A full cache sacrifices
+ * only older captured entries; a complete-catalogue orphan sweep, when
+ * supplied, is permitted ONCE after those entries are exhausted.
+ *
+ * Neither reader, the eviction queue, nor this loop holds the complete library
+ * in heap. In particular, a page must NEVER be passed to retainOnly().
+ */
+internal suspend fun fillMicroStorePaged(
+    store: MicroThumbnailStore,
+    newest: MicroWarmPageReader,
+    totalItems: Int,
+    oldest: () -> MicroWarmPageReader,
+    active: () -> Boolean,
+    yieldWhile: () -> Boolean,
+    limit: Int = Int.MAX_VALUE,
+    gate: () -> Boolean = { true },
+    sweepOrphans: (() -> Boolean)? = null,
+    make: (MediaRecord, String) -> Boolean
+): MicroThumbnailWarmer.Report {
+    require(totalItems >= 0)
+    val started = System.currentTimeMillis()
+    if (store.bytesUsed < 0L) store.scan()
+    var checked = 0
+    var generated = 0
+    var failed = 0
+    var index = 0
+    var tail = totalItems
+    var swept = false
+    var tailReader: MicroWarmPageReader? = null
+    var tailPage: List<MediaRecord> = emptyList()
+    var tailOffset = 0
+
+    fun report() = MicroThumbnailWarmer.Report(checked, generated, failed,
+        System.currentTimeMillis() - started)
+
+    fun nextOldest(): MediaRecord {
+        if (tailReader == null) tailReader = oldest()
+        if (tailOffset >= tailPage.size) {
+            tailPage = tailReader!!.nextPage()
+            require(tailPage.isNotEmpty() && tailPage.size <= MICRO_WARM_PAGE_SIZE) {
+                "Incomplete or unbounded micro warm tail"
+            }
+            tailOffset = 0
+        }
+        return tailPage[tailOffset++]
+    }
+
+    try {
+        while (index < tail && checked < limit) {
+            coroutineContext.ensureActive()
+            if (!active() || !gate()) return report()
+            val page = newest.nextPage()
+            require(page.size <= MICRO_WARM_PAGE_SIZE) { "Unbounded micro warm page" }
+            if (page.isEmpty()) break
+            for (media in page) {
+                coroutineContext.ensureActive()
+                if (index >= tail || checked >= limit || !active() || !gate())
+                    return report()
+                while (yieldWhile()) {
+                    coroutineContext.ensureActive()
+                    if (!active() || !gate()) return report()
+                    delay(MICRO_WARM_YIELD_MS)
+                }
+                if (!active() || !gate()) return report()
+                checked++
+                val key = microThumbnailDiskKey(media)
+                if (key != null && !store.contains(key)) {
+                    if (!active() || !gate()) return report()
+                    while (store.full() && tail > index + 1) {
+                        coroutineContext.ensureActive()
+                        if (!active() || !gate()) return report()
+                        microThumbnailDiskKey(nextOldest())?.let(store::remove)
+                        tail--
+                    }
+                    if (store.full() && !swept) {
+                        swept = true
+                        if (!active() || !gate()) return report()
+                        if (sweepOrphans?.invoke() == true) {
+                            // As in the list path, fresh space may let older
+                            // entries survive. Restart the *global* tail.
+                            tailReader?.close()
+                            tailReader = null
+                            tailPage = emptyList()
+                            tailOffset = 0
+                            tail = totalItems
+                        }
+                    }
+                    if (store.full()) return report()
+                    if (!active() || !gate()) return report()
+                    if (make(media, key)) generated++ else failed++
+                }
+                index++
+            }
+        }
+    } finally {
+        tailReader?.close()
+    }
+    return report()
+}
