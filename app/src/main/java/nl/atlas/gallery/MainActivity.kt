@@ -3414,6 +3414,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             initialScope = AtlasSearchScope.LIBRARY,
                             selectedScope = overviewScope,
                             showQueryField = false,
+                            showScopeChips = false,
                             onScopeChange = { overviewScope = it },
                             textTool = {
                                 LocalSearchControls(
