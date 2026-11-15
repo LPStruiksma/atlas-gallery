@@ -248,6 +248,7 @@ fun PeopleHomeScreen(
 }
 
 /** Compact sheet; the sort icon is in the header, not the overflow menu. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun PeopleSortSheet(
     selected: PeopleSortChoice,
