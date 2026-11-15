@@ -4,7 +4,16 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import android.content.ContentResolver
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 
 /**
  * DESIGN-7. Small, repeatable motion vocabulary for ordinary gallery chrome.
@@ -39,23 +48,37 @@ fun atlasMotionSpec(kind: AtlasMotionKind, reduceMotion: Boolean): AtlasMotionSp
 }
 
 /**
- * Android Settings > Accessibility > Remove animations maps to
- * ANIMATOR_DURATION_SCALE=0. Reading it from the view context avoids an
- * Activity cast and also covers Compose previews without an Activity.
- * Compose's own animation clock separately honours developer animator scale.
+ * Keep the reduced-motion flag in sync while the app is in the foreground.
+ * Some devices toggle the accessibility setting without Activity recreation;
+ * observing this key avoids continuing an old animation until the next restart.
  */
 @Composable
 fun atlasReduceMotion(): Boolean {
-    val context = LocalView.current.context
-    val durationScale = runCatching {
-        android.provider.Settings.Global.getFloat(
-            context.contentResolver,
-            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
+    val context = LocalContext.current
+    val resolver = context.contentResolver
+    val key = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
+    var reduced by remember(resolver) { mutableStateOf(readReducedMotion(resolver)) }
+    DisposableEffect(resolver) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                reduced = readReducedMotion(resolver)
+            }
+        }
+        resolver.registerContentObserver(
+            android.provider.Settings.Global.getUriFor(key), false, observer
         )
-    }.getOrDefault(1f)
-    return durationScale <= 0f
+        reduced = readReducedMotion(resolver)
+        onDispose { resolver.unregisterContentObserver(observer) }
+    }
+    return reduced
 }
+
+private fun readReducedMotion(resolver: ContentResolver): Boolean =
+    runCatching {
+        android.provider.Settings.Global.getFloat(
+            resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f
+        ) <= 0f
+    }.getOrDefault(false)
 
 @Composable
 fun <T> atlasTween(kind: AtlasMotionKind): androidx.compose.animation.core.TweenSpec<T> {
