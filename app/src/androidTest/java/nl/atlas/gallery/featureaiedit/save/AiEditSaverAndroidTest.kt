@@ -209,6 +209,16 @@ class AiEditSaverAndroidTest {
             }))
         created += published
         store.recordInserted(token, published.toString())
+        // A real save writes the encoded image before publishing. Android's
+        // MediaProvider may discard a zero-byte image during publish, which
+        // would test provider cleanup rather than interrupted-save recovery.
+        val pixels = Bitmap.createBitmap(12, 8, Bitmap.Config.ARGB_8888)
+        try {
+            pixels.eraseColor(Color.GREEN)
+            resolver.openOutputStream(published, "w")!!.use {
+                assertTrue(pixels.compress(Bitmap.CompressFormat.JPEG, 100, it))
+            }
+        } finally { pixels.recycle() }
         store.put(AiEditLineage(
             editedUri = published.toString(), originalUri = original.toString(),
             originalRevision = "synthetic", provider = "synthetic",
@@ -219,6 +229,9 @@ class AiEditSaverAndroidTest {
             put(MediaStore.Images.Media.DISPLAY_NAME, finalName)
             put(MediaStore.Images.Media.IS_PENDING, 0)
         }, null, null))
+        // Prove the provider retained the published row before recovery.
+        // Otherwise a missing row cannot be attributed to journal cleanup.
+        assertEquals("0", value(published, MediaStore.Images.Media.IS_PENDING))
         AiEditSaver(context, store).recoverInterruptedSaves()
         assertEquals("0", value(published, MediaStore.Images.Media.IS_PENDING))
         assertEquals(finalName, value(published, MediaStore.Images.Media.DISPLAY_NAME))
