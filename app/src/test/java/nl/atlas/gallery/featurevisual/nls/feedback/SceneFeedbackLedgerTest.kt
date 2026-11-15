@@ -158,6 +158,8 @@ class SceneFeedbackLedgerTest {
         assertTrue(ledger.optIn(permission))
         assertFalse(ledger.markMissingMoment("", permission))
         assertFalse(ledger.markMissingMoment("   ", permission))
+        assertFalse(ledger.markMissingMoment("bad\u0000query", permission))
+        assertFalse(ledger.markMissingMoment("\uD800", permission))
         assertFalse(ledger.markMissingMoment("x".repeat(SceneFeedbackLedger.MAX_QUERY_LENGTH + 1), permission))
         assertFalse(ledger.markIncorrectHit("valid", Long.MIN_VALUE, permission))
         assertTrue(ledger.feedback(permission).isEmpty())
@@ -171,7 +173,13 @@ class SceneFeedbackLedgerTest {
         store.bytes = ByteArray(100_000) { 5 }
         assertTrue(SceneFeedbackLedger(store) { 10_000_000_000L }.feedback(permission).isEmpty())
         assertNull(store.bytes)
-        assertFalse(SceneFeedbackLedger.Permission(true, 0).epoch < 0)
+        var invalidEpochRejected = false
+        try {
+            SceneFeedbackLedger.Permission(true, -1L)
+        } catch (_: IllegalArgumentException) {
+            invalidEpochRejected = true
+        }
+        assertTrue(invalidEpochRejected)
     }
 
     @Test fun atomicFileAdapterPersistsAcrossInstancesAndErasesTempArtifacts() {
