@@ -15,11 +15,13 @@ class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         // Persist one privacy-redacted trace before Android's original crash handler runs.
+        check(StartupTaskAdmission.verifyCriticalTasks(listOf(StartupTask.CRASH_HANDLER)))
         LastCrashRecorder.install(this)
         // #555: ATLAS's micro-thumbnail store; only used under full media access.
         MicroThumbnails.install(this)
         ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()
         readGalleryMediaGrant(this).let { MicroThumbnails.applyGrant(it.images, it.videos, it.selected) }
+        // This registers a lazy factory; the expensive ImageLoader is built only on demand.
         SingletonImageLoader.setSafe { context ->
             ImageLoader.Builder(context)
                 .components {
@@ -42,5 +44,10 @@ class AtlasApplication : Application() {
                 .interceptorCoroutineContext(Dispatchers.Main.immediate)
                 .build()
         }
+        check(StartupTaskAdmission.verifyCriticalTasks(listOf(
+            StartupTask.CRASH_HANDLER, StartupTask.MICRO_THUMBNAIL_STORE,
+            StartupTask.THUMBNAIL_FLAGS, StartupTask.MEDIA_GRANT,
+            StartupTask.IMAGE_LOADER_FACTORY
+        )))
     }
 }
