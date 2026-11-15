@@ -153,7 +153,7 @@ class ImageEditRequestValidatorTest {
     }
 
     @Test fun syntheticMockModesRenderDeterministicallyWithoutAndroidOrNetwork() {
-        val input = EditImage("only-synthetic", 8, 8, ImageFormat.PNG, List(64) { 0xff446688.toInt() })
+        val input = EditImage("only-synthetic", 8, 8, ImageFormat.PNG, List(64) { 0xff446688.toInt() + it * 137 })
         for (mode in MockMode.values()) {
             val mock = MockImageEditProvider(MockProviderConfig(mode = mode))
             val request = req(input)
