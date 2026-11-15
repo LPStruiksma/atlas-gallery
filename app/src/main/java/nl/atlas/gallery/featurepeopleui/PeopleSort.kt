@@ -26,8 +26,11 @@ fun orderPeopleEntries(
         else -> null
     }
     val randomOrder = if (choice.key == PeopleSortKey.RANDOM) {
-        entries.indices.shuffled(kotlin.random.Random(seed)).withIndex()
-            .associate { entries[it.value].id to it.index }
+        // The permutation is derived from stable (source, person) identifiers,
+        // not visible list positions. A V4/native publication changes neither
+        // the existing identities nor the random order of unrelated people.
+        entries.map { it.id }.sorted().shuffled(kotlin.random.Random(seed))
+            .withIndex().associate { it.value to it.index }
     } else emptyMap()
     return entries.sortedWith(Comparator { a, b ->
         val named = a.name.isNotBlank().compareTo(b.name.isNotBlank())
