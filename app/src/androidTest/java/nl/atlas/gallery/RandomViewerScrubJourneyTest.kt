@@ -50,7 +50,7 @@ class RandomViewerScrubJourneyTest {
     @Test fun filmstripScrubAndReleaseNeverReshufflesRandomOrder() {
         val records = fixtureRecords()
         assertEquals("all fixtures inserted", FIXTURES, records.size)
-        val expected = sortMedia(records, SortOrder.RANDOM, 12345L).map { it.name }
+        val expected = sortMedia(records, MediaSort(MediaSortKey.RANDOM, SortDirection.DESCENDING), 12345L).map { it.name }
         assertNotEquals("seeded order must differ from insertion order",
             records.sortedBy { it.id }.map { it.name }, expected)
 
@@ -125,7 +125,7 @@ class RandomViewerScrubJourneyTest {
         waitFor(card)
         compose.onNode(card).performClick()
         waitFor(hasTestTag("atlas-header-title") and hasText(FOLDER))
-        val reshuffled = sortMedia(records, SortOrder.RANDOM, 12346L).map { it.name }
+        val reshuffled = sortMedia(records, MediaSort(MediaSortKey.RANDOM, SortDirection.DESCENDING), 12346L).map { it.name }
         assertNotEquals("Reshuffle must pick a different order", expected, reshuffled)
         assertGridOrder("album after Reshuffle", records, reshuffled)
     }
