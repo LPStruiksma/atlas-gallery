@@ -469,7 +469,9 @@ private fun AlbumGrid(
     AtlasScrollAwayHeader(gridState, Modifier.fillMaxSize(), header = header) { headerHeight ->
     key(gridScope) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 112.dp),
+        // 360dp S24 width minus two 18dp gutters leaves 324dp: three
+        // 96dp covers plus two 12dp gaps fit (112dp silently fell to two).
+        columns = GridCells.Adaptive(minSize = 96.dp),
         state = gridState,
         contentPadding = PaddingValues(
             start = AtlasSpace.Gutter,
