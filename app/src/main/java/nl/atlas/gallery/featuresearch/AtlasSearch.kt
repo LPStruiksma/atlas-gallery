@@ -37,7 +37,6 @@ fun AtlasSearch(
     initialExpanded: Boolean = false,
     initialScope: AtlasSearchScope = AtlasSearchScope.THIS_SCREEN,
     onScopeChange: (AtlasSearchScope) -> Unit = {},
-    onSubmit: (String) -> Unit = {},
     textTool: (@Composable () -> Unit)? = null,
     faceTool: (@Composable () -> Unit)? = null,
     imageTool: (@Composable () -> Unit)? = null,
