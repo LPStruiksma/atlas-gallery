@@ -339,10 +339,10 @@ fun AtlasTimelineGallery(
             // Reuse only completed plans for this exact authorized inventory,
             // viewport, sort, locale and time zone. Remember invalidates the
             // entire bounded cache on a new catalogue/grant or layout geometry.
-            val recentPlans = remember(sourceKey, sort, bounds, headerHeightPx, locale, zone) {
+            val recentPlans = remember(sourceKey, sort, mediaSort, bounds, headerHeightPx, locale, zone) {
                 RecentGridDensityPlans<TimelinePlan>(capacity = 2)
             }
-            LaunchedEffect(sourceKey, sort, density, bounds, headerHeightPx, locale, zone) {
+            LaunchedEffect(sourceKey, sort, mediaSort, density, bounds, headerHeightPx, locale, zone) {
                 draggingFraction = null
                 val cached = recentPlans.get(density)
                 if (cached != null) {
