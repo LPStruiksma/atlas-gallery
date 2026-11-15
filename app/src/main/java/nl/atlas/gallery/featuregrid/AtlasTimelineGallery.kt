@@ -355,7 +355,7 @@ fun AtlasTimelineGallery(
                     val projection = ArrayList<TimelineMedia>(items.size)
                     items.forEachIndexed { i, media ->
                         if ((i and 511) == 0) parent.ensureActive()
-                        projection.add(TimelineMedia(media.uri, if (mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED) media.modifiedAtSeconds * 1000L else media.takenAtMillis))
+                        projection.add(TimelineMedia(media.uri, if (mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED && media.modifiedAtSeconds > 0L && media.modifiedAtSeconds <= Long.MAX_VALUE / 1000L) media.modifiedAtSeconds * 1000L else media.takenAtMillis))
                     }
                     val index = buildGridTimelineIndex(projection, sort, density, zone, locale,
                         mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
