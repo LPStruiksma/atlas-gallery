@@ -2010,7 +2010,7 @@ class FaceIndexStore(
                     CROSS JOIN faces f ON f.face_uid=p.face_uid
                     CROSS JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
                         AND c.revision=e.source_revision
-                    WHERE p.person_key=?2 AND (?3 IS NULL OR c.media_key>?3)
+                    WHERE p.person_key=?2 AND (?3='' OR c.media_key>?3)
                     UNION
                     SELECT c.media_key,c.revision FROM people_matched pm
                     CROSS JOIN embeddings e ON e.face_uid=pm.face_uid AND e.model_version=?1
@@ -2019,7 +2019,7 @@ class FaceIndexStore(
                         AND c.revision=e.source_revision
                     WHERE pm.person_key=?2 AND (?3 IS NULL OR c.media_key>?3))
                 ORDER BY media_key LIMIT ?4""",
-                arrayOf(version, person.value, afterMediaKey, pageSize.toString())).use { c ->
+                arrayOf(version, person.value, afterMediaKey ?: "", pageSize.toString())).use { c ->
                 buildList {
                     while (c.moveToNext()) {
                         meteredRowsRead++
