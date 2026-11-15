@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "days": [
+    {
+      "day": "2026-11-13",
+      "actions": {
+        "A1": 6,
+        "A3": 1
+      },
+      "screens_seconds": {
+        "D1": 120,
+        "D17": 12
+      },
+      "performance": {
+        "A1": {
+          "p50_ms": 1200,
+          "p90_ms": 1500
+        },
+        "A3": {
+          "p50_ms": 90,
+          "p90_ms": 100
+        },
+        "A2": {
+          "jank_percent": 2.5
+        }
+      },
+      "scanner": {
+        "minutes": 2,
+        "photos_per_minute": 18
+      }
+    },
+    {
+      "day": "2026-11-14",
+      "actions": {
+        "A1": 6,
+        "A3": 1
+      },
+      "screens_seconds": {
+        "D1": 120
+      },
+      "performance": {
+        "A1": {
+          "p50_ms": 1200,
+          "p90_ms": 1400
+        },
+        "A3": {
+          "p50_ms": 90,
+          "p90_ms": 100
+        },
+        "A2": {
+          "jank_percent": 2.5
+        }
+      }
+    }
+  ]
+}
