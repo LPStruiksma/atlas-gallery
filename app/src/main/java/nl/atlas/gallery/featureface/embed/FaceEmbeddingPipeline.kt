@@ -80,11 +80,11 @@ class FaceEmbeddingPipeline(
                 val bitmap = (frame as? AndroidBitmapFaceFrame)?.bitmap
                     ?: throw IllegalArgumentException("SFace needs a private bounded bitmap")
                 detector.detectFaces(bitmap).map { face ->
-                    val embedding = embedder.embed(bitmap, face)
+                    val (embedding, quality) = embedder.embedWithQuality(bitmap, face)
                     FaceEmbeddedDetection(FacePixelBounds(
                         floor(face.left.toDouble()).toInt(), floor(face.top.toDouble()).toInt(),
                         ceil(face.right.toDouble()).toInt(), ceil(face.bottom.toDouble()).toInt()
-                    ), embedding.vector)
+                    ), embedding.vector, quality)
                 }
             }
         }
@@ -108,20 +108,22 @@ class PersistedFaceEmbeddingIndexPort(private val store: FaceIndexStore) : FaceS
 
     override fun completeEmbeddings(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String
+        vectors: List<FloatArray>, embedderVersion: String,
+        qualityScores: List<nl.atlas.gallery.featureface.FaceQuality?>
     ): Boolean = completeEmbeddingFrames(lease, observations, vectors, embedderVersion,
-        observations.map { null })
+        observations.map { null }, qualityScores)
 
     /** VS-V1b: video faces carry their keyframe time into the same atomic completion. */
     override fun completeEmbeddingFrames(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>
+        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>,
+        qualityScores: List<nl.atlas.gallery.featureface.FaceQuality?>
     ): Boolean = store.completeEmbeddings(
         IndexedFaceLease(
             IndexedMedia(lease.media.canonicalMediaKey, lease.media.sourceRevision),
             lease.detectorVersion, lease.permissionEpoch, lease.opaqueToken
         ),
         observations.map { IndexedFaceBox(it.left, it.top, it.right, it.bottom) },
-        vectors, embedderVersion, frameMs
+        vectors, embedderVersion, frameMs, qualityScores
     )
 }
