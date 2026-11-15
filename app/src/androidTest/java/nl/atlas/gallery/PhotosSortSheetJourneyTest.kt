@@ -41,6 +41,8 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
     @Test fun everySortChoiceIsAccessibleSelectedAndClosesToPhotos() {
         compose.waitForNode(hasTestTag("atlas-photos-sort"))
         compose.waitForNode(hasText("photos & videos", substring = true))
+        // A previous journey can leave Pictures persisted in any sort mode.
+        // Set the desired mode explicitly and verify what the sheet renders.
         for (choice in MediaSortKey.entries) {
             open()
             compose.onNodeWithTag(choice.tag()).performClick()
@@ -53,8 +55,8 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
             MediaSortKey.entries.forEach { entry ->
                 compose.onNodeWithTag(entry.tag()).assertExists()
             }
-            // Every choice, including Largest and Smallest, has a rendered
-            // light/dark sheet with the active radio indicator.
+            // Each of the five new choices has a rendered
+            // light/dark sheet with its active radio indicator.
             compose.waitForIdle()
             saveUiEvidence("sort-12-${choice.name.lowercase()}-$mode.png")
             back()
