@@ -107,6 +107,25 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
             android.util.Log.i("ATLAS_SORT_BACK", "after Android Back: ${describeFocus()}")
         }
         assertTrue("Android Back action accepted (before: $before)", accepted)
+        // The API35 emulator's Launcher3 sometimes raises an ANR between
+        // awaitAppFocus() and the global Back action. That system dialog can
+        // consume Back, leaving this app's sheet open. Only retry when the
+        // launcher ANR was actually focused AND the sheet remains present;
+        // an app-owned sheet that fails to close must still fail this test.
+        compose.waitForIdle()
+        val after = describeFocus()
+        if (after.contains("Application Not Responding: com.android.launcher3") &&
+            compose.onAllNodes(hasTestTag("atlas-photos-sort-sheet"))
+                .fetchSemanticsNodes().isNotEmpty()) {
+            clearSystemAnrDialogs(attempts = 1)
+            awaitAppFocus()
+            val retriedFrom = describeFocus()
+            assertTrue("ATLAS must regain focus after Launcher3 ANR: $retriedFrom",
+                APP_FOCUS.containsMatchIn(retriedFrom))
+            assertTrue("Android Back retry after Launcher3 ANR accepted",
+                InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(
+                    AccessibilityService.GLOBAL_ACTION_BACK))
+        }
     }
 
     private fun awaitAppFocus() {

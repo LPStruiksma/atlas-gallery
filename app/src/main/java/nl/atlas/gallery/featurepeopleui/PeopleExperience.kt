@@ -47,6 +47,9 @@ data class PeopleProfileUi(
     val coverUri: String? = null,
     /** A crop is allowed only after the optional sidecar trust gate succeeds. */
     val verifiedPortrait: PortraitCropBinding? = null
+    /** Dates computed from the same authorized distinct-media projection. */
+    , val firstAppearanceMs: Long? = null
+    , val mostRecentAppearanceMs: Long? = null
 ) {
     init {
         require(accessiblePhotos >= 0 && confirmedPhotoReferences >= accessiblePhotos)
