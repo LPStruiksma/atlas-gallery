@@ -17,6 +17,17 @@ class AiEditNamingAndLineageTest {
             AiEditNaming.next("portrait.jpg", AiEditImageFormat.WEBP, emptySet()))
     }
 
+    @Test fun preInsertNameIsTokenBoundAndNeverAnOrdinaryOutputName() {
+        val token = "0c1268ba-25c0-46ac-a7da-8b3beec486da"
+        val other = "75ef4493-50a2-4f8a-96e2-38160da6b976"
+        val temporary = AiEditNaming.pendingName(token, AiEditImageFormat.JPEG)
+        assertEquals("atlas-ai-pending-$token.jpg", temporary)
+        assertTrue(AiEditNaming.isTokenNamedPendingRow(token, temporary))
+        assertFalse(AiEditNaming.isTokenNamedPendingRow(other, temporary))
+        assertFalse(AiEditNaming.isTokenNamedPendingRow(token, "source_AI_1.jpg"))
+        assertNotEquals(temporary, AiEditNaming.pendingName(token, AiEditImageFormat.PNG))
+    }
+
     @Test fun lineageKeepsEveryRevisionAndCandidateParentSeparately() {
         val record = AiEditLineage(
             editedUri = "content://media/external_primary/images/media/103",
