@@ -278,6 +278,8 @@ fun LocalSearchControls(
             value = emptyList()
             val index = indexedSuggestions
             if (index != null && !currentPermissionEpoch.isNullOrBlank()) {
+                // A short debounce prevents stale work while typing rapidly.
+                kotlinx.coroutines.delay(20)
                 value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     index.search(filters.text)
                 }
