@@ -336,6 +336,34 @@ class PersonPageJourneyTest {
         settle()
         saveUiEvidence("person-named.png")
 
+        // COVER-3: an actual synthetic face-crop chooser, checked selection,
+        // selected portrait and reversible automatic default.
+        compose.onNodeWithTag("atlas-header-more").performClick()
+        waitForTag("atlas-person-change-picture")
+        compose.onNodeWithTag("atlas-person-change-picture").performClick()
+        waitForTag("atlas-person-cover-grid")
+        settle()
+        saveUiEvidence("person-cover-chooser-dark.png")
+        compose.onNodeWithTag("atlas-person-cover-choice-1").performClick()
+        waitFor("selected profile cover persisted") {
+            store.personCoverOverride(epoch, ada) != null
+        }
+        settle()
+        saveUiEvidence("person-cover-selected-page-dark.png")
+        compose.onNodeWithTag("atlas-header-more").performClick()
+        waitForTag("atlas-person-change-picture")
+        compose.onNodeWithTag("atlas-person-change-picture").performClick()
+        waitForTag("atlas-person-cover-automatic")
+        waitForTag("atlas-person-cover-checked")
+        settle()
+        saveUiEvidence("person-cover-checked-dark.png")
+        compose.onNodeWithTag("atlas-person-cover-automatic").performClick()
+        waitFor("profile cover reverted") {
+            store.personCoverOverride(epoch, ada) == null
+        }
+        settle()
+        saveUiEvidence("person-cover-automatic-dark.png")
+
         // ⋮ menu, then Merge with… lists Bo; the confirmation opens and is cancelled.
         compose.onNodeWithTag("atlas-header-more").performClick()
         waitForTag("atlas-person-merge")
