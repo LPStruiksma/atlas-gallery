@@ -128,12 +128,18 @@ interface FaceScanEmbeddingIndexPort : FaceScanIndexPort {
      */
     fun completeEmbeddingFrames(
         lease: FaceScanLease, observations: List<UnknownFaceBox>,
-        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>,
-        qualityScores: List<FaceQuality?> = emptyList()
+        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>
     ): Boolean {
         check(frameMs.all { it == null }) { "This face index cannot store video positions" }
-        return completeEmbeddings(lease, observations, vectors, embedderVersion, qualityScores)
+        return completeEmbeddings(lease, observations, vectors, embedderVersion)
     }
+
+    /** Quality is attached to the same position and lease as the video frame. */
+    fun completeEmbeddingFrames(
+        lease: FaceScanLease, observations: List<UnknownFaceBox>,
+        vectors: List<FloatArray>, embedderVersion: String, frameMs: List<Long?>,
+        qualityScores: List<FaceQuality?>
+    ): Boolean = completeEmbeddingFrames(lease, observations, vectors, embedderVersion, frameMs)
 }
 
 fun interface OnDeviceFaceLocator {
