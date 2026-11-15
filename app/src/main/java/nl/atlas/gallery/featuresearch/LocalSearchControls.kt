@@ -254,9 +254,9 @@ fun LocalSearchControls(
                     .testTag("atlas-search-query-limit")
             )
         }
-        // Never let a late index from an older grant or source publication
-        // surface private names in a new one. Until built, suggestions stay
-        // empty (no large per-keystroke fallback scan on the UI thread).
+        // Build this immutable index once per authorized summary publication.
+        // While it builds, display no private suggestions; never search the
+        // entire catalog on the Compose thread after each typed character.
         val suggestionKey = CatalogSourceKey(suggestionSources)
         val indexedSuggestions by androidx.compose.runtime.produceState<IndexedSearchSuggestions?>(
             initialValue = null, key1 = currentPermissionEpoch, key2 = suggestionKey
@@ -268,8 +268,20 @@ fun LocalSearchControls(
                 }
             }
         }
-        val suggestions = remember(indexedSuggestions, suggestionKey, filters.text) {
-            indexedSuggestions?.search(filters.text).orEmpty()
+        // Using produceState for matching as well keeps posting scans and sort
+        // off Compose's frame. A changed query starts with an empty value,
+        // rather than briefly showing the previous query's private names.
+        val suggestions by androidx.compose.runtime.produceState<List<SearchSuggestion>>(
+            initialValue = emptyList(), key1 = indexedSuggestions,
+            key2 = filters.text, key3 = currentPermissionEpoch
+        ) {
+            value = emptyList()
+            val index = indexedSuggestions
+            if (index != null && !currentPermissionEpoch.isNullOrBlank()) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    index.search(filters.text)
+                }
+            }
         }
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
