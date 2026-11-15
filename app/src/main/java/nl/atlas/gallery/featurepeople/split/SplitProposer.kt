@@ -91,6 +91,14 @@ object SplitProposer {
         val n = faces.size
         val cw = request.crowdWeight
         require(cw.isFinite() && cw in 0f..4f) { "Crowd weight must be in [0, 4]" }
+        if (n == 1) {
+            // One face is one person: a one-member no-split, its own exemplar, keeping its confirmed name.
+            val f = faces[0]
+            val id = f.embedding.observation
+            val confirmed = f.confirmedAs?.let { mapOf(it to 1) } ?: emptyMap()
+            return SplitProposal(listOf(ProposedGroup(listOf(id), listOf(id), confirmed.size, confirmed,
+                f.confirmedAs, 1f, mapOf(id to 1f))), emptyList(), 0f)
+        }
         val vec = Array(n) { faces[it].embedding.unit }
         val crowd = FloatArray(n) { faces[it].embedding.crowd * cw }
         val index = HashMap<NativeFaceObservationId, Int>(n * 2)
@@ -431,7 +439,7 @@ object SplitProposer {
         return IntArray(REF_MAX) { pool[(it.toLong() * pool.size / REF_MAX).toInt()] }
     }
 
-    private fun topMatch(i: Int, refs: IntArray, vec: Array<FloatArray>, crowd: FloatArray): Float {
+    internal fun topMatch(i: Int, refs: IntArray, vec: Array<FloatArray>, crowd: FloatArray): Float {
         val best = FloatArray(min(TOP_M, refs.size)) { Float.NEGATIVE_INFINITY }
         var used = 0
         for (r in refs) {
@@ -442,8 +450,8 @@ object SplitProposer {
             for (x in 1 until best.size) if (best[x] < best[lo]) lo = x
             if (s > best[lo]) best[lo] = s
         }
-        // The face is its group's only reference (a one-face profile): it defines the group.
-        if (used == 0) return 1f
+        // No other reference: no identity evidence at all, so the face fits nowhere (outlier).
+        if (used == 0) return 0f
         var s = 0f; for (x in 0 until used) s += best[x]
         return s / used
     }

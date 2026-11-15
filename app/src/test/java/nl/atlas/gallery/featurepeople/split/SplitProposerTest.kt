@@ -251,6 +251,27 @@ class SplitProposerTest {
         assertEquals(1, g.confirmedCount)
     }
 
+    @Test fun aFaceWithoutAnyOtherReferenceGetsNoEvidenceScore() {
+        val rng = Random(14)
+        val vec = Array(3) { face(person(rng), rng) }
+        val crowd = floatArrayOf(0.3f, 0f, 0f)
+        // Only itself, or nothing: no identity evidence, never a perfect score.
+        assertEquals(0f, SplitProposer.topMatch(0, intArrayOf(0), vec, crowd))
+        assertEquals(0f, SplitProposer.topMatch(0, intArrayOf(), vec, crowd))
+        // Real references: crowd-corrected scores of strangers stay low.
+        assertTrue(SplitProposer.topMatch(0, intArrayOf(1, 2), vec, crowd) < SplitProposer.OUTLIER_FLOOR)
+    }
+
+    @Test fun twoUnrelatedFacesAreNeverAPerfectGroup() {
+        val rng = Random(15)
+        val a = SplitFace(FaceEmbedding(id(), model, face(person(rng), rng), crowd = 0.2f))
+        val b = SplitFace(FaceEmbedding(id(), model, face(person(rng), rng), crowd = 0.2f))
+        val p = SplitProposer.propose(SplitRequest(listOf(a, b)))
+        assertTrue(p.groups.isEmpty())
+        assertEquals(setOf(a.embedding.observation, b.embedding.observation), p.unsure.map { it.observation }.toSet())
+        assertTrue(p.unsure.all { it.reason == UnsureReason.OUTLIER && it.confidence < 1f })
+    }
+
     @Test fun coreNeverExceedsItsBoundEvenWithManyVetoes() {
         val n = 5_000
         val hasVeto = BooleanArray(n) { it % 2 == 0 }
