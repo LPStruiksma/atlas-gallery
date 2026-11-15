@@ -92,7 +92,9 @@ fun FaceSearchRoute(
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     onOpenAlbum: (PersonKey, String) -> Unit,
     onOpenPeople: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val close by rememberUpdatedState(onClose)
@@ -157,7 +159,8 @@ fun FaceSearchRoute(
                                 onOpen(records, record)
                         }
                     },
-                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = onClose)
+                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = onClose,
+                    facetPeople = facetPeople, onSearchWholeLibrary = onSearchWholeLibrary)
             }
         }
     }
