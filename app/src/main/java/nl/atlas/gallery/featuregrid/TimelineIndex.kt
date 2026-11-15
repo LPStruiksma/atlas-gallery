@@ -145,14 +145,25 @@ fun buildGridTimelineIndex(
             TimelineBucket.YEAR -> date.year.toLong()
         }
     }
+    // Carry the first ordinal of the next run instead of converting the same
+    // boundary timestamp again when the outer loop advances. The sparse-day
+    // lookahead carries it forward as well. No O(n) ordinal cache is allocated.
     var cursor = 0
+    var nextRunOrdinal = if (items.isNotEmpty()) bucketOrdinal(items[0].takenAtMillis)
+        else unknownBucket
     while (cursor < items.size) {
         if ((cursor and 1023) == 0) cancellationCheckpoint?.invoke()
         val timestamp = items[cursor].takenAtMillis
-        val ordinal = bucketOrdinal(timestamp)
+        val ordinal = nextRunOrdinal
         val (groupKey, label) = groupFor(timestamp)
         var end = cursor + 1
-        while (end < items.size && bucketOrdinal(items[end].takenAtMillis) == ordinal) {
+        var afterRunOrdinal = unknownBucket
+        while (end < items.size) {
+            val candidateOrdinal = bucketOrdinal(items[end].takenAtMillis)
+            if (candidateOrdinal != ordinal) {
+                afterRunOrdinal = candidateOrdinal
+                break
+            }
             if ((end and 1023) == 0) cancellationCheckpoint?.invoke()
             end++
         }
@@ -160,24 +171,36 @@ fun buildGridTimelineIndex(
         var headerLabel = label
         if (mergeSparseDaysBelow > 0 && bucket == TimelineBucket.DAY &&
             ordinal != unknownBucket && end - cursor < mergeSparseDaysBelow) {
-            val firstDay = java.time.LocalDate.ofEpochDay(ordinal)
+            val firstDay = LocalDate.ofEpochDay(ordinal)
             var lastOrdinal = ordinal
             while (end < items.size) {
-                val nextOrdinal = bucketOrdinal(items[end].takenAtMillis)
+                val nextOrdinal = afterRunOrdinal
                 if (nextOrdinal == unknownBucket) break
-                val nextDay = java.time.LocalDate.ofEpochDay(nextOrdinal)
+                val nextDay = LocalDate.ofEpochDay(nextOrdinal)
                 if (nextDay.year != firstDay.year || nextDay.month != firstDay.month) break
                 var nextEnd = end + 1
-                while (nextEnd < items.size && bucketOrdinal(items[nextEnd].takenAtMillis) == nextOrdinal) nextEnd++
+                var nextAfterOrdinal = unknownBucket
+                while (nextEnd < items.size) {
+                    val candidateOrdinal = bucketOrdinal(items[nextEnd].takenAtMillis)
+                    if (candidateOrdinal != nextOrdinal) {
+                        nextAfterOrdinal = candidateOrdinal
+                        break
+                    }
+                    // The old sparse lookahead had no in-run checkpoint.
+                    if ((nextEnd and 1023) == 0) cancellationCheckpoint?.invoke()
+                    nextEnd++
+                }
                 if (nextEnd - end >= mergeSparseDaysBelow) break
                 end = nextEnd
+                afterRunOrdinal = nextAfterOrdinal
                 lastOrdinal = nextOrdinal
             }
             if (lastOrdinal != ordinal) {
-                val a = java.time.LocalDate.ofEpochDay(minOf(ordinal, lastOrdinal))
-                val b = java.time.LocalDate.ofEpochDay(maxOf(ordinal, lastOrdinal))
-                headerGroupKey = "$a..$b"
-                headerLabel = "${a.dayOfMonth}\u2013${b.format(if (b.year == currentYear) shortDayFormat else dayFormat)}"
+                val a = LocalDate.ofEpochDay(minOf(ordinal, lastOrdinal))
+                val b = LocalDate.ofEpochDay(maxOf(ordinal, lastOrdinal))
+                headerGroupKey = a.toString() + ".." + b.toString()
+                headerLabel = a.dayOfMonth.toString() + "–" +
+                    b.format(if (b.year == currentYear) shortDayFormat else dayFormat)
             }
         }
         val baseHeaderKey = "header:" + bucket.name + ":" + headerGroupKey
@@ -193,6 +216,7 @@ fun buildGridTimelineIndex(
             slots.add(TimelineSlot.Media("media:" + items[i].key, i))
         }
         cursor = end
+        nextRunOrdinal = afterRunOrdinal
     }
     cancellationCheckpoint?.invoke()
     return GridTimelineIndex(slots, positions, headers, grouped = true)
