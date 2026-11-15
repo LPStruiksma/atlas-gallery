@@ -342,6 +342,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
+        android.os.Trace.beginSection("atlas_activity_content")
         setContent {
             val galleryVm: GalleryViewModel = viewModel()
             val inventory by galleryVm.publishedInventory.collectAsIdentityState()
@@ -359,6 +360,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        android.os.Trace.endSection()
     }
 }
 
@@ -1814,6 +1816,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(personFilter, personBwFolderOnly) { personGridState.scrollToItem(0) }
 
     fun openViewer(items: List<MediaRecord>, uri: String) {
+        android.os.Trace.beginSection("atlas_viewer_open")
         // A click can be delivered while a scoped-grant refresh is pending.
         // Do not animate its decoded thumbnail across an access boundary.
         val actual = readGalleryMediaGrant(context)
@@ -1827,6 +1830,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerItems = items
         viewerAccessEpoch = publishedGallery.epoch
         viewerUri = uri
+        android.os.Trace.endSection()
     }
     fun closeViewer() {
         viewerUri = null
@@ -2484,6 +2488,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         ) {
         GalleryViewer(
             contextItems, currentUri,
+            timingProbe = PerformanceSession.viewerProbe(),
             // Trash went through Android's own consent dialog; only RESULT_OK lands here.
             // Drop the photo from this viewer and show its neighbour, like Samsung does.
             onTrashed = { gone ->
@@ -2944,6 +2949,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         ActivityScreen(media.size, people.size, busy, error, vm::refresh)
                     }
                     settingsOpen -> {
+                        PerformanceSession.updateViewer()
                         val visualStatus = discovery.status?.visual
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
@@ -3043,6 +3049,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         )
                     }
                     tab == 0 -> {
+                        LaunchedEffect(publishedGallery.epoch, visible) {
+                            if (visible.isNotEmpty()) {
+                                withFrameNanos { }
+                                PerformanceSession.firstGridFrame()
+                            }
+                        }
                         val photosSelecting = batchSelection != null && !originalProportions &&
                             timelineEnabled
                         if (originalProportions) {
