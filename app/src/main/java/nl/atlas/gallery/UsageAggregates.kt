@@ -4,17 +4,18 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
 import kotlin.math.ceil
+import kotlin.math.roundToLong
 
 /** On-device aggregate only: never accepts event payloads, user strings or sub-day timestamps. */
 class UsageAggregates {
-    data class Timing(val p50: Double, val p90: Double, val jankPercent: Double)
+    data class Timing(val p50: Double, val p90: Double, val jankPercent: Double?)
     data class Day(
         val date: String,
         val actions: Map<String, Int>,
         val screens: Map<String, Long>,
         val latency: Map<String, Timing>,
-        val scannerMinutes: Double,
-        val photosPerMinute: Double
+        val scannerMinutes: Double?,
+        val photosPerMinute: Double?
     )
 
     private class MutableDay {
@@ -26,6 +27,7 @@ class UsageAggregates {
         val jankCounts = mutableMapOf<String, Long>()
         var scanSeconds = 0L
         var scannedPhotos = 0L
+        var scannerObserved = false
     }
 
     private val rows = sortedMapOf<LocalDate, MutableDay>()
@@ -64,9 +66,10 @@ class UsageAggregates {
     }
 
     @Synchronized fun scanner(day: LocalDate, seconds: Long, photos: Long): Boolean {
-        if (seconds < 0 || seconds > MAX_SCREEN_SECONDS ||
+        if (seconds <= 0 || seconds > MAX_SCREEN_SECONDS ||
             photos < 0 || photos > 100_000_000) return false
         val r = row(day)
+        r.scannerObserved = true
         r.scanSeconds = (r.scanSeconds + seconds).coerceAtMost(MAX_SCREEN_SECONDS)
         r.scannedPhotos = (r.scannedPhotos + photos).coerceAtMost(100_000_000L)
         return true
@@ -86,11 +89,11 @@ class UsageAggregates {
             val frames = r.frameCounts[id] ?: 0L
             val jank = r.jankCounts[id] ?: 0L
             Timing(percentile(.5), percentile(.9),
-                if (frames == 0L) 0.0 else 100.0 * jank / frames)
+                if (frames == 0L) null else 100.0 * jank / frames)
         }
         Day(date.toString(), r.actions.toSortedMap(), r.screens.toSortedMap(),
-            (r.cachedTiming + timings).toSortedMap(), r.scanSeconds / 60.0,
-            if (r.scanSeconds == 0L) 0.0 else r.scannedPhotos * 60.0 / r.scanSeconds)
+            (r.cachedTiming + timings).toSortedMap(), if (r.scannerObserved) r.scanSeconds / 60.0 else null,
+            if (r.scannerObserved) r.scannedPhotos * 60.0 / r.scanSeconds else null)
     }
 
     /** Fixed schema, fixed keys and enum IDs; no caller-supplied strings ever reach JSON. */
@@ -106,18 +109,27 @@ class UsageAggregates {
                 val sorted = samples.sorted()
                 fun percentile(f: Double) = sorted[(ceil(sorted.size * f).toInt() - 1).coerceIn(sorted.indices)]
                 val frames = r.frameCounts[id] ?: 0L
-                timings.put(id, JSONObject().put("p50_ms", percentile(.5))
+                val summary = JSONObject().put("p50_ms", percentile(.5))
                     .put("p90_ms", percentile(.9))
-                    .put("jank_percent", if (frames == 0L) 0.0
-                        else 100.0 * (r.jankCounts[id] ?: 0L) / frames))
+                // With no frame sample, jank is unknown, not zero.
+                if (frames > 0L) summary.put("jank_percent",
+                    100.0 * (r.jankCounts[id] ?: 0L) / frames)
+                timings.put(id, summary)
             }
             r.cachedTiming.toSortedMap().forEach { (id, summary) ->
-                if (!timings.has(id)) timings.put(id, JSONObject().put("p50_ms", summary.p50)
-                    .put("p90_ms", summary.p90).put("jank_percent", summary.jankPercent))
+                if (!timings.has(id)) {
+                    val json = JSONObject().put("p50_ms", summary.p50)
+                        .put("p90_ms", summary.p90)
+                    if (summary.jankPercent != null) json.put("jank_percent", summary.jankPercent)
+                    timings.put(id, json)
+                }
             }
-            val scanner = JSONObject().put("minutes", r.scanSeconds / 60.0)
-                .put("photos_per_minute", if (r.scanSeconds == 0L) 0.0
-                    else r.scannedPhotos * 60.0 / r.scanSeconds)
+            val scanner = JSONObject()
+            // Empty object = no scan samples. A measured zero throughput is distinct.
+            if (r.scannerObserved) {
+                scanner.put("minutes", r.scanSeconds / 60.0)
+                    .put("photos_per_minute", r.scannedPhotos * 60.0 / r.scanSeconds)
+            }
             daysJson.put(JSONObject().put("day", date.toString()).put("actions", actions)
                 .put("screens_seconds", screens).put("performance", timings)
                 .put("scanner", scanner))
@@ -166,27 +178,36 @@ class UsageAggregates {
                 for (key in timings.keys()) {
                     require(key in ACTION_IDS)
                     val summary = timings.getJSONObject(key)
-                    require(summary.length() == 3)
-                    require(listOf("p50_ms", "p90_ms", "jank_percent").all {
-                        summary.get(it) is Number
-                    })
+                    require(summary.length() in 2..3)
+                    require(summary.get("p50_ms") is Number &&
+                        summary.get("p90_ms") is Number)
+                    val hasJank = summary.has("jank_percent")
+                    require(summary.length() == 2 || hasJank)
+                    if (hasJank) require(summary.get("jank_percent") is Number)
                     val p50 = summary.getDouble("p50_ms")
                     val p90 = summary.getDouble("p90_ms")
-                    val jank = summary.getDouble("jank_percent")
+                    val jank = if (hasJank) summary.getDouble("jank_percent") else null
                     require(p50.isFinite() && p90.isFinite() && p50 >= 0 && p90 >= p50 &&
-                        p90 <= MAX_LATENCY_MS && jank.isFinite() && jank in 0.0..100.0)
+                        p90 <= MAX_LATENCY_MS &&
+                        (jank == null || (jank.isFinite() && jank in 0.0..100.0)))
                     log.row(day).cachedTiming[key] = Timing(p50, p90, jank)
                 }
                 val scanner = item.getJSONObject("scanner")
-                require(scanner.length() == 2)
-                require(scanner.get("minutes") is Number &&
-                    scanner.get("photos_per_minute") is Number)
-                val minutes = scanner.getDouble("minutes")
-                val rate = scanner.getDouble("photos_per_minute")
-                require(minutes.isFinite() && minutes in 0.0..(MAX_SCREEN_SECONDS / 60.0) &&
-                    rate.isFinite() && rate >= 0.0 && rate <= 100_000_000.0)
-                log.row(day).scanSeconds = (minutes * 60).toLong()
-                log.row(day).scannedPhotos = (minutes * rate).toLong()
+                require(scanner.length() == 0 || scanner.length() == 2)
+                if (scanner.length() == 2) {
+                    require(scanner.get("minutes") is Number &&
+                        scanner.get("photos_per_minute") is Number)
+                    val minutes = scanner.getDouble("minutes")
+                    val rate = scanner.getDouble("photos_per_minute")
+                    require(minutes.isFinite() && minutes > 0.0 &&
+                        minutes <= MAX_SCREEN_SECONDS / 60.0 &&
+                        rate.isFinite() && rate >= 0.0 && rate <= 100_000_000.0)
+                    val row = log.row(day)
+                    row.scannerObserved = true
+                    // Nearest integer preserves small completed batches across reloads.
+                    row.scanSeconds = (minutes * 60).roundToLong()
+                    row.scannedPhotos = (minutes * rate).roundToLong()
+                }
             }
             return log
         }
