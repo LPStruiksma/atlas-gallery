@@ -2975,6 +2975,32 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             },
                             onVisualIndex = { visualIndexOpen = true },
                             onPeopleNumbers = { peopleNumbersOpen = true },
+                            usageEnabled = usageRecording,
+                            onUsageToggle = { enabled ->
+                                usageRecorder.setEnabled(enabled)
+                                usageRecording = enabled
+                            },
+                            onClearUsage = {
+                                usageRecorder.clear()
+                                Toast.makeText(context, "Usage cleared", Toast.LENGTH_SHORT).show()
+                            },
+                            onExportUsage = {
+                                try {
+                                    val json = usageRecorder.export()
+                                    val filename = "atlas-usage-" +
+                                        java.time.LocalDate.now().format(
+                                            java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".json"
+                                    context.startActivity(Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "application/json"
+                                            putExtra(Intent.EXTRA_TEXT, json)
+                                            putExtra(Intent.EXTRA_TITLE, filename)
+                                        }, "Export usage"))
+                                } catch (_: ActivityNotFoundException) {
+                                    Toast.makeText(context, "No app can share usage",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            },
                             onExportNames = { confirmNamesExport = true },
                             onImportNames = {
                                 importNamesLauncher.launch(arrayOf("*/*"))
