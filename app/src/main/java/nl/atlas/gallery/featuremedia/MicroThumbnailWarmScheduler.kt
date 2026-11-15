@@ -10,12 +10,13 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.readGalleryMediaGrant
+import java.util.concurrent.atomic.AtomicReference
 
 /** Deferred first-fill work carries no photo IDs or grants across processes. */
 internal object MicroThumbnailWarmScheduler {
@@ -43,6 +44,15 @@ private fun microWarmThermalSafe(context: Context): Boolean {
 
 internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerParameters) :
     CoroutineWorker(context, parameters) {
+    private val inFlightSignal = AtomicReference<CancellationSignal?>(null)
+
+    // WorkManager may stop the worker while its coroutine is still blocked
+    // inside a synchronous provider call. Signal it without waiting for IO.
+    override fun onStopped() {
+        inFlightSignal.get()?.cancel()
+        super.onStopped()
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val context = applicationContext
         try {
@@ -56,9 +66,12 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
 
             val coroutine = currentCoroutineContext()
             val providerSignal = CancellationSignal()
-            val cancelProvider = coroutine[Job]?.invokeOnCompletion { failure ->
-                if (failure != null) providerSignal.cancel()
-            }
+            inFlightSignal.set(providerSignal)
+            if (isStopped) providerSignal.cancel()
+            // A child resumes on Default on cancellation even when this IO
+            // thread is blocked by MediaStore.query or loadThumbnail.
+            val cancelProvider = CoroutineScope(coroutine)
+                .watchMicroWarmCancellation { providerSignal.cancel() }
             try {
                 var gateChecks = 0
                 var pausedForPower = false
@@ -82,13 +95,14 @@ internal class MicroThumbnailWarmWorker(context: Context, parameters: WorkerPara
                         if (!gate())
                             return@withContext if (pausedForPower) Result.retry() else Result.success()
                         MicroThumbnailWarmer.warmPaged(
-                            context.contentResolver, source, gate = gate
+                            context.contentResolver, source, providerSignal, gate = gate
                         )
                     }
                 }
                 if (pausedForPower) Result.retry() else Result.success()
             } finally {
-                cancelProvider?.dispose()
+                cancelProvider.cancel()
+                inFlightSignal.compareAndSet(providerSignal, null)
                 providerSignal.cancel()
             }
         } catch (cancelled: CancellationException) {
