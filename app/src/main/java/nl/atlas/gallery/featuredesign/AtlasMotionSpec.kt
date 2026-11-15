@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import android.content.ContentResolver
 import android.database.ContentObserver
@@ -48,14 +50,15 @@ fun atlasMotionSpec(kind: AtlasMotionKind, reduceMotion: Boolean): AtlasMotionSp
 }
 
 /**
- * Keep the reduced-motion flag in sync while the app is in the foreground.
- * Some devices toggle the accessibility setting without Activity recreation;
- * observing this key avoids continuing an old animation until the next restart.
+ * Observe the system animation scale once at the root, rather than installing
+ * a separate Settings observer for each animated icon. The policy remains
+ * pure/JVM-testable in [atlasMotionSpec].
  */
+val LocalAtlasReducedMotion = staticCompositionLocalOf { false }
+
 @Composable
-fun atlasReduceMotion(): Boolean {
-    val context = LocalContext.current
-    val resolver = context.contentResolver
+fun AtlasMotionEnvironment(content: @Composable () -> Unit) {
+    val resolver = LocalContext.current.contentResolver
     val key = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
     var reduced by remember(resolver) { mutableStateOf(readReducedMotion(resolver)) }
     DisposableEffect(resolver) {
@@ -70,7 +73,7 @@ fun atlasReduceMotion(): Boolean {
         reduced = readReducedMotion(resolver)
         onDispose { resolver.unregisterContentObserver(observer) }
     }
-    return reduced
+    CompositionLocalProvider(LocalAtlasReducedMotion provides reduced, content = content)
 }
 
 private fun readReducedMotion(resolver: ContentResolver): Boolean =
@@ -82,7 +85,7 @@ private fun readReducedMotion(resolver: ContentResolver): Boolean =
 
 @Composable
 fun <T> atlasTween(kind: AtlasMotionKind): androidx.compose.animation.core.TweenSpec<T> {
-    val spec = atlasMotionSpec(kind, atlasReduceMotion())
+    val spec = atlasMotionSpec(kind, LocalAtlasReducedMotion.current)
     return tween(durationMillis = spec.durationMillis, delayMillis = spec.delayMillis,
         easing = AtlasMotionEase)
 }
