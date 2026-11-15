@@ -1,0 +1,3 @@
+# PERF-0 synthetic Settings baseline screenshot, top metrics + A1-A11 inventory
+perf-0-settings-top
+perf-0-settings-actions
