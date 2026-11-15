@@ -93,14 +93,22 @@ internal fun ViewerDetailsSheet(
         provenance = withContext(Dispatchers.IO) {
             runCatching {
                 val store = AiEditLineageStore(context.applicationContext)
-                // Single-photo facts do not resolve other MediaStore members without
-                // the gallery's current authorization; the row itself is local evidence.
+                // Only show media still readable under the current grant.
+                fun visible(uri: String): Boolean = try {
+                    context.contentResolver.query(
+                        android.net.Uri.parse(uri),
+                        arrayOf(android.provider.MediaStore.MediaColumns._ID),
+                        null, null, null
+                    )?.use { it.moveToFirst() } == true
+                } catch (_: RuntimeException) { false }
                 val parent = store.get(media.uri)
-                if (parent != null && parent.originalUri != media.uri)
+                if (parent != null && parent.originalUri != media.uri &&
+                    visible(parent.originalUri))
                     AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
                 else {
-                    val children = store.all().filter { it.originalUri == media.uri && it.editedUri != media.uri }
-                        .map { it.editedUri }.distinct().sorted()
+                    val children = store.all().asSequence()
+                        .filter { it.originalUri == media.uri && it.editedUri != media.uri }
+                        .map { it.editedUri }.distinct().filter(::visible).sorted().toList()
                     if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
                 }
             }.getOrNull()
