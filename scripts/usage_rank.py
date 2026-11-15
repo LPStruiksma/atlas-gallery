@@ -107,8 +107,8 @@ def parse_export(document):
     return days
 
 def level(value, cutoffs):
-    # Fixed quantiles of a documented reference distribution, not unstable
-    # same-export rank quantiles; absent samples are not zeros.
+    # Fixed ordinal threshold bands, not per-export quantiles;
+    # absent samples are not zeros.
     return 1 + sum(value >= cutoff for cutoff in cutoffs)
 
 def leverage(metrics, spec):
@@ -137,8 +137,9 @@ def ranking(days, inventory):
         cuts = (0.25, 1, 5, 20) if inventory == "perf" else (1, 10, 60, 300)
         frequency = level(rate, cuts) if observed and rate is not None else None
         if inventory == "perf":
-            measured = [d["performance"][id_] for d in days
-                        if id_ in d.get("performance", {})]
+            measured = [d["performance"][id_] for d in active
+                        if d.get("actions", {}).get(id_, 0) > 0
+                        and id_ in d.get("performance", {})]
             # A p50 from each day lacks its sample count; do not pretend
             # its arithmetic mean is a pooled p50. Use median daily p50.
             from statistics import median
@@ -166,8 +167,10 @@ def markdown(days, inventory):
             "design uses screen seconds/day: <1=1, <10=2, <60=3, <300=4, >=300=5.",
             "Timing L is median of available daily p50 / target: "
             "<0.75=1, <1=2, <1.5=3, <2=4, >=2=5. "
-            "Targets presently calibrated only for A1 (500 ms) and A3 (150 ms); "
-            "other L stays estimated. Missing hooks are not evidence of zero use."]
+            "Calibrated targets: A1 (500 ms p50), A2 (1% jank) and "
+            "A3 (150 ms p50). Timing counts only on active days with "
+            "positive recorded actions for the ID; other L stays estimated. "
+            "Missing hooks are not evidence of zero use."]
     return "\n".join(out)
 
 def main(argv=None):
