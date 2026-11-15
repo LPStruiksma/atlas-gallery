@@ -36,17 +36,17 @@ class PeopleHomeCaptionUiTest {
 
     @Test fun namedAndUnnamedCaptionsMatchCountsInLightTheme() {
         compose.setContent { Gallery(dark = false) }
-        compose.onAllNodesWithTag("atlas-people-tile-name").assertCountEquals(3)
-        compose.onAllNodesWithTag("atlas-people-tile-count").assertCountEquals(3)
-        compose.onAllNodesWithTag("atlas-people-tile-count")[0].assertTextEquals("12")
-        compose.onAllNodesWithTag("atlas-people-tile-count")[1].assertTextEquals("1")
-        compose.onAllNodesWithTag("atlas-people-tile-count")[2].assertTextEquals("3")
+        compose.onAllNodesWithTag("atlas-people-tile-name", useUnmergedTree = true).assertCountEquals(3)
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true).assertCountEquals(3)
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true)[0].assertTextEquals("12")
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true)[1].assertTextEquals("1")
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true)[2].assertTextEquals("3")
     }
 
     @Test fun captionsRemainPresentInDarkTheme() {
         compose.setContent { Gallery(dark = true) }
-        compose.onAllNodesWithTag("atlas-people-tile-name").assertCountEquals(3)
-        compose.onAllNodesWithTag("atlas-people-tile-count").assertCountEquals(3)
-        compose.onAllNodesWithTag("atlas-people-tile-count")[2].assertTextEquals("3")
+        compose.onAllNodesWithTag("atlas-people-tile-name", useUnmergedTree = true).assertCountEquals(3)
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true).assertCountEquals(3)
+        compose.onAllNodesWithTag("atlas-people-tile-count", useUnmergedTree = true)[2].assertTextEquals("3")
     }
 }
