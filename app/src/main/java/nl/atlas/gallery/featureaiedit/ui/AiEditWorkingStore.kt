@@ -37,8 +37,9 @@ internal class AiEditWorkingStore(context: Context, sessionId: String) {
     fun mockSource(source: Uri): EditImage {
         require(source.scheme == "content" && source.authority == "media")
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        val boundsStream = resolver.openInputStream(source)
             ?: error("Selected photo is not available")
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
         require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Not a decodable image" }
         var sample = 1
         while (bounds.outWidth.toLong() / sample * (bounds.outHeight.toLong() / sample) > 16_384L) {
