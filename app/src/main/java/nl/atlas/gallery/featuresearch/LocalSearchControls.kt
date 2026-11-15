@@ -258,8 +258,9 @@ fun LocalSearchControls(
         // While it builds, display no private suggestions; never search the
         // entire catalog on the Compose thread after each typed character.
         val suggestionKey = CatalogSourceKey(suggestionSources)
+        val publicationKey = currentPermissionEpoch to suggestionKey
         val indexedSuggestions by androidx.compose.runtime.produceState<IndexedSearchSuggestions?>(
-            initialValue = null, key1 = currentPermissionEpoch, key2 = suggestionKey
+            initialValue = null, key1 = publicationKey
         ) {
             value = null
             if (!currentPermissionEpoch.isNullOrBlank()) {
@@ -274,8 +275,8 @@ fun LocalSearchControls(
         val typedSuggestions = filters.text
         val suggestionState by androidx.compose.runtime.produceState(
             initialValue = Pair("", emptyList<SearchSuggestion>()),
-            key1 = indexedSuggestions, key2 = typedSuggestions,
-            key3 = currentPermissionEpoch
+            key1 = publicationKey, key2 = indexedSuggestions,
+            key3 = typedSuggestions
         ) {
             value = Pair("", emptyList())
             val index = indexedSuggestions
@@ -290,7 +291,8 @@ fun LocalSearchControls(
         }
         // The completed worker answer carries its own query key. No stale
         // suggestions are visible in the composition that first sees new text.
-        val suggestions = if (suggestionState.first == typedSuggestions)
+        val suggestions = if (suggestionState.first == typedSuggestions &&
+            indexedSuggestions != null && !currentPermissionEpoch.isNullOrBlank())
             suggestionState.second else emptyList()
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
