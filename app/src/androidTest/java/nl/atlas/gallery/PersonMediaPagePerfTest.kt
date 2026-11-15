@@ -56,9 +56,10 @@ class PersonMediaPagePerfTest {
                 store.commitSnapshot(epoch, "detector", "model-v1")
                 // SQL fixture builds only opaque, synthetic index rows. No
                 // scanner runs and no fabricated biometric vectors are used.
-                store.writableDatabase.beginTransaction()
+                val fixtureDb = store.writableDatabase
+                fixtureDb.beginTransaction()
                 try {
-                    val db = store.writableDatabase
+                    val db = fixtureDb
                     db.execSQL("INSERT INTO people_names(person_key,name) VALUES(?,?)",
                         arrayOf(person.value, "Synthetic"))
                     val faceInsert = db.compileStatement(
@@ -82,7 +83,7 @@ class PersonMediaPagePerfTest {
                     }
                     db.setTransactionSuccessful()
                 } finally {
-                    store.writableDatabase.endTransaction()
+                    fixtureDb.endTransaction()
                 }
                 // The same read fence as the current production API.
                 // Earlier helper epochs must not become readable after revoke.
