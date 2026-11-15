@@ -272,20 +272,26 @@ fun LocalSearchControls(
         // off Compose's frame. A changed query starts with an empty value,
         // rather than briefly showing the previous query's private names.
         val typedSuggestions = filters.text
-        val suggestions by androidx.compose.runtime.produceState<List<SearchSuggestion>>(
-            initialValue = emptyList(), key1 = indexedSuggestions,
-            key2 = typedSuggestions, key3 = currentPermissionEpoch
+        val suggestionState by androidx.compose.runtime.produceState(
+            initialValue = Pair("", emptyList<SearchSuggestion>()),
+            key1 = indexedSuggestions, key2 = typedSuggestions,
+            key3 = currentPermissionEpoch
         ) {
-            value = emptyList()
+            value = Pair("", emptyList())
             val index = indexedSuggestions
             if (index != null && !currentPermissionEpoch.isNullOrBlank()) {
                 // A short debounce prevents stale work while typing rapidly.
                 kotlinx.coroutines.delay(20)
-                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                val matches = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     index.search(typedSuggestions)
                 }
+                value = Pair(typedSuggestions, matches)
             }
         }
+        // The completed worker answer carries its own query key. No stale
+        // suggestions are visible in the composition that first sees new text.
+        val suggestions = if (suggestionState.first == typedSuggestions)
+            suggestionState.second else emptyList()
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
         val atRest = filters == LocalSearchFacets() && personMatches.isEmpty()
