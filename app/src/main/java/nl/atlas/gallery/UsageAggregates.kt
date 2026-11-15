@@ -134,19 +134,22 @@ class UsageAggregates {
         /** Read own prior exports only. Unknown keys/fields fail closed instead of being copied. */
         fun fromJson(raw: String): UsageAggregates {
             val root = JSONObject(raw)
-            require(root.getInt("schema_version") == 1 && root.length() == 2)
+            require(root.get("schema_version") is Number &&
+                root.getInt("schema_version") == 1 && root.length() == 2)
             val log = UsageAggregates()
             val days = root.getJSONArray("days")
             require(days.length() <= 90)
             for (i in 0 until days.length()) {
                 val item = days.getJSONObject(i)
                 require(item.length() == 5)
+                require(item.get("day") is String)
                 val dayString = item.getString("day")
                 val day = LocalDate.parse(dayString)
                 require(day.toString() == dayString && day !in log.rows)
                 val actions = item.getJSONObject("actions")
                 for (key in actions.keys()) {
                     require(key in ACTION_IDS)
+                    require(actions.get(key) is Int || actions.get(key) is Long)
                     val count = actions.getInt(key)
                     require(count >= 0)
                     log.row(day).actions[key] = count
@@ -154,6 +157,7 @@ class UsageAggregates {
                 val screens = item.getJSONObject("screens_seconds")
                 for (key in screens.keys()) {
                     require(key in SCREEN_IDS)
+                    require(screens.get(key) is Int || screens.get(key) is Long)
                     val seconds = screens.getLong(key)
                     require(seconds in 0..MAX_SCREEN_SECONDS)
                     log.row(day).screens[key] = seconds
@@ -163,6 +167,9 @@ class UsageAggregates {
                     require(key in ACTION_IDS)
                     val summary = timings.getJSONObject(key)
                     require(summary.length() == 3)
+                    require(listOf("p50_ms", "p90_ms", "jank_percent").all {
+                        summary.get(it) is Number
+                    })
                     val p50 = summary.getDouble("p50_ms")
                     val p90 = summary.getDouble("p90_ms")
                     val jank = summary.getDouble("jank_percent")
@@ -172,6 +179,8 @@ class UsageAggregates {
                 }
                 val scanner = item.getJSONObject("scanner")
                 require(scanner.length() == 2)
+                require(scanner.get("minutes") is Number &&
+                    scanner.get("photos_per_minute") is Number)
                 val minutes = scanner.getDouble("minutes")
                 val rate = scanner.getDouble("photos_per_minute")
                 require(minutes.isFinite() && minutes in 0.0..(MAX_SCREEN_SECONDS / 60.0) &&

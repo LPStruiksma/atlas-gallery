@@ -65,4 +65,37 @@ class UsageAggregatesTest {
             UsageAggregates.fromJson(json.replace("\"A22\"", "\"photo-private.jpg\""))
         }
     }
+
+    @Test fun everyExportStringIsEitherAClosedIdOrADay() {
+        val log = UsageAggregates()
+        val today = LocalDate.of(2026, 11, 15)
+        for (id in 1..22) log.action(today, "A" + id)
+        for (id in 1..19) log.screen(today, "D" + id, id.toLong())
+        log.performance(today, "A3", 12.5, 1, 12)
+        log.scanner(today, 60, 2)
+        val root = org.json.JSONObject(log.toJson())
+        val fixedKeys = setOf("schema_version", "days", "day", "actions",
+            "screens_seconds", "performance", "scanner", "minutes", "photos_per_minute",
+            "p50_ms", "p90_ms", "jank_percent")
+        fun check(value: Any?) {
+            when (value) {
+                is org.json.JSONObject -> for (key in value.keys()) {
+                    assertTrue("Unexpected JSON key", key in fixedKeys ||
+                        key in (1..22).map { "A" + it } ||
+                        key in (1..19).map { "D" + it })
+                    check(value.get(key))
+                }
+                is org.json.JSONArray -> for (index in 0 until value.length()) {
+                    check(value.get(index))
+                }
+                is String -> assertEquals("2026-11-15", value)
+                is Number -> assertTrue(value.toDouble().isFinite())
+                else -> fail("Non-numeric/non-date export value")
+            }
+        }
+        check(root)
+        assertThrows(IllegalArgumentException::class.java) {
+            UsageAggregates.fromJson(log.toJson().replace("\"A1\":1", "\"A1\":\"1\""))
+        }
+    }
 }

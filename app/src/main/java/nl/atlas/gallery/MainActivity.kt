@@ -2987,16 +2987,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             },
                             onExportUsage = {
                                 try {
-                                    val json = usageRecorder.export()
-                                    val filename = "atlas-usage-" +
-                                        java.time.LocalDate.now().format(
-                                            java.time.format.DateTimeFormatter.BASIC_ISO_DATE) + ".json"
-                                    context.startActivity(Intent.createChooser(
-                                        Intent(Intent.ACTION_SEND).apply {
-                                            type = "application/json"
-                                            putExtra(Intent.EXTRA_TEXT, json)
-                                            putExtra(Intent.EXTRA_TITLE, filename)
-                                        }, "Export usage"))
+                                    val share = UsageExportFile.shareIntent(
+                                        context, usageRecorder.export())
+                                    context.startActivity(Intent.createChooser(share, "Export usage"))
                                 } catch (_: ActivityNotFoundException) {
                                     Toast.makeText(context, "No app can share usage",
                                         Toast.LENGTH_LONG).show()

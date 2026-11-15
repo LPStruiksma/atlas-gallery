@@ -49,6 +49,7 @@ internal class UsageRecorder(private val context: Context) {
     @Synchronized fun clear() {
         log.clear()
         preferences.edit().remove("daily").commit()
+        UsageExportFile.clear(context)
     }
 
     @Synchronized private fun save() {
