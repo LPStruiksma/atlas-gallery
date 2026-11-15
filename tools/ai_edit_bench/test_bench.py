@@ -163,5 +163,23 @@ class BenchmarkTests(unittest.TestCase):
                 create_pairwise([case], records, out)
 
 
+    def test_real_masked_metric_primitives(self):
+        from tools.ai_edit_bench.metrics import (
+            unchanged_ssim, unchanged_lpips_map, face_embedding_similarity)
+        src = [[(10, 20, 30), (60, 70, 80)]]
+        changed_inside = [[(10, 20, 30), (240, 240, 240)]]
+        changed_outside = [[(240, 240, 240), (60, 70, 80)]]
+        mask = [[False, True]]
+        self.assertAlmostEqual(unchanged_ssim(src, changed_inside, mask), 1.0)
+        self.assertLess(unchanged_ssim(src, changed_outside, mask), 1.0)
+        self.assertAlmostEqual(unchanged_lpips_map([[0.1, 99.0]], mask), 0.1)
+        self.assertIsNone(unchanged_lpips_map([[0.1]], [[True]]))
+        faces_a = [{"box": [0.1, 0.1, 0.4, 0.5], "embedding": [1., 0.]},
+                   {"box": [0.6, 0.1, 0.9, 0.5], "embedding": [0., 1.]}]
+        faces_b = [{"box": [0.6, 0.1, 0.9, 0.5], "embedding": [0., 1.]},
+                   {"box": [0.1, 0.1, 0.4, 0.5], "embedding": [1., 0.]}]
+        self.assertAlmostEqual(face_embedding_similarity(faces_a, faces_b), 1.0)
+        self.assertIsNone(face_embedding_similarity(faces_a, faces_b[:1]))
+
 if __name__ == "__main__":
     unittest.main()
