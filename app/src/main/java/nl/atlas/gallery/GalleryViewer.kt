@@ -399,7 +399,7 @@ private fun GalleryViewerSnapshot(
     }
 
     LaunchedEffect(pagerState.currentPage) {
-        timingProbe?.pagerSelected(pagerState.currentPage)
+        timingProbe?.pageEntered(pagerState.currentPage)
         currentZoom = 1f
         // Do NOT recenter the strip here: a finished thumbnail fling commits
         // its own centred item; a pager swipe is reconciled above.
