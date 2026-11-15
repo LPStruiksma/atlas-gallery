@@ -281,6 +281,8 @@ fun AtlasAlbumsScreen(
     onOpenPhotoDna: (() -> Unit)? = null,
     /** Samsung's "Hide albums" screen (#568, parity research GRID:A7). */
     onOpenHideAlbums: (() -> Unit)? = null,
+    /** Explicit whole-library search belongs to the host Search destination. */
+    onSearchWholeLibrary: (() -> Unit)? = null,
     /**
      * Receives the whole new display order after a drag (or a TalkBack move).
      * Pinned albums never move; the caller switches the sort to Custom.
@@ -307,7 +309,9 @@ fun AtlasAlbumsScreen(
             },
             actions = {
                 AtlasSearch(query = searchText, onQueryChange = { searchText = it },
-                    onScopeChange = { })
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
                 AtlasAlbumSortMenu(sort, onSort)
             }
         )
