@@ -157,7 +157,7 @@ fun GalleryViewer(
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
-        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onExitSettledUri,
+        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
             favouriteOverrides, photoPeople, onBack)
     }
@@ -169,6 +169,7 @@ private fun GalleryViewerSnapshot(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe?,
     onEdit: ((MediaRecord) -> Boolean)?,
+    onAiEdit: ((MediaRecord) -> Unit)?,
     onExitSettledUri: ((String) -> Unit)?,
     faceSearch: ViewerFaceSearch?,
     faceHighlights: Map<String, List<IndexedFaceBox>>,
