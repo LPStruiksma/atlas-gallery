@@ -64,12 +64,10 @@ internal fun AtlasSettingsScreen(
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
     var performanceExpanded by rememberSaveable { mutableStateOf(false) }
-    if (performanceExpanded) {
-        // Refresh only on opening, not on every recomposition of Settings.
-        remember(performanceExpanded) {
+    androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
+        if (performanceExpanded) {
             PerformanceSession.updateViewer()
             PerformanceSession.sampleHeap()
-            true
         }
     }
     val scanAction = when (scanPhase) {
