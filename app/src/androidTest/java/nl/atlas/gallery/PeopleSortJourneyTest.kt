@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
@@ -54,11 +55,11 @@ class PeopleSortJourneyTest {
         // Each selection dismisses; the icon opens the next sheet.
         PeopleSortKey.entries.forEach { key ->
             compose.onNodeWithTag("atlas-people-sort-${key.name}-asc")
-                .performClick()
+                .performScrollTo().performClick()
             compose.runOnIdle { assertEquals(PeopleSortChoice(key, false), chosen) }
             compose.onNodeWithTag("atlas-people-sort-open").performClick()
             compose.onNodeWithTag("atlas-people-sort-${key.name}-desc")
-                .performClick()
+                .performScrollTo().performClick()
             compose.runOnIdle { assertEquals(PeopleSortChoice(key, true), chosen) }
             if (key != PeopleSortKey.RANDOM)
                 compose.onNodeWithTag("atlas-people-sort-open").performClick()
