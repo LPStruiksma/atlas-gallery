@@ -2789,16 +2789,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     count = photosSelection.count,
                     enabled = live && !batchOperating,
                     allFavourite = selectionAllFavourite,
-                    onShare = { shareBatch() },
+                    onShare = {
+                        usageRecorder.action("A17")
+                        shareBatch()
+                    },
                     // Android 10 has no consent-mediated trash or favourite request.
-                    onTrash = if (Build.VERSION.SDK_INT >= 30) ({ trashBatch() }) else null,
-                    onFavourite = if (Build.VERSION.SDK_INT >= 30) ({ favouriteBatch() }) else null,
+                    onTrash = if (Build.VERSION.SDK_INT >= 30) ({
+                        usageRecorder.action("A17")
+                        trashBatch()
+                    }) else null,
+                    onFavourite = if (Build.VERSION.SDK_INT >= 30) ({
+                        usageRecorder.action("A17")
+                        favouriteBatch()
+                    }) else null,
                     // #568 Samsung More: Copy, then Move (needs Android 11 write consent).
                     moreActions = if (Build.VERSION.SDK_INT >= 30) listOf(
                         SelectionMoreAction("Copy to album", "atlas-selection-copy-to-album") {
+                            usageRecorder.action("A17")
                             albumPicker = AlbumTransferMode.COPY
                         },
                         SelectionMoreAction("Move to album", "atlas-selection-move-to-album") {
+                            usageRecorder.action("A17")
                             albumPicker = AlbumTransferMode.MOVE
                         }
                     ) else emptyList()
