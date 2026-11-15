@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.content.res.Configuration
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
@@ -34,6 +35,17 @@ class AlbumsGridEvidenceTest {
         .around(fixture).around(compose)
 
     @Test fun threeColumnsAndPinnedAlbumsScreenshot() {
+        // The CI runner invokes this same fixture against the baseline and
+        // candidate APKs under both system themes. Ordinary suite execution
+        // still validates three-column geometry and the menu/sort journeys.
+        val args = InstrumentationRegistry.getInstrumentation().arguments
+        val revision = args.getString("atlasAlbumsRevision")
+        val captureTheme = args.getString("atlasAlbumsTheme")
+        assertTrue("Unrecognized Albums capture revision",
+            revision == null || revision in setOf("before", "after"))
+        assertTrue("Capture revision and theme must be paired",
+            (revision == null && captureTheme == null) ||
+                (revision != null && captureTheme in setOf("light", "dark")))
         waitForAlbumsStage("Albums navigation") {
             compose.onAllNodes(hasTestTag("atlas-nav-albums")).fetchSemanticsNodes().isNotEmpty()
         }
@@ -50,14 +62,27 @@ class AlbumsGridEvidenceTest {
         assertTrue(pinned.any { it.contains("Camera") })
         assertTrue(pinned.any { it.contains("Screenshots") })
         assertTrue(pinned.any { it.contains("Black and White") })
-        // The synthetic S24 display is 360dp wide. Two columns still expose
-        // six cards when scrolled, so a count-only assertion missed this
-        // regression. Verify the actual first-row geometry before capturing.
-        val firstRow = nodes.take(3).map { it.boundsInRoot }
-        assertTrue("Three pinned covers must share top row at S24 size",
-            firstRow.maxOf { it.top } - firstRow.minOf { it.top } < 4f)
-        assertTrue("Pinned covers must occupy three distinct left-to-right columns",
-            firstRow[0].left < firstRow[1].left && firstRow[1].left < firstRow[2].left)
+        // The previous mainline grid is proof of the BEFORE state and may
+        // genuinely be two columns. Only the candidate must pass the geometry
+        // check; never weaken the ordinary acceptance test.
+        if (revision != "before") {
+            val firstRow = nodes.take(3).map { it.boundsInRoot }
+            assertTrue("Three pinned covers must share top row at S24 size",
+                firstRow.maxOf { it.top } - firstRow.minOf { it.top } < 4f)
+            assertTrue("Pinned covers must occupy three distinct left-to-right columns",
+                firstRow[0].left < firstRow[1].left && firstRow[1].left < firstRow[2].left)
+        }
+        if (revision != null) {
+            compose.activityRule.scenario.onActivity { activity ->
+                val isDark = (activity.resources.configuration.uiMode and
+                    Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                assertTrue("Albums screenshot must reflect requested $captureTheme system mode",
+                    isDark == (captureTheme == "dark"))
+            }
+            compose.waitForIdle()
+            saveUiEvidence("albums-$revision-$captureTheme.png")
+            return
+        }
         saveUiEvidence("albums-after-populated.png")
         // Stories and Photo DNA live only in the Albums overflow (spec §3).
         compose.onNodeWithTag("atlas-header-more").performClick()
