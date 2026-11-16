@@ -17,8 +17,8 @@ class TimelineFractionSweep250kTest {
     private val clock = Clock.fixed(Instant.parse("2026-11-15T12:00:00Z"), zone)
     private val count = 250_000
     private val base = Instant.parse("2026-11-15T12:00:00Z").toEpochMilli()
-    private val samples = (0..256).map { it / 256f } +
-        listOf(0.000001f, 0.499999f, 0.500001f, 0.999999f)
+    private val samples = ((0..256).map { it / 256f } +
+        listOf(0.000001f, 0.499999f, 0.500001f, 0.999999f)).sorted()
 
     @Test fun quarterMillionFractionsAgreeAcrossChronologicalDensitiesAndFlatSorts() {
         // A seeded, descending catalog spanning ~2,500 days: DAY has many headers,
