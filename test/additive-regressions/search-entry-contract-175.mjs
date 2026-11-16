@@ -71,7 +71,7 @@ const inventory = [
     provenance: /currentStoryCardsOrEmpty\(deck, currentGrantEpoch, currentCatalogRevision\)/,
     filter: /scopedNamedMatches\([\s\S]*?currentStoryCardsOrEmpty/,
     // Deliberately fails until a safe host handoff is wired. Do not widen the deck in-place.
-    escape: /onScopeChange\s*=\s*\{[\s\S]*?AtlasSearchScope\.LIBRARY[\s\S]*?onSearchWholeLibrary/,
+    escape: /AtlasSearch\(query = searchText,[^)]*onScopeChange\s*=/,
     hostPath: 'MainActivity.kt', host: /AtlasStoriesScreen\([\s\S]*?onSearchWholeLibrary\s*=/,
   },
   {
@@ -80,7 +80,7 @@ const inventory = [
     provenance: /scopedNamedMatches\(pending, searchText\) \{ it\.name \+ " " \+ it\.album \}/,
     filter: /scopedNamedMatches\(pending, searchText\)/,
     // Deliberately fails until a safe host handoff is wired.
-    escape: /onScopeChange\s*=\s*\{[\s\S]*?AtlasSearchScope\.LIBRARY[\s\S]*?onSearchWholeLibrary/,
+    escape: /actions = \{ AtlasSearch\(query = searchText,[^)]*onScopeChange\s*=/,
   },
   {
     id: 'global-search', path: 'MainActivity.kt', scope: 'LIBRARY',
