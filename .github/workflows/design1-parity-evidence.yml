@@ -1,0 +1,184 @@
+name: DESIGN-1 paired synthetic parity evidence
+
+# This protected workflow is installed only after Lukas merges it.
+# Manual invocation is explicit: it cannot silently consume emulator minutes.
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_sha:
+        description: 'Reviewed baseline commit (40 lowercase hex)'
+        required: true
+        type: string
+        default: 'bc1b4a46509e76252a102999ce0d7b4a9fd90699'
+      candidate_sha:
+        description: 'Exact current DESIGN-1 candidate commit (40 lowercase hex)'
+        required: true
+        type: string
+        default: '946dd7ef1e09d67d999508418c88812f4fba83bd'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-design-1-parity
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Capture ${{ matrix.revision }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [baseline, candidate]
+    env:
+      BASELINE_SHA: ${{ inputs.baseline_sha }}
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+    steps:
+      - name: Validate pinned revisions
+        env:
+          TARGET_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ && "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Both revisions must be full lowercase commit SHAs"; exit 1;
+          }
+          [[ "$BASELINE_SHA" != "$CANDIDATE_SHA" ]] || {
+            echo "::error::Baseline and candidate must differ"; exit 1;
+          }
+          [[ "$BASELINE_SHA" == bc1b4a46509e76252a102999ce0d7b4a9fd90699 ]] || {
+            echo "::error::Unexpected DESIGN-1 baseline"; exit 1;
+          }
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Confirm exact checked-out revision
+        env:
+          TARGET_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$TARGET_SHA" ]] || {
+            echo "::error::Checkout is not the requested commit"; exit 1;
+          }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Enable emulator KVM
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Execute unchanged instrumented synthetic capture
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/ci_design_parity_capture.sh
+      - name: Convert existing matrix manifest to comparator format
+        if: success()
+        env:
+          TARGET_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$TARGET_SHA" <<'PY'
+          import csv, hashlib, pathlib, sys
+          sha = sys.argv[1]
+          source = pathlib.Path('ui-evidence/parity-matrix/manifest.tsv')
+          destination = pathlib.Path('parity-result')
+          destination.mkdir(exist_ok=True)
+          with source.open(newline='', encoding='utf-8') as handle:
+              reader = csv.DictReader(handle, delimiter='\t')
+              rows = list(reader)
+          if len(rows) != 40 or len({(r['surface'], r['theme']) for r in rows}) != 40:
+              raise SystemExit('Expected 40 unique parity matrix rows')
+          with (destination / 'manifest.tsv').open('w', newline='', encoding='utf-8') as handle:
+              writer = csv.DictWriter(handle, fieldnames=(
+                  'surface', 'theme', 'status', 'commit_sha', 'fixture', 'png',
+                  'sha256', 'reason'), delimiter='\t', lineterminator='\n')
+              writer.writeheader()
+              for row in rows:
+                  if row['commit_sha'] != sha:
+                      raise SystemExit('Matrix generated from unexpected commit')
+                  if row['status'] == 'CAPTURED':
+                      path = pathlib.Path('ui-evidence') / row['expected_png']
+                      if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != row['sha256']:
+                          raise SystemExit('Missing or modified source screenshot: ' + str(path))
+                      destination.joinpath(path.name).write_bytes(path.read_bytes())
+                  elif row['status'] != 'NOT_CAPTURED' or not row['reason']:
+                      raise SystemExit('Malformed matrix capture status')
+                  writer.writerow({
+                      'surface': row['surface'], 'theme': row['theme'],
+                      'status': row['status'], 'commit_sha': sha,
+                      'fixture': 'synthetic',
+                      'png': pathlib.Path(row['expected_png']).name if row['expected_png'] else '',
+                      'sha256': row['sha256'], 'reason': row['reason']})
+          captured = sum(r['status'] == 'CAPTURED' for r in rows)
+          if captured != 30 or sum(r['status'] == 'NOT_CAPTURED' for r in rows) != 10:
+              raise SystemExit('Expected 30 real screenshots and 10 documented gaps')
+          print(f'{sha}: {captured}/40 captured, 10 NOT_CAPTURED')
+          PY
+      - name: Upload exact-revision synthetic source screenshots and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design1-parity-${{ matrix.revision }}
+          path: |
+            parity-result/**
+            ui-evidence/*.png
+            ui-evidence/parity-matrix/coverage.txt
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          if-no-files-found: error
+          retention-days: 14
+
+  compare:
+    name: Compare exact-sha captured pixels
+    needs: capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Confirm comparator source is the candidate commit
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$CANDIDATE_SHA" ]] || exit 1
+          test -f scripts/compare_parity_renders.py
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: design1-parity-*
+          path: downloaded
+      - name: Compare real baseline and candidate pixels
+        env:
+          BASELINE_SHA: ${{ inputs.baseline_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/compare_parity_renders.py \
+            --baseline downloaded/design1-parity-baseline/parity-result \
+            --candidate downloaded/design1-parity-candidate/parity-result \
+            --baseline-sha "$BASELINE_SHA" --candidate-sha "$CANDIDATE_SHA" \
+            --output parity-comparison/report.tsv
+      - name: Upload inspectable pixel report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design1-parity-comparison
+          path: parity-comparison/report.tsv
+          if-no-files-found: warn
+          retention-days: 14
