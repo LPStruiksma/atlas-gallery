@@ -26,8 +26,10 @@ adb shell settings put system user_rotation 0
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
-adb shell setprop persist.sys.locale en-US || true
-adb shell am broadcast -a android.intent.action.LOCALE_CHANGED || true
+adb shell cmd locale set-app-locales nl.atlas.gallery --locales en-US >/dev/null 2>&1 || true
+[[ "$(adb shell getprop persist.sys.locale | tr -d '\r')" == en-US || "$(adb shell getprop ro.product.locale | tr -d '\r')" == en-US ]] || {
+  echo '::error::Emulator locale not verified as en-US'; exit 1;
+}
 [[ "$(adb shell wm size | tr -d '\r')" == *'1080x2340'* ]] || exit 1
 [[ "$(adb shell wm density | tr -d '\r')" == *'420'* ]] || exit 1
 [[ "$(adb shell settings get system font_scale | tr -d '\r')" == 1.0 ]] || exit 1
