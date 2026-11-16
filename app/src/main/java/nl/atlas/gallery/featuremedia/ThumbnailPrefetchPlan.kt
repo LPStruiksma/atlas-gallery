@@ -54,17 +54,33 @@ internal object ThumbnailPrefetchPlan {
         if (slotCount <= 0 || columns <= 0 || firstVisible < 0 || lastVisible < firstVisible) {
             return IntArray(0)
         }
+        // A completely out-of-range visible span has no valid near-side window.
+        if (firstVisible >= slotCount) return IntArray(0)
         val last = min(lastVisible, slotCount - 1)
-        val ahead = rowsAhead(rowsPerSecond) * columns
-        val behind = ROWS_BEHIND * columns
+        val availableAfter = slotCount - 1 - last
+        val availableBefore = firstVisible
+
+        // Clip before converting to Int. MAX_ROWS_AHEAD * Int.MAX_VALUE fits Long,
+        // and the sum of physically available sides cannot exceed slotCount - 1.
+        fun boundedRows(rows: Int, available: Int): Int =
+            (rows.toLong() * columns.toLong()).coerceAtMost(available.toLong()).toInt()
+        val aheadAfter = boundedRows(rowsAhead(rowsPerSecond), availableAfter)
+        val aheadBefore = boundedRows(rowsAhead(rowsPerSecond), availableBefore)
+        val behindAfter = boundedRows(ROWS_BEHIND, availableAfter)
+        val behindBefore = boundedRows(ROWS_BEHIND, availableBefore)
+        val idleAfter = boundedRows(IDLE_ROWS_AHEAD, availableAfter)
+        val idleBefore = boundedRows(IDLE_ROWS_AHEAD, availableBefore)
         // Idle: warm both sides equally (a user may scroll either way next).
-        val (forward, backward) = when {
-            direction > 0 -> ahead to behind
-            direction < 0 -> behind to ahead
-            else -> IDLE_ROWS_AHEAD * columns to IDLE_ROWS_AHEAD * columns
+        val after = when {
+            direction > 0 -> aheadAfter
+            direction < 0 -> behindAfter
+            else -> idleAfter
         }
-        val after = min(forward, slotCount - 1 - last).coerceAtLeast(0)
-        val before = min(backward, firstVisible).coerceAtLeast(0)
+        val before = when {
+            direction < 0 -> aheadBefore
+            direction > 0 -> behindBefore
+            else -> idleBefore
+        }
         val out = IntArray(after + before)
         var n = 0
         if (direction == 0) {
