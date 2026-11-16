@@ -106,7 +106,7 @@ data class ViewportTransform(
 
 /**
  * Immutable stroke, independent of viewport dimensions. Radius is a normalized oriented-image
- * fraction of the shorter edge, clamped to [0,1]. Positions are clipped at construction.
+ * fraction in normalized oriented coordinates, constrained to [0,1]. Positions are normalized before creation.
  * Serialization uses hexadecimal IEEE-754 strings, making exact double round trips reproducible.
  */
 data class MaskStroke(val mode: BrushMode, val radius: Double, val points: List<NormalizedPoint>) {
