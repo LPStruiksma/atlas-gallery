@@ -32,8 +32,8 @@ class MaskStrokeModelTest {
                 near(y, roundTrip.y)
             }
         }
-        assertEquals(PixelPoint(0.0, 400.0), ImageOrientation(400, 200, 6)
-            .originalToOriented(PixelPoint(0.0, 0.0)).let { PixelPoint(it.x, 400.0 - it.y) })
+        assertEquals(PixelPoint(200.0, 0.0), ImageOrientation(400, 200, 6)
+            .originalToOriented(PixelPoint(0.0, 0.0)))
     }
 
     @Test fun fourQuarterTurnsReturnToStart() {
