@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.MaterialTheme
+import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -26,6 +27,7 @@ import nl.atlas.gallery.featurestories.StoryPlaybackState
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.rules.RuleChain
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +41,8 @@ import java.time.ZoneId
  */
 @RunWith(AndroidJUnit4::class)
 class StoriesHostRouteTest {
-    @get:Rule val rule = createComposeRule()
+    private val rule = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(rule)
 
     private val zone = ZoneId.systemDefault()
     private val today = LocalDate.now(zone)
@@ -54,6 +57,58 @@ class StoriesHostRouteTest {
                 .atZone(zone).toInstant().toEpochMilli(),
             isVideo = false
         )
+    }
+
+    /** DESIGN-6: synthetic, S24-sized, light/dark empty and saved-planning states. */
+    @Test fun quietStoriesEmptyAndPlanningEvidence() {
+        val first = requireNotNull(storyPlanTokensOrNull(full, 3L, true,
+            catalogRevision = 41L, epochDay = today.toEpochDay()))
+        val source = planStoryDeck(records, first, System.currentTimeMillis(), zone)
+        val restoration = StateRestorationTester(rule)
+        var empty by mutableStateOf(true)
+        var waiting by mutableStateOf(false)
+        var dark by mutableStateOf(false)
+        restoration.setContent {
+            val deck = if (empty || waiting) null else source
+            val playback = rememberStoryPlaybackState(deck)
+            AtlasGalleryTheme(dark = dark) {
+                AtlasStoriesScreen(
+                    deck = deck,
+                    currentGrantEpoch = first.grantEpoch,
+                    currentCatalogRevision = first.catalogRevision,
+                    onBack = {},
+                    onOpenMedia = {},
+                    playback = playback
+                )
+            }
+        }
+        rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
+        rule.waitForIdle()
+        saveUiEvidence("stories-136-empty-light.png")
+        dark = true
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        saveUiEvidence("stories-136-empty-dark.png")
+
+        // This is an actual saved playback position, not a forced planning tag.
+        dark = false
+        empty = false
+        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
+        rule.onNodeWithTag("atlas-story-pause").performClick()
+        rule.onNodeWithTag("atlas-story-next").performClick()
+        rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
+        waiting = true
+        rule.waitForIdle()
+        restoration.emulateSavedInstanceStateRestore()
+        rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
+        rule.waitForIdle()
+        saveUiEvidence("stories-136-planning-light.png")
+        dark = true
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        saveUiEvidence("stories-136-planning-dark.png")
     }
 
     @Test fun entryOpensStoryAndAReplacedOrRevokedGrantHidesTheStaleDeck() {
