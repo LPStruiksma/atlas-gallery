@@ -376,7 +376,7 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   # (#43: background_restore reason=no_inventory).
   cache_ready=0
   for _ in $(seq 1 60); do
-    if adb shell run-as nl.atlas.gallery test -s no_backup/gallery-inventory.bin; then
+    if adb shell run-as nl.atlas.gallery sh -c 'test -s no_backup/gallery-inventory.bin'; then
       cache_ready=1
       break
     fi
