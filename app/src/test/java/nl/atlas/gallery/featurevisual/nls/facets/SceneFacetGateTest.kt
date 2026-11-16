@@ -98,7 +98,7 @@ class SceneFacetGateTest {
             override fun next() = scene("synthetic-${index++}")
         }
         val result = gate.filter(iterator, SceneFacetGate.Selection(person = "p"), scope,
-            { key -> if (key.endsWith("000")) facts(key) else facts(key, persons = emptySet()) },
+            { key -> if (key.removePrefix("synthetic-").toInt() % 1000 == 0) facts(key) else facts(key, persons = emptySet()) },
             { scope }, maxResults = 250) as SceneFacetGate.Result.Filtered
         assertEquals(250_000, result.scanned)
         assertEquals(250, result.hits.size)
