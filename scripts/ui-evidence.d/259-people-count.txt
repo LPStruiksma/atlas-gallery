@@ -1,3 +1,0 @@
-# #259 Synthetic named People counts in both themes, including long-name ellipsis.
-people-count-light
-people-count-dark

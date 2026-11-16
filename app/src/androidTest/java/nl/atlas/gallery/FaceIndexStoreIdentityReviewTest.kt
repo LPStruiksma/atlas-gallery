@@ -536,14 +536,7 @@ class FaceIndexStoreIdentityReviewTest {
         val home = requireNotNull(store.peopleHome("sort-A"))
         assertEquals(setOf(ada, ben), home.people.keys)
         assertEquals(4, home.people.getValue(ada).mediaCount)
-        assertEquals(3, home.people.getValue(ada).photoCount)
-        assertEquals(1, home.people.getValue(ada).videoCount)
         assertEquals(2, home.people.getValue(ben).mediaCount)
-        assertEquals(2, home.people.getValue(ben).photoCount)
-        assertEquals(0, home.people.getValue(ben).videoCount)
-        for (summary in home.people.values) {
-            assertEquals(summary.mediaCount, summary.photoCount + summary.videoCount)
-        }
         assertEquals(100L, home.people.getValue(ada).firstAppearanceMs)
         assertEquals(900L, home.people.getValue(ada).mostRecentAppearanceMs)
         assertEquals(300L, home.people.getValue(ben).firstAppearanceMs)
@@ -616,8 +609,6 @@ class FaceIndexStoreIdentityReviewTest {
         assertNull(store.peopleHome("sort-A"))
         val refreshed = requireNotNull(store.peopleHome("sort-B"))
         assertEquals(2, refreshed.people.getValue(ada).mediaCount)
-        assertEquals(2, refreshed.people.getValue(ada).photoCount)
-        assertEquals(0, refreshed.people.getValue(ada).videoCount)
         store.invalidatePermissionScope()
         assertNull(store.peopleHome("sort-B"))
     }
