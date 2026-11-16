@@ -26,10 +26,6 @@ adb shell settings put system user_rotation 0
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
-adb shell cmd locale set-app-locales nl.atlas.gallery --locales en-US >/dev/null 2>&1 || true
-[[ "$(adb shell getprop persist.sys.locale | tr -d '\r')" == en-US || "$(adb shell getprop ro.product.locale | tr -d '\r')" == en-US ]] || {
-  echo '::error::Emulator locale not verified as en-US'; exit 1;
-}
 [[ "$(adb shell wm size | tr -d '\r')" == *'1080x2340'* ]] || exit 1
 [[ "$(adb shell wm density | tr -d '\r')" == *'420'* ]] || exit 1
 [[ "$(adb shell settings get system font_scale | tr -d '\r')" == 1.0 ]] || exit 1
@@ -41,6 +37,13 @@ gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 # AndroidJUnitRunner's -w result is not enough: explicitly require OK.
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+# Set the per-app locale only after package installation. Verify the actual
+# LocaleManager override instead of device defaults (which may be unrelated).
+adb shell cmd locale set-app-locales nl.atlas.gallery --locales en-US
+app_locales="$(adb shell cmd locale get-app-locales nl.atlas.gallery | tr -d '\r')"
+[[ "$app_locales" =~ (^|[^[:alpha:]])en-US([^[:alpha:]]|$) ]] || {
+  echo "::error::App locale is not en-US: $app_locales"; exit 1;
+}
 mkdir -p ui-evidence
 output="${RUNNER_TEMP:-/tmp}/atlas-design1-instrumentation.txt"
 adb shell am instrument -w -r nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner > "$output" 2>&1 || {
