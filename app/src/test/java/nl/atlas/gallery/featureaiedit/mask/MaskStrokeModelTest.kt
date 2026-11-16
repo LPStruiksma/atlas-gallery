@@ -2,7 +2,6 @@ package nl.atlas.gallery.featureaiedit.mask
 
 import org.junit.Assert.*
 import org.junit.Test
-import kotlin.math.abs
 
 class MaskStrokeModelTest {
     private fun near(expected: Double, actual: Double, tolerance: Double = 1e-9) =
@@ -71,7 +70,7 @@ class MaskStrokeModelTest {
     }
 
     @Test fun clippedBrushesPreserveBoundedNormalizedGeometry() {
-        val builder = MaskHistory().add(MaskStroke(
+        val builder = MaskHistory().add(MaskStroke.clipped(
             BrushMode.ADD,
             0.25,
             listOf(NormalizedPoint(-4.0, 0.2), NormalizedPoint(0.5, 1.4), NormalizedPoint(4.0, 0.8))
