@@ -60,7 +60,7 @@ jobs:
       # historical application revision being compared.
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           path: capture-tools
           persist-credentials: false
       - name: Confirm exact checked-out revision
