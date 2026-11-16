@@ -61,21 +61,26 @@ class StoriesHostRouteTest {
 
     /** DESIGN-6: synthetic, S24-sized, light/dark empty and saved-planning states. */
     @Test fun quietStoriesEmptyAndPlanningEvidence() {
-        val first = requireNotNull(storyPlanTokensOrNull(full, 3L, true,
-            catalogRevision = 41L, epochDay = today.toEpochDay()))
-        val source = planStoryDeck(records, first, System.currentTimeMillis(), zone)
         val restoration = StateRestorationTester(rule)
         var empty by mutableStateOf(true)
-        var waiting by mutableStateOf(false)
+        var holdNewDecks by mutableStateOf(false)
+        val releasedRevisions = mutableSetOf<Long>()
         var dark by mutableStateOf(false)
         restoration.setContent {
-            val deck = if (empty || waiting) null else source
+            // A recreated host mints a new catalogue revision; that deck
+            // remains unavailable while the synthetic planner is held.
+            val revision = rememberStoryCatalogRevision(records)
+            if (!holdNewDecks) releasedRevisions += revision
+            val tokens = storyPlanTokensOrNull(full, 3L, true,
+                catalogRevision = revision, epochDay = today.toEpochDay())
+            val deck = if (empty || revision !in releasedRevisions) null else
+                planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
             AtlasGalleryTheme(dark = dark) {
                 AtlasStoriesScreen(
                     deck = deck,
-                    currentGrantEpoch = first.grantEpoch,
-                    currentCatalogRevision = first.catalogRevision,
+                    currentGrantEpoch = tokens?.grantEpoch,
+                    currentCatalogRevision = tokens?.catalogRevision,
                     onBack = {},
                     onOpenMedia = {},
                     playback = playback
@@ -98,11 +103,12 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-story-pause").performClick()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
-        // Keep the live deck available while the saver snapshots playback.
-        // After restoration, withholding the replanned deck should leave the
-        // saved position pending, rather than showing an ordinary empty state.
+        // Save the live deck, then withhold the newly minted revision's
+        // deck during restoration. Setting a waiting flag after restoration
+        // was too late: the old deck had already settled the saved position.
+        holdNewDecks = true
+        rule.waitForIdle()
         restoration.emulateSavedInstanceStateRestore()
-        waiting = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
         rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
