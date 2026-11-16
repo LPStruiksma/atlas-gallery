@@ -71,6 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
  * Where an open slideshow is: which story, which moment, paused or playing.
@@ -243,14 +245,20 @@ fun AtlasStoriesScreen(
     /** Optional observer invoked after Media3 release (useful for lifecycle diagnostics). */
     onVideoPlayerReleased: () -> Unit = {}
 ) {
-    val cards = currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+    var searchText by remember(currentGrantEpoch, currentCatalogRevision) { mutableStateOf("") }
+    val cards = scopedNamedMatches(
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision), searchText
+    ) { it.title + " " + it.caption }
     // A position restored after a recreate (#451) settles once a live deck arrives.
     LaunchedEffect(playback, playback.restored, deck, currentGrantEpoch, currentCatalogRevision) {
         playback.settleRestored(deck, currentGrantEpoch, currentCatalogRevision)
     }
     // An expired permission or catalogue publication closes the player, not just its image.
     val position = playback.resolvedOrNull(deck, currentGrantEpoch, currentCatalogRevision)
-    val opened = position?.let { p -> cards.firstOrNull { it.key == p.storyKey } }
+    val opened = position?.let { p ->
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+            .firstOrNull { it.key == p.storyKey }
+    }
     if (position != null && opened != null) {
         StoryPlayback(
             story = opened,
@@ -283,7 +291,8 @@ fun AtlasStoriesScreen(
             }
             Text("Stories", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 8.dp))
+                modifier = Modifier.weight(1f).padding(start = 8.dp))
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it })
         }
         if (cards.isEmpty() &&
             playback.awaitingDeck(deck, currentGrantEpoch, currentCatalogRevision)) {

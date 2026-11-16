@@ -56,6 +56,9 @@ import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNameMatches
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
@@ -101,6 +104,7 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    onSearchWholeLibrary: (() -> Unit)? = null,
     /** Persisted by the owning Activity; preferences contain only the enum. */
     sortChoice: PeopleSortChoice = PeopleSortChoice(),
     onSortChoice: (PeopleSortChoice) -> Unit = {},
@@ -124,6 +128,7 @@ fun PeopleHomeScreen(
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
+    var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
     var sortSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The native review snapshot is grant-scoped and never mixed with imported
     // V4 numeric IDs. Its confirmed names appear in the same People grid.
@@ -179,6 +184,16 @@ fun PeopleHomeScreen(
         }
         orderPeopleEntries(keyed, sortChoice).map { all[it.id] }
     }
+    val filteredTiles = tiles.filter { tile ->
+        if (searchText.isBlank()) true
+        else when (tile) {
+            is PeopleGridTile.Imported -> tile.profile.name.isNotBlank() &&
+                scopedNameMatches(tile.profile.name, searchText)
+            is PeopleGridTile.Native -> tile.tile.name.isNotBlank() &&
+                scopedNameMatches(tile.tile.name, searchText)
+            is PeopleGridTile.Unnamed -> false
+        }
+    }
     val scan = peopleScanControls(discovery, actions, onStartDiscovery,
         onPauseDiscovery, onResumeDiscovery, onOpenReview)
     val overflow = buildList {
@@ -205,12 +220,20 @@ fun PeopleHomeScreen(
                     modifier = Modifier.size(48.dp).testTag("atlas-people-sort-open")) {
                     Icon(Icons.Filled.Sort, contentDescription = "Sort people")
                 }
+                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
             }
         )
         if (sortSheetOpen) PeopleSortSheet(sortChoice, onSortChoice) { sortSheetOpen = false }
         PeopleScanProgress(discovery)
-        if (tiles.isEmpty()) {
-            if (restoring) {
+        if (filteredTiles.isEmpty()) {
+            if (tiles.isNotEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No matching people")
+                }
+            } else if (restoring) {
                 Box(Modifier.fillMaxSize().testTag("atlas-people-restoring"))
             } else {
                 PeopleEmptyState(scan.start)
@@ -222,7 +245,7 @@ fun PeopleHomeScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            items(tiles.chunked(3), key = { row ->
+            items(filteredTiles.chunked(3), key = { row ->
                 row.joinToString(":") { tile -> when (tile) {
                     is PeopleGridTile.Imported -> "v4-${tile.profile.personId}"
                     is PeopleGridTile.Native -> "native-${tile.tile.person.value}"
