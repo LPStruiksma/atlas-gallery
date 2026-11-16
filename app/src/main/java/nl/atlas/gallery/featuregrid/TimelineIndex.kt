@@ -23,7 +23,56 @@ sealed interface TimelineSlot {
         val firstMediaIndex: Int,
         val mediaCount: Int
     ) : TimelineSlot
-    data class Media(override val stableKey: String, val mediaIndex: Int) : TimelineSlot
+    /**
+     * A 250k-item catalog must not eagerly allocate 250k "media:" strings. Keep
+     * the source key until a slot is actually displayed / compared by key.
+     *
+     * The public constructor and data-class-style API are retained for callers
+     * that construct, destructure, copy, or compare Media slots themselves.
+     * Only the internal factory stores an unprefixed key. The volatile flag
+     * publishes the cached value safely to readers on other threads.
+     */
+    class Media private constructor(
+        private var storedKey: String,
+        val mediaIndex: Int,
+        @Volatile private var needsPrefix: Boolean
+    ) : TimelineSlot {
+        constructor(stableKey: String, mediaIndex: Int) : this(stableKey, mediaIndex, false)
+
+        override val stableKey: String
+            get() {
+                if (!needsPrefix) return storedKey
+                return synchronized(this) {
+                    if (needsPrefix) {
+                        storedKey = "media:" + storedKey
+                        needsPrefix = false
+                    }
+                    storedKey
+                }
+            }
+
+        operator fun component1(): String = stableKey
+        operator fun component2(): Int = mediaIndex
+
+        fun copy(
+            stableKey: String = this.stableKey,
+            mediaIndex: Int = this.mediaIndex
+        ): Media = Media(stableKey, mediaIndex)
+
+        override fun equals(other: Any?): Boolean =
+            this === other || (other is Media &&
+                mediaIndex == other.mediaIndex && stableKey == other.stableKey)
+
+        override fun hashCode(): Int = 31 * stableKey.hashCode() + mediaIndex
+
+        override fun toString(): String =
+            "Media(stableKey=$stableKey, mediaIndex=$mediaIndex)"
+
+        companion object {
+            internal fun fromMediaKey(key: String, mediaIndex: Int): Media =
+                Media(key, mediaIndex, true)
+        }
+    }
 }
 
 data class TimelineHeaderPosition(val entryIndex: Int, val header: TimelineSlot.Header)
@@ -100,7 +149,7 @@ fun buildGridTimelineIndex(
         items.forEachIndexed { index, media ->
             if ((index and 1023) == 0) cancellationCheckpoint?.invoke()
             positions[index] = index
-            slots.add(TimelineSlot.Media("media:" + media.key, index))
+            slots.add(TimelineSlot.Media.fromMediaKey(media.key, index))
         }
         cancellationCheckpoint?.invoke()
         return GridTimelineIndex(slots, positions, headers, grouped = false)
@@ -213,7 +262,7 @@ fun buildGridTimelineIndex(
         slots.add(header)
         for (i in cursor until end) {
             positions[i] = slots.size
-            slots.add(TimelineSlot.Media("media:" + items[i].key, i))
+            slots.add(TimelineSlot.Media.fromMediaKey(items[i].key, i))
         }
         cursor = end
         nextRunOrdinal = afterRunOrdinal
