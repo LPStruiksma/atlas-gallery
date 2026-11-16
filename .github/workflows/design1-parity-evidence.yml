@@ -56,6 +56,13 @@ jobs:
         with:
           ref: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
           persist-credentials: false
+      # Capture orchestration is from the reviewed workflow branch, never the
+      # historical application revision being compared.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: capture-tools
+          persist-credentials: false
       - name: Confirm exact checked-out revision
         env:
           TARGET_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.candidate_sha }}
@@ -83,7 +90,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash scripts/ci_design_parity_capture.sh
+          script: bash capture-tools/scripts/ci_design_parity_capture.sh
       - name: Convert existing matrix manifest to comparator format
         if: success()
         env:
