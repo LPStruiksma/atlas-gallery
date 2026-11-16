@@ -273,7 +273,12 @@ fun AtlasStoriesScreen(
         onBack()
     }
     BackHandler(onBack = close)
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+      Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
@@ -315,6 +320,7 @@ fun AtlasStoriesScreen(
                 }
             }
         }
+      }
     }
 }
 
