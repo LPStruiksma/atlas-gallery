@@ -158,6 +158,7 @@ for (const slot of ['textTool', 'faceTool', 'imageTool', 'filtersTool',
   assert.match(shared, new RegExp('\\b' + slot + '\\?\\.invoke\\(\\)'),
     'FIND-4 missing expanded tool slot ' + slot);
 }
+const missingHandoffs = [];
 for (const entry of inventory) {
   assert.ok(entry.path && entry.scope, 'FIND-4 incomplete source provenance for ' + entry.id);
   const src = read(entry.path);
@@ -168,6 +169,8 @@ for (const entry of inventory) {
     console.log('FIND-4 PENDING ' + entry.id + ': ' + entry.reason);
     continue;
   }
+  // Check independent source provenance before checking intentionally missing wiring.
+  // Reporting the independent inventory first avoids masking unrelated source drift.
   for (const key of ['surface', 'provenance', 'filter']) {
     assert.ok(entry[key] instanceof RegExp, 'FIND-4 missing ' + key + ' for ' + entry.id);
     assert.match(read(key === 'filter' && entry.filterPath ? entry.filterPath : entry.path),
@@ -183,10 +186,15 @@ for (const entry of inventory) {
   if (entry.scope === 'THIS_SCREEN') {
     assert.ok(entry.escape instanceof RegExp,
       'FIND-4 missing library escape check for ' + entry.id);
-    assert.match(src, entry.escape,
-      'FIND-4 ' + entry.id + ' has no explicit library handoff in ' + pathOf(entry.path));
-    if (entry.host) assert.match(read(entry.hostPath), entry.host,
-      'FIND-4 ' + entry.id + ' has no host library handoff in ' + pathOf(entry.hostPath));
+    if (!entry.escape.test(src)) {
+      missingHandoffs.push('FIND-4 ' + entry.id +
+        ' has no explicit library handoff in ' + pathOf(entry.path));
+    }
+    if (entry.host && !entry.host.test(read(entry.hostPath))) {
+      missingHandoffs.push('FIND-4 ' + entry.id +
+        ' has no host library handoff in ' + pathOf(entry.hostPath));
+    }
   }
 }
+assert.deepEqual(missingHandoffs, [], missingHandoffs.join('\\n'));
 console.log('FIND-4 shared search entry inventory passed');
