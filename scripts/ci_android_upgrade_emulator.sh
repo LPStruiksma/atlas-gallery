@@ -226,6 +226,11 @@ if [[ "$SHARD_COUNT" -gt 1 ]]; then
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi
 gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
+# Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
+# Keep the bounded query even on a failed test so review can read the p50.
+timeout 30 adb logcat -d -s ATLAS_PERF10:I || echo "ATLAS_PERF10 logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
 echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # Bounded (run 43076916972): if the device died with the tests, plain `adb logcat` blocks on
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
