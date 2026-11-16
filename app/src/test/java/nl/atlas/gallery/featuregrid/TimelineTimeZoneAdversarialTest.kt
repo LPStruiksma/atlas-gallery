@@ -91,12 +91,12 @@ class TimelineTimeZoneAdversarialTest {
             Clock.fixed(Instant.parse("2027-01-04T00:00:00Z"), ZoneOffset.UTC))
         val dutch = index(source, TimelineSort.NEWEST, GridDensity.MEDIUM,
             ZoneId.of("Europe/Amsterdam"), Locale.forLanguageTag("nl-NL"),
-            Clock.fixed(Instant.parse("2026-01-04T00:00:00Z"), ZoneOffset.UTC))
+            Clock.fixed(Instant.parse("2027-01-04T00:00:00Z"), ZoneOffset.UTC))
         assertEquals(listOf("header:DAY:2027-01-01", "header:DAY:2026-12-31"),
             amsterdam.headers.map { it.header.stableKey })
         assertEquals(listOf("1 Jan", "31 Dec 2026"), amsterdam.headers.map { it.header.label })
         assertEquals(listOf("header:DAY:2026-12-31"), utc.headers.map { it.header.stableKey })
-        assertEquals(listOf("1 jan. 2027", "31 dec. 2026"), dutch.headers.map { it.header.label })
+        assertEquals(listOf("1 jan.", "31 dec. 2026"), dutch.headers.map { it.header.label })
         assertEquals(listOf(1, 3), source.indices.map(amsterdam::entryForMedia))
     }
 
