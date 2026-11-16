@@ -8,20 +8,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import nl.atlas.gallery.saveUiEvidence
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewFace
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewGroup
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewScreen
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewUiModel
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 /** Every face token is generated for this test and has no media backing. */
 class SplitPreviewScreenTest {
@@ -139,17 +136,7 @@ class SplitPreviewScreenTest {
                 }
             }
             compose.waitForIdle()
-            val image = compose.onNodeWithTag("split-preview-screen").captureToImage()
-            val context = androidx.test.platform.app.InstrumentationRegistry
-                .getInstrumentation().targetContext
-            val dir = File(context.getExternalFilesDir(null), "split-preview-evidence")
-            assertTrue(dir.exists() || dir.mkdirs())
-            File(dir, if (dark) "synthetic-dark.png" else "synthetic-light.png")
-                .outputStream().use { output ->
-                    image.asAndroidBitmap().compress(
-                        android.graphics.Bitmap.CompressFormat.PNG, 100, output
-                    )
-                }
+            saveUiEvidence(if (dark) "split-preview-synthetic-dark.png" else "split-preview-synthetic-light.png")
         }
     }
 }
