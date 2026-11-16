@@ -96,7 +96,7 @@ class TimelineTimeZoneAdversarialTest {
             amsterdam.headers.map { it.header.stableKey })
         assertEquals(listOf("1 Jan", "31 Dec 2026"), amsterdam.headers.map { it.header.label })
         assertEquals(listOf("header:DAY:2026-12-31"), utc.headers.map { it.header.stableKey })
-        assertEquals(listOf("1 jan 2027", "31 dec 2026"), dutch.headers.map { it.header.label })
+        assertEquals(listOf("1 jan. 2027", "31 dec. 2026"), dutch.headers.map { it.header.label })
         assertEquals(listOf(1, 3), source.indices.map(amsterdam::entryForMedia))
     }
 
