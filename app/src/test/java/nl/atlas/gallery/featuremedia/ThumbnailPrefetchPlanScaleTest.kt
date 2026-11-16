@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featuremedia
 
-import java.lang.management.ManagementFactory
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -96,20 +95,15 @@ class ThumbnailPrefetchPlanScaleTest {
     /** Optional, explicitly uncalibrated JVM diagnostics; not a phone/jank benchmark. */
     @Test fun optionalHotPathSample() {
         if (System.getProperty("atlas.perf21.benchmark") != "true") return
-        val bean = ManagementFactory.getThreadMXBean()
-        val alloc = bean as? com.sun.management.ThreadMXBean
-        val id = Thread.currentThread().id
         for ((name, work) in listOf<Pair<String, () -> IntArray>>(
             "baseline" to { legacy(40_000, 40_027, 250_000, 7, 1, 20f) },
             "candidate" to { ThumbnailPrefetchPlan.slots(40_000, 40_027, 250_000, 7, 1, 20f) }
         )) {
             repeat(10_000) { work() }
-            val startBytes = if (alloc?.isThreadAllocatedMemorySupported == true) alloc.getThreadAllocatedBytes(id) else -1L
             val start = System.nanoTime()
             repeat(100_000) { work() }
             val ns = System.nanoTime() - start
-            val bytes = if (startBytes >= 0L) alloc!!.getThreadAllocatedBytes(id) - startBytes else -1L
-            println("PERF21 $name 100000 calls elapsed_ns=$ns allocated_bytes=$bytes (JVM-only, order/JIT-sensitive)")
+            println("PERF21 $name 100000 calls elapsed_ns=$ns (JVM-only, order/JIT-sensitive; allocation bytes not measured)")
         }
     }
 }
