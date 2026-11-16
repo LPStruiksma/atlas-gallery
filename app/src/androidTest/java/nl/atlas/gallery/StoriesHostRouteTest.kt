@@ -98,10 +98,12 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-story-pause").performClick()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
-        // Preserve the live deck while the open position is serialized.
-        // Hold re-planning only after restore, as the host does on recreation.
-        restoration.emulateSavedInstanceStateRestore()
-        waiting = true
+        // Save the live position, then restore while the re-planned deck is
+        // withheld. The pre-restoration callback changes only the new
+        // composition; it does not erase the original deck before saving.
+        restoration.emulateSavedInstanceStateRestore {
+            waiting = true
+        }
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
         rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
