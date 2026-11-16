@@ -370,6 +370,23 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   done
   face_log | grep 'publication_done' || {
     kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
+  # Wait for the asynchronous gallery cache writer to publish the trusted
+  # catalogue before deliberately killing this foreground process. Without
+  # the atomic cache file, the background worker correctly refuses to restore
+  # (#43: background_restore reason=no_inventory).
+  cache_ready=0
+  for _ in $(seq 1 60); do
+    if adb shell run-as nl.atlas.gallery test -s no_backup/gallery-inventory.bin; then
+      cache_ready=1
+      break
+    fi
+    sleep 1
+  done
+  [[ "$cache_ready" == "1" ]] || {
+    kill43_diagnostics
+    echo "::error::#43 foreground catalogue cache was not committed before process death"
+    exit 1
+  }
   sleep 2 # let WorkManager persist the enqueue
   adb shell input keyevent KEYCODE_HOME
   kill_app
