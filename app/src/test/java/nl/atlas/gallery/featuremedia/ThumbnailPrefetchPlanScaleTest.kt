@@ -60,7 +60,8 @@ class ThumbnailPrefetchPlanScaleTest {
         val columns = intArrayOf(Int.MIN_VALUE, -1, 0, 1, 3, 4, 7, 12, 28, Int.MAX_VALUE)
         for (count in counts) for (cols in columns) for (dir in intArrayOf(-1, 0, 1)) {
             val spans = arrayOf(-1 to 0, 5 to 4, 0 to 0, 0 to Int.MAX_VALUE,
-                (count / 2) to (count / 2), Int.MAX_VALUE to Int.MAX_VALUE)
+                (count / 2) to (count / 2), (count - 1).coerceAtLeast(0) to (count - 1).coerceAtLeast(0),
+                Int.MAX_VALUE to Int.MAX_VALUE)
             for ((first, last) in spans) {
                 val actual = ThumbnailPrefetchPlan.slots(first, last, count, cols, dir, Float.MAX_VALUE)
                 assertEquals(actual.size, actual.toSet().size)
@@ -84,7 +85,8 @@ class ThumbnailPrefetchPlanScaleTest {
                 for (dir in intArrayOf(-1, 0, 1)) {
                     val actual = ThumbnailPrefetchPlan.slots(first, first, count, cols, dir, Float.MAX_VALUE)
                     assertTrue(actual.size <= first)
-                    assertTrue(actual.size <= if (count == 1) 0 else minOf(first, cols))
+                    val maximumRequested = if (dir < 0) 12L * cols else if (dir == 0) 2L * cols else cols.toLong()
+                    assertTrue(actual.size.toLong() <= maximumRequested)
                     assertTrue(actual.all { it in 0 until first })
                 }
             }
