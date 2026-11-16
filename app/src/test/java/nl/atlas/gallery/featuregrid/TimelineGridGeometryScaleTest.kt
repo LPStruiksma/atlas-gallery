@@ -118,10 +118,11 @@ class TimelineGridGeometryScaleTest {
             assertEquals(media, target.firstSlotIndex)
             assertEquals(0, target.firstSlotScrollOffsetPx)
         }
+        // A maximum-width final row is clipped by exactly one viewport pixel.
         val last = plan.targetMedia(count - 1, 0f, 0f)
         assertEquals(count - 2, last.firstSlotIndex)
         assertEquals(Int.MAX_VALUE - 1, last.firstSlotScrollOffsetPx)
-        assertTrue(last.clampedByBounds)
+        assertFalse(last.clampedByBounds)
         assertTrue(plan.targetMedia(0, 0f, Float.MAX_VALUE).clampedByBounds)
         assertTrue(plan.targetMedia(count - 1, 1f, -Float.MAX_VALUE).clampedByBounds)
     }
