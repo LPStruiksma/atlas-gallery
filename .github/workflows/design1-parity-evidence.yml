@@ -170,22 +170,53 @@ jobs:
         with:
           pattern: design1-parity-*
           path: downloaded
+      # Separate evidence integrity (required) from visual parity (reported).
+      # A changed pixel must not hide the real comparison report.
       - name: Compare real baseline and candidate pixels
         env:
           BASELINE_SHA: ${{ inputs.baseline_sha }}
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         run: |
           set -euo pipefail
+          mkdir -p parity-comparison
+          set +e
           python3 scripts/compare_parity_renders.py \
             --baseline downloaded/design1-parity-baseline/parity-result \
             --candidate downloaded/design1-parity-candidate/parity-result \
             --baseline-sha "$BASELINE_SHA" --candidate-sha "$CANDIDATE_SHA" \
             --output parity-comparison/report.tsv
+          comparison_exit=$?
+          set -e
+          if [[ ! -s parity-comparison/report.tsv ]]; then
+            echo "::error::Evidence integrity failure: comparison report missing (exit $comparison_exit)"
+            exit 1
+          fi
+          # The existing comparator writes this complete report before returning
+          # nonzero for genuine pixel differences. Those are a review verdict,
+          # not missing evidence. Any other failure remains fatal.
+          python3 - <<'PY'
+          import csv, pathlib
+          path = pathlib.Path("parity-comparison/report.tsv")
+          with path.open(newline="", encoding="utf-8") as handle:
+              reader = csv.DictReader(handle, delimiter="\t")
+              rows = list(reader)
+          if (reader.fieldnames != ["surface", "theme", "result", "changed_pixels", "reason"]
+                  or len(rows) != 40
+                  or len({(r["surface"], r["theme"]) for r in rows}) != 40
+                  or sum(r["result"] == "NOT_CAPTURED" for r in rows) != 10
+                  or sum(r["result"] in {"IDENTICAL", "DIFFERENT"} for r in rows) != 30
+                  or any(r["result"] not in {"IDENTICAL", "DIFFERENT", "NOT_CAPTURED"} for r in rows)):
+              raise SystemExit("Invalid or incomplete comparison report")
+          print("Parity verdict:", "DIFFERENT" if any(r["result"] == "DIFFERENT" for r in rows) else "IDENTICAL")
+          PY
+          if [[ "$comparison_exit" -ne 0 && "$comparison_exit" -ne 1 ]]; then
+            echo "::error::Comparator exited abnormally: $comparison_exit"; exit 1
+          fi
       - name: Upload inspectable pixel report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: design1-parity-comparison
           path: parity-comparison/report.tsv
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
