@@ -28,7 +28,7 @@ class TimelineIndexScaleTest {
         val headers = ArrayList<TimelineHeaderPosition>()
         // This was also initialized before the ungrouped early return.
         val usedHeaderKeys = HashSet<String>()
-        for ((index, media) in items.withIndex()) {
+        items.forEachIndexed { index, media ->
             positions[index] = index
             slots.add(TimelineSlot.Media("media:" + media.key, index))
         }
