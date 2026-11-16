@@ -155,7 +155,7 @@ for (const tag of ['atlas-search-shared', 'atlas-scoped-search-field',
 }
 for (const slot of ['textTool', 'faceTool', 'imageTool', 'filtersTool',
   'historyTool', 'suggestionsTool']) {
-  assert.match(shared, new RegExp('\\b' + slot + '\\\?\\.invoke\\(\\)'),
+  assert.match(shared, new RegExp('\\b' + slot + '\\?\\.invoke\\(\\)'),
     'FIND-4 missing expanded tool slot ' + slot);
 }
 for (const entry of inventory) {
