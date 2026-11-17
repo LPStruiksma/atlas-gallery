@@ -2,6 +2,12 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("androidx.baselineprofile")
+}
+
+baselineProfile {
+    // Profile capture is an explicit release-candidate operation, never part of ordinary builds.
+    automaticGenerationDuringBuild = false
 }
 
 // A permanent *development* signing identity is optional in CI. Do not put
@@ -93,6 +99,8 @@ dependencies {
     // and resumable, constraint-aware background scanning. No network use.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    baselineProfile(project(":baselineprofile"))
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
