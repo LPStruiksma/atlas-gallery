@@ -26,9 +26,17 @@ internal fun restorePeopleScanInBackground(
 /** The gallery's on-disk catalogue, projected for faces; null unless its grant is today's. */
 internal fun cachedFaceInventory(context: Context): List<FaceVisibleMedia>? {
     val app = context.applicationContext
-    val snapshot = GalleryInventoryCacheFile(
-        File(app.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE)).read() ?: return null
-    if (snapshot.grant != readGalleryMediaGrant(app)) return null
+    val file = File(app.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE)
+    val snapshot = GalleryInventoryCacheFile(file).read() ?: run {
+        // #284: fixed reason codes only, never paths or media.
+        android.util.Log.i("ATLAS_FACE", "background_inventory refused=" +
+            if (file.isFile) "unreadable" else "missing")
+        return null
+    }
+    if (snapshot.grant != readGalleryMediaGrant(app)) {
+        android.util.Log.i("ATLAS_FACE", "background_inventory refused=grant_changed")
+        return null
+    }
     return snapshot.items.map { it.toFaceVisibleMedia(editorRevision = 0L) }
 }
 
