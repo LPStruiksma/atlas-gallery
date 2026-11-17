@@ -1115,6 +1115,22 @@ internal fun shouldStartViewerVideoPlayer(
     focused: Boolean, rapidlyChanging: Boolean, settled: Boolean
 ): Boolean = focused && !rapidlyChanging && settled
 
+/** What one viewer video page draws (PERF-29, #330). */
+internal data class ViewerVideoLayers(val player: Boolean, val poster: Boolean)
+
+/**
+ * At most the focused, settled page mounts (and prepares) a player. The
+ * poster frame stays drawn until Media3 reports its first rendered frame,
+ * so a starting player never shows a black surface in between.
+ */
+internal fun viewerVideoLayers(
+    focused: Boolean, rapidlyChanging: Boolean, settled: Boolean,
+    firstFrameRendered: Boolean
+): ViewerVideoLayers {
+    val player = shouldStartViewerVideoPlayer(focused, rapidlyChanging, settled)
+    return ViewerVideoLayers(player = player, poster = !player || !firstFrameRendered)
+}
+
 /**
  * Video poster while scrubbing, player only after the selected frame is
  * stationary for 180ms. This prevents bursty Media3 allocations during
@@ -1153,10 +1169,16 @@ private fun ViewerVideoPage(
                 }
             }
         }) {
-        if (shouldStartViewerVideoPlayer(focused, rapidlyChanging, videoSettled)) {
+        if (viewerVideoLayers(focused, rapidlyChanging, videoSettled,
+                firstFrameRendered = false).player) {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-player")) {
                 VideoPage(media.uri, resumePositionMs, onSavePosition, onLivePosition,
-                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome)
+                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome,
+                    // Same 700px request as the poster below: a memory-cache hit.
+                    poster = {
+                        MediaPreview(media, Modifier.fillMaxSize().clearAndSetSemantics {},
+                            ContentScale.Fit, 700)
+                    })
             }
         } else {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-poster"),
@@ -1414,7 +1436,9 @@ internal fun VideoPage(
     /** Gets a main-thread reader of the playing position while mounted, then null. */
     onLivePosition: ((() -> Long)?) -> Unit = {},
     chromeVisible: Boolean = true,
-    onToggleChrome: () -> Unit = {}
+    onToggleChrome: () -> Unit = {},
+    /** Drawn over the video surface until Media3 renders its first frame. */
+    poster: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
@@ -1466,6 +1490,15 @@ internal fun VideoPage(
             player.release()
         }
     }
+    // Declared after the release effect, so it is disposed first.
+    var firstFrameRendered by remember(player) { mutableStateOf(false) }
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onRenderedFirstFrame() { firstFrameRendered = true }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
 
     var seeking by remember(player) { mutableStateOf(false) }
     var seekFraction by remember(player) { mutableFloatStateOf(0f) }
@@ -1504,6 +1537,12 @@ internal fun VideoPage(
             this.player = player
             useController = false
         } }, modifier = Modifier.fillMaxSize())
+        if (poster != null && viewerVideoLayers(focused = true, rapidlyChanging = false,
+                settled = true, firstFrameRendered = firstFrameRendered).poster) {
+            Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-first-frame-poster")) {
+                poster()
+            }
+        }
         // The Android video surface has no tap action. This transparent
         // Compose layer gives touch users the same chrome toggle as TalkBack
         // without stealing horizontal pager drags.
