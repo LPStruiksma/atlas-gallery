@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import androidx.lifecycle.Lifecycle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -17,6 +18,15 @@ class ViewerVideoLifecycleTest {
         const val SETTLE_MS = 180L
         const val SWIPE_ANIMATION_MS = 300L
         const val FIRST_FRAME_MS = 150L // synthetic, not a device measurement
+    }
+
+    @Test fun leavingForegroundPausesAndReturningNeverAutoStartsVideo() {
+        for (event in Lifecycle.Event.entries) {
+            val expected = event == Lifecycle.Event.ON_PAUSE ||
+                event == Lifecycle.Event.ON_STOP
+            assertEquals("Wrong background playback handling for $event",
+                expected, viewerVideoMustPause(event))
+        }
     }
 
     @Test fun posterStaysUntilFirstFrameAndOnlyTheFocusedSettledPagePlays() {
