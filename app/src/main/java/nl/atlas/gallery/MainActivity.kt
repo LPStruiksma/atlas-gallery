@@ -1154,8 +1154,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // current grant and exact album scope have all been verified.
     var pendingSelectionRestore by rememberSaveable(
         saver = androidx.compose.runtime.saveable.Saver<
-            SelectionRotationState?, ArrayList<String>>(
-            save = { state ->
+            androidx.compose.runtime.MutableState<SelectionRotationState?>, ArrayList<String>>(
+            save = { holder ->
+                val state = holder.value
                 if (state == null) arrayListOf() else arrayListOf(
                     state.epoch.toString(), state.grantBits,
                     state.albumPath.orEmpty(), state.albumVolume.orEmpty(),
@@ -1163,7 +1164,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 ).apply { addAll(state.keys) }
             },
             restore = { data ->
-                if (data.size < 5) null else {
+                val restored = if (data.size < 5) null else {
                     val epoch = data[0].toLongOrNull() ?: -1L
                     val keys = data.drop(5).toSet()
                     if (epoch < 0L || keys.size != data.size - 5 ||
@@ -1172,6 +1173,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     else SelectionRotationState(epoch, keys, data[2].ifBlank { null },
                         data[3].ifBlank { null }, data[4].ifBlank { null }, data[1])
                 }
+                mutableStateOf(restored)
             }
         )
     ) { mutableStateOf<SelectionRotationState?>(null) }
