@@ -576,12 +576,18 @@ internal class PeopleDiscoveryHost(
         @Volatile private var app: PeopleDiscoveryHost? = null
 
         /**
-         * Construction is an identity-only operation: SQLite helpers are not
-         * opened until their worker performs a read or write. The ONNX
-         * inferenceFactory is likewise called only by a scan worker.
+         * First construction reads saved opt-in preferences and must be
+         * admitted from a worker. Already-created hosts remain inexpensive
+         * to read on Main during recomposition and worker handoff.
          */
-        fun forApp(context: Context): PeopleDiscoveryHost = app ?: synchronized(this) {
-            app ?: create(context.applicationContext).also { app = it }
+        fun forApp(context: Context): PeopleDiscoveryHost {
+            app?.let { return it }
+            check(android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                "People discovery host must be initialized on an IO worker"
+            }
+            return synchronized(this) {
+                app ?: create(context.applicationContext).also { app = it }
+            }
         }
 
         /**
