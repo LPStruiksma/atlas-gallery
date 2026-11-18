@@ -1183,8 +1183,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // Save the current live snapshot for Activity recreation. Pending keys
-    // are never actionable until the reconciler verifies the live publication.
+    // Only this bounded snapshot is saved on Activity recreation. The live
+    // selection holder remains reference-bound and never enters the Bundle.
     SideEffect {
         val live = batchSelection
         if (live != null) {
