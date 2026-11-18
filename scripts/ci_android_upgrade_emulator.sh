@@ -353,11 +353,21 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     done
     return 1
   }
+  # #343: WorkManager logs which worker each JobScheduler job is for. The
+  # scan worker, not the 6 h re-arm (PeopleScanRearmWorker), is what #43 needs.
+  scan_scheduled() {
+    timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D |
+      grep -q 'featureface[.]work[.]PeopleScanWorker)'
+  }
   kill43_diagnostics() {
     face_log | tail -50
     adb shell dumpsys battery | head -12 || true
     adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
-    timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
+    # #343: leave out force_jobs' own retry churn, which otherwise fills the
+    # tail and hides how the launch enqueued (or rescheduled) its work.
+    timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
+      grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId|Cancelling work ID' |
+      tail -80 || true
   }
   adb shell dumpsys battery unplug
   adb logcat -c || true
@@ -375,7 +385,18 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   done
   face_log | grep 'publication_done' || {
     kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
-  sleep 2 # let WorkManager persist the enqueue
+  # #343: publication_done is logged just before the host arms the scan, and
+  # WorkManager enqueues on its own background executor, which a loaded
+  # emulator can hold for seconds. A fixed 2 s wait sometimes killed the app
+  # before the scan job existed (only the 6 h re-arm was left), so wait for
+  # the scan worker's job itself. Never kill without it: that fails here.
+  for _ in $(seq 1 60); do
+    scan_scheduled && break
+    sleep 0.5
+  done
+  scan_scheduled || {
+    kill43_diagnostics; echo "::error::#43 the app published but never scheduled the scan worker"; exit 1; }
+  sleep 1 # let WorkManager finish persisting the enqueue
   adb shell input keyevent KEYCODE_HOME
   kill_app
   adb logcat -c || true
