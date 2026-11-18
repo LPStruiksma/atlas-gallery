@@ -54,10 +54,11 @@ class NavigationFontScaleEvidenceTest {
             )) {
                 compose.runOnIdle { dark = themeDark; fontScale = scale }
                 compose.waitForIdle()
-                val pill = compose.onNodeWithTag("atlas-nav-pill").fetchSemanticsNode().boundsInRoot
+                val pill = compose.onNodeWithTag("atlas-nav-pill", useUnmergedTree = true)
+                    .fetchSemanticsNode().boundsInRoot
                 val labels = AtlasDestination.entries.map { destination ->
                     val name = destination.name.lowercase()
-                    val tab = compose.onNodeWithTag("atlas-nav-$name")
+                    val tab = compose.onNodeWithTag("atlas-nav-$name", useUnmergedTree = true)
                         .fetchSemanticsNode().boundsInRoot
                     val label = compose.onNodeWithTag("atlas-nav-label-$name",
                         useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
