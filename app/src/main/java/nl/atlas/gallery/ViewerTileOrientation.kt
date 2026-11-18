@@ -115,7 +115,9 @@ internal fun planViewerOrientedTiles(
     orientation: ViewerSourceOrientation,
     viewportWidth: Int, viewportHeight: Int,
     zoom: Float, translationX: Float, translationY: Float,
-    totalTileBufferBudgetBytes: Long = 16L * 1024 * 1024
+    totalTileBufferBudgetBytes: Long = 16L * 1024 * 1024,
+    /** Previous step's plan; lets the upright planner reuse an unchanged tile grid. */
+    previous: ViewerOrientedTilePlan? = null
 ): ViewerOrientedTilePlan? {
     val requiresCopy = orientation.clockwiseDegrees != 0 ||
         orientation.mirrorHorizontally
@@ -128,7 +130,7 @@ internal fun planViewerOrientedTiles(
         sourceHeight = orientation.uprightHeight,
         viewportWidth = viewportWidth, viewportHeight = viewportHeight,
         zoom = zoom, translationX = translationX, translationY = translationY,
-        maxDecodedBytes = uprightBudget
+        maxDecodedBytes = uprightBudget, previous = previous?.upright
     ) ?: return null
     val rawTiles = plan.tiles.map { tile ->
         viewerRawRegionForUprightTile(tile, orientation) ?: return null

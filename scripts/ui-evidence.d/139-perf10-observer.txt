@@ -1,0 +1,5 @@
+# PERF-10 · synthetic MediaStore observer rendered-position evidence (#139)
+# API35 emulator-only, disposable generated fixture photos; no real user media.
+perf10-scrolled-before
+perf10-scrolled-after
+perf10-top-insert

@@ -61,6 +61,9 @@ import nl.atlas.gallery.featuredesign.AtlasScrollAwayHeader
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuredesign.AtlasSpace
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 import java.text.NumberFormat
 
 private fun mediaSummary(album: AlbumSummary): String {
@@ -278,12 +281,18 @@ fun AtlasAlbumsScreen(
     onOpenPhotoDna: (() -> Unit)? = null,
     /** Samsung's "Hide albums" screen (#568, parity research GRID:A7). */
     onOpenHideAlbums: (() -> Unit)? = null,
+    /** Explicit whole-library search belongs to the host Search destination. */
+    onSearchWholeLibrary: (() -> Unit)? = null,
     /**
      * Receives the whole new display order after a drag (or a TalkBack move).
      * Pinned albums never move; the caller switches the sort to Custom.
      */
     onReorderAlbums: ((List<AlbumSummary>) -> Unit)? = null
 ) {
+    var searchText by remember { mutableStateOf("") }
+    val displayedAlbums = remember(AlbumPresentationListKey(albums), searchText) {
+        scopedNamedMatches(albums, searchText) { it.title }
+    }
     // One compact header: secondary destinations share its sole overflow.
     val header: @Composable () -> Unit = {
         AtlasGalleryHeader(
@@ -298,7 +307,13 @@ fun AtlasAlbumsScreen(
                 if (onOpenHideAlbums != null) add(AtlasHeaderMenuItem(
                     "Hide albums", "atlas-albums-menu-hide", onClick = onOpenHideAlbums))
             },
-            actions = { AtlasAlbumSortMenu(sort, onSort) }
+            actions = {
+                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
+                AtlasAlbumSortMenu(sort, onSort)
+            }
         )
     }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -359,7 +374,7 @@ fun AtlasAlbumsScreen(
         }
         AlbumGrid(
             header = header,
-            albums = albums,
+            albums = displayedAlbums,
             mediaFilter = mediaFilter,
             onOpenAlbum = onOpenAlbum,
             coverIllustration = coverIllustration,
