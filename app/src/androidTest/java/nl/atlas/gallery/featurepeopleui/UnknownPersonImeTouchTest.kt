@@ -303,12 +303,30 @@ class UnknownPersonImeTouchTest {
         withAnimatorScaleOne { openingImeTouch() }
     }
 
+    private fun imeVisible(): Boolean {
+        val insets = activity().window.decorView.rootWindowInsets ?: return false
+        return insets.isVisible(WindowInsets.Type.ime()) ||
+            insets.getInsets(WindowInsets.Type.ime()).bottom > 0
+    }
+
+    /**
+     * Realistic opening case: the person has typed a name (results listed), the
+     * keyboard went away, and they tap the field again and immediately tap the
+     * suggestion while the keyboard is coming back up. Results only exist for a
+     * non-blank query, so the name is typed first.
+     */
     private fun openingImeTouch() {
         fixture()
         compose.waitUntil(5_000) { ValueAnimator.areAnimatorsEnabled() }
+        val search = compose.onNodeWithTag("atlas-group-1-destination-search")
+        search.performTextInput("Morgan")
+        compose.waitUntil(10_000) { imeVisible() }
+        compose.runOnIdle { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
+        compose.waitUntil(10_000) { !imeVisible() }
+        compose.waitForIdle()
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
-        // Measured with the keyboard closed: the empty filter already lists option 1.
+        // Measured with the keyboard closed, where the person sees the result.
         val bounds = compose.onNodeWithTag("atlas-group-1-destination-option-1")
             .fetchSemanticsNode().boundsInWindow
         val window = IntArray(2)
@@ -318,9 +336,10 @@ class UnknownPersonImeTouchTest {
         )
         tap.install()
         try {
-            // Focusing the field starts the IME show animation; its first
-            // onProgress injects the one tap (see ImeOpeningTap).
-            compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Morgan")
+            // A real tap on the field brings the keyboard back; the first IME
+            // onProgress of that show animation injects the one tap on the
+            // suggestion (see ImeOpeningTap).
+            search.performTouchInput { click() }
             runCatching {
                 compose.waitUntil(10_000) { tap.upArrived || tap.injectionError != null }
             }
