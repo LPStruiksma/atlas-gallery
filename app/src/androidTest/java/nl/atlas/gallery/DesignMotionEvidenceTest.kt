@@ -132,7 +132,7 @@ class DesignMotionEvidenceTest {
         try {
             // A post-action "start" can already be the destination state when
             // the gesture settles asynchronously. Capture the actual source.
-            saveMotionFrame("motion-137-$name-start.png")
+            saveMotionFrame("motion-137-$name-start.png").recycle()
             action()
             // First frame applies the state change and starts animations.
             compose.mainClock.advanceTimeByFrame()
@@ -140,10 +140,10 @@ class DesignMotionEvidenceTest {
             compose.mainClock.advanceTimeBy(durationMillis / 2)
             compose.waitForIdle()
             atMid()
-            saveMotionFrame("motion-137-$name-mid.png")
+            saveMotionFrame("motion-137-$name-mid.png").recycle()
             compose.mainClock.advanceTimeBy(durationMillis * 2)
             compose.waitForIdle()
-            saveMotionFrame("motion-137-$name-end.png")
+            saveMotionFrame("motion-137-$name-end.png").recycle()
         } finally {
             compose.mainClock.autoAdvance = true
         }
@@ -261,7 +261,7 @@ class DesignMotionEvidenceTest {
             compose.waitForIdle()
             assertTrue("reduced motion: tab bar must be gone one frame after selection starts",
                 compose.onAllNodesWithTag("atlas-nav-photos").fetchSemanticsNodes().isEmpty())
-            saveMotionFrame("motion-137-reduced-selection.png")
+            saveMotionFrame("motion-137-reduced-selection.png").recycle()
         } finally {
             compose.mainClock.autoAdvance = true
         }
