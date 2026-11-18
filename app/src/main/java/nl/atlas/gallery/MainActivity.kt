@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
@@ -3515,7 +3516,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 LocalSearchControls(
                             // #654: no title bar above Search (#644), so the field
                             // keeps a little air under the status bar.
-                            modifier = Modifier.padding(top = 12.dp),
+                            modifier = Modifier.padding(top = 12.dp).imePadding(),
                             filters = searchFacets,
                             people = people,
                             history = searchHistory,
