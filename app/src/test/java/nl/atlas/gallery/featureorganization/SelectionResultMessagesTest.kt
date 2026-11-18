@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featureorganization
 
-import androidx.compose.runtime.saveable.SaverScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -43,11 +42,8 @@ class SelectionResultMessagesTest {
         messages.show(text)
         val firstGeneration = messages.current!!.generation
         clock += 2_250L
-        val snapshot = with(SelectionResultMessages.Saver) {
-            with(object : SaverScope {
-                override fun canBeSaved(value: Any): Boolean = true
-            }) { save(messages) }
-        }!!
+        val saver = SelectionResultMessages.Saver
+        val snapshot = with(saver) { save(messages) }!!
         assertEquals(text, snapshot[0])
         assertEquals(1_000L, snapshot[3])
         // Restoration's system clock is the actual monotonic clock: its saved
@@ -64,15 +60,12 @@ class SelectionResultMessagesTest {
         messages.show("Copy complete", SelectionResultDuration.SHORT)
         clock += 2_000L
         val saver = SelectionResultMessages.Saver
-        val scope = object : SaverScope {
-            override fun canBeSaved(value: Any): Boolean = true
-        }
-        val snapshot = with(saver) { with(scope) { save(messages) } }!!
+        val snapshot = with(saver) { save(messages) }!!
         assertEquals(1_000L, snapshot[3])
         // A second snapshot of the same active result keeps its original
         // monotonic shown-at instant rather than allocating a new deadline.
         clock += 1_500L
-        val again = with(saver) { with(scope) { save(messages) } }!!
+        val again = with(saver) { save(messages) }!!
         assertEquals(1_000L, again[3])
         clock += 600L
         assertEquals(0L, messages.remainingMillis(messages.current!!, 4_000L))
