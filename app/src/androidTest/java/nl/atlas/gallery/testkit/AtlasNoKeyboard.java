@@ -1,4 +1,4 @@
-package nl.atlas.gallery.uitest;
+package nl.atlas.gallery.testkit;
 
 import android.inputmethodservice.InputMethodService;
 

@@ -1,9 +1,9 @@
-package nl.atlas.gallery.uitest
+package nl.atlas.gallery.testkit
 
 import androidx.compose.ui.test.junit4.ComposeTestRule
 
 /**
- * Emulator tests run on two clocks (docs/testing/EMULATOR_UI_TESTS.md, rule 3).
+ * Emulator tests run on two clocks (docs/testing/EMULATOR_TESTS.md, rule 3).
  *
  * VIRTUAL: everything inside Compose. delay() in a LaunchedEffect, animations
  * and snackbar timeouts only move when the test clock is advanced. Sleeping

@@ -1,4 +1,4 @@
-package nl.atlas.gallery.uitest;
+package nl.atlas.gallery.testkit;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -13,7 +13,7 @@ import android.view.WindowManager;
  * A keyboard for emulator tests only: one flat panel that is always 38% of
  * the display tall. It never asks for a permission, never shows a suggestion
  * strip and has no first-run screens, so the keyboard inset a test sees is
- * the same on every run (see docs/testing/EMULATOR_UI_TESTS.md).
+ * the same on every run (see docs/testing/EMULATOR_TESTS.md).
  *
  * Java on purpose. The system starts this service in the test package's own
  * process, which holds only the test APK: the app's classes, AndroidX and the

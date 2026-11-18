@@ -3,12 +3,12 @@
   androidTest APK only (package nl.atlas.gallery.test); nothing here ships in ATLAS.
   Two input methods for emulator tests, chosen per test by KeyboardRule:
   a fixed-height keyboard panel and a keyboard that never appears.
-  See docs/testing/EMULATOR_UI_TESTS.md.
+  See docs/testing/EMULATOR_TESTS.md.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <service
-            android:name="nl.atlas.gallery.uitest.AtlasTestKeyboard"
+            android:name="nl.atlas.gallery.testkit.AtlasTestKeyboard"
             android:exported="true"
             android:label="ATLAS test keyboard"
             android:permission="android.permission.BIND_INPUT_METHOD">
@@ -20,7 +20,7 @@
                 android:resource="@xml/atlas_test_keyboard" />
         </service>
         <service
-            android:name="nl.atlas.gallery.uitest.AtlasNoKeyboard"
+            android:name="nl.atlas.gallery.testkit.AtlasNoKeyboard"
             android:exported="true"
             android:label="ATLAS no keyboard"
             android:permission="android.permission.BIND_INPUT_METHOD">
