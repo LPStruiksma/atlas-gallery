@@ -575,8 +575,20 @@ internal class PeopleDiscoveryHost(
 
         @Volatile private var app: PeopleDiscoveryHost? = null
 
-        fun forApp(context: Context): PeopleDiscoveryHost = app ?: synchronized(this) {
-            app ?: create(context.applicationContext).also { app = it }
+        /**
+         * A host's first creation reads opt-in preferences and prepares SQLite
+         * helpers. Explicit background admission keeps it out of Compose's
+         * initial main-thread composition; a reused host is cheap to retrieve.
+         */
+        fun forApp(context: Context): PeopleDiscoveryHost {
+            val existing = app
+            if (existing != null) return existing
+            check(android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                "People discovery host must be created on a background thread"
+            }
+            return synchronized(this) {
+                app ?: create(context.applicationContext).also { app = it }
+            }
         }
 
         /**
