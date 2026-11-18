@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featurecuration
 
+import java.util.Arrays
 import java.util.PriorityQueue
 
 /*
@@ -116,9 +117,48 @@ fun findCurationVisualPairs(
     val kept = PriorityQueue(maxOf(1, maxPairs), worstFirst)
     var comparisons = 0L
     var truncated = false
-    val keys = LongArray(hashes.size)
+    // Counting by the (small) band value is linear and, because hashes are
+    // inserted by index, preserves the incumbent (band value, index) order.
+    // Keep the packed-key sort for unusually wide bands to bound scratch heap.
+    val maxCountingWidth = 20
+    val widestBand = bands.maxOf { it.count() }
+    val indices = if (widestBand <= maxCountingWidth) IntArray(hashes.size) else IntArray(0)
+    val counts = if (widestBand <= maxCountingWidth) IntArray(1 shl widestBand) else IntArray(0)
+    val keys = if (widestBand > maxCountingWidth) LongArray(hashes.size) else null
     bandLoop@ for ((band, range) in bands.withIndex()) {
         checkpoint()
+        val width = range.count()
+        if (width <= maxCountingWidth) {
+            val bucketCount = 1 shl width
+            Arrays.fill(counts, 0, bucketCount, 0)
+            for (hash in hashes) counts[bandValue(hash, range).toInt()]++
+            var total = 0
+            for (bucket in 0 until bucketCount) {
+                val count = counts[bucket]
+                counts[bucket] = total + count
+                total += count
+            }
+            for (i in hashes.indices.reversed()) {
+                val bucket = bandValue(hashes[i], range).toInt()
+                indices[--counts[bucket]] = i
+            }
+            var start = 0
+            for (bucket in 0 until bucketCount) {
+                val end = if (bucket + 1 < bucketCount) counts[bucket + 1] else hashes.size
+                if (!compareVisualHashGroup(
+                        indices, start, end, hashes, maxDistance, maxPairs, maxComparisons,
+                        band, bands, skip, checkpoint, kept, worstFirst,
+                        comparisons,
+                        onComparison = { comparisons = it }
+                    )) {
+                    truncated = true
+                    break@bandLoop
+                }
+                start = end
+            }
+            continue
+        }
+        checkNotNull(keys)
         for (i in hashes.indices) keys[i] = (bandValue(hashes[i], range) shl 32) or i.toLong()
         keys.sort()
         var start = 0
@@ -155,6 +195,52 @@ fun findCurationVisualPairs(
     val sorted = kept.sortedWith(compareBy<CurationVisualMatch> { it.distance }
         .thenBy { it.left }.thenBy { it.right })
     return CurationVisualMatches(sorted, comparisons, truncated)
+}
+
+/** Returns false when the comparison budget is exhausted. */
+private inline fun compareVisualHashGroup(
+    indices: IntArray,
+    start: Int,
+    end: Int,
+    hashes: LongArray,
+    maxDistance: Int,
+    maxPairs: Int,
+    maxComparisons: Long,
+    band: Int,
+    bands: List<IntRange>,
+    skip: (Int, Int) -> Boolean,
+    checkpoint: () -> Unit,
+    kept: PriorityQueue<CurationVisualMatch>,
+    worstFirst: Comparator<CurationVisualMatch>,
+    initialComparisons: Long,
+    onComparison: (Long) -> Unit
+): Boolean {
+    var comparisons = initialComparisons
+    for (a in start until end - 1) {
+        val i = indices[a]
+        for (b in a + 1 until end) {
+            if (comparisons >= maxComparisons) {
+                onComparison(comparisons)
+                return false
+            }
+            if ((++comparisons and 0xffff) == 0L) checkpoint()
+            val j = indices[b]
+            val distance = curationHammingDistance(hashes[i], hashes[j])
+            if (distance > maxDistance) continue
+            if (firstSharedBand(hashes[i], hashes[j], bands) != band) continue
+            val left = minOf(i, j)
+            val right = maxOf(i, j)
+            if (skip(left, right) || maxPairs == 0) continue
+            val match = CurationVisualMatch(left, right, distance)
+            if (kept.size < maxPairs) kept.add(match)
+            else if (worstFirst.compare(match, kept.peek()) > 0) {
+                kept.poll()
+                kept.add(match)
+            }
+        }
+    }
+    onComparison(comparisons)
+    return true
 }
 
 /** maxDistance + 1 contiguous bit ranges covering all 64 bits, as (shift, width). */

@@ -51,7 +51,6 @@ import nl.atlas.gallery.featurepeopleui.PeopleHomeScreen
 import nl.atlas.gallery.featurepeopleui.PeopleHomeUiState
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -59,6 +58,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -72,7 +73,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class PeopleDiscoveryHostTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
 
     private val target = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(target.cacheDir, "people-discovery-host-" + UUID.randomUUID())
@@ -220,11 +221,16 @@ class PeopleDiscoveryHostTest {
         assertEquals(startsAfter, scheduler.starts.get())
     }
 
-    @After fun cleanUp() {
-        PeopleScanWorkRuntime.clear()
-        if (::store.isInitialized) store.close()
-        dir.deleteRecursively()
-    }
+    // The Compose rule must dispose its content before the SQLite fixture closes.
+    // JUnit @After runs *before* rule teardown; closing there races the review
+    // screen's outstanding database reads on API35.
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(object : ExternalResource() {
+        override fun after() {
+            PeopleScanWorkRuntime.clear()
+            if (::store.isInitialized) store.close()
+            dir.deleteRecursively()
+        }
+    }).around(compose)
 
     private fun batch() = runBlocking { runPeopleScanBatch(target) { false } }
 

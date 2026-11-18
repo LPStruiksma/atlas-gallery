@@ -214,6 +214,21 @@ class CatalogSortSnapshot(
     val sorted: List<MediaRecord>
 )
 
+/** The new shared sort snapshot, with the same source-identity admission gate. */
+class MediaSortSnapshot(
+    val source: List<MediaRecord>,
+    val sort: MediaSort,
+    val seed: Long,
+    val sorted: List<MediaRecord>
+)
+
+fun currentSortedCatalogOrNull(
+    snapshot: MediaSortSnapshot?, source: List<MediaRecord>, sort: MediaSort, seed: Long
+): List<MediaRecord>? = snapshot?.takeIf {
+    it.source === source && it.sort == sort && it.seed == seed
+}?.sorted
+
+
 fun currentSortedCatalogOrNull(
     snapshot: CatalogSortSnapshot?,
     source: List<MediaRecord>,

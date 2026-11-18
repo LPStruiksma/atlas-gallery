@@ -63,3 +63,21 @@ fun sizeBucketIndex(sizeBytes: Long): Int {
 
 fun sizeBucketLabel(sizeBytes: Long): String =
     SIZE_BUCKETS.getOrNull(sizeBucketIndex(sizeBytes))?.second ?: "Unknown size"
+
+/** Shared-sort scrub bubble. Only date keys are allowed to show dates. */
+fun fastScrollBubbleLabel(
+    sort: nl.atlas.gallery.MediaSort,
+    dateLabel: String?,
+    sizeBytes: Long,
+    fileName: String,
+    mediaIndex: Int,
+    mediaCount: Int
+): String = when (sort.key) {
+    nl.atlas.gallery.MediaSortKey.DATE_CREATED,
+    nl.atlas.gallery.MediaSortKey.DATE_MODIFIED ->
+        dateLabel ?: fastScrollPositionLabel(mediaIndex, mediaCount)
+    nl.atlas.gallery.MediaSortKey.SIZE -> sizeBucketLabel(sizeBytes)
+    nl.atlas.gallery.MediaSortKey.FILE_NAME ->
+        fileName.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "#"
+    nl.atlas.gallery.MediaSortKey.RANDOM -> fastScrollPositionLabel(mediaIndex, mediaCount)
+}
