@@ -1190,6 +1190,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectionAlbumRoute?.relativePath, selectionAlbumRoute?.volumeName,
                 selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
             if (pendingSelectionRestore != snapshot) pendingSelectionRestore = snapshot
+        } else if (pendingSelectionRestore != null && !busy &&
+            !sortPending && !albumSelectionPending &&
+            (tab != 0 || originalProportions || !timelineEnabled ||
+                !publishedGallery.matchesGrantedScope(grants))) {
+            pendingSelectionRestore = null
         }
     }
     // Search text, selected reviewed identities and recents belong to ONE
