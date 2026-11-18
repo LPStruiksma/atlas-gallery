@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
@@ -98,6 +99,11 @@ class UnknownGroupDesignEvidenceTest {
         }
         compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
         compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
+        // #357: safety copy is back, and no "not ready" line contradicts a ready group.
+        compose.onNodeWithTag("atlas-unknown-faces-safety-note").assertIsDisplayed()
+        compose.onNodeWithText("it doesn't recognize or name people", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithTag("atlas-review-scope-pending").assertDoesNotExist()
         saveUiEvidence("group-sheet-266-ready-$mode.png")
         compose.onNodeWithTag("atlas-group-name").performTextInput("Morgan")
         compose.waitForIdle()
