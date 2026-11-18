@@ -205,7 +205,7 @@ class AiEditSettingsEvidenceTest {
             compose.onNodeWithTag("aie-custom-name").performTextInput("Home server")
             compose.onNodeWithTag("aie-custom-url").performTextInput("https://editor.example/v1/")
             compose.onNodeWithTag("aie-key-field").performTextInput("synthetic-home-key")
-            compose.onNodeWithTag("aie-save").performScrollTo().performClick()
+            compose.onNodeWithTag("aie-save").performClick() // pinned under the form, not in the scroll
             waitFor("aie-key-saved")
             compose.onNodeWithText("Couldn't check. No connection.").assertExists()
             compose.onNodeWithText("Key saved ••••").assertExists()
