@@ -544,6 +544,62 @@ if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   capture_albums_grid "after" "dark"
 fi
 
+# #417 PERF-7a: debug StrictMode baseline on shard 1 (or an unsharded run).
+# Report-only: a violation never fails the shard, and a missing report is a
+# warning that Review checks. The provider is disabled in the debug manifest and
+# enabled only here, so the suites above ran without StrictMode.
+strictmode_baseline_417() {
+  local pkg=nl.atlas.gallery
+  local comp=nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_IMAGES || true
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_VIDEO || true
+  if ! adb shell pm enable "$comp"; then
+    echo "::warning::#417 could not enable the debug StrictMode provider"; return 0
+  fi
+  echo "::group::#417 cold start, am start -W, debug StrictMode on"
+  adb logcat -c || true
+  local totals=() i out total
+  for i in 0 1 2 3 4 5; do
+    adb shell am force-stop "$pkg"
+    out="$(adb shell am start -W -n "$pkg/.MainActivity" | tr -d '\r' || true)"
+    total="$(sed -n 's/^TotalTime: *//p' <<< "$out")"
+    echo "launch $i $(grep -E '^(LaunchState|TotalTime):' <<< "$out" | tr '\n' ' ')"
+    # Launch 0 is the first after this shard's reinstall; 1-5 are the sample.
+    [[ "$i" != "0" && "$total" =~ ^[0-9]+$ ]] && totals+=("$total")
+    sleep 4
+  done
+  if (( ${#totals[@]} > 0 )); then
+    printf '%s\n' "${totals[@]}" | sort -n | awk '{v[NR]=$1} END {
+      p50=v[int((NR-1)*0.5+0.5)+1]; p95=v[int((NR-1)*0.95+0.5)+1];
+      printf "STRICT cold-start n=%d p50_ms=%d p95_ms=%d (am start -W TotalTime, launches 1-%d)\n", NR, p50, p95, NR }'
+  else
+    echo "STRICT cold-start unavailable: no TotalTime from am start -W"
+  fi
+  echo "STRICT cold-start violations: $(timeout 30 adb logcat -d -v brief -s StrictMode:D |
+    grep -c 'StrictMode policy violation' || true) logged over 6 launches"
+  timeout 30 adb logcat -d -v brief -s StrictMode:D | head -n 900 || true
+  echo "::endgroup::"
+  adb shell am force-stop "$pkg"
+  adb logcat -c || true
+  local capture=/tmp/atlas-strictmode-417.txt
+  adb shell am instrument -w -r -e atlas_strictmode_baseline true \
+    -e class nl.atlas.gallery.StrictModeBaselineTest "$RUNNER" > "$capture" 2>&1 || true
+  tail -n 40 "$capture"
+  echo "::group::#417 first-open flows (ATLAS_STRICT, synthetic MediaStore PNGs)"
+  timeout 30 adb logcat -d -v brief -s ATLAS_STRICT:I || echo "ATLAS_STRICT logcat unavailable"
+  echo "::endgroup::"
+  if ! grep -Fq 'OK (1 test)' "$capture"; then
+    echo "::warning::#417 StrictMode baseline test did not pass; no first-open table this run"
+    timeout 30 adb logcat -d -b crash -t 300 || true
+  fi
+  adb shell pm disable "$comp" >/dev/null || true
+  adb shell am force-stop "$pkg"
+}
+if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
+  ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  strictmode_baseline_417
+fi
+
 # UI evidence (#588, #586): discovery and checks live in scripts/ci_ui_evidence.sh;
 # the expected names are declared per feature in scripts/ui-evidence.d/.
 # A shard pulls only its own screenshots; the aggregate emulator-ui job
