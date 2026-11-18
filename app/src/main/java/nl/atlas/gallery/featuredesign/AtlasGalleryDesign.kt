@@ -613,7 +613,7 @@ private fun AtlasHeaderOverflow(items: List<AtlasHeaderMenuItem>) {
 @Composable
 fun AtlasEmptyState(
     title: String,
-    explanation: String,
+    explanation: String = "",
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Filled.PhotoLibrary,
     actionLabel: String? = null,
@@ -621,8 +621,9 @@ fun AtlasEmptyState(
     visual: (@Composable () -> Unit)? = null
 ) {
     Column(
-        modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 44.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier.fillMaxSize().padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         if (visual != null) {
             Box(Modifier.size(148.dp), contentAlignment = Alignment.Center) { visual() }
@@ -644,11 +645,13 @@ fun AtlasEmptyState(
             title, modifier = Modifier.semantics { heading() },
             style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            explanation, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center
-        )
+        if (explanation.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                explanation, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center
+            )
+        }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(22.dp))
             Button(
