@@ -5,11 +5,6 @@ name: ATLAS Android - Baseline Profile (release candidate)
 # artifact; a Dev seat commits app/src/release/generated/baselineProfiles/ in a PR.
 on:
   workflow_dispatch:
-  # TEMPORARY (first capture before this file exists on main): removed in the commit that adds the profile.
-  pull_request:
-    paths:
-      - '.github/workflows/baseline-profile.yml'
-      - 'baselineprofile/**'
 permissions:
   contents: read
 concurrency:
