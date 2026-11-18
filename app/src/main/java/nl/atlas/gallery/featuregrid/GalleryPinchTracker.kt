@@ -110,6 +110,27 @@ internal fun pinchSpan(xs: FloatArray, ys: FloatArray): Triple<Float, Float, Flo
 }
 
 /**
+ * Plain-value view of one pointer event: index-based, so the measurement
+ * below is a pure function testable on the JVM without constructing Compose's
+ * `PointerInputChange` (whose full constructor is internal to Compose).
+ */
+internal interface PinchPointers {
+    val size: Int
+    fun pressed(index: Int): Boolean
+    fun x(index: Int): Float
+    fun y(index: Int): Float
+}
+
+/** Reusable adapter over a Compose event; one per gesture, never per event. */
+internal class PointerChangePointers : PinchPointers {
+    var changes: List<PointerInputChange> = emptyList()
+    override val size: Int get() = changes.size
+    override fun pressed(index: Int): Boolean = changes[index].pressed
+    override fun x(index: Int): Float = changes[index].position.x
+    override fun y(index: Int): Float = changes[index].position.y
+}
+
+/**
  * Reusable pressed-pointer measurement. One instance is allocated per gesture,
  * never per event. The exact mean Euclidean distance from the centroid requires
  * two scans: first find the centroid, then the distances around that centroid.
@@ -126,17 +147,17 @@ internal class PinchEventMeasurement {
     var centroidY: Float = Float.NaN
         private set
 
-    fun read(changes: List<PointerInputChange>) {
+    fun read(pointers: PinchPointers) {
+        val size = pointers.size
         var count = 0
         var cx = 0f
         var cy = 0f
         var index = 0
-        while (index < changes.size) {
-            val change = changes[index]
-            if (change.pressed) {
+        while (index < size) {
+            if (pointers.pressed(index)) {
                 count++
-                cx += change.position.x
-                cy += change.position.y
+                cx += pointers.x(index)
+                cy += pointers.y(index)
             }
             index++
         }
@@ -151,9 +172,8 @@ internal class PinchEventMeasurement {
         cy /= count
         var span = 0f
         index = 0
-        while (index < changes.size) {
-            val change = changes[index]
-            if (change.pressed) span += hypot(change.position.x - cx, change.position.y - cy)
+        while (index < size) {
+            if (pointers.pressed(index)) span += hypot(pointers.x(index) - cx, pointers.y(index) - cy)
             index++
         }
         spanPx = span / count
@@ -180,10 +200,12 @@ internal fun Modifier.galleryPinchLadder(
     awaitEachGesture {
         val tracker = newTracker(viewConfiguration.touchSlop)
         val sample = PinchEventMeasurement()
+        val pointers = PointerChangePointers()
         try {
         do {
             val event = awaitPointerEvent(PointerEventPass.Initial)
-            sample.read(event.changes)
+            pointers.changes = event.changes
+            sample.read(pointers)
             val consume = tracker.onSample(sample.pressedCount, sample.spanPx,
                 sample.centroidX, sample.centroidY)
             if (consume) event.changes.forEach { it.consume() }

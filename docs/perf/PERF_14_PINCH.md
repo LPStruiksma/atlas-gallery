@@ -4,7 +4,7 @@ Issue: [#221](https://github.com/LPStruiksma/atlas-gallery/issues/221). Scope is
 
 ## Baseline and intervention
 
-Previously, each `PointerEventPass.Initial` sample made `changes.filter { it.pressed }`, two `FloatArray` instances, and (when nonempty) a `Triple` from `pinchSpan`. The new loop allocates **one** `PinchEventMeasurement` per gesture and reuses it for every pointer sample. It examines only pressed changes; an empty pressed set returns exactly the former `(NaN, NaN, NaN)` observation.
+Previously, each `PointerEventPass.Initial` sample made `changes.filter { it.pressed }`, two `FloatArray` instances, and (when nonempty) a `Triple` from `pinchSpan`. The new loop allocates **one** `PinchEventMeasurement` and **one** `PointerChangePointers` adapter per gesture and reuses them for every pointer sample. The measurement is a pure function over the plain-value `PinchPointers` view (size, pressed, x, y by index), so the JVM test drives it with synthetic plain pointers and never constructs Compose's `PointerInputChange`, whose full constructor is internal to Compose (the cause of the two earlier test-compile failures, runs 43756490022 and 43756856577). It examines only pressed changes; an empty pressed set returns exactly the former `(NaN, NaN, NaN)` observation.
 
 **Numerical fidelity:** the span is the **arithmetic mean of Euclidean distances from the arithmetic centroid**, not RMS separation or a pairwise approximation. The exact expression requires the centroid before distance accumulation, so it uses two pointer scans (one centroid, one span). The pressed-pointer order, Float arithmetic, `hypot` invocation, NaN/infinity propagation, and zero-finger behavior are unchanged. This avoids allocation without silently changing the gesture threshold or pixel focus.
 
@@ -18,7 +18,7 @@ This is JVM evidence for sampling/state parity only. It does **not** exercise An
 
 ## Before/after same-JVM diagnostic protocol
 
-The JVM test `printSameJvmBeforeAfterDiagnosticsForTenThousandEvents` prepares identical synthetic `PointerInputChange` objects **outside** its timed windows. Each arm executes 10,000 warm-up events and **10,000 measured events on the same JVM thread**, first the exact old production expression, then the reusable sampler. It reports:
+The JVM test `printSameJvmBeforeAfterDiagnosticsForTenThousandEvents` prepares identical synthetic plain pointer events **outside** its timed windows. Each arm executes 10,000 warm-up events and **10,000 measured events on the same JVM thread**, first the exact old production expression, then the reusable sampler. It reports:
 
 - p50/p95 nanoseconds **per processed pointer event**, based on 10,000 per-event `System.nanoTime` intervals for each arm.
 - `com.sun.management.ThreadMXBean` allocated **bytes per 10,000 events**, if the JDK exposes thread allocation accounting (otherwise `unavailable`). This includes JVM/runtime overhead; it is not an allocation-object counter.

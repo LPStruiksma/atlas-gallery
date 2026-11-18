@@ -1,9 +1,5 @@
 package nl.atlas.gallery.featuregrid
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.PointerInputChange
-import androidx.compose.ui.input.pointer.PointerType
 import java.util.Random
 import org.junit.Assert.*
 import org.junit.Test
@@ -14,32 +10,25 @@ import org.junit.Test
  * are synthetic; timings are JVM diagnostics, not Android-device evidence.
  */
 class GalleryPinchPerfTest {
-    private fun change(id: Int, x: Float, y: Float, pressed: Boolean): PointerInputChange =
-        PointerInputChange(
-            id = PointerId(id.toLong()),
-            uptimeMillis = 10L,
-            position = Offset(x, y),
-            pressed = pressed,
-            previousUptimeMillis = 9L,
-            previousPosition = Offset(x, y),
-            previousPressed = pressed,
-            pressure = 1f,
-            isInitiallyConsumed = false,
-            type = PointerType.Touch,
-            historical = emptyList(),
-            scrollDelta = Offset.Zero,
-            scaleFactor = 1f,
-            panOffset = Offset.Zero,
-            originalEventPosition = Offset(x, y)
-        )
+    /** Plain synthetic pointer: Compose's full PointerInputChange constructor is internal. */
+    private data class Pointer(val id: Int, val x: Float, val y: Float, val pressed: Boolean)
 
-    private fun stream(): List<List<PointerInputChange>> {
+    private class Event(val pointers: List<Pointer>) : PinchPointers {
+        override val size: Int get() = pointers.size
+        override fun pressed(index: Int) = pointers[index].pressed
+        override fun x(index: Int) = pointers[index].x
+        override fun y(index: Int) = pointers[index].y
+    }
+
+    private fun change(id: Int, x: Float, y: Float, pressed: Boolean) = Pointer(id, x, y, pressed)
+
+    private fun stream(): List<Event> {
         val random = Random(14L)
-        val events = ArrayList<List<PointerInputChange>>()
+        val events = ArrayList<Event>()
         // Include 0-5 active pointers, lifts, inactive changes and exact slop edges.
         for (count in 0..5) {
             for (step in 0 until 70) {
-                val changes = ArrayList<PointerInputChange>()
+                val changes = ArrayList<Pointer>()
                 for (id in 0..5) {
                     val distance = (30 + step * (id + 1)).toFloat()
                     var x = 400f + (if (id % 2 == 0) distance else -distance) +
@@ -52,31 +41,31 @@ class GalleryPinchPerfTest {
                     if (step == 37 && id == 4) x = -0f
                     changes.add(change(id, x, y, id < count))
                 }
-                events.add(changes)
+                events.add(Event(changes))
             }
         }
         // Explicit start, slop boundary, zoom, finger addition, lifts, and release.
-        events.add(listOf(change(0, 400f, 800f, true), change(1, 600f, 800f, true)))
-        events.add(listOf(change(0, 379f, 800f, true), change(1, 621f, 800f, true)))
-        events.add(listOf(change(0, 300f, 800f, true), change(1, 700f, 800f, true)))
-        events.add(listOf(change(0, 300f, 800f, true), change(1, 700f, 800f, true),
-            change(2, 500f, 1100f, true)))
-        events.add(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, true),
-            change(2, 510f, 1000f, true)))
-        events.add(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, false),
-            change(2, 510f, 1000f, true)))
-        events.add(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, false),
-            change(2, 510f, 1000f, false)))
+        events.add(Event(listOf(change(0, 400f, 800f, true), change(1, 600f, 800f, true))))
+        events.add(Event(listOf(change(0, 379f, 800f, true), change(1, 621f, 800f, true))))
+        events.add(Event(listOf(change(0, 300f, 800f, true), change(1, 700f, 800f, true))))
+        events.add(Event(listOf(change(0, 300f, 800f, true), change(1, 700f, 800f, true),
+            change(2, 500f, 1100f, true))))
+        events.add(Event(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, true),
+            change(2, 510f, 1000f, true))))
+        events.add(Event(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, false),
+            change(2, 510f, 1000f, true))))
+        events.add(Event(listOf(change(0, 320f, 800f, false), change(1, 690f, 800f, false),
+            change(2, 510f, 1000f, false))))
         return events
     }
 
     private data class LegacyReading(val count: Int, val span: Float, val cx: Float, val cy: Float)
 
-    private fun legacyRead(changes: List<PointerInputChange>): LegacyReading {
-        val pressed = changes.filter { it.pressed }
+    private fun legacyRead(event: Event): LegacyReading {
+        val pressed = event.pointers.filter { it.pressed }
         val result = pinchSpan(
-            FloatArray(pressed.size) { pressed[it].position.x },
-            FloatArray(pressed.size) { pressed[it].position.y }
+            FloatArray(pressed.size) { pressed[it].x },
+            FloatArray(pressed.size) { pressed[it].y }
         )
         return LegacyReading(pressed.size, result?.first ?: Float.NaN,
             result?.second ?: Float.NaN, result?.third ?: Float.NaN)
@@ -160,8 +149,8 @@ class GalleryPinchPerfTest {
     }
 
     private fun measure(
-        events: List<List<PointerInputChange>>,
-        process: (List<PointerInputChange>) -> Boolean
+        events: List<Event>,
+        process: (Event) -> Boolean
     ): Metrics {
         // Identical inputs and warm-up count for each arm on one JVM/thread.
         repeat(10_000) { process(events[it % events.size]) }
@@ -190,10 +179,10 @@ class GalleryPinchPerfTest {
         val reused = PinchEventMeasurement()
         val before = measure(events) { changes ->
             // The exact former production path; no fixture-wrapper allocation.
-            val pressed = changes.filter { it.pressed }
+            val pressed = changes.pointers.filter { it.pressed }
             val sample = pinchSpan(
-                FloatArray(pressed.size) { pressed[it].position.x },
-                FloatArray(pressed.size) { pressed[it].position.y }
+                FloatArray(pressed.size) { pressed[it].x },
+                FloatArray(pressed.size) { pressed[it].y }
             )
             old.onSample(pressed.size, sample?.first ?: Float.NaN,
                 sample?.second ?: Float.NaN, sample?.third ?: Float.NaN)
