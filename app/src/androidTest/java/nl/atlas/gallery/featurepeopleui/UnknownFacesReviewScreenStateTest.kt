@@ -73,6 +73,8 @@ class UnknownFacesReviewScreenStateTest {
         }
         val message = "Faces aren't ready to review yet. Check face discovery in People."
         compose.onNodeWithText(message).assertExists()
+        // #357: the safety line shows even before any face is ready.
+        compose.onNodeWithTag("atlas-unknown-faces-safety-note").assertExists()
         compose.onNodeWithText(
             "Review is unavailable until the current photo selection and face index are confirmed."
         ).assertDoesNotExist()
