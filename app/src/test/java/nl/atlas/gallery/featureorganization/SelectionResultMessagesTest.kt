@@ -43,7 +43,7 @@ class SelectionResultMessagesTest {
         val firstGeneration = messages.current!!.generation
         clock += 2_250L
         val saver = SelectionResultMessages.Saver
-        val snapshot = with(saver) { save(messages) }!!
+        val snapshot = with(saver) { with(object : androidx.compose.runtime.saveable.SaverScope { override fun canBeSaved(value: Any) = true }) { save(messages) } }!!
         assertEquals(text, snapshot[0])
         assertEquals(1_000L, snapshot[3])
         // Restoration's system clock is the actual monotonic clock: its saved
