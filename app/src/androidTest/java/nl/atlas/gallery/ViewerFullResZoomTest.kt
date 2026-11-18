@@ -112,7 +112,7 @@ class ViewerFullResZoomTest {
         Thread.sleep(400L) // let the 150 ms fade finish on screen
         rule.waitForIdle()
         val sharpness = centreSharpness()
-        saveUiEvidence("viewer-zoom-8x-$label")
+        saveUiEvidence("viewer-zoom-8x-$label.png")
         pinchOut(from = 200f, to = 300f) // 8x -> 12x
         rule.waitForIdle()
         val zoom12 = tileValue(ViewerPhotoTileZoomKey) ?: 0f
