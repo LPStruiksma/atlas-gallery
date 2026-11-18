@@ -337,7 +337,8 @@ class GalleryRepository(private val context: Context) {
 
 class GalleryViewModel(application: Application): AndroidViewModel(application) {
     private val repo = GalleryRepository(application)
-    private val peopleRepo = PeopleRepository(application)
+    // Construction is cheap; the first actual SQLite open is admitted only from IO.
+    private val peopleRepo = LazyBackgroundHolder("People database") { PeopleRepository(application) }
     private val v4LinkPrefs = application.getSharedPreferences("atlas_v4_live_sync",Context.MODE_PRIVATE)
     private val peopleCsvGate = PeopleCsvSyncCoordinator()
     private var v4SyncRunning = false
@@ -847,7 +848,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         // An earlier IO read must never paint over a later manual import.
         val epoch = peopleCsvGate.nextPeopleSnapshotEpoch()
         viewModelScope.launch {
-            val snapshot = withContext(Dispatchers.IO) { peopleRepo.people() }
+            val snapshot = withContext(Dispatchers.IO) { peopleRepo.get().people() }
             if (peopleCsvGate.acceptsPeopleSnapshot(epoch)) _people.value = snapshot
         }
     }
@@ -881,7 +882,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 runCatching {
                     peopleCsvGate.exclusive {
                         val body = validatedLiveV4Csv(readCsv(uri))
-                        val count = peopleRepo.replaceFromV4Export(body)
+                        val count = peopleRepo.get().replaceFromV4Export(body)
                         v4LinkPrefs.edit()
                             .putString("uri", uri.toString())
                             .putString("sha256", contentDigest(body))
@@ -918,7 +919,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                                 val digest = contentDigest(body)
                                 if (digest == v4LinkPrefs.getString("sha256", null)) false
                                 else {
-                                    peopleRepo.replaceFromV4Export(body)
+                                    peopleRepo.get().replaceFromV4Export(body)
                                     v4LinkPrefs.edit().putString("sha256", digest).apply()
                                     true
                                 }
@@ -949,7 +950,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     peopleCsvGate.exclusive {
-                        val count = peopleRepo.replaceFromV4Export(readCsv(uri))
+                        val count = peopleRepo.get().replaceFromV4Export(readCsv(uri))
                         // Replace assignments and disable old live link together,
                         // so a queued stale refresh cannot overwrite this choice.
                         v4LinkPrefs.edit().remove("uri").remove("sha256").apply()
