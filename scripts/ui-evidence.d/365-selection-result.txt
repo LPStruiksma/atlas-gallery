@@ -1,0 +1,18 @@
+# #365 DESIGN-10c selection results as one snackbar above the visible pill
+# (SelectionResultLight/DarkJourneyTest: Android's own Trash consent before,
+# then canceled and accepted; SelectionResultLight/DarkStatesTest: partial
+# Copy/Move, stale selection, two in a row, re-anchor after selection ends).
+selection-result-365-light-trash-prompt
+selection-result-365-light-trash-canceled-selection-pill
+selection-result-365-light-trash-done-nav-pill
+selection-result-365-dark-trash-prompt
+selection-result-365-dark-trash-canceled-selection-pill
+selection-result-365-dark-trash-done-nav-pill
+selection-result-365-light-partial-transfer-selection-pill
+selection-result-365-light-stale-selection-pill
+selection-result-365-light-replaced-selection-pill
+selection-result-365-light-reanchored-nav-pill
+selection-result-365-dark-partial-transfer-selection-pill
+selection-result-365-dark-stale-selection-pill
+selection-result-365-dark-replaced-selection-pill
+selection-result-365-dark-reanchored-nav-pill

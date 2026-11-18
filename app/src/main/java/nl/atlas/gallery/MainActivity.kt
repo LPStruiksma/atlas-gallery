@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -145,6 +146,9 @@ import nl.atlas.gallery.featureorganization.AlbumTransferResult
 import nl.atlas.gallery.featureorganization.AlbumTransferTarget
 import nl.atlas.gallery.featureorganization.MediaStoreAlbumTransfer
 import nl.atlas.gallery.featureorganization.SelectionMoreAction
+import nl.atlas.gallery.featureorganization.SelectionResultDuration
+import nl.atlas.gallery.featureorganization.SelectionResultMessages
+import nl.atlas.gallery.featureorganization.SelectionResultSnackbarHost
 import nl.atlas.gallery.featureorganization.albumNameProblem
 import nl.atlas.gallery.featureorganization.albumNameProblemText
 import nl.atlas.gallery.featureorganization.albumTransferMessage
@@ -210,10 +214,10 @@ internal val DeepBg: Color
 private val Surface: Color
     // #662: unchanged #171B21 in dark; the theme's container colour in light.
     @Composable @ReadOnlyComposable get() =
-        if (LocalAtlasDark.current) Color(0xFF171B21) else MaterialTheme.colorScheme.surfaceContainer
+        if (LocalAtlasDark.current) AtlasTokens.Colors.Shell.DarkSurface else MaterialTheme.colorScheme.surfaceContainer
 private val Mint: Color
     @Composable @ReadOnlyComposable get() =
-        if (LocalAtlasDark.current) Color(0xFFB5E7DA) else MaterialTheme.colorScheme.primary
+        if (LocalAtlasDark.current) AtlasTokens.Colors.Shell.DarkAccent else MaterialTheme.colorScheme.primary
 
 /**
  * VS-S2b (#468): the published visual index of the live face scope
@@ -1925,6 +1929,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             pendingAiSavedUri = null
         }
     }
+    // #365: selection batch results appear as one snackbar above the visible
+    // pill (Scaffold snackbarHost). A new result replaces the old; no Undo.
+    val selectionResults = remember { SelectionResultMessages() }
     // Batch Trash is always Android's own consent dialog (createTrashRequest);
     // ATLAS never deletes directly. Only RESULT_OK means anything changed.
     val batchTrashLauncher = rememberLauncherForActivityResult(
@@ -1934,11 +1941,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
             vm.refresh()
-            Toast.makeText(context, "Moved selected items to Android Trash",
-                Toast.LENGTH_LONG).show()
+            selectionResults.show("Moved selected items to Android Trash")
         } else {
-            Toast.makeText(context, "Trash canceled · your photos are unchanged",
-                Toast.LENGTH_SHORT).show()
+            selectionResults.show("Trash canceled · your photos are unchanged",
+                SelectionResultDuration.SHORT)
         }
     }
     // Batch favourite is Android's own consent dialog (createFavoriteRequest).
@@ -1978,8 +1984,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     fun finishAlbumTransfer(plan: AlbumTransferPlan, result: AlbumTransferResult) {
         Log.i(TRANSFER_LOG, "done ${plan.mode.name} ok=${result.done} failed=${result.failed} " +
             "skipped=${result.skipped}")
-        Toast.makeText(context, albumTransferMessage(plan.mode, plan.target.title, result),
-            Toast.LENGTH_LONG).show()
+        selectionResults.show(albumTransferMessage(plan.mode, plan.target.title, result))
         if (result.done > 0) {
             batchSelection = null
             vm.refresh()
@@ -1994,8 +1999,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         Log.i(TRANSFER_LOG, "consent result=${result.resultCode} plan=${plan != null}")
         if (plan == null || result.resultCode != Activity.RESULT_OK) {
             batchOperating = false
-            Toast.makeText(context, "Move canceled · your photos are unchanged",
-                Toast.LENGTH_SHORT).show()
+            selectionResults.show("Move canceled · your photos are unchanged",
+                SelectionResultDuration.SHORT)
         } else {
             atlasScope.launch {
                 try {
@@ -2098,8 +2103,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (batchOperating ||
             !selection.isCurrentFor(visible, publishedGallery.epoch, galleryAccessCurrent())) return
         if (selection.count > MAX_BATCH_SHARE_ITEMS) {
-            Toast.makeText(context, "Share up to $MAX_BATCH_SHARE_ITEMS items at a time",
-                Toast.LENGTH_LONG).show()
+            selectionResults.show("Share up to $MAX_BATCH_SHARE_ITEMS items at a time")
             return
         }
         val source = visible
@@ -2111,8 +2115,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     resolveBatchSelection(selection, source) { worker.ensureActive() }
                 }
                 if (records.isNullOrEmpty() || batchSelection !== selection) {
-                    Toast.makeText(context, "Selection changed · select again to share",
-                        Toast.LENGTH_LONG).show()
+                    selectionResults.show("Selection changed · select again to share")
                     return@launch
                 }
                 val uris = ArrayList(records.map { Uri.parse(it.uri) })
@@ -2135,12 +2138,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 context.startActivity(Intent.createChooser(send, null)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
             } catch (_: ActivityNotFoundException) {
-                Toast.makeText(context, "No app can share these items",
-                    Toast.LENGTH_LONG).show()
+                selectionResults.show("No app can share these items")
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                Toast.makeText(context, "Couldn't share the selection", Toast.LENGTH_LONG).show()
+                selectionResults.show("Couldn't share the selection")
             } finally {
                 batchOperating = false
             }
@@ -2151,8 +2153,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (Build.VERSION.SDK_INT < 30 || batchOperating ||
             !selection.isCurrentFor(visible, publishedGallery.epoch, galleryAccessCurrent())) return
         if (selection.count > MAX_BATCH_TRASH_ITEMS) {
-            Toast.makeText(context, "Move up to $MAX_BATCH_TRASH_ITEMS items to Trash at a time",
-                Toast.LENGTH_LONG).show()
+            selectionResults.show("Move up to $MAX_BATCH_TRASH_ITEMS items to Trash at a time")
             return
         }
         val source = visible
@@ -2173,9 +2174,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 if (records == null || !unchanged || batchSelection !== selection ||
                     !selection.isCurrentFor(visible, publishedGallery.epoch,
                         galleryAccessCurrent())) {
-                    Toast.makeText(context,
-                        "Selected files changed or became inaccessible. " +
-                            "Select again; nothing was trashed.", Toast.LENGTH_LONG).show()
+                    selectionResults.show("Selected files changed or became inaccessible. " +
+                            "Select again; nothing was trashed.")
                     return@launch
                 }
                 val request = MediaStore.createTrashRequest(
@@ -2186,8 +2186,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                Toast.makeText(context, "Couldn't verify selected files. Nothing was trashed.",
-                    Toast.LENGTH_LONG).show()
+                selectionResults.show("Couldn't verify selected files. Nothing was trashed.")
             } finally {
                 if (!launched) batchOperating = false
             }
@@ -2198,8 +2197,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         if (Build.VERSION.SDK_INT < 30 || batchOperating || selection.count == 0 ||
             !selection.isCurrentFor(visible, publishedGallery.epoch, galleryAccessCurrent())) return
         if (selection.count > MAX_BATCH_SHARE_ITEMS) {
-            Toast.makeText(context, "Favourite up to $MAX_BATCH_SHARE_ITEMS items at a time",
-                Toast.LENGTH_LONG).show()
+            selectionResults.show("Favourite up to $MAX_BATCH_SHARE_ITEMS items at a time")
             return
         }
         val source = visible
@@ -2213,8 +2211,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
                 if (records.isNullOrEmpty() || batchSelection !== selection ||
                     records.any { !viewerCanChangeInMediaStore(it.uri, Build.VERSION.SDK_INT) }) {
-                    Toast.makeText(context, "Selection changed · select again",
-                        Toast.LENGTH_LONG).show()
+                    selectionResults.show("Selection changed · select again")
                     return@launch
                 }
                 // Samsung: favourite all, unless every selected item already is one.
@@ -2227,7 +2224,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                Toast.makeText(context, "Couldn't change favourites", Toast.LENGTH_LONG).show()
+                selectionResults.show("Couldn't change favourites")
             } finally {
                 if (!launched) batchOperating = false
             }
@@ -2242,12 +2239,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // instead of silently doing nothing; every URI is still checked by
         // MediaStore (byte count for a copy, Android's consent for a move).
         if (!galleryAccessCurrent()) {
-            Toast.makeText(context, "Photo access changed · select again", Toast.LENGTH_LONG).show()
+            selectionResults.show("Photo access changed · select again")
             return
         }
         if (selection.count > MAX_BATCH_SHARE_ITEMS) {
-            Toast.makeText(context, (if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
-                " up to $MAX_BATCH_SHARE_ITEMS items at a time", Toast.LENGTH_LONG).show()
+            selectionResults.show((if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
+                " up to $MAX_BATCH_SHARE_ITEMS items at a time")
             return
         }
         val source = selection.source
@@ -2267,8 +2264,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 if (records.isNullOrEmpty() ||
                     records.any { !viewerCanChangeInMediaStore(it.uri, Build.VERSION.SDK_INT) }) {
                     Log.i(TRANSFER_LOG, "stale selection")
-                    Toast.makeText(context, "Selection changed · select again",
-                        Toast.LENGTH_LONG).show()
+                    selectionResults.show("Selection changed · select again")
                     return@launch
                 }
                 Log.i(TRANSFER_LOG, "resolved ${records.size}")
@@ -2298,9 +2294,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             } catch (failure: Exception) {
                 pendingMove = null
                 Log.w(TRANSFER_LOG, "transfer failed: ${failure.javaClass.simpleName}")
-                Toast.makeText(context, if (mode == AlbumTransferMode.COPY)
-                    "Couldn't copy the selection" else "Couldn't move the selection",
-                    Toast.LENGTH_LONG).show()
+                selectionResults.show(if (mode == AlbumTransferMode.COPY)
+                    "Couldn't copy the selection" else "Couldn't move the selection")
             } finally {
                 if (!handedOff) batchOperating = false
             }
@@ -2846,6 +2841,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // icon without an explicit colour rendered black-on-black (seen on the
         // API 35 emulator: "Photos", the empty-state heading, Settings icon).
         contentColor = MaterialTheme.colorScheme.onBackground,
+        // #365: Scaffold puts this slot on top of the measured bottom bar, so the
+        // result follows whichever pill is visible (selection or nav) and stays
+        // above the system navigation bar when neither is shown.
+        snackbarHost = { SelectionResultSnackbarHost(selectionResults) },
         bottomBar = {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {

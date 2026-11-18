@@ -58,7 +58,7 @@ import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.ui.unit.dp
 
 /** Samsung's selection blue for checked circles. */
-val SelectionCheckBlue = Color(0xFF3E91FF)
+val SelectionCheckBlue = nl.atlas.gallery.featuredesign.AtlasTokens.Colors.Selection.Accent
 
 /**
  * Samsung check circle: an outlined ring while unchecked, a filled blue
