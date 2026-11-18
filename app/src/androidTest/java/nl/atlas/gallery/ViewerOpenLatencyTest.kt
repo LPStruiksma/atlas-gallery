@@ -9,7 +9,6 @@ import android.graphics.Shader
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
@@ -20,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -32,6 +30,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import coil3.SingletonImageLoader
 import coil3.memory.MemoryCache
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -60,7 +59,8 @@ class ViewerOpenLatencyTest {
         val gridPixels = 352
         val gridKey = photo.presentationCacheKeyOrNull(gridPixels, epoch)!!
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val memory = SingletonImageLoader.get(context).memoryCache!!
+        val loader = SingletonImageLoader.get(context)
+        val memory = loader.memoryCache!!
         var arm by mutableIntStateOf(0)
         var run by mutableIntStateOf(0)
         var open by mutableStateOf(false)
@@ -69,10 +69,8 @@ class ViewerOpenLatencyTest {
                 CompositionLocalProvider(LocalGalleryPublicationEpoch provides epoch,
                     LocalViewerInstantOpen provides (arm == 1)) {
                     key(arm, run) {
-                        if (!open) Box(Modifier.size(120.dp)) {
-                            MediaPreview(photo, Modifier.fillMaxSize(), ContentScale.Crop, gridPixels,
-                                gridTile = true)
-                        } else GalleryViewer(listOf(photo), photo.uri, onBack = {})
+                        if (open) GalleryViewer(listOf(photo), photo.uri, onBack = {})
+                        else Box(Modifier.size(120.dp))
                     }
                 }
             }
@@ -81,7 +79,11 @@ class ViewerOpenLatencyTest {
         for (a in 0..1) for (r in 0 until RUNS) {
             rule.runOnIdle { memory.clear(); open = false; arm = a; run = r }
             // The tapped tile is in memory, nothing else (no 800 or 2400 decode).
-            rule.waitUntil(30_000) { memory[MemoryCache.Key(gridKey)] != null }
+            // The grid's own request (MediaPreview builds the same one), loaded
+            // directly: grid tile gating has process-wide fling state that an
+            // earlier test may leave set.
+            runBlocking { loader.execute(mediaPreviewRequest(context, photo, gridPixels, epoch)) }
+            check(memory[MemoryCache.Key(gridKey)] != null) { "grid tile not cached" }
             rule.waitForIdle()
             var t0 = 0L
             rule.runOnIdle { t0 = System.nanoTime(); open = true }
