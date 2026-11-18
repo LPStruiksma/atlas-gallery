@@ -467,8 +467,28 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   scan_job_pending "$scan_job" || {
     kill43_diagnostics
     echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
-  echo "#43: scan worker job $scan_job pending; killing the unplugged app"
-  kill_app
+  # #372: JobScheduler may still show a pending job after GreedyScheduler
+  # has already completed it. Freeze the process before the final pending
+  # check so the worker cannot finish between that check and SIGKILL.
+  prekill_pid="$(app_pid)"
+  [[ -n "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 no live app process to freeze"; exit 1; }
+  adb shell run-as nl.atlas.gallery kill -STOP "$prekill_pid"
+  [[ "$(app_pid)" == "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
+  scan_job_pending "$scan_job" || {
+    # An already completed job is a precondition miss, not a restore failure.
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics
+    echo "::error::#43 scan finished before the process was frozen; re-seed required"; exit 1; }
+  echo "#43: scan worker job $scan_job frozen in pid $prekill_pid; SIGKILL unplugged app"
+  adb shell run-as nl.atlas.gallery kill -9 "$prekill_pid"
+  for _ in $(seq 1 20); do
+    [[ -z "$(app_pid)" ]] && break
+    sleep 0.5
+  done
+  [[ -z "$(app_pid)" ]] || {
+    kill43_diagnostics; echo "::error::#43 frozen app process survived SIGKILL"; exit 1; }
   adb logcat -c || true
   adb shell dumpsys battery set ac 1
   adb shell dumpsys battery set status 2
