@@ -323,9 +323,11 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             }
             val cancelledAfterSubmit = recordAcceptedSubmission(folder, remoteId)
             File(folder, imageName).delete()
-            if (cancelledAfterSubmit || isStopped || cancellation.isCancelled) {
+            if (cancelledAfterSubmit || isStopped || cancellation.isCancelled ||
+                EditJobJournal.read(folder)?.optString("state") == "cancelled") {
                 // A prior cancel worker may already have run without the remote ID.
-                enqueueRemoteCancel(applicationContext, id)
+                EditJobJournal.change(folder) { it.put("state", "cancelled") }
+                EditJobRunner.enqueueRemoteCancel(applicationContext, id)
                 return@withContext Result.success()
             }
         }
