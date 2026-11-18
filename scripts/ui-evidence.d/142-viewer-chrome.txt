@@ -1,0 +1,7 @@
+# #142: exact-head DESIGN-8 viewer chrome after renders. The Pixel 6 emulator
+# cutout is rotated onto a horizontal edge; assertions require photo actions
+# and video controls to clear its real displayCutout inset in both themes.
+viewer-142-photo-landscape-cutout-light
+viewer-142-photo-landscape-cutout-dark
+viewer-142-video-landscape-cutout-light
+viewer-142-video-landscape-cutout-dark
