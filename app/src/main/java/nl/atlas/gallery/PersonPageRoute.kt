@@ -209,7 +209,7 @@ internal fun NativePersonAlbumRoute(
         listOf(currentGrant, epoch, personIdentity) else null
     LaunchedEffect(selectionFence, selected) {
         if (selected != null && (selectionFence == null ||
-                (activeSelectionFence != null && activeSelectionFence != selectionFence))) {
+                activeSelectionFence != selectionFence)) {
             selected = null
             pendingSelection = emptyList()
             activeSelectionFence = null
