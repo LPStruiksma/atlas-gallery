@@ -212,7 +212,13 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * colour; the photo-overlay circles are covered by existing selection tests.
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
+        // A previous sort journey may have persisted non-date ordering. Force
+        // the dated view before looking for a date header's selection circle.
         waitFor(hasTestTag("atlas-nav-photos"))
+        compose.onNodeWithTag("atlas-photos-sort").performClick()
+        compose.waitForNode(hasTestTag("atlas-photos-sort-sheet"))
+        compose.onNodeWithTag("atlas-media-sort-date_created").performClick()
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         // MediaStore inventory loads off the Compose frame clock. Wait for the
         // fixture's actual tile rather than sampling immediately after nav appears.
         val visibleTile = SemanticsMatcher("visible timeline tile") { node ->

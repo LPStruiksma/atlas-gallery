@@ -77,6 +77,24 @@ class TimelineScrubLabelTest {
         }
     }
 
+    @Test fun sharedSortScrubLabelsRespectActiveKey() {
+        val sample = nl.atlas.gallery.MediaSortKey.entries
+        for (key in sample) {
+            val sort = nl.atlas.gallery.MediaSort(key,
+                nl.atlas.gallery.SortDirection.ASCENDING)
+            val label = fastScrollBubbleLabel(sort, "3 Oct 2026", 180_000_000L,
+                "photo7.jpg", 4, 10)
+            val expected = when (key) {
+                nl.atlas.gallery.MediaSortKey.DATE_CREATED,
+                nl.atlas.gallery.MediaSortKey.DATE_MODIFIED -> "3 Oct 2026"
+                nl.atlas.gallery.MediaSortKey.FILE_NAME -> "P"
+                nl.atlas.gallery.MediaSortKey.SIZE -> "100–250 MB"
+                nl.atlas.gallery.MediaSortKey.RANDOM -> "Photo 5 of 10"
+            }
+            assertEquals(key.name, expected, label)
+        }
+    }
+
     @Test fun trackMathsCentreTheThumbOnTheFingerAndClamp() {
         assertEquals(0f, fastScrollFractionForTouch(0f, 1000f, 100f), 0f)
         assertEquals(0f, fastScrollFractionForTouch(50f, 1000f, 100f), 0f)

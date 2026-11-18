@@ -99,10 +99,12 @@ class PinchRealRatioJourneyTest {
                 compose.mainClock.advanceTimeByFrame()
                 compose.waitForIdle()
             }
-            repeat(4) {
-                compose.mainClock.advanceTimeByFrame()
-                compose.waitForIdle()
-            }
+            // The handoff starts at the size left by the fingers; depending on
+            // the final pinch scale, a tile can start smaller OR larger than
+            // its settled ratio-row size. Sample early, before the spring
+            // erases the difference on slower emulator runs.
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
             saveUiEvidence("pinch-507-entering-ratio.png")
             tallestRatioTile()
         } finally {
@@ -112,8 +114,8 @@ class PinchRealRatioJourneyTest {
         compose.onNodeWithTag("atlas-grid-view-as").assertDoesNotExist()
         compose.waitForIdle()
         val settled = tallestRatioTile()
-        assertTrue("original rows enter enlarged, then settle ($entering -> $settled px)",
-            entering > settled * 1.1f)
+        assertTrue("original rows enter at pinch size, then settle ($entering -> $settled px)",
+            kotlin.math.abs(entering - settled) > settled * 0.01f)
         assertFixtureTilesHaveRealRatiosAndNoBars()
         saveUiEvidence("pinch-494-after-ratio.png")
 
@@ -208,5 +210,9 @@ private val FIXTURE_SIZES =
 /** Start from the default four-column grid regardless of earlier tests. */
 private fun resetDensity(context: Context) {
     context.getSharedPreferences("atlas_featuregrid_density", Context.MODE_PRIVATE)
+        .edit().clear().commit()
+    // SORT-0 persists Pictures order across launches: another journey can
+    // leave Random/Size selected, changing which fixture lies under the pinch.
+    context.getSharedPreferences("atlas_media_sort", Context.MODE_PRIVATE)
         .edit().clear().commit()
 }

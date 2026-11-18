@@ -20,6 +20,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.lifecycle.ViewModelProvider
@@ -99,8 +100,20 @@ class GalleryMediaStoreObserverJourneyTest {
                     publication.observedGrant?.videos == true &&
                     publication.items.count { it.name.startsWith("IMG_HEADER_FIXTURE_") } >= 72
             }
-            compose.onNodeWithTag("atlas-photos-sort").performClick()
-            compose.onNodeWithTag("atlas-photos-sort-newest").performClick()
+            // SORT-0 (#176): newest first is Date created + Descending; the
+            // sheet closes after each choice, so pick key and direction apart.
+            for (choice in listOf("atlas-media-sort-date_created",
+                    "atlas-media-sort-direction-descending")) {
+                compose.onNodeWithTag("atlas-photos-sort").performClick()
+                compose.waitUntil(10_000L) {
+                    compose.onAllNodesWithTag(choice).fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.onNodeWithTag(choice).performClick()
+                compose.waitUntil(10_000L) {
+                    compose.onAllNodesWithTag("atlas-photos-sort-sheet")
+                        .fetchSemanticsNodes().isEmpty()
+                }
+            }
             compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
             compose.waitForIdle()
 

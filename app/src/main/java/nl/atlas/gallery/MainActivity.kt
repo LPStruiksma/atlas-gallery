@@ -431,6 +431,25 @@ internal fun rememberAsyncSortedCatalog(
     return result
 }
 
+/** The common sort pipeline is keyed by source identity, sort and shuffle seed. */
+@Composable
+internal fun rememberAsyncSortedCatalog(
+    media: List<MediaRecord>, sort: MediaSort, seed: Long
+): MediaSortSnapshot? {
+    val result by produceState<MediaSortSnapshot?>(
+        initialValue = null, key1 = CatalogSourceKey(media), key2 = sort, key3 = seed
+    ) {
+        value = null
+        value = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            MediaSortSnapshot(media, sort, seed,
+                sortMedia(media, sort, seed,
+                    cancellationCheckpoint = { worker.ensureActive() }))
+        }
+    }
+    return result
+}
+
 /** Logcat tag for #568 Copy/Move: stages and exception class names, never paths. */
 internal const val TRANSFER_LOG = "ATLAS_TRANSFER"
 
@@ -1069,7 +1088,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             !publishedNow.showable(actual)) return null
         return publishedNow.displayItems(actual).takeIf { it === media }
     }
-    var sort by rememberSaveable { mutableStateOf(SortOrder.NEWEST) }
+    val mediaSortPrefs = remember(context) {
+        context.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
+    }
+    var sort by remember {
+        mutableStateOf(
+            MediaSort(
+                MediaSortKey.entries.firstOrNull {
+                    it.name == mediaSortPrefs.getString("pictures.key", null)
+                } ?: MediaSortKey.DATE_CREATED,
+                SortDirection.entries.firstOrNull {
+                    it.name == mediaSortPrefs.getString("pictures.direction", null)
+                } ?: SortDirection.DESCENDING
+            )
+        )
+    }
+    fun updatePicturesSort(chosen: MediaSort) {
+        sort = chosen
+        mediaSortPrefs.edit().putString("pictures.key", chosen.key.name)
+            .putString("pictures.direction", chosen.direction.name).apply()
+    }
     var randomSeed by rememberSaveable { mutableLongStateOf(12345L) }
     var originalProportions by rememberSaveable { mutableStateOf(false) }
     val albumFailed = remember { mutableStateOf(false) }
@@ -1785,19 +1823,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 "atlas_featuregrid_density", android.content.Context.MODE_PRIVATE)
             val density = GridDensity.fromColumns(
                 shared.getInt("photos", GridDensity.MEDIUM.columns))
-            val timelineSort = when (sort) {
-                SortOrder.NEWEST -> TimelineSort.NEWEST
-                SortOrder.OLDEST -> TimelineSort.OLDEST
-                SortOrder.LARGEST -> TimelineSort.LARGEST
-                SortOrder.SMALLEST -> TimelineSort.SMALLEST
-                SortOrder.RANDOM -> TimelineSort.RANDOM
+            val timelineSort = when (sort.key) {
+                MediaSortKey.DATE_CREATED, MediaSortKey.DATE_MODIFIED ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.NEWEST else TimelineSort.OLDEST
+                MediaSortKey.SIZE ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.LARGEST else TimelineSort.SMALLEST
+                MediaSortKey.FILE_NAME, MediaSortKey.RANDOM -> TimelineSort.RANDOM
             }
             val timeline = withContext(Dispatchers.Default) {
                 val worker = currentCoroutineContext()
                 val projection = ArrayList<TimelineMedia>(source.size)
                 source.forEachIndexed { i, item ->
                     if ((i and 511) == 0) worker.ensureActive()
-                    projection.add(TimelineMedia(item.uri, item.takenAtMillis))
+                    projection.add(TimelineMedia(item.uri, if (sort.key == MediaSortKey.DATE_MODIFIED && item.modifiedAtSeconds > 0L && item.modifiedAtSeconds <= Long.MAX_VALUE / 1000L) item.modifiedAtSeconds * 1000L else item.takenAtMillis))
                 }
                 buildGridTimelineIndex(projection, timelineSort, density,
                     ZoneId.systemDefault(), Locale.getDefault()) {
@@ -3077,7 +3115,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         )
                         if (photosControls && !settingsOpen) PhotosSortAction(
-                            order = sort, onSort = { sort = it }, onShuffle = { randomSeed++ })
+                            sort = sort, onSort = { updatePicturesSort(it) }, onShuffle = { randomSeed++ })
                     }
                 )
             }
@@ -3269,16 +3307,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             key(if (albumRoute == null) "photos-timeline" else CatalogSourceKey(visible)) {
                                 AtlasTimelineGallery(
                                     items = visible,
-                                    sort = when (sort) {
-                                        SortOrder.NEWEST -> TimelineSort.NEWEST
-                                        SortOrder.OLDEST -> TimelineSort.OLDEST
-                                        SortOrder.LARGEST -> TimelineSort.LARGEST
-                                        SortOrder.SMALLEST -> TimelineSort.SMALLEST
-                                        SortOrder.RANDOM -> TimelineSort.RANDOM
-                                    },
+                                    sort = when (sort.key) {
+                MediaSortKey.DATE_CREATED, MediaSortKey.DATE_MODIFIED ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.NEWEST else TimelineSort.OLDEST
+                MediaSortKey.SIZE ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.LARGEST else TimelineSort.SMALLEST
+                MediaSortKey.FILE_NAME, MediaSortKey.RANDOM -> TimelineSort.RANDOM
+            },
                                     gridState = timelineGridState,
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
+                                    mediaSort = sort,
                                     busy = busy || sortPending || albumSelectionPending || scopedPending,
                                     catalogueEpoch = publishedGallery.epoch,
                                     preserveScrollOnIncremental = publishedGallery.incremental && albumRoute == null,
