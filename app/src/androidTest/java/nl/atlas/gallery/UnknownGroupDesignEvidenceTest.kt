@@ -101,8 +101,16 @@ class UnknownGroupDesignEvidenceTest {
         saveUiEvidence("group-sheet-266-ready-$mode.png")
         compose.onNodeWithTag("atlas-group-name").performTextInput("Morgan")
         compose.waitForIdle()
+        // The Create action must stay above the keyboard while typing (#266 review of
+        // the 928ad23 renders: it was hidden under the IME).
+        compose.waitUntil(5_000) {
+            runCatching {
+                compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
+            }.isSuccess
+        }
         compose.onNodeWithTag("atlas-group-face-1").assertIsDisplayed()
         compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
         saveUiEvidence("group-sheet-266-typing-$mode.png")
     }
 }

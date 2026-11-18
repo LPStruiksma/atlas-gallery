@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
@@ -39,11 +42,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
@@ -377,6 +382,7 @@ private fun UnknownGroupHeader(
 }
 
 /** One Unknown group: name first, then only evidence-backed matches and explicit search. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UnknownIdentityGroupCard(
     group: UnknownFaceCluster,
@@ -405,6 +411,15 @@ private fun UnknownIdentityGroupCard(
     val cleanedName = name.trim()
     val duplicates = if (cleanedName.isBlank()) emptyList() else albums.withIndex()
         .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
+    val nameFormView = remember { BringIntoViewRequester() }
+    var nameFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(nameFocused, duplicates.isEmpty()) {
+        if (nameFocused) {
+            // Let the keyboard inset settle first, then show the field and its action.
+            delay(NAME_FORM_SETTLE_MS)
+            nameFormView.bringIntoView()
+        }
+    }
     val suggestions = eligibleScoredGroupSuggestions(
         group, albums, reviewState.clusters.policy.suggestThreshold,
         reviewState.clusters.reviews.rejectedPeople
@@ -418,6 +433,10 @@ private fun UnknownIdentityGroupCard(
             },
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // #266: while typing, keep the name field and its Create action above the
+        // keyboard. The sticky group header keeps the faces visible on top.
+        Column(Modifier.bringIntoViewRequester(nameFormView),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Who is this?", style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(
             value = name,
@@ -429,6 +448,7 @@ private fun UnknownIdentityGroupCard(
             isError = tooLong,
             supportingText = if (tooLong) { { Text("Use a shorter name.") } } else null,
             modifier = Modifier.fillMaxWidth().testTag("atlas-group-name")
+                .onFocusChanged { nameFocused = it.isFocused }
         )
         if (duplicates.isNotEmpty()) {
             Text("There's already a person called ${cleanedName}.",
@@ -466,6 +486,7 @@ private fun UnknownIdentityGroupCard(
                         group.id, newPersonKey(reviewState, group.id), cleanedName))
                 }
             ) { Text("Create person") }
+        }
         }
 
         if (!splitting && name.isBlank() && suggestions.isNotEmpty()) {
@@ -683,6 +704,9 @@ private fun ReviewedIdentityCard(
 
 /** #579: Samsung shows a person once they are in at least this many photos. */
 const val PEOPLE_MIN_GROUP_FACES = 3
+
+/** #266: wait for the keyboard inset before bringing the name form into view. */
+private const val NAME_FORM_SETTLE_MS = 300L
 
 /**
  * Unknown groups the review list shows: every group of at least
