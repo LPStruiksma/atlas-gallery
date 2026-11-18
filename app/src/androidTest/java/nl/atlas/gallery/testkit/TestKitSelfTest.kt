@@ -245,6 +245,14 @@ class TestKitSelfTest {
             compose.typeText(hasTestTag("field"), "b", KeyboardAfter.Shown)
             assertEquals("the height the test named", 600, compose.keyboardInsetPx())
             compose.hideKeyboard()
+            // The same keyboard service, still selected, is asked for another
+            // height: it reads the height on every show, not once (#502). A
+            // service kept from an earlier selection meets this case.
+            testShell("settings put global $FIXED_KEYBOARD_HEIGHT_SETTING 700")
+            compose.typeText(hasTestTag("field"), "c", KeyboardAfter.Shown)
+            assertEquals("a height named while the keyboard stays selected", 700,
+                compose.keyboardInsetPx())
+            compose.hideKeyboard()
         }
         assertEquals("the device's own input method is selected again",
             deviceKeyboard, selectedInputMethod())

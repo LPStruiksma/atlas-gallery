@@ -196,6 +196,23 @@ class EditHttpTransportTest {
         assertFalse(failure("invalid").retryable)
     }
 
+    @Test fun errorRepliesAreCappedAndNeverRenderedByToString() {
+        val secret = "provider-private-error-text"
+        val cases = listOf(
+            (secret.repeat(10).toByteArray()) to true,
+            (ByteArray(EditHttpTransport.MAX_ERROR_REPLY) { 'a'.code.toByte() }) to true,
+            (ByteArray(EditHttpTransport.MAX_ERROR_REPLY + 1) { 'b'.code.toByte() }) to false
+        )
+        for ((body, retained) in cases) withServer({ FakeResponse(422, body = body) }) { server ->
+            val result = transport(server).execute(config(),
+                EditHttpRequest(EditHttpMethod.GET, "invalid")) as EditHttpResult.Failed
+            assertEquals(retained, result.errorBody.contentEquals(body))
+            assertTrue(result.errorBody.size <= EditHttpTransport.MAX_ERROR_REPLY)
+            assertFalse(result.toString().contains(secret))
+            assertTrue(result.toString().contains("[REDACTED]"))
+        }
+    }
+
     @Test fun binaryDownloadWritesOnlyCompletedOutputFile() = withServer({
             FakeResponse(200, body = byteArrayOf(1, 2, 3, 4, 5))
         }) { server ->

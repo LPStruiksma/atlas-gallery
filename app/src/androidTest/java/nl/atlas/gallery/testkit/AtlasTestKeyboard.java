@@ -7,8 +7,10 @@ import android.graphics.Paint;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 
 /**
  * A keyboard for emulator tests only: one flat panel, 918 px tall on a
@@ -31,9 +33,42 @@ public class AtlasTestKeyboard extends InputMethodService {
     /** Global setting with the height in px, written and removed by KeyboardRule. */
     public static final String HEIGHT_SETTING = "atlas_test_keyboard_height_px";
 
+    private static final String LOG_TAG = "ATLAS_TESTKIT";
+
+    private Panel panel;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.i(LOG_TAG, "test keyboard service created " + System.identityHashCode(this));
+    }
+
     @Override
     public View onCreateInputView() {
-        return new Panel(this, panelHeight());
+        panel = new Panel(this, panelHeight());
+        Log.i(LOG_TAG, "test keyboard view created " + System.identityHashCode(this)
+                + " height=" + panel.panelHeight + " px");
+        return panel;
+    }
+
+    /**
+     * Reads the height again on every show. The system may keep this service and
+     * its view from an earlier selection (one KeyboardRule after another, or one
+     * instrumentation run after another in the same process), and a view built
+     * then would keep that selection's height.
+     */
+    @Override
+    public void onStartInputView(EditorInfo info, boolean restarting) {
+        super.onStartInputView(info, restarting);
+        if (panel != null) {
+            int height = panelHeight();
+            if (height != panel.panelHeight) {
+                Log.i(LOG_TAG, "test keyboard " + System.identityHashCode(this)
+                        + " height " + panel.panelHeight + " -> " + height + " px");
+                panel.panelHeight = height;
+                panel.requestLayout();
+            }
+        }
     }
 
     @Override
@@ -69,7 +104,7 @@ public class AtlasTestKeyboard extends InputMethodService {
     }
 
     private static final class Panel extends View {
-        private final int panelHeight;
+        private int panelHeight;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         Panel(Context context, int panelHeight) {

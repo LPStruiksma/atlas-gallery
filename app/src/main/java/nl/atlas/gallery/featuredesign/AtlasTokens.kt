@@ -15,7 +15,7 @@ object AtlasTokens {
         val Mist = Color(0xFFF6F7F9)
         val Paper = Color(0xFFFFFFFF)
         val Tidal = Color(0xFF7FA8FF)
-        val DeepTidal = Color(0xFF2F6BE0)
+        val DeepTidal = Color(0xFF2A62D4)
         val WarmGray = Color(0xFFB4B8C1)
         val QuietGray = Color(0xFF4A4F59)
 
