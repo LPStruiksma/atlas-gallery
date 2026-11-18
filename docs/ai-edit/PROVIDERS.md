@@ -131,6 +131,20 @@ A capability must reflect *tested endpoint behavior*, not family marketing.
 
 **Release/rollout requirements:** default no network call until a user chooses AI Edit and Generate, no background indexing uploads. Display current provider, whether a remote upload will occur, and estimated cost (when knowable); allow explicit retry or change provider; keep every candidate non-destructive and preserve ordinary Edit pencil. Provider refusal, timeout and policy errors are visible, never auto-switched to a second provider. No unsupported blanket promise of 'uncensored' editing.
 
+## Implemented adapters
+
+### Google Gemini (#192), 2026-11-18
+
+`featureaiedit/provider/hosted/gemini/GeminiImageEditProvider.kt`, on the shared `EditHttpTransport`. Fake-server tested only: no key, account or live request was used.
+
+- **Wire format** (checked 2026-11-18): `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, key in the `x-goog-api-key` header, never the URL. Body `contents[0].parts` = instruction `text`, then the source and any references as `inlineData{mimeType,data}`; `generationConfig.responseModalities=["IMAGE"]` and `imageConfig{aspectRatio,imageSize}`. The reply image is the last non-`thought` `inlineData` part of `candidates[0].content.parts`.
+- **Sources:** `ai.google.dev` was not reachable from the build session, so the format was taken from Google's own published code on the same day: the official Python SDK `googleapis/python-genai` (`google/genai/_api_client.py` for host, `v1beta` and `x-goog-api-key`; `models.py` for the `generateContent` path and camelCase field mapping; `types.py` for `FinishReason`, `BlockedReason` and `ImageConfig`) and the official cookbook `google-gemini/cookbook` `quickstarts/Get_Started_Nano_Banana.ipynb` (model ids, aspect ratios, sizes, input-image limits). Re-check [G1]–[G3] before the first live edit.
+- **Models:** default `gemini-3.1-flash-image` (Nano Banana 2: up to 14 input images, 1K/2K/4K, ratios 1:8 to 8:1). Also `gemini-3-pro-image-preview` (Pro, preview id) and `gemini-3.1-flash-lite-image` (Lite: 3 input images, 1K only).
+- **Honest capabilities:** no mask (no documented pixel-mask input), one candidate, no seed, no multi-turn (ATLAS sends one stateless call), output format chosen by Gemini and reported from the bytes. Requested output size maps to the nearest documented aspect ratio and the smallest `imageSize` tier that covers it.
+- **Outcomes:** `promptFeedback.blockReason` and policy finish reasons (`SAFETY`, `IMAGE_SAFETY`, `PROHIBITED_CONTENT`, `IMAGE_PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`, `IMAGE_RECITATION` and similar) → `Refused` with the documented code; no image (`NO_IMAGE`, `IMAGE_OTHER`, text-only `STOP`) → `Failed(UNKNOWN)`, never a fake success; 401/403 → `AUTH`; 429 → `QUOTA`; 5xx and timeouts → retryable. The POST is never replayed. Unrecognized codes are reported as `UNRECOGNIZED` so provider text cannot leak into state.
+- **Cost:** list prices from [G2] (2026-11-15) rounded up to whole cents: Flash 7/11/16 US cents for 1K/2K/4K, Pro 14/14/25; Lite unknown (null).
+- **Known gap, blocks a live edit:** the transport caps JSON replies at 1 MB (`MAX_JSON`), but Gemini returns the image base64-encoded inside the JSON reply, so a realistic 1K PNG (about 2 MB as base64) is rejected as an oversized reply. The transport is owned by PR #415, so this PR does not touch it; a follow-up transport unit must allow a larger bounded reply for this call (for example a per-request reply cap of about 40 MB) before #431's first live edit. Also unverified: Google documents an invalid key as HTTP 400 in places, which the transport reports as `INVALID_REQUEST`, not `AUTH`, because it hides reply bodies.
+
 ## Owner gates
 
 1. **Now:** docs, provider interface/mock, offline scoring and fake-server contracts may proceed without payment. No account sign-ups or paid calls. This unit does not change permission, credentials, app code, or core UI.
