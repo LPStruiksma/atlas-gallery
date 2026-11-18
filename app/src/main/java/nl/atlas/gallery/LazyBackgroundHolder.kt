@@ -10,10 +10,10 @@ package nl.atlas.gallery
  */
 internal class LazyBackgroundHolder<T : Any>(
     private val name: String,
+    private val initialize: () -> T,
     private val isMainThread: () -> Boolean = {
         android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
-    },
-    private val initialize: () -> T
+    }
 ) {
     @Volatile private var opened: T? = null
     val isOpened: Boolean get() = opened != null
