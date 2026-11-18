@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featurepeopleui
 
-import android.graphics.Rect
 import android.view.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +22,6 @@ import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
