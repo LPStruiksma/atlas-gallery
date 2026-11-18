@@ -221,21 +221,21 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         val ids = fixtures.ids
         compose.waitForNode(hasTestTag("atlas-nav-photos"))
         ids.take(2).forEach { id ->
-            compose.waitForNode(hasTestTag("atlas-timeline-media-$"+"{id}"))
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
         }
         compose.waitForIdle()
-        compose.onNodeWithTag("atlas-timeline-media-$"+"{ids[0]}").performTouchInput { longClick() }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
-        compose.onNodeWithTag("atlas-timeline-media-$"+"{ids[1]}").performClick()
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
         assertSelectedPair(ids)
-        saveUiEvidence("selection-404-$"+"{theme}-portrait-before.png")
+        saveUiEvidence("selection-404-${theme}-portrait-before.png")
         try {
             rotateTo(landscape = true)
             assertSelectedPair(ids)
-            saveUiEvidence("selection-404-$"+"{theme}-landscape.png")
+            saveUiEvidence("selection-404-${theme}-landscape.png")
             rotateTo(landscape = false)
             assertSelectedPair(ids)
-            saveUiEvidence("selection-404-$"+"{theme}-portrait-after.png")
+            saveUiEvidence("selection-404-${theme}-portrait-after.png")
         } finally {
             InstrumentationRegistry.getInstrumentation().uiAutomation
                 .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
@@ -249,7 +249,7 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-selection-pill").assertExists()
         compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
         ids.take(2).forEach { id ->
-            compose.waitForNode(hasTestTag("atlas-timeline-media-$"+"{id}"))
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
         }
     }
 
