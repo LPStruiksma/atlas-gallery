@@ -183,8 +183,9 @@ fun planRatioRows(
             minOf(available, (sum * height).roundToInt()).coerceAtLeast(count)
         }
         // Balanced cumulative rounding: sum(widths) is guaranteed nominalWidth.
-        // Each cell gets >=1 px even for very tall or extremely narrow media.
-        val widths = ArrayList<Int>(count)
+        // Accumulate primitive pixels first; only box once for the immutable row view.
+        // This avoids ArrayList growth and boxed-per-add writes on the hot loop.
+        val widthBuffer = IntArray(count)
         var used = 0
         var cumulative = 0.0
         for (j in 0 until count) {
@@ -193,10 +194,11 @@ fun planRatioRows(
                 (nominalWidth * cumulative / sum).roundToInt()
             val maxHere = nominalWidth - used - (count - j - 1)
             val next = (target - used).coerceIn(1, maxHere)
-            widths.add(next)
+            widthBuffer[j] = next
             used += next
         }
-        check(widths.sum() == nominalWidth)
+        check(used == nominalWidth)
+        val widths = widthBuffer.asList()
         rows.add(RatioRow(offset, count, top, height, widths, nominalWidth == available))
         top += height.toLong() + options.gapPx
         offset += count

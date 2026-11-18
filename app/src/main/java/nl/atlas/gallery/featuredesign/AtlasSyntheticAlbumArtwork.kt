@@ -26,12 +26,7 @@ import nl.atlas.gallery.featurealbums.AlbumSummary
  */
 @Composable
 fun AtlasSyntheticAlbumArtwork(album: AlbumSummary) {
-    val palettes = listOf(
-        listOf(Color(0xFF46686D), Color(0xFFB6C4B4), Color(0xFF40675E)),
-        listOf(Color(0xFF99856D), Color(0xFFE2BFA1), Color(0xFF595A4B)),
-        listOf(Color(0xFF4E657F), Color(0xFFD5BDB0), Color(0xFF596786)),
-        listOf(Color(0xFF6E736B), Color(0xFFC5C2AF), Color(0xFF454E48))
-    )
+    val palettes = AtlasTokens.SyntheticArt.AlbumPalettes
     // Title-length choice is stable and completely fictional.
     val palette = palettes[album.title.length % palettes.size]
     Box(modifier = Modifier.fillMaxSize()) {
@@ -45,7 +40,7 @@ fun AtlasSyntheticAlbumArtwork(album: AlbumSummary) {
                 )
             )
             drawCircle(
-                color = Color(0xFFFFF0D0).copy(alpha = 0.78f),
+                color = AtlasTokens.SyntheticArt.Highlight.copy(alpha = 0.78f),
                 radius = w * 0.105f,
                 center = Offset(w * 0.73f, h * 0.23f)
             )

@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.layout.ContentScale
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
@@ -255,8 +256,8 @@ fun AtlasFeatureGrid(
             state = state,
             contentPadding = PaddingValues(start = 3.dp, end = 3.dp,
                 bottom = LocalAtlasBottomChrome.current),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
+            verticalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
             modifier = Modifier.fillMaxSize().galleryPinchLadder(sourceEpoch, density, state, newTracker = { slop ->
                 GalleryPinchTracker(GalleryZoomStop.forDensity(density), slop,
                     allowOriginal = originalCurrent != null, allowOverview = false)
@@ -290,7 +291,7 @@ fun AtlasFeatureGrid(
                 // Keep coordinates outside Compose state: scroll frames must not
                 // recompose every visible tile merely to track its rectangle.
                 val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
-                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
+                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(AtlasTokens.Radii.GridTile))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
                     .clickable(onClickLabel = "Open ${media.name}") {
