@@ -1149,8 +1149,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         timelineEntryDensity = null
     }
     // Save only bounded keys, never a MediaRecord list or actionable selection.
-    // The originating destination must match before a pending request is
-    // readmitted: switching tabs after rotation cannot resurrect old selection.
+    // A pending snapshot stays non-actionable until the current grant,
+    // publication and destination have been reconciled.
     // The restored snapshot remains non-actionable until the publication,
     // current grant and exact album scope have all been verified.
     var pendingSelectionRestore by rememberSaveable(
