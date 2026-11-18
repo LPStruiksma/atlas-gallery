@@ -20,6 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -36,6 +40,9 @@ import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.featuredesign.AtlasSpace
 import nl.atlas.gallery.featureorganization.SelectionCheckCircle
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
  * Samsung's "Hide albums" screen (parity research `GRID:A7`, #568), opened from the
@@ -50,12 +57,20 @@ fun HideAlbumsScreen(
     onToggle: (AlbumBucketKey) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onSearchWholeLibrary: (() -> Unit)? = null,
     coverRenderer: (@Composable (MediaRecord, Modifier) -> Unit)? = null
 ) {
     BackHandler(onBack = onClose)
+    var searchText by remember { mutableStateOf("") }
+    val visibleAlbums = albums?.let { scopedNamedMatches(it, searchText) { album -> album.title } }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .testTag("atlas-hide-albums")) {
-        AtlasGalleryHeader(title = "Hide albums", onBack = onClose)
+        AtlasGalleryHeader(title = "Hide albums", onBack = onClose, actions = {
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                onScopeChange = { scope ->
+                    if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                })
+        })
         if (albums == null) {
             AtlasGalleryLoading("Gathering albums on this device…")
             return@Column
@@ -68,7 +83,7 @@ fun HideAlbumsScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize().testTag("atlas-hide-albums-grid")
         ) {
-            itemsIndexed(albums) { index, album ->
+            itemsIndexed(visibleAlbums.orEmpty()) { index, album ->
                 val key = AlbumBucketKey(album.volumeName, album.relativePath)
                 val isHidden = key in hidden
                 Column(
