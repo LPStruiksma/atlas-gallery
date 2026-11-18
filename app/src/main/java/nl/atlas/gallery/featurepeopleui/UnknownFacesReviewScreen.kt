@@ -155,6 +155,15 @@ fun UnknownFacesReviewScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onClose) { Text("Back to People") }
                     Text("Unknown faces", style = MaterialTheme.typography.headlineMedium)
+                    // #357: identity safety copy, restored after #354. One compact line so
+                    // the faces and the name form stay where #266 put them.
+                    Text(
+                        "Detection finds faces in your photos; it doesn't recognize or name " +
+                            "people. Groups are suggestions, never named people.",
+                        modifier = Modifier.testTag("atlas-unknown-faces-safety-note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             if (visiblePeople != null) {
@@ -232,14 +241,20 @@ fun UnknownFacesReviewScreen(
                     }
                 }
             }
+            // #357: groups or albums on screen already prove faces are ready, so the
+            // "not ready" line would contradict them. visiblePeople is grant-checked above.
+            val groupsShown = visiblePeople != null &&
+                (visiblePeople.clusters.unknownClusters.isNotEmpty() || albums.isNotEmpty())
             if (current == null) {
-                item {
-                    Text(
-                        "Faces aren't ready to review yet. Check face discovery in People.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.testTag("atlas-review-scope-pending")
-                    )
+                if (!groupsShown) {
+                    item {
+                        Text(
+                            "Faces aren't ready to review yet. Check face discovery in People.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.testTag("atlas-review-scope-pending")
+                        )
+                    }
                 }
             } else {
                 item {
