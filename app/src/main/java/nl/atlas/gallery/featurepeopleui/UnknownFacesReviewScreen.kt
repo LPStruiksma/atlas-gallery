@@ -456,7 +456,9 @@ private fun UnknownIdentityGroupCard(
             snapshotFlow { imeInsets.getBottom(density) }.collectLatest {
                 // Let the keyboard inset settle first, then show the field and its action.
                 delay(NAME_FORM_SETTLE_MS)
+                android.util.Log.i("ATLAS_GROUP_IME", "DIAG bringIntoView start ime=$it")
                 nameFormView.bringIntoView()
+                android.util.Log.i("ATLAS_GROUP_IME", "DIAG bringIntoView end")
             }
         }
     }
@@ -522,6 +524,7 @@ private fun UnknownIdentityGroupCard(
                 enabled = enabled && cleanedName.isNotBlank(),
                 modifier = Modifier.testTag("atlas-group-create-person"),
                 onClick = {
+                    android.util.Log.i("ATLAS_GROUP_IME", "DIAG Create onClick")
                     onAction(PeopleReviewAction.NameCluster(
                         group.id, newPersonKey(reviewState, group.id), cleanedName))
                 }

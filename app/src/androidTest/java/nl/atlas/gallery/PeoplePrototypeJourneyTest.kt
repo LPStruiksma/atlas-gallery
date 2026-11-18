@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
@@ -223,7 +224,25 @@ class PeoplePrototypeJourneyTest {
         // while the keyboard slides in and the list resizes under the finger,
         // and the tap was lost on main too (run 44314754535).
         awaitKeyboardSettled()
-        compose.onAllNodesWithText("Create person").onFirst().performClick()
+        diagTouchProbe()
+        val createNode = compose.onAllNodesWithText("Create person").onFirst()
+        diagLog("before click: create=${runCatching { createNode.fetchSemanticsNode().boundsInWindow }.getOrNull()} " +
+            "ime=${imeBottomNow()}")
+        createNode.performClick()
+        diagLog("after click returned: down=${diagDown.get()} up=${diagUp.get()} ime=${imeBottomNow()}")
+        val stored = runCatching {
+            compose.waitUntil(8_000) { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
+        }.isSuccess
+        diagLog("touch click stored=$stored down=${diagDown.get()} up=${diagUp.get()} downAt=${diagDownAt} " +
+            "create=${runCatching { compose.onAllNodesWithText("Create person").onFirst().fetchSemanticsNode().boundsInWindow }.getOrNull()}")
+        if (!stored) {
+            compose.onAllNodesWithText("Create person").onFirst()
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            val viaSemantics = runCatching {
+                compose.waitUntil(8_000) { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
+            }.isSuccess
+            diagLog("semantics OnClick stored=$viaSemantics")
+        }
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",
@@ -453,6 +472,31 @@ class PeoplePrototypeJourneyTest {
         } catch (e: Throwable) {
             val tree = runCatching { compose.onRoot(useUnmergedTree = true).printToString() }.getOrDefault("?")
             throw AssertionError("Timed out waiting for $label. Screen:\n$tree", e)
+        }
+    }
+
+    private val diagDown = java.util.concurrent.atomic.AtomicInteger()
+    private val diagUp = java.util.concurrent.atomic.AtomicInteger()
+    @Volatile private var diagDownAt = ""
+    private fun diagLog(msg: String) = android.util.Log.i("ATLAS_GROUP_IME", "DIAG test $msg")
+    private fun imeBottomNow(): Int = compose.runOnUiThread {
+        compose.activity.window.decorView.rootWindowInsets
+            ?.getInsets(android.view.WindowInsets.Type.ime())?.bottom ?: -1
+    }
+    /** DIAG #411: records every touch that reaches MainActivity's window. */
+    private fun diagTouchProbe() = compose.runOnUiThread {
+        val window = compose.activity.window
+        val original = window.callback
+        window.callback = object : android.view.Window.Callback by original {
+            override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+                val handled = original.dispatchTouchEvent(event)
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> { diagDown.incrementAndGet(); diagDownAt = "${event.rawX},${event.rawY}" }
+                    android.view.MotionEvent.ACTION_UP -> diagUp.incrementAndGet()
+                }
+                diagLog("touch ${android.view.MotionEvent.actionToString(event.actionMasked)} at ${event.rawX},${event.rawY} handled=$handled")
+                return handled
+            }
         }
     }
 
