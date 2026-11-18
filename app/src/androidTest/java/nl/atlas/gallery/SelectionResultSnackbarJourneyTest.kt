@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -220,6 +221,43 @@ class SelectionResultDarkStatesTest : SelectionResultStates(dark = true)
 abstract class SelectionResultStates(private val dark: Boolean) {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+
+    @Test fun savedMessageKeepsLongPartialTextAndOriginalDeadline() {
+        val theme = if (dark) "dark" else "light"
+        val partial = albumTransferMessage(AlbumTransferMode.MOVE, "Summer holiday Friesland 2026",
+            AlbumTransferResult(done = 37, failed = 3, skipped = 5))
+        // This isolated test host uses the same saveable state as MainActivity.
+        compose.setContent {
+            val messages = rememberSaveable(saver = SelectionResultMessages.Saver) {
+                SelectionResultMessages()
+            }
+            AtlasGalleryTheme(dark = dark) {
+                Scaffold(
+                    snackbarHost = { SelectionResultSnackbarHost(messages) },
+                    bottomBar = {
+                        SamsungSelectionBottomBar(count = 40, enabled = true, allFavourite = false,
+                            onShare = {}, onTrash = {}, onFavourite = {})
+                    }
+                ) { insets ->
+                    LazyVerticalGrid(GridCells.Fixed(4), Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = insets.calculateTopPadding())) {
+                        items(64) { i ->
+                            Box(Modifier.padding(1.dp).aspectRatio(1f).background(
+                                if (i % 2 == 0) androidx.compose.ui.graphics.Color.White
+                                else androidx.compose.ui.graphics.Color.Black))
+                        }
+                    }
+                }
+            }
+            androidx.compose.runtime.LaunchedEffect(Unit) { messages.show(partial) }
+        }
+        compose.waitForNode(resultWithText(partial))
+        assertAboveAnchor(compose, "atlas-selection-pill")
+        saveUiEvidence("selection-result-376-$theme-long-partial-before.png")
+        compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(1)
+        // A restored holder cannot reset this timeout: verified by JVM Saver tests.
+        // Physical Activity recreation and rotated screenshots are required at review.
+    }
 
     @Test fun partialStaleReplacedAndReanchoredResults() {
         val theme = if (dark) "dark" else "light"
