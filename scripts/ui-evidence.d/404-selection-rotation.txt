@@ -7,3 +7,11 @@ selection-404-light-portrait-after
 selection-404-dark-portrait-before
 selection-404-dark-landscape
 selection-404-dark-portrait-after
+
+# Album scope: same selected keys and contextual actions after both rotations.
+selection-404-light-album-portrait-before
+selection-404-light-album-landscape
+selection-404-light-album-portrait-after
+selection-404-dark-album-portrait-before
+selection-404-dark-album-landscape
+selection-404-dark-album-portrait-after
