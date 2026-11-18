@@ -107,6 +107,17 @@ fun searchWithFacets(
     val selectedPaths = filters.confirmedPersonIds
         .mapNotNull { personsById[it]?.imagePaths }
         .sortedBy { it.size }
+    // Cheap set intersection narrows the candidate paths without changing
+    // output order. The full search still validates URI, volume and ambiguity.
+    val selectedPathIntersection = if (selectedPaths.isEmpty()) null else {
+        val common = selectedPaths.first().toHashSet()
+        for (i in 1 until selectedPaths.size) {
+            cancellationCheckpoint()
+            common.retainAll(selectedPaths[i])
+            if (common.isEmpty()) return emptyList()
+        }
+        common
+    }
     // Bounded input matters at 150k records: one path bitset supports every
     // person-name token instead of allocating a 150k-entry set PER token.
     // If a programmatic query exceeds the cap, reject it; NEVER silently
@@ -138,7 +149,9 @@ fun searchWithFacets(
     // Never treat a path shared by two different native media URIs as proof
     // that either is the reviewed photo.
     val relevantPaths = HashSet<String>()
-    selectedPaths.forEach { relevantPaths.addAll(it) }
+    // Ambiguity checks for confirmed People need only paths that satisfy
+    // every selected identity, not the union of all their photo paths.
+    selectedPathIntersection?.let { relevantPaths.addAll(it) }
     relevantPaths.addAll(personNameMaskByPath.keys)
     val firstUriByPath = HashMap<String, String>()
     val ambiguousPaths = HashSet<String>()
@@ -185,9 +198,9 @@ fun searchWithFacets(
             path in relevantPaths && mayAttributeReviewedV4Person(
                 item.uri, item.isVideo, mediaVolumeOf(item), path
             )
-        if (selectedPaths.isNotEmpty() && !reviewedPrimaryImage) return@forEachIndexed
-        if (selectedPaths.any { path !in it } ||
-            (selectedPaths.isNotEmpty() && path in ambiguousPaths)) return@forEachIndexed
+        if (selectedPathIntersection != null &&
+            (!reviewedPrimaryImage || path !in selectedPathIntersection ||
+                path in ambiguousPaths)) return@forEachIndexed
         if (filters.onlyTheseIndexedFaces) {
             val known = verifiedFaceCountsByUri[item.uri]?.knownTotalFor(
                 item.uri, currentPermissionEpoch, currentMediaRevisionsByUri[item.uri]
