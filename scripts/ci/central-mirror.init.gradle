@@ -1,0 +1,19 @@
+// #377 follow-up: emulator shards resolve the connected-test (UTP) configurations
+// that no CI cache holds, and Maven Central answers GitHub runners with HTTP 429
+// (runs 44280986519 and 44283316942, 2026-11-18: kotlin-stdlib 2.2.0,
+// dagger 2.48, protobuf 3.24.4 ... all 429 before any test ran).
+// Point Maven Central at Google's public mirror of it for these Gradle calls only.
+// Same artifacts, same coordinates; no credentials; settings.gradle.kts unchanged.
+def mirror = 'https://maven-central.storage-download.googleapis.com/maven2/'
+def swap = { repos ->
+  repos.withType(MavenArtifactRepository).configureEach { r ->
+    def u = r.url.toString()
+    if (u.startsWith('https://repo.maven.apache.org/maven2') || u.startsWith('https://repo1.maven.org/maven2')) {
+      r.url = mirror
+    }
+  }
+}
+settingsEvaluated { s ->
+  swap(s.pluginManagement.repositories)
+  swap(s.dependencyResolutionManagement.repositories)
+}
