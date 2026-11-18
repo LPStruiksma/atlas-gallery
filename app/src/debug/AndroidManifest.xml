@@ -10,5 +10,14 @@
             android:process=":crash_probe"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+        <!-- #417 PERF-7a: debug-only StrictMode baseline. A no-op unless the marker
+             file files/atlas-strictmode-baseline exists (adb shell run-as nl.atlas.gallery
+             touch files/atlas-strictmode-baseline), so the normal suite is unchanged.
+             Providers start before Application.onCreate; the high initOrder puts it
+             ahead of the app's other providers. -->
+        <provider android:name="nl.atlas.gallery.DebugStrictModeInstaller"
+            android:authorities="${applicationId}.debug-strictmode"
+            android:exported="false"
+            android:initOrder="1000" />
     </application>
 </manifest>
