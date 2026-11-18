@@ -53,7 +53,8 @@ private class GeminiHarness(responder: (FakeRequest) -> FakeResponse) : AutoClos
         key: String? = FAKE_KEY,
         model: GeminiModel = GeminiModel.DEFAULT,
         readTimeoutMs: Int = 2_000,
-        pollWaitMs: Long = 50
+        pollWaitMs: Long = 50,
+        maxReplyBytes: Int = 40_000_000
     ) = GeminiImageEditProvider(
         model = model,
         apiKey = { key },
@@ -64,7 +65,8 @@ private class GeminiHarness(responder: (FakeRequest) -> FakeResponse) : AutoClos
             GeminiImageEditProvider.API_BASE, setOf(GeminiImageEditProvider.API_HOST),
             connectTimeoutMs = 1_000, readTimeoutMs = readTimeoutMs, overallTimeoutMs = 5_000, maxAttempts = 1
         ),
-        pollWaitMs = pollWaitMs
+        pollWaitMs = pollWaitMs,
+        maxReplyBytes = maxReplyBytes
     )
 
     override fun close() {
@@ -243,12 +245,23 @@ class GeminiImageEditProviderTest {
         }
     }
 
-    @Test fun oversizedReplyIsRejectedOnceAndNeverStored() {
-        // Larger than the transport's bounded JSON reply; see the handoff note on PR for #192.
+    @Test fun largeReplyIsSpooledAndDecodedFromFile() {
+        // About 5.3 MB of base64: far beyond the old 1 MB in-memory cap and the 64 KB inline limit.
+        val big = SyntheticPng.encode(64, 48) + ByteArray(4_000_000) { (it * 31).toByte() }
+        GeminiHarness { FakeResponse.json(successReply(big)) }.use { h ->
+            val result = h.provider().submit(request()).await() as EditOutcome.Success
+            val file = File(result.images.single().handle)
+            assertEquals(64, result.images.single().width)
+            assertTrue(file.readBytes().contentEquals(big))
+            assertEquals("only the verified image remains", listOf(file), h.output.listFiles()!!.toList())
+        }
+    }
+
+    @Test fun replyAboveCapIsRejectedOnceAndNeverStored() {
         val huge = SyntheticPng.encode(8, 8) + ByteArray(1_200_000)
         GeminiHarness { FakeResponse.json(successReply(huge)) }.use { h ->
-            val result = outcome(h)
-            assertTrue(result is EditOutcome.Failed)
+            val result = h.provider(maxReplyBytes = 1_000_000).submit(request()).await()
+            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_SERVER"), result)
             assertEquals(1, h.server.requests.size)
             assertTrue(h.output.listFiles()!!.isEmpty())
         }

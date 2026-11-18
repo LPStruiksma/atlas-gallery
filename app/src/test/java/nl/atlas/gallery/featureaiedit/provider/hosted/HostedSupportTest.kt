@@ -83,3 +83,38 @@ class HostedEditJobTest {
         assertEquals("ADAPTER_ERROR", outcome.message)
     }
 }
+
+class HostedJsonFileTest {
+    private fun withFile(text: String, block: (java.io.File) -> Unit) {
+        val file = java.io.File.createTempFile("hosted-json", ".json")
+        try { file.writeText(text); block(file) } finally { file.delete() }
+    }
+
+    @Test fun smallValuesMatchInMemoryParser() {
+        val text = """{"a":[1,-2.5e3,true,false,null],"b":{"c":"x\"y\u00e9\n"}}"""
+        withFile(text) { assertEquals(HostedJson.parse(text), HostedJsonFile.parseOrNull(it)) }
+    }
+
+    @Test fun longStringsStayInTheFileAndDecodeAsStream() {
+        val payload = ByteArray(300_000) { (it % 251).toByte() }
+        val base64 = java.util.Base64.getEncoder().encodeToString(payload)
+        withFile("""{"parts":[{"inlineData":{"mimeType":"image/png","data":"$base64"}}],"k":"v"}""") { file ->
+            val root = HostedJsonFile.parseOrNull(file, inlineLimit = 1_024).obj()!!
+            assertEquals("v", root["k"].str())
+            val data = root["parts"].arr()!!.single().obj()!!["inlineData"].obj()!!["data"] as LargeJsonString
+            assertEquals(base64.length.toLong(), data.length)
+            val out = java.io.File.createTempFile("decoded", ".bin")
+            try {
+                assertTrue(data.decodeBase64To(out, 1_000_000))
+                assertTrue(out.readBytes().contentEquals(payload))
+                assertTrue("decode cap enforced", !data.decodeBase64To(out, 1_000))
+            } finally { out.delete() }
+        }
+    }
+
+    @Test fun malformedOrEscapedLargeStringsFailClosed() {
+        for (bad in listOf("{", "[1,]", "{\"a\":\"" + "A".repeat(2_000) + "\\n\"}", "\"" + "A".repeat(10), "{} x")) {
+            withFile(bad) { assertNull(bad.take(20), HostedJsonFile.parseOrNull(it, inlineLimit = 1_024)) }
+        }
+    }
+}

@@ -130,5 +130,53 @@ class HostedResultStore(private val directory: File) {
         return File(directory, "$safeId-${index + 1}-${UUID.randomUUID().toString().take(8)}.download")
     }
 
+    /**
+     * Verifies a file written by a download or a streaming decode, then gives it its final
+     * extension. Only the header is read (at most 2 MB, enough for JPEG metadata before SOF).
+     * Returns null, and deletes the file, when it is not an image within [maxPixels].
+     */
+    fun finalizeFile(file: File, maxPixels: Long): EditImage? {
+        val probe = try {
+            if (!file.isFile || file.length() < 1) null
+            else java.io.FileInputStream(file).use { input ->
+                val header = ByteArray(minOf(file.length(), PROBE_BYTES).toInt())
+                var read = 0
+                while (read < header.size) {
+                    val n = input.read(header, read, header.size - read)
+                    if (n < 0) break
+                    read += n
+                }
+                ImageProbe.probe(header.copyOf(read))
+            }
+        } catch (_: Exception) {
+            null
+        }
+        if (probe == null || probe.width.toLong() * probe.height > maxPixels) {
+            file.delete()
+            return null
+        }
+        val ext = when (probe.format) {
+            ImageFormat.PNG -> "png"
+            ImageFormat.JPEG -> "jpg"
+            ImageFormat.WEBP -> "webp"
+        }
+        val final = File(file.parentFile, file.name.removeSuffix(".download") + "." + ext)
+        if (!file.renameTo(final)) {
+            file.delete()
+            return null
+        }
+        return adopt(final, probe)
+    }
+
+    /** A hidden scratch file in the same directory, for a spooled provider reply. */
+    fun newScratchFile(jobId: String): File {
+        val safeId = jobId.replace(Regex("[^A-Za-z0-9_-]"), "_").take(80)
+        return File(directory, ".$safeId-${UUID.randomUUID().toString().take(8)}.reply")
+    }
+
     val isUsable: Boolean get() = directory.isDirectory
+
+    private companion object {
+        const val PROBE_BYTES = 2_000_000L
+    }
 }
