@@ -21,11 +21,15 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
@@ -111,9 +115,13 @@ class UnknownPersonImeTouchTest {
      *
      * #388 review: a Compose `performTouchInput` first waits for idle, so the
      * IME transition can finish before the pointer is injected. Instead, the
-     * first IME `onProgress` (UI thread, mid-transition) starts one background
-     * thread that injects DOWN and UP through UiAutomation at [x], [y] (screen
-     * pixels), with no Compose synchronisation in between. A wrapped
+     * first IME `onProgress` (UI thread, mid-transition) releases one
+     * background thread that injects DOWN and UP through UiAutomation at [x],
+     * [y] (screen pixels), with no Compose synchronisation in between.
+     * #411: that thread is started (and its UiAutomation fetched) in
+     * [install], parked on a latch, so the release costs no thread start; at
+     * 4fe8519 a thread started from onProgress delivered DOWN only after 8
+     * progress frames, once the animation had ended. A wrapped
      * `Window.Callback` records the IME phase when each event actually reaches
      * the window, which the test asserts afterwards. One tap, no retry.
      */
@@ -133,6 +141,9 @@ class UnknownPersonImeTouchTest {
         @Volatile var progressBeforeDown = 0
         @Volatile var injectionError: Throwable? = null
         private val fired = AtomicBoolean(false)
+        private val release = CountDownLatch(1)
+        @Volatile private var cancelled = false
+        private var injector: Thread? = null
         private var originalCallback: Window.Callback? = null
 
         private fun isImeAnimating() = running && !ended
@@ -155,7 +166,7 @@ class UnknownPersonImeTouchTest {
             ): WindowInsets {
                 if (running && runningAnimations.any { it.typeMask and WindowInsets.Type.ime() != 0 }) {
                     openingProgress++
-                    if (fired.compareAndSet(false, true)) Thread(::injectTap, "touch1-ime-tap").start()
+                    if (fired.compareAndSet(false, true)) release.countDown()
                 }
                 return insets
             }
@@ -171,6 +182,8 @@ class UnknownPersonImeTouchTest {
         private fun injectTap() {
             try {
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+                release.await()
+                if (cancelled) return
                 val downAt = SystemClock.uptimeMillis()
                 for ((action, at) in listOf(
                     MotionEvent.ACTION_DOWN to downAt,
@@ -187,6 +200,10 @@ class UnknownPersonImeTouchTest {
         }
 
         fun install() {
+            injector = Thread(::injectTap, "touch1-ime-tap").apply {
+                priority = Thread.MAX_PRIORITY
+                start()
+            }
             activity.runOnUiThread {
                 val original = activity.window.callback
                 originalCallback = original
@@ -211,6 +228,10 @@ class UnknownPersonImeTouchTest {
         }
 
         fun remove() {
+            // Never leave a parked injector behind to tap a later test.
+            cancelled = true
+            release.countDown()
+            injector?.join(5_000)
             activity.runOnUiThread {
                 activity.window.decorView.setWindowInsetsAnimationCallback(null)
                 originalCallback?.let { activity.window.callback = it }
@@ -231,10 +252,18 @@ class UnknownPersonImeTouchTest {
      * run 44278979909 timed out waiting for one. Phones animate the keyboard, so
      * this one test turns the animator scale on for its own duration and puts
      * the previous value back afterwards.
+     *
+     * #411: at scale 1 the CI keyboard animation lasts about 8 frames, and an
+     * injected tap needs a comparable time to travel through the input
+     * dispatcher, so DOWN arrived just after the animation ended (run
+     * 44319216708). [OPENING_ANIMATOR_SCALE] stretches the show animation so
+     * the "tap while it opens" window is wide enough to hit on a slow
+     * emulator. It is still a real platform animation; only its duration
+     * changes, and only inside this test.
      */
-    private fun <T> withAnimatorScaleOne(body: () -> T): T {
+    private fun <T> withAnimatorScale(scale: String, body: () -> T): T {
         val before = shell("settings get global animator_duration_scale")
-        shell("settings put global animator_duration_scale 1")
+        shell("settings put global animator_duration_scale $scale")
         try {
             return body()
         } finally {
@@ -301,7 +330,7 @@ class UnknownPersonImeTouchTest {
     // Block body: JUnit only runs void test methods (an expression body returned
     // SemanticsNodeInteraction and failed the class with initializationError).
     @Test fun openingImeTouchIsNeverSilentlySwallowed() {
-        withAnimatorScaleOne { openingImeTouch() }
+        withAnimatorScale(OPENING_ANIMATOR_SCALE) { openingImeTouch() }
     }
 
     /** IME state read on the UI thread, as "visible=<b> bottom=<px>". */
@@ -348,8 +377,10 @@ class UnknownPersonImeTouchTest {
         // the show request is still in flight can be dropped by the IME.
         val frames = ImeFrames(activity())
         frames.start()
+        val keyboardHeight: Int
         try {
             step("keyboard settled after typing") { frames.latestBottom > 0 && frames.stableFrames >= 2 }
+            keyboardHeight = frames.latestBottom
         } finally {
             frames.stop()
         }
@@ -366,9 +397,36 @@ class UnknownPersonImeTouchTest {
         compose.waitForIdle()
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
+        // #424: the tap must land on screen that the keyboard does not take
+        // over. The IME window takes touches in its final frame as soon as
+        // its show animation starts. A tap injected below the settled
+        // keyboard's top reached LatinIME, which opened its own
+        // PermissionsActivity, and never reached this window (run
+        // 44303296470). That is the platform routing the tap to the
+        // keyboard, not ATLAS swallowing it. So lift the choice above the
+        // keyboard's top first, and fail loudly if it cannot be lifted.
+        val option = compose.onNodeWithTag("atlas-group-1-destination-option-1")
+        val windowHeight = compose.runOnIdle { activity().window.decorView.height }
+        val keyboardTop = windowHeight - keyboardHeight
+        val clearance = 48f * activity().resources.displayMetrics.density
+        val firstBottom = option.fetchSemanticsNode().boundsInWindow.bottom
+        val lift = firstBottom - (keyboardTop - clearance)
+        if (lift > 0f) {
+            screen.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy -> scrollBy(0f, lift) }
+            compose.waitForIdle()
+        }
         // Measured with the keyboard closed, where the person sees the result.
-        val bounds = compose.onNodeWithTag("atlas-group-1-destination-option-1")
-            .fetchSemanticsNode().boundsInWindow
+        val bounds = option.fetchSemanticsNode().boundsInWindow
+        android.util.Log.i(
+            "ATLAS_TOUCH1",
+            "tap target: window=$windowHeight keyboard=$keyboardHeight keyboardTop=$keyboardTop " +
+                "optionBottom before=$firstBottom after=${bounds.bottom} lift=$lift"
+        )
+        assertTrue(
+            "Precondition: the choice (bottom ${bounds.bottom}) must sit above the settled " +
+                "keyboard top ($keyboardTop) so the opening tap is ATLAS's to handle",
+            bounds.bottom <= keyboardTop
+        )
         val window = IntArray(2)
         compose.runOnIdle { activity().window.decorView.getLocationOnScreen(window) }
         val tap = ImeOpeningTap(
@@ -402,6 +460,35 @@ class UnknownPersonImeTouchTest {
             compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         } finally {
             tap.remove()
+            leaveKeyboardClosed()
         }
+    }
+
+    /**
+     * #411 teardown: later tests in the same process must not inherit this
+     * test's keyboard, and a tap that reached the keyboard window may have
+     * brought one of the IME's own activities (LatinIME's PermissionsActivity
+     * in run 44303296470) in front of the next test. Hide the IME, wait for
+     * it to go, and send Back if a non-ATLAS activity took the foreground.
+     * Best effort: teardown never masks the test's own result.
+     */
+    private fun leaveKeyboardClosed() {
+        runCatching {
+            compose.runOnUiThread { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
+            compose.waitUntil(5_000) { !imeVisible() }
+        }
+        runCatching {
+            val top = shell("dumpsys activity activities").lineSequence()
+                .firstOrNull { "topResumedActivity" in it || "mResumedActivity" in it }.orEmpty()
+            val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+            if (top.isNotBlank() && "$pkg/" !in top && "${pkg}.test/" !in top) {
+                android.util.Log.i("ATLAS_TOUCH1", "teardown: foreign top activity, sending Back: ${top.trim()}")
+                shell("input keyevent KEYCODE_BACK")
+            }
+        }
+    }
+
+    private companion object {
+        const val OPENING_ANIMATOR_SCALE = "4"
     }
 }
