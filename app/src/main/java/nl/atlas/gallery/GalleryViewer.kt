@@ -98,6 +98,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.memory.MemoryCache
 import coil3.request.ImageRequest
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import coil3.request.crossfade
@@ -402,7 +404,10 @@ private fun GalleryViewerSnapshot(
         }
     }
 
+    // PERF-3 (#124): true until the pager first leaves the page it opened on.
+    var onEntryPage by remember(CatalogSourceKey(items)) { mutableStateOf(true) }
     LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != start) onEntryPage = false
         timingProbe?.pagerSelected(pagerState.currentPage)
         currentZoom = 1f
         // Do NOT recenter the strip here: a finished thumbnail fling commits
@@ -664,7 +669,8 @@ private fun GalleryViewerSnapshot(
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
                         { timingProbe.firstPreviewReady(page) }
-                    } else null)
+                    } else null,
+                    openingPage = onEntryPage && page == start)
             }
         }
         }
@@ -1206,7 +1212,8 @@ private fun PhotoPage(
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     onEdgePageRequested: (Int) -> Unit,
-    onPreviewReady: (() -> Unit)?
+    onPreviewReady: (() -> Unit)?,
+    openingPage: Boolean = false
 ) {
     val context = LocalContext.current
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
@@ -1254,12 +1261,19 @@ private fun PhotoPage(
     var readyForLarge by remember(media.uri, imageRevision, fullResolution) {
         mutableStateOf(false)
     }
+    // PERF-3 (#124): the page the viewer opened on starts its base decode
+    // at once; every later page keeps the 110 ms settle (scrub, swipes).
+    val largeDelayMs = viewerLargeDecodeDelayMs(openingPage && LocalViewerInstantOpen.current)
     LaunchedEffect(media.uri, imageRevision, fullResolution) {
         if (fullResolution) {
-            delay(110)
+            if (largeDelayMs > 0L) delay(largeDelayMs)
             readyForLarge = true
         }
     }
+    // PERF-3 timing, published to semantics for the emulator proof only:
+    // when the first image (borrowed or decoded) and the sharp base landed.
+    var firstFrameAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
+    var sharpAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
     // Zoom transforms are intentionally applied only to the photo. Clip its
     // outer viewport so magnified pixels never bleed into the Back toolbar,
     // filmstrip or other adjacent gallery controls.
@@ -1364,6 +1378,8 @@ private fun PhotoPage(
                     if (focused) {
                         contentDescription = "Photo viewer: ${media.name}"
                         this[ViewerPhotoDecodedKey] = decodedSize != IntSize.Zero
+                        this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
+                        this[ViewerPhotoSharpAtKey] = sharpAt
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
                         onClick(label = if (chromeVisible) "Hide gallery controls"
@@ -1379,9 +1395,10 @@ private fun PhotoPage(
                     translationX = zoomPose.translationX
                     translationY = zoomPose.translationY
                 }) {
-                MediaPreview(media,
-                    Modifier.fillMaxSize().clearAndSetSemantics {}, ContentScale.Fit, 800,
-                    onLoaded = onPreviewReady, observeLoaded = observePreviewLoads,
+                ViewerPhotoPreview(media,
+                    Modifier.fillMaxSize().clearAndSetSemantics {},
+                    onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    onFirstFrame = { if (firstFrameAt == 0L) firstFrameAt = System.nanoTime() },
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
                     val request = remember(media.uri, imageRevision) {
@@ -1401,6 +1418,7 @@ private fun PhotoPage(
                             .clearAndSetSemantics {},
                         onSuccess = { result ->
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
+                            if (sharpAt == 0L) sharpAt = System.nanoTime()
                         })
                     // PERF-32 (#334): full-resolution tiles over this base
                     // once the photo is magnified past what 2400 px can show.
@@ -1418,6 +1436,68 @@ private fun PhotoPage(
         }
     }
 }
+
+/**
+ * PERF-3 (#124): the viewer page's 800 px preview, showing the sharpest
+ * smaller copy already in memory (usually the tapped grid tile) as its
+ * placeholder, so the first frame needs no decode. [onFirstFrame] fires once
+ * an image is on the page (borrowed or decoded); [onLoaded] keeps the timing
+ * probe's meaning (the 800 px preview itself delivered).
+ */
+@Composable
+private fun ViewerPhotoPreview(
+    media: MediaRecord, modifier: Modifier,
+    onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
+    forceFresh: Boolean, refreshRevision: Long
+) {
+    val context = LocalContext.current
+    val epoch = LocalGalleryPublicationEpoch.current
+    // An editor return must show its new pixels, never an older copy.
+    val instant = LocalViewerInstantOpen.current && !forceFresh
+    val request = remember(media, epoch, forceFresh, refreshRevision, instant) {
+        val preview = mediaPreviewRequest(context, media, ViewerInstantPreview.VIEWER_PREVIEW_PIXELS,
+            epoch, forceFresh, refreshRevision)
+        val cache = if (instant) SingletonImageLoader.get(context).memoryCache else null
+        val placeholder = cache?.let { memory ->
+            viewerPlaceholderKey(
+                keyFor = { px -> media.presentationCacheKeyOrNull(px, epoch) },
+                isCached = { key -> memory[MemoryCache.Key(key)] != null })
+        }
+        if (placeholder == null) preview
+        else preview.newBuilder().placeholderMemoryCacheKey(placeholder).build()
+    }
+    var previewLoaded by remember(request) { mutableStateOf(false) }
+    val currentOnLoaded by rememberUpdatedState(onLoaded)
+    val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
+    // A neighbouring page may finish while still offscreen; the probe counts
+    // it when the page gets focus, without a second decode.
+    LaunchedEffect(previewLoaded, onLoaded != null) {
+        if (previewLoaded) currentOnLoaded?.invoke()
+    }
+    AsyncImage(model = request, contentDescription = media.name,
+        contentScale = ContentScale.Fit, modifier = modifier,
+        onState = { state ->
+            when (state) {
+                is AsyncImagePainter.State.Loading ->
+                    if (state.painter != null) currentOnFirstFrame()
+                is AsyncImagePainter.State.Success -> {
+                    currentOnFirstFrame()
+                    previewLoaded = true
+                }
+                is AsyncImagePainter.State.Error -> previewLoaded = false
+                else -> Unit
+            }
+        })
+}
+
+/** PERF-3 proof switch: false shows the page without a borrowed first frame. */
+internal val LocalViewerInstantOpen = staticCompositionLocalOf { true }
+
+/** System.nanoTime() when the focused page first showed an image, or 0. */
+internal val ViewerPhotoFirstFrameAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoFirstFrameAt")
+
+/** System.nanoTime() when the focused page's 2400 px base landed, or 0. */
+internal val ViewerPhotoSharpAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoSharpAt")
 
 /**
  * True on the focused photo surface once its full-resolution decode has set
