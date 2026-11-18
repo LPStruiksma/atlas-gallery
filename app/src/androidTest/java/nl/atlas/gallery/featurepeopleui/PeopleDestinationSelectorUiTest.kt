@@ -285,6 +285,8 @@ class PeopleDestinationSelectorUiTest {
  * land on a moving row (a different method failed on each emulator run). Invoking the
  * node's own OnClick action is deterministic. Like a real tap, it does nothing on a
  * disabled control, and it still fails when the node or its click action is missing.
+ * #356 (atlas-gallery#360) hit the same class of miss on a radio option under the sticky
+ * faces header, and main fixed those option taps the same way; this helper covers them too.
  */
 private fun SemanticsNodeInteraction.tapBySemantics(): SemanticsNodeInteraction {
     val disabled = SemanticsProperties.Disabled in fetchSemanticsNode().config
