@@ -9,6 +9,7 @@ import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -25,7 +26,6 @@ import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.doubleClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -52,10 +52,6 @@ class ViewerFullResZoomTest {
     private val rule = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(rule)
 
-    @After fun restore() {
-        ViewerRegionTiles.baseOnlyForTest = false
-    }
-
     private data class Trace(val frames: Int, val p50Ms: Double, val p95Ms: Double,
         val maxMs: Double, val over32: Int, val heapPeakMb: Double)
 
@@ -65,13 +61,16 @@ class ViewerFullResZoomTest {
     @Test fun fiftyMegapixelPhotoShowsFullResolutionDetailAtEightTimesZoom() {
         val photo = syntheticFiftyMegapixelPhoto()
         var arm by mutableIntStateOf(0)
-        ViewerRegionTiles.baseOnlyForTest = true
         rule.setContent {
-            MaterialTheme { key(arm) { GalleryViewer(listOf(photo), photo.uri, onBack = {}) } }
+            MaterialTheme {
+                // Arm 0 shows the base layer only; arm 1 decodes tiles.
+                CompositionLocalProvider(LocalViewerTilesBaseOnly provides (arm == 0)) {
+                    key(arm) { GalleryViewer(listOf(photo), photo.uri, onBack = {}) }
+                }
+            }
         }
         val base = runArm("base", tiles = false)
 
-        ViewerRegionTiles.baseOnlyForTest = false
         val decodes0 = ViewerRegionTiles.decodes.get()
         val mainDecodes0 = ViewerRegionTiles.mainThreadDecodes.get()
         rule.runOnIdle { arm = 1 }
