@@ -60,12 +60,12 @@ class SelectionResultMessagesTest {
         messages.show("Copy complete", SelectionResultDuration.SHORT)
         clock += 2_000L
         val saver = SelectionResultMessages.Saver
-        val snapshot = with(saver) { save(messages) }!!
+        val snapshot = with(saver) { with(object : androidx.compose.runtime.saveable.SaverScope { override fun canBeSaved(value: Any) = true }) { save(messages) } }!!
         assertEquals(1_000L, snapshot[3])
         // A second snapshot of the same active result keeps its original
         // monotonic shown-at instant rather than allocating a new deadline.
         clock += 1_500L
-        val again = with(saver) { save(messages) }!!
+        val again = with(saver) { with(object : androidx.compose.runtime.saveable.SaverScope { override fun canBeSaved(value: Any) = true }) { save(messages) } }!!
         assertEquals(1_000L, again[3])
         clock += 600L
         assertEquals(0L, messages.remainingMillis(messages.current!!, 4_000L))
