@@ -26,11 +26,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
-import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsPanel
+import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
+import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 
 /**
  * #664: one Samsung-style Settings destination for the gallery's existing
@@ -97,11 +99,17 @@ internal fun AtlasSettingsScreen(
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
         }
-        SettingsGroup("AI Edit", "atlas-settings-ai-edit") {
-            var expanded by rememberSaveable { mutableStateOf(false) }
-            SettingsActionRow("Providers and privacy", "atlas-settings-ai-edit-open",
-                onClick = { expanded = !expanded }, value = if (expanded) "Hide" else "Configure")
-            if (expanded) AiEditSettingsPanel()
+        SettingsGroup("Editing", "atlas-settings-ai-edit") {
+            // #430: the row opens the "AI Edit" sub-screen; its label matches that title and
+            // its value is the status (the default service), not a description.
+            var aiEditOpen by rememberSaveable { mutableStateOf(false) }
+            val context = LocalContext.current
+            val defaultService = remember(context, aiEditOpen) {
+                ProviderSettingsStore(context).defaultProvider()?.name
+            }
+            SettingsActionRow("AI Edit", "atlas-settings-ai-edit-open",
+                onClick = { aiEditOpen = true }, value = defaultService ?: "Not set up")
+            if (aiEditOpen) AiEditSettingsDialog(onClose = { aiEditOpen = false })
         }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
