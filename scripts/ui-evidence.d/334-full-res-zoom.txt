@@ -1,0 +1,4 @@
+# PERF-32 (#334): full-resolution zoom tiles. ViewerFullResZoomTest: 1080x2340,
+# a generated 50 MP checkerboard PNG at 8x, base layer only versus tiles.
+viewer-zoom-8x-base
+viewer-zoom-8x-tiles

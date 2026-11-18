@@ -10,3 +10,7 @@ parity-24-header-away-light
 parity-24-header-away-dark
 parity-24-pinch-compact-light
 parity-24-pinch-compact-dark
+parity-24-pinch-large-light
+parity-24-pinch-large-dark
+parity-24-original-ratio-light
+parity-24-original-ratio-dark

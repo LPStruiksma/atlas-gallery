@@ -44,6 +44,11 @@ import nl.atlas.gallery.featurepeopleui.removeAction
 import nl.atlas.gallery.featurepeopleui.samePersonAnswer
 import nl.atlas.gallery.featurepeopleui.samePersonQuestion
 import nl.atlas.gallery.featurepeopleui.targetAfter
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 
 /**
  * An opened person page: a named person or an unknown group (#551), and the
@@ -94,6 +99,8 @@ internal fun NativePersonAlbumRoute(
     catalogueEpoch: Long,
     onBack: () -> Unit,
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null,
     onRetarget: (NativePersonAlbumRequest) -> Unit = {}
 ) {
     val version by host.changes.collectAsState()
@@ -157,6 +164,30 @@ internal fun NativePersonAlbumRoute(
         value = withContext(Dispatchers.Default) { samePersonQuestion(state, request.target) }
     }
     val media = resolved
+    // Search only this grant-resolved person's ordered media, never the full catalogue.
+    // Discard worker results from a changed grant, source identity or query.
+    var searchText by remember(request.opening, galleryGrant) { mutableStateOf("") }
+    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
+        null, media, searchText, facetPeople, galleryGrant, catalogueEpoch
+    ) {
+        value = null
+        val source = media?.items
+        if (source != null && searchText.isNotBlank() && !galleryGrant.isNullOrBlank()) {
+            val worker = currentCoroutineContext()
+            val matches = withContext(Dispatchers.Default) {
+                scopedMediaMatches(source, source, facetPeople, searchText,
+                    cancellationCheckpoint = { worker.ensureActive() })
+            }
+            value = ScopedMediaSearchSnapshot(source, source, facetPeople,
+                galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN, matches)
+        }
+    }
+    val visibleMedia = when {
+        media == null -> null
+        searchText.isBlank() -> media.items
+        else -> currentScopedMediaSearchOrNull(searchSnapshot, media.items, media.items,
+            facetPeople, galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN)
+    }
     val asked = question
     val samePersonCard: (@Composable () -> Unit)? =
         if (asked == null) null
@@ -177,18 +208,24 @@ internal fun NativePersonAlbumRoute(
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
-            items = media?.items,
+            // Keep the timeline/header composition stable while the worker
+            // narrows this person's already-authorized list.
+            items = if (media == null) null else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
             mayHide = request.target is PersonPageTarget.Named
         ),
         gridState = gridState,
         catalogueEpoch = catalogueEpoch,
+        searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
         portrait = { portrait(
             chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
                 ?: facts?.coverFace) },
         onBack = onBack,
-        onOpen = { record -> media?.let { onOpen(it.items, record) } },
+        onOpen = { record ->
+            visibleMedia?.takeIf { shown -> shown.any { it.uri == record.uri } }
+                ?.let { onOpen(it, record) }
+        },
         dialog = dialog,
         onDialog = { dialog = it },
         nameDialog = {
@@ -237,6 +274,12 @@ internal fun NativePersonAlbumRoute(
         samePerson = samePersonCard,
         onChangePortrait = if (request.person != null && !facts?.faces.isNullOrEmpty())
             ({ choosingCover = true }) else null,
+        searchAction = {
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                onScopeChange = { next ->
+                    if (next == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                })
+        },
         onRemoveSelected = run {
             val chosen = selected
             val current = facts
@@ -308,7 +351,8 @@ internal fun HiddenPeopleRoute(
     host: PeopleDiscoveryHost,
     people: PeopleHomeSummary?,
     onBack: () -> Unit,
-    onOpen: (NativePersonAlbumRequest) -> Unit
+    onOpen: (NativePersonAlbumRequest) -> Unit,
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
@@ -320,6 +364,7 @@ internal fun HiddenPeopleRoute(
         people = hidden,
         portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
         onBack = onBack,
+        onSearchWholeLibrary = onSearchWholeLibrary,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
     )
 }

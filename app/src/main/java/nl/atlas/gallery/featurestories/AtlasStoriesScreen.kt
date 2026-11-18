@@ -71,6 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
  * Where an open slideshow is: which story, which moment, paused or playing.
@@ -243,14 +245,20 @@ fun AtlasStoriesScreen(
     /** Optional observer invoked after Media3 release (useful for lifecycle diagnostics). */
     onVideoPlayerReleased: () -> Unit = {}
 ) {
-    val cards = currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+    var searchText by remember(currentGrantEpoch, currentCatalogRevision) { mutableStateOf("") }
+    val cards = scopedNamedMatches(
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision), searchText
+    ) { it.title + " " + it.caption }
     // A position restored after a recreate (#451) settles once a live deck arrives.
     LaunchedEffect(playback, playback.restored, deck, currentGrantEpoch, currentCatalogRevision) {
         playback.settleRestored(deck, currentGrantEpoch, currentCatalogRevision)
     }
     // An expired permission or catalogue publication closes the player, not just its image.
     val position = playback.resolvedOrNull(deck, currentGrantEpoch, currentCatalogRevision)
-    val opened = position?.let { p -> cards.firstOrNull { it.key == p.storyKey } }
+    val opened = position?.let { p ->
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+            .firstOrNull { it.key == p.storyKey }
+    }
     if (position != null && opened != null) {
         StoryPlayback(
             story = opened,
@@ -273,7 +281,12 @@ fun AtlasStoriesScreen(
         onBack()
     }
     BackHandler(onBack = close)
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+      Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
@@ -283,7 +296,8 @@ fun AtlasStoriesScreen(
             }
             Text("Stories", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 8.dp))
+                modifier = Modifier.weight(1f).padding(start = 8.dp))
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it })
         }
         if (cards.isEmpty() &&
             playback.awaitingDeck(deck, currentGrantEpoch, currentCatalogRevision)) {
@@ -296,20 +310,8 @@ fun AtlasStoriesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Your stories will appear here", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "When enough accessible photos share a date or a month, ATLAS can create a private recap. Nothing is uploaded.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         } else {
-            Text(
-                "Moments from your library",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, bottom = 12.dp)
-            )
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize().testTag("atlas-stories-grid"),
@@ -327,6 +329,7 @@ fun AtlasStoriesScreen(
                 }
             }
         }
+      }
     }
 }
 
@@ -342,12 +345,6 @@ private fun StoriesPlanningPlaceholder() {
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(14.dp))
         Text("Getting your stories ready…", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "ATLAS is looking through your library again so you can continue where you left off.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
