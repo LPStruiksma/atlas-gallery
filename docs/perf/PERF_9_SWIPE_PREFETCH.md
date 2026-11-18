@@ -28,9 +28,9 @@ At most two extra bases are held, one per side. A worst-case base is 2400 × 240
 | at least 4 (92 MB) | the base ahead only | 6 GB phone (128 MB) |
 | less | none, previews only | 4 GB or low-RAM phone, the CI emulator |
 
-A cache too small for the shown base and two neighbours evicts a warmed base before the swipe reaches it. The first emulator run showed this: with both sides forced into a small cache, warming the base behind evicted the base ahead, and only 3 of 5 swipes landed on a cached base. Region tiles (PERF-32) are unaffected and still released off-page.
+A cache too small for the shown base and two neighbours would evict a warmed base before the swipe reaches it. Region tiles (PERF-32) are unaffected and still released off-page.
 
 ## Proof
 
 - JVM: `ViewerSwipePrefetchTest` covers the window, direction, edges, skipped videos, the memory budget, the base key and the skipped settle.
-- Emulator: `ViewerSwipeSharpnessTest` swipes forward through six synthetic 12 MP JPEGs at one swipe per 1.5 s, with base prefetch off (arm 0) and the base ahead forced on (arm 1), since the emulator's cache is below the real budget. It logs settle-to-sharp p50 and the share of swipes that are sharp within 100 ms to `ATLAS_SCALE`, and asserts that the p50 is at most 100 ms with prefetch on. The numbers are on the PR.
+- Emulator: `ViewerSwipeSharpnessTest` swipes forward through six synthetic 12 MP JPEGs at one swipe per 1.5 s, with base prefetch off (arm 0) and the base ahead forced on (arm 1), since the emulator's cache is below the real budget. It logs settle-to-sharp p50, the share of swipes that are sharp within 100 ms and the share that land on an already-decoded base to `ATLAS_SCALE`, and asserts that the p50 is at most 100 ms with prefetch on. Between swipes the test advances Compose's test clock in step with real time: the viewer's effects run on that clock, and a plain sleep would hold the 120 ms prefetch delay until the next swipe. The numbers are on the PR.

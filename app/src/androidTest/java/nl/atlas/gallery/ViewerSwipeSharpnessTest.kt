@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import coil3.SingletonImageLoader
-import coil3.memory.MemoryCache
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -74,34 +73,27 @@ class ViewerSwipeSharpnessTest {
             }
         }
         val settleToSharp = List(2) { mutableListOf<Double>() }
-        val warmBeforeSwipe = List(2) { mutableListOf<String>() }
+        val warmBeforeSwipe = List(2) { mutableListOf<Boolean>() }
         for (a in 0..1) {
             rule.runOnIdle { memory.clear(); open = false; arm = a }
             rule.waitForIdle()
             rule.runOnIdle { open = true }
             awaitStamp(photos[0].name, ViewerPhotoSharpAtKey, 0L)
             for (page in 1 until PHOTOS) {
-                // Was the page ahead's base warm just before the swipe, and how full the
-                // cache was. Polled during the pause: when it turned warm or cold again.
+                // The pause between swipes. The viewer's effects (the 120 ms prefetch
+                // delay among them) run on the test's main clock, which only moves
+                // when the test drives it, so keep it in step with real time here;
+                // a bare sleep would freeze the prefetch until the next swipe.
+                val pauseStart = System.nanoTime()
+                while (System.nanoTime() - pauseStart < PACE_MS * 1_000_000L) {
+                    rule.mainClock.advanceTimeBy(FRAME_MS)
+                    Thread.sleep(FRAME_MS)
+                }
+                // Did the swipe land on an already-decoded base?
                 val baseKey = viewerBaseMemoryKey(photos[page].uri, false, 0L) { px ->
                     photos[page].presentationCacheKeyOrNull(px, epoch)
                 }!!
-                val pauseStart = System.nanoTime()
-                var wasWarm = false
-                val changes = StringBuilder()
-                while (System.nanoTime() - pauseStart < PACE_MS * 1_000_000L) {
-                    val warm = memory.keys.any { it.key == baseKey }
-                    if (warm != wasWarm) {
-                        changes.append(if (warm) "+" else "-")
-                            .append((System.nanoTime() - pauseStart) / 1_000_000L)
-                        wasWarm = warm
-                    }
-                    Thread.sleep(25)
-                }
-                warmBeforeSwipe[a] += "p$page:$changes"
-                warmBeforeSwipe[a] += "%s/%dMB/%d".format(
-                    if (memory[MemoryCache.Key(baseKey)] != null) "warm" else "cold",
-                    memory.size shr 20, memory.keys.size)
+                warmBeforeSwipe[a] += memory.keys.any { it.key == baseKey }
                 val swipedAt = System.nanoTime()
                 rule.onNodeWithTag("atlas-main-pager").performTouchInput { swipeLeft() }
                 val settled = awaitStamp(photos[page].name, ViewerPhotoSettledAtKey, swipedAt)
@@ -116,12 +108,13 @@ class ViewerSwipeSharpnessTest {
         Log.i("ATLAS_SCALE", ("PERF-9 viewer swipe, %d synthetic 12MP JPEGs, 1080x2340 (emulator), " +
             "memory cache %d MB, one swipe per %d ms, %d swipes per arm, base ahead warmed in arm 1: " +
             "settle->sharp 2400 px p50 before=%.1f ms after=%.1f ms; share sharp within %.0f ms " +
-            "before=%.2f after=%.2f; raw before=%s after=%s; base ahead before each swipe " +
-            "(state/cache used/entries) before=%s after=%s")
+            "before=%.2f after=%.2f; raw before=%s after=%s; share of swipes landing on a " +
+            "decoded base before=%.2f after=%.2f")
             .format(PHOTOS, memory.maxSize shr 20, PACE_MS, before.size, p50(before), p50(after), TARGET_MS,
                 within(before), within(after),
                 before.map { "%.0f".format(it) }, after.map { "%.0f".format(it) },
-                warmBeforeSwipe[0], warmBeforeSwipe[1]))
+                warmBeforeSwipe[0].count { it }.toDouble() / warmBeforeSwipe[0].size,
+                warmBeforeSwipe[1].count { it }.toDouble() / warmBeforeSwipe[1].size))
         assertTrue("settle->sharp p50 must be <= ${TARGET_MS} ms with the prefetch: $after",
             p50(after) <= TARGET_MS)
     }
@@ -172,6 +165,7 @@ class ViewerSwipeSharpnessTest {
         const val HEIGHT = 3024
         const val PHOTOS = 6
         const val PACE_MS = 1_500L
+        const val FRAME_MS = 16L
         const val TARGET_MS = 100.0
     }
 }
