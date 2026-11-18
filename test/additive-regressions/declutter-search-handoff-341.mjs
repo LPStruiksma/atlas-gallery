@@ -9,7 +9,7 @@ const host = readFileSync(root + 'MainActivity.kt', 'utf8');
 
 assert.match(declutter, /scopedNamedMatches\(pending, searchText\)\s*\{ it\.name \+ " " \+ it\.album \}/,
   'query must filter only the staged pending list, not the full deck');
-assert.match(declutter, /actions = \{ AtlasSearch\([\s\S]*?initialScope = AtlasSearchScope\.THIS_SCREEN[\s\S]*?onScopeChange\s*=\s*\{\s*scope\s*->/);
+assert.match(declutter, /actions = \{\s*AtlasSearch\([\s\S]*?initialScope = AtlasSearchScope\.THIS_SCREEN[\s\S]*?onScopeChange\s*=\s*\{\s*scope\s*->/);
 assert.match(declutter, /if \(scope == AtlasSearchScope\.LIBRARY\)\s*\{[\s\S]*?onSearchWholeLibrary\(\)/,
   'only an explicit Whole library choice may leave Declutter');
 assert.match(declutter, /onSearchWholeLibrary: \(\) -> Unit/,
