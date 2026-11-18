@@ -132,6 +132,159 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         saveUiEvidence("selection-result-365-$theme-trash-done-nav-pill.png")
     }
 
+    /**
+     * #376: a real rotation (portrait → landscape → portrait, each a new
+     * MainActivity) keeps the one visible result with its exact text and only
+     * its original remaining lifetime; the timer never restarts.
+     *
+     * Rotations on a CI emulator take seconds, longer than the result's own
+     * 4 s, so Android's accessibility "time to take action" setting stretches
+     * every timeout to [A11Y_TIMEOUT_MS] for this test. The snackbar's delay
+     * runs on the rule's virtual clock while [SelectionResultMessages] counts
+     * real monotonic time, so after ≥ [LANDSCAPE_HOLD_MS] real ms the restored
+     * result must vanish within [A11Y_TIMEOUT_MS] − [LANDSCAPE_HOLD_MS]
+     * virtual ms, where a restarted timer would still need the full timeout.
+     */
+    @Test fun rotationKeepsTheResultTextAndItsOriginalDeadline() {
+        val theme = if (dark) "dark" else "light"
+        val ids = fixtures.ids
+        val text = "Trash canceled · your photos are unchanged"
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
+        compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[1]}"))
+        compose.waitForIdle()
+
+        val timeoutBefore = secureSetting(A11Y_TIMEOUT_KEY)
+        shellCommand("settings put secure $A11Y_TIMEOUT_KEY $A11Y_TIMEOUT_MS")
+        try {
+            compose.waitUntil(10_000L) { recommendedTimeoutMillis() == A11Y_TIMEOUT_MS }
+
+            compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+            compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+            compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+            compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+            compose.onNodeWithTag("atlas-selection-trash").performClick()
+            waitForTrashConsent().cancel()
+            waitForResumed()
+            compose.waitForNode(resultWithText(text))
+            val shownAt = android.os.SystemClock.uptimeMillis()
+            assertOneResult(text)
+            assertAboveAnchor(compose, "atlas-selection-pill")
+            saveUiEvidence("selection-result-376-$theme-rotation-portrait-before.png")
+
+            // Landscape: a new Activity, the same single result.
+            rotateTo(landscape = true)
+            assertOneResult(text)
+            assertNotOverVisiblePill()
+            saveUiEvidence("selection-result-376-$theme-rotation-landscape.png")
+            val hold = LANDSCAPE_HOLD_MS - (android.os.SystemClock.uptimeMillis() - shownAt)
+            if (hold > 0) Thread.sleep(hold)
+            compose.waitForIdle()
+            assertOneResult(text)
+
+            // Back to portrait: another new Activity, still the same result.
+            rotateTo(landscape = false)
+            val elapsed = android.os.SystemClock.uptimeMillis() - shownAt
+            assertOneResult(text)
+            assertAboveAnchor(compose, visiblePillTag())
+            saveUiEvidence("selection-result-376-$theme-rotation-portrait-after.png")
+
+            // Not dismissed early: at least A11Y_TIMEOUT_MS − elapsed is left.
+            check(elapsed < A11Y_TIMEOUT_MS - LANDSCAPE_HOLD_MS) {
+                "Rotations took $elapsed ms; too slow to tell a kept deadline from a restarted one"
+            }
+            compose.mainClock.advanceTimeBy(STILL_SHOWN_ADVANCE_MS)
+            compose.waitForIdle()
+            assertOneResult(text)
+
+            // Gone by the original deadline (≤ A11Y_TIMEOUT_MS − LANDSCAPE_HOLD_MS
+            // after the last restore); a restarted timer would need A11Y_TIMEOUT_MS.
+            compose.mainClock.advanceTimeBy(GONE_ADVANCE_MS)
+            compose.waitForIdle()
+            compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(0)
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+            if (timeoutBefore.isEmpty() || timeoutBefore == "null") {
+                shellCommand("settings delete secure $A11Y_TIMEOUT_KEY")
+            } else {
+                shellCommand("settings put secure $A11Y_TIMEOUT_KEY $timeoutBefore")
+            }
+        }
+    }
+
+    private fun assertOneResult(text: String) {
+        compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(1)
+        compose.onAllNodes(resultWithText(text)).assertCountEquals(1)
+    }
+
+    /** The selection ends with the old Activity's state; the result sits above whichever pill shows. */
+    private fun visiblePillTag(): String =
+        if (compose.onAllNodes(hasTestTag("atlas-selection-pill")).fetchSemanticsNodes().isNotEmpty()) {
+            "atlas-selection-pill"
+        } else "atlas-nav-pill"
+
+    private fun assertNotOverVisiblePill() {
+        compose.waitForIdle()
+        val result = compose.onNodeWithTag("atlas-selection-result").getUnclippedBoundsInRoot()
+        val pills = listOf("atlas-selection-pill", "atlas-nav-pill").filter {
+            compose.onAllNodes(hasTestTag(it)).fetchSemanticsNodes().isNotEmpty()
+        }
+        pills.forEach { tag ->
+            val pill = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+            check(result.bottom <= pill.top) { "Result $result overlaps $tag $pill" }
+        }
+        check(result.right - result.left <= 352.5.dp) { "Result wider than 352 dp: $result" }
+    }
+
+    private fun activityIdentity(): Int {
+        var identity = 0
+        compose.activityRule.scenario.onActivity { identity = System.identityHashCode(it) }
+        return identity
+    }
+
+    /** Real device rotation: MainActivity has no configChanges, so Android recreates it. */
+    private fun rotateTo(landscape: Boolean) {
+        val before = activityIdentity()
+        InstrumentationRegistry.getInstrumentation().uiAutomation.setRotation(
+            if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+            else android.app.UiAutomation.ROTATION_FREEZE_0)
+        compose.waitUntil(30_000L) {
+            compose.activityRule.scenario.state == androidx.lifecycle.Lifecycle.State.RESUMED &&
+                activityIdentity() != before
+        }
+        compose.waitUntil(30_000L) {
+            val root = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+                .maxByOrNull { it.boundsInRoot.width * it.boundsInRoot.height }?.boundsInRoot
+            root != null && (root.width > root.height) == landscape
+        }
+        compose.waitUntil(30_000L) {
+            listOf("atlas-selection-pill", "atlas-nav-pill").any {
+                compose.onAllNodes(hasTestTag(it)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        compose.waitForIdle()
+    }
+
+    private fun recommendedTimeoutMillis(): Long {
+        val manager = InstrumentationRegistry.getInstrumentation().targetContext
+            .getSystemService(android.view.accessibility.AccessibilityManager::class.java)
+        return manager.getRecommendedTimeoutMillis(
+            SelectionResultDuration.SHORT.millis.toInt(),
+            android.view.accessibility.AccessibilityManager.FLAG_CONTENT_TEXT).toLong()
+    }
+
+    private fun secureSetting(key: String): String = shellCommand("settings get secure $key").trim()
+
+    private fun shellCommand(command: String): String {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor)
+            .use { it.readBytes().decodeToString() }
+    }
+
     private fun waitForResumed() {
         compose.waitUntil(30_000L) {
             compose.activityRule.scenario.state == androidx.lifecycle.Lifecycle.State.RESUMED
@@ -297,6 +450,13 @@ abstract class SelectionResultStates(private val dark: Boolean) {
         compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(0)
     }
 }
+
+/** #376: Android's accessibility "time to take action", stretched for the rotation test. */
+private const val A11Y_TIMEOUT_KEY = "accessibility_non_interactive_ui_timeout_ms"
+private const val A11Y_TIMEOUT_MS = 90_000L
+private const val LANDSCAPE_HOLD_MS = 30_000L
+private const val STILL_SHOWN_ADVANCE_MS = 10_000L
+private const val GONE_ADVANCE_MS = 55_000L
 
 private fun resultWithText(text: String): SemanticsMatcher =
     hasTestTag("atlas-selection-result-text") and hasText(text)
