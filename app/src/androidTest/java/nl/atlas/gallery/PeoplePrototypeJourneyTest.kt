@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
@@ -223,7 +224,7 @@ class PeoplePrototypeJourneyTest {
         // while the keyboard slides in and the list resizes under the finger,
         // and the tap was lost on main too (run 44314754535).
         awaitKeyboardSettled()
-        compose.onAllNodesWithText("Create person").onFirst().performClick()
+        tapCreateInsideViewport()
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",
@@ -456,6 +457,34 @@ class PeoplePrototypeJourneyTest {
         }
     }
 
+    /**
+     * #411: performClick taps the centre of the node's CLIPPED bounds. While
+     * the keyboard shrinks the imePadding list, Create can sit below the
+     * viewport until the screen's own bringIntoView runs, and a tap at the
+     * viewport edge reaches nothing (12 of 12 isolated runs in diagnostic
+     * 44326214186 never reached Create's onClick). That bringIntoView waits
+     * NAME_FORM_SETTLE_MS on the test's virtual clock, which real time spent
+     * waiting for the keyboard does not advance. So: advance the clock past
+     * it, scroll Create into view, prove its UNCLIPPED bounds sit inside the
+     * list's viewport, then tap.
+     */
+    private fun tapCreateInsideViewport() {
+        compose.mainClock.advanceTimeBy(NAME_FORM_SETTLE_MS_IN_APP + 200L)
+        compose.waitForIdle()
+        val create = compose.onAllNodesWithText("Create person").onFirst()
+        create.performScrollTo()
+        compose.waitForIdle()
+        val node = create.fetchSemanticsNode()
+        val top = node.positionInRoot.y
+        val bottom = top + node.size.height
+        val viewport = compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Create (unclipped $top..$bottom) must sit inside the list viewport " +
+            "(${viewport.top}..${viewport.bottom}) before the tap",
+            top >= viewport.top && bottom <= viewport.bottom)
+        create.performClick()
+    }
+
     /** The IME inset is positive and has held one value across 300 ms of samples. */
     private fun awaitKeyboardSettled() {
         var last = -1
@@ -492,5 +521,7 @@ class PeoplePrototypeJourneyTest {
         const val PHOTOS = 6
         const val NAME = "Synthetic Ada"
         const val FOLDER = "ATLAS-People-Prototype"
+        /** Mirrors the private NAME_FORM_SETTLE_MS in UnknownFacesReviewScreen.kt. */
+        const val NAME_FORM_SETTLE_MS_IN_APP = 300L
     }
 }
