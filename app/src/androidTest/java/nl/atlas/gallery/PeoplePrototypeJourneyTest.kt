@@ -216,9 +216,9 @@ class PeoplePrototypeJourneyTest {
 
         // 3. Name the group in the app's review.
         compose.onAllNodesWithTag("atlas-people-unnamed").onFirst().performClick()
-        waitForText("New person's name")
-        compose.onAllNodesWithText("New person's name").onFirst().performTextInput(NAME)
-        compose.onAllNodesWithText("Name this group").onFirst().performClick()
+        waitForText("Name this person")
+        compose.onAllNodesWithText("Name this person").onFirst().performTextInput(NAME)
+        compose.onAllNodesWithText("Create person").onFirst().performClick()
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",

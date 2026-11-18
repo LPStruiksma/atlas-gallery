@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featureorganization
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -55,11 +57,12 @@ import androidx.compose.foundation.layout.Arrangement
 import nl.atlas.gallery.featuredesign.AtlasMotionKind
 import nl.atlas.gallery.featuredesign.atlasTween
 import nl.atlas.gallery.featuredesign.AtlasPillColor
+import nl.atlas.gallery.featuredesign.AtlasTabPillHeight
 import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.ui.unit.dp
 
 /** Samsung's selection blue for checked circles. */
-val SelectionCheckBlue = Color(0xFF3E91FF)
+val SelectionCheckBlue = nl.atlas.gallery.featuredesign.AtlasTokens.Colors.Selection.Accent
 
 /**
  * Samsung check circle: an outlined ring while unchecked, a filled blue
@@ -78,17 +81,22 @@ fun SelectionCheckCircle(
         animationSpec = atlasTween<Float>(AtlasMotionKind.SELECTION),
         label = "atlas-selection-ring-emphasis"
     )
-    val animatedModifier = modifier.graphicsLayer { scaleX = emphasis; scaleY = emphasis }
+    val ring = modifier.graphicsLayer { scaleX = emphasis; scaleY = emphasis }
+        .size(size.dp).then(
+            if (onPage && !checked) Modifier.testTag("atlas-selection-page-ring") else Modifier
+        )
     if (checked) {
         Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SelectionCheckBlue,
-            modifier = animatedModifier.size(size.dp))
+            modifier = ring)
     } else {
-        Icon(Icons.Outlined.RadioButtonUnchecked, contentDescription = null,
-            tint = if (onPage) MaterialTheme.colorScheme.onSurfaceVariant
-                else Color.White.copy(alpha = .92f),
-            modifier = animatedModifier.size(size.dp).then(
-                if (onPage) Modifier.testTag("atlas-selection-page-ring") else Modifier
-            ))
+        // A subdued image scrim keeps the white ring readable against bright thumbnails.
+        Box(ring.clip(CircleShape).then(if (onPage) Modifier else
+            Modifier.background(Color.Black.copy(alpha = .28f))),
+            contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.RadioButtonUnchecked, contentDescription = null,
+                tint = if (onPage) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                modifier = Modifier.fillMaxSize())
+        }
     }
 }
 
@@ -106,7 +114,7 @@ fun SamsungSelectionTopBar(
     enabled: Boolean = true
 ) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 10.dp, end = 16.dp)
+        modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 12.dp, end = 18.dp)
             .testTag("atlas-selection-top-bar"),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -121,9 +129,10 @@ fun SamsungSelectionTopBar(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SelectionCheckCircle(allSelected, size = 24, onPage = true)
-            Text("All", style = MaterialTheme.typography.labelSmall)
+            Text("All", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(14.dp))
         Text(selectionTitle(count), style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
             modifier = Modifier.semantics { heading() }.testTag("atlas-selection-count"))
@@ -168,8 +177,13 @@ fun SamsungSelectionBottomBar(
         // Tablet layouts stay compact; narrow phones divide available width
         // equally among the actual actions rather than overflowing the edge.
         val pillWidth = minOf(maxWidth, 360.dp)
+        val directTransfer = moreActions.firstOrNull { it.testTag == "atlas-selection-copy-to-album" }
+            ?: moreActions.firstOrNull { it.testTag == "atlas-selection-move-to-album" }
+        // Keep both Copy and Move available from More for existing navigation
+        // and accessibility, while the direct action offers the common Copy path.
+        val overflowActions = moreActions
         Surface(
-            modifier = Modifier.width(pillWidth).height(64.dp)
+            modifier = Modifier.width(pillWidth).height(AtlasTabPillHeight)
                 .testTag("atlas-selection-pill"),
             shape = CircleShape,
             color = AtlasPillColor,
@@ -186,9 +200,14 @@ fun SamsungSelectionBottomBar(
                 if (onTrash != null) SelectionPillAction(
                     "Delete", Icons.Outlined.Delete, active, "atlas-selection-trash",
                     onTrash, Modifier.weight(1f))
-                if (onFavourite != null) SelectionPillFavourite(
+                if (directTransfer != null) SelectionPillAction(
+                    if (directTransfer.testTag == "atlas-selection-move-to-album") "Move" else "Copy",
+                    Icons.Outlined.ContentCopy,
+                    active, "atlas-selection-transfer",
+                    directTransfer.onClick, Modifier.weight(1f))
+                if (onFavourite != null && directTransfer == null) SelectionPillFavourite(
                     allFavourite, active, onFavourite, Modifier.weight(1f))
-                if (moreActions.isNotEmpty()) {
+                if (overflowActions.isNotEmpty() || onFavourite != null && directTransfer != null) {
                     Box(Modifier.weight(1f)) {
                         SelectionPillAction(
                             "More", Icons.Filled.MoreVert, active, "atlas-selection-more",
@@ -198,7 +217,14 @@ fun SamsungSelectionBottomBar(
                             onDismissRequest = { moreOpen = false },
                             modifier = Modifier.testTag("atlas-selection-more-menu")
                         ) {
-                            moreActions.forEach { action ->
+                            if (onFavourite != null && directTransfer != null) {
+                                DropdownMenuItem(
+                                    text = { Text(if (allFavourite) "Unfavourite" else "Favourite") },
+                                    onClick = { moreOpen = false; onFavourite() },
+                                    modifier = Modifier.testTag("atlas-selection-more-favourite")
+                                )
+                            }
+                            overflowActions.forEach { action ->
                                 DropdownMenuItem(
                                     text = { Text(action.label) },
                                     onClick = { moreOpen = false; action.onClick() },

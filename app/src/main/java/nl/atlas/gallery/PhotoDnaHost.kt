@@ -70,6 +70,9 @@ import nl.atlas.gallery.featurecuration.CurationReviewPlan
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
 import nl.atlas.gallery.featurecuration.CurationVisualHash
 import nl.atlas.gallery.featurecuration.PhotoDnaReviewScreen
+import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
+import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.featureaiedit.save.aiEditProvenanceGroups
 import nl.atlas.gallery.featurecuration.curationDHash
 import nl.atlas.gallery.featurecuration.findCurationVisualPairs
 import nl.atlas.gallery.featurecuration.hashCurationBytes
@@ -1048,6 +1051,18 @@ internal fun PhotoDnaRoute(
     BackHandler(onBack = onBack)
     val shown = result?.takeIf { accessible }
     val context = LocalContext.current
+    var provenance by remember { mutableStateOf(emptyList<AiEditProvenanceGroup>()) }
+    LaunchedEffect(shown, accessible) {
+        provenance = emptyList()
+        if (shown != null && accessible) {
+            provenance = withContext(Dispatchers.IO) {
+                runCatching {
+                    aiEditProvenanceGroups(AiEditLineageStore(context.applicationContext).all(),
+                        shown.records.keys)
+                }.getOrDefault(emptyList())
+            }
+        }
+    }
     val scope = rememberCoroutineScope()
     val latest by rememberUpdatedState(shown)
     val saving = remember { HashMap<String, Job>() }
@@ -1152,6 +1167,13 @@ internal fun PhotoDnaRoute(
         } else {
             PhotoDnaReviewScreen(
                 plan = shown.plan,
+                provenance = provenance,
+                provenanceThumbnail = { uri, thumbModifier ->
+                    shown.records[uri]?.let { record ->
+                        MediaPreview(record, thumbModifier, ContentScale.Crop, 512)
+                    }
+                },
+                onOpenProvenancePhoto = onOpenPhoto,
                 thumbnail = { asset, thumbModifier ->
                     val record = shown.records[asset.uri]
                     if (record != null) {

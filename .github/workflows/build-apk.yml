@@ -26,6 +26,7 @@ on:
       - 'scripts/ci_android_upgrade_emulator.sh'
       - 'scripts/ci_ui_evidence.sh'
       - 'scripts/ci_enable_kvm.sh'
+      - 'scripts/ci_install_emulator_image.sh'
   pull_request:
     # Actions-minutes rule (autodev CI audit 2026-11-12): the API35 emulator shards run on a
     # non-draft PR only when it carries `next:review`, i.e. once per candidate head handed to
@@ -44,6 +45,7 @@ on:
       - 'scripts/ci_android_upgrade_emulator.sh'
       - 'scripts/ci_ui_evidence.sh'
       - 'scripts/ci_enable_kvm.sh'
+      - 'scripts/ci_install_emulator_image.sh'
 permissions:
   contents: read
 concurrency:
@@ -177,6 +179,12 @@ jobs:
         shell: bash
         # #597: settle udev and retry; every failure prints "::error::KVM unavailable".
         run: bash scripts/ci_enable_kvm.sh
+      - name: Install emulator system image (bounded retry)
+        # #377: the runner's single image download can end in "Error on ZipFile
+        # unknown archive"; install and verify it first, then the runner skips it.
+        env:
+          ATLAS_EMULATOR_API: ${{ inputs.api_level || '35' }}
+        run: bash scripts/ci_install_emulator_image.sh
       - name: Emulator Compose interactions + private People upgrade preservation
         uses: reactivecircus/android-emulator-runner@v2
         with:

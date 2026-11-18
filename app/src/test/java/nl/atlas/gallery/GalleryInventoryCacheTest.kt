@@ -96,7 +96,7 @@ class GalleryInventoryCacheTest {
             assertNull(cache.read())
 
             // New permission arrives before that queued cleanup executes.
-            cache.restore()
+            cache.restore(full)
             assertFalse("old grant bytes survived restore", destination.exists())
             cache.write(full, listOf(record(2)))
             assertEquals(listOf(record(2)), cache.read()!!.items)
@@ -111,6 +111,54 @@ class GalleryInventoryCacheTest {
             cache.deleteIfRevoked()
             assertFalse(destination.exists())
             assertNull(cache.read())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    /**
+     * #284: every cold start refreshes "for access change". Under the same,
+     * never-revoked full grant that refresh must keep the trusted cache on
+     * disk until the new scan overwrites it; otherwise a process killed while
+     * the scan runs leaves background People work with no inventory.
+     */
+    @Test fun coldStartRefreshUnderTheSameFullGrantKeepsTheTrustedCache() {
+        val dir = Files.createTempDirectory("atlas-cache-coldstart-").toFile()
+        try {
+            val destination = java.io.File(dir, "inventory.bin")
+            val cache = GalleryInventoryCacheFile(destination)
+            cache.write(full, listOf(record(1), record(2)))
+            java.io.File(dir, "inventory.bin.tmp").writeText("half-written")
+
+            cache.restore(full)
+            assertTrue("cold start erased the trusted cache", destination.isFile)
+            assertEquals(full, cache.read()!!.grant)
+            assertEquals(listOf(record(1), record(2)), cache.read()!!.items)
+            assertFalse("a stale temp file survived", java.io.File(dir, "inventory.bin.tmp").exists())
+
+            // Images-only after full: the bytes stay, and the exact-grant
+            // reader (background People) still refuses them by their grant.
+            cache.restore(GalleryMediaGrant(true, false, false))
+            assertEquals(full, cache.read()!!.grant)
+
+            // A selected-photos scope may have changed its selection under
+            // the same flags: never keep those bytes.
+            cache.write(selected, listOf(record(3)))
+            cache.restore(selected)
+            assertFalse(destination.exists())
+
+            // No access at all: nothing survives.
+            cache.write(full, listOf(record(4)))
+            cache.restore(GalleryMediaGrant(false, false, false))
+            assertFalse(destination.exists())
+
+            // Revoked generation: cleared even when the same grant returns.
+            cache.write(full, listOf(record(5)))
+            cache.invalidate()
+            cache.restore(full)
+            assertFalse(destination.exists())
+            cache.write(full, listOf(record(6)))
+            assertEquals(listOf(record(6)), cache.read()!!.items)
         } finally {
             dir.deleteRecursively()
         }

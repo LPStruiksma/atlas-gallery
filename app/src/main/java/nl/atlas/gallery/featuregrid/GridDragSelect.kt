@@ -37,14 +37,45 @@ internal fun dragHitSlot(cells: List<DragHitCell>, x: Float, y: Float): Int? {
     return best?.slotIndex
 }
 
-private fun LazyGridState.hitCells(): List<DragHitCell> {
-    val info = layoutInfo
-    // Item offsets start after the before-content padding; the pointer is in
-    // the grid's drawn coordinates, which include it.
-    val shift = -info.viewportStartOffset
-    return info.visibleItemsInfo.map {
-        DragHitCell(it.index, it.offset.x, it.offset.y + shift, it.size.width, it.size.height)
+/**
+ * Scan current visible geometry without mapping each item to a DragHitCell.
+ * The accessors let JVM tests use synthetic grid items; the production call
+ * reads layoutInfo afresh on every pointer event and auto-scroll frame.
+ */
+internal inline fun <T> dragHitVisibleItems(
+    cells: List<T>,
+    viewportStartOffset: Int,
+    x: Float,
+    y: Float,
+    index: (T) -> Int,
+    offset: (T) -> androidx.compose.ui.unit.IntOffset,
+    size: (T) -> androidx.compose.ui.unit.IntSize
+): Int? {
+    var bestIndex: Int? = null
+    var bestDx = Float.MAX_VALUE
+    for (cell in cells) {
+        val position = offset(cell)
+        val dimensions = size(cell)
+        val top = position.y - viewportStartOffset
+        if (y < top || y >= top + dimensions.height) continue
+        val left = position.x
+        val right = left + dimensions.width
+        val inside = x >= left && x < right
+        val dx = if (inside) 0f else minOf(kotlin.math.abs(x - left),
+            kotlin.math.abs(x - right))
+        if (dx < bestDx) {
+            bestIndex = index(cell)
+            bestDx = dx
+        }
     }
+    return bestIndex
+}
+
+private fun LazyGridState.hitSlot(x: Float, y: Float): Int? {
+    val info = layoutInfo
+    // Pointer coordinates include before-content padding; item offsets do not.
+    return dragHitVisibleItems(info.visibleItemsInfo, info.viewportStartOffset, x, y,
+        index = { it.index }, offset = { it.offset }, size = { it.size })
 }
 
 /**
@@ -87,13 +118,13 @@ internal fun Modifier.gridDragSelect(
         }
         // Non-null means the loop ended before the timeout: tap, scroll or pinch.
         if (ended != null) return@awaitEachGesture
-        val startSlot = dragHitSlot(gridState.hitCells(), down.position.x, down.position.y)
+        val startSlot = gridState.hitSlot(down.position.x, down.position.y)
             ?.takeIf(isMediaSlot) ?: return@awaitEachGesture
         if (!onStart(startSlot)) return@awaitEachGesture
         var finger: Offset = down.position
         var lastSlot = startSlot
         fun extend() {
-            val slot = dragHitSlot(gridState.hitCells(), finger.x, finger.y)
+            val slot = gridState.hitSlot(finger.x, finger.y)
             if (slot != null && slot != lastSlot && isMediaSlot(slot)) {
                 lastSlot = slot
                 onExtend(slot)

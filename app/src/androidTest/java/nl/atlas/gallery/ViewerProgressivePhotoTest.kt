@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,7 +22,7 @@ import java.io.File
 class ViewerProgressivePhotoTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun fullResolutionRequestOnlyAfterSelectedPhotoSettles() {
+    private fun photo(): MediaRecord {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.cacheDir, "atlas-viewer-fake-photo.png")
         val image = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
@@ -31,16 +32,24 @@ class ViewerProgressivePhotoTest {
                 check(image.compress(Bitmap.CompressFormat.PNG, 100, stream))
             }
         } finally { image.recycle() }
-        val photo = MediaRecord(
+        return MediaRecord(
             id = 1L, uri = Uri.fromFile(file).toString(),
             name = "Fictional viewer fixture", relativePath = "DCIM/ATLAS-TEST/",
             sizeBytes = file.length(), takenAtMillis = 1L, isVideo = false
         )
+    }
 
+    /** Pages reached by scrub or swipe wait the 110 ms settle before 2400 px. */
+    @Test fun fullResolutionRequestOnlyAfterSelectedPhotoSettles() {
+        val photo = photo()
         rule.mainClock.autoAdvance = false
         rule.setContent {
             MaterialTheme {
-                GalleryViewer(items = listOf(photo), startUri = photo.uri, onBack = {})
+                // Without the PERF-3 opening-page start, this page takes the
+                // same settled path as every page reached by motion.
+                CompositionLocalProvider(LocalViewerInstantOpen provides false) {
+                    GalleryViewer(items = listOf(photo), startUri = photo.uri, onBack = {})
+                }
             }
         }
         rule.mainClock.advanceTimeByFrame()
@@ -48,6 +57,22 @@ class ViewerProgressivePhotoTest {
         rule.onNodeWithTag("atlas-photo-surface").assertExists()
         rule.onNodeWithTag("atlas-photo-hires", useUnmergedTree = true).assertDoesNotExist()
         rule.mainClock.advanceTimeBy(240)
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-photo-hires", useUnmergedTree = true).assertExists()
+        rule.mainClock.autoAdvance = true
+    }
+
+    /** PERF-3 (#124): the page the viewer opens on has had no motion; 2400 px starts at once. */
+    @Test fun openingPageRequestsFullResolutionWithoutTheSettle() {
+        val photo = photo()
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            MaterialTheme {
+                GalleryViewer(items = listOf(photo), startUri = photo.uri, onBack = {})
+            }
+        }
+        rule.mainClock.advanceTimeByFrame()
+        rule.mainClock.advanceTimeByFrame()
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-photo-hires", useUnmergedTree = true).assertExists()
         rule.mainClock.autoAdvance = true

@@ -143,6 +143,8 @@ fun CreateAlbumDialog(
                 modifier = Modifier.fillMaxWidth().testTag("atlas-create-album-name")
             )
         },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         confirmButton = {
             TextButton(onClick = { onCreate(name.trim()) }, enabled = problem == null,
                 modifier = Modifier.testTag("atlas-create-album-confirm")) { Text("Create") }
