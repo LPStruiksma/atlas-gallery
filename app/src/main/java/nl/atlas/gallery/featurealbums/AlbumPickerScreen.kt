@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -36,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.MediaRecord
@@ -81,6 +85,7 @@ fun AlbumPickerScreen(
                         Modifier.fillMaxWidth()
                             .clip(RoundedCornerShape(AtlasSpace.CoverCorner))
                             .clickable(role = Role.Button, onClickLabel = "Create album") { creating = true }
+                            .semantics { contentDescription = "Create album" }
                             .testTag("atlas-album-picker-create")
                     ) {
                         Box(
@@ -94,7 +99,15 @@ fun AlbumPickerScreen(
                         }
                         Spacer(Modifier.height(10.dp))
                         Text("Create album", style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 3.dp))
+                    }
+                }
+                if (albums.isEmpty()) {
+                    item(key = "empty", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                        Text("No albums yet", style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp).testTag("atlas-album-picker-empty"))
                     }
                 }
                 // Positional keys: folder paths never reach lazy saved state.
@@ -129,6 +142,7 @@ fun CreateAlbumDialog(
     var name by remember { mutableStateOf("") }
     var touched by remember { mutableStateOf(false) }
     val problem = nameProblem(name)
+    val canCreate = name.isNotBlank() && problem == null
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create album") },
@@ -146,11 +160,13 @@ fun CreateAlbumDialog(
         shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         confirmButton = {
-            TextButton(onClick = { onCreate(name.trim()) }, enabled = problem == null,
+            TextButton(onClick = { onCreate(name.trim()) }, enabled = canCreate,
                 modifier = Modifier.testTag("atlas-create-album-confirm")) { Text("Create") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("atlas-create-album-cancel")) {
+                Text("Cancel")
+            }
         }
     )
 }
