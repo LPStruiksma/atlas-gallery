@@ -190,6 +190,10 @@
   "SearchDateFacetJourneyTest.kt": {
     "rawClick": 6
   },
+  "SearchHistoryEvidenceTest.kt": {
+    "rawClick": 6,
+    "privateWait": 2
+  },
   "SearchOneFieldEvidenceTest.kt": {
     "rawClick": 6,
     "rawCapture": 1,
