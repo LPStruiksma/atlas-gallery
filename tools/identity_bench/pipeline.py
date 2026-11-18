@@ -536,10 +536,15 @@ class Config:
     mask: str = "parse"
     colour: bool = True
     restore_blend: float = 0.8
+    # Pixel boost: swap a crop `boost` times larger as boost x boost interleaved
+    # sub-crops of the network's own size (boost^2 network calls).
+    boost: int = 1
 
     @property
     def label(self) -> str:
         parts = [self.swapper]
+        if self.boost != 1:
+            parts.append(f"boost{self.boost}")
         if self.mask != "parse":
             parts.append("mask-" + self.mask)
         if not self.colour:
@@ -610,18 +615,27 @@ def swap_face(image: np.ndarray, marks, source_raw: np.ndarray, config: Config, 
     net = swapper or tools.swapper(config.swapper)
     marks = np.asarray(marks, np.float64) + (0 if jitter is None else jitter)
     notes = []
+    side = net.side * config.boost
     with meter.stage("align"):
-        crop, matrix = align(image, marks, net.template, net.side)
+        crop, matrix = align(image, marks, net.template, side)
     with meter.stage("swap"):
-        swapped = net.swap_crop(crop, net.source_vector(source_raw))
+        vector = net.source_vector(source_raw)
+        if config.boost == 1:
+            swapped = net.swap_crop(crop, vector)
+        else:
+            swapped = np.empty_like(crop)
+            for dy in range(config.boost):
+                for dx in range(config.boost):
+                    swapped[dy::config.boost, dx::config.boost] = net.swap_crop(
+                        np.ascontiguousarray(crop[dy::config.boost, dx::config.boost]), vector)
     with meter.stage("mask"):
-        mask = box_mask(net.side, blur=0.0 if config.mask == "hard-box" else 0.04)
+        mask = box_mask(side, blur=0.0 if config.mask == "hard-box" else 0.04)
         if config.mask in ("parse", "parse-both", "mp"):
             segmenter = tools.selfie if config.mask == "mp" else tools.parser
             region = segmenter.face_region(swapped) > 0.5
             if config.mask != "parse":      # the original crop keeps occluders and glasses out
                 region &= segmenter.face_region(crop) > 0.5
-            region = feather(region, net.side * 0.02)
+            region = feather(region, side * 0.02)
             if region.sum() < 0.02 * region.size:
                 notes.append("no face region found in the crop; box mask used")
             else:

@@ -4,6 +4,7 @@
     python3 -m tools.identity_bench self-test    # unit tests, synthetic tensors, no downloads
     python3 -m tools.identity_bench one --target T04 --identity 0213ccb4776a --candidate inswapper_128
     python3 -m tools.identity_bench screen       # all nine swap networks on the development split
+    python3 -m tools.identity_bench explore --candidates inswapper_128+boost2,ghost_1_256+boost2
     python3 -m tools.identity_bench cost         # load time, stage time and peak memory, one process each
     python3 -m tools.identity_bench select       # re-derive the fixture manifest from the archives
 
@@ -44,6 +45,24 @@ def final_candidates() -> list:
             Config(ABLATION_BASE, mask="mp"), Config(ABLATION_BASE, colour=False)]
     out += [Config(name, mask="mp") for name in FINALISTS[1:]]
     return out
+
+
+def parse_label(label: str) -> Config:
+    """The inverse of Config.label, e.g. "inswapper_128+boost2+mask-mp+gfpgan"."""
+    name, *parts = label.split("+")
+    options: dict = {}
+    for part in parts:
+        if part.startswith("boost"):
+            options["boost"] = int(part[5:])
+        elif part.startswith("mask-"):
+            options["mask"] = part[5:]
+        elif part == "no-colour":
+            options["colour"] = False
+        elif part == "gfpgan":
+            options["restore"] = True
+        else:
+            raise ValueError(f"unknown candidate option: {part}")
+    return Config(name, **options)
 
 
 def iou(a, b) -> float:
@@ -423,8 +442,8 @@ def report(results: dict) -> str:
 
 def cost_one(label: str) -> dict:
     """In a fresh process: load one candidate's models and time five swaps of the first pair."""
-    name, restore = label.replace("+gfpgan", ""), label.endswith("+gfpgan")
-    config = Config(name, restore=restore)
+    config = parse_label(label)
+    name, restore = config.swapper, config.restore
     start_rss = pipeline.rss_mb()
     bench = Bench(os.path.join(pipeline.cache_dir(), "runs", "cost"), log=lambda *_: None)
     bench.embedders = {"inloop": bench.tools.encoder}
@@ -434,7 +453,7 @@ def cost_one(label: str) -> dict:
     bench.identity(identity), bench.target(target)
     bench.tools.meter = pipeline.StageMeter()
     bench.tools.swapper(name)
-    bench.tools.parser
+    bench.tools.selfie if config.mask == "mp" else bench.tools.parser
     if restore:
         bench.tools.restorer
     loads = dict(bench.tools.meter.rows)
@@ -471,13 +490,14 @@ def cost(out: str, labels: list) -> list:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="python3 -m tools.identity_bench", description=__doc__.split("\n")[0])
     parser.add_argument("command", nargs="?", default="run",
-                        choices=["run", "self-test", "one", "screen", "cost", "cost-one", "select", "fetch", "report"])
+                        choices=["run", "self-test", "one", "screen", "explore", "cost", "cost-one", "select",
+                                 "fetch", "report"])
     parser.add_argument("label", nargs="?")
     parser.add_argument("--out", default=None)
     parser.add_argument("--target", default="T04")
     parser.add_argument("--identity", default=None)
-    parser.add_argument("--candidate", default="inswapper_128")
-    parser.add_argument("--restore", action="store_true")
+    parser.add_argument("--candidate", default="inswapper_128", help="a candidate label, e.g. ghost_1_256+mask-mp")
+    parser.add_argument("--candidates", default=None, help="comma-separated labels for explore and cost")
     args = parser.parse_args(argv)
     out = args.out or os.path.join(pipeline.cache_dir(), "runs", args.command)
 
@@ -499,7 +519,8 @@ def main(argv=None) -> int:
         print(json.dumps(cost_one(args.label)))
         return 0
     if args.command == "cost":
-        cost(out, list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
+        cost(out, args.candidates.split(",") if args.candidates else
+             list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
         return 0
     if args.command == "report":
         with open(os.path.join(out if args.out else os.path.join(pipeline.cache_dir(), "runs", "run"), "results.json")) as f:
@@ -510,13 +531,16 @@ def main(argv=None) -> int:
         target = next(t for t in fixtures.TARGETS + fixtures.DEV_TARGETS if t.id == args.target)
         identity = args.identity or fixtures.IDENTITIES[0]
         gallery = bench.gallery(list(fixtures.IDENTITIES) + list(fixtures.RENDERED), fixtures.DISTRACTORS)
-        config = Config(args.candidate, restore=args.restore)
+        config = parse_label(args.candidate)
         row = bench.measure(target, identity, config, gallery, keep_image=True)
         if "_image" in row:
             print("output:", bench.save(row, target, config))
         print(json.dumps(public(row), indent=1))
         return 0
-    if args.command == "screen":
+    if args.command == "explore":   # extra candidates on the same fixed pairs, after the fact
+        results = run(out, [parse_label(label) for label in args.candidates.split(",")], fixtures.TARGETS,
+                      fixtures.IDENTITIES, fixtures.RENDERED, fixtures.DISTRACTORS, stability=False, make_sheets=False)
+    elif args.command == "screen":
         results = run(out, [Config(name) for name in ALL_SWAPPERS], fixtures.DEV_TARGETS, fixtures.DEV_IDENTITIES,
                       (), (), stability=False, make_sheets=False)
     else:

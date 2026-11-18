@@ -141,6 +141,16 @@ class PasteBack(unittest.TestCase):
         self.assertGreater(metrics.seam(source, hard.image, hard.mask)["seam_gradient"],
                            2 * metrics.seam(source, soft.image, soft.mask)["seam_gradient"])
 
+    def test_pixel_boost_swaps_a_larger_crop_and_keeps_the_outside(self):
+        source = photo()
+        plain = self.swap(pipeline.Config("fake", mask="box", colour=False))
+        boosted = self.swap(pipeline.Config("fake", mask="box", colour=False, boost=2))
+        self.assertEqual(boosted.crop_after.shape[0], 2 * plain.crop_after.shape[0])
+        self.assertTrue(np.array_equal(boosted.crop_after, 255 - boosted.crop_before))
+        outside = boosted.mask == 0
+        self.assertTrue(np.array_equal(boosted.image[outside], source[outside]))
+        self.assertEqual(pipeline.Config("x", boost=2, restore=True).label, "x+boost2+gfpgan")
+
     def test_no_swap_control_changes_almost_nothing(self):
         source = photo()
         result = pipeline.swap_face(source, MARKS, None, pipeline.Config("control-none", mask="box", colour=False),
@@ -434,6 +444,12 @@ class Report(unittest.TestCase):
             self.assertIn(needle, text)
         verdict_good = next(line for line in text.splitlines() if line.startswith("| good | pass"))
         self.assertTrue(verdict_good.rstrip().endswith("pass |"))
+
+    def test_labels_round_trip(self):
+        for config in cli.final_candidates() + [pipeline.Config("inswapper_128", boost=2, mask="mp", restore=True)]:
+            self.assertEqual(cli.parse_label(config.label), config)
+        with self.assertRaises(ValueError):
+            cli.parse_label("inswapper_128+turbo")
 
     def test_iou(self):
         self.assertAlmostEqual(cli.iou((0, 0, 10, 10), (0, 0, 10, 10)), 1.0)
