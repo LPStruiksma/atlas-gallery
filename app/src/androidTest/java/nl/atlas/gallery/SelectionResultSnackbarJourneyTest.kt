@@ -55,7 +55,6 @@ import nl.atlas.gallery.featureorganization.SelectionResultMessages
 import nl.atlas.gallery.featureorganization.SelectionResultSnackbarHost
 import nl.atlas.gallery.featureorganization.albumTransferMessage
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -313,7 +312,20 @@ private fun androidx.compose.ui.test.SemanticsNodeInteractionCollection.assertCo
  * overlaps the pill or reaches the system navigation bar.
  */
 private fun assertAboveAnchor(compose: ComposeTestRule, anchorTag: String) {
-    compose.waitForIdle()
+    // Re-measure until the layout settles: right after S24DisplayRule's
+    // wm size/density change the window insets can still be moving, and one
+    // run measured 11.0 dp while the same head's other run passed. A layout
+    // that stays outside the brief still fails, with the last measurement.
+    val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
+    while (true) {
+        compose.waitForIdle()
+        val problem = anchorProblem(compose, anchorTag) ?: return
+        if (android.os.SystemClock.uptimeMillis() >= deadline) throw AssertionError(problem)
+        Thread.sleep(250L)
+    }
+}
+
+private fun anchorProblem(compose: ComposeTestRule, anchorTag: String): String? {
     val result: DpRect = compose.onNodeWithTag("atlas-selection-result").getUnclippedBoundsInRoot()
         .let { DpRect(it.left, it.top, it.right, it.bottom) }
     val pill = compose.onNodeWithTag(anchorTag).getUnclippedBoundsInRoot()
@@ -322,13 +334,16 @@ private fun assertAboveAnchor(compose: ComposeTestRule, anchorTag: String) {
     val density = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
     val rootWidth: Dp = (root.width / density).dp
     val gap = pill.top - result.bottom
-    val describe = "result=$result $anchorTag=$pill gap=$gap rootWidth=$rootWidth"
-    assertTrue("Gap above the pill must be 12–16 dp: $describe", gap >= 11.5.dp && gap <= 16.5.dp)
-    assertTrue("At most 352 dp wide: $describe", result.right - result.left <= 352.5.dp)
     val centre = (result.left + result.right) / 2
-    assertTrue("Centred: $describe", abs((centre - rootWidth / 2).value) <= 1.5f)
-    assertTrue("Never over the pill: $describe", result.bottom < pill.top)
-    assertTrue("Readable height: $describe", result.bottom - result.top >= 40.dp)
+    val describe = "result=$result $anchorTag=$pill gap=$gap rootWidth=$rootWidth"
+    return when {
+        gap < 11.5.dp || gap > 16.5.dp -> "Gap above the pill must be 12–16 dp: $describe"
+        result.right - result.left > 352.5.dp -> "At most 352 dp wide: $describe"
+        abs((centre - rootWidth / 2).value) > 1.5f -> "Centred: $describe"
+        result.bottom >= pill.top -> "Never over the pill: $describe"
+        result.bottom - result.top < 40.dp -> "Readable height: $describe"
+        else -> null
+    }
 }
 
 /** Shell night mode is restored even when the journey fails. */
