@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featurecuration
 
-import java.lang.management.ManagementFactory
 import java.util.PriorityQueue
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
@@ -22,7 +21,7 @@ class CurationVisualHashPerfTest {
         )
         for (hashes in fixtures) for (distance in listOf(2, 5, 11, 31)) {
             val actual = findCurationVisualPairs(
-                hashes, distance, maxPairs = Int.MAX_VALUE, maxComparisons = Long.MAX_VALUE
+                hashes, distance, maxPairs = 10_000, maxComparisons = Long.MAX_VALUE
             )
             assertFalse(actual.truncated)
             assertEquals(bruteForce(hashes, distance), actual.matches)
@@ -63,8 +62,10 @@ class CurationVisualHashPerfTest {
     }
 
     @Test fun benchmark250kSyntheticWorkloads() {
-        assumeTrue("set -Datlas.perf17=true to run the benchmark",
-            java.lang.Boolean.getBoolean("atlas.perf17"))
+        // Gradle does not forward -D flags to the unit-test JVM, but the test
+        // task inherits the environment, so ATLAS_PERF17=1 is the switch.
+        assumeTrue("set ATLAS_PERF17=1 to run the benchmark",
+            System.getenv("ATLAS_PERF17") == "1" || java.lang.Boolean.getBoolean("atlas.perf17"))
         val random = Random(224)
         val randomHashes = LongArray(SIZE) { random.nextLong() }
         val nearDuplicates = randomHashes.copyOf()
@@ -79,16 +80,15 @@ class CurationVisualHashPerfTest {
             "all-equal" to LongArray(SIZE) { 0x123456789abcdefL },
             "zero-match" to LongArray(SIZE) { index -> mix64(index.toLong()) }
         )
-        for ((name, hashes) in workloads) {
+        for (budget in BENCHMARK_BUDGETS) for ((name, hashes) in workloads) {
             // Untimed warmup of both implementations before paired samples.
-            incumbent(hashes, maxComparisons = BENCHMARK_BUDGET)
-            findCurationVisualPairs(hashes, maxComparisons = BENCHMARK_BUDGET)
-            val before = measure(SAMPLES) { incumbent(hashes, maxComparisons = BENCHMARK_BUDGET) }
-            val after = measure(SAMPLES) {
-                findCurationVisualPairs(hashes, maxComparisons = BENCHMARK_BUDGET)
-            }
+            incumbent(hashes, maxComparisons = budget)
+            findCurationVisualPairs(hashes, maxComparisons = budget)
+            val before = measure(SAMPLES) { incumbent(hashes, maxComparisons = budget) }
+            val after = measure(SAMPLES) { findCurationVisualPairs(hashes, maxComparisons = budget) }
             assertEquals(before.result, after.result)
-            println("PERF17 workload=$name size=$SIZE samples=$SAMPLES " +
+            println("PERF17 workload=$name size=$SIZE budget=$budget samples=$SAMPLES " +
+                "comparisons=${after.result.comparisons} truncated=${after.result.truncated} " +
                 "before_cpu_ms_p50=${before.p50Millis} before_cpu_ms_p95=${before.p95Millis} " +
                 "after_cpu_ms_p50=${after.p50Millis} after_cpu_ms_p95=${after.p95Millis} " +
                 "before_alloc_bytes_peak=${before.peakAllocatedBytes} " +
@@ -104,20 +104,18 @@ class CurationVisualHashPerfTest {
     )
 
     private fun measure(samples: Int, block: () -> CurationVisualMatches): Measurement {
-        val bean = ManagementFactory.getThreadMXBean()
-        val allocationBean = bean as? com.sun.management.ThreadMXBean
+        val probe = JvmThreadProbe()
         val cpu = LongArray(samples)
         val allocated = LongArray(samples)
         lateinit var result: CurationVisualMatches
         repeat(samples) { sample ->
             System.gc()
-            val thread = Thread.currentThread().id
-            val allocationStart = allocationBean?.getThreadAllocatedBytes(thread) ?: -1L
-            val cpuStart = bean.currentThreadCpuTime
+            val allocationStart = probe.allocatedBytes()
+            val cpuStart = probe.cpuNanos()
             result = block()
-            cpu[sample] = bean.currentThreadCpuTime - cpuStart
+            cpu[sample] = probe.cpuNanos() - cpuStart
             allocated[sample] = if (allocationStart >= 0L)
-                allocationBean!!.getThreadAllocatedBytes(thread) - allocationStart else -1L
+                probe.allocatedBytes() - allocationStart else -1L
         }
         cpu.sort()
         return Measurement(
@@ -126,6 +124,28 @@ class CurationVisualHashPerfTest {
             allocated.maxOrNull() ?: -1L,
             result
         )
+    }
+
+    /**
+     * java.lang.management is absent from the android.jar compile classpath of
+     * unit tests, but present in the host JVM that runs them, so reach it
+     * reflectively through its public interfaces.
+     */
+    private class JvmThreadProbe {
+        private val bean: Any = Class.forName("java.lang.management.ManagementFactory")
+            .getMethod("getThreadMXBean").invoke(null)!!
+        private val cpuMethod = Class.forName("java.lang.management.ThreadMXBean")
+            .getMethod("getCurrentThreadCpuTime")
+        private val allocationMethod = runCatching {
+            Class.forName("com.sun.management.ThreadMXBean")
+                .getMethod("getThreadAllocatedBytes", Long::class.javaPrimitiveType)
+        }.getOrNull()
+
+        fun cpuNanos(): Long = cpuMethod.invoke(bean) as Long
+
+        @Suppress("DEPRECATION")
+        fun allocatedBytes(): Long = allocationMethod
+            ?.let { it.invoke(bean, Thread.currentThread().id) as Long } ?: -1L
     }
 
     private fun bruteForce(hashes: LongArray, maxDistance: Int): List<CurationVisualMatch> =
@@ -212,7 +232,8 @@ class CurationVisualHashPerfTest {
 
     private companion object {
         const val SIZE = 250_000
-        const val SAMPLES = 5
-        const val BENCHMARK_BUDGET = 1_000_000L
+        const val SAMPLES = 9
+        // A small budget and the production default (findCurationVisualPairs).
+        val BENCHMARK_BUDGETS = longArrayOf(1_000_000L, 25_000_000L)
     }
 }
