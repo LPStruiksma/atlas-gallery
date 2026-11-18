@@ -4,7 +4,9 @@
     "privateWait": 1
   },
   "AiEditSettingsEvidenceTest.kt": {
-    "rawClick": 2
+    "rawClick": 18,
+    "typingWithoutKeyboardRule": 6,
+    "privateWait": 1
   },
   "AiEditUiEvidenceTest.kt": {
     "rawClick": 4,
