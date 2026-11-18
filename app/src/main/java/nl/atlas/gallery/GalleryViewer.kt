@@ -441,36 +441,37 @@ private fun GalleryViewerSnapshot(
         }
     }
 
-    // Prewarm a small number of screen-sized neighbors only after navigation
-    // settles. The effect is cancelled as soon as scrubbing resumes, avoiding
-    // a backlog of expensive image decodes and unbounded memory growth.
-    LaunchedEffect(CatalogSourceKey(items), editorReturn, pagerState.currentPage, stripState.isScrollInProgress, pagerState.isScrollInProgress) {
+    // PERF-9 (#138): once navigation settles, warm the neighbours the next
+    // swipe will land on, with the keys their pages read: the 2400 px base one
+    // step away on each side, the 800 px preview two steps away, direction of
+    // travel first. A swipe or scrub cancels this effect and every request
+    // still running, so fast swipes never build a decode backlog.
+    val prefetchEpoch = LocalGalleryPublicationEpoch.current
+    val basePrefetchGate = LocalViewerBasePrefetchGate.current
+    LaunchedEffect(CatalogSourceKey(items), editorReturn, prefetchEpoch, pagerState.currentPage, stripState.isScrollInProgress, pagerState.isScrollInProgress) {
         if (!stripState.isScrollInProgress && !pagerState.isScrollInProgress) {
             delay(120)
             val loader = SingletonImageLoader.get(context)
             val focus = pagerState.currentPage
-            val neighbors = nearbyPreviewIndicesForMotion(
-                focus, lastPrefetchFocus, items.size
-            )
+            val previous = lastPrefetchFocus
             lastPrefetchFocus = focus
-            // One stale/corrupt neighboring URI must not prevent the other
-            // bounded posters from warming; navigation cancels the coroutine.
-            prewarmDeclutterPreviewIndices(neighbors) { index ->
-                val media = items[index]
-                if (!media.isVideo) {
-                    val refreshThis = editorReturn.mustReload(media.uri)
-                    loader.execute(ImageRequest.Builder(context)
-                        .data(media.uri)
-                        .apply {
-                            if (refreshThis) {
-                                memoryCacheKey(editedPhotoMemoryKey(
-                                    media.uri, editorReturn.revision, 800))
-                                diskCachePolicy(CachePolicy.DISABLED)
-                            }
-                        }
-                        .size(800, 800)
-                        .crossfade(false)
-                        .build())
+            val allowBase = basePrefetchGate(loader.memoryCache?.maxSize ?: 0L)
+            val plan = viewerSwipePrefetchPlan(focus, previous, items.size, allowBase) {
+                items[it].isVideo
+            }
+            // One stale/corrupt neighbouring URI must not prevent the others
+            // from warming; navigation cancels the coroutine.
+            prewarmDeclutterPreviewIndices(plan.indices.toList()) { step ->
+                val media = items[plan[step].index]
+                val fresh = editorReturn.mustReload(media.uri)
+                val revision = if (fresh) editorReturn.revision else 0L
+                if (plan[step].base) {
+                    // A photo without a known revision has no shared base key.
+                    viewerBaseRequestOrNull(context, media, prefetchEpoch, fresh, revision,
+                        requireKey = true)?.let { loader.execute(it) }
+                } else {
+                    loader.execute(mediaPreviewRequest(context, media,
+                        ViewerInstantPreview.VIEWER_PREVIEW_PIXELS, prefetchEpoch, fresh, revision))
                 }
             }
         }
@@ -1202,6 +1203,29 @@ internal fun shouldRenderLargePhoto(
     focused: Boolean, fullResolution: Boolean, settled: Boolean
 ): Boolean = focused && fullResolution && settled
 
+/**
+ * PERF-9 (#138): the page's 2400 px base, built the same way by the page and
+ * by the swipe prefetch so both use one memory-cache key. Null only when
+ * [requireKey] is set and the photo has no shared key (no known revision):
+ * the page then keeps Coil's own key, as before, and the prefetch skips it.
+ */
+internal fun viewerBaseRequestOrNull(
+    context: android.content.Context, media: MediaRecord, publicationEpoch: Long,
+    forceFresh: Boolean, imageRevision: Long, requireKey: Boolean
+): ImageRequest? {
+    val key = viewerBaseMemoryKey(media.uri, forceFresh, imageRevision) { px ->
+        media.presentationCacheKeyOrNull(px, publicationEpoch)
+    }
+    if (key == null && requireKey) return null
+    return ImageRequest.Builder(context).data(media.uri)
+        .size(ViewerSwipePrefetch.BASE_PIXELS, ViewerSwipePrefetch.BASE_PIXELS)
+        .apply {
+            if (key != null) memoryCacheKey(key)
+            if (forceFresh) diskCachePolicy(CachePolicy.DISABLED)
+        }
+        .crossfade(true).build()
+}
+
 @Composable
 private fun PhotoPage(
     media: MediaRecord, pageIndex: Int, itemCount: Int,
@@ -1263,9 +1287,19 @@ private fun PhotoPage(
     }
     // PERF-3 (#124): the page the viewer opened on starts its base decode
     // at once; every later page keeps the 110 ms settle (scrub, swipes).
-    val largeDelayMs = viewerLargeDecodeDelayMs(openingPage && LocalViewerInstantOpen.current)
+    val instantOpen = openingPage && LocalViewerInstantOpen.current
+    // PERF-9 (#138): a base the swipe prefetch already decoded shows at once.
+    val epoch = LocalGalleryPublicationEpoch.current
+    var settledAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
     LaunchedEffect(media.uri, imageRevision, fullResolution) {
         if (fullResolution) {
+            settledAt = System.nanoTime()
+            val baseKey = viewerBaseMemoryKey(media.uri, forceFresh, imageRevision) { px ->
+                media.presentationCacheKeyOrNull(px, epoch)
+            }
+            val baseCached = baseKey != null &&
+                SingletonImageLoader.get(context).memoryCache?.get(MemoryCache.Key(baseKey)) != null
+            val largeDelayMs = viewerBaseDelayMs(instantOpen, baseCached)
             if (largeDelayMs > 0L) delay(largeDelayMs)
             readyForLarge = true
         }
@@ -1380,6 +1414,7 @@ private fun PhotoPage(
                         this[ViewerPhotoDecodedKey] = decodedSize != IntSize.Zero
                         this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
                         this[ViewerPhotoSharpAtKey] = sharpAt
+                        this[ViewerPhotoSettledAtKey] = settledAt
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
                         onClick(label = if (chromeVisible) "Hide gallery controls"
@@ -1401,16 +1436,9 @@ private fun PhotoPage(
                     onFirstFrame = { if (firstFrameAt == 0L) firstFrameAt = System.nanoTime() },
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
-                    val request = remember(media.uri, imageRevision) {
-                        ImageRequest.Builder(context).data(media.uri).size(2400, 2400)
-                            .apply {
-                                if (forceFresh) {
-                                    memoryCacheKey(editedPhotoMemoryKey(
-                                        media.uri, imageRevision, 2400))
-                                    diskCachePolicy(CachePolicy.DISABLED)
-                                }
-                            }
-                            .crossfade(true).build()
+                    val request = remember(media, epoch, imageRevision) {
+                        viewerBaseRequestOrNull(context, media, epoch, forceFresh, imageRevision,
+                            requireKey = false)!!
                     }
                     AsyncImage(model = request, contentDescription = media.name,
                         contentScale = ContentScale.Fit,
@@ -1492,6 +1520,17 @@ private fun ViewerPhotoPreview(
 
 /** PERF-3 proof switch: false shows the page without a borrowed first frame. */
 internal val LocalViewerInstantOpen = staticCompositionLocalOf { true }
+
+/**
+ * PERF-9 (#138): whether neighbour bases may be prefetched for a memory cache
+ * of the given size. The before/after emulator test replaces it, since a
+ * small emulator cache stays below the real gate.
+ */
+internal val LocalViewerBasePrefetchGate =
+    staticCompositionLocalOf<(Long) -> Boolean> { ::viewerBasePrefetchAllowed }
+
+/** When the focused page settled (its base became due), nanoTime; 0 before. Emulator proof only. */
+internal val ViewerPhotoSettledAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoSettledAt")
 
 /** System.nanoTime() when the focused page first showed an image, or 0. */
 internal val ViewerPhotoFirstFrameAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoFirstFrameAt")
