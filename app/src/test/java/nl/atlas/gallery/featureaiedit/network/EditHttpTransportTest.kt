@@ -211,6 +211,19 @@ class EditHttpTransportTest {
         }
     }
 
+
+    @Test fun oversizedJsonIsRejectedWithoutRetry() {
+        val attempts = AtomicInteger()
+        withServer({
+            attempts.incrementAndGet()
+            FakeResponse(200, body = ByteArray(1_000_001) { 'x'.code.toByte() })
+        }) { server ->
+            val result = transport(server).execute(config(), EditHttpRequest(EditHttpMethod.GET, "capabilities"))
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
+            assertEquals(1, attempts.get())
+        }
+    }
+
     @Test fun multipartAndAuthAreSentOnlyToChosenHost() {
         val count = AtomicInteger()
         var captured: FakeRequest? = null
