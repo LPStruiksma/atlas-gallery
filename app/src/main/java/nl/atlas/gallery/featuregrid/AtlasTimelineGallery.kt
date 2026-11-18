@@ -525,7 +525,9 @@ fun AtlasTimelineGallery(
             }
             if (ready == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (items.isEmpty() && !busy) "No photos here yet" else "Arranging timeline…")
+                    if (items.isEmpty() && !busy) {
+                        Text("No photos here yet", Modifier.testTag("atlas-timeline-empty"))
+                    }
                 }
             } else {
                 // #507: a pinch commit swaps in a new grid that would first be

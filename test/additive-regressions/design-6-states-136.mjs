@@ -40,3 +40,27 @@ test('Search and Stories have distinct no-results and empty/planning states', ()
   assert.match(stories, /testTag\("atlas-stories-empty"\)/);
   assert.match(stories, /testTag\("atlas-stories-planning"\)/);
 });
+
+test('Photos permission has one real Android recovery action and no explanatory chrome', () => {
+  assert.match(search, /AtlasEmptyState\(\s*title = "Photos need access"/);
+  assert.match(search, /actionLabel = "Allow access"/);
+  assert.match(search, /onAction = \{ permissionLauncher\.launch\(necessaryPermissions\(\)\) \}/);
+  assert.doesNotMatch(search, /Grant photo and video access to build your private gallery/);
+});
+
+test('empty and loading grids avoid a full-screen loading message', () => {
+  const grid = read('app/src/main/java/nl/atlas/gallery/featuregrid/AtlasFeatureGrid.kt');
+  const timeline = read('app/src/main/java/nl/atlas/gallery/featuregrid/AtlasTimelineGallery.kt');
+  assert.match(grid, /if \(!busy\) \{\s*Text\(emptyText/);
+  assert.doesNotMatch(grid, /Text\(if \(busy\) "Loading photos…"/);
+  assert.match(timeline, /if \(items\.isEmpty\(\) && !busy\)/);
+  assert.doesNotMatch(timeline, /"Arranging timeline…"/);
+});
+
+test('viewer decode errors are named while neighbour paging stays mounted', () => {
+  const viewer = read('app/src/main/java/nl/atlas/gallery/GalleryViewer.kt');
+  assert.match(viewer, /onDecodeError = \{ previewFailed = true \}/);
+  assert.match(viewer, /testTag\("atlas-viewer-decode-error"\)/);
+  assert.match(viewer, /Text\("Can't open photo"/);
+  assert.match(viewer, /HorizontalPager\(/);
+});

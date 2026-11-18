@@ -237,8 +237,9 @@ fun AtlasFeatureGrid(
         if (showViewAs) GridViewAsControl(density, onChoose = ::chooseAtCentre)
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (busy) "Loading photos…" else emptyText,
-                    Modifier.testTag("atlas-feature-grid-empty"))
+                if (!busy) {
+                    Text(emptyText, Modifier.testTag("atlas-feature-grid-empty"))
+                }
             }
             return@Column
         }

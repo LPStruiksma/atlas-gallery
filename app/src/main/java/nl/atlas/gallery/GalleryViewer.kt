@@ -1437,10 +1437,15 @@ private fun PhotoPage(
                     translationX = zoomPose.translationX
                     translationY = zoomPose.translationY
                 }) {
+                var previewFailed by remember(media.uri, imageRevision) { mutableStateOf(false) }
                 ViewerPhotoPreview(media,
                     Modifier.fillMaxSize().clearAndSetSemantics {},
                     onLoaded = onPreviewReady.takeIf { observePreviewLoads },
-                    onFirstFrame = { if (firstFrameAt == 0L) firstFrameAt = System.nanoTime() },
+                    onFirstFrame = {
+                        previewFailed = false
+                        if (firstFrameAt == 0L) firstFrameAt = System.nanoTime()
+                    },
+                    onDecodeError = { previewFailed = true },
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
                     val request = remember(media, epoch, imageRevision) {
@@ -1452,6 +1457,7 @@ private fun PhotoPage(
                         modifier = Modifier.fillMaxSize().testTag("atlas-photo-hires")
                             .clearAndSetSemantics {},
                         onSuccess = { result ->
+                            previewFailed = false
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                             if (sharpAt == 0L) sharpAt = System.nanoTime()
                         })
@@ -1463,6 +1469,14 @@ private fun PhotoPage(
                         active = zoomedOnce && decodedSize != IntSize.Zero,
                         pose = { zoomPose }, viewport = viewport, baseSize = decodedSize,
                         onTiledSize = { tiledSize = it })
+                }
+                // A corrupt preview must not look like a black, unfinished page.
+                // Keep the pager and its neighbour swipes mounted.
+                if (previewFailed && decodedSize == IntSize.Zero && focused) {
+                    Box(Modifier.fillMaxSize().testTag("atlas-viewer-decode-error"),
+                        contentAlignment = Alignment.Center) {
+                        Text("Can't open photo", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 // Inside the zoom layer, so the box follows pinch and pan.
                 if (faceBoxes.isNotEmpty()) FaceHighlightOverlay(faceBoxes,
@@ -1483,6 +1497,7 @@ private fun PhotoPage(
 private fun ViewerPhotoPreview(
     media: MediaRecord, modifier: Modifier,
     onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
+    onDecodeError: () -> Unit,
     forceFresh: Boolean, refreshRevision: Long
 ) {
     val context = LocalContext.current
@@ -1504,6 +1519,7 @@ private fun ViewerPhotoPreview(
     var previewLoaded by remember(request) { mutableStateOf(false) }
     val currentOnLoaded by rememberUpdatedState(onLoaded)
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
+    val currentOnDecodeError by rememberUpdatedState(onDecodeError)
     // A neighbouring page may finish while still offscreen; the probe counts
     // it when the page gets focus, without a second decode.
     LaunchedEffect(previewLoaded, onLoaded != null) {
@@ -1519,7 +1535,10 @@ private fun ViewerPhotoPreview(
                     currentOnFirstFrame()
                     previewLoaded = true
                 }
-                is AsyncImagePainter.State.Error -> previewLoaded = false
+                is AsyncImagePainter.State.Error -> {
+                    previewLoaded = false
+                    currentOnDecodeError()
+                }
                 else -> Unit
             }
         })
