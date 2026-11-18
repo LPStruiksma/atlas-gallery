@@ -52,8 +52,16 @@ class GalleryBatchSelection private constructor(
      * the whole set. Unlike [toggled], an empty set keeps selection mode open
      * ("Select items"); only Back or the scope changing ends it.
      */
-    fun replaced(next: Set<String>): GalleryBatchSelection =
-        if (next == uris) this else GalleryBatchSelection(source, epoch, next.filterTo(HashSet()) { it.isNotBlank() })
+    fun replaced(next: Set<String>): GalleryBatchSelection = when {
+        next === uris -> this
+        // PERF-31 (#332): drag and select-all results are immutable and
+        // blank-free by construction. Adopt them as they are: no O(selection)
+        // equals or copy on every drag step.
+        next is SelectionOverlay || next is PositionKeySet ->
+            GalleryBatchSelection(source, epoch, next)
+        next == uris -> this
+        else -> GalleryBatchSelection(source, epoch, next.filterTo(HashSet()) { it.isNotBlank() })
+    }
 
     /**
      * Samsung GRID:S4: after a library reload of the same view, keep only the
