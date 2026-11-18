@@ -1,0 +1,5 @@
+# S24+ synthetic Unknown group face-first, no private media
+group-sheet-266-ready-light
+group-sheet-266-ready-dark
+group-sheet-266-typing-light
+group-sheet-266-typing-dark
