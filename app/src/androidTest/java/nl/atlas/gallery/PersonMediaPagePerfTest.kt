@@ -105,8 +105,12 @@ class PersonMediaPagePerfTest {
                 } finally {
                     db.endTransaction()
                 }
-                // The summary generation is stale: force the live fallback as
-                // happens after an old database is restored during scanning.
+                // Synthetic confirmations represent an already-published People
+                // generation. commitSnapshot leaves the generation dirty, and
+                // peopleHome correctly denies reads before first publication.
+                // Set only the fixture's publication fence to clean; keep the
+                // summary generation stale to exercise the live SQL fallback.
+                db.execSQL("UPDATE cluster_generation SET dirty=0,pending=0 WHERE singleton=1")
                 val start = SystemClock.elapsedRealtimeNanos()
                 val home = requireNotNull(store.peopleHome(epoch))
                 val elapsedMs = (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
