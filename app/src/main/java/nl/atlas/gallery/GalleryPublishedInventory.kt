@@ -14,7 +14,9 @@ internal data class GalleryPublishedInventory(
     /** Permission bits captured at the beginning of this exact query. */
     val observedGrant: GalleryMediaGrant? = null,
     /** True for the on-disk snapshot shown at cold start before the first scan. */
-    val fromCache: Boolean = false
+    val fromCache: Boolean = false,
+    /** True only for a grant-matched incremental observer publication. */
+    val incremental: Boolean = false
 ) {
     init {
         require(epoch >= 0L) { "Invalid gallery inventory epoch" }

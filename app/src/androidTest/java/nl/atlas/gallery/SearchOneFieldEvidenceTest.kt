@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -72,6 +75,68 @@ class SearchOneFieldEvidenceTest {
             1_500_000_000_000L + id * 86_400_000L, id % 5 == 0L)
     }
     private val uris = mapOf("p1" to photos.filter { it.id % 2 == 0L }.map { it.uri }.toSet())
+
+    // DESIGN-4 captures both themes in one composition: createComposeRule permits
+    // setContent only once per test, so switch the theme through Compose state.
+    @Test fun compactSearchRestAndNoResultsInBothThemes() {
+        var darkTheme by mutableStateOf(false)
+        var queryReset by mutableStateOf(0)
+        var clearInputFocus: (() -> Unit)? = null
+        compose.setContent {
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+            clearInputFocus = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+            }
+            var filters by remember(queryReset) { mutableStateOf(LocalSearchFacets()) }
+            AtlasGalleryTheme(dark = darkTheme) {
+                Scaffold(containerColor = MaterialTheme.colorScheme.background,
+                    bottomBar = {
+                        AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {})
+                    }) { padding ->
+                    Column(Modifier.fillMaxSize().padding(padding).padding(top = 12.dp)
+                        .imePadding()) {
+                        LocalSearchControls(
+                            filters = filters, people = emptyList(),
+                            history = EphemeralSearchHistory(permissionEpoch = "synthetic"),
+                            onlyTheseFacesAvailable = false,
+                            onFiltersChange = { filters = it },
+                            onSubmittedQuery = {}, onClearHistory = {},
+                            currentPermissionEpoch = "synthetic",
+                            onSearchByFace = {}, onFindSimilar = {},
+                            namedPeople = people,
+                            personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
+                            hasResults = false
+                        )
+                        if (filters.text.isNotBlank()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No results", modifier =
+                                    Modifier.testTag("atlas-design-search-no-results"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        listOf(false, true).forEach { dark ->
+            compose.runOnIdle {
+                darkTheme = dark
+                queryReset++
+            }
+            waitFor("atlas-search-field")
+            compose.runOnIdle { clearInputFocus?.invoke() }
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-rest-${if (dark) "dark" else "light"}.png")
+            compose.onNodeWithTag("atlas-search-field").performTextInput("unlikely-match")
+            waitFor("atlas-design-search-no-results")
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-ime-${if (dark) "dark" else "light"}.png")
+            compose.runOnIdle { clearInputFocus?.invoke() }
+            compose.waitForIdle()
+            saveUiEvidence("design-4-search-empty-${if (dark) "dark" else "light"}.png")
+        }
+    }
 
     @Test fun restRecentsTypingAndPersonResults() {
         var library = 0

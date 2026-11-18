@@ -178,7 +178,7 @@ private fun PhotoPersonCircleImage(person: PhotoPerson, port: ViewerPhotoPeople)
         Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
     } else {
         Icon(Icons.Filled.Person, null, Modifier.fillMaxSize().padding(12.dp),
-            tint = Color(0xFF8B95A1))
+            tint = nl.atlas.gallery.featuredesign.AtlasTokens.Colors.People.PortraitMuted)
     }
 }
 
@@ -195,7 +195,7 @@ internal fun PhotoPeopleRow(
     onAddName: (PhotoPerson.Unnamed) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 9.dp).testTag("atlas-details-people")) {
-        Text("People", style = MaterialTheme.typography.labelMedium, color = Color(0xFFADBAC7))
+        Text("People", style = MaterialTheme.typography.labelMedium, color = nl.atlas.gallery.featuredesign.AtlasTokens.Colors.People.PortraitLight)
         Spacer(Modifier.height(10.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -209,7 +209,7 @@ internal fun PhotoPeopleRow(
                         .testTag("atlas-details-person-${index + 1}"),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(Modifier.size(56.dp).clip(CircleShape).background(Color(0xFF2A303A))) {
+                    Box(Modifier.size(56.dp).clip(CircleShape).background(nl.atlas.gallery.featuredesign.AtlasTokens.Colors.People.PortraitDark)) {
                         face(person)
                     }
                     Spacer(Modifier.height(6.dp))

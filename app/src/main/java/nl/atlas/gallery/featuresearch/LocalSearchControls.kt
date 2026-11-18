@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import nl.atlas.gallery.PersonEntry
 import nl.atlas.gallery.CatalogSourceKey
 
@@ -135,7 +138,13 @@ fun LocalSearchControls(
                     if (exact != null) onFiltersChange(next)
                     onSubmittedQuery(personSearchLabel(namedPeople, next))
                 }),
-                modifier = Modifier.weight(1f).testTag("atlas-search-field")
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp).testTag("atlas-search-field"),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
             )
             Box {
                 IconButton(onClick = { overflowOpen = true },
@@ -200,7 +209,7 @@ fun LocalSearchControls(
                                 onSubmittedQuery(personSearchLabel(namedPeople, next))
                             }
                             .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .testTag("atlas-search-person-suggestion"),
+                            .heightIn(min = 56.dp).testTag("atlas-search-person-suggestion"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -217,7 +226,8 @@ fun LocalSearchControls(
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("Recent searches", style = MaterialTheme.typography.labelMedium,
+                Text("Recent searches", style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = onClearHistory) { Text("Clear") }
             }
@@ -265,7 +275,8 @@ fun LocalSearchControls(
         if (suggestions.isNotEmpty() || showFace || showSimilar) {
             Text("Suggestions",
                 modifier = Modifier.padding(horizontal = 18.dp),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),

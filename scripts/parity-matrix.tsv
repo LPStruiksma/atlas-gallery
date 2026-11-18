@@ -3,10 +3,10 @@ pictures-default	light	yes	theme-662-photos-light.png	SystemLightThemeJourneyTes
 pictures-default	dark	yes	theme-662-photos-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 pictures-pinch-compact	light	yes	parity-24-pinch-compact-light.png	ParityAdditionalLightJourneyTest / ParityAdditionalDarkJourneyTest	
 pictures-pinch-compact	dark	yes	parity-24-pinch-compact-dark.png	ParityAdditionalLightJourneyTest / ParityAdditionalDarkJourneyTest	
-pictures-pinch-large	light	no		GridMotionFrameTimeTest	No independently asserted large-zoom stop under both system themes
-pictures-pinch-large	dark	no		GridMotionFrameTimeTest	No independently asserted large-zoom stop under both system themes
-pictures-original-ratio	light	no		PinchRealRatioJourneyTest	Original-ratio screenshot exists only without a controlled light/dark pair
-pictures-original-ratio	dark	no		PinchRealRatioJourneyTest	Original-ratio screenshot exists only without a controlled light/dark pair
+pictures-pinch-large	light	yes	parity-24-pinch-large-light.png	ParityRemainingSurfaceLightJourneyTest / ParityRemainingSurfaceDarkJourneyTest	
+pictures-pinch-large	dark	yes	parity-24-pinch-large-dark.png	ParityRemainingSurfaceLightJourneyTest / ParityRemainingSurfaceDarkJourneyTest	
+pictures-original-ratio	light	yes	parity-24-original-ratio-light.png	ParityRemainingSurfaceLightJourneyTest / ParityRemainingSurfaceDarkJourneyTest	
+pictures-original-ratio	dark	yes	parity-24-original-ratio-dark.png	ParityRemainingSurfaceLightJourneyTest / ParityRemainingSurfaceDarkJourneyTest	
 pictures-header-away	light	yes	parity-24-header-away-light.png	ParityAdditionalLightJourneyTest / ParityAdditionalDarkJourneyTest	
 pictures-header-away	dark	yes	parity-24-header-away-dark.png	ParityAdditionalLightJourneyTest / ParityAdditionalDarkJourneyTest	
 albums-overview	light	yes	theme-662-albums-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	

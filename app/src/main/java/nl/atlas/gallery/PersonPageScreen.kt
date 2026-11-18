@@ -72,6 +72,9 @@ import nl.atlas.gallery.featuregrid.GalleryZoomStop
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.TimelineSort
 import nl.atlas.gallery.featurepeopleui.NativePersonAlbum
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
  * #551: everything the person page draws, already resolved by its route.
@@ -106,6 +109,7 @@ internal fun PersonPageScreen(
     ui: PersonPageUi,
     gridState: LazyGridState,
     catalogueEpoch: Long,
+    searching: Boolean = false,
     /** #584: a new opening of the page starts at the grid; a retarget keeps the stop. */
     opening: Long = 0L,
     portrait: @Composable () -> Unit,
@@ -122,7 +126,8 @@ internal fun PersonPageScreen(
     onRemoveSelected: (() -> Unit)?,
     confirmMerge: @Composable (NativePersonAlbum) -> Unit,
     /** #580: the person's open "Same person?" question, drawn under the header. */
-    samePerson: (@Composable () -> Unit)? = null
+    samePerson: (@Composable () -> Unit)? = null,
+    searchAction: (@Composable () -> Unit)? = null
 ) {
     val items = ui.items
     val selecting = selectedUris != null
@@ -151,7 +156,8 @@ internal fun PersonPageScreen(
                 if (selecting) {
                     SelectionBar(selectedUris.orEmpty().size) { onSelectionChange(null) }
                 } else {
-                    AtlasGalleryHeader(title = "", onBack = onBack, menuItems = menu)
+                    AtlasGalleryHeader(title = "", onBack = onBack, menuItems = menu,
+                        actions = { searchAction?.invoke() })
                 }
                 PersonHeader(ui, title, items, portrait,
                     onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }))
@@ -194,6 +200,7 @@ internal fun PersonPageScreen(
                 sort = TimelineSort.NEWEST,
                 gridState = gridState,
                 onOpen = onOpen,
+                busy = searching,
                 viewKey = "people",
                 catalogueEpoch = catalogueEpoch,
                 // #642: a person's photos are spread over many days; merge the
@@ -489,19 +496,28 @@ internal fun HiddenPeopleScreen(
     people: List<NativePersonAlbum>,
     portrait: @Composable (NativePersonAlbum) -> Unit,
     onBack: () -> Unit,
-    onOpen: (NativePersonAlbum) -> Unit
+    onOpen: (NativePersonAlbum) -> Unit,
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
+    var searchText by remember { mutableStateOf("") }
+    val visiblePeople = scopedNamedMatches(people, searchText) { it.name }
     // AtlasGalleryHeader already clears the status bar here (People's own inset).
     Column(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-people-hidden")) {
-        AtlasGalleryHeader(title = "Hidden", onBack = onBack)
-        if (people.isEmpty()) {
+        AtlasGalleryHeader(title = "Hidden", onBack = onBack, actions = {
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                onScopeChange = { scope ->
+                    if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                })
+        })
+        if (visiblePeople.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hidden people", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (searchText.isBlank()) "No hidden people" else "No matching people",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             return@Column
         }
         LazyColumn(Modifier.fillMaxSize()) {
-            items(people, key = { it.person.value }) { person ->
+            items(visiblePeople, key = { it.person.value }) { person ->
                 Row(
                     Modifier.fillMaxWidth().clickable { onOpen(person) }
                         .padding(horizontal = 20.dp, vertical = 10.dp)
