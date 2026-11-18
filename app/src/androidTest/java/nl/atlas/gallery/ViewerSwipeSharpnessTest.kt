@@ -81,11 +81,24 @@ class ViewerSwipeSharpnessTest {
             rule.runOnIdle { open = true }
             awaitStamp(photos[0].name, ViewerPhotoSharpAtKey, 0L)
             for (page in 1 until PHOTOS) {
-                Thread.sleep(PACE_MS)
-                // Was the page ahead's base warm just before the swipe, and how full the cache was.
+                // Was the page ahead's base warm just before the swipe, and how full the
+                // cache was. Polled during the pause: when it turned warm or cold again.
                 val baseKey = viewerBaseMemoryKey(photos[page].uri, false, 0L) { px ->
                     photos[page].presentationCacheKeyOrNull(px, epoch)
                 }!!
+                val pauseStart = System.nanoTime()
+                var wasWarm = false
+                val changes = StringBuilder()
+                while (System.nanoTime() - pauseStart < PACE_MS * 1_000_000L) {
+                    val warm = memory.keys.any { it.key == baseKey }
+                    if (warm != wasWarm) {
+                        changes.append(if (warm) "+" else "-")
+                            .append((System.nanoTime() - pauseStart) / 1_000_000L)
+                        wasWarm = warm
+                    }
+                    Thread.sleep(25)
+                }
+                warmBeforeSwipe[a] += "p$page:$changes"
                 warmBeforeSwipe[a] += "%s/%dMB/%d".format(
                     if (memory[MemoryCache.Key(baseKey)] != null) "warm" else "cold",
                     memory.size shr 20, memory.keys.size)
