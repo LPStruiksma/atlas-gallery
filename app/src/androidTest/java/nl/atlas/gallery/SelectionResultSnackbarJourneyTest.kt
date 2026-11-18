@@ -291,7 +291,14 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
     private fun assertSelectedPair(ids: List<Long>) {
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.onNodeWithTag("atlas-selection-pill").assertExists()
+        compose.onNodeWithTag("atlas-selection-top-bar").assertExists()
         compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
+        // The restored mode keeps the same actionable Share/Delete/Copy/More
+        // surface, not merely the checked thumbnails and count.
+        listOf("atlas-selection-share", "atlas-selection-trash",
+            "atlas-selection-transfer", "atlas-selection-more").forEach { action ->
+            compose.onNodeWithTag(action).assertExists()
+        }
         ids.take(2).forEach { id ->
             val tag = "atlas-timeline-media-${id}"
             compose.onNodeWithTag("atlas-timeline-grid")
