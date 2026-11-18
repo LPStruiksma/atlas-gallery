@@ -393,7 +393,7 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             }
             else -> { fail(folder, "REMOTE_ERROR"); Result.failure() }
         }
-        } finally { stopHook?.dispose() }
+        } finally { stopHook.dispose() }
     }
 
     private fun supportsSingleImage(bytes: ByteArray): Boolean = try {
