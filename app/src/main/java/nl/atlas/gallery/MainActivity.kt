@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
@@ -157,6 +158,7 @@ import nl.atlas.gallery.featureorganization.planAlbumTransfer
 import nl.atlas.gallery.featureorganization.SamsungSelectionTopBar
 import nl.atlas.gallery.featureorganization.toggleAll
 import nl.atlas.gallery.featureorganization.GalleryBatchSelection
+import nl.atlas.gallery.featureorganization.SelectionRotationState
 import nl.atlas.gallery.featureorganization.MAX_BATCH_SHARE_ITEMS
 import nl.atlas.gallery.featureorganization.MAX_BATCH_TRASH_ITEMS
 import nl.atlas.gallery.featureorganization.resolveBatchSelection
@@ -1147,13 +1149,48 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         withFrameNanos { }
         timelineEntryDensity = null
     }
-    // D batch selection: in-memory only, bound to one list reference + epoch.
+    // Save only bounded keys, never a MediaRecord list or actionable selection.
+    // The restored snapshot remains non-actionable until the publication,
+    // current grant and exact album scope have all been verified.
+    var pendingSelectionRestore by rememberSaveable(
+        saver = androidx.compose.runtime.saveable.Saver<
+            SelectionRotationState?, ArrayList<String>>(
+            save = { state ->
+                if (state == null) arrayListOf() else arrayListOf(
+                    state.epoch.toString(), state.grantBits,
+                    state.albumPath.orEmpty(), state.albumVolume.orEmpty(),
+                    state.albumFilter.orEmpty()
+                ).apply { addAll(state.keys) }
+            },
+            restore = { data ->
+                if (data.size < 5) null else {
+                    val epoch = data[0].toLongOrNull() ?: -1L
+                    val keys = data.drop(5).toSet()
+                    if (epoch < 0L || keys.size != data.size - 5 ||
+                        keys.size > SelectionRotationState.MAX_KEYS ||
+                        keys.any { it.isBlank() }) null
+                    else SelectionRotationState(epoch, keys, data[2].ifBlank { null },
+                        data[3].ifBlank { null }, data[4].ifBlank { null }, data[1])
+                }
+            }
+        )
+    ) { mutableStateOf<SelectionRotationState?>(null) }
     var batchSelection by remember {
         mutableStateOf<GalleryBatchSelection?>(null, referentialEqualityPolicy())
     }
     var batchOperating by remember { mutableStateOf(false) }
-    // The album a Photos selection was started in; another album ends it.
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
+    val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
+    // Keep a save-only copy current while the live holder changes. Never
+    // restore this copy into UI directly.
+    SideEffect {
+        if (batchSelection != null) {
+            pendingSelectionRestore = SelectionRotationState.capture(
+                batchSelection, selectionAlbumRoute?.relativePath,
+                selectionAlbumRoute?.volumeName,
+                selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
+        }
+    }
     // Search text, selected reviewed identities and recents belong to ONE
     // permission publication AND one confirmed People generation. Neither
     // tokens nor queries are saved across process/Activity recreation.
@@ -1666,20 +1703,52 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // library reload of the same view keeps it (Samsung GRID:S4): the URIs
     // still in the newly published list stay selected, the rest drop out.
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch, tab,
-        originalProportions, timelineEnabled, personFilter, albumRoute) {
-        val selection = batchSelection ?: return@LaunchedEffect
-        if (tab != 0 || originalProportions || !timelineEnabled || personFilter != null ||
-            selectionAlbumRoute != albumRoute || !grants.hasAny ||
-            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L) {
+        originalProportions, timelineEnabled, personFilter, albumRoute,
+        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending) {
+        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+            personFilter != null || !grants.hasAny ||
+            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
+        if (invalidScope) {
             batchSelection = null
-        } else if (selection.source !== visible || selection.epoch != publishedGallery.epoch) {
-            val source = visible
-            val epoch = publishedGallery.epoch
-            val rebased = withContext(Dispatchers.Default) {
-                val worker = currentCoroutineContext()
-                selection.rebasedOnto(source, epoch) { worker.ensureActive() }
+            pendingSelectionRestore = null
+            return@LaunchedEffect
+        }
+        val selection = batchSelection
+        if (selection != null) {
+            if (selectionAlbumRoute != albumRoute) {
+                batchSelection = null
+                pendingSelectionRestore = null
+            } else if (selection.source !== visible ||
+                selection.epoch != publishedGallery.epoch) {
+                val rebased = withContext(Dispatchers.Default) {
+                    val worker = currentCoroutineContext()
+                    selection.rebasedOnto(visible, publishedGallery.epoch) {
+                        worker.ensureActive()
+                    }
+                }
+                if (batchSelection === selection) batchSelection = rebased
             }
-            if (batchSelection === selection) batchSelection = rebased
+        } else {
+            val saved = pendingSelectionRestore ?: return@LaunchedEffect
+            // Async sorting and album filtering may publish empty placeholders.
+            // Do not consume a pending save until the exact scope has loaded.
+            if (busy || sortPending || albumSelectionPending || visible.isEmpty()) return@LaunchedEffect
+            val restored = withContext(Dispatchers.Default) {
+                val worker = currentCoroutineContext()
+                saved.restore(visible, publishedGallery.epoch, selectionGrantBits,
+                    albumRoute?.relativePath, albumRoute?.volumeName,
+                    albumRoute?.mediaFilter?.name,
+                    authorized = readGalleryMediaGrant(context) == grants &&
+                        publishedGallery.matchesGrantedScope(grants)
+                ) { worker.ensureActive() }
+            }
+            if (pendingSelectionRestore === saved && batchSelection == null) {
+                pendingSelectionRestore = null
+                if (restored != null) {
+                    selectionAlbumRoute = albumRoute
+                    batchSelection = restored
+                }
+            }
         }
     }
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch) {
