@@ -11,8 +11,8 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -82,14 +82,18 @@ class DesignMotionEvidenceTest {
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         awaitPhotos()
 
-        // Header subtitle collapse: 200 ms (AtlasMotionKind.HEADER).
-        compose.waitForNode(hasText("photos & videos", substring = true))
+        // Header subtitle collapse: 200 ms (AtlasMotionKind.HEADER). The
+        // count line folds away once the grid leaves its top. Jump there with
+        // the scroll-to-index semantics action, which moves the grid without
+        // advancing the frozen clock, so the fold itself is what gets captured.
+        compose.waitForNode(hasTestTag("atlas-header-subtitle") and
+            hasText("photos & videos", substring = true))
         compose.waitUntil(60_000L) {
             compose.onNodeWithTag("atlas-timeline-grid").fetchSemanticsNode()
                 .config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 12f
         }
         strip("header", 200L) {
-            compose.onNodeWithTag("atlas-timeline-grid").performTouchInput { swipeUp() }
+            compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(12)
         }
         compose.waitUntil(10_000L) {
             compose.onAllNodesWithTag("atlas-header-subtitle").fetchSemanticsNodes().isEmpty()
