@@ -84,7 +84,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.TextUnit
 
 /** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
 /** Compatibility aliases: source values now live in AtlasTokens. */
@@ -412,7 +411,7 @@ val AtlasPillEdge = AtlasTokens.Spacing.PillEdge
 val AtlasTabPillHeight = AtlasTokens.Spacing.TabHeight
 
 /** Keep the 60dp Samsung-style pill compact while preventing large-font tab collisions. */
-internal fun navigationLabelSize(fontScale: Float): TextUnit =
+internal fun navigationLabelSize(fontScale: Float) =
     AtlasTokens.Type.NavigationLabel * (fontScale.coerceAtLeast(1f).coerceAtMost(1.3f) /
         fontScale.coerceAtLeast(0.01f))
 
