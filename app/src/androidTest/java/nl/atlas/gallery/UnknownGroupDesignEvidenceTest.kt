@@ -63,8 +63,8 @@ class UnknownGroupDesignEvidenceTest {
     /**
      * #394 flake: performTextInput returns before the IME is shown, so a check
      * that Create is displayed passed at once, and the IME inset animation then
-     * moved the sheet under the next assertion. Wait until the IME state and
-     * [tag]'s bounds have both held still for [stableMs].
+     * moved the sheet under the next assertion. Call after the IME is visible:
+     * waits until the IME inset and [tag]'s bounds have both held still for [stableMs].
      */
     private fun awaitSettled(tag: String, stableMs: Long = 500) {
         var last: Pair<Int, Rect>? = null
@@ -149,15 +149,17 @@ class UnknownGroupDesignEvidenceTest {
         compose.waitForIdle()
         // The Create action must stay above the keyboard while typing (#266 review of
         // the 928ad23 renders: it was hidden under the IME).
+        // The IME appears ~2 s after performTextInput; wait for it before settling,
+        // or the pre-IME layout can hold still for the whole settle window.
+        compose.waitUntil(10_000) { imeBottom() > 0 }
         awaitSettled("atlas-group-create-person")
         val create = compose.onNodeWithTag("atlas-group-create-person")
             .fetchSemanticsNode().boundsInWindow
         val ime = imeBottom()
-        if (ime > 0) {
-            val keyboardTop = hostView.rootView.height - ime
-            assertTrue("Create bottom ${create.bottom} is under the IME top $keyboardTop",
-                create.bottom <= keyboardTop + 2f)
-        }
+        assertTrue("IME hid again while settling", ime > 0)
+        val keyboardTop = hostView.rootView.height - ime
+        assertTrue("Create bottom ${create.bottom} is under the IME top $keyboardTop",
+            create.bottom <= keyboardTop + 2f)
         compose.onNodeWithTag("atlas-group-face-1").assertIsDisplayed()
         compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
         compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
