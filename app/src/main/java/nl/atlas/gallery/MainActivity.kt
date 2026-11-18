@@ -1181,14 +1181,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // Keep a save-only copy current while the live holder changes. Never
-    // restore this copy into UI directly.
+    // Save-only mirror; a null live selection must also clear the saved state
+    // unless an Activity recreation is explicitly awaiting reconciliation.
     SideEffect {
-        if (batchSelection != null) {
-            pendingSelectionRestore = SelectionRotationState.capture(
-                batchSelection, selectionAlbumRoute?.relativePath,
-                selectionAlbumRoute?.volumeName,
+        val live = batchSelection
+        if (live != null) {
+            val snapshot = SelectionRotationState.capture(live,
+                selectionAlbumRoute?.relativePath, selectionAlbumRoute?.volumeName,
                 selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
+            if (pendingSelectionRestore != snapshot) pendingSelectionRestore = snapshot
         }
     }
     // Search text, selected reviewed identities and recents belong to ONE
