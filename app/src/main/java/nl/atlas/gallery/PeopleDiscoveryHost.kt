@@ -576,18 +576,12 @@ internal class PeopleDiscoveryHost(
         @Volatile private var app: PeopleDiscoveryHost? = null
 
         /**
-         * Initial creation reads opt-in preferences; forbid that on Main.
-         * Existing app/test callers keep their identity.
+         * Construction is an identity-only operation: SQLite helpers are not
+         * opened until their worker performs a read or write. The ONNX
+         * inferenceFactory is likewise called only by a scan worker.
          */
-        fun forApp(context: Context): PeopleDiscoveryHost {
-            val existing = app
-            if (existing != null) return existing
-            check(android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
-                "People discovery host must be created on a background thread"
-            }
-            return synchronized(this) {
-                app ?: create(context.applicationContext).also { app = it }
-            }
+        fun forApp(context: Context): PeopleDiscoveryHost = app ?: synchronized(this) {
+            app ?: create(context.applicationContext).also { app = it }
         }
 
         /**
