@@ -2053,6 +2053,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
             selectionResults.show("Moved selected items to Android Trash")
         } else {
@@ -2067,6 +2068,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -2100,6 +2102,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         selectionResults.show(albumTransferMessage(plan.mode, plan.target.title, result))
         if (result.done > 0) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -2448,7 +2451,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
             viewerUri != null -> closeViewer()
-            batchSelection != null -> batchSelection = null
+            batchSelection != null -> {
+                batchSelection = null
+                pendingSelectionRestore = null
+            }
             personFilter != null -> personFilter = null
             tab == 0 && album != null -> {
                 album = null
@@ -2986,6 +2992,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
                                     openAiEdit(photo)
                                     batchSelection = null
+                                    pendingSelectionRestore = null
                                 })
                             } ?: emptyList()
                     ) + (if (Build.VERSION.SDK_INT >= 30) listOf(
@@ -3431,6 +3438,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             // The existing deferred effect re-checks grant,
                                             // route and URI before scrolling the ratio list.
@@ -3486,6 +3494,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             pendingRatioAnchor = request.focal?.let {
                                                 it.itemIndex to it.mediaKey
