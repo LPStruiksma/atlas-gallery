@@ -246,6 +246,48 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         }
     }
 
+    /** #404: an album selection cannot silently turn into a Photos selection on rotation. */
+    @Test fun rotationRetainsAlbumSelectionAndItsScope() {
+        val theme = if (dark) "dark" else "light"
+        val folder = "ATLAS-Result-Fixture-${if (dark) "Dark" else "Light"}"
+        val ids = fixtures.ids
+
+        compose.waitForNode(hasTestTag("atlas-nav-albums"))
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitForNode(hasTestTag("atlas-album-grid"))
+        val fixtureAlbum = hasTestTag("atlas-album-card") and hasText(folder, substring = true)
+        compose.waitForNode(fixtureAlbum)
+        compose.onNode(fixtureAlbum).performClick()
+        compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+        }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-${theme}-album-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-portrait-after.png")
+            // Back exits selection first, then returns to the same fixture album.
+            compose.activityRule.scenario.onActivity {
+                it.onBackPressedDispatcher.onBackPressed()
+            }
+            compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+            compose.onNodeWithTag("atlas-selection-pill").assertDoesNotExist()
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
     private fun assertSelectedPair(ids: List<Long>) {
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.onNodeWithTag("atlas-selection-pill").assertExists()
