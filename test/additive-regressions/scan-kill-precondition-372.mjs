@@ -11,6 +11,10 @@ const script = readFileSync(resolve(root, 'scripts/ci_android_upgrade_emulator.s
 // Order: find the scan job and its WorkManager work ID, freeze, re-check
 // BOTH JobScheduler and WorkManager's result for that work ID, then SIGKILL.
 const sequence = [
+  // Root cause: unplugged must also report DISCHARGING, or WorkManager's
+  // in-process charging tracker runs the scan before the kill.
+  'adb shell dumpsys battery unplug',
+  'adb shell dumpsys battery set status 3',
   'run_kill_phase seed seedBeforeKill',
   'scan_job="$(scan_job_id)"',
   'scan_job_pending "$scan_job" || {',

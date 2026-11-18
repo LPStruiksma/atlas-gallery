@@ -467,6 +467,13 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       tail -80 || true
   }
   adb shell dumpsys battery unplug
+  # #372 root cause (run 44291919363 prekill dump: "status: 2" while unplugged):
+  # `unplug` clears ac/usb but leaves the emulator's status at CHARGING, and
+  # WorkManager's in-process BatteryChargingTracker reads that status. So the
+  # charging-constrained scan ran in-process (GreedyScheduler) while
+  # "unplugged", finished and chained, racing the kill. Report DISCHARGING so
+  # the scan stays a pending JobScheduler job until the replug below.
+  adb shell dumpsys battery set status 3
   adb logcat -c || true
   run_kill_phase seed seedBeforeKill
   adb logcat -c || true
