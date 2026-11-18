@@ -64,7 +64,7 @@ Open weights means downloadable parameters; **not** automatic commercial permiss
 
 | Engine | Instruction / mask / refs / candidates / multi-turn | Resolution; sync/jobs | Licence, size, cost and evidence |
 |---|---|---|---|
-| **LaMa big-lama on ONNX Runtime CPU** (`LocalEraseProvider`, AIE-22 #434) | Erase only: instruction ignored / **Y, hard mask**: pixels outside the mask are bit-identical by construction and test / N / 1 / N | Any source up to 64 MP at full resolution; model sees a ≤512 px context window around the mask; poll-based local job, cancellable | Apache-2.0 (OpenCV Zoo export), 92.6 MB bundled, free, offline. Host 512² inference ≈ 3.7 s (4 x86 threads); emulator and phone timings in `ON_DEVICE_ERASE.md` |
+| **LaMa big-lama on ONNX Runtime CPU** (`LocalEraseProvider`, AIE-22 #434) | Erase only: instruction ignored / **Y, hard mask**: pixels outside the mask are bit-identical by construction and test / N / 1 / N | Any source up to 64 MP at full resolution; model sees a ≤512 px context window around the mask; poll-based local job, cancellable | Apache-2.0 (OpenCV Zoo export), 92.6 MB bundled, free, offline. Host 512² inference ≈ 3.7 s (4 x86 threads), CI emulator ≈ 8.1 s (1 thread); phone not yet measured (`ON_DEVICE_ERASE.md`) |
 
 ## Content-policy and refusal matrix — separate from quality
 

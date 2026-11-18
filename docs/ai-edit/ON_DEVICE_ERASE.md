@@ -33,7 +33,7 @@ Four synthetic scenes with known ground truth (stripes, checkerboard, blocky noi
 | int8 per output channel | 57,291,132 | 19.6 / 17.8 / 10.6 / 29.0 | 19.2 | 3.7 s |
 | int4 block 32 | 48,924,014 | ≈ 6 (broken) | — | — |
 
-Only the per-channel variant is under the unit's ~60 MB line, and it loses up to 17 dB on the stripes scene. The size stop was reported on #434 and the coordinator chose to bundle the full-quality file (same pattern as the 102.9 MB SigLIP model). An fp32 TorchScript of big-lama (205.7 MB) was also fetched, but torch could not be installed in the seat container to make a cleaner low-bit export, and Hugging Face (the Carve fp32 ONNX) is blocked there.
+Only the per-channel variant is under the unit's ~60 MB line, and it loses up to 17 dB on the stripes scene. The size stop was reported on #434 and Lukas chose to bundle the full-quality file (2026-11-18) (same pattern as the 102.9 MB SigLIP model). An fp32 TorchScript of big-lama (205.7 MB) was also fetched, but torch could not be installed in the seat container to make a cleaner low-bit export, and Hugging Face (the Carve fp32 ONNX) is blocked there.
 
 Host process figures (x86 container, not a phone): session load ≈ 4.7 s, 512² inference ≈ 3.7 s at 4 threads and ≈ 4.9 s at 2, peak process RSS ≈ 784 MB during inference.
 
@@ -41,10 +41,14 @@ Host process figures (x86 container, not a phone): session load ≈ 4.7 s, 512²
 
 From `LocalEraseInstrumentedTest`, logcat tag `ATLAS_SCALE` (one JSON line per test):
 
-| Test | Inference | Total erase | Peak RSS | Fill quality | Kept pixels |
+Dispatch run [44339945002](https://github.com/LPStruiksma/atlas-gallery/actions/runs/44339945002) at 3cd2033, shard 1. The emulator has 2 vCPUs, so ORT used 1 intra-op thread (same budget rule as the face models).
+
+| Test | Session open | Inference | Total erase | Fill quality | Kept pixels |
 |---|---|---|---|---|---|
-| 1024×768 synthetic, 140 px disc (native 512 window) | _pending exact-head run_ | | | | |
-| 8192×6144 (50.3 MP) JPEG, 680 px disc | | | | completes, no crash | |
+| 1024×768 synthetic, 140 px disc (native 512 window) | 3,966 ms (model join on first use 269 ms) | 8,135 ms | 12,364 ms | hole PSNR 26.82 dB (gate 24; host 31.5) | 0 changed |
+| 8192×6144 (50.3 MP) JPEG, 680 px disc, model scale 0.3765 | included | 8,329 ms | 25,023 ms incl. 50 MP decode and PNG encode | disc filled | 0 changed; no crash |
+
+Peak memory: the instrumentation process high-water mark (`VmHWM`) was 1,482,240 kB. That is shared with earlier tests in the same process (the VS-B1 model benchmark already ran it to about 1.3–1.5 GB), so it is an upper bound, not the erase alone. The host figure above (≈ 784 MB peak for a bare inference process) is the better estimate of the model's own footprint.
 
 ### Phone
 

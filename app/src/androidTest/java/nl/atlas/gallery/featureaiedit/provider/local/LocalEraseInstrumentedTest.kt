@@ -185,9 +185,9 @@ class LocalEraseInstrumentedTest {
         val result = decodeExact(out)
         assertEquals(w, result.width); assertEquals(h, result.height)
         @Suppress("DEPRECATION")
-        val sourceDecoder = BitmapRegionDecoder.newInstance(sourceFile.path, false)!!
+        val sourceDecoder = BitmapRegionDecoder.newInstance(sourceFile.path, false)
         @Suppress("DEPRECATION")
-        val maskDecoder = BitmapRegionDecoder.newInstance(maskFile.path, false)!!
+        val maskDecoder = BitmapRegionDecoder.newInstance(maskFile.path, false)
         val opts = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888; inPremultiplied = false }
         var outsideDiff = 0L; var changedInside = 0L
         val band = 512

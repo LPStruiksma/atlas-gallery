@@ -7,7 +7,7 @@
 
 ## Why this file and size
 
-The unit's size rule was "about 60 MB or less, else stop and report". Smaller variants were tried (`docs/ai-edit/ON_DEVICE_ERASE.md`): per-channel int8 (57.3 MB) lost up to 17 dB of fill quality, block-32 int8 was still 63.4 MB, int4 broke. The size stop was reported on atlas-gallery #434; the coordinator chose to bundle the full-quality file, the same pattern as the 102.9 MB SigLIP model.
+The unit's size rule was "about 60 MB or less, else stop and report". Smaller variants were tried (`docs/ai-edit/ON_DEVICE_ERASE.md`): per-channel int8 (57.3 MB) lost up to 17 dB of fill quality, block-32 int8 was still 63.4 MB, int4 broke. The size stop was reported on atlas-gallery #434, and Lukas chose to bundle the full-quality file (decision card in the #434 Dev thread, 2026-11-18 15:54Z), the same pattern as the 102.9 MB SigLIP model.
 
 ## Files
 
