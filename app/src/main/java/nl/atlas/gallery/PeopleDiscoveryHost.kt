@@ -575,10 +575,6 @@ internal class PeopleDiscoveryHost(
 
         @Volatile private var app: PeopleDiscoveryHost? = null
 
-        /**
-         * Return the shared host. Its SQLite helper constructors must remain
-         * inert; the underlying first reads/writes happen from IO workers.
-         */
         fun forApp(context: Context): PeopleDiscoveryHost = app ?: synchronized(this) {
             app ?: create(context.applicationContext).also { app = it }
         }
