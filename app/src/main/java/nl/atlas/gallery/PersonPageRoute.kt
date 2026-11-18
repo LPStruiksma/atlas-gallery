@@ -45,6 +45,7 @@ import nl.atlas.gallery.featurepeopleui.samePersonAnswer
 import nl.atlas.gallery.featurepeopleui.samePersonQuestion
 import nl.atlas.gallery.featurepeopleui.targetAfter
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
@@ -276,6 +277,7 @@ internal fun NativePersonAlbumRoute(
             ({ choosingCover = true }) else null,
         searchAction = {
             AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                historyScope = SearchHistoryScope.PERSON,
                 onScopeChange = { next ->
                     if (next == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
                 })

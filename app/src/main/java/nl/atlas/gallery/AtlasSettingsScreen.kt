@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
+import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsPanel
 
 /**
  * #664: one Samsung-style Settings destination for the gallery's existing
@@ -60,7 +64,11 @@ internal fun AtlasSettingsScreen(
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
     onScanNow: (() -> Unit)? = null,
-    scanStatusNote: String? = null
+    scanStatusNote: String? = null,
+    /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
+    searchHistoryOn: Boolean? = null,
+    onSearchHistoryOn: (Boolean) -> Unit = {},
+    onClearSearchHistory: () -> Unit = {}
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
@@ -95,6 +103,12 @@ internal fun AtlasSettingsScreen(
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
+        }
+        SettingsGroup("AI Edit", "atlas-settings-ai-edit") {
+            var expanded by rememberSaveable { mutableStateOf(false) }
+            SettingsActionRow("Providers and privacy", "atlas-settings-ai-edit-open",
+                onClick = { expanded = !expanded }, value = if (expanded) "Hide" else "Configure")
+            if (expanded) AiEditSettingsPanel()
         }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
@@ -133,6 +147,28 @@ internal fun AtlasSettingsScreen(
                     }
                 }
             }
+        }
+        // #427 review: below Advanced, so the existing groups keep their place on screen.
+        if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
+            // Off stops saving and clears every scope (Undo on the snackbar).
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .toggleable(value = searchHistoryOn, role = Role.Switch,
+                        onValueChange = onSearchHistoryOn)
+                    .testTag("atlas-settings-search-history"),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    Text("Save search history", style = MaterialTheme.typography.bodyLarge)
+                    Text("Recent searches stay on this phone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = searchHistoryOn, onCheckedChange = null)
+            }
+            SettingsActionRow("Clear search history", "atlas-settings-search-history-clear",
+                onClearSearchHistory)
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
