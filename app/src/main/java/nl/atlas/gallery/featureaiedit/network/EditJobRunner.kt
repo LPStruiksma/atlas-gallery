@@ -215,11 +215,15 @@ internal object EditJobJournal {
     }
 }
 
+/** Pure state transition, also used by the JVM regression without Android JSON stubs. */
+internal fun acceptedSubmissionState(previous: String): String =
+    if (previous == "cancelled") "cancelled" else "polling"
+
 /** Preserves a user's local cancel while publishing the accepted remote ID atomically. */
 internal fun recordAcceptedSubmission(folder: File, remoteId: String): Boolean {
     val state = EditJobJournal.change(folder) {
         it.put("remoteId", remoteId)
-        if (it.optString("state") != "cancelled") it.put("state", "polling")
+        it.put("state", acceptedSubmissionState(it.optString("state")))
         it.remove("instruction")
     }?.optString("state")
     return state == "cancelled"
