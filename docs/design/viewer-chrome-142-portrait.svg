@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 2340" width="540" height="1170" role="img" aria-label="Schematic portrait S24+ design-evidence viewport">
+<defs><linearGradient id="photo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eee1c1"/><stop offset=".48" stop-color="#8fd3cc"/><stop offset="1" stop-color="#eab875"/></linearGradient></defs>
+<rect width="1080" height="2340" fill="url(#photo)"/><path d="M0 1300Q360 950 750 1200T1080 900V2340H0Z" fill="#477d7d" opacity=".35"/><path d="M0 50h1080M0 2260h1080M48 0v2340M1032 0v2340" stroke="#de3846" stroke-width="5" stroke-dasharray="22 14" fill="none"/><text x="65" y="113" font-size="34" fill="#21262a">UNMEASURED safeDrawing</text>
+<rect x="66" y="175" width="145" height="116" rx="58" fill="#1b2024" opacity=".82"/><text x="110" y="250" fill="white" font-size="60">‹</text>
+<rect x="450" y="175" width="565" height="116" rx="58" fill="#1b2024" opacity=".82"/><text x="478" y="249" fill="white" font-size="40">Face · Similar · More · Info</text>
+<rect x="92" y="1710" width="896" height="130" rx="65" fill="#1b2024" opacity=".82"/><text x="125" y="1791" fill="white" font-size="42">▶  0:12  ━━━━━●━━━━  1:46</text><text x="105" y="1660" font-size="34" fill="#21262a">VIDEO ONLY · 54dp row · 164dp bottom offset</text>
+<rect x="0" y="1980" width="1080" height="138" fill="#0d171b" opacity=".52"/>
+<g fill="#e6dbb9" stroke="#f8f4e3" stroke-width="5"><rect x="340" y="1998" width="66" height="95" rx="5"/><rect x="415" y="1998" width="66" height="95" rx="5"/><rect x="490" y="1988" width="82" height="118" rx="5"/><rect x="581" y="1998" width="66" height="95" rx="5"/><rect x="656" y="1998" width="66" height="95" rx="5"/></g>
+<rect x="128" y="2150" width="824" height="126" rx="63" fill="#1b2024" opacity=".86"/><text x="175" y="2230" font-size="46" fill="white">♡     ✎      ↗      ▢</text>
+<text x="38" y="2310" font-size="28" fill="#fff">1080×2340 px schematic · NOT a runtime capture</text>
+</svg>
