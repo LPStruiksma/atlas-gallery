@@ -229,7 +229,7 @@ fun LocalSearchControls(
             }
         }
         if (filters.text.isBlank() && pickedPeople.isEmpty() && currentRecents.terms.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+            Row(Modifier.fillMaxWidth().padding(end = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 SearchSectionHeader("Recent searches")

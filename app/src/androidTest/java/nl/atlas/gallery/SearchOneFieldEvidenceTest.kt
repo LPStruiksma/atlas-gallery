@@ -321,6 +321,14 @@ class SearchOneFieldEvidenceTest {
                 "chip_visible_dp=${"%.1f".format(chipDp)} field_dp=${"%.1f".format(fieldDp)}")
             assertTrue("chip visible ${chipDp}dp, want 32 ± 2", chipDp in 30f..34f)
             assertTrue("field ${fieldDp}dp, want 48–56", fieldDp in 47.5f..56.5f)
+            // Header and chips share the 16 dp screen inset (no double inset).
+            val headerStart = compose.onAllNodesWithText("Recent searches").onFirst()
+                .fetchSemanticsNode().boundsInRoot.left / density
+            val chipStart = compose.onAllNodesWithTag("atlas-search-recent").onFirst()
+                .fetchSemanticsNode().boundsInRoot.left / density
+            Log.i("ATLAS_134", "theme=$theme header_start_dp=$headerStart chip_start_dp=$chipStart")
+            assertTrue("header inset ${headerStart}dp, want 16", headerStart in 15f..17f)
+            assertTrue("chip inset ${chipStart}dp, want 16", chipStart in 15f..17f)
 
             compose.onNodeWithTag("atlas-search-field").performTextInput("sus")
             waitFor("atlas-search-person-suggestion")
