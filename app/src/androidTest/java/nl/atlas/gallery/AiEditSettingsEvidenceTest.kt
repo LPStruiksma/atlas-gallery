@@ -195,7 +195,7 @@ class AiEditSettingsEvidenceTest {
             waitFor("aie-unavailable-later-1")
             compose.onNodeWithText("Saved. Checked on your first edit.").assertExists()
             compose.onNodeWithText("Key works").assertExists()
-            compose.onNodeWithTag("aie-default-badge").assertExists()
+            compose.onNodeWithTag("aie-default-badge", useUnmergedTree = true).assertExists()
             shot("aie-19-services-$t")
 
             // Saved but unverified: no connection at Save keeps the key, "Not checked yet".

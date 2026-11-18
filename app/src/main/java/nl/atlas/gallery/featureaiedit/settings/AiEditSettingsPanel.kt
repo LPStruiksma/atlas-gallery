@@ -424,7 +424,7 @@ private fun ServicesPage(
             GroupCard {
                 Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
                     .toggleable(keepLocation, role = Role.Switch, onValueChange = onKeepLocation)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp).testTag("aie-keep-location"),
                     verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Keep location in photos you send",
@@ -435,8 +435,8 @@ private fun ServicesPage(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(12.dp))
-                    Switch(checked = keepLocation, onCheckedChange = null,
-                        modifier = Modifier.testTag("aie-keep-location"))
+                    // The whole row is the toggle (one TalkBack stop); the switch only draws it.
+                    Switch(checked = keepLocation, onCheckedChange = null)
                 }
                 SettingRow("What is sent?", "aie-what-is-sent", onClick = onWhatIsSent)
             }
