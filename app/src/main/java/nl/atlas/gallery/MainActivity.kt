@@ -1181,8 +1181,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // Save-only mirror; a null live selection must also clear the saved state
-    // unless an Activity recreation is explicitly awaiting reconciliation.
+    // Save the current live snapshot for Activity recreation; an inactive
+    // selection does not reactivate pending keys while validation is running.
     SideEffect {
         val live = batchSelection
         if (live != null) {
