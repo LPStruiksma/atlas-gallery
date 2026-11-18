@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -109,6 +110,79 @@ internal fun pinchSpan(xs: FloatArray, ys: FloatArray): Triple<Float, Float, Flo
 }
 
 /**
+ * Plain-value view of one pointer event: index-based, so the measurement
+ * below is a pure function testable on the JVM without constructing Compose's
+ * `PointerInputChange` (whose full constructor is internal to Compose).
+ */
+internal interface PinchPointers {
+    val size: Int
+    fun pressed(index: Int): Boolean
+    fun x(index: Int): Float
+    fun y(index: Int): Float
+}
+
+/** Reusable adapter over a Compose event; one per gesture, never per event. */
+internal class PointerChangePointers : PinchPointers {
+    var changes: List<PointerInputChange> = emptyList()
+    override val size: Int get() = changes.size
+    override fun pressed(index: Int): Boolean = changes[index].pressed
+    override fun x(index: Int): Float = changes[index].position.x
+    override fun y(index: Int): Float = changes[index].position.y
+}
+
+/**
+ * Reusable pressed-pointer measurement. One instance is allocated per gesture,
+ * never per event. The exact mean Euclidean distance from the centroid requires
+ * two scans: first find the centroid, then the distances around that centroid.
+ * The traversal and Float operation order match the old filter/arrays/Triple
+ * implementation, including non-finite coordinates and finger lifts.
+ */
+internal class PinchEventMeasurement {
+    var pressedCount: Int = 0
+        private set
+    var spanPx: Float = Float.NaN
+        private set
+    var centroidX: Float = Float.NaN
+        private set
+    var centroidY: Float = Float.NaN
+        private set
+
+    fun read(pointers: PinchPointers) {
+        val size = pointers.size
+        var count = 0
+        var cx = 0f
+        var cy = 0f
+        var index = 0
+        while (index < size) {
+            if (pointers.pressed(index)) {
+                count++
+                cx += pointers.x(index)
+                cy += pointers.y(index)
+            }
+            index++
+        }
+        pressedCount = count
+        if (count == 0) {
+            spanPx = Float.NaN
+            centroidX = Float.NaN
+            centroidY = Float.NaN
+            return
+        }
+        cx /= count
+        cy /= count
+        var span = 0f
+        index = 0
+        while (index < size) {
+            if (pointers.pressed(index)) span += hypot(pointers.x(index) - cx, pointers.y(index) - cy)
+            index++
+        }
+        spanPx = span / count
+        centroidX = cx
+        centroidY = cy
+    }
+}
+
+/**
  * Parent-level pinch detector. It observes the Initial pass, before the tile
  * clickables and the lazy list's scrollable see the event, so a child can
  * never consume the second finger (the #465/#475 failure). Single-finger taps
@@ -125,16 +199,15 @@ internal fun Modifier.galleryPinchLadder(
 ): Modifier = pointerInput(*keys) {
     awaitEachGesture {
         val tracker = newTracker(viewConfiguration.touchSlop)
+        val sample = PinchEventMeasurement()
+        val pointers = PointerChangePointers()
         try {
         do {
             val event = awaitPointerEvent(PointerEventPass.Initial)
-            val pressed = event.changes.filter { it.pressed }
-            val sample = pinchSpan(
-                FloatArray(pressed.size) { pressed[it].position.x },
-                FloatArray(pressed.size) { pressed[it].position.y }
-            )
-            val consume = tracker.onSample(pressed.size, sample?.first ?: Float.NaN,
-                sample?.second ?: Float.NaN, sample?.third ?: Float.NaN)
+            pointers.changes = event.changes
+            sample.read(pointers)
+            val consume = tracker.onSample(sample.pressedCount, sample.spanPx,
+                sample.centroidX, sample.centroidY)
             if (consume) event.changes.forEach { it.consume() }
             if (consume && onZoom != null) onZoom(tracker.zoom, Offset(tracker.focusX, tracker.focusY))
         } while (event.changes.any { it.pressed })
