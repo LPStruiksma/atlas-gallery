@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
+import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsPanel
 
 /**
  * #664: one Samsung-style Settings destination for the gallery's existing
@@ -95,6 +96,12 @@ internal fun AtlasSettingsScreen(
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
+        }
+        SettingsGroup("AI Edit", "atlas-settings-ai-edit") {
+            var expanded by rememberSaveable { mutableStateOf(false) }
+            SettingsActionRow("Providers and privacy", "atlas-settings-ai-edit-open",
+                onClick = { expanded = !expanded }, value = if (expanded) "Hide" else "Configure")
+            if (expanded) AiEditSettingsPanel()
         }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
