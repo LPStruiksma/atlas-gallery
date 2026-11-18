@@ -63,6 +63,7 @@ class ThumbnailPrefetchPlanScaleTest {
                 Int.MAX_VALUE to Int.MAX_VALUE)
             for ((first, last) in spans) {
                 val actual = ThumbnailPrefetchPlan.slots(first, last, count, cols, dir, Float.MAX_VALUE)
+                assertTrue(actual.size <= 2 * ThumbnailPrefetchPlan.MAX_SLOTS_PER_SIDE)
                 assertEquals(actual.size, actual.toSet().size)
                 assertTrue(actual.all { it >= 0 && it < count && it !in first..last })
                 // The caller-visible, already-clipped gap is a hard upper bound.
@@ -78,12 +79,14 @@ class ThumbnailPrefetchPlanScaleTest {
 
     @Test fun extremeColumnsRemainProportionalToPhysicalGaps() {
         for (count in intArrayOf(1, 250_000, Int.MAX_VALUE)) {
-            // Keep the actual physical gap tiny even when columns and row request overflow Int.
+            // The far side is empty (first is the last slot); the near side is the whole
+            // catalogue, so only MAX_SLOTS_PER_SIDE keeps the allocation bounded.
             val first = count - 1
             for (cols in intArrayOf(28, 178_956_971, Int.MAX_VALUE)) {
                 for (dir in intArrayOf(-1, 0, 1)) {
                     val actual = ThumbnailPrefetchPlan.slots(first, first, count, cols, dir, Float.MAX_VALUE)
                     assertTrue(actual.size <= first)
+                    assertTrue(actual.size <= ThumbnailPrefetchPlan.MAX_SLOTS_PER_SIDE)
                     val maximumRequested = if (dir < 0) 12L * cols else if (dir == 0) 2L * cols else cols.toLong()
                     assertTrue(actual.size.toLong() <= maximumRequested)
                     assertTrue(actual.all { it in 0 until first })

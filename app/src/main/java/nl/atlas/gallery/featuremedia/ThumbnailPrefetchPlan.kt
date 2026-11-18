@@ -24,6 +24,15 @@ internal object ThumbnailPrefetchPlan {
     const val LOOKAHEAD_SECONDS = 0.35f
 
     /**
+     * Hard ceiling on slots per side, whatever `columns` says. The widest real
+     * grid (28 columns at the densest zoom stop) needs 12 * 28 = 336 slots;
+     * without a ceiling a corrupt or extreme column count against a large
+     * catalogue asked for an IntArray of ~2^31 slots (OutOfMemoryError in the
+     * PERF-21 scale tests, run 43848830646).
+     */
+    const val MAX_SLOTS_PER_SIDE = 512
+
+    /**
      * Rows to warm ahead for a scroll speed in rows per second (sign ignored).
      * Non-finite speeds are treated as idle rather than as "infinitely fast".
      */
@@ -60,10 +69,13 @@ internal object ThumbnailPrefetchPlan {
         val availableAfter = slotCount - 1 - last
         val availableBefore = firstVisible
 
-        // Clip before converting to Int. MAX_ROWS_AHEAD * Int.MAX_VALUE fits Long,
-        // and the sum of physically available sides cannot exceed slotCount - 1.
+        // Clip before converting to Int. MAX_ROWS_AHEAD * Int.MAX_VALUE fits Long;
+        // each side is bounded by its physical gap and by MAX_SLOTS_PER_SIDE.
         fun boundedRows(rows: Int, available: Int): Int =
-            (rows.toLong() * columns.toLong()).coerceAtMost(available.toLong()).toInt()
+            (rows.toLong() * columns.toLong())
+                .coerceAtMost(available.toLong())
+                .coerceAtMost(MAX_SLOTS_PER_SIDE.toLong())
+                .toInt()
         val aheadAfter = boundedRows(rowsAhead(rowsPerSecond), availableAfter)
         val aheadBefore = boundedRows(rowsAhead(rowsPerSecond), availableBefore)
         val behindAfter = boundedRows(ROWS_BEHIND, availableAfter)
