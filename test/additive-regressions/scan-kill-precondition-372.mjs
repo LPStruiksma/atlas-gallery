@@ -13,10 +13,12 @@ const script = readFileSync(resolve(root, 'scripts/ci_android_upgrade_emulator.s
 const sequence = [
   'run_kill_phase seed seedBeforeKill',
   'scan_job="$(scan_job_id)"',
-  'scan_work="$(scan_work_id)"',
   'scan_job_pending "$scan_job" || {',
   'prekill_pid="$(app_pid)"',
   'kill -STOP "$prekill_pid"',
+  // The newest scan job is chosen while frozen (chained runs move it).
+  'scan_job="$(scan_job_id)"',
+  'scan_work="$(scan_work_id)"',
   'if ! scan_job_pending "$scan_job" || scan_work_finished "$scan_work"; then',
   'kill -9 "$prekill_pid"',
   'adb shell dumpsys battery set ac 1',
@@ -36,7 +38,14 @@ const miss = script.slice(freeze, kill).match(
   /if ! scan_job_pending "\$scan_job" \|\| scan_work_finished "\$scan_work"; then[\s\S]*?\n  fi\n/);
 assert.ok(miss, '#372 precondition-miss branch must be found');
 assert.match(miss[0], /re-seed required"\n    exit 1/);
-assert.doesNotMatch(script.slice(freeze, kill).replace(miss[0], ''), /kill -CONT "\$prekill_pid"/);
+// Every resume between freeze and SIGKILL sits in a branch that then fails.
+const frozen = script.slice(freeze, kill);
+const resumes = [...frozen.matchAll(/kill -CONT "\$prekill_pid"/g)];
+assert.equal(resumes.length, 2, 'only the work-ID and precondition-miss branches resume');
+for (const r of resumes) {
+  const rest = frozen.slice(r.index).split('\n').slice(0, 5).join('\n');
+  assert.match(rest, /exit 1/, 'a resumed process must fail the run');
+}
 assert.match(script, /#43: SIGKILL worker process \$first mid-run/);
 assert.match(script, /#43 no restore after the kill/);
 
@@ -44,7 +53,7 @@ assert.match(script, /#43 no restore after the kill/);
 // copied from CI. #372 (run 44249225139): the killed job's own work already
 // SUCCEEDED. Run 44280551540: a first PeopleScanWorker run finished with 0
 // photos and chained a new one (Job ID 2), which is the job #43 kills.
-const helpers = ['scan_work_id', 'scan_work_finished'].map((name) => {
+const helpers = ['scan_job_id', 'scan_work_id', 'scan_work_finished'].map((name) => {
   const m = script.match(new RegExp(`  ${name}\\(\\) \\{[\\s\\S]*?\\n  \\}\\n`));
   assert.ok(m, `#372 ${name} helper must exist`);
   return m[0];
@@ -78,4 +87,13 @@ assert.equal(bash(r372, 'scan_work_id'), `${R} 2`);
 assert.equal(bash(r372, `scan_work_finished ${R}`), 'ok', '#372: finished work is a precondition miss');
 assert.equal(bash(sched(R, 2), `scan_work_finished ${R}`), null, 'scheduled only: killable');
 assert.equal(bash(r372, 'scan_work_finished ""'), null, 'no work ID never counts as finished');
+// Run 44284361706: Job 2's work finished (photos=0) and chained Job 3 before
+// the freeze. Read frozen, the newest job (3) is the kill target and unfinished.
+const C = '3a764294-501c-4987-a243-4b1d99ecd5af';
+const D = 'a2e52c55-281e-4dd7-9716-0feef7e7f6e6';
+const moved = sched(C, 2) + result(C) + 'I/WM-WorkerWrapper(12215): Setting status to enqueued for ' + D + '\n' + sched(D, 3);
+assert.equal(bash(moved, 'scan_job_id'), '3');
+assert.equal(bash(moved, 'scan_work_id'), `${D} 3`);
+assert.equal(bash(moved, `scan_work_finished ${D}`), null, 'newest chained job is killable');
+assert.equal(bash(moved, `scan_work_finished ${C}`), 'ok', 'the job seen before the freeze had finished');
 console.log('scan-kill-precondition-372: source contract and helper behaviour pass');

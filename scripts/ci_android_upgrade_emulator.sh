@@ -492,10 +492,6 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   # Fail here, not after the kill, if the scan job is already gone (ran,
   # was cancelled or replaced) while the app was still alive and unplugged.
   scan_job="$(scan_job_id)"
-  scan_work="$(scan_work_id)"
-  [[ "${scan_work##* }" == "$scan_job" ]] || {
-    kill43_diagnostics; echo "::error::#43 no WorkManager work ID for scan job ${scan_job:-?}"; exit 1; }
-  scan_work="${scan_work%% *}"
   timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
     grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId' |
     tail -80 > "$prekill_log" || true
@@ -512,6 +508,18 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     kill43_diagnostics; echo "::error::#43 could not freeze pid $prekill_pid"; exit 1; }
   [[ "$(app_pid)" == "$prekill_pid" ]] || {
     kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
+  # #372 (runs 44280551540, 44284361706): while the gallery is still pending
+  # each PeopleScanWorker run ends at once (photos=0) and chains the next one
+  # under a new work ID and Job ID, so the job seen above can finish before
+  # the freeze. Re-read the newest scan job now that nothing can change: that
+  # is the work #43 kills. It must still be pending in JobScheduler, and
+  # WorkManager must not have logged a result for its work ID.
+  scan_job="$(scan_job_id)"
+  scan_work="$(scan_work_id)"
+  [[ "${scan_work##* }" == "$scan_job" ]] || {
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics; echo "::error::#43 no WorkManager work ID for frozen scan job ${scan_job:-?}"; exit 1; }
+  scan_work="${scan_work%% *}"
   # An already finished scan is a precondition miss, not a restore failure.
   # Both signals are read frozen; only this branch resumes the process.
   if ! scan_job_pending "$scan_job" || scan_work_finished "$scan_work"; then
