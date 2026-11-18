@@ -19,6 +19,8 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featureaiedit.settings.ProviderCredentialVault
 import nl.atlas.gallery.featureaiedit.settings.ProviderProfile
@@ -153,11 +155,15 @@ object EditJobRunner {
             }
         }
         WorkManager.getInstance(app).cancelUniqueWork(PREFIX + id)
+        enqueueRemoteCancel(app, id)
+    }
+
+    internal fun enqueueRemoteCancel(context: Context, id: String) {
         val work = OneTimeWorkRequest.Builder(EditCancelWorker::class.java)
             .setInputData(Data.Builder().putString("id", id).build())
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(app).enqueue(work)
+        WorkManager.getInstance(context).enqueue(work)
     }
 
     /** Only completed app-private outputs can be opened by the editor/save flow. */
@@ -209,6 +215,16 @@ internal object EditJobJournal {
     }
 }
 
+/** Preserves a user's local cancel while publishing the accepted remote ID atomically. */
+internal fun recordAcceptedSubmission(folder: File, remoteId: String): Boolean {
+    val state = EditJobJournal.change(folder) {
+        it.put("remoteId", remoteId)
+        if (it.optString("state") != "cancelled") it.put("state", "polling")
+        it.remove("instruction")
+    }?.optString("state")
+    return state == "cancelled"
+}
+
 class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     private val cancellation = EditRequestCancellation()
 
@@ -227,6 +243,10 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // WorkManager cancels the coroutine; a blocking HttpURLConnection needs an explicit disconnect.
+        val stopHook = currentCoroutineContext()[Job]?.invokeOnCompletion(onCancelling = true,
+            invokeImmediately = true) { cancellation.cancel() }
+        try {
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val folder = try { EditJobJournal.directory(applicationContext, id) }
             catch (_: Exception) { return@withContext Result.failure() }
@@ -279,7 +299,13 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 fail(folder, "INVALID_IMAGE")
                 return@withContext Result.failure()
             }
-            EditJobJournal.change(folder) { it.put("state", "submitting") }
+            // Cancellation may race capabilities/serialization; never send a cancelled job.
+            val canSubmit = EditJobJournal.change(folder) {
+                if (it.optString("state") == "ready" && !isStopped && !cancellation.isCancelled)
+                    it.put("state", "submitting")
+            }?.optString("state") == "submitting"
+            if (!canSubmit || isStopped || cancellation.isCancelled)
+                return@withContext Result.success()
             val upload = transport.execute(config, EditHttpRequest(EditHttpMethod.POST, "edits",
                 EditHttpBody.Multipart(listOf(
                     EditMultipartPart.Binary("image", imageName, data.getString("mime"), bytes),
@@ -295,12 +321,13 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 fail(folder, "INVALID_JOB_ID")
                 return@withContext Result.failure()
             }
-            EditJobJournal.change(folder) {
-                it.put("remoteId", remoteId)
-                it.put("state", "polling")
-                it.remove("instruction") // minimize retained prompt after accepted submission
-            }
+            val cancelledAfterSubmit = recordAcceptedSubmission(folder, remoteId)
             File(folder, imageName).delete()
+            if (cancelledAfterSubmit || isStopped || cancellation.isCancelled) {
+                // A prior cancel worker may already have run without the remote ID.
+                enqueueRemoteCancel(applicationContext, id)
+                return@withContext Result.success()
+            }
         }
         if (!remoteId.matches(Regex("[0-9a-f]{32}"))) {
             fail(folder, "INVALID_JOB_ID")
@@ -364,6 +391,7 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             }
             else -> { fail(folder, "REMOTE_ERROR"); Result.failure() }
         }
+        } finally { stopHook?.dispose() }
     }
 
     private fun supportsSingleImage(bytes: ByteArray): Boolean = try {
