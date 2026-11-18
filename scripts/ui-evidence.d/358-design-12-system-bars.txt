@@ -1,0 +1,5 @@
+# DESIGN-12 synthetic light/dark main-screen system-bar evidence (SystemThemeJourneyTest, #358).
+design-12-photos-light
+design-12-photos-dark
+design-12-search-light
+design-12-search-dark
