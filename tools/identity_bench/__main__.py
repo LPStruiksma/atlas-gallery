@@ -27,9 +27,10 @@ from .pipeline import Config
 
 VERSION = "identity-bench/1"
 ALL_SWAPPERS = tuple(pipeline.SWAPPERS)
-# The four finalists, one per model family, fixed by the screening rule in
-# docs/identity-studio/BENCH.md before the final run.
-FINALISTS = ("inswapper_128", "alphaface_256", "ghost_1_256", "hyperswap_1a_256")
+# One network per model family.  The first four are the screening winners
+# (docs/identity-studio/BENCH.md); SimSwap screened last and is kept because the
+# licence register ranks it as the only one open to private non-commercial use.
+FINALISTS = ("inswapper_128", "alphaface_256", "ghost_1_256", "hyperswap_1a_256", "simswap_256")
 ABLATION_BASE = "inswapper_128"
 CONTROL_NONE = Config("control-none", mask="box", colour=False)
 STABILITY_PAIRS, STABILITY_REPEATS, JITTER = 12, 4, 0.01
@@ -39,8 +40,9 @@ def final_candidates() -> list:
     """Finalists with and without restoration, two controls and three ablations."""
     out = [Config(name) for name in FINALISTS] + [Config(name, restore=True) for name in FINALISTS]
     out += [CONTROL_NONE, Config(ABLATION_BASE, mask="hard-box", colour=False)]
-    out += [Config(ABLATION_BASE, mask="box"), Config(ABLATION_BASE, mask="parse+occlusion"),
-            Config(ABLATION_BASE, colour=False)]
+    out += [Config(ABLATION_BASE, mask="box"), Config(ABLATION_BASE, mask="parse-both"),
+            Config(ABLATION_BASE, mask="mp"), Config(ABLATION_BASE, colour=False)]
+    out += [Config(name, mask="mp") for name in FINALISTS[1:]]
     return out
 
 
@@ -191,8 +193,8 @@ class Bench:
                 names.append("crossface_" + kind)
         if config.mask.startswith("parse"):
             names.append("bisenet_resnet_34")
-        if config.mask.endswith("occlusion"):
-            names.append("xseg_1")
+        if config.mask == "mp":
+            names.append("selfie_multiclass_256")
         if config.restore:
             names.append("gfpgan_1.4")
         return names

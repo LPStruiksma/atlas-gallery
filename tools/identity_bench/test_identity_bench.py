@@ -390,7 +390,7 @@ class Fixtures(unittest.TestCase):
 
     def test_every_model_is_pinned_with_a_licence_note(self):
         for name, spec in pipeline.MODELS.items():
-            self.assertTrue(spec["url"].startswith("https://github.com/"), name)
+            self.assertTrue(spec["url"].startswith(("https://github.com/", "https://storage.googleapis.com/")), name)
             self.assertTrue(re.fullmatch(r"[0-9a-f]{64}", spec["sha256"]), name)
             self.assertTrue(spec["licence"] and spec["role"], name)
         for name in cli.FINALISTS + cli.ALL_SWAPPERS:

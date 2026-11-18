@@ -90,10 +90,11 @@ MODELS = {
         url=FF + "models-3.0.0/bisenet_resnet_34.onnx", size=93632546,
         sha256="4a0b8c958a3c938913bd06a8365dbb3c8761afba6ecbf0d14b3b1f77eb230c96",
         licence="yakhyo face-parsing, MIT per upstream", role="face parser"),
-    "xseg_1": dict(
-        url=FF + "models-3.1.0/xseg_1.onnx", size=70324286,
-        sha256="c4d1498b8a03b5fe2a3a5d2ef2a0402ab03bd51edaf5b2d8d5fb764702a97dd3",
-        licence="DeepFaceLab XSeg, GPL-3.0 per upstream", role="occlusion mask"),
+    "selfie_multiclass_256": dict(
+        url="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/"
+            "float32/latest/selfie_multiclass_256x256.tflite", file="selfie_multiclass_256.tflite", size=16371837,
+        sha256="c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0",
+        licence="MediaPipe multiclass selfie segmenter, Apache-2.0", role="face mask (licence-clean)"),
     "gfpgan_1.4": dict(
         url=FF + "models-3.0.0/gfpgan_1.4.onnx", size=340299087,
         sha256="accc4757b26bdb89b32b4d3500d4f79c9dff97c1dd7c7104bf9dcb95e3311385",
@@ -163,7 +164,7 @@ def model_path(name: str, fetch: bool = True) -> str:
     spec = MODELS[name]
     folder = os.path.join(cache_dir(), "models")
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, spec.get("member", name + ".onnx"))
+    path = os.path.join(folder, spec.get("member") or spec.get("file") or name + ".onnx")
     marker = path + ".sha256-ok"
     if os.path.exists(path) and os.path.exists(marker):
         return path
@@ -487,14 +488,26 @@ class FaceParser:
         return cv2.resize(region, crop.shape[1::-1], interpolation=cv2.INTER_LINEAR)
 
 
-class Occluder:
-    def __init__(self):
-        self.net = session("xseg_1")
+class SelfieSegmenter:
+    """MediaPipe multiclass selfie segmenter (LiteRT): class 3 is face skin.
 
-    def visible(self, crop: np.ndarray) -> np.ndarray:
-        x = cv2.resize(crop, (256, 256), interpolation=cv2.INTER_LINEAR).astype(np.float32)[None] / 255.0
-        out = np.clip(self.net.run(None, {"input": x})[0][0, :, :, 0], 0, 1)
-        return cv2.resize(out, crop.shape[1::-1], interpolation=cv2.INTER_LINEAR)
+    Glasses, hair and anything in front of the face fall in other classes, so
+    the same call also keeps occluders out of the mask.
+    """
+
+    def __init__(self):
+        from ai_edge_litert.interpreter import Interpreter
+        self.net = Interpreter(model_path=model_path("selfie_multiclass_256"), num_threads=THREADS)
+        self.net.allocate_tensors()
+        self.input = self.net.get_input_details()[0]["index"]
+        self.output = self.net.get_output_details()[0]["index"]
+
+    def face_region(self, crop: np.ndarray) -> np.ndarray:
+        x = cv2.resize(crop, (256, 256), interpolation=cv2.INTER_LINEAR)[:, :, ::-1].astype(np.float32) / 255.0
+        self.net.set_tensor(self.input, x[None])
+        self.net.invoke()
+        region = (self.net.get_tensor(self.output)[0].argmax(-1) == 3).astype(np.float32)
+        return cv2.resize(region, crop.shape[1::-1], interpolation=cv2.INTER_LINEAR)
 
 
 class Restorer:
@@ -518,7 +531,9 @@ class Config:
     """One benchmark candidate.  `label` is what tables and sheet keys print."""
     swapper: str
     restore: bool = False
-    mask: str = "parse"            # "box" | "hard-box" (control) | "parse" | "parse+occlusion"
+    # "box" | "hard-box" (control) | "parse" (BiSeNet on the swapped crop) |
+    # "parse-both" (BiSeNet, swapped and original crop) | "mp" (MediaPipe, swapped and original crop)
+    mask: str = "parse"
     colour: bool = True
     restore_blend: float = 0.8
 
@@ -572,8 +587,8 @@ class Toolbox:
         return self.get("bisenet_resnet_34", FaceParser)
 
     @property
-    def occluder(self) -> Occluder:
-        return self.get("xseg_1", Occluder)
+    def selfie(self) -> SelfieSegmenter:
+        return self.get("selfie_multiclass_256", SelfieSegmenter)
 
     @property
     def restorer(self) -> Restorer:
@@ -601,15 +616,16 @@ def swap_face(image: np.ndarray, marks, source_raw: np.ndarray, config: Config, 
         swapped = net.swap_crop(crop, net.source_vector(source_raw))
     with meter.stage("mask"):
         mask = box_mask(net.side, blur=0.0 if config.mask == "hard-box" else 0.04)
-        if config.mask.startswith("parse"):
-            region = feather(tools.parser.face_region(swapped) > 0.5, net.side * 0.02)
+        if config.mask in ("parse", "parse-both", "mp"):
+            segmenter = tools.selfie if config.mask == "mp" else tools.parser
+            region = segmenter.face_region(swapped) > 0.5
+            if config.mask != "parse":      # the original crop keeps occluders and glasses out
+                region &= segmenter.face_region(crop) > 0.5
+            region = feather(region, net.side * 0.02)
             if region.sum() < 0.02 * region.size:
-                notes.append("parser found almost no face in the swapped crop; box mask used")
+                notes.append("no face region found in the crop; box mask used")
             else:
                 mask = np.minimum(mask, region)
-        if config.mask.endswith("occlusion"):
-            visible = tools.occluder.visible(crop)
-            mask = np.minimum(mask, np.clip((cv2.GaussianBlur(visible, (0, 0), net.side * 0.02) - 0.5) * 2, 0, 1))
     if config.colour:
         with meter.stage("colour"):
             swapped = colour_match(swapped, crop, mask)
