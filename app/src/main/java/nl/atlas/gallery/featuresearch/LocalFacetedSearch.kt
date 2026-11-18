@@ -115,7 +115,6 @@ fun searchWithFacets(
         for (i in 1 until selectedPaths.size) {
             cancellationCheckpoint()
             common.retainAll(selectedPaths[i])
-            if (common.isEmpty()) return emptyList()
         }
         common
     }
