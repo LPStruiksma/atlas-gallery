@@ -576,12 +576,9 @@ internal class PeopleDiscoveryHost(
         @Volatile private var app: PeopleDiscoveryHost? = null
 
         /**
-         * Initial creation reads opt-in preferences; forbid that on Main. A
-         * Compose caller can use [peekApp] until background initialization
-         * publishes the host. Existing app/test callers keep their identity.
+         * Initial creation reads opt-in preferences; forbid that on Main.
+         * Existing app/test callers keep their identity.
          */
-        fun peekApp(): PeopleDiscoveryHost? = app
-
         fun forApp(context: Context): PeopleDiscoveryHost {
             val existing = app
             if (existing != null) return existing
