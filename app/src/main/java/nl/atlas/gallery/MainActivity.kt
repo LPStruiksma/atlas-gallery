@@ -1248,8 +1248,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
     var peopleNumbersOpen by remember { mutableStateOf(false) }
-    // In memory only: a person key or name never enters saved instance state.
-    var nativePersonAlbum by remember { mutableStateOf<NativePersonAlbumRequest?>(null) }
+    // A retained ViewModel owns the person route across Activity rotation.
+    // Its key and name never enter saved instance state; process death drops it.
+    var nativePersonAlbum by remember(vm) { vm.nativePersonAlbumState }
     val nativePersonGridState = rememberLazyGridState()
     // An old render must NEVER expose old Person IDs/terms while LaunchedEffect
     // is still adopting the new grant or People identity.
