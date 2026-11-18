@@ -23,9 +23,10 @@ import nl.atlas.gallery.featureaiedit.provider.ProviderCapabilities
 import nl.atlas.gallery.featureaiedit.provider.hosted.EncodedImage
 import nl.atlas.gallery.featureaiedit.provider.hosted.HostedEditJob
 import nl.atlas.gallery.featureaiedit.provider.hosted.HostedJson
+import nl.atlas.gallery.featureaiedit.provider.hosted.HostedJsonFile
+import nl.atlas.gallery.featureaiedit.provider.hosted.LargeJsonString
 import nl.atlas.gallery.featureaiedit.provider.hosted.HostedResultStore
 import nl.atlas.gallery.featureaiedit.provider.hosted.HostedWorkContext
-import nl.atlas.gallery.featureaiedit.provider.hosted.ImageProbe
 import nl.atlas.gallery.featureaiedit.provider.hosted.SourceImageLoader
 import nl.atlas.gallery.featureaiedit.provider.hosted.arr
 import nl.atlas.gallery.featureaiedit.provider.hosted.bool
@@ -62,7 +63,9 @@ class GeminiImageEditProvider(
     private val transport: EditHttpTransport = EditHttpTransport(),
     private val httpConfig: EditHttpConfig = defaultHttpConfig(),
     private val pollWaitMs: Long = 1_000L,
-    private val executor: Executor? = null
+    private val executor: Executor? = null,
+    /** Bound on the spooled reply; the default allows a 4K image base64-encoded in JSON. */
+    private val maxReplyBytes: Int = EditHttpTransport.MAX_REPLY_CEILING
 ) : ImageEditProvider {
     override val id: String = "gemini:" + model.id
     override val displayName: String = "Google Gemini · " + model.displayName
@@ -135,33 +138,51 @@ class GeminiImageEditProvider(
         val body = GeminiWire.requestBody(request.instruction, listOf(source) + references, aspect.label, size.label)
             ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "UPLOAD_TOO_LARGE")
         if (context.isCancelled) return EditOutcome.Cancelled
-        val reply = transport.execute(
-            httpConfig,
-            EditHttpRequest(EditHttpMethod.POST, "models/${model.id}:generateContent", EditHttpBody.Json(body)),
-            EditHttpAuth.CustomHeader(API_KEY_HEADER, key),
-            context.cancellation
-        )
-        return when (reply) {
-            EditHttpResult.Cancelled -> EditOutcome.Cancelled
-            is EditHttpResult.Failed -> hostedFailure(reply)
-            is EditHttpResult.Success -> interpret(jobId, reply.bytes, size, aspect, key)
+        // The image comes back base64-encoded inside the JSON reply (about 33 MB at 4K), so the
+        // reply is spooled to a hidden app-private file and the image decoded from it in a stream.
+        val replyFile = results.newScratchFile(jobId)
+        try {
+            val reply = transport.execute(
+                httpConfig,
+                EditHttpRequest(EditHttpMethod.POST, "models/${model.id}:generateContent", EditHttpBody.Json(body)),
+                EditHttpAuth.CustomHeader(API_KEY_HEADER, key),
+                context.cancellation,
+                downloadTo = replyFile,
+                maxReplyBytes = maxReplyBytes
+            )
+            return when (reply) {
+                EditHttpResult.Cancelled -> EditOutcome.Cancelled
+                is EditHttpResult.Failed -> hostedFailure(reply)
+                is EditHttpResult.Success -> interpret(jobId, HostedJsonFile.parseOrNull(replyFile), size, aspect, key, context)
+            }
+        } finally {
+            replyFile.delete()
         }
     }
 
     private fun interpret(
-        jobId: String, bytes: ByteArray, size: GeminiSize, aspect: GeminiAspect, key: String
+        jobId: String, root: Any?, size: GeminiSize, aspect: GeminiAspect, key: String, context: HostedWorkContext
     ): EditOutcome {
-        return when (val parsed = GeminiWire.parseReply(bytes)) {
+        return when (val parsed = GeminiWire.parseReply(root)) {
             is GeminiReply.Malformed -> EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_REPLY")
             is GeminiReply.Blocked -> EditOutcome.Refused(parsed.code, parsed.description)
             is GeminiReply.NoImage -> EditOutcome.Failed(FailureKind.UNKNOWN, parsed.retryable, parsed.code)
             is GeminiReply.Image -> {
-                val probe = ImageProbe.probe(parsed.bytes)
+                val target = results.newDownloadTarget(jobId, 0)
+                val decoded = when (val data = parsed.data) {
+                    is String -> try {
+                        target.writeBytes(Base64.getDecoder().decode(data)); target.length() > 0
+                    } catch (_: Exception) { false }
+                    is LargeJsonString -> data.decodeBase64To(target, MAX_RESULT_BYTES)
+                    else -> false
+                }
+                if (!decoded || context.isCancelled) {
+                    target.delete()
+                    return if (context.isCancelled) EditOutcome.Cancelled
+                        else EditOutcome.Failed(FailureKind.UNKNOWN, false, "UNREADABLE_IMAGE")
+                }
+                val stored = results.finalizeFile(target, MAX_RESULT_PIXELS)
                     ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "UNREADABLE_IMAGE")
-                if (probe.width.toLong() * probe.height > MAX_RESULT_PIXELS)
-                    return EditOutcome.Failed(FailureKind.UNKNOWN, false, "IMAGE_TOO_LARGE")
-                val stored = results.store(jobId, 0, parsed.bytes, probe)
-                    ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "STORE_FAILED")
                 val metadata = linkedMapOf(
                     "provider" to "gemini",
                     "aspectRatio" to aspect.label,
@@ -201,6 +222,7 @@ class GeminiImageEditProvider(
         /** Documented inline-request ceiling is 20 MB; the transport enforces the same ceiling. */
         const val MAX_INPUT_PIXELS = 4096L * 4096L
         private const val MAX_RESULT_PIXELS = 8192L * 8192L
+        private const val MAX_RESULT_BYTES = 32_000_000L
         private val MODEL_ID = Regex("[a-z0-9][a-z0-9.-]{0,63}")
         private val DIRECT = Executor { it.run() }
 
@@ -294,8 +316,9 @@ internal sealed interface GeminiReply {
     data object Malformed : GeminiReply
     data class Blocked(val code: String, val description: String) : GeminiReply
     data class NoImage(val code: String, val retryable: Boolean) : GeminiReply
+    /** [data] is the base64 text: a String, or a [LargeJsonString] left in the reply file. */
     class Image(
-        val bytes: ByteArray,
+        val data: Any,
         val mimeType: String,
         val finishReason: String?,
         val modelVersion: String?,
@@ -347,8 +370,8 @@ internal object GeminiWire {
         return if (bytes.size > MAX_BODY_BYTES) null else bytes
     }
 
-    fun parseReply(bytes: ByteArray): GeminiReply {
-        val root = HostedJson.parseOrNull(bytes).obj() ?: return GeminiReply.Malformed
+    fun parseReply(parsed: Any?): GeminiReply {
+        val root = parsed.obj() ?: return GeminiReply.Malformed
         val blockReason = root["promptFeedback"].obj()?.get("blockReason").str()
         if (blockReason != null && blockReason != "BLOCKED_REASON_UNSPECIFIED") {
             val code = if (blockReason in PROMPT_BLOCKS) blockReason else "UNRECOGNIZED"
@@ -370,15 +393,9 @@ internal object GeminiWire {
             val code = "NO_IMAGE" + (finish?.let { ":$it" } ?: "")
             return GeminiReply.NoImage(code, finish != null && finish in RETRYABLE_NO_IMAGE)
         }
-        val data = imagePart["data"].str() ?: return GeminiReply.Malformed
-        val decoded = try {
-            Base64.getDecoder().decode(data)
-        } catch (_: IllegalArgumentException) {
-            return GeminiReply.Malformed
-        }
-        if (decoded.isEmpty()) return GeminiReply.Malformed
+        val data = imagePart["data"]?.takeIf { it is String || it is LargeJsonString } ?: return GeminiReply.Malformed
         return GeminiReply.Image(
-            bytes = decoded,
+            data = data,
             mimeType = sanitizeCode((imagePart["mimeType"] ?: imagePart["mime_type"]).str() ?: ""),
             finishReason = finish,
             modelVersion = root["modelVersion"].str()?.let(::sanitizeCode),
