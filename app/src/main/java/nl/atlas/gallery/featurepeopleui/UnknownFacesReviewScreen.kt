@@ -1,8 +1,14 @@
 package nl.atlas.gallery.featurepeopleui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,8 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -21,7 +30,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
@@ -30,11 +41,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
@@ -54,6 +68,7 @@ internal var SemanticsPropertyReceiver.reviewRowDiagnostic by ReviewRowDiagnosti
 // A new committed review object can be value-equal to the old one. The caller
 // must re-enter this boundary so reference-scoped row state can be discarded;
 // Compose's structural-equality skip would otherwise retain a stale choice.
+@OptIn(ExperimentalFoundationApi::class)
 @NonSkippableComposable
 @Composable
 fun UnknownFacesReviewScreen(
@@ -132,7 +147,7 @@ fun UnknownFacesReviewScreen(
     key(ReviewReferenceKey(current), selectionScope,
         currentPermissionEpoch, currentSourceGeneration) {
         LazyColumn(
-            modifier = modifier.fillMaxSize().testTag("atlas-unknown-face-review-screen"),
+            modifier = modifier.fillMaxSize().imePadding().testTag("atlas-unknown-face-review-screen"),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -140,46 +155,43 @@ fun UnknownFacesReviewScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onClose) { Text("Back to People") }
                     Text("Unknown faces", style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        "Detection finds faces in your own photos; it does not recognize or name people.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
                 }
             }
             if (visiblePeople != null) {
-                item {
-                    Text("Unknown identity groups",
-                        style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Groups are suggestions for review, never named people. " +
-                            "Name, split or attach faces only when you recognize them.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (!canEditPeople) {
-                        Text("Identity edits are read-only until a durable review backend is connected.",
-                            modifier = Modifier.testTag("atlas-cluster-review-read-only"))
-                    } else {
-                        Text(
-                            "A confirmation belongs to one version of a photo: after you edit " +
-                                "a photo, its faces are scanned again and return to Unknown.",
+                if (!canEditPeople) {
+                    item {
+                        Text("You can view faces, but can't make changes right now.",
+                            modifier = Modifier.testTag("atlas-cluster-review-read-only"),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.testTag("atlas-cluster-review-rescan-note")
-                        )
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    item {
+                        // Identity safety copy kept from main: a confirmation is tied to one
+                        // version of a photo, so an edit sends its faces back to Unknown.
+                        Text("Editing a photo scans its faces again, so they return to Unknown.",
+                            modifier = Modifier.testTag("atlas-cluster-review-rescan-note"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 val shownGroups = peopleGroupsToShow(
                     visiblePeople.clusters.unknownClusters, showSmallGroups)
-                itemsIndexed(shownGroups) { index, group ->
-                    UnknownIdentityGroupCard(
-                        group = group, albums = albums, selectionScope = selectionScope,
-                        enabled = canEditPeople,
-                        onAction = ::sendPeopleDecision,
-                        resolveDestination = ::resolveDestination,
-                        destinationTagPrefix = "atlas-group-${index + 1}-destination",
-                        preview = clusterFacePreview
-                    )
+                shownGroups.forEachIndexed { index, group ->
+                    stickyHeader {
+                        UnknownGroupHeader(group, clusterFacePreview)
+                    }
+                    item {
+                        UnknownIdentityGroupCard(
+                            group = group, albums = albums, reviewState = visiblePeople,
+                            selectionScope = selectionScope,
+                            enabled = canEditPeople,
+                            onAction = ::sendPeopleDecision,
+                            resolveDestination = ::resolveDestination,
+                            destinationTagPrefix = "atlas-group-${index + 1}-destination",
+                            preview = clusterFacePreview
+                        )
+                    }
                 }
                 val hiddenSmall = visiblePeople.clusters.unknownClusters.size - shownGroups.size
                 if (hiddenSmall > 0 || showSmallGroups) {
@@ -223,7 +235,7 @@ fun UnknownFacesReviewScreen(
             if (current == null) {
                 item {
                     Text(
-                        "Review is unavailable until the current photo selection and face index are confirmed.",
+                        "Faces aren't ready to review yet. Check face discovery in People.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.testTag("atlas-review-scope-pending")
@@ -311,14 +323,71 @@ fun UnknownFacesReviewScreen(
 }
 
 /**
- * Position-based review controls. A private face UID is never a Compose saveable
- * key, semantic tag, filename or log. The host supplies a CURRENT grant-aware
- * crop or the safe neutral preview stays visible.
+ * Compact, persistent context while scrolling or using the keyboard.
+ * Only positional semantics are exported; previews are provided by the live,
+ * grant-authorized host and are reset by the outer review reference key.
  */
+@Composable
+private fun UnknownGroupHeader(
+    group: UnknownFaceCluster,
+    preview: @Composable (NativeFaceObservationId) -> Unit
+) {
+    var showAll by remember(group) { mutableStateOf(false) }
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(64.dp).testTag("atlas-group-face-1")) { preview(group.members.first()) }
+                Text(
+                    if (group.members.size == 1) "1 face in this group"
+                    else "${group.members.size} faces in this group",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                group.members.drop(1).take(5).forEachIndexed { index, face ->
+                    Box(Modifier.size(44.dp).testTag("atlas-group-face-${index + 2}")) {
+                        preview(face)
+                    }
+                }
+            }
+            TextButton(onClick = { showAll = true }) {
+                Text("See all faces")
+            }
+        }
+    }
+    if (showAll) {
+        AlertDialog(
+            onDismissRequest = { showAll = false },
+            title = { Text("All faces in this group") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    itemsIndexed(group.members) { index, face ->
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(Modifier.size(56.dp)) { preview(face) }
+                            Text("Face ${index + 1} of ${group.members.size}")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAll = false }) { Text("Done") }
+            }
+        )
+    }
+}
+
+/** One Unknown group: name first, then only evidence-backed matches and explicit search. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UnknownIdentityGroupCard(
     group: UnknownFaceCluster,
     albums: List<NativePersonAlbum>,
+    reviewState: PeopleClusterReviewState,
     selectionScope: ReviewReferenceKey,
     enabled: Boolean,
     onAction: (PeopleReviewAction) -> Unit,
@@ -327,56 +396,124 @@ private fun UnknownIdentityGroupCard(
     preview: @Composable (NativeFaceObservationId) -> Unit
 ) {
     var name by remember(selectionScope, group) { mutableStateOf("") }
+    var tooLong by remember(selectionScope, group) { mutableStateOf(false) }
+    var searching by remember(selectionScope, group) { mutableStateOf(false) }
+    var splitting by remember(selectionScope, group) { mutableStateOf(false) }
     var selectedPosition by remember(selectionScope, group, albums) {
+        mutableStateOf<Int?>(null)
+    }
+    var confirmPosition by remember(selectionScope, group, albums) {
         mutableStateOf<Int?>(null)
     }
     var selected by remember(selectionScope, group) {
         mutableStateOf(emptySet<NativeFaceObservationId>())
     }
-    val personKey = PersonKey("native-" + group.id.anchor.localHex)
-    Card(Modifier.fillMaxWidth().testTag("atlas-unknown-identity-group")
-        .semantics {
-            // Synthetic API35 tests can prove a freshly composed row owns the marker.
-            // No person or observation identifier is exported to semantics.
-            reviewRowDiagnostic = "Review row scope ${selectionScope.hashCode()}; " +
-                "selected choice ${selectedPosition ?: "none"}"
-        }) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Unknown group · ${group.members.size} faces",
-                style = MaterialTheme.typography.titleMedium)
-            val suggestion = group.suggestion
-            if (suggestion != null) {
-                val named = albums.firstOrNull { it.person == suggestion.person }
-                if (named != null) {
-                    Text(
-                        "Possible match: ${named.name} · reviewed choice " +
-                            "${albums.indexOfFirst { it.person == named.person } + 1} " +
-                            "of ${albums.size}. Not assigned.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    named.observations.firstOrNull()?.let { preview(it) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(enabled = enabled, onClick = {
-                            onAction(PeopleReviewAction.AssignCluster(group.id, named.person))
-                        }) { Text("Confirm match") }
-                        OutlinedButton(enabled = enabled, onClick = {
-                            onAction(PeopleReviewAction.RejectSuggestion(group.id, named.person))
-                        }) { Text("Not this person") }
+    val cleanedName = name.trim()
+    val duplicates = if (cleanedName.isBlank()) emptyList() else albums.withIndex()
+        .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
+    val nameFormView = remember { BringIntoViewRequester() }
+    var nameFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(nameFocused, duplicates.isEmpty()) {
+        if (nameFocused) {
+            // Let the keyboard inset settle first, then show the field and its action.
+            delay(NAME_FORM_SETTLE_MS)
+            nameFormView.bringIntoView()
+        }
+    }
+    val suggestions = eligibleScoredGroupSuggestions(
+        group, albums, reviewState.clusters.policy.suggestThreshold,
+        reviewState.clusters.reviews.rejectedPeople
+    )
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag("atlas-unknown-identity-group")
+            .semantics {
+                reviewRowDiagnostic = "Review row scope ${selectionScope.hashCode()}; " +
+                    "selected choice ${selectedPosition ?: "none"}"
+            },
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // #266: while typing, keep the name field and its Create action above the
+        // keyboard. The sticky group header keeps the faces visible on top.
+        Column(Modifier.bringIntoViewRequester(nameFormView),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Who is this?", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = name,
+            onValueChange = {
+                if (it.length <= 80) { name = it; tooLong = false }
+                else tooLong = true
+            },
+            singleLine = true, label = { Text("Name this person") },
+            isError = tooLong,
+            supportingText = if (tooLong) { { Text("Use a shorter name.") } } else null,
+            modifier = Modifier.fillMaxWidth().testTag("atlas-group-name")
+                .onFocusChanged { nameFocused = it.isFocused }
+        )
+        if (duplicates.isNotEmpty()) {
+            Text("There's already a person called ${cleanedName}.",
+                style = MaterialTheme.typography.bodySmall)
+            duplicates.take(5).forEach { match ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    match.value.observations.firstOrNull()?.let { face ->
+                        Box(Modifier.size(48.dp)) { preview(face) }
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(match.value.name)
+                        Text("${match.value.observations.size} confirmed faces",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    OutlinedButton(enabled = enabled,
+                        onClick = { confirmPosition = match.index }) {
+                        Text("Add")
                     }
                 }
             }
-            OutlinedTextField(
-                value = name, onValueChange = { if (it.length <= 80) name = it },
-                singleLine = true, label = { Text("New person's name") },
-                modifier = Modifier.fillMaxWidth()
-            )
             Button(
-                enabled = enabled && name.trim().isNotEmpty() &&
-                    albums.none { it.person == personKey },
+                enabled = enabled && cleanedName.isNotBlank(),
                 onClick = {
-                    onAction(PeopleReviewAction.NameCluster(group.id, personKey, name.trim()))
+                    onAction(PeopleReviewAction.NameCluster(
+                        group.id, newPersonKey(reviewState, group.id), cleanedName))
                 }
-            ) { Text("Name this group") }
+            ) { Text("Create another ${cleanedName}") }
+        } else {
+            Button(
+                enabled = enabled && cleanedName.isNotBlank(),
+                modifier = Modifier.testTag("atlas-group-create-person"),
+                onClick = {
+                    onAction(PeopleReviewAction.NameCluster(
+                        group.id, newPersonKey(reviewState, group.id), cleanedName))
+                }
+            ) { Text("Create person") }
+        }
+        }
+
+        if (!splitting && name.isBlank() && suggestions.isNotEmpty()) {
+            Text("Looks like someone you know?",
+                style = MaterialTheme.typography.titleSmall)
+            suggestions.forEach { album ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(48.dp)) { preview(album.observations.first()) }
+                    Text(album.name, Modifier.weight(1f))
+                    TextButton(enabled = enabled,
+                        onClick = { confirmPosition = albums.indexOf(album) }) {
+                        Text("Add")
+                    }
+                    TextButton(enabled = enabled,
+                        onClick = {
+                            onAction(PeopleReviewAction.RejectSuggestion(group.id, album.person))
+                        }) { Text("Not ${album.name}") }
+                }
+            }
+        }
+
+        TextButton(enabled = enabled, onClick = { searching = !searching },
+            modifier = Modifier.testTag("${destinationTagPrefix}-toggle-search")) {
+            Text(if (searching) "Hide person search" else "Find a person")
+        }
+        if (searching) {
             PeopleDestinationSelector(
                 selectionScope = selectionScope,
                 candidates = albums,
@@ -389,35 +526,47 @@ private fun UnknownIdentityGroupCard(
             OutlinedButton(
                 enabled = enabled && selectedPosition != null,
                 modifier = Modifier.testTag("${destinationTagPrefix}-assign"),
-                onClick = {
-                resolveDestination(albums, selectedPosition, null)?.let { person ->
-                    selectedPosition = null
-                    onAction(PeopleReviewAction.AssignCluster(group.id, person))
-                }
-            }) { Text("Add group to reviewed person") }
-            Text("Select individual faces to split or move (first 20 shown).",
+                onClick = { confirmPosition = selectedPosition }
+            ) {
+                Text("Add to selected person")
+            }
+        }
+
+        TextButton(enabled = enabled, onClick = {
+            splitting = !splitting
+            if (!splitting) selected = emptySet()
+        }) { Text(if (splitting) "Cancel" else "Some faces are different") }
+        if (splitting) {
+            Text("Select faces that belong elsewhere.",
                 style = MaterialTheme.typography.bodySmall)
-            group.members.take(20).forEachIndexed { index, face ->
+            group.members.chunked(4).forEachIndexed { row, faces ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Checkbox(
-                        checked = face in selected,
-                        onCheckedChange = { checked ->
-                            selected = if (checked) selected + face else selected - face
-                        },
-                        enabled = enabled,
-                        modifier = Modifier.testTag("${destinationTagPrefix}-face-${index + 1}")
-                    )
-                    Text("Face ${index + 1}", modifier = Modifier.padding(top = 12.dp))
-                    preview(face)
+                    faces.forEachIndexed { col, face ->
+                        val faceIndex = row * 4 + col
+                        Column(Modifier.weight(1f)) {
+                            Box(Modifier.size(56.dp)) { preview(face) }
+                            Checkbox(
+                                checked = face in selected,
+                                onCheckedChange = { checked ->
+                                    selected = if (checked) selected + face else selected - face
+                                },
+                                enabled = enabled,
+                                modifier = Modifier.testTag(
+                                    "${destinationTagPrefix}-face-${faceIndex + 1}")
+                            )
+                        }
+                    }
+                    repeat(4 - faces.size) { Box(Modifier.weight(1f)) }
                 }
             }
+            Text("${selected.size} selected")
             OutlinedButton(
                 enabled = enabled && selected.isNotEmpty() &&
                     selected.size < group.members.size,
                 onClick = {
                     onAction(PeopleReviewAction.SplitUnknownCluster(group.id, selected))
                 }
-            ) { Text("Split selected faces") }
+            ) { Text("Separate selected faces") }
             OutlinedButton(
                 enabled = enabled && selected.size == 1 && selectedPosition != null,
                 modifier = Modifier.testTag("${destinationTagPrefix}-reassign"),
@@ -429,7 +578,46 @@ private fun UnknownIdentityGroupCard(
                         onAction(PeopleReviewAction.ReassignFace(face, person))
                     }
                 }
-            ) { Text("Move selected face to reviewed person") }
+            ) { Text("Move selected face") }
+        }
+    }
+    val targetPosition = confirmPosition
+    if (targetPosition != null) {
+        val destination = albums.getOrNull(targetPosition)
+        if (destination == null) {
+            // Invalidated by a changed catalogue; never dispatch.
+            androidx.compose.runtime.SideEffect { confirmPosition = null }
+        } else {
+            AlertDialog(
+                onDismissRequest = { confirmPosition = null },
+                title = { Text("Add these faces to ${destination.name}?") },
+                text = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(64.dp)) { preview(group.members.first()) }
+                        Text("+")
+                        destination.observations.firstOrNull()?.let {
+                            Box(Modifier.size(64.dp)) { preview(it) }
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmPosition = null }) { Text("Cancel") }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = enabled,
+                        modifier = Modifier.testTag("${destinationTagPrefix}-confirm"),
+                        onClick = {
+                            resolveDestination(albums, targetPosition, null)?.let {
+                                confirmPosition = null
+                                selectedPosition = null
+                                onAction(PeopleReviewAction.AssignCluster(group.id, it))
+                            }
+                        }
+                    ) { Text("Add to ${destination.name}") }
+                }
+            )
         }
     }
 }
@@ -516,6 +704,9 @@ private fun ReviewedIdentityCard(
 
 /** #579: Samsung shows a person once they are in at least this many photos. */
 const val PEOPLE_MIN_GROUP_FACES = 3
+
+/** #266: wait for the keyboard inset before bringing the name form into view. */
+private const val NAME_FORM_SETTLE_MS = 300L
 
 /**
  * Unknown groups the review list shows: every group of at least

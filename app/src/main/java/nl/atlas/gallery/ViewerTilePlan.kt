@@ -33,7 +33,14 @@ internal fun planViewerTiles(
     viewportWidth: Int, viewportHeight: Int,
     zoom: Float, translationX: Float, translationY: Float,
     tilePixels: Int = 512, maxTiles: Int = 12,
-    maxDecodedBytes: Long = 16L * 1024 * 1024
+    maxDecodedBytes: Long = 16L * 1024 * 1024,
+    /**
+     * The plan for the previous pan/zoom step of the SAME source, if any.
+     * When the sample size and tile grid range are unchanged its tile list
+     * is reused (no tile allocation); any mismatch simply plans afresh, so a
+     * stale or foreign value can never change the result.
+     */
+    previous: ViewerTilePlan? = null
 ): ViewerTilePlan? {
     if (sourceWidth <= 0 || sourceHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0 ||
         sourceWidth > 1_000_000 || sourceHeight > 1_000_000 ||
@@ -75,25 +82,63 @@ internal fun planViewerTiles(
         val tileCount = (x1 - x0 + 1) * (y1 - y0 + 1)
         // Exact allocation upper bound, including partially clipped edge tiles.
         // Ignore the source pixels outside each tile's visible intersection.
+        // Tile widths depend only on the column and heights only on the row,
+        // so the sum over the grid is (sum of widths) x (sum of heights):
+        // O(columns + rows) arithmetic, and nothing is allocated for a
+        // sample level that the budget then rejects (PERF-28, #329).
         if (tileCount <= maxTiles) {
-            val tiles = ArrayList<ViewerSourceRect>(tileCount.toInt())
-            var budget = 0L
-            for (y in y0..y1) for (x in x0..x1) {
+            var decodedWidths = 0L
+            for (x in x0..x1) {
                 val sx = x * span
-                val sy = y * span
-                val ex = min(sourceWidth.toLong(), sx + span)
-                val ey = min(sourceHeight.toLong(), sy + span)
-                val decodedW = (ex - sx + sample - 1) / sample
-                val decodedH = (ey - sy + sample - 1) / sample
-                budget += decodedW * decodedH * 4L
-                tiles += ViewerSourceRect(sx.toInt(), sy.toInt(), ex.toInt(), ey.toInt())
+                decodedWidths += (min(sourceWidth.toLong(), sx + span) - sx + sample - 1) / sample
             }
+            var decodedHeights = 0L
+            for (y in y0..y1) {
+                val sy = y * span
+                decodedHeights += (min(sourceHeight.toLong(), sy + span) - sy + sample - 1) / sample
+            }
+            val budget = decodedWidths * decodedHeights * 4L
             if (budget <= maxDecodedBytes) {
-                return ViewerTilePlan(visible, sample, tiles, budget,
-                    reducedQualityForBudget = sample > idealSample)
+                val reduced = sample > idealSample
+                if (previous != null && previous.sampleSize == sample &&
+                    previous.maxDecodedBytes == budget &&
+                    sameTileGrid(previous.tiles, tileCount, span, x0, y0, x1, y1,
+                        sourceWidth, sourceHeight)) {
+                    return ViewerTilePlan(visible, sample, previous.tiles, budget, reduced)
+                }
+                val tiles = ArrayList<ViewerSourceRect>(tileCount.toInt())
+                for (y in y0..y1) for (x in x0..x1) {
+                    val sx = x * span
+                    val sy = y * span
+                    tiles += ViewerSourceRect(sx.toInt(), sy.toInt(),
+                        min(sourceWidth.toLong(), sx + span).toInt(),
+                        min(sourceHeight.toLong(), sy + span).toInt())
+                }
+                return ViewerTilePlan(visible, sample, tiles, budget, reduced)
             }
         }
         if (sample >= (1 shl 20)) return null
         sample *= 2
     }
+}
+
+/**
+ * A row-major tile grid is fully determined by its span, index range and
+ * source size. Only the last column/row can be clamped by the source edge, so
+ * matching the count plus the first and last rectangle proves every tile
+ * matches. O(1).
+ */
+private fun sameTileGrid(
+    tiles: List<ViewerSourceRect>, count: Long, span: Long,
+    x0: Long, y0: Long, x1: Long, y1: Long, sourceWidth: Int, sourceHeight: Int
+): Boolean {
+    if (tiles.size.toLong() != count || tiles.isEmpty()) return false
+    val first = tiles[0]
+    val last = tiles[tiles.size - 1]
+    return first.left.toLong() == x0 * span && first.top.toLong() == y0 * span &&
+        first.right.toLong() == min(sourceWidth.toLong(), x0 * span + span) &&
+        first.bottom.toLong() == min(sourceHeight.toLong(), y0 * span + span) &&
+        last.left.toLong() == x1 * span && last.top.toLong() == y1 * span &&
+        last.right.toLong() == min(sourceWidth.toLong(), x1 * span + span) &&
+        last.bottom.toLong() == min(sourceHeight.toLong(), y1 * span + span)
 }
