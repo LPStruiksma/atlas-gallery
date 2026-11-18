@@ -77,7 +77,7 @@ The curve has not flattened: each doubling of training identities adds about 0.0
   - Two or three runs to get settings right, plus evaluation: **EUR 60 to 250 in total**, one to three weeks elapsed.
 - **Quality expectation.** Unknown until trained. The identity it can carry is bounded by what SFace encodes, which is what limited the adapter. A realistic range is a judge mean of **0.50 to 0.65** against today's 0.69. One risk is specific: a generator trained to satisfy SFace can learn features that fool SFace without looking more like the person to other recognisers. The bench's independent judge (glintr100) exists to catch exactly that.
 
-Paid GPU time needs its own owner card with a price before anything starts (#507 "Not this").
+Paid GPU time would need its own owner card with a price before anything starts (#507 "Not this"). Under OD-1 this route is a documented fallback only.
 
 ## Option (c): a licence route
 
@@ -108,6 +108,8 @@ python3 -m unittest tools/identity_bench/planb/test_encoder_swap_probe.py
 The probe downloads GHOST's backbone (bench-only) through `tools/identity_bench/provenance`, writes its result to `~/.cache/atlas-identity-bench/runs/planb/probe.json`, and keeps the fitted vectors (synthetic faces only) in the same folder. Nothing it produces is committed.
 
 ## For the owner decision
+
+**Decided (2026-11-18):** Lukas chose private use, owner decision OD-1 on [#467](https://github.com/LPStruiksma/atlas-gallery/issues/467): research-licence models downloaded from their original hosts onto his own phone, never redistributed. So no owner card follows from this unit and nothing is spent. The retrain route stays documented as the fallback if ATLAS is ever distributed. The table is kept as the record of what was weighed.
 
 | Route | What Lukas gets | Cost | Time | Quality expectation | Licence risk |
 |---|---|---|---|---|---|
