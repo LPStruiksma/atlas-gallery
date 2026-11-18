@@ -1182,8 +1182,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // The live holder is reference-bound; only a small key snapshot reaches
-    // saved instance state. The selection is never restored before validation.
+    // A live selection is mirrored for Activity recreation. A restored
+    // snapshot is only a pending request until reconciled with the publication.
     SideEffect {
         val live = batchSelection
         if (live != null) {
