@@ -224,7 +224,7 @@ class IdentityProfileStoreAndroidTest {
                 val after = requireNotNull(store.profile(profile.id)).variants.single().references
                 assertEquals("Stale references stay in place", order.map { it.id }, after.map { it.id })
                 assertEquals("and keep their face", order.map { it.peopleFaceUid }, after.map { it.peopleFaceUid })
-                assertEquals(StaleReason.LEFT_PERSON, after[0].stale)
+                assertEquals(StaleReason.LEFT_PERSON, after.single { it.id == refs[0].id }.stale)
                 assertEquals(StaleReason.FACE_GONE, after.single { it.id == revisedMedia.id }.stale)
                 assertTrue(after.filter { it.id != refs[0].id && it.id != revisedMedia.id }.all { it.usable })
             }
