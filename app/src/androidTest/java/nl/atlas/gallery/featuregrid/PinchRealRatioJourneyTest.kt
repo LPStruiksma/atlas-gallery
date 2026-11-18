@@ -165,20 +165,35 @@ class PinchRealRatioJourneyTest {
             assertEquals("$name tile must keep its ${w}x$h proportions",
                 w.toDouble() / h, bounds.width.toDouble() / bounds.height, 0.06 * w / h)
             // Wait for the decode, then sample just inside all four edges.
-            compose.waitUntil(30_000L) {
-                val pixels = compose.onAllNodes(tile)[index].captureToImage().toPixelMap()
-                val centre = pixels[pixels.width / 2, pixels.height / 2]
-                val edges = listOf(
-                    pixels[2, pixels.height / 2], pixels[pixels.width - 3, pixels.height / 2],
-                    pixels[pixels.width / 2, 2], pixels[pixels.width / 2, pixels.height - 3])
-                centre.alpha > 0.99f && edges.all { edge ->
-                    kotlin.math.abs(edge.red - centre.red) < 0.04f &&
-                        kotlin.math.abs(edge.green - centre.green) < 0.04f &&
-                        kotlin.math.abs(edge.blue - centre.blue) < 0.04f
+            // #423: on timeout, say which tile failed and what was sampled.
+            var last = "never sampled"
+            val decoded = runCatching {
+                compose.waitUntil(30_000L) {
+                    val pixels = compose.onAllNodes(tile)[index].captureToImage().toPixelMap()
+                    val centre = pixels[pixels.width / 2, pixels.height / 2]
+                    val edges = listOf(
+                        pixels[2, pixels.height / 2], pixels[pixels.width - 3, pixels.height / 2],
+                        pixels[pixels.width / 2, 2], pixels[pixels.width / 2, pixels.height - 3])
+                    last = "capture ${pixels.width}x${pixels.height} centre=${rgba(centre)} " +
+                        "edges(l,r,t,b)=${edges.joinToString { rgba(it) }}"
+                    centre.alpha > 0.99f && edges.all { edge ->
+                        kotlin.math.abs(edge.red - centre.red) < 0.04f &&
+                            kotlin.math.abs(edge.green - centre.green) < 0.04f &&
+                            kotlin.math.abs(edge.blue - centre.blue) < 0.04f
+                    }
                 }
+            }
+            if (decoded.isFailure) {
+                saveUiEvidence("pinch-423-tile-$index-timeout.png")
+                throw AssertionError("$name (tile $index of ${nodes.size}, ${bounds.width}x${bounds.height} px, " +
+                    "fixture ${w}x$h) never showed one solid colour to its edges in 30 s: $last",
+                    decoded.exceptionOrNull())
             }
         }
     }
+
+    private fun rgba(c: androidx.compose.ui.graphics.Color) =
+        "(%.2f,%.2f,%.2f,%.2f)".format(c.red, c.green, c.blue, c.alpha)
 
     /** #577 diagnostics: each fixture/evidence row's timeline date and its source. */
     private fun timelineDates(): String {
