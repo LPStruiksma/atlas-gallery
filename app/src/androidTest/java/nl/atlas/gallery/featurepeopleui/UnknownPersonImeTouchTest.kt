@@ -1,6 +1,8 @@
 package nl.atlas.gallery.featurepeopleui
 
+import android.animation.ValueAnimator
 import android.app.Activity
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.Choreographer
 import android.view.InputDevice
@@ -215,6 +217,34 @@ class UnknownPersonImeTouchTest {
         }
     }
 
+    private fun shell(command: String): String {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor)
+            .use { it.readBytes().decodeToString() }.trim()
+    }
+
+    /**
+     * CI emulators run with animator scale 0 (`disable-animations: true`), and
+     * then the platform shows the IME with no WindowInsetsAnimation at all:
+     * run 44278979909 timed out waiting for one. Phones animate the keyboard, so
+     * this one test turns the animator scale on for its own duration and puts
+     * the previous value back afterwards.
+     */
+    private fun <T> withAnimatorScaleOne(body: () -> T): T {
+        val before = shell("settings get global animator_duration_scale")
+        shell("settings put global animator_duration_scale 1")
+        try {
+            return body()
+        } finally {
+            if (before == "null" || before.isEmpty()) {
+                shell("settings delete global animator_duration_scale")
+            } else {
+                shell("settings put global animator_duration_scale $before")
+            }
+        }
+    }
+
     private fun fixture() {
         val initial = review()
         compose.setContent {
@@ -267,8 +297,9 @@ class UnknownPersonImeTouchTest {
         }
     }
 
-    @Test fun openingImeTouchIsNeverSilentlySwallowed() {
+    @Test fun openingImeTouchIsNeverSilentlySwallowed() = withAnimatorScaleOne {
         fixture()
+        compose.waitUntil(5_000) { ValueAnimator.areAnimatorsEnabled() }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         // Measured with the keyboard closed: the empty filter already lists option 1.
@@ -284,21 +315,25 @@ class UnknownPersonImeTouchTest {
             // Focusing the field starts the IME show animation; its first
             // onProgress injects the one tap (see ImeOpeningTap).
             compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Morgan")
-            compose.waitUntil(10_000) { tap.upArrived || tap.injectionError != null }
+            runCatching {
+                compose.waitUntil(10_000) { tap.upArrived || tap.injectionError != null }
+            }
+            android.util.Log.i(
+                "ATLAS_TOUCH1",
+                "opening tap: started=${tap.started} progressTotal=${tap.openingProgress} " +
+                    "down=${tap.downArrived} animatingAtDown=${tap.imeAnimatingAtDown} " +
+                    "progressBeforeDown=${tap.progressBeforeDown} up=${tap.upArrived} " +
+                    "animatingAtUp=${tap.imeAnimatingAtUp} error=${tap.injectionError}"
+            )
             tap.injectionError?.let { throw AssertionError("Pointer injection failed", it) }
-            assertTrue("IME show animation must have started", tap.started)
+            assertTrue("IME show animation must start (no WindowInsetsAnimation seen)", tap.started)
             assertTrue("Pointer DOWN must reach the window", tap.downArrived)
             assertTrue(
                 "IME must still be animating when pointer DOWN reaches the window " +
                     "(progress frames before DOWN: ${tap.progressBeforeDown})",
                 tap.imeAnimatingAtDown
             )
-            android.util.Log.i(
-                "ATLAS_TOUCH1",
-                "opening tap: animatingAtDown=${tap.imeAnimatingAtDown} " +
-                    "animatingAtUp=${tap.imeAnimatingAtUp} progressBeforeDown=${tap.progressBeforeDown} " +
-                    "progressTotal=${tap.openingProgress}"
-            )
+            assertTrue("Pointer UP must reach the window", tap.upArrived)
             compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         } finally {
             tap.remove()
