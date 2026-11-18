@@ -12,6 +12,8 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -92,6 +94,14 @@ class AlbumsGridEvidenceTest {
             return
         }
         saveUiEvidence("albums-after-populated.png")
+        // FIND-0: the shared search filters this Albums overview without switching
+        // to global Search. Every folder/photo is generated in this fixture.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Camera")
+        compose.waitForIdle()
+        saveUiEvidence("find-0-albums-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
+        compose.waitForIdle()
         // Stories and Photo DNA live only in the Albums overflow (spec §3).
         compose.onNodeWithTag("atlas-header-more").performClick()
         compose.waitUntil(10_000L) {

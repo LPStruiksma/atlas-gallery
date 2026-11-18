@@ -262,6 +262,11 @@ if [[ "$SHARD_COUNT" -gt 1 ]]; then
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi
 gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
+# Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
+# Keep the bounded query even on a failed test so review can read the p50.
+timeout 30 adb logcat -d -s ATLAS_PERF10:I || echo "ATLAS_PERF10 logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
 echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # Bounded (run 43076916972): if the device died with the tests, plain `adb logcat` blocks on
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
@@ -364,11 +369,24 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     done
     return 1
   }
+  # #343: WorkManager logs which worker each JobScheduler job is for. The
+  # scan worker, not the 6 h re-arm (PeopleScanRearmWorker), is what #43 needs.
+  # Capture first: grep -q exiting early would SIGPIPE adb, and pipefail
+  # would then report a found line as missing.
+  scan_scheduled() {
+    local out
+    out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
+    grep -q 'featureface[.]work[.]PeopleScanWorker)' <<<"$out"
+  }
   kill43_diagnostics() {
     face_log | tail -50
     adb shell dumpsys battery | head -12 || true
     adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
-    timeout 30 adb logcat -d -t 300 | grep -iE 'nl[.]atlas[.]gallery|WM-' | tail -60 || true
+    # #343: leave out force_jobs' own retry churn, which otherwise fills the
+    # tail and hides how the launch enqueued (or rescheduled) its work.
+    timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
+      grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId|Cancelling work ID' |
+      tail -80 || true
   }
   adb shell dumpsys battery unplug
   # Android's charging tracker can treat BATTERY_STATUS_CHARGING as true
@@ -396,7 +414,18 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   done
   face_log | grep 'publication_done' || {
     kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
-  sleep 2 # let WorkManager persist the enqueue
+  # #343: publication_done is logged just before the host arms the scan, and
+  # WorkManager enqueues on its own background executor, which a loaded
+  # emulator can hold for seconds. A fixed 2 s wait sometimes killed the app
+  # before the scan job existed (only the 6 h re-arm was left), so wait for
+  # the scan worker's job itself. Never kill without it: that fails here.
+  for _ in $(seq 1 60); do
+    scan_scheduled && break
+    sleep 0.5
+  done
+  scan_scheduled || {
+    kill43_diagnostics; echo "::error::#43 the app published but never scheduled the scan worker"; exit 1; }
+  sleep 1 # let WorkManager finish persisting the enqueue
   adb shell input keyevent KEYCODE_HOME
   kill_app
   adb logcat -c || true

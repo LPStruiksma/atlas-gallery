@@ -23,7 +23,56 @@ sealed interface TimelineSlot {
         val firstMediaIndex: Int,
         val mediaCount: Int
     ) : TimelineSlot
-    data class Media(override val stableKey: String, val mediaIndex: Int) : TimelineSlot
+    /**
+     * A 250k-item catalog must not eagerly allocate 250k "media:" strings. Keep
+     * the source key until a slot is actually displayed / compared by key.
+     *
+     * The public constructor and data-class-style API are retained for callers
+     * that construct, destructure, copy, or compare Media slots themselves.
+     * Only the internal factory stores an unprefixed key. The volatile flag
+     * publishes the cached value safely to readers on other threads.
+     */
+    class Media private constructor(
+        private var storedKey: String,
+        val mediaIndex: Int,
+        @Volatile private var needsPrefix: Boolean
+    ) : TimelineSlot {
+        constructor(stableKey: String, mediaIndex: Int) : this(stableKey, mediaIndex, false)
+
+        override val stableKey: String
+            get() {
+                if (!needsPrefix) return storedKey
+                return synchronized(this) {
+                    if (needsPrefix) {
+                        storedKey = "media:" + storedKey
+                        needsPrefix = false
+                    }
+                    storedKey
+                }
+            }
+
+        operator fun component1(): String = stableKey
+        operator fun component2(): Int = mediaIndex
+
+        fun copy(
+            stableKey: String = this.stableKey,
+            mediaIndex: Int = this.mediaIndex
+        ): Media = Media(stableKey, mediaIndex)
+
+        override fun equals(other: Any?): Boolean =
+            this === other || (other is Media &&
+                mediaIndex == other.mediaIndex && stableKey == other.stableKey)
+
+        override fun hashCode(): Int = 31 * stableKey.hashCode() + mediaIndex
+
+        override fun toString(): String =
+            "Media(stableKey=$stableKey, mediaIndex=$mediaIndex)"
+
+        companion object {
+            internal fun fromMediaKey(key: String, mediaIndex: Int): Media =
+                Media(key, mediaIndex, true)
+        }
+    }
 }
 
 data class TimelineHeaderPosition(val entryIndex: Int, val header: TimelineSlot.Header)
@@ -100,7 +149,7 @@ fun buildGridTimelineIndex(
         items.forEachIndexed { index, media ->
             if ((index and 1023) == 0) cancellationCheckpoint?.invoke()
             positions[index] = index
-            slots.add(TimelineSlot.Media("media:" + media.key, index))
+            slots.add(TimelineSlot.Media.fromMediaKey(media.key, index))
         }
         cancellationCheckpoint?.invoke()
         return GridTimelineIndex(slots, positions, headers, grouped = false)
@@ -145,14 +194,25 @@ fun buildGridTimelineIndex(
             TimelineBucket.YEAR -> date.year.toLong()
         }
     }
+    // Carry the first ordinal of the next run instead of converting the same
+    // boundary timestamp again when the outer loop advances. The sparse-day
+    // lookahead carries it forward as well. No O(n) ordinal cache is allocated.
     var cursor = 0
+    var nextRunOrdinal = unknownBucket
     while (cursor < items.size) {
         if ((cursor and 1023) == 0) cancellationCheckpoint?.invoke()
         val timestamp = items[cursor].takenAtMillis
-        val ordinal = bucketOrdinal(timestamp)
+        // Run the cancellation callback before the first date conversion, as before.
+        val ordinal = if (cursor == 0) bucketOrdinal(timestamp) else nextRunOrdinal
         val (groupKey, label) = groupFor(timestamp)
         var end = cursor + 1
-        while (end < items.size && bucketOrdinal(items[end].takenAtMillis) == ordinal) {
+        var afterRunOrdinal = unknownBucket
+        while (end < items.size) {
+            val candidateOrdinal = bucketOrdinal(items[end].takenAtMillis)
+            if (candidateOrdinal != ordinal) {
+                afterRunOrdinal = candidateOrdinal
+                break
+            }
             if ((end and 1023) == 0) cancellationCheckpoint?.invoke()
             end++
         }
@@ -160,24 +220,36 @@ fun buildGridTimelineIndex(
         var headerLabel = label
         if (mergeSparseDaysBelow > 0 && bucket == TimelineBucket.DAY &&
             ordinal != unknownBucket && end - cursor < mergeSparseDaysBelow) {
-            val firstDay = java.time.LocalDate.ofEpochDay(ordinal)
+            val firstDay = LocalDate.ofEpochDay(ordinal)
             var lastOrdinal = ordinal
             while (end < items.size) {
-                val nextOrdinal = bucketOrdinal(items[end].takenAtMillis)
+                val nextOrdinal = afterRunOrdinal
                 if (nextOrdinal == unknownBucket) break
-                val nextDay = java.time.LocalDate.ofEpochDay(nextOrdinal)
+                val nextDay = LocalDate.ofEpochDay(nextOrdinal)
                 if (nextDay.year != firstDay.year || nextDay.month != firstDay.month) break
                 var nextEnd = end + 1
-                while (nextEnd < items.size && bucketOrdinal(items[nextEnd].takenAtMillis) == nextOrdinal) nextEnd++
+                var nextAfterOrdinal = unknownBucket
+                while (nextEnd < items.size) {
+                    val candidateOrdinal = bucketOrdinal(items[nextEnd].takenAtMillis)
+                    if (candidateOrdinal != nextOrdinal) {
+                        nextAfterOrdinal = candidateOrdinal
+                        break
+                    }
+                    // The old sparse lookahead had no in-run checkpoint.
+                    if ((nextEnd and 1023) == 0) cancellationCheckpoint?.invoke()
+                    nextEnd++
+                }
                 if (nextEnd - end >= mergeSparseDaysBelow) break
                 end = nextEnd
+                afterRunOrdinal = nextAfterOrdinal
                 lastOrdinal = nextOrdinal
             }
             if (lastOrdinal != ordinal) {
-                val a = java.time.LocalDate.ofEpochDay(minOf(ordinal, lastOrdinal))
-                val b = java.time.LocalDate.ofEpochDay(maxOf(ordinal, lastOrdinal))
-                headerGroupKey = "$a..$b"
-                headerLabel = "${a.dayOfMonth}\u2013${b.format(if (b.year == currentYear) shortDayFormat else dayFormat)}"
+                val a = LocalDate.ofEpochDay(minOf(ordinal, lastOrdinal))
+                val b = LocalDate.ofEpochDay(maxOf(ordinal, lastOrdinal))
+                headerGroupKey = a.toString() + ".." + b.toString()
+                headerLabel = a.dayOfMonth.toString() + "–" +
+                    b.format(if (b.year == currentYear) shortDayFormat else dayFormat)
             }
         }
         val baseHeaderKey = "header:" + bucket.name + ":" + headerGroupKey
@@ -190,9 +262,10 @@ fun buildGridTimelineIndex(
         slots.add(header)
         for (i in cursor until end) {
             positions[i] = slots.size
-            slots.add(TimelineSlot.Media("media:" + items[i].key, i))
+            slots.add(TimelineSlot.Media.fromMediaKey(items[i].key, i))
         }
         cursor = end
+        nextRunOrdinal = afterRunOrdinal
     }
     cancellationCheckpoint?.invoke()
     return GridTimelineIndex(slots, positions, headers, grouped = true)

@@ -30,8 +30,18 @@ data class StoredPeopleReview(
 data class StoredPersonSummary(
     val name: String,
     val faceCount: Int,
-    val coverFaceUid: String
-)
+    val coverFaceUid: String,
+    val mediaCount: Int = 0,
+    val firstAppearanceMs: Long? = null,
+    val mostRecentAppearanceMs: Long? = null,
+    val photoCount: Int = mediaCount,
+    val videoCount: Int = 0
+) {
+    init {
+        require(mediaCount >= 0 && photoCount >= 0 && videoCount >= 0 &&
+            photoCount.toLong() + videoCount.toLong() == mediaCount.toLong())
+    }
+}
 
 /**
  * #579: an unnamed group of at least [FaceIndexStore.PEOPLE_HOME_MIN_GROUP]
