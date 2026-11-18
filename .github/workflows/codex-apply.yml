@@ -1,0 +1,39 @@
+name: Codex Patch Apply (bounded canary)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  apply:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.user.login == 'chatgpt-codex-connector[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    concurrency:
+      group: codex-apply-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout trusted main implementation
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          path: trusted
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+
+      - name: Guard, apply and report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node trusted/bin/autodev-codex-apply-runner.mjs
