@@ -36,6 +36,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurevisual.store.VisualMedia
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
 
 /**
  * VS-S2a (#468): results of "find similar", not yet wired into the host
@@ -57,14 +59,26 @@ fun VisualSearchResultsScreen(
     onOpen: (VisualMedia) -> Unit,
     onBack: () -> Unit,
     thumbnail: suspend (VisualMedia) -> ImageBitmap?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    searchQuery: String = "",
+    onSearchQueryChange: ((String) -> Unit)? = null,
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    visibleMedia: Set<VisualMedia>? = null,
+    filtering: Boolean = false
 ) {
     Column(modifier.fillMaxSize().padding(16.dp).testTag("atlas-visual-search")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("atlas-visual-search-back")) {
                 Text("Back")
             }
-            Text("Similar photos", style = MaterialTheme.typography.headlineSmall)
+            Text("Similar photos", Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineSmall)
+            if (onSearchQueryChange != null) {
+                AtlasSearch(query = searchQuery, onQueryChange = onSearchQueryChange,
+                    onScopeChange = { next ->
+                        if (next == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
+            }
         }
         Spacer(Modifier.height(8.dp))
         when (state) {
@@ -80,8 +94,18 @@ fun VisualSearchResultsScreen(
                 "Similar-photo search is being rebuilt for an updated model. Try again later.")
             VisualSearchUiState.Revoked -> Message("atlas-visual-search-revoked",
                 "Photo access was withdrawn, so nothing is shown. Allow access again to search.")
-            is VisualSearchUiState.Results -> Results(state.result, poseEnabled, onPoseToggle,
-                onOpen, thumbnail)
+            is VisualSearchUiState.Results -> {
+                if (filtering) {
+                    CircularProgressIndicator(Modifier.testTag("atlas-visual-scoped-searching"))
+                } else {
+                    // The route has already filtered this authorized, ranked hit set.
+                    val result = if (searchQuery.isBlank()) state.result
+                        else state.result.copy(hits = state.result.hits.filter {
+                            it.media in visibleMedia.orEmpty()
+                        })
+                    Results(result, poseEnabled, onPoseToggle, onOpen, thumbnail)
+                }
+            }
         }
     }
 }

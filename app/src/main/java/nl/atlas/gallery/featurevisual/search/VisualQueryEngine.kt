@@ -168,9 +168,30 @@ class VisualQueryEngine(
             return FloatArray(vector.size) { vector[it] * inverse }
         }
 
+        /**
+         * PERF-15 (#222): the exact same left-to-right float sum as a plain
+         * loop (bit-identical result: one accumulator, same order), unrolled
+         * by four with one up-front bound so the JIT drops per-element range
+         * checks on [b]. Never reassociate this into several accumulators:
+         * that changes the low bits and so tie order and band edges.
+         */
         internal fun dot(a: FloatArray, b: FloatArray): Float {
+            val n = a.size
+            if (b.size < n) throw IndexOutOfBoundsException("dot: ${b.size} < $n")
             var sum = 0f
-            for (k in a.indices) sum += a[k] * b[k]
+            var k = 0
+            val unrolled = n - (n and 3)
+            while (k < unrolled) {
+                sum += a[k] * b[k]
+                sum += a[k + 1] * b[k + 1]
+                sum += a[k + 2] * b[k + 2]
+                sum += a[k + 3] * b[k + 3]
+                k += 4
+            }
+            while (k < n) {
+                sum += a[k] * b[k]
+                k++
+            }
             return sum
         }
 

@@ -289,6 +289,37 @@ class PeopleDiscoveryHostTest {
             .fetchSemanticsNodes().isEmpty())
     }
 
+    /**
+     * #260: an already-open review must not keep the initial empty queue after
+     * discovery publishes faces in the SAME permission epoch. Synthetic photos
+     * only; the scheduler does not run background work in this fixture.
+     */
+    @Test fun openReviewReloadsAfterScanChangesSamePermissionEpoch() {
+        val host = host()
+        host.start("gallery-7", inventory)
+        val firstEpoch = host.displayEpoch("gallery-7")
+        compose.setContent {
+            MaterialTheme {
+                PeopleReviewRoute(host, "gallery-7", onClose = {})
+            }
+        }
+
+        // Page is loaded before any batch has produced a face.
+        waitForText("No unknown-face observations are awaiting review.")
+        compose.onAllNodesWithTag("atlas-unknown-identity-group")
+            .fetchSemanticsNodes().let { assertTrue(it.isEmpty()) }
+
+        drain()
+        assertEquals("scan stays in the same grant/index epoch", firstEpoch,
+            host.displayEpoch("gallery-7"))
+        waitFor("new face groups on the already-open review") {
+            compose.onAllNodesWithTag("atlas-unknown-identity-group")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("No unknown-face observations are awaiting review.")
+            .assertDoesNotExist()
+    }
+
     @Test fun optInScanProgressClustersReviewThenRevokeStops() {
         val host = host()
         var grant by mutableStateOf<String?>("gallery-7")
@@ -452,8 +483,8 @@ class PeopleDiscoveryHostTest {
         val group = host.reviewPage("gallery-7")!!.clusters!!.clusters.unknownClusters.first()
         val person = PersonKey("native-" + group.id.anchor.localHex)
 
-        compose.onAllNodesWithText("New person's name")[0].performTextInput("Synthetic Ada")
-        compose.onAllNodesWithText("Name this group")[0].performClick()
+        compose.onAllNodesWithText("Name this person")[0].performTextInput("Synthetic Ada")
+        compose.onAllNodesWithText("Create person")[0].performClick()
         waitFor("name committed") {
             store.peopleReview(epoch)?.names?.get(person) == "Synthetic Ada"
         }
