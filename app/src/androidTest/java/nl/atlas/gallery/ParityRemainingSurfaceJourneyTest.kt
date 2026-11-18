@@ -49,6 +49,8 @@ abstract class ParityRemainingSurfaceJourney(private val dark: Boolean) {
 
     @Test fun photosLargeZoomPaired() {
         compose.waitForNode(hasText("photos & videos", substring = true))
+        // #375: the header text can render before the tagged grid is composed.
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         val grid = compose.onNodeWithTag("atlas-timeline-grid")
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
         grid.performTouchInput {
@@ -72,6 +74,8 @@ abstract class ParityRemainingSurfaceJourney(private val dark: Boolean) {
 
     @Test fun photosOriginalRatioPaired() {
         compose.waitForNode(hasText("photos & videos", substring = true))
+        // #375: the header text can render before the tagged grid is composed.
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         val grid = compose.onNodeWithTag("atlas-timeline-grid")
         grid.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "4 columns"))
         grid.performTouchInput {

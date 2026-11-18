@@ -62,6 +62,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -689,7 +690,7 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.TopCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xB8000000), Color.Transparent)))
+                .background(Brush.verticalGradient(listOf(AtlasTokens.Colors.Viewer.ChromeScrimTop, Color.Transparent)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -764,7 +765,7 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.BottomCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, AtlasTokens.Colors.Viewer.ChromeScrimBottom)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .testTag("atlas-viewer-bottom-chrome"),
@@ -795,7 +796,7 @@ private fun GalleryViewerSnapshot(
                                 scaleX = grow; scaleY = grow
                             }
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0xFF2A2A2A))
+                            .background(AtlasTokens.Colors.Viewer.FilmstripTrack)
                             .semantics(mergeDescendants = true) {
                                 this.selected = selected
                                 contentDescription = "${if (media.isVideo) "Video" else "Photo"} " +
@@ -852,7 +853,7 @@ private fun GalleryViewerSnapshot(
                     ) {
                         Icon(if (favourite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             if (favourite) "Remove from favourites" else "Add to favourites",
-                            tint = if (favourite) Color(0xFFFF4D5E) else Color.White)
+                            tint = if (favourite) AtlasTokens.Colors.Viewer.Favourite else Color.White)
                     }
                 }
                 if (showEdit) IconButton(
@@ -915,7 +916,7 @@ private fun GalleryViewerSnapshot(
                 translationY = 240.dp.toPx() + offset.coerceAtLeast(-240.dp.toPx())
                 alpha = if (offset < 0f) 0.6f + 0.4f *
                     (-offset / 240.dp.toPx()).coerceIn(0f, 1f) else 0f
-            }.background(Color(0xFF171A20))
+            }.background(AtlasTokens.Colors.Viewer.Backdrop)
             .testTag("atlas-details-drag-preview")) {
             // Resolved here, not in the viewer scope, so scrub frames don't
             // recompose the whole viewer.
@@ -1054,7 +1055,7 @@ private const val SCRUB_SHARPEN_DELAY_MS = 60L
 
 @Composable
 private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
-    Row(modifier.clip(RoundedCornerShape(percent = 50)).background(Color(0xB3202124))
+    Row(modifier.clip(RoundedCornerShape(percent = 50)).background(AtlasTokens.Colors.Viewer.ActionPill)
         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically,
         content = content)
 }
@@ -1707,7 +1708,7 @@ internal fun VideoPage(
                 if (seeking) {
                     Box(Modifier.size(176.dp, 110.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF292929))
+                        .background(AtlasTokens.Colors.Viewer.MediaTrack)
                         .testTag("atlas-video-seek-preview"),
                         contentAlignment = Alignment.Center) {
                         seekPreview?.let { frame ->
@@ -1719,7 +1720,7 @@ internal fun VideoPage(
                         Text(viewerVideoTimecode(targetMs ?: 0L),
                             color = Color.White, fontSize = 12.sp,
                             modifier = Modifier.align(Alignment.BottomCenter)
-                                .background(Color(0xA0000000))
+                                .background(AtlasTokens.Colors.Viewer.Scrim)
                                 .padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                     Spacer(Modifier.height(8.dp))
@@ -1765,7 +1766,7 @@ internal fun VideoPage(
                         colors = SliderDefaults.colors(
                             thumbColor = Color.White,
                             activeTrackColor = Color.White,
-                            inactiveTrackColor = Color(0xFF888888)),
+                            inactiveTrackColor = AtlasTokens.Colors.Viewer.SeekInactive),
                         modifier = Modifier.weight(1f)
                             .testTag("atlas-video-seek")
                             .semantics { contentDescription = "Seek video" }
@@ -1826,7 +1827,7 @@ private fun FaceHighlightOverlay(boxes: List<IndexedFaceBox>, image: IntSize) {
         val stroke = 3.dp.toPx()
         for (box in boxes) {
             val r = fitFaceRect(box, size.width, size.height, image.width, image.height) ?: continue
-            drawRoundRect(Color(0xFFB5E7DA), topLeft = r.topLeft, size = r.size,
+            drawRoundRect(AtlasTokens.Colors.Viewer.SelectionAccent, topLeft = r.topLeft, size = r.size,
                 cornerRadius = CornerRadius(stroke * 2), style = Stroke(width = stroke))
         }
     }
