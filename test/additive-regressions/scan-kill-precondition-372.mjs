@@ -24,9 +24,13 @@ for (const step of sequence) {
 const freeze = script.indexOf('kill -STOP "$prekill_pid"');
 const kill = script.indexOf('kill -9 "$prekill_pid"', freeze);
 assert.ok(freeze >= 0 && kill > freeze);
-assert.doesNotMatch(script.slice(freeze, kill).replace(
-  /scan_job_pending "\$scan_job" \|\| \{[\s\S]*?\n  \}/, ''
-), /kill -CONT "\$prekill_pid"/);
+// Only the precondition-miss branch (which ends in `exit 1; }`) may resume
+// the frozen process before it fails the run.
+const successPath = script.slice(freeze, kill).replace(
+  /scan_job_pending "\$scan_job" \|\| \{[\s\S]*?re-seed required"; exit 1; \}/, ''
+);
+assert.notEqual(successPath, script.slice(freeze, kill), '#372 precondition-miss branch must be found');
+assert.doesNotMatch(successPath, /kill -CONT "\$prekill_pid"/);
 assert.match(script.slice(freeze, kill), /scan finished before the process was frozen; re-seed required/);
 assert.match(script, /#43: SIGKILL worker process \$first mid-run/);
 assert.match(script, /#43 no restore after the kill/);
