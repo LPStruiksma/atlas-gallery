@@ -405,6 +405,14 @@ class Fixtures(unittest.TestCase):
             self.assertTrue(spec["licence"] and spec["role"], name)
         for name in cli.FINALISTS + cli.ALL_SWAPPERS:
             self.assertIn(name, pipeline.MODELS)
+        for name, spec in pipeline.LOCAL_MODELS.items():     # exported here (#506), never downloaded
+            self.assertTrue(spec["file"].endswith(".onnx") and spec["licence"] and spec["role"], name)
+            self.assertNotIn(name, pipeline.MODELS)
+        for swapper, encoder in pipeline.SOURCE_ENCODERS.items():
+            self.assertIn(swapper, pipeline.SWAPPERS)
+            self.assertIn(encoder, pipeline.LOCAL_MODELS)
+            self.assertIn("research-only", pipeline.LOCAL_MODELS[encoder]["licence"])
+        self.assertEqual(pipeline.source_encoder("ghost_1_256"), "arcface_w600k_r50")
 
 
 class Report(unittest.TestCase):
