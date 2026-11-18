@@ -86,6 +86,10 @@ internal fun validatedPersonSelection(
     currentFence: List<String>?
 ): Set<String>? = selected?.takeIf { currentFence != null && activeFence == currentFence }
 
+/** Re-admit only visible person-scope keys after the matching identity was validated. */
+internal fun eligiblePersonSelection(requested: Set<String>, visible: Set<String>): Set<String>? =
+    requested.intersect(visible).takeIf { it.isNotEmpty() }
+
 /**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
@@ -259,9 +263,10 @@ internal fun NativePersonAlbumRoute(
         }
         if (pendingSelection == saved && selected == null) {
             pendingSelection = emptyList()
-            if (matching.size == keys.size) {
+            val eligible = eligiblePersonSelection(keys, matching)
+            if (eligible != null) {
                 activeSelectionFence = selectionFence
-                selected = matching
+                selected = eligible
             }
         }
     }
