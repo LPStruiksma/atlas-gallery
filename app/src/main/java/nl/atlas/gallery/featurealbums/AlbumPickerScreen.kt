@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -142,7 +141,7 @@ fun CreateAlbumDialog(
     var name by remember { mutableStateOf("") }
     var touched by remember { mutableStateOf(false) }
     val problem = nameProblem(name)
-    val canCreate = name.isNotBlank() && problem == null
+    val canCreate = name.trim().isNotEmpty() && problem == null
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create album") },
