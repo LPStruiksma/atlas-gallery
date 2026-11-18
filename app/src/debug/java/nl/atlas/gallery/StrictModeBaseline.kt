@@ -155,11 +155,16 @@ object StrictModeSites {
                 !it.className.startsWith("nl.atlas.gallery.DebugStrictModeInstaller")
         }?.let { "${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})" } ?: "none"
 
-    /** Stacks the instrumentation itself caused (runner, test code), not the app. */
-    fun harness(stack: List<StackTraceElement>): Boolean = stack.any {
-        it.className.startsWith("androidx.test.") || it.className.startsWith("org.junit.") ||
-            it.className.endsWith("Test") || it.className.contains("Test$")
-    }
+    /**
+     * Stacks the instrumentation itself caused (runner, test code) with no ATLAS
+     * frame. Under instrumentation the runner also calls `Application.onCreate`,
+     * so a stack with an ATLAS frame is always the app's (run 44323523522).
+     */
+    fun harness(stack: List<StackTraceElement>): Boolean = appFrame(stack) == "none" &&
+        stack.any {
+            it.className.startsWith("androidx.test.") || it.className.startsWith("org.junit.") ||
+                it.className.endsWith("Test") || it.className.contains("Test$")
+        }
 
     fun group(records: List<StrictModeBaseline.Record>): List<StrictModeSite> =
         records.groupBy { r ->

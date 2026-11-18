@@ -67,6 +67,15 @@ class StrictModeSiteTest {
         assertTrue(StrictModeSites.harness(guard + f("androidx.test.runner.AndroidJUnitRunner", "onCreate")))
     }
 
+    @Test fun appInitCalledByTheRunnerIsTheApps() {
+        val stack = guard + listOf(
+            f("nl.atlas.gallery.featuremedia.MicroThumbnails", "install", "MicroThumbnails.kt", 68),
+            f("nl.atlas.gallery.AtlasApplication", "onCreate", "AtlasApplication.kt", 29),
+            f("androidx.test.runner.MonitoringInstrumentation", "callApplicationOnCreate")
+        )
+        assertFalse(StrictModeSites.harness(stack))
+    }
+
     @Test fun groupingCountsRepeatsPerPhaseAndKeepsFirstTime() {
         val stack = guard + f("nl.atlas.gallery.Foo", "bar", "Foo.kt", 3)
         val records = listOf(
