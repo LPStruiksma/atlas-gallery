@@ -215,6 +215,44 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         }
     }
 
+    /** #404: the selected keys and contextual pill survive Activity recreation. */
+    @Test fun rotationRetainsTheSelectedPhotosAndContextualPill() {
+        val theme = if (dark) "dark" else "light"
+        val ids = fixtures.ids
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-$"+"{id}"))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-timeline-media-$"+"{ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-$"+"{ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-$"+"{theme}-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-$"+"{theme}-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-$"+"{theme}-portrait-after.png")
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    private fun assertSelectedPair(ids: List<Long>) {
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+        compose.onNodeWithTag("atlas-selection-pill").assertExists()
+        compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-$"+"{id}"))
+        }
+    }
+
     private fun assertOneResult(text: String) {
         compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(1)
         compose.onAllNodes(resultWithText(text)).assertCountEquals(1)
