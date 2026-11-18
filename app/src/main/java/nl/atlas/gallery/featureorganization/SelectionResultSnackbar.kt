@@ -47,12 +47,12 @@ data class SelectionResultMessage(
 @Stable
 class SelectionResultMessages(private val now: () -> Long = { System.nanoTime() / 1_000_000L }) {
     companion object {
-        /** Save one outcome with its elapsed monotonic time, never a fresh timeout. */
+        /** Save one outcome with its original monotonic timestamp, never a fresh timeout. */
         val Saver: Saver<SelectionResultMessages, List<Any>> = Saver(
             save = { messages ->
                 messages.current?.let { message ->
                     listOf(message.text, message.duration.name, message.generation,
-                        messages.now() - message.shownAtMillis)
+                        message.shownAtMillis)
                 } ?: emptyList()
             },
             restore = { values ->
@@ -61,11 +61,11 @@ class SelectionResultMessages(private val now: () -> Long = { System.nanoTime() 
                         val text = values[0] as String
                         val duration = SelectionResultDuration.valueOf(values[1] as String)
                         val generation = values[2] as Long
-                        val elapsedMillis = values[3] as Long
-                        if (text.isNotBlank() && generation > 0 && elapsedMillis >= 0) {
+                        val shownAtMillis = values[3] as Long
+                        if (text.isNotBlank() && generation > 0 && shownAtMillis >= 0) {
                             lastGeneration = generation
                             current = SelectionResultMessage(text, duration, generation,
-                                now() - elapsedMillis)
+                                shownAtMillis)
                         }
                     }
                 }
