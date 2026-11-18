@@ -8,13 +8,13 @@ import org.junit.Test
 
 /** PERF-12: synthetic-only, exact-order proof for narrowing reviewed paths. */
 class ReviewedPersonIntersectionPerfTest {
-    private fun media(i: Int, path: String): MediaRecord =
+    private fun media(i: Int): MediaRecord =
         MediaRecord(i.toLong(), "content://media/external/images/media/$i",
             "synthetic_$i.jpg", "Pictures/Fictional/", 100, 42, false)
-            .copy(absolutePath = path)
+
 
     @Test fun disjointPeopleDoNotLeakMetadataAndRetainOrder() {
-        val rows = List(4096) { i -> media(i, "/storage/emulated/0/DCIM/f_$i.jpg") }
+        val rows = List(4096) { i -> media(i) }
         val p1 = PersonEntry(1, "Fictional Ada", rows.take(1800).map { it.absolutePath }.toSet())
         val p2 = PersonEntry(2, "Fictional Bea", rows.drop(1500).take(2000).map { it.absolutePath }.toSet())
         val filters = LocalSearchFacets(confirmedPersonIds = setOf(1, 2))
