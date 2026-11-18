@@ -575,7 +575,10 @@ internal class PeopleDiscoveryHost(
 
         @Volatile private var app: PeopleDiscoveryHost? = null
 
-        /** A process-scoped host; its SQLite helpers open only during IO calls. */
+        /**
+         * Return the shared host. Its SQLite helper constructors must remain
+         * inert; the underlying first reads/writes happen from IO workers.
+         */
         fun forApp(context: Context): PeopleDiscoveryHost = app ?: synchronized(this) {
             app ?: create(context.applicationContext).also { app = it }
         }
