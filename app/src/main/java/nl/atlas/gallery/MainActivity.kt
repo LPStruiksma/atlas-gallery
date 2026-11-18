@@ -1181,8 +1181,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // Save the current live snapshot for Activity recreation; an inactive
-    // selection does not reactivate pending keys while validation is running.
+    // Save the current live snapshot for Activity recreation. Pending keys
+    // are never actionable until the reconciler verifies the live publication.
     SideEffect {
         val live = batchSelection
         if (live != null) {
@@ -1190,11 +1190,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectionAlbumRoute?.relativePath, selectionAlbumRoute?.volumeName,
                 selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
             if (pendingSelectionRestore != snapshot) pendingSelectionRestore = snapshot
-        } else if (pendingSelectionRestore != null && !busy &&
-            !sortPending && !albumSelectionPending &&
-            (tab != 0 || originalProportions || !timelineEnabled ||
-                !publishedGallery.matchesGrantedScope(grants))) {
-            pendingSelectionRestore = null
         }
     }
     // Search text, selected reviewed identities and recents belong to ONE
