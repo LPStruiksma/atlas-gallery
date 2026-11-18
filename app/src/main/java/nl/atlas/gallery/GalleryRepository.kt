@@ -622,7 +622,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = false
-        inventoryCache.restore()
+        inventoryCache.restore(readGalleryMediaGrant(getApplication<Application>()))
         val ticket = refreshQueue.request()
         // Unlike ordinary refresh, a new grant invalidates the old scan.
         // Cancel both its provider IPC and its IO coroutine immediately.
