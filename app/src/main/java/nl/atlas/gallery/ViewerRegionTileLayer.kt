@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -67,10 +68,13 @@ internal val ViewerPhotoTileZoomKey = SemanticsPropertyKey<Float>("AtlasViewerTi
  * scope for closing native decoders off the main thread, and counters that
  * tests read. Counters hold numbers only, never URIs or pixels.
  */
-internal object ViewerRegionTiles {
-    /** Test hook: open the source (so the zoom limit rises) but decode nothing. */
-    @Volatile var baseOnlyForTest = false
+/**
+ * Test seam: true opens the source (so the zoom limit rises) but decodes
+ * nothing, for base-only versus tiles evidence. Production never provides it.
+ */
+internal val LocalViewerTilesBaseOnly = staticCompositionLocalOf { false }
 
+internal object ViewerRegionTiles {
     val decodes = AtomicInteger()
     val mainThreadDecodes = AtomicInteger()
     val cancelledDecodes = AtomicInteger()
@@ -151,17 +155,29 @@ internal class ViewerRegionSource private constructor(
 
     private fun borrow(): Pair<ParcelFileDescriptor, BitmapRegionDecoder>? {
         synchronized(lock) {
-            while (!closed) {
+            while (true) {
+                if (closed) return null
                 idle.removeFirstOrNull()?.let { return it }
                 if (created < ViewerTileZoom.MAX_DECODERS) {
-                    val extra = openDecoder(resolver, uri) ?: return null
-                    created++
-                    return extra
+                    created++ // reserve the slot; open outside the lock
+                    break
                 }
                 lock.wait()
             }
+        }
+        // Opening is blocking I/O: never hold the lock for it, so close() and
+        // the other decode never wait on a file open.
+        val extra = openDecoder(resolver, uri)
+        if (extra == null) {
+            synchronized(lock) {
+                created--
+                lock.notifyAll()
+            }
             return null
         }
+        if (synchronized(lock) { !closed }) return extra
+        release(extra) // the source closed while this decoder was opening
+        return null
     }
 
     private fun giveBack(entry: Pair<ParcelFileDescriptor, BitmapRegionDecoder>) {
@@ -269,6 +285,7 @@ internal fun ViewerRegionTileLayer(
     onTiledSize: (IntSize?) -> Unit
 ) {
     val context = LocalContext.current
+    val baseOnly by rememberUpdatedState(LocalViewerTilesBaseOnly.current)
     val latestTiledSize by rememberUpdatedState(onTiledSize)
     val activeNow by rememberUpdatedState(active)
     val viewportNow by rememberUpdatedState(viewport)
@@ -330,7 +347,7 @@ internal fun ViewerRegionTileLayer(
         snapshotFlow { Triple(pose(), viewportNow, baseNow) to activeNow }.collect { (state, isActive) ->
             val (p, vp, base) = state
             zoomTenths = (p.scale * 10f).roundToInt() / 10f
-            val plan = if (isActive && !ViewerRegionTiles.baseOnlyForTest &&
+            val plan = if (isActive && !baseOnly &&
                 viewerTilesWanted(p.scale, vp.width, vp.height, base.width, base.height,
                     orientation.uprightWidth, orientation.uprightHeight))
                 viewerTilePlanForPose(orientation, vp.width, vp.height, p, budget, previous)
