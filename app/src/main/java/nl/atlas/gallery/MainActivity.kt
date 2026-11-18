@@ -20,6 +20,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import nl.atlas.gallery.featuredesign.AtlasMotionKind
+import nl.atlas.gallery.featuredesign.atlasTween
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.imePadding
@@ -110,9 +113,6 @@ import nl.atlas.gallery.featurestories.AtlasStoriesScreen
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
 import nl.atlas.gallery.featurealbums.buildAlbumSummaries
-import androidx.compose.animation.Crossfade
-import nl.atlas.gallery.featuredesign.AtlasMotionKind
-import nl.atlas.gallery.featuredesign.atlasTween
 import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem

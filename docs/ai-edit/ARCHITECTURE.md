@@ -43,6 +43,22 @@ On **first use of remote AI Edit**, show a short, understandable explanation: th
 
 The editor previews a temporary candidate and offers **Accept / Retry / Change prompt / Back**, plus before/after inspection. Accept saves a new MediaStore copy only; leaving without accepting discards local working candidates according to a documented retention policy. Do not replace the system Edit affordance or add persistent grid/viewer chrome merely to expose AI Edit.
 
+## Service kinds, registry and key check (AIE-19, [#430](https://github.com/LPStruiksma/atlas-gallery/issues/430))
+
+A stored service (`ProviderProfile`) has a `kind`: `ATLAS_PROTOCOL` (custom server, [PROTOCOL.md](PROTOCOL.md)), `GEMINI` or `FAL`, plus an optional model id and the last key-check status. Profiles stored before #430 have no kind and read as `ATLAS_PROTOCOL`. A stored profile whose kind this build does not know is kept, listed disabled as "Not available in this version" with Remove only, and never used; saving other profiles preserves it.
+
+`ProviderRegistry` maps a kind to its runtime: `ATLAS_PROTOCOL` runs through `EditJobRunner`; hosted kinds register an `ImageEditProvider` factory when their adapter merges (Gemini [#192](https://github.com/LPStruiksma/atlas-gallery/issues/192), fal [#429](https://github.com/LPStruiksma/atlas-gallery/issues/429)). "Add service" offers only kinds with a runtime, in fixed order: Google Gemini, fal.ai, then Custom server under Advanced. Hosted presets carry their base URL, so nobody types one, and validate host and scheme exactly as custom profiles do (HTTPS, no user info, query or fragment, path ending in `/`).
+
+**Key check.** User-initiated only (Save, or "Check key" on a service), one authenticated GET through `EditHttpTransport` (host-pinned HTTPS, no redirects), never an image, prompt or body. Results: "Key works"; "This key was not accepted" (nothing is saved for a new service); "Couldn't check. No connection." or "Couldn't check. {Service} didn't respond." (the key is kept, status "Not checked yet"). There is no "out of credit" result: credit problems are reported when an edit is attempted (#431).
+
+| Kind | Call | Not accepted | Source |
+|---|---|---|---|
+| Gemini | `GET https://generativelanguage.googleapis.com/v1beta/models`, header `x-goog-api-key` | 400 (`INVALID_ARGUMENT`, reason `API_KEY_INVALID`), 401, 403 | models.list (official API reference); base URL and header as used by the official `googleapis/python-genai` client. A made-up key observed 2026-11-18 returns 400 `API_KEY_INVALID`; no key returns 403 `PERMISSION_DENIED`. |
+| Custom server | `GET {base}capabilities`, the profile's own auth | 401, 403 | [PROTOCOL.md](PROTOCOL.md): every request, including capabilities, is authenticated. 404 and others report "didn't respond", since a wrong path is not proof of a wrong key. |
+| fal | none yet: "Saved. Checked on your first edit." | n/a | fal's platform API documents `GET https://api.fal.ai/v1/models` with authentication optional (it cannot prove a key) and `GET /v1/models/pricing` as key-required, but its header text says an *admin* key, so an ordinary key could be refused. #429/#432 can add a check once verified with a real key. |
+
+429, 5xx, timeouts and redirects map to "didn't respond". Pasted keys are trimmed; a key with inner whitespace or control characters is refused locally and never sent. Keys live only in the Keystore vault; Remove deletes the key at once, and removing the default makes the next usable service in list order the default.
+
 ## Errors, refusals and provider constraints
 
 | Outcome | Meaning | UI/telemetry treatment |

@@ -38,7 +38,8 @@ test('Gemini adapter pins one host, sends the key as a header and never replays 
 test('Gemini adapter is honest: no mask claim, refusals separate from failures, real format from bytes', () => {
   assert.match(gemini, /supportsMaskEdit = false/);
   assert.match(gemini, /EditOutcome\.Refused\(parsed\.code/);
-  assert.match(gemini, /ImageProbe\.probe\(parsed\.bytes\)/);
+  assert.match(gemini, /results\.finalizeFile\(target, MAX_RESULT_PIXELS\)/);
+  assert.match(gemini, /downloadTo = replyFile/);
   assert.match(gemini, /"thought"\]\.bool\(\) != true/);
 });
 
@@ -47,5 +48,5 @@ test('PROVIDERS.md records the implemented Gemini adapter with dated sources and
   assert.match(doc, /## Implemented adapters/);
   assert.match(doc, /### Google Gemini \(#192\), 2026-11-18/);
   assert.match(doc, /googleapis\/python-genai/);
-  assert.match(doc, /Known gap, blocks a live edit/);
+  assert.match(doc, /Large replies \(#441\)/);
 });

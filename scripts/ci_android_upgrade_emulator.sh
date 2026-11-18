@@ -268,6 +268,51 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# Opt-in stress run (docs/testing/EMULATOR_TESTS.md, "Stress a test"). A
+# head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
+# lists, each as its own instrumentation run, on every shard: each shard is
+# an independent emulator, so one dispatch gives 2 x count samples in minutes
+# instead of one sample per full suite. One "<count> <Class or Class#method>"
+# per line. Remove the file before review: the static guard fails while the file exists.
+if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+  if [[ "$SHARD_INDEX" != "0" ]]; then
+    gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+  fi
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+  adb logcat -G 16M || true
+  stress_fail=0
+  stress_out=/tmp/atlas-stress.txt
+  while read -r stress_count stress_target || [[ -n "${stress_count:-}${stress_target:-}" ]]; do
+    [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
+    if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
+          ! "${stress_target:-}" =~ ^[A-Za-z0-9_.]+(#[A-Za-z0-9_]+)?$ ]]; then
+      echo "::error::Bad scripts/ci-opt-in/stress-classes line: $stress_count ${stress_target:-}"
+      exit 1
+    fi
+    for ((stress_run = 1; stress_run <= stress_count; stress_run++)); do
+      adb logcat -c || true
+      # </dev/null: adb shell would otherwise read the rest of the list.
+      adb shell am instrument -w -r -e class "$stress_target" "$RUNNER" \
+        > "$stress_out" 2>&1 < /dev/null || true
+      if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
+        echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
+      else
+        echo "STRESS $stress_target run $stress_run/$stress_count: FAIL"
+        stress_fail=1
+        grep -E 'INSTRUMENTATION_STATUS: (test|stack)=|^Error in |^Tests run|^FAILURES|AssertionError|Exception' \
+          "$stress_out" | cut -c1-600 | head -60 || true
+      fi
+      echo "::group::STRESS $stress_target run $stress_run logcat"
+      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V \
+        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
+      echo "::endgroup::"
+    done
+  done < scripts/ci-opt-in/stress-classes
+  echo "NOTICE: opt-in stress head; full emulator suite skipped on purpose"
+  exit "$stress_fail"
+fi
+
 # Preserve normal viewer/filmstrip checks and their real PNG screenshots.
 # If the mismatch lane replaced the fixture with signer B, Gradle must
 # retain the same environment or it will attempt to install signer A again.
@@ -292,6 +337,67 @@ echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
 timeout 30 adb logcat -d -s ATLAS_SCALE:I || echo "ATLAS_SCALE logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
+# #417 PERF-7a: debug StrictMode baseline on shard 1 (or an unsharded run).
+# Report-only: a violation never fails the shard, and a missing report is a
+# warning that Review checks. It runs before the suite's own exit status is
+# applied, so an unrelated red test still leaves the baseline in the log.
+# The debug provider stays a no-op until this step creates its marker file, so
+# the suite above ran without StrictMode.
+strictmode_baseline_417() {
+  local pkg=nl.atlas.gallery
+  # connectedDebugAndroidTest uninstalls its APKs when it returns.
+  adb install -r "$NEW" >/dev/null || { echo "::warning::#417 reinstall failed"; return 0; }
+  adb install -r "$TEST" >/dev/null || { echo "::warning::#417 test APK reinstall failed"; return 0; }
+  local marker=files/atlas-strictmode-baseline
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_IMAGES || true
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_VIDEO || true
+  # A fresh install has no files/ directory until the app first runs.
+  if ! adb shell run-as "$pkg" sh -c "'mkdir -p files && touch $marker'"; then
+    echo "::warning::#417 could not create the debug StrictMode marker"; return 0
+  fi
+  echo "::group::#417 cold start, am start -W, debug StrictMode on"
+  adb logcat -c || true
+  local totals=() i out total
+  for i in 0 1 2 3 4 5; do
+    adb shell am force-stop "$pkg"
+    out="$(adb shell am start -W -n "$pkg/.MainActivity" | tr -d '\r' || true)"
+    total="$(sed -n 's/^TotalTime: *//p' <<< "$out")"
+    echo "launch $i $(grep -E '^(LaunchState|TotalTime):' <<< "$out" | tr '\n' ' ')"
+    # Launch 0 is the first after this shard's reinstall; 1-5 are the sample.
+    [[ "$i" != "0" && "$total" =~ ^[0-9]+$ ]] && totals+=("$total")
+    sleep 4
+  done
+  if (( ${#totals[@]} > 0 )); then
+    printf '%s\n' "${totals[@]}" | sort -n | awk '{v[NR]=$1} END {
+      p50=v[int((NR-1)*0.5+0.5)+1]; p95=v[int((NR-1)*0.95+0.5)+1];
+      printf "STRICT cold-start n=%d p50_ms=%d p95_ms=%d (am start -W TotalTime, launches 1-%d)\n", NR, p50, p95, NR }'
+  else
+    echo "STRICT cold-start unavailable: no TotalTime from am start -W"
+  fi
+  echo "STRICT cold-start violations: $(timeout 30 adb logcat -d -v brief -s StrictMode:D |
+    grep -c 'StrictMode policy violation' || true) logged over 6 launches"
+  timeout 30 adb logcat -d -v brief -s StrictMode:D | head -n 900 || true
+  echo "::endgroup::"
+  adb shell am force-stop "$pkg"
+  adb logcat -c || true
+  local capture=/tmp/atlas-strictmode-417.txt
+  adb shell am instrument -w -r -e atlas_strictmode_baseline true \
+    -e class nl.atlas.gallery.StrictModeBaselineTest "$RUNNER" > "$capture" 2>&1 || true
+  tail -n 40 "$capture"
+  echo "::group::#417 first-open flows (ATLAS_STRICT, synthetic MediaStore PNGs)"
+  timeout 30 adb logcat -d -v brief -s ATLAS_STRICT:I || echo "ATLAS_STRICT logcat unavailable"
+  echo "::endgroup::"
+  if ! grep -Fq 'OK (1 test)' "$capture"; then
+    echo "::warning::#417 StrictMode baseline test did not pass; no first-open table this run"
+    timeout 30 adb logcat -d -b crash -t 300 || true
+  fi
+  adb shell run-as "$pkg" rm -f "$marker" || true
+  adb shell am force-stop "$pkg"
+}
+if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
+  ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  strictmode_baseline_417
+fi
 if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
 # #31: the two real-process People/visual/grid/Albums phases cannot run in
 # one instrumentation invocation: force-stop must kill the target process

@@ -1,8 +1,9 @@
 package nl.atlas.gallery.featuredesign
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -87,7 +87,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
+/** Original ATLAS palette: muted chrome, image-first surfaces, one cool blue accent (Quiet Frame). */
 /** Compatibility aliases: source values now live in AtlasTokens. */
 object AtlasColor {
     val Ink = AtlasTokens.Colors.Ink
@@ -112,7 +112,7 @@ object AtlasSpace {
  * #657: every container role is set explicitly. Material's defaults for the
  * roles left out are its purple baseline (dialogs, menus, sheets and text
  * fields read surfaceContainer*, surfaceTint and outline), which is how the
- * "Add name" dialog came out light lavender. Ours stay in the ink/teal family.
+ * "Add name" dialog came out light lavender. Ours stay in the Quiet Frame neutral/blue family.
  */
 internal val darkGalleryColors = darkColorScheme(
     primary = AtlasColor.Tidal,
@@ -128,7 +128,7 @@ internal val darkGalleryColors = darkColorScheme(
     onTertiary = AtlasColor.Ink,
     tertiaryContainer = AtlasTokens.Colors.Dark.SecondaryContainer,
     onTertiaryContainer = AtlasTokens.Colors.Dark.OnSecondaryContainer,
-    background = AtlasColor.Ink,
+    background = AtlasTokens.Colors.Dark.SurfaceLowest,
     onBackground = AtlasTokens.Colors.Dark.Foreground,
     surface = AtlasColor.InkRaised,
     onSurface = AtlasTokens.Colors.Dark.Foreground,
@@ -140,7 +140,7 @@ internal val darkGalleryColors = darkColorScheme(
     outline = AtlasTokens.Colors.Dark.Outline,
     outlineVariant = AtlasTokens.Colors.Dark.OutlineVariant,
     surfaceBright = AtlasTokens.Colors.Dark.SurfaceBright,
-    surfaceDim = AtlasColor.Ink,
+    surfaceDim = AtlasTokens.Colors.Dark.SurfaceLowest,
     surfaceContainerLowest = AtlasTokens.Colors.Dark.SurfaceLowest,
     surfaceContainerLow = AtlasTokens.Colors.Dark.SurfaceLow,
     surfaceContainer = AtlasTokens.Colors.InkRaised,
@@ -175,7 +175,7 @@ internal val lightGalleryColors = lightColorScheme(
     outlineVariant = AtlasTokens.Colors.Light.OutlineVariant,
     surfaceBright = AtlasColor.Paper,
     surfaceDim = AtlasTokens.Colors.Light.SurfaceDim,
-    surfaceContainerLowest = AtlasColor.Paper,
+    surfaceContainerLowest = AtlasColor.Mist,
     surfaceContainerLow = AtlasTokens.Colors.Light.SurfaceLow,
     surfaceContainer = AtlasTokens.Colors.Light.SurfaceContainer,
     surfaceContainerHigh = AtlasTokens.Colors.Light.SurfaceHigh,
@@ -204,7 +204,7 @@ fun AtlasGalleryTheme(
         colorScheme = if (dark) darkGalleryColors else lightGalleryColors,
         typography = Typography(
             headlineLarge = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.SemiBold, letterSpacing = AtlasTokens.Type.DisplayTracking),
+                fontWeight = FontWeight.Light, letterSpacing = AtlasTokens.Type.DisplayTracking),
             headlineMedium = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.SemiBold),
             titleLarge = MaterialTheme.typography.titleLarge.copy(

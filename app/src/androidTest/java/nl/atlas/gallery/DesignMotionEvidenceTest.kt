@@ -1,6 +1,5 @@
 package nl.atlas.gallery
 
-import android.os.ParcelFileDescriptor
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -14,15 +13,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.testkit.MotionScaleRule
+import nl.atlas.gallery.testkit.setAnimatorScale
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.junit.rules.TestRule
-import org.junit.runner.Description
 import org.junit.runner.RunWith
-import org.junit.runners.model.Statement
 
 /**
  * DESIGN-7 (#137) partial: gallery chrome motion on the real MainActivity over
@@ -121,7 +118,7 @@ class DesignMotionEvidenceTest {
 
         // Reduced motion, switched on live: one frame after the tap the
         // transition must already be at its end state.
-        shell137("settings put global animator_duration_scale 0")
+        setAnimatorScale(0)
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
         try {
@@ -150,33 +147,3 @@ class DesignMotionEvidenceTest {
     }
 }
 
-/**
- * The CI emulator starts with animations disabled. Turn the animator and
- * transition scales on for this journey and restore their exact previous
- * values, including a missing setting, afterward.
- */
-private class MotionScaleRule : TestRule {
-    override fun apply(base: Statement, description: Description): Statement =
-        object : Statement() {
-            override fun evaluate() {
-                val keys = listOf("animator_duration_scale", "transition_animation_scale")
-                val before = keys.associateWith { shell137("settings get global $it").trim() }
-                keys.forEach { shell137("settings put global $it 1") }
-                try {
-                    base.evaluate()
-                } finally {
-                    before.forEach { (key, old) ->
-                        if (old == "null" || old.isBlank()) shell137("settings delete global $key")
-                        else shell137("settings put global $key $old")
-                    }
-                }
-            }
-        }
-}
-
-private fun shell137(command: String): String {
-    val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation
-        .executeShellCommand(command)
-    return ParcelFileDescriptor.AutoCloseInputStream(pfd)
-        .use { it.readBytes().decodeToString() }
-}
