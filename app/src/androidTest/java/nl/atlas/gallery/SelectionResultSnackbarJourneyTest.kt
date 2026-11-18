@@ -176,6 +176,9 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
                     automation.windows.joinToString { "${it.type}:${it.title}" } +
                     " texts=" + roots.joinToString { texts(it).toString() }
             }
+            // trashBatch() preflights on atlasScope, whose effect dispatcher is
+            // the v2 rule's test dispatcher: it only advances while Compose idles.
+            compose.waitForIdle()
             Thread.sleep(300L)
         }
     }
