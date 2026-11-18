@@ -5,10 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -66,9 +67,36 @@ fun currentSelectedReviewedPersonOrNull(
 }
 
 /**
- * Explicit destination choice, including for homonyms. Only position-based
- * accessibility tags are exposed. The host's grant-aware face preview is the
- * sole image source; the host's neutral fallback remains the fallback.
+ * A suggestion is not the catalogue. At present FaceClusterer exposes one
+ * scored, policy-thresholded and ambiguity-checked person per group. Show only
+ * that one when the current grant has an actual confirmed-face preview. Until
+ * a calibrated multi-person scorer exists we MUST NOT invent rank 2 or 3
+ * from alphabetical album order or the auto-add score.
+ */
+fun eligibleScoredGroupSuggestions(
+    group: nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster,
+    albums: List<NativePersonAlbum>,
+    threshold: Float,
+    rejected: Set<nl.atlas.gallery.featurepeople.cluster.RejectedPerson>
+): List<NativePersonAlbum> {
+    val evidence = group.suggestion ?: return emptyList()
+    if (!evidence.similarity.isFinite() || evidence.similarity < threshold ||
+        group.members.any {
+            nl.atlas.gallery.featurepeople.cluster.RejectedPerson(it, evidence.person) in rejected
+        }
+    ) return emptyList()
+    return albums.filter {
+        it.person == evidence.person && it.observations.isNotEmpty()
+    }.take(3)
+}
+
+/**
+ * On-demand name search; zero matches at rest, five visible matches per query,
+ * with an explicit expansion if someone has many similar names. Never show a
+ * paginated catalogue, order numbers, or unscored "similar" people.
+ *
+ * Choice indices always refer to the FULL grant-current catalogue so existing
+ * currentSelectedReviewedPersonOrNull guards still verify identity at tap time.
  */
 @Composable
 internal fun PeopleDestinationSelector(
@@ -80,40 +108,32 @@ internal fun PeopleDestinationSelector(
     tagPrefix: String,
     preview: @Composable (NativeFaceObservationId) -> Unit
 ) {
-    // Search/pagination must also reset when an equal-valued review is regranted.
     var filter by remember(selectionScope, candidates) { mutableStateOf("") }
-    var page by remember(selectionScope, candidates) { mutableIntStateOf(0) }
-    val matching = candidates.withIndex().filter {
-        it.value.name.contains(filter.trim(), ignoreCase = true)
-    }
-    val pageSize = 6
-    val pageCount = (matching.size + pageSize - 1) / pageSize
-    val safePage = if (pageCount == 0) 0 else page.coerceIn(0, pageCount - 1)
+    var visibleLimit by remember(selectionScope, candidates) { mutableIntStateOf(5) }
+    val query = filter.trim()
+    val matching = if (query.isBlank()) emptyList() else candidates.withIndex()
+        .filter { it.value.name.contains(query, ignoreCase = true) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "Choose a reviewed person. People with the same name are different choices; " +
-                "check the confirmed face preview before proceeding.",
-            style = MaterialTheme.typography.bodySmall
-        )
         OutlinedTextField(
             value = filter,
             onValueChange = {
                 if (it.length <= 80) {
                     filter = it
-                    page = 0
+                    visibleLimit = 5
                     onSelect(null)
                 }
             },
-            label = { Text("Find reviewed person") },
+            label = { Text("Search by name") },
             singleLine = true,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
+                .testTag("${tagPrefix}-search")
         )
-        if (matching.isEmpty()) {
-            Text("No reviewed people match. No destination selected.",
+        if (query.isNotBlank() && matching.isEmpty()) {
+            Text("No people match that name.",
                 style = MaterialTheme.typography.bodySmall)
         }
-        matching.drop(safePage * pageSize).take(pageSize).forEach { choice ->
+        matching.take(visibleLimit).forEach { choice ->
             val album = choice.value
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -126,31 +146,26 @@ internal fun PeopleDestinationSelector(
                     modifier = Modifier.testTag("${tagPrefix}-option-${choice.index + 1}")
                 )
                 Column(Modifier.weight(1f).padding(top = 8.dp)) {
-                    Text("${album.name} · reviewed choice ${choice.index + 1} of ${candidates.size}")
+                    Text(album.name)
                     Text("${album.observations.size} confirmed faces",
                         style = MaterialTheme.typography.bodySmall)
                 }
-                album.observations.firstOrNull()?.let { preview(it) }
+                album.observations.firstOrNull()?.let { face ->
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.padding(top = 4.dp)
+                            .then(Modifier.size(48.dp))
+                    ) { preview(face) }
+                }
             }
         }
-        if (pageCount > 1) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    enabled = enabled && safePage > 0,
-                    onClick = { page = safePage - 1; onSelect(null) }
-                ) { Text("Previous choices") }
-                OutlinedButton(
-                    enabled = enabled && safePage < pageCount - 1,
-                    onClick = { page = safePage + 1; onSelect(null) }
-                ) { Text("Next choices") }
+        if (matching.size > visibleLimit) {
+            TextButton(onClick = { visibleLimit += 5 }) {
+                Text("Show more matches")
             }
-            Text("Choice page ${safePage + 1} of $pageCount",
-                style = MaterialTheme.typography.bodySmall)
         }
         if (selectedPosition != null) {
-            val chosen = candidates.getOrNull(selectedPosition)
-            if (chosen != null) {
-                Text("Selected: ${chosen.name} · reviewed choice ${selectedPosition + 1}",
+            candidates.getOrNull(selectedPosition)?.let { chosen ->
+                Text("Selected: ${chosen.name}",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.testTag("${tagPrefix}-selected"))
             }

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <!-- Compose UI tests host content in this ui-test-manifest activity. Landscape
+             evidence (#142) rotates the display mid-test; handling the change here keeps
+             the composed content instead of recreating an empty activity. -->
+        <activity android:name="androidx.activity.ComponentActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:name="nl.atlas.gallery.CrashProbeActivity"
             android:process=":crash_probe"
             android:exported="false"
