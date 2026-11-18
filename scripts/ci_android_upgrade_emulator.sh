@@ -268,6 +268,52 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# Opt-in stress run (docs/testing/EMULATOR_UI_TESTS.md, "Stress a test"). A
+# head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
+# lists, each as its own instrumentation run, on every shard: each shard is
+# an independent emulator, so one dispatch gives 2 x count samples in minutes
+# instead of one sample per full suite. One "<count> <Class or Class#method>"
+# per line. Remove the file before review: without the full suite the
+# emulator-ui check cannot pass.
+if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+  if [[ "$SHARD_INDEX" != "0" ]]; then
+    gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+  fi
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+  adb logcat -G 16M || true
+  stress_fail=0
+  stress_out=/tmp/atlas-stress.txt
+  while read -r stress_count stress_target; do
+    [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
+    if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
+          ! "${stress_target:-}" =~ ^[A-Za-z0-9_.]+(#[A-Za-z0-9_]+)?$ ]]; then
+      echo "::error::Bad scripts/ci-opt-in/stress-classes line: $stress_count ${stress_target:-}"
+      exit 1
+    fi
+    for ((stress_run = 1; stress_run <= stress_count; stress_run++)); do
+      adb logcat -c || true
+      # </dev/null: adb shell would otherwise read the rest of the list.
+      adb shell am instrument -w -r -e class "$stress_target" "$RUNNER" \
+        > "$stress_out" 2>&1 < /dev/null || true
+      if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
+        echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
+      else
+        echo "STRESS $stress_target run $stress_run/$stress_count: FAIL"
+        stress_fail=1
+        grep -E 'INSTRUMENTATION_STATUS: (test|stack)=|^Error in |^Tests run|^FAILURES|AssertionError|Exception' \
+          "$stress_out" | cut -c1-600 | head -60 || true
+      fi
+      echo "::group::STRESS $stress_target run $stress_run logcat"
+      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V \
+        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
+      echo "::endgroup::"
+    done
+  done < scripts/ci-opt-in/stress-classes
+  echo "NOTICE: opt-in stress head; full emulator suite skipped on purpose"
+  exit "$stress_fail"
+fi
+
 # Preserve normal viewer/filmstrip checks and their real PNG screenshots.
 # If the mismatch lane replaced the fixture with signer B, Gradle must
 # retain the same environment or it will attempt to install signer A again.
