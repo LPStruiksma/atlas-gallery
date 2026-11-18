@@ -362,7 +362,28 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
     grep -q 'featureface[.]work[.]PeopleScanWorker)' <<<"$out"
   }
+  # #343 follow-up: the WorkManager job id of the scheduled scan worker.
+  scan_job_id() {
+    local out
+    out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
+    sed -nE 's/.*featureface[.]work[.]PeopleScanWorker\), Job ID ([0-9]+).*/\1/p' <<<"$out" | tail -1
+  }
+  scan_job_pending() {
+    local id="$1" out
+    [[ -n "$id" ]] || return 1
+    out="$(adb shell dumpsys jobscheduler | tr -d '\r' || true)"
+    grep -qE "^ *JOB androidx[.]work[.]systemjobscheduler:u0a[0-9]+/$id: .*nl[.]atlas[.]gallery/" <<<"$out"
+  }
+  # What the first process did before the kill. The log is cleared after
+  # the kill, so a later failure prints this capture as well.
+  prekill_log=/tmp/atlas-kill43-prekill.txt
+  : > "$prekill_log"
   kill43_diagnostics() {
+    if [[ -s "$prekill_log" ]]; then
+      echo "--- #43 before the kill (ATLAS_FACE and WorkManager) ---"
+      cat "$prekill_log"
+      echo "--- #43 after the kill ---"
+    fi
     face_log | tail -50
     adb shell dumpsys battery | head -12 || true
     adb shell dumpsys jobscheduler | tr -d '\r' | grep -A6 'nl[.]atlas[.]gallery/' | head -60 || true
@@ -401,6 +422,16 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     kill43_diagnostics; echo "::error::#43 the app published but never scheduled the scan worker"; exit 1; }
   sleep 1 # let WorkManager finish persisting the enqueue
   adb shell input keyevent KEYCODE_HOME
+  # Fail here, not after the kill, if the scan job is already gone (ran,
+  # was cancelled or replaced) while the app was still alive and unplugged.
+  scan_job="$(scan_job_id)"
+  timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
+    grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId' |
+    tail -80 > "$prekill_log" || true
+  scan_job_pending "$scan_job" || {
+    kill43_diagnostics
+    echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
+  echo "#43: scan worker job $scan_job pending; killing the unplugged app"
   kill_app
   adb logcat -c || true
   adb shell dumpsys battery set ac 1
