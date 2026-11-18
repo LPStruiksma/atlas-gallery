@@ -23,7 +23,67 @@ sealed interface TimelineSlot {
         val firstMediaIndex: Int,
         val mediaCount: Int
     ) : TimelineSlot
-    data class Media(override val stableKey: String, val mediaIndex: Int) : TimelineSlot
+    /**
+     * A 250k-item catalog must not eagerly allocate 250k "media:" strings. Keep
+     * the source key until a slot is actually displayed / compared by key.
+     *
+     * The public constructor and data-class-style API are retained for callers
+     * that construct, destructure, copy, or compare Media slots themselves.
+     * Only the internal factory stores an unprefixed key. The volatile flag
+     * publishes the cached value safely to readers on other threads.
+     */
+    class Media private constructor(
+        private var storedKey: String,
+        val mediaIndex: Int,
+        @Volatile private var needsPrefix: Boolean,
+        /**
+         * PERF-6 (#127): when set, the slot holds no key at all and asks the
+         * catalogue for it on demand. A 250k index then retains no per-row
+         * URI strings (they were ~100 bytes per item, kept for every cached
+         * density plan); the key is read only on a viewer return.
+         */
+        private val keyAt: ((Int) -> String)? = null
+    ) : TimelineSlot {
+        constructor(stableKey: String, mediaIndex: Int) : this(stableKey, mediaIndex, false)
+
+        override val stableKey: String
+            get() {
+                keyAt?.let { return "media:" + it(mediaIndex) }
+                if (!needsPrefix) return storedKey
+                return synchronized(this) {
+                    if (needsPrefix) {
+                        storedKey = "media:" + storedKey
+                        needsPrefix = false
+                    }
+                    storedKey
+                }
+            }
+
+        operator fun component1(): String = stableKey
+        operator fun component2(): Int = mediaIndex
+
+        fun copy(
+            stableKey: String = this.stableKey,
+            mediaIndex: Int = this.mediaIndex
+        ): Media = Media(stableKey, mediaIndex)
+
+        override fun equals(other: Any?): Boolean =
+            this === other || (other is Media &&
+                mediaIndex == other.mediaIndex && stableKey == other.stableKey)
+
+        override fun hashCode(): Int = 31 * stableKey.hashCode() + mediaIndex
+
+        override fun toString(): String =
+            "Media(stableKey=$stableKey, mediaIndex=$mediaIndex)"
+
+        companion object {
+            internal fun fromMediaKey(key: String, mediaIndex: Int): Media =
+                Media(key, mediaIndex, true)
+
+            internal fun fromKeySource(keyAt: (Int) -> String, mediaIndex: Int): Media =
+                Media("", mediaIndex, false, keyAt)
+        }
+    }
 }
 
 data class TimelineHeaderPosition(val entryIndex: Int, val header: TimelineSlot.Header)
@@ -76,20 +136,60 @@ fun buildGridTimelineIndex(
     /** Sample once per index, in the viewing device's time zone. Injectable for tests. */
     clock: Clock = Clock.system(zone),
     cancellationCheckpoint: (() -> Unit)? = null
+): GridTimelineIndex = buildGridTimelineIndexCore(items.size, { items[it].takenAtMillis },
+    { index -> TimelineSlot.Media.fromMediaKey(items[index].key, index) },
+    sort, density, zone, locale, mergeSparseDaysBelow, clock, cancellationCheckpoint)
+
+/**
+ * PERF-6 (#127): the same index straight from a catalogue, with no
+ * TimelineMedia projection and no per-row key strings. [takenAtMillis] and
+ * [keyAt] read item i of the caller's own immutable list, which the caller
+ * already retains; media slots resolve their key through [keyAt] on demand.
+ * Slots, headers, positions and keys equal those of the list overload.
+ */
+fun buildGridTimelineIndex(
+    count: Int,
+    takenAtMillis: (Int) -> Long,
+    keyAt: (Int) -> String,
+    sort: TimelineSort,
+    density: GridDensity,
+    zone: ZoneId,
+    locale: Locale = Locale.getDefault(),
+    mergeSparseDaysBelow: Int = 0,
+    clock: Clock = Clock.system(zone),
+    cancellationCheckpoint: (() -> Unit)? = null
 ): GridTimelineIndex {
-    val positions = IntArray(items.size)
+    require(count >= 0)
+    return buildGridTimelineIndexCore(count, takenAtMillis,
+        { index -> TimelineSlot.Media.fromKeySource(keyAt, index) },
+        sort, density, zone, locale, mergeSparseDaysBelow, clock, cancellationCheckpoint)
+}
+
+private fun buildGridTimelineIndexCore(
+    count: Int,
+    takenAt: (Int) -> Long,
+    mediaSlot: (Int) -> TimelineSlot.Media,
+    sort: TimelineSort,
+    density: GridDensity,
+    zone: ZoneId,
+    locale: Locale,
+    mergeSparseDaysBelow: Int,
+    clock: Clock,
+    cancellationCheckpoint: (() -> Unit)?
+): GridTimelineIndex {
+    val positions = IntArray(count)
     val chronological = sort == TimelineSort.NEWEST || sort == TimelineSort.OLDEST
     // Fail closed on stale/asynchronously wrong sort: headers are incorrect unless
     // timestamps really are monotone in the *same* catalog publication.
     var ordered = chronological
-    if (chronological) for (i in 1 until items.size) {
+    if (chronological) for (i in 1 until count) {
         if ((i and 1023) == 0) cancellationCheckpoint?.invoke()
-        val prev = items[i - 1].takenAtMillis
-        val next = items[i].takenAtMillis
+        val prev = takenAt(i - 1)
+        val next = takenAt(i)
         if ((sort == TimelineSort.NEWEST && next > prev) ||
             (sort == TimelineSort.OLDEST && next < prev)) { ordered = false; break }
     }
-    val slots = ArrayList<TimelineSlot>(items.size + if (ordered) items.size / 5 else 0)
+    val slots = ArrayList<TimelineSlot>(count + if (ordered) count / 5 else 0)
     val headers = ArrayList<TimelineHeaderPosition>()
     // Historical timezone offsets can move local midnight BACKWARD even while
     // UTC timestamps remain correctly sorted (e.g. St John's, 25 Oct 1987).
@@ -97,10 +197,10 @@ fun buildGridTimelineIndex(
     // requires a distinct stable key for each *header occurrence*.
     val usedHeaderKeys = HashSet<String>()
     if (!ordered) {
-        items.forEachIndexed { index, media ->
+        for (index in 0 until count) {
             if ((index and 1023) == 0) cancellationCheckpoint?.invoke()
             positions[index] = index
-            slots.add(TimelineSlot.Media("media:" + media.key, index))
+            slots.add(mediaSlot(index))
         }
         cancellationCheckpoint?.invoke()
         return GridTimelineIndex(slots, positions, headers, grouped = false)
@@ -150,16 +250,16 @@ fun buildGridTimelineIndex(
     // lookahead carries it forward as well. No O(n) ordinal cache is allocated.
     var cursor = 0
     var nextRunOrdinal = unknownBucket
-    while (cursor < items.size) {
+    while (cursor < count) {
         if ((cursor and 1023) == 0) cancellationCheckpoint?.invoke()
-        val timestamp = items[cursor].takenAtMillis
+        val timestamp = takenAt(cursor)
         // Run the cancellation callback before the first date conversion, as before.
         val ordinal = if (cursor == 0) bucketOrdinal(timestamp) else nextRunOrdinal
         val (groupKey, label) = groupFor(timestamp)
         var end = cursor + 1
         var afterRunOrdinal = unknownBucket
-        while (end < items.size) {
-            val candidateOrdinal = bucketOrdinal(items[end].takenAtMillis)
+        while (end < count) {
+            val candidateOrdinal = bucketOrdinal(takenAt(end))
             if (candidateOrdinal != ordinal) {
                 afterRunOrdinal = candidateOrdinal
                 break
@@ -173,15 +273,15 @@ fun buildGridTimelineIndex(
             ordinal != unknownBucket && end - cursor < mergeSparseDaysBelow) {
             val firstDay = LocalDate.ofEpochDay(ordinal)
             var lastOrdinal = ordinal
-            while (end < items.size) {
+            while (end < count) {
                 val nextOrdinal = afterRunOrdinal
                 if (nextOrdinal == unknownBucket) break
                 val nextDay = LocalDate.ofEpochDay(nextOrdinal)
                 if (nextDay.year != firstDay.year || nextDay.month != firstDay.month) break
                 var nextEnd = end + 1
                 var nextAfterOrdinal = unknownBucket
-                while (nextEnd < items.size) {
-                    val candidateOrdinal = bucketOrdinal(items[nextEnd].takenAtMillis)
+                while (nextEnd < count) {
+                    val candidateOrdinal = bucketOrdinal(takenAt(nextEnd))
                     if (candidateOrdinal != nextOrdinal) {
                         nextAfterOrdinal = candidateOrdinal
                         break
@@ -213,7 +313,7 @@ fun buildGridTimelineIndex(
         slots.add(header)
         for (i in cursor until end) {
             positions[i] = slots.size
-            slots.add(TimelineSlot.Media("media:" + items[i].key, i))
+            slots.add(mediaSlot(i))
         }
         cursor = end
         nextRunOrdinal = afterRunOrdinal

@@ -27,9 +27,23 @@ internal class GalleryScanRecordReuse(previous: List<MediaRecord> = emptyList())
     private val records: Array<MediaRecord>?
     init {
         if (previous.isEmpty()) { ids = null; records = null } else {
-            val sorted = previous.sortedBy { it.id }.toTypedArray()
+            // PERF-18 (#225): one array copy, sorted in place by a primitive
+            // comparator (no boxed Long per comparison, no intermediate list).
+            // Arrays.sort on objects is a stable TimSort, like sortedBy, and
+            // an inventory already in id order is not sorted at all.
+            val sorted = previous.toTypedArray()
+            if (!isSortedById(sorted)) java.util.Arrays.sort(sorted, BY_ID)
             records = sorted
             ids = LongArray(sorted.size) { sorted[it].id }
+        }
+    }
+
+    private companion object {
+        val BY_ID = Comparator<MediaRecord> { a, b -> a.id.compareTo(b.id) }
+
+        fun isSortedById(records: Array<MediaRecord>): Boolean {
+            for (i in 1 until records.size) if (records[i - 1].id > records[i].id) return false
+            return true
         }
     }
 

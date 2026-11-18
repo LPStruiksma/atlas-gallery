@@ -112,6 +112,7 @@ fun AtlasAlbumCard(
     val gridOwnsLongPress = externalCoverMenu != null
     val coverMenuOpen = if (gridOwnsLongPress) externalCoverMenu == true else ownCoverMenu
     val longPressLabel = if (onChooseCover == null) null else "Album cover options"
+    val coverCorner = RoundedCornerShape(AtlasSpace.CoverCorner)
     Box(modifier = modifier) {
         // Independent sibling targets: the album's Open action cannot swallow
         // the optional cover editor or present it as a nested click action.
@@ -121,7 +122,7 @@ fun AtlasAlbumCard(
                     contentDescription = spokenLabel
                     if (accessibilityActions.isNotEmpty()) customActions = accessibilityActions
                 }
-                .clip(RoundedCornerShape(AtlasSpace.CoverCorner))
+                .clip(coverCorner)
                 .combinedClickable(
                     onClick = { onOpen(route) },
                     // When the grid owns long press (hold to drag, hold-and-release
@@ -137,7 +138,7 @@ fun AtlasAlbumCard(
         ) {
             Box(
                 Modifier.fillMaxWidth().aspectRatio(1f)
-                    .clip(RoundedCornerShape(AtlasSpace.CoverCorner))
+                    .clip(coverCorner)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (coverIllustration != null) {
@@ -167,12 +168,12 @@ fun AtlasAlbumCard(
                 }
 
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 album.title,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp)
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
             )
             if (album.locationLabel != null) {
                 Text(
@@ -386,7 +387,7 @@ fun AtlasAlbumsScreen(
 }
 
 /**
- * Samsung-style album grid: three rounded covers per row on a phone. With
+ * Samsung-style album grid: adaptive rounded covers (three across at S24+ width). With
  * [onReorderAlbums], touch-and-hold lifts an unpinned album so it can be
  * dragged to a new place (Samsung's custom order); releasing without moving
  * opens the cover menu instead. The gesture runs in the Initial pass and
@@ -483,7 +484,9 @@ private fun AlbumGrid(
     AtlasScrollAwayHeader(gridState, Modifier.fillMaxSize(), header = header) { headerHeight ->
     key(gridScope) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        // 360dp S24 width minus two 18dp gutters leaves 324dp: three
+        // 96dp covers plus two 12dp gaps fit (112dp silently fell to two).
+        columns = GridCells.Adaptive(minSize = 96.dp),
         state = gridState,
         contentPadding = PaddingValues(
             start = AtlasSpace.Gutter,
@@ -491,8 +494,8 @@ private fun AlbumGrid(
             top = headerHeight,
             bottom = AtlasSpace.Section + LocalAtlasBottomChrome.current
         ),
-        horizontalArrangement = Arrangement.spacedBy(AtlasSpace.TileGap),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize().then(reorderGesture).testTag("atlas-album-grid")
     ) {
         itemsIndexed(shown, key = { index, album -> originalIndex[album] ?: (-1 - index) }) {
