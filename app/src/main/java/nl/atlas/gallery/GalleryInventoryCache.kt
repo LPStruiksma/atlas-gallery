@@ -203,11 +203,23 @@ internal class GalleryInventoryCacheFile(private val file: File) {
         delete()
     }
 
-    /** Regranted access may write fresh cache bytes after the old generation drains. */
-    fun restore() {
+    /**
+     * Regranted access may write fresh cache bytes after the old generation
+     * drains. Bytes from a revoked generation, and any selected-photos cache
+     * (the selection itself may have changed under the same flags), are
+     * cleared first.
+     *
+     * #284: a full-library refresh under an unrevoked grant keeps the current
+     * file. Every cold start runs this refresh; deleting here left no
+     * trusted inventory on disk until the new scan finished and its write
+     * landed, so a process killed in that window (a long scan on a large
+     * library) could not resume People scanning in the background. Readers
+     * still check the stored grant ([cachedFaceInventory] exactly,
+     * [mayShowCachedGalleryInventory] by scope), and the scan overwrites it.
+     */
+    fun restore(current: GalleryMediaGrant) {
         synchronized(fileLock) {
-            // Clear any surviving old-grant bytes before allowing new writes.
-            file.delete()
+            if (revoked.get() || !current.hasAny || current.selectionScoped) file.delete()
             File(file.parentFile, file.name + ".tmp").delete()
             revoked.set(false)
         }

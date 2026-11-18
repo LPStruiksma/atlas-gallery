@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -335,6 +336,19 @@ class PersonPageJourneyTest {
         assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
         settle()
         saveUiEvidence("person-named.png")
+
+        // FIND-0: native Person page exposes the shared scoped search and
+        // retains its current face-grant result set. Invented fixture names only.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        waitForTag("atlas-scoped-search-field")
+        compose.onNodeWithTag("atlas-search-scope-screen").assertExists()
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("FIXTURE_")
+        settle()
+        saveUiEvidence("find-0-person-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
+        waitFor("scoped person search closes") {
+            compose.onAllNodesWithTag("atlas-scoped-search-field").fetchSemanticsNodes().isEmpty()
+        }
 
         // ⋮ menu, then Merge with… lists Bo; the confirmation opens and is cancelled.
         compose.onNodeWithTag("atlas-header-more").performClick()

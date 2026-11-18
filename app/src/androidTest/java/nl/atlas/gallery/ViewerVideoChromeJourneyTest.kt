@@ -8,15 +8,20 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
+import android.view.Window
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,7 +61,10 @@ class ViewerVideoChromeJourneyTest {
                     "DCIM/ATLAS-SYNTHETIC/", photo.length(), 1L, false)
             )
             val dark = mutableStateOf(true)
+            var window: Window? = null
             compose.setContent {
+                val view = LocalView.current
+                SideEffect { window = view.context.testActivityForVideoEvidence()?.window }
                 AtlasGalleryTheme(dark = dark.value) {
                     Box(Modifier.fillMaxSize()) {
                         GalleryViewer(items, items[0].uri, onBack = {})
@@ -78,6 +86,22 @@ class ViewerVideoChromeJourneyTest {
                     .assert(hasContentDescription("Play video"))
                 compose.onNodeWithTag("atlas-video-seek").assertIsDisplayed()
                 saveUiEvidence("viewer-video-$theme-still.png")
+
+                try {
+                    rotateViewerEvidenceLandscape()
+                    compose.waitUntil(10_000L) {
+                        compose.onNodeWithTag("atlas-viewer").fetchSemanticsNode().boundsInRoot
+                            .let { it.width > it.height }
+                    }
+                    assertVideoControlsClearLandscapeCutout(requireNotNull(window))
+                    saveUiEvidence("viewer-142-video-landscape-cutout-$theme.png")
+                } finally {
+                    restoreViewerEvidencePortrait()
+                }
+                compose.waitUntil(10_000L) {
+                    compose.onNodeWithTag("atlas-viewer").fetchSemanticsNode().boundsInRoot
+                        .let { it.height > it.width }
+                }
 
                 compose.onNodeWithTag("atlas-video-play-pause").performClick()
                 compose.waitUntil(10_000L) {
@@ -133,6 +157,20 @@ class ViewerVideoChromeJourneyTest {
             video.delete()
             photo.delete()
         }
+    }
+
+    private fun assertVideoControlsClearLandscapeCutout(window: Window) {
+        val insets = ViewCompat.getRootWindowInsets(window.decorView)
+            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.displayCutout())
+            ?: error("Landscape display-cutout insets unavailable")
+        assertTrue("Pixel emulator profile must expose a landscape cutout: $insets",
+            insets.left > 0 || insets.right > 0)
+        val controls = compose.onNodeWithTag("atlas-video-controls")
+            .fetchSemanticsNode().boundsInWindow
+        assertTrue("Video controls overlap left cutout: $controls / $insets",
+            controls.left >= insets.left)
+        assertTrue("Video controls overlap right cutout: $controls / $insets",
+            controls.right <= window.decorView.width - insets.right)
     }
 
     @Test fun disposingPlayerClearsLiveReaderAndCheckpointsPosition() {
@@ -260,4 +298,10 @@ class ViewerVideoChromeJourneyTest {
             }
         }
     }
+}
+
+private tailrec fun android.content.Context.testActivityForVideoEvidence(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.testActivityForVideoEvidence()
+    else -> null
 }
