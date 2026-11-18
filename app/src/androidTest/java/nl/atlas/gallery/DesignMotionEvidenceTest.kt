@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertTrue
 import nl.atlas.gallery.testkit.MotionScaleRule
 import nl.atlas.gallery.testkit.setAnimatorScale
@@ -52,16 +54,26 @@ class DesignMotionEvidenceTest {
             .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.distinct()
     }
 
-    /** Start, middle and end of a transition, with the clock frozen. */
-    private fun strip(name: String, durationMillis: Long, action: () -> Unit) {
+    /** Capture the resting start before the event; clock time then measures motion. */
+    private fun strip(
+        name: String,
+        durationMillis: Long,
+        action: () -> Unit,
+        atMid: () -> Unit = {}
+    ) {
+        compose.waitForIdle()
         compose.mainClock.autoAdvance = false
         try {
+            // A post-action "start" can already be the destination state when
+            // the gesture settles asynchronously. Capture the actual source.
+            saveUiEvidence("motion-137-$name-start.png")
             action()
+            // First frame applies the state change and starts animations.
             compose.mainClock.advanceTimeByFrame()
             compose.waitForIdle()
-            saveUiEvidence("motion-137-$name-start.png")
             compose.mainClock.advanceTimeBy(durationMillis / 2)
             compose.waitForIdle()
+            atMid()
             saveUiEvidence("motion-137-$name-mid.png")
             compose.mainClock.advanceTimeBy(durationMillis * 2)
             compose.waitForIdle()
@@ -74,8 +86,23 @@ class DesignMotionEvidenceTest {
     @Test fun tabHeaderAndSelectionStripsThenReducedMotion() {
         val tags = awaitPhotos()
 
-        // Tab emphasis: 180 ms (AtlasMotionKind.TAB).
-        strip("tab", 180L) { compose.onNodeWithTag("atlas-nav-albums").performClick() }
+        // Load Albums once with the live clock, so the subsequent transition
+        // strip demonstrates the tab pill instead of the album-loading state.
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitUntil(60_000L) {
+            compose.onAllNodesWithTag("atlas-album-card").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("atlas-nav-photos").performClick()
+        awaitPhotos()
+        // Tab emphasis: 180 ms (AtlasMotionKind.TAB). The start is Photos,
+        // mid is a moving pill, end is the already loaded Albums route.
+        strip("tab", 180L, {
+            compose.onNodeWithTag("atlas-nav-albums").performClick()
+        })
+        compose.waitUntil(60_000L) {
+            compose.onAllNodesWithTag("atlas-album-card").fetchSemanticsNodes().isNotEmpty()
+        }
+        saveUiEvidence("motion-137-tab-end.png")
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         awaitPhotos()
 
@@ -97,20 +124,38 @@ class DesignMotionEvidenceTest {
         }
         compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
         compose.waitForNode(hasTestTag("atlas-header-subtitle"))
-        strip("header", 200L) {
+        val expandedHeight = compose.onNodeWithTag("atlas-header-motion")
+            .getUnclippedBoundsInRoot().height
+        strip("header", 200L, {
             compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(12)
-        }
+        }, atMid = {
+            val halfwayHeight = compose.onNodeWithTag("atlas-header-motion")
+                .getUnclippedBoundsInRoot().height
+            assertTrue(
+                "header at 100 ms must be partially folded: start=$expandedHeight mid=$halfwayHeight",
+                halfwayHeight > 0.dp && halfwayHeight < expandedHeight
+            )
+        })
         compose.waitUntil(10_000L) {
             compose.onAllNodesWithTag("atlas-header-subtitle").fetchSemanticsNodes().isEmpty()
         }
+        // Selection evidence must include a visible checked tile, not a
+        // long-pressed item in an offscreen row.
+        compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
+        compose.waitForNode(hasTestTag("atlas-header-subtitle"))
 
         // Selection mode swap of tab bar and action bar: 200 ms (SELECTION).
         val visible = compose.onAllNodes(tile).fetchSemanticsNodes()
             .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
             .firstOrNull() ?: tags.first()
-        strip("selection", 200L) {
+        strip("selection", 200L, {
             compose.onNodeWithTag(visible).performTouchInput { longClick() }
-        }
+        }, atMid = {
+            // Both outgoing tabs and incoming selection actions must still be
+            // composed midway; this is a crossfade, not an instantaneous swap.
+            compose.onNodeWithTag("atlas-nav-photos").assertExists()
+            compose.onNodeWithTag("atlas-selection-bottom-bar").assertExists()
+        })
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.onNodeWithTag("atlas-nav-photos").assertDoesNotExist()
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }

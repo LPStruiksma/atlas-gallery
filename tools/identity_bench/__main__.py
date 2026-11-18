@@ -27,7 +27,7 @@ from . import fixtures, metrics, pipeline, sheets
 from .pipeline import Config
 
 VERSION = "identity-bench/1"
-ALL_SWAPPERS = tuple(pipeline.SWAPPERS)
+ALL_SWAPPERS = tuple(n for n in pipeline.SWAPPERS if n not in pipeline.LOCAL_MODELS)   # exports run by name
 # One network per model family.  The first four are the screening winners
 # (docs/identity-studio/BENCH.md); SimSwap screened last and is kept because the
 # licence register ranks it as the only one open to private non-commercial use.
@@ -116,6 +116,19 @@ class Bench:
                 ceiling={name: metrics.leave_one_out(v) for name, v in vectors.items()})
         return self.identities[identity]
 
+    def source_raw(self, identity: str, swapper: str) -> np.ndarray:
+        """Mean raw embedding of the references in the encoder this swapper takes its source from."""
+        ref = self.identity(identity)
+        name = pipeline.source_encoder(swapper)
+        if name == "arcface_w600k_r50":
+            return ref["raw"]
+        key = "raw:" + name
+        if key not in ref:
+            encoder = self.tools.get(name, lambda: pipeline.Embedder(name))
+            ref[key] = np.mean([encoder.embed(image, self.tools.detector.detect(image)[0].marks)
+                                for image in ref["images"]], axis=0)
+        return ref[key]
+
     def target(self, target: fixtures.Target) -> dict:
         if target.id not in self.targets:
             image = fixtures.target_image(target, self.tools.detector.detect)
@@ -152,7 +165,8 @@ class Bench:
             row["status"] = "no-face-in-target"
             return row
         started = time.perf_counter()
-        result = pipeline.swap_face(t["image"], t["face"].marks, ref["raw"], config, self.tools, jitter=jitter)
+        result = pipeline.swap_face(t["image"], t["face"].marks, self.source_raw(identity, config.swapper), config,
+                                    self.tools, jitter=jitter)
         row["seconds"] = time.perf_counter() - started
         row["notes"] = result.notes
         row["edit_share"] = float((result.mask > 0).mean())
@@ -457,11 +471,11 @@ def cost_one(label: str) -> dict:
     if restore:
         bench.tools.restorer
     loads = dict(bench.tools.meter.rows)
-    t, ref = bench.target(target), bench.identity(identity)
-    pipeline.swap_face(t["image"], t["face"].marks, ref["raw"], config, bench.tools)   # warm-up
+    t, raw = bench.target(target), bench.source_raw(identity, config.swapper)
+    pipeline.swap_face(t["image"], t["face"].marks, raw, config, bench.tools)   # warm-up
     bench.tools.meter = pipeline.StageMeter()
     for _ in range(5):
-        pipeline.swap_face(t["image"], t["face"].marks, ref["raw"], config, bench.tools)
+        pipeline.swap_face(t["image"], t["face"].marks, raw, config, bench.tools)
     stages = {k: dict(wall_ms=1000 * v["wall_s"] / v["calls"], cpu_ms=1000 * v["cpu_s"] / v["calls"],
                       peak_rss_mb=v["peak_rss_mb"]) for k, v in bench.tools.meter.rows.items()}
     return dict(candidate=label, threads=pipeline.THREADS, baseline_rss_mb=start_rss,

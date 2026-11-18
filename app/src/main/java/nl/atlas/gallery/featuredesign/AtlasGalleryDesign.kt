@@ -563,6 +563,7 @@ fun AtlasGalleryHeader(
             // #641: the count line folds away while the grid is scrolled;
             // the row keeps its 56 dp, so nothing below it moves.
             AnimatedVisibility(
+                modifier = Modifier.testTag("atlas-header-motion"),
                 visible = !subtitle.isNullOrBlank() && !LocalAtlasHeaderCollapsed.current,
                 enter = fadeIn(atlasTween<Float>(AtlasMotionKind.HEADER)) +
                     expandVertically(atlasTween<androidx.compose.ui.unit.IntSize>(AtlasMotionKind.HEADER)),

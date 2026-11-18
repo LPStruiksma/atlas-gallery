@@ -100,6 +100,15 @@ MODELS = {
         sha256="accc4757b26bdb89b32b4d3500d4f79c9dff97c1dd7c7104bf9dcb95e3311385",
         licence="GFPGAN (TencentARC), Apache-2.0 per upstream", role="restoration"),
 }
+# Graphs this machine exports itself (tools/identity_bench/export, #506): never downloaded, never committed.
+LOCAL_MODELS = {}
+for _v in ("fp32", "fp16", "int8"):
+    LOCAL_MODELS[f"ghost1_generator_{_v}"] = dict(
+        file=f"ghost1_generator_{_v}.onnx", role="swapper",
+        licence="GHOST (ai-forever) generator, Apache-2.0, exported from the official release")
+    LOCAL_MODELS[f"ghost_backbone_{_v}"] = dict(
+        file=f"ghost_backbone_{_v}.onnx", role="identity encoder, bench only",
+        licence="InsightFace ms1mv3_arcface_r100_fp16 via GHOST, research-only (#505)")
 SHIPPED_MODELS = {
     "yunet": ("yunet/face_detection_yunet_2023mar.onnx",
               "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"),
@@ -129,8 +138,19 @@ SWAPPERS = {
     "ghost_1_256": ("ghost", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
     "ghost_2_256": ("ghost", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
     "ghost_3_256": ("ghost", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
+    "ghost1_generator_fp32": ("ghost-own", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
+    "ghost1_generator_fp16": ("ghost-own", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
+    "ghost1_generator_int8": ("ghost-own", "arcface_112_v1", 256, (0.5,) * 3, (0.5,) * 3, True),
     "alphaface_256": ("alphaface", "arcface_128", 256, (0.0,) * 3, (1.0,) * 3, False),
 }
+# Swappers whose source vector comes from their own identity encoder instead of w600k_r50.
+SOURCE_ENCODERS = {f"ghost1_generator_{v}": f"ghost_backbone_{v}" for v in ("fp32", "fp16", "int8")}
+
+
+def source_encoder(swapper: str) -> str:
+    return SOURCE_ENCODERS.get(swapper, "arcface_w600k_r50")
+
+
 # BiSeNet classes that belong to the replaced face: skin, brows, eyes, nose,
 # mouth, lips.  Glasses (6), ears, hair, neck and cloth stay the target's.
 FACE_CLASSES = (1, 2, 3, 4, 5, 10, 11, 12, 13)
@@ -160,6 +180,11 @@ def model_path(name: str, fetch: bool = True) -> str:
         path = os.path.join(SHIPPED, rel)
         if sha256_file(path) != digest:
             raise RuntimeError(f"{name}: bytes differ from the pinned APK asset")
+        return path
+    if name in LOCAL_MODELS:
+        path = os.path.join(cache_dir(), "export", LOCAL_MODELS[name]["file"])
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{path}: run python3 -m tools.identity_bench.export.ghost1_export first")
         return path
     spec = MODELS[name]
     folder = os.path.join(cache_dir(), "models")
@@ -443,7 +468,10 @@ class Swapper:
             self.emap = numpy_helper.to_array(graph.initializer[-1]).astype(np.float64)
 
     def source_vector(self, raw_embedding: np.ndarray) -> np.ndarray:
-        """Turn the raw w600k_r50 embedding into what this network expects."""
+        """Turn the raw embedding of `source_encoder(name)` into what this network expects.
+
+        For every swapper but the exported GHOST ("ghost-own") that encoder is w600k_r50.
+        """
         e = np.asarray(raw_embedding, np.float64).reshape(1, -1)
         if self.kind == "inswapper":
             e = e @ self.emap / np.linalg.norm(e)

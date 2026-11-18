@@ -14,7 +14,7 @@ Photos edge to edge, chrome that floats and fades. One deep neutral ground, one 
 | ink (primary text) | `#ECEDF0` | `#111318` |
 | ink-muted (secondary text) | `#B4B8C1` | `#4A4F59` |
 | ink-faint (meta, captions) | `#9A9EA8` | `#5F6470` |
-| accent | `#7FA8FF` | `#2F6BE0` |
+| accent | `#7FA8FF` | `#2A62D4` |
 | on-accent | `#0B0C0F` | `#FFFFFF` |
 | viewer ground | `#000000` | `#000000` |
 
