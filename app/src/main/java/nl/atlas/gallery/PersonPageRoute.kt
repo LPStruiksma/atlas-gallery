@@ -199,6 +199,22 @@ internal fun NativePersonAlbumRoute(
     }
     val currentGrant = galleryGrant?.takeIf { it == catalogueEpoch.toString() }
     val personIdentity = request.target.toString()
+    // An in-memory selection is no safer than a restored one: it must not
+    // remain actionable after the grant, People epoch or person identity moves.
+    // Capture the fence when selection begins and clear it on any mismatch.
+    var activeSelectionFence by remember(request.opening) {
+        mutableStateOf<List<String>?>(null)
+    }
+    val selectionFence = if (currentGrant != null && epoch != null)
+        listOf(currentGrant, epoch, personIdentity) else null
+    LaunchedEffect(selectionFence, selected) {
+        if (selected != null && (selectionFence == null ||
+                (activeSelectionFence != null && activeSelectionFence != selectionFence))) {
+            selected = null
+            pendingSelection = emptyList()
+            activeSelectionFence = null
+        }
+    }
     androidx.compose.runtime.SideEffect {
         val live = selected
         if (live != null && currentGrant != null && epoch != null &&
@@ -234,7 +250,10 @@ internal fun NativePersonAlbumRoute(
         }
         if (pendingSelection == saved && selected == null) {
             pendingSelection = emptyList()
-            if (matching.size == keys.size) selected = matching
+            if (matching.size == keys.size) {
+                activeSelectionFence = selectionFence
+                selected = matching
+            }
         }
     }
     val asked = question
@@ -321,6 +340,7 @@ internal fun NativePersonAlbumRoute(
         selectedUris = selected,
         onSelectionChange = {
             selected = it
+            activeSelectionFence = if (it != null) selectionFence else null
             if (it == null) pendingSelection = emptyList()
         },
         samePerson = samePersonCard,
