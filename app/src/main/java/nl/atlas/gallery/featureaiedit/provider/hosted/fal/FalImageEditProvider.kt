@@ -151,7 +151,7 @@ class FalImageEditProvider(
         )
         val requestId = when (submitted) {
             EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-            is EditHttpResult.Failed -> return hostedFailure(submitted)
+            is EditHttpResult.Failed -> return falError(submitted)
             is EditHttpResult.Success -> HostedJson.parseOrNull(submitted.bytes).obj()?.get("request_id").str()
                 ?.takeIf { REQUEST_ID.matches(it) }
                 ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_SUBMIT_REPLY")
@@ -173,7 +173,7 @@ class FalImageEditProvider(
             )
             val body = when (status) {
                 EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-                is EditHttpResult.Failed -> return hostedFailure(status)
+                is EditHttpResult.Failed -> return falError(status)
                 is EditHttpResult.Success -> HostedJson.parseOrNull(status.bytes).obj()
                     ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_STATUS")
             }
@@ -196,10 +196,10 @@ class FalImageEditProvider(
         )
         val result = when (resultReply) {
             EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-            // A failed model run is reported on this call as an HTTP error. The transport hides
-            // reply bodies, so a content-policy rejection cannot yet be told apart from a bad input.
-            is EditHttpResult.Failed -> return hostedFailure(resultReply).let {
-                if (it.kind == FailureKind.INVALID_REQUEST) it.copy(message = "RESULT_REJECTED") else it
+            is EditHttpResult.Failed -> return when (val mapped = falError(resultReply)) {
+                is EditOutcome.Failed -> if (mapped.kind == FailureKind.INVALID_REQUEST)
+                    mapped.copy(message = "RESULT_REJECTED") else mapped
+                else -> mapped
             }
             is EditHttpResult.Success -> HostedJson.parseOrNull(resultReply.bytes).obj()
                 ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_RESULT")
@@ -227,6 +227,20 @@ class FalImageEditProvider(
         result["seed"].num()?.let { metadata["seed"] = it.toLong().toString() }
         queuePosition?.let { metadata["queuePositionAtLastCheck"] = it.toString() }
         return EditOutcome.Success(stored, providerModel = model.endpoint, providerVersion = model.endpoint, metadata = metadata)
+    }
+
+    /** fal documents `detail.type=content_policy_violation` for its structured policy error. */
+    private fun falError(failure: EditHttpResult.Failed): EditOutcome {
+        val root = HostedJson.parseOrNull(failure.errorBody).obj()
+        val details = when (val detail = root?.get("detail")) {
+            is List<*> -> detail
+            is Map<*, *> -> listOf(detail)
+            else -> emptyList<Any?>()
+        }
+        val policy = details.mapNotNull { it.obj()?.get("type").str() }
+            .firstOrNull { it == "content_policy_violation" }
+        return if (policy != null) EditOutcome.Refused("fal:$policy", "fal.ai declined the request ($policy).")
+        else hostedFailure(failure)
     }
 
     private sealed interface Downloaded {

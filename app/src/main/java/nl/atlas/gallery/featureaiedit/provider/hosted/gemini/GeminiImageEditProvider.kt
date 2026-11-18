@@ -152,7 +152,7 @@ class GeminiImageEditProvider(
             )
             return when (reply) {
                 EditHttpResult.Cancelled -> EditOutcome.Cancelled
-                is EditHttpResult.Failed -> hostedFailure(reply)
+                is EditHttpResult.Failed -> GeminiWire.parseError(reply.errorBody) ?: hostedFailure(reply)
                 is EditHttpResult.Success -> interpret(jobId, HostedJsonFile.parseOrNull(replyFile), size, aspect, key, context)
             }
         } finally {
@@ -341,6 +341,20 @@ internal object GeminiWire {
         "SAFETY", "IMAGE_SAFETY", "PROHIBITED_CONTENT", "IMAGE_PROHIBITED_CONTENT", "BLOCKLIST",
         "SPII", "RECITATION", "IMAGE_RECITATION", "ESCALATION", "PUP_LIMITED_DISABLED", "MODEL_ARMOR"
     )
+
+    /**
+     * Google API errors use the documented google.rpc.Status envelope. Only a structured
+     * ErrorInfo `reason` that is also a documented Gemini policy reason is a refusal; messages
+     * are untrusted prose and are never copied into state.
+     */
+    fun parseError(bytes: ByteArray): EditOutcome.Refused? {
+        if (bytes.isEmpty()) return null
+        val error = HostedJson.parseOrNull(bytes).obj()?.get("error").obj() ?: return null
+        val reason = error["details"].arr().orEmpty().mapNotNull { detail ->
+            detail.obj()?.get("reason").str()
+        }.firstOrNull { it in POLICY_FINISH || it in PROMPT_BLOCKS } ?: return null
+        return EditOutcome.Refused("error:$reason", "Gemini declined the request ($reason).")
+    }
 
     /** Every finish reason documented on 2026-11-18; anything else is reported as UNRECOGNIZED. */
     private val KNOWN_FINISH = POLICY_FINISH + setOf(
