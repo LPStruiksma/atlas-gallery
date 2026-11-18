@@ -62,12 +62,6 @@ Open weights means downloadable parameters; **not** automatic commercial permiss
 
 **GPU cost baseline (not inference evidence):** Runpod published rates updated **2026-11-12** include Community RTX 4090 24GB $0.34/h, A40 48GB $0.35–0.59/h by tier, A100 80GB from $1.19–1.39/h, and Secure A100 from $2+/h. Availability, disk, network, startup, memory and billing granularity vary [GPU1]. Benchmark on the *exact* rented GPU with cold-start, source decode, safety/queue, output transfer and P95; the following latency assumptions are merely planning scenarios.
 
-## On-device (no upload)
-
-| Engine | Instruction / mask / refs / candidates / multi-turn | Resolution; sync/jobs | Licence, size, cost and evidence |
-|---|---|---|---|
-| **LaMa big-lama on ONNX Runtime CPU** (`LocalEraseProvider`, AIE-22 #434) | Erase only: instruction ignored / **Y, hard mask**: pixels outside the mask are bit-identical by construction and test / N / 1 / N | Any source up to 64 MP at full resolution; model sees a ≤512 px context window around the mask; poll-based local job, cancellable | Apache-2.0 (OpenCV Zoo export), 92.6 MB bundled, free, offline. Host 512² inference ≈ 3.7 s (4 x86 threads), CI emulator ≈ 8.1 s (1 thread); phone not yet measured (`ON_DEVICE_ERASE.md`) |
-
 ## Content-policy and refusal matrix — separate from quality
 
 **Lawful adult/consensual intimate, political, artistic violent and unconventional requests** are relevant *test strata*, never blanket promises. All providers forbid unlawful abuse and CSAM; policy and actual refusal probabilities differ, including for legal content. Do **not** add ATLAS-side category censorship to the local gallery; honor applicable law and the selected provider's terms. Record a provider refusal or technical failure honestly; **never retry on a different engine without the user's explicit choice**.

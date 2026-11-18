@@ -10,6 +10,14 @@ Erase (remove an object, a passer-by, a blemish) runs on the phone: free, offlin
 - Model: OpenCV Zoo `inpainting_lama_2025jan.onnx` (LaMa big-lama, Apache-2.0), 92,591,623 bytes, bundled as two asset parts. Provenance and hashes: `app/src/main/assets/models/lama/SOURCE.md`.
 - No network code on this path, no new Gradle dependency, no manifest change, no existing AI Edit file changed.
 
+## Capability summary
+
+The same fields as the capability matrices in `PROVIDERS.md`. Per the AI Edit Strategy route of 2026-11-18, adapter and engine notes live in their own file:
+
+| Engine | Instruction / mask / refs / candidates / multi-turn | Resolution; sync/jobs | Licence, size, cost and evidence |
+|---|---|---|---|
+| **LaMa big-lama on ONNX Runtime CPU** (`LocalEraseProvider`, AIE-22 #434) | Erase only, instruction ignored / **Y, hard mask**: pixels outside the mask are bit-identical by construction and by test / N / 1 / N | Any source up to 64 MP at full resolution; the model sees a context window of at most 512 px around the mask; poll-based local job, cancellable | Apache-2.0 (OpenCV Zoo export), 92.6 MB bundled, free, offline. Host 512² inference ≈ 3.7 s (4 x86 threads), CI emulator ≈ 8.1 s (1 thread); phone not yet measured |
+
 ## How an erase works
 
 1. **Mask bounds.** The mask (same size as the stored source pixels; white/opaque = erase) is scanned in 256-row bands for its exact bounding box. Empty mask: the source comes back unchanged and the model never loads.
