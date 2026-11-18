@@ -6,12 +6,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build;
+import android.provider.Settings;
 import android.view.View;
 import android.view.WindowManager;
 
 /**
- * A keyboard for emulator tests only: one flat panel that is always 38% of
- * the display tall. It never asks for a permission, never shows a suggestion
+ * A keyboard for emulator tests only: one flat panel, 918 px tall on a
+ * 1080x2340 display (the height of the emulator's own keyboard there) and
+ * the same share of any other display, or the height KeyboardRule names. It never asks for a permission, never shows a suggestion
  * strip and has no first-run screens, so the keyboard inset a test sees is
  * the same on every run (see docs/testing/EMULATOR_TESTS.md).
  *
@@ -23,8 +25,11 @@ import android.view.WindowManager;
  * (performTextInput). It lives in the androidTest APK and never ships.
  */
 public class AtlasTestKeyboard extends InputMethodService {
-    /** Share of the display height the panel takes. */
-    public static final float HEIGHT_FRACTION = 0.38f;
+    /** Default share of the display height: 918 px of 2340. */
+    public static final float HEIGHT_FRACTION = 918f / 2340f;
+
+    /** Global setting with the height in px, written and removed by KeyboardRule. */
+    public static final String HEIGHT_SETTING = "atlas_test_keyboard_height_px";
 
     @Override
     public View onCreateInputView() {
@@ -45,6 +50,14 @@ public class AtlasTestKeyboard extends InputMethodService {
     }
 
     private int panelHeight() {
+        try {
+            int asked = Settings.Global.getInt(getContentResolver(), HEIGHT_SETTING, 0);
+            if (asked > 0) {
+                return asked;
+            }
+        } catch (RuntimeException unreadable) {
+            // Fall back to the default share.
+        }
         int display;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             display = getSystemService(WindowManager.class)

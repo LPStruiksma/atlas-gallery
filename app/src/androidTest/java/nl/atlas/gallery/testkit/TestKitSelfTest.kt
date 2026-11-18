@@ -24,7 +24,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
@@ -140,19 +142,47 @@ class TestKitSelfTest {
         expectFailure("is disabled") { compose.tap(hasTestTag("disabled")) }
     }
 
-    // Rule 4: a pointer tap must name its effect; no effect is a failure.
-    @Test fun touchTapNeedsItsEffect() {
+    // Rule 4: a tap can name its effect; no effect is a failure that says
+    // where the pointer went. The tap is a real pointer: a scrim on top of
+    // the button takes it, which a click action would not notice.
+    @Test fun tapWithAnEffectFailsWhenNothingHappens() {
         var pressed by mutableIntStateOf(0)
+        var covered by mutableStateOf(false)
         compose.setContent {
             Box(Modifier.fillMaxSize().statusBarsPadding()) {
                 Button({ pressed++ }, Modifier.testTag("button")) { Text("Button") }
+                if (covered) {
+                    Box(Modifier.fillMaxSize().testTag("scrim")
+                        .pointerInput(Unit) { detectTapGestures { } })
+                }
             }
         }
-        compose.touchTap(hasTestTag("button")) { pressed == 1 }
+        compose.tap(hasTestTag("button")) { pressed == 1 }
+        covered = true
+        compose.waitForIdle()
         expectFailure("had no effect") {
-            compose.touchTap(hasTestTag("button"), timeoutMs = 1_000L) { pressed == 99 }
+            compose.tap(hasTestTag("button"), timeoutMs = 1_000L) { pressed == 2 }
         }
-        assertEquals("the second pointer tap still arrived once", 2, pressed)
+        assertEquals("the scrim took the second tap", 1, pressed)
+    }
+
+    // Rule 3: a node that moves while the pointer is down is a failed tap,
+    // not a silent miss. A product timer that fires inside the click's own
+    // frame is the case the stillness check before the tap cannot see.
+    @Test fun tapFailsWhenTheNodeMovesWhileThePointerIsDown() {
+        var moved by mutableStateOf(false)
+        compose.setContent {
+            LaunchedEffect(Unit) {
+                delay(8L)
+                moved = true
+            }
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                Button({}, Modifier.offset(y = if (moved) 300.dp else 0.dp).testTag("button")) {
+                    Text("Button")
+                }
+            }
+        }
+        expectFailure("moved while the pointer was down") { compose.tap(hasTestTag("button")) }
     }
 
     // Rule 2 on the emulator's own keyboard: typing leaves it hidden by
@@ -185,11 +215,16 @@ class TestKitSelfTest {
         compose.awaitWindowSettled()
     }
 
-    // The fixed test keyboard opens at one known height, every time.
+    // The fixed test keyboard opens at one known height, every time: 918 px
+    // of a 2340 px display by default, or the height the test names. The
+    // device's own input method is selected again afterwards.
     @Test fun fixedKeyboardOpensAtTheSameKnownHeightEveryTime() {
+        val deviceKeyboard = selectedInputMethod()
+        Log.i(TEST_KIT_LOG_TAG, "before: selected=$deviceKeyboard " +
+            "enabled=${testShell("ime list -s").replace("\n", ",")}")
+        fieldAndBottomButton { }
+        val window = onMainThread { compose.activity.window.decorView.height }
         withTestKeyboard(TestKeyboard.Fixed) {
-            fieldAndBottomButton { }
-            val window = onMainThread { compose.activity.window.decorView.height }
             val heights = (1..5).map { round ->
                 val started = SystemClock.uptimeMillis()
                 compose.typeText(hasTestTag("field"), "a", KeyboardAfter.Shown)
@@ -202,16 +237,24 @@ class TestKitSelfTest {
             }
             assertEquals("the keyboard has one height on every open: $heights",
                 1, heights.toSet().size)
-            val share = heights.first().toFloat() / window
-            assertTrue("the keyboard takes about 38% of the display, measured " +
-                "${heights.first()} of $window px", share in 0.36f..0.50f)
+            assertEquals("918 px of a 2340 px display by default",
+                Math.round(window * 918f / 2340f), heights.first())
         }
+        withTestKeyboard(TestKeyboard.Fixed, fixedHeightPx = 600) {
+            compose.typeText(hasTestTag("field"), "b", KeyboardAfter.Shown)
+            assertEquals("the height the test named", 600, compose.keyboardInsetPx())
+            compose.hideKeyboard()
+        }
+        assertEquals("the device's own input method is selected again",
+            deviceKeyboard, selectedInputMethod())
+        assertFalse("the test keyboards are disabled again",
+            testShell("ime list -s").contains("nl.atlas.gallery.testkit"))
     }
 
     // With TestKeyboard.None typing works and the window is never inset.
     @Test fun noKeyboardTakesTextAndNeverInsetsTheWindow() {
+        fieldAndBottomButton { }
         withTestKeyboard(TestKeyboard.None) {
-            fieldAndBottomButton { }
             compose.onNodeWithTag("field").performClick()
             compose.typeText(hasTestTag("field"), "Synthetic Ada")
             compose.onNodeWithTag("field").performClick()

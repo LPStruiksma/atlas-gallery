@@ -1,8 +1,8 @@
 # Emulator tests: the rules
 
-One pattern for every instrumented test in `app/src/androidTest`. It comes from the 2026-11-18 audit of the whole emulator suite (#437). The kit lives in `app/src/androidTest/java/nl/atlas/gallery/testkit/`; `TestKitSelfTest` proves each helper and each fact below on the emulator.
+One pattern for every instrumented test in `app/src/androidTest`. It comes from the 2026-11-18 audit of the whole emulator suite (#437). The kit lives in `app/src/androidTest/java/nl/atlas/gallery/testkit/`; `TestKitSelfTest` proves each helper and each fact below on the emulator, and `test/additive-regressions/ui-test-reliability.mjs` stops the old patterns from growing.
 
-## The eight rules
+## The nine rules
 
 **1. Wait for an outcome, never for a time.** Every wait is `awaitThat("label") { condition }` (or `waitForNode(matcher)` for "this node exists"). On timeout it reports the label, the test line, the screen and the device. No `Thread.sleep`, no bare `waitUntil`.
 
@@ -17,16 +17,16 @@ compose.typeText(hasTestTag("atlas-group-name"), "Synthetic Ada")               
 compose.typeText(hasTestTag("atlas-group-name"), "Synthetic Ada", KeyboardAfter.Shown) // up, height stable
 ```
 
-**3. `tap(matcher)` is the default tap.** It waits for the node, scrolls it into view, requires it enabled, whole on screen, above the keyboard and still, then invokes its click action. A cut-off or disabled node fails with its bounds. It never retries.
+**3. `tap(matcher)` is the tap.** It waits for the node, scrolls it into view, requires it enabled, whole on screen, above the keyboard and still on two frames, then sends a real pointer DOWN and UP at its centre. A cut-off or disabled node fails with its bounds; a node that moves while the pointer is down fails with both positions. It never retries. A click action (`OnClick`) is only for tests of the accessibility route.
 
 ```kotlin
 compose.tap(hasTestTag("atlas-group-create-person"))
 ```
 
-**4. `touchTap(matcher) { effect }` is for tests about touch delivery** (TOUCH-1, gestures, hit targets). Same preconditions, real pointer events, and the caller names the effect. No effect is a failure that says where the pointer went.
+**4. A test about touch delivery names the effect** (TOUCH-1, gestures, hit targets): `tap(matcher) { effect }`. No effect within the timeout is a failure that says where the pointer went and what is there now.
 
 ```kotlin
-compose.touchTap(hasTestTag("atlas-unknown-skip")) { skipped == 1 }
+compose.tap(hasTestTag("atlas-unknown-skip")) { skipped == 1 }
 ```
 
 **5. After anything that opens another window** (sheet, menu, dialog, system dialog), wait for its first node before touching it. A popup is a separate window that attaches a moment later.
@@ -43,18 +43,20 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 
 **8. Product code does not wait a fixed time for the system.** React to the inset, layout or state itself. A refused action logs why.
 
+**9. Capture only a node that is whole on screen.** `captureToImage()` copies only the visible part of a node; `node.captureWhole()` scrolls it in and refuses a node that is still cut.
+
 ## Which helper do I use
 
 | I want to | Use | Not |
 |---|---|---|
 | wait for something | `awaitThat(label) { … }`, `waitForNode(matcher)` | `Thread.sleep`, a private `waitFor` |
 | press a button | `tap(matcher)` | `performClick()` |
-| prove a touch arrives | `touchTap(matcher) { effect }` | a retry loop around a click |
+| prove a touch arrives | `tap(matcher) { effect }` | a retry loop around a click |
 | type | `typeText(matcher, text)` | `performTextInput` and hope |
 | screenshot or assert with the keyboard up | `typeText(…, KeyboardAfter.Shown)`, `assertAboveKeyboard(matcher)` | a check on `boundsInWindow` |
 | read pixels of a node | `node.captureWhole()` | `captureToImage()` |
 | let a product timer pass | `advanceVirtualTime(ms)` | sleeping |
-| run without the emulator's keyboard | `KeyboardRule(TestKeyboard.None)` or `Fixed` | |
+| choose the keyboard | `KeyboardRule()` (none), `KeyboardRule(TestKeyboard.Fixed)` | the emulator's own |
 | describe the device in a failure | `describeDevice()` | a private `shell("dumpsys …")` |
 
 ## Why
@@ -79,10 +81,10 @@ A product rule like "bring the name form into view 300 ms after the keyboard" mi
 
 LatinIME takes 0.3 to 2 s to appear, changes height with its suggestion strip, can open its own permission screen over ATLAS (#424), and on one shard never came back after a display reset. `typeText` and `hideKeyboard` make tests independent of when it arrives.
 
-A test can also take the keyboard out of the picture. The androidTest APK carries two input methods of its own (nothing ships in ATLAS):
+So tests bring their own. The androidTest APK carries two input methods (nothing ships in ATLAS), chosen with `KeyboardRule`:
 
-- `TestKeyboard.None`: fields take focus and text; nothing slides up.
-- `TestKeyboard.Fixed`: a flat "Test keyboard" panel, always 38% of the display (912 px of 2400, 0.5 to 1.1 s to open, same height on 80 of 80 opens in runs 44334939961 and 44335143186).
+- `TestKeyboard.None`, the default for every test: fields take focus and text; nothing slides up.
+- `TestKeyboard.Fixed`, for tests whose claim is about layout above the keyboard, and for evidence that shows a keyboard: a flat panel that says "Test keyboard", 918 px tall at 1080x2340 (the height LatinIME had there) or the height the rule names. On the CI emulator it opened at one height on 80 of 80 opens, in 0.5 to 1.1 s. The open animation is the platform's and runs as for any keyboard.
 
 ```kotlin
 @get:Rule val chain: RuleChain = RuleChain
@@ -90,11 +92,21 @@ A test can also take the keyboard out of the picture. The androidTest APK carrie
     .around(S24DisplayRule()).around(compose)
 ```
 
-The two services are plain Java on `android.*` only: the system runs them in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
+`typeText`, `hideKeyboard` and `awaitKeyboardShown` work the same with either. No migrated test depends on LatinIME.
+
+Kit code that the system starts must be plain Java on `android.*` only. The system runs an input method in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
 
 ## When an emulator test fails
 
-1. Read the failing step's own message first: `awaitThat`, `tap` and `touchTap` print what was on screen and the device state.
+1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.
 2. Decide which clock the missing event runs on before touching a timeout.
 3. A failure before any test ran (Maven 429, KVM, emulator boot) gets one re-run of that job per head. A failed assertion never does.
 4. Never fix a test by sleeping longer or retrying the tap: each hides what a person would hit.
+
+## The ratchet
+
+`test/additive-regressions/ui-test-reliability.mjs` runs in the cheap static job. Per test file it counts sleeps, raw captures, raw typing without a `KeyboardRule`, private device-state writes and private waits, and fails when a file has more than `ui-test-debt.json` records (a new file starts at zero). Raw clicks are counted but not enforced yet. After migrating a file, lower its numbers:
+
+```
+ATLAS_UI_DEBT_WRITE=1 node test/additive-regressions/ui-test-reliability.mjs
+```

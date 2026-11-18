@@ -1,5 +1,6 @@
 package nl.atlas.gallery.testkit
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.ViewRootForTest
@@ -13,13 +14,12 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.toSize
 import kotlin.math.abs
 
 /**
- * The default tap (docs/testing/EMULATOR_TESTS.md, rule 3).
+ * The tap for emulator tests (docs/testing/EMULATOR_TESTS.md, rules 3 and 4).
  *
  * Compose's performClick() is a touch at the centre of the node's CLIPPED
  * bounds. For a node scrolled out of its list, or one a keyboard-padded list
@@ -29,49 +29,67 @@ import kotlin.math.abs
  *
  * tap() waits until the node exists, scrolls it into its scroll parent, and
  * requires it to be enabled, whole on screen, above the keyboard and at the
- * same place on two frames in a row. Then it invokes the node's click action.
- * Otherwise it fails and says where the node is and what cuts it. It never
- * retries. For a test about touch delivery itself use [touchTap].
- */
-fun ComposeTestRule.tap(matcher: SemanticsMatcher, useUnmergedTree: Boolean = false) {
-    val target = awaitTappable("tap", matcher, useUnmergedTree)
-    val node = target.fetchSemanticsNode()
-    if (SemanticsActions.OnClick !in node.config) {
-        throw AssertionError("tap() refused: ${matcher.description} has no click action " +
-            "(${node.place()}). Match the clickable node, or use touchTap for a gesture target.")
-    }
-    target.performSemanticsAction(SemanticsActions.OnClick)
-}
-
-/**
- * A tap with real pointer events, for tests about touch delivery (TOUCH-1,
- * gestures, hit targets): rule 4. Same preconditions as [tap], then DOWN and
- * UP at the node's centre, then [effect] must become true within [timeoutMs].
- * No effect is a failure that says where the pointer went and what was there.
+ * same place on two frames in a row. Then it sends a pointer DOWN and UP at
+ * the node's centre, so hit testing still happens and an overlay that
+ * swallows the touch is caught by the missing effect. If the node moved
+ * while the pointer was down it fails with both positions. It never retries.
  *
  * Compose test pointers go straight to the Compose view. They do not pass the
  * window, so the keyboard window cannot take them and a Window.Callback never
  * sees them; only UiAutomation.injectInputEvent travels that path.
  */
-fun ComposeTestRule.touchTap(
-    matcher: SemanticsMatcher, timeoutMs: Long = 10_000L, effect: () -> Boolean
+fun ComposeTestRule.tap(matcher: SemanticsMatcher, useUnmergedTree: Boolean = false) {
+    pointerTap(matcher, useUnmergedTree)
+}
+
+/**
+ * [tap], then [effect] must become true within [timeoutMs]. For tests about
+ * touch delivery (TOUCH-1, gestures, hit targets) and wherever the next step
+ * depends on the tap having landed. No effect is a failure that says where
+ * the pointer went and what is at that point now.
+ */
+fun ComposeTestRule.tap(
+    matcher: SemanticsMatcher,
+    useUnmergedTree: Boolean = false,
+    timeoutMs: Long = 10_000L,
+    effect: () -> Boolean
 ) {
-    val target = awaitTappable("touchTap", matcher, useUnmergedTree = false)
-    val bounds = target.fetchSemanticsNode().boundsInRoot
-    target.performTouchInput { click() }
+    val point = pointerTap(matcher, useUnmergedTree)
     try {
-        awaitThat("the effect of touchTap(${matcher.description})", timeoutMs, effect)
+        awaitThat("the effect of tap(${matcher.description})", timeoutMs, effect)
     } catch (timeout: AssertionError) {
-        val point = bounds.center
         val under = runCatching {
             onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
                 .lastOrNull { it.boundsInRoot.contains(point) }?.let { "${it.label()} ${it.place()}" }
         }.getOrNull() ?: "nothing"
-        throw AssertionError("touchTap(${matcher.description}) had no effect. The pointer went " +
+        throw AssertionError("tap(${matcher.description}) had no effect. The pointer went " +
             "to ${point.x.toInt()},${point.y.toInt()} px; now at that point: $under. " +
             timeout.message, timeout)
     }
+}
+
+/** Sends the checked pointer tap and returns the point it went to, in root px. */
+private fun ComposeTestRule.pointerTap(matcher: SemanticsMatcher, useUnmergedTree: Boolean): Offset {
+    val target = awaitTappable(matcher, useUnmergedTree)
+    val before = target.fetchSemanticsNode().wholeInRoot()
+    // The click advances the Compose clock by one frame between DOWN and UP.
+    // Hold the clock otherwise, so the position read after UP is the one the
+    // pointer met and not yet the result of the click itself.
+    val autoAdvance = mainClock.autoAdvance
+    mainClock.autoAdvance = false
+    val after = try {
+        target.performTouchInput { click() }
+        runCatching { target.fetchSemanticsNode().wholeInRoot() }.getOrNull()
+    } finally {
+        mainClock.autoAdvance = autoAdvance
+    }
+    if (after != null && after != before) {
+        throw AssertionError("tap(${matcher.description}): the node moved while the pointer " +
+            "was down, from ${before.px()} to ${after.px()}. The touch may have missed it. " +
+            "Wait for the layout to finish before the tap.")
+    }
+    return before.center
 }
 
 /** Fails unless the whole node is on screen and above the keyboard. */
@@ -82,7 +100,7 @@ fun SemanticsNodeInteraction.assertFullyVisible(): SemanticsNodeInteraction {
 }
 
 /**
- * captureToImage() for pixel checks: it copies only the clipped part of a
+ * captureToImage() for pixel checks (rule 9): it copies only the clipped part of a
  * node, so a tile half under a header gives pixels of the wrong place.
  * Scrolls the node into view and refuses a node that is still not whole.
  */
@@ -93,8 +111,9 @@ fun SemanticsNodeInteraction.captureWhole(): ImageBitmap {
 }
 
 private fun ComposeTestRule.awaitTappable(
-    what: String, matcher: SemanticsMatcher, useUnmergedTree: Boolean
+    matcher: SemanticsMatcher, useUnmergedTree: Boolean
 ): SemanticsNodeInteraction {
+    val what = "tap"
     awaitThat("${matcher.description} to exist before $what") {
         exists(matcher, useUnmergedTree)
     }

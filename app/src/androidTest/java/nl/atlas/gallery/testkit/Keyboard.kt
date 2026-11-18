@@ -161,12 +161,22 @@ internal fun View.keyboardRequested(): Boolean =
  * arrival, its changing height, its own permission screen (#424).
  */
 enum class TestKeyboard(internal val service: String) {
-    /** Text fields take focus and text; nothing slides up or resizes the screen. */
+    /**
+     * The default for every test: fields take focus and text, nothing slides
+     * up or resizes the screen.
+     */
     None("AtlasNoKeyboard"),
 
-    /** A flat panel, always 38% of the display tall. For tests about keyboard insets. */
+    /**
+     * A flat panel that says "Test keyboard", for tests whose claim is about
+     * layout above the keyboard. 918 px tall at 1080x2340 unless the rule
+     * names another height.
+     */
     Fixed("AtlasTestKeyboard")
 }
+
+/** The global setting the fixed test keyboard reads its height from, in px. */
+internal const val FIXED_KEYBOARD_HEIGHT_SETTING = "atlas_test_keyboard_height_px"
 
 /**
  * Selects [keyboard] for one test and puts the previous input method back.
@@ -174,32 +184,46 @@ enum class TestKeyboard(internal val service: String) {
  *
  *     @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.None))
  *         .around(S24DisplayRule()).around(compose)
+ *
+ * [fixedHeightPx] sets the height of [TestKeyboard.Fixed]; null keeps its default.
  */
-class KeyboardRule(private val keyboard: TestKeyboard) : TestRule {
+class KeyboardRule(
+    private val keyboard: TestKeyboard = TestKeyboard.None,
+    private val fixedHeightPx: Int? = null
+) : TestRule {
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
-            override fun evaluate() = withTestKeyboard(keyboard) { base.evaluate() }
+            override fun evaluate() = withTestKeyboard(keyboard, fixedHeightPx) { base.evaluate() }
         }
 }
 
 /** Runs [body] with [keyboard] selected; restores the previous input method afterwards. */
-fun <T> withTestKeyboard(keyboard: TestKeyboard, body: () -> T): T {
+fun <T> withTestKeyboard(keyboard: TestKeyboard, fixedHeightPx: Int? = null, body: () -> T): T {
     val testPackage = InstrumentationRegistry.getInstrumentation().context.packageName
     val id = "$testPackage/nl.atlas.gallery.testkit.${keyboard.service}"
-    val before = testShell("settings get secure default_input_method")
-    val enabled = testShell("ime enable $id")
-    val selected = testShell("ime set $id")
-    val now = testShell("settings get secure default_input_method")
-    check(now == id) {
-        "Could not select the test keyboard $id (now '$now'). ime enable said '$enabled', " +
-            "ime set said '$selected'."
+    val before = selectedInputMethod()
+    if (fixedHeightPx != null) {
+        testShell("settings put global $FIXED_KEYBOARD_HEIGHT_SETTING $fixedHeightPx")
     }
-    Log.i(TEST_KIT_LOG_TAG, "keyboard=${keyboard.name} selected (was $before)")
     try {
+        val enabled = testShell("ime enable $id")
+        val selected = testShell("ime set $id")
+        val now = selectedInputMethod()
+        check(now == id) {
+            "Could not select the test keyboard $id (now '$now'). ime enable said " +
+                "'$enabled', ime set said '$selected'."
+        }
+        Log.i(TEST_KIT_LOG_TAG, "keyboard=${keyboard.name} selected (was $before)")
         return body()
     } finally {
         if (before.isEmpty() || before == "null" || before == id) testShell("ime reset")
         else testShell("ime set $before")
         if (before != id) testShell("ime disable $id")
+        if (fixedHeightPx != null) testShell("settings delete global $FIXED_KEYBOARD_HEIGHT_SETTING")
+        Log.i(TEST_KIT_LOG_TAG, "keyboard restored: selected=${selectedInputMethod()} " +
+            "enabled=${testShell("ime list -s").replace("\n", ",")}")
     }
 }
+
+/** The id of the input method the device has selected now. */
+fun selectedInputMethod(): String = testShell("settings get secure default_input_method")
