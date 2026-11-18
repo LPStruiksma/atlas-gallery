@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featureorganization
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,6 +54,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
+import nl.atlas.gallery.featuredesign.AtlasMotionKind
+import nl.atlas.gallery.featuredesign.atlasTween
 import nl.atlas.gallery.featuredesign.AtlasPillColor
 import nl.atlas.gallery.featuredesign.AtlasTabPillHeight
 import nl.atlas.gallery.featuredesign.LocalAtlasDark
@@ -72,9 +76,15 @@ fun SelectionCheckCircle(
     size: Int = 22,
     onPage: Boolean = false
 ) {
-    val ring = modifier.size(size.dp).then(
-        if (onPage && !checked) Modifier.testTag("atlas-selection-page-ring") else Modifier
+    val emphasis by animateFloatAsState(
+        targetValue = if (checked) 1f else 0.86f,
+        animationSpec = atlasTween<Float>(AtlasMotionKind.SELECTION),
+        label = "atlas-selection-ring-emphasis"
     )
+    val ring = modifier.graphicsLayer { scaleX = emphasis; scaleY = emphasis }
+        .size(size.dp).then(
+            if (onPage && !checked) Modifier.testTag("atlas-selection-page-ring") else Modifier
+        )
     if (checked) {
         Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SelectionCheckBlue,
             modifier = ring)

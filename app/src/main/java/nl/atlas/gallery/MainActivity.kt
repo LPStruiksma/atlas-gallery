@@ -110,6 +110,9 @@ import nl.atlas.gallery.featurestories.AtlasStoriesScreen
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
 import nl.atlas.gallery.featurealbums.buildAlbumSummaries
+import androidx.compose.animation.Crossfade
+import nl.atlas.gallery.featuredesign.AtlasMotionKind
+import nl.atlas.gallery.featuredesign.atlasTween
 import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
@@ -2923,7 +2926,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     !originalProportions && timelineEnabled
             }
             // #556: Samsung swaps the tab bar for the selection actions.
-            if (photosSelection != null) {
+            Crossfade(
+                targetState = photosSelection != null,
+                animationSpec = atlasTween<Float>(AtlasMotionKind.SELECTION),
+                label = "atlas-selection-navigation-swap"
+            ) { inSelectionMode ->
+            if (inSelectionMode && photosSelection != null) {
                 val live = photosSelection.isCurrentFor(visible, publishedGallery.epoch,
                     galleryAccessCurrent())
                 SamsungSelectionBottomBar(
@@ -2985,6 +2993,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     albumReturnToAlbums = false
                 }
                 )
+            }
             }
             }
         }

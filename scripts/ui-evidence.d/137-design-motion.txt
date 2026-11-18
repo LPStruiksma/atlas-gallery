@@ -1,0 +1,14 @@
+# #137 DESIGN-7 partial (gallery chrome only): frozen-clock start/mid/end frames
+# for tab emphasis, header subtitle collapse and the selection bar swap, plus
+# reduced motion switched on live (animator scale 0): one frame after the tap.
+motion-137-tab-start
+motion-137-tab-mid
+motion-137-tab-end
+motion-137-header-start
+motion-137-header-mid
+motion-137-header-end
+motion-137-selection-start
+motion-137-selection-mid
+motion-137-selection-end
+motion-137-reduced-tab
+motion-137-reduced-selection
