@@ -331,9 +331,9 @@ class EditHttpTransport(
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.NETWORK, true)
         } catch (_: ReplyLimitExceeded) {
-            // Over a caller-chosen cap: the same request would get the same reply, so no retry.
+            // Over a caller-chosen cap: same code as the default caps, and the same request would get the same reply, so no retry.
             return if (cancel.isCancelled) EditHttpResult.Cancelled
-                else EditHttpResult.Failed(FailureCode.SERVER, false)
+                else EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false)
         } catch (_: Exception) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)

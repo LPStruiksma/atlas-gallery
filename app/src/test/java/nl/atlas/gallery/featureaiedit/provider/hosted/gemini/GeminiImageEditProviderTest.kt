@@ -261,7 +261,7 @@ class GeminiImageEditProviderTest {
         val huge = SyntheticPng.encode(8, 8) + ByteArray(1_200_000)
         GeminiHarness { FakeResponse.json(successReply(huge)) }.use { h ->
             val result = h.provider(maxReplyBytes = 1_000_000).submit(request()).await()
-            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_SERVER"), result)
+            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_RESPONSE_TOO_LARGE"), result)
             assertEquals(1, h.server.requests.size)
             assertTrue(h.output.listFiles()!!.isEmpty())
         }
