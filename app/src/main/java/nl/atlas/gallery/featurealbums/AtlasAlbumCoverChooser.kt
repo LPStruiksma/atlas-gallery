@@ -116,7 +116,7 @@ fun AtlasAlbumCoverChooser(
                 AtlasGalleryLoading("Finding album cover choices…")
             }
             candidates == null -> {
-                Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxSize()) {
                     AtlasEmptyState(
                         title = "Album access changed",
                         explanation = "The library changed while choosing a cover. " +
@@ -128,7 +128,7 @@ fun AtlasAlbumCoverChooser(
                 }
             }
             coverRenderer == null -> {
-                Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxSize()) {
                     AtlasEmptyState(
                         title = "Cover previews unavailable",
                         explanation = "A current, permission-aware photo preview is needed " +
@@ -140,7 +140,7 @@ fun AtlasAlbumCoverChooser(
                 }
             }
             candidates.isEmpty() -> {
-                Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxSize()) {
                     AtlasEmptyState(
                         title = "No accessible cover choices",
                         explanation = "There are no currently available media items " +

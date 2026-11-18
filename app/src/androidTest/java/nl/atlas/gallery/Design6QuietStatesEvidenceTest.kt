@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featurealbums.AlbumLoadIssue
 import nl.atlas.gallery.featurealbums.AlbumMediaFilter
@@ -83,13 +84,14 @@ class Design6QuietStatesEvidenceTest {
 
             compose.runOnIdle { issue = AlbumLoadIssue.ACCESS_NOT_GRANTED }
             compose.waitForIdle()
-            compose.onNodeWithText("Albums need photo access").assertExists()
+            compose.onNodeWithText("Albums need photo access").assertIsDisplayed()
+            // Centered content must remain visible in the bounded viewport.
             compose.onNodeWithText("Library status").assertExists()
             saveUiEvidence("albums-136-denied-$mode.png")
 
             compose.runOnIdle { issue = AlbumLoadIssue.READ_FAILED }
             compose.waitForIdle()
-            compose.onNodeWithText("Couldn’t refresh albums").assertExists()
+            compose.onNodeWithText("Couldn’t refresh albums").assertIsDisplayed()
             compose.onNodeWithTag("atlas-empty-action").assertExists()
             saveUiEvidence("albums-136-error-$mode.png")
         }

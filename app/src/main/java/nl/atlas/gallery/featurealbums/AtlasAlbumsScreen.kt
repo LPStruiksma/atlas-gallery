@@ -330,7 +330,7 @@ fun AtlasAlbumsScreen(
             // Optional buttons are shown only when the provided action is real.
             val accessFailure = loadIssue == AlbumLoadIssue.ACCESS_NOT_GRANTED
             val action = if (accessFailure) onOpenLibraryStatus else onRetry
-            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Box(Modifier.fillMaxSize()) {
                 AtlasEmptyState(
                     title = if (accessFailure) "Albums need photo access"
                         else "Couldn’t refresh albums",
@@ -347,7 +347,7 @@ fun AtlasAlbumsScreen(
         }
         if (albums.isEmpty()) {
             // Large font/landscape can otherwise clip the primary action.
-            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Box(Modifier.fillMaxSize()) {
                 AtlasEmptyState(
                     title = when (mediaFilter) {
                         AlbumMediaFilter.ALL -> "Your albums will appear here"
