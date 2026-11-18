@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 
 /** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
 /** Compatibility aliases: source values now live in AtlasTokens. */
@@ -410,6 +411,11 @@ val AtlasPillColor: Color
 val AtlasPillEdge = AtlasTokens.Spacing.PillEdge
 val AtlasTabPillHeight = AtlasTokens.Spacing.TabHeight
 
+/** Keep the 60dp Samsung-style pill compact while preventing large-font tab collisions. */
+internal fun navigationLabelSize(fontScale: Float): TextUnit =
+    AtlasTokens.Type.NavigationLabel * (fontScale.coerceAtLeast(1f).coerceAtMost(1.3f) /
+        fontScale.coerceAtLeast(0.01f))
+
 @Composable
 private fun AtlasTabItem(
     destination: AtlasDestination,
@@ -418,6 +424,7 @@ private fun AtlasTabItem(
     modifier: Modifier = Modifier
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
+    val labelSize = navigationLabelSize(LocalDensity.current.fontScale)
     // 11sp labels still meet text contrast over a white tile behind the dark pill.
     val tint = if (selected) ink else ink.copy(alpha = 0.78f)
     Column(
@@ -436,7 +443,8 @@ private fun AtlasTabItem(
         Text(
             destination.title,
             color = tint,
-            fontSize = AtlasTokens.Type.NavigationLabel,
+            fontSize = labelSize,
+            modifier = Modifier.testTag("atlas-nav-label-" + destination.name.lowercase()),
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
