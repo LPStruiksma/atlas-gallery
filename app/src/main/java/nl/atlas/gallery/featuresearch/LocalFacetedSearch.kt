@@ -107,8 +107,9 @@ fun searchWithFacets(
     val selectedPaths = filters.confirmedPersonIds
         .mapNotNull { personsById[it]?.imagePaths }
         .sortedBy { it.size }
-    // Cheap set intersection narrows the candidate paths without changing
-    // output order. The full search still validates URI, volume and ambiguity.
+    // A selected Person path is a candidate only when every other picked
+    // Person also owns it. Intersect the smallest set first; never replace
+    // URI, provider-volume, or duplicate-path provenance validation.
     val selectedPathIntersection = if (selectedPaths.isEmpty()) null else {
         val common = selectedPaths.first().toHashSet()
         for (i in 1 until selectedPaths.size) {
