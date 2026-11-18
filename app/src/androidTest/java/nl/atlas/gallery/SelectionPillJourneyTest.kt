@@ -84,7 +84,7 @@ abstract class SelectionPillActivityJourney(private val dark: Boolean) {
         assertTrue("Action pill must clear the bottom inset/margin", pill.bottom < outer.bottom)
         compose.onNodeWithTag("atlas-selection-share").assertIsEnabled()
         compose.onNodeWithTag("atlas-selection-trash").assertIsEnabled()
-        compose.onNodeWithTag("atlas-selection-favourite").assertIsOff()
+        compose.onNodeWithTag("atlas-selection-transfer").assertIsEnabled()
         compose.waitForIdle()
         saveUiEvidence("selection-pill-17-$theme-single.png")
 
@@ -131,15 +131,15 @@ class SelectionPillActionsTest {
         }
         compose.onNodeWithTag("atlas-selection-share").assertIsEnabled().performClick()
         compose.onNodeWithTag("atlas-selection-trash").assertIsEnabled().performClick()
-        compose.onNodeWithTag("atlas-selection-favourite").assertIsOff().performClick()
-        compose.onNodeWithTag("atlas-selection-favourite").assertIsOn()
+        compose.onNodeWithTag("atlas-selection-more").performClick()
+        compose.onNodeWithTag("atlas-selection-more-favourite").performClick()
         compose.onNodeWithTag("atlas-selection-more").performClick()
         compose.onNodeWithTag("atlas-selection-copy-to-album").performClick()
         assertEquals(listOf("share", "trash-consent-callback", "favourite", "copy"), calls)
 
         compose.runOnIdle { count = 0 }
         for (tag in listOf("atlas-selection-share", "atlas-selection-trash",
-                "atlas-selection-favourite", "atlas-selection-more")) {
+                "atlas-selection-transfer", "atlas-selection-more")) {
             compose.onNodeWithTag(tag).assertIsNotEnabled()
         }
         compose.runOnIdle { count = 2; enabled = false }
