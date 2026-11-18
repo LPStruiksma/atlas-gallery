@@ -576,10 +576,12 @@ internal class PeopleDiscoveryHost(
         @Volatile private var app: PeopleDiscoveryHost? = null
 
         /**
-         * A host's first creation reads opt-in preferences and prepares SQLite
-         * helpers. Explicit background admission keeps it out of Compose's
-         * initial main-thread composition; a reused host is cheap to retrieve.
+         * Initial creation reads opt-in preferences; forbid that on Main. A
+         * Compose caller can use [peekApp] until background initialization
+         * publishes the host. Existing app/test callers keep their identity.
          */
+        fun peekApp(): PeopleDiscoveryHost? = app
+
         fun forApp(context: Context): PeopleDiscoveryHost {
             val existing = app
             if (existing != null) return existing
