@@ -218,6 +218,11 @@ class PeoplePrototypeJourneyTest {
         compose.onAllNodesWithTag("atlas-people-unnamed").onFirst().performClick()
         waitForText("Name this person")
         compose.onAllNodesWithText("Name this person").onFirst().performTextInput(NAME)
+        // #424: a person types the name on the keyboard, so Create is tapped
+        // after it has opened. performTextInput is instant: tapping now lands
+        // while the keyboard slides in and the list resizes under the finger,
+        // and the tap was lost on main too (run 44314754535).
+        awaitKeyboardSettled()
         compose.onAllNodesWithText("Create person").onFirst().performClick()
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
@@ -449,6 +454,22 @@ class PeoplePrototypeJourneyTest {
             val tree = runCatching { compose.onRoot(useUnmergedTree = true).printToString() }.getOrDefault("?")
             throw AssertionError("Timed out waiting for $label. Screen:\n$tree", e)
         }
+    }
+
+    /** The IME inset is positive and has held one value across 300 ms of samples. */
+    private fun awaitKeyboardSettled() {
+        var last = -1
+        var since = 0L
+        waitFor("the keyboard to open and settle") {
+            val bottom = compose.runOnUiThread {
+                compose.activity.window.decorView.rootWindowInsets
+                    ?.getInsets(android.view.WindowInsets.Type.ime())?.bottom ?: 0
+            }
+            val now = SystemClock.uptimeMillis()
+            if (bottom != last) { last = bottom; since = now }
+            bottom > 0 && now - since >= 300
+        }
+        compose.waitForIdle()
     }
 
     private fun waitForTag(tag: String) = waitFor("tag $tag") {
