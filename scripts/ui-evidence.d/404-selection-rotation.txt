@@ -1,0 +1,9 @@
+# #404 synthetic photo selection rotation evidence from
+# SelectionResultLightJourneyTest and SelectionResultDarkJourneyTest.
+# Each save follows selected-key, count and contextual-pill assertions.
+selection-404-light-portrait-before
+selection-404-light-landscape
+selection-404-light-portrait-after
+selection-404-dark-portrait-before
+selection-404-dark-landscape
+selection-404-dark-portrait-after
