@@ -118,8 +118,31 @@ class PeoplePrototypeJourneyTest {
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * #411: a failed run used to end with the keyboard open, and on the CI
+     * emulator the next tests then never got a keyboard (diagnostic
+     * 44326214186, shard 1). Close it while the activity is still alive.
+     */
+    private val closeKeyboard = object : TestRule {
+        override fun apply(base: Statement, description: Description) = object : Statement() {
+            override fun evaluate() {
+                try {
+                    base.evaluate()
+                } finally {
+                    runCatching {
+                        compose.runOnUiThread {
+                            compose.activity.window.insetsController
+                                ?.hide(android.view.WindowInsets.Type.ime())
+                        }
+                        compose.waitForIdle()
+                    }
+                }
+            }
+        }
+    }
+
     @get:Rule val chain: RuleChain =
-        RuleChain.outerRule(S24DisplayRule()).around(setup).around(compose)
+        RuleChain.outerRule(S24DisplayRule()).around(setup).around(compose).around(closeKeyboard)
 
     private fun insertFaces() {
         val now = System.currentTimeMillis()
@@ -479,6 +502,9 @@ class PeoplePrototypeJourneyTest {
         val bottom = top + node.size.height
         val viewport = compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .fetchSemanticsNode().boundsInRoot
+        android.util.Log.i("ATLAS_GROUP_IME", "people prototype: Create unclipped $top..$bottom " +
+            "clipped ${node.boundsInRoot.top}..${node.boundsInRoot.bottom} " +
+            "viewport ${viewport.top}..${viewport.bottom}")
         assertTrue("Create (unclipped $top..$bottom) must sit inside the list viewport " +
             "(${viewport.top}..${viewport.bottom}) before the tap",
             top >= viewport.top && bottom <= viewport.bottom)
