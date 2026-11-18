@@ -82,6 +82,18 @@ compose.waitForNode(hasTestTag("atlas-native-person-album"))
 ATLAS_UI_DEBT_WRITE=1 node test/additive-regressions/ui-test-reliability.mjs
 ```
 
+## Stress a test
+
+One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a test, commit `scripts/ci-opt-in/stress-classes` on a throwaway branch and dispatch `build-apk.yml` with `run_ui_tests`:
+
+```
+# <count> <Class or Class#method>
+8 nl.atlas.gallery.PeoplePrototypeJourneyTest
+8 nl.atlas.gallery.featurepeopleui.UnknownPersonImeTouchTest#openingImeTouchIsNeverSilentlySwallowed
+```
+
+Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints PASS or FAIL per run with the `ATLAS_*` and keyboard log lines. The full suite is skipped, so the `emulator-ui` check stays red: remove the file before review. Call a flake fixed only after a stress run on the fix head.
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first; `waitForNode` and `tap()` print what was on screen.
