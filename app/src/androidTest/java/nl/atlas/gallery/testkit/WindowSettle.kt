@@ -1,8 +1,11 @@
 package nl.atlas.gallery.testkit
 
+import android.os.SystemClock
+import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import nl.atlas.gallery.clearSystemAnrDialogs
 
 /**
  * Call after anything that changes the window: display size, rotation, night
@@ -20,11 +23,30 @@ fun ComposeTestRule.awaitWindowSettled(timeoutMs: Long = 10_000L) {
             if (views.isEmpty()) return@awaitThat false
             val frames = sampleOnFrames { views.map { it.windowState() } }
             last = frames.last().toString()
-            frames.distinct().size == 1 && frames.last().any { it.focused }
+            val focused = frames.last().any { it.focused }
+            if (!focused) dismissSystemAnrDialog()
+            frames.distinct().size == 1 && focused
         }
     } catch (timeout: AssertionError) {
         throw AssertionError("${timeout.message}; last window state: $last", timeout)
     }
+}
+
+private var lastAnrCheck = 0L
+
+/**
+ * The emulator's launcher sometimes stops responding, and its system "isn't
+ * responding" dialog then takes focus from the app: no keyboard can open and
+ * no window settles (run 44338113784, shard 1, all six runs). That is the
+ * device, not ATLAS. Presses Wait on such a dialog, at most once every two
+ * seconds, and logs it. Never touches the app's own windows.
+ */
+internal fun dismissSystemAnrDialog() {
+    val now = SystemClock.uptimeMillis()
+    if (now - lastAnrCheck < 2_000L) return
+    lastAnrCheck = now
+    val cleared = runCatching { clearSystemAnrDialogs(attempts = 1) }.getOrDefault(0)
+    if (cleared > 0) Log.w(TEST_KIT_LOG_TAG, "dismissed a system 'isn't responding' dialog")
 }
 
 internal data class WindowState(

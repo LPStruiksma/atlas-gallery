@@ -38,7 +38,7 @@ fun ComposeTestRule.typeText(
     }
     onNode(matcher).performTextInput(text)
     when (keyboard) {
-        KeyboardAfter.Hidden -> hideKeyboard()
+        KeyboardAfter.Hidden -> hideKeyboard(showExpected = true)
         KeyboardAfter.Shown -> {
             // A field that already had focus does not ask for the keyboard again.
             rootViews().firstOrNull()?.let { view ->
@@ -55,12 +55,31 @@ fun ComposeTestRule.keyboardInsetPx(): Int =
 
 /**
  * Hides the keyboard and returns when its inset has been 0 on every frame
- * for [stillMs] of real time. Asks through the window's insets controller
- * even when no keyboard is visible yet (after typing it may still be on its
- * way up), and asks again once a second in case a late show overtook it.
+ * for [stillMs] of real time. Asks through the window's insets controller and
+ * asks again once a second.
+ *
+ * [showExpected] is for the moment right after typing: the field has asked
+ * for the keyboard, but the request reaches the system later than a hide sent
+ * now, and the keyboard would then come up after this returned (seen on the
+ * CI emulator with LatinIME, 1 run in 12). So first wait, up to
+ * [arrivalMs], until the keyboard is on its way, then hide it. With
+ * [TestKeyboard.None] selected there is nothing to wait for.
  */
-fun ComposeTestRule.hideKeyboard(timeoutMs: Long = 10_000L, stillMs: Long = 300L) {
+fun ComposeTestRule.hideKeyboard(
+    timeoutMs: Long = 10_000L,
+    stillMs: Long = 300L,
+    showExpected: Boolean = false,
+    arrivalMs: Long = 3_000L
+) {
     val view = rootViews().firstOrNull() ?: return
+    val noKeyboard = selectedInputMethod().endsWith(TestKeyboard.None.service)
+    if (showExpected && !noKeyboard) {
+        val until = SystemClock.uptimeMillis() + arrivalMs
+        waitUntil(arrivalMs + 5_000L) {
+            val arriving = onMainThread { view.keyboardInset() > 0 || view.keyboardRequested() }
+            arriving || SystemClock.uptimeMillis() >= until
+        }
+    }
     var asked = 0L
     var zeroSince = 0L
     var last = -1
@@ -105,15 +124,21 @@ fun ComposeTestRule.awaitKeyboardShown(
     var last = Int.MIN_VALUE
     var since = start
     var everUp = false
+    var asked = start
     try {
         awaitThat("the keyboard to be shown and still", timeoutMs) {
             val frames = sampleOnFrames { view.keyboardInset() }
             val now = SystemClock.uptimeMillis()
+            if (!everUp && frames.last() == 0 && now - asked >= 1_000L) {
+                asked = now
+                onMainThread { view.windowInsetsController?.show(WindowInsets.Type.ime()) }
+            }
             if (frames.distinct().size != 1 || frames.last() != last) {
                 last = frames.last()
                 since = now
             }
             if (last > 0) everUp = true
+            else if (onMainThread { !view.hasWindowFocus() }) dismissSystemAnrDialog()
             last > 0 && now - since >= stillMs
         }
     } catch (timeout: AssertionError) {

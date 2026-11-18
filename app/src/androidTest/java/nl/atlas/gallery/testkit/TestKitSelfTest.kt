@@ -62,6 +62,7 @@ class TestKitSelfTest {
         onMainThread { compose.activity.window.decorView.keyboardInset() }
 
     @Before fun startsWithTheKeyboardHidden() {
+        dismissSystemAnrDialog()
         assertEquals("the previous test left the keyboard up", 0, activityKeyboardInset())
     }
 
