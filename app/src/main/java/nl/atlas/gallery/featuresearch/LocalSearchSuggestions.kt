@@ -63,6 +63,79 @@ internal fun admittedSearchQueryWordsOrNull(typed: String): List<String>? {
 }
 
 /**
+ * Immutable, grant-scoped suggestion lookup. Construct on Dispatchers.Default
+ * when the caller publishes its already-authorized People/album summaries.
+ * No MediaRecord, URI discovery, disk IO or face inference is done here.
+ *
+ * The inverted bigram postings are an exact *superset* of substring matches,
+ * including Unicode after plainSearchText(). For 1-char tokens the search
+ * visits every distinct title, preserving the original substring semantics.
+ * Sorting uses the legacy comparator, so ranking and identity never change.
+ */
+class IndexedSearchSuggestions(sources: List<SearchSuggestionSource>) {
+    private data class Identity(
+        val kind: SearchSuggestionKind,
+        val personId: Long?,
+        val volume: String?,
+        val relativePath: String?
+    )
+    private data class Candidate(val item: SearchSuggestionSource, val normalized: String)
+    private val entries: List<Candidate>
+    private val postings: Map<String, IntArray>
+
+    init {
+        val distinct = LinkedHashMap<Identity, Candidate>()
+        sources.forEach { item ->
+            distinct.putIfAbsent(
+                Identity(item.kind, item.personId, item.albumVolume, item.albumRelativePath),
+                Candidate(item, plainSearchText(item.title))
+            )
+        }
+        entries = distinct.values.toList()
+        val builders = HashMap<String, MutableList<Int>>()
+        entries.forEachIndexed { index, item ->
+            // One posting per title even when the same pair repeats.
+            val grams = HashSet<String>()
+            for (i in 0 until item.normalized.length - 1) {
+                grams += item.normalized.substring(i, i + 2)
+            }
+            grams.forEach { gram -> builders.getOrPut(gram) { ArrayList() }.add(index) }
+        }
+        postings = builders.mapValues { (_, indices) -> indices.toIntArray() }
+    }
+
+    fun search(typed: String, limit: Int = 10): List<SearchSuggestion> {
+        require(limit in 1..40)
+        val words = admittedSearchQueryWordsOrNull(typed) ?: return emptyList()
+        if (words.isEmpty()) return emptyList()
+        val query = plainSearchText(typed)
+        val grams = words.flatMap { word ->
+            (0 until word.length - 1).map { word.substring(it, it + 2) }
+        }.distinct()
+        val smallest = grams.map { postings[it] ?: return emptyList() }
+            .minByOrNull { it.size }
+        val candidates = if (smallest == null) entries.asSequence()
+            else smallest.asSequence().map { entries[it] }
+        return candidates.filter { candidate ->
+            words.all { token -> candidate.normalized.contains(token) }
+        }.sortedWith(compareBy<Candidate> { !it.normalized.startsWith(query) }
+            .thenBy { it.item.kind != SearchSuggestionKind.CONFIRMED_PERSON }
+            .thenBy { it.normalized }
+            .thenBy { it.item.personId ?: Long.MAX_VALUE }
+            .thenBy { it.item.albumVolume.orEmpty() }
+            .thenBy { it.item.albumRelativePath.orEmpty() })
+            .take(limit)
+            .map { candidate ->
+                val item = candidate.item
+                SearchSuggestion(item, if (item.kind == SearchSuggestionKind.CONFIRMED_PERSON)
+                    "Reviewed person" else
+                    item.albumRelativePath!!.trimEnd('/').ifEmpty { "Root album" } +
+                        (item.albumVolume?.let { " · $it" } ?: ""))
+            }.toList()
+    }
+}
+
+/**
  * Input is an independently precomputed small catalog, never MediaRecord[150k].
  * Duplicate names remain separate reviewed person IDs, duplicate album names
  * remain separate per-volume paths. Empty query doesn't surface private names.

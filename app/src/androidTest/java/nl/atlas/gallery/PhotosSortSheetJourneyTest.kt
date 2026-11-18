@@ -41,7 +41,9 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
     @Test fun everySortChoiceIsAccessibleSelectedAndClosesToPhotos() {
         compose.waitForNode(hasTestTag("atlas-photos-sort"))
         compose.waitForNode(hasText("photos & videos", substring = true))
-        for (choice in SortOrder.entries) {
+        // A previous journey can leave Pictures persisted in any sort mode.
+        // Set the desired mode explicitly and verify what the sheet renders.
+        for (choice in MediaSortKey.entries) {
             open()
             compose.onNodeWithTag(choice.tag()).performClick()
             closed()
@@ -50,11 +52,11 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
 
             open()
             compose.onNodeWithTag(choice.tag()).assertIsSelected()
-            SortOrder.entries.forEach { entry ->
+            MediaSortKey.entries.forEach { entry ->
                 compose.onNodeWithTag(entry.tag()).assertExists()
             }
-            // Every choice, including Largest and Smallest, has a rendered
-            // light/dark sheet with the active radio indicator.
+            // Each of the five new choices has a rendered
+            // light/dark sheet with its active radio indicator.
             compose.waitForIdle()
             saveUiEvidence("sort-12-${choice.name.lowercase()}-$mode.png")
             back()
@@ -62,7 +64,7 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         }
 
         open()
-        compose.onNodeWithTag(SortOrder.RANDOM.tag()).assertIsSelected()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
         compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
         compose.onNodeWithTag("atlas-photos-reshuffle").performClick()
         closed()
@@ -70,11 +72,11 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
 
         // Android Back dismisses without applying another order.
         open()
-        compose.onNodeWithTag(SortOrder.RANDOM.tag()).assertIsSelected()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
         back()
         closed()
         open()
-        compose.onNodeWithTag(SortOrder.RANDOM.tag()).assertIsSelected()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
         back()
         closed()
     }
@@ -137,7 +139,7 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         }
     }
 
-    private fun SortOrder.tag() = "atlas-photos-sort-${name.lowercase()}"
+    private fun MediaSortKey.tag() = "atlas-media-sort-${name.lowercase()}"
 }
 
 /** Changes the emulator theme before launching MainActivity and restores it. */

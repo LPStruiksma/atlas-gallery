@@ -18,7 +18,8 @@ class NativePeopleNamesBackupTest {
         cannotLink = setOf(faceA to faceB),
         rejected = setOf(faceB to person),
         sameUnknown = emptySet(),
-        faceDecisions = mapOf(faceB to "LATER")
+        faceDecisions = mapOf(faceB to "LATER"),
+        coverOverrides = mapOf(person to faceA)
     )
 
     @Test fun roundTripOnlyHumanMetadataAndNoMediaFields() {
@@ -27,7 +28,7 @@ class NativePeopleNamesBackupTest {
         assertArrayEquals(bytes, NativePeopleNamesBackupCodec.encode(changedOrder))
         assertEquals(data, NativePeopleNamesBackupCodec.decode(bytes))
         assertEquals(1, NativePeopleNamesBackupCodec.preview(bytes).names)
-        assertEquals(4, NativePeopleNamesBackupCodec.preview(bytes).reviewDecisions)
+        assertEquals(5, NativePeopleNamesBackupCodec.preview(bytes).reviewDecisions)
         // The names format must never serialize the legacy path-bearing
         // PeopleBackupCodec schema, photos, vectors, filenames or URIs.
         val raw = String(bytes, Charsets.ISO_8859_1)
@@ -51,6 +52,11 @@ class NativePeopleNamesBackupTest {
         rejected {
             NativePeopleNamesBackupCodec.encode(
                 data.copy(names = mapOf("content://private/1" to "Ada"))
+            )
+        }
+        rejected {
+            NativePeopleNamesBackupCodec.encode(
+                data.copy(coverOverrides = mapOf(person to "content://forbidden"))
             )
         }
         rejected {

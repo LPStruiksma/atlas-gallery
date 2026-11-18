@@ -193,6 +193,10 @@ private class SelectionFixtures : TestRule {
                     Manifest.permission.READ_MEDIA_VIDEO).forEach {
                     instrumentation.uiAutomation.grantRuntimePermission(target.packageName, it)
                 }
+                // The app persists Pictures sorting between emulator journeys.
+                // This selection contract requires chronological day groups.
+                target.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
+                    .edit().clear().commit()
                 clearGalleryInventoryCacheForTest(target)
                 try {
                     insertAll(target)

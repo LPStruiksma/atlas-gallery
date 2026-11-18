@@ -62,16 +62,16 @@ class CompactHeaderJourneyTest {
 
         // Sort is one icon; its menu marks the current order and offers Reshuffle for Random.
         compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-newest").assertIsSelected()
-        compose.onNodeWithTag("atlas-photos-sort-random").performClick()
+        compose.onNodeWithTag("atlas-media-sort-date_created").assertIsSelected()
+        compose.onNodeWithTag("atlas-media-sort-random").performClick()
         // A new order is computed off Main and republishes the Photos header
         // when it lands; a menu opened before that is closed with it. Wait for
         // "Ordering library…" to settle, as a user would see it (#530).
         waitForSortSettled()
         compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-random").assertIsSelected()
+        compose.onNodeWithTag("atlas-media-sort-random").assertIsSelected()
         compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
-        compose.onNodeWithTag("atlas-photos-sort-newest").performClick()
+        compose.onNodeWithTag("atlas-media-sort-date_created").performClick()
         waitForSortSettled()
 
         // Former chip row + settings gear now live in the overflow menu.
