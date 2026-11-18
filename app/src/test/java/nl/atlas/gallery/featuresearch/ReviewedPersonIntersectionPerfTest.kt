@@ -34,9 +34,9 @@ class ReviewedPersonIntersectionPerfTest {
             MediaRecord(i.toLong(), "content://media/external/images/media/$i",
                 "synthetic_$i.jpg", "Pictures/Fictional/", 100, 42, false)
         }
-        val first = rows.filterIndexed { i, _ -> i % 3 == 0 }
+        val first = rows.asSequence().filterIndexed { i, _ -> i % 3 == 0 }
             .map { it.absolutePath }.toSet()
-        val second = rows.filterIndexed { i, _ -> i % 5 == 0 }
+        val second = rows.asSequence().filterIndexed { i, _ -> i % 5 == 0 }
             .map { it.absolutePath }.toSet()
         val people = listOf(PersonEntry(1, "Fictional Ada", first),
             PersonEntry(2, "Fictional Bea", second))
