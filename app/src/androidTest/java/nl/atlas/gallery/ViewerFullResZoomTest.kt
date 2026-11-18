@@ -21,6 +21,9 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.doubleClick
@@ -142,11 +145,15 @@ class ViewerFullResZoomTest {
         }
     }
 
-    /** Mean luminance step between neighbouring pixels in a 360 px centre square. */
+    /**
+     * Mean luminance step between neighbouring pixels in a 360 px centre
+     * square of the app's own window. Not a display screenshot: a system ANR
+     * dialog of another process (the CI launcher) once covered the centre of
+     * both arms and measured the dialog instead of the photo.
+     */
     private fun centreSharpness(): Double {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        instrumentation.waitForIdleSync()
-        val shot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        rule.waitForIdle()
+        val shot = rule.onRoot().captureToImage().asAndroidBitmap()
         try {
             val size = 360
             val left = shot.width / 2 - size / 2
