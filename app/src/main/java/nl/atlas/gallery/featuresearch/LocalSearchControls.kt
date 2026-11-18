@@ -266,9 +266,53 @@ fun LocalSearchControls(
                     .testTag("atlas-search-query-limit")
             )
         }
-        val suggestions = remember(CatalogSourceKey(suggestionSources), filters.text) {
-            planLocalSearchSuggestions(suggestionSources, filters.text)
+        // Build this immutable index once per authorized summary publication.
+        // While it builds, display no private suggestions; never search the
+        // entire catalog on the Compose thread after each typed character.
+        val suggestionKey = CatalogSourceKey(suggestionSources)
+        val publicationKey = remember(currentPermissionEpoch, suggestionKey) {
+            currentPermissionEpoch to suggestionKey
         }
+        val indexState by androidx.compose.runtime.produceState(
+            initialValue = Pair<Any?, IndexedSearchSuggestions?>(null, null),
+            key1 = publicationKey
+        ) {
+            value = Pair(null, null)
+            if (!currentPermissionEpoch.isNullOrBlank()) {
+                val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    IndexedSearchSuggestions(suggestionSources)
+                }
+                value = Pair(publicationKey, index)
+            }
+        }
+        val indexedSuggestions = if (indexState.first == publicationKey)
+            indexState.second else null
+        // Using produceState for matching as well keeps posting scans and sort
+        // off Compose's frame. A changed query starts with an empty value,
+        // rather than briefly showing the previous query's private names.
+        val typedSuggestions = filters.text
+        val suggestionState by androidx.compose.runtime.produceState(
+            initialValue = Triple<Any?, String, List<SearchSuggestion>>(null, "", emptyList()),
+            key1 = publicationKey, key2 = indexedSuggestions,
+            key3 = typedSuggestions
+        ) {
+            value = Triple(null, "", emptyList())
+            val index = indexedSuggestions
+            if (index != null && !currentPermissionEpoch.isNullOrBlank()) {
+                // A short debounce prevents stale work while typing rapidly.
+                kotlinx.coroutines.delay(20)
+                val matches = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    index.search(typedSuggestions)
+                }
+                value = Triple(publicationKey, typedSuggestions, matches)
+            }
+        }
+        // The completed worker answer is fenced to both the query and the
+        // publication/grant identity, including on the first recomposition.
+        val suggestions = if (suggestionState.first == publicationKey &&
+            suggestionState.second == typedSuggestions &&
+            indexedSuggestions != null && !currentPermissionEpoch.isNullOrBlank())
+            suggestionState.third else emptyList()
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
         val atRest = filters == LocalSearchFacets() && personMatches.isEmpty()

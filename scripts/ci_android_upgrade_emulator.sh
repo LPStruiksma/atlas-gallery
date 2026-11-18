@@ -16,8 +16,14 @@ RUNNER=nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 # kotlin-stdlib-common 1.8.20 before any test ran). Allow 6 attempts with
 # 5 s doubling back-off (at most ~2.5 min of waiting) for every Gradle call here.
 # Only dependency downloads are retried; test execution is never repeated.
+# Retries alone did not hold: on 2026-11-18 shard 0 of run 44280986519 still
+# failed every Central POM with 429 within a minute. So every Gradle call here
+# also resolves Maven Central through Google's mirror (scripts/ci/central-mirror.init.gradle).
+CENTRAL_MIRROR_INIT="$PWD/scripts/ci/central-mirror.init.gradle"
+[[ -f "$CENTRAL_MIRROR_INIT" ]] || { echo "::error::Missing $CENTRAL_MIRROR_INIT"; exit 1; }
 gradle() {
   command gradle \
+    --init-script "$CENTRAL_MIRROR_INIT" \
     -Dorg.gradle.internal.network.retry.max.attempts=6 \
     -Dorg.gradle.internal.network.retry.initial.backOff=5000 \
     "$@"

@@ -1,12 +1,12 @@
-# Issue #19 · Samsung parity §2 Photos sort choice sheet.
-# S24+ 1080x2340; every active order shown in both phone themes.
-sort-12-newest-light
-sort-12-oldest-light
-sort-12-largest-light
-sort-12-smallest-light
+# SORT-0 (#176): shared media-sort sheet on S24+ 1080x2340.
+# Every selectable MediaSortKey rendered with its active radio in both themes.
+sort-12-date_created-light
+sort-12-date_modified-light
+sort-12-file_name-light
+sort-12-size-light
 sort-12-random-light
-sort-12-newest-dark
-sort-12-oldest-dark
-sort-12-largest-dark
-sort-12-smallest-dark
+sort-12-date_created-dark
+sort-12-date_modified-dark
+sort-12-file_name-dark
+sort-12-size-dark
 sort-12-random-dark
