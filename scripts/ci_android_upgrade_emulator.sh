@@ -424,6 +424,16 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     out="$(adb shell dumpsys jobscheduler | tr -d '\r' || true)"
     grep -qE "^ *JOB androidx[.]work[.]systemjobscheduler:u0a[0-9]+/$id: .*nl[.]atlas[.]gallery/" <<<"$out"
   }
+  # #372: JobScheduler keeps listing a job after WorkManager's GreedyScheduler
+  # ran the same work in-process, so a pending entry does not prove the scan is
+  # unfinished. WorkManager's own log does: a PeopleScanWorker result line, or
+  # the worker's scan_rate line, means the run already ended. Read it while the
+  # process is frozen, when no new line can appear. Capture first (SIGPIPE).
+  scan_finished_in_process() {
+    local out
+    out="$(timeout 30 adb logcat -d -v brief || true)"
+    grep -qE 'Worker result (SUCCESS|FAILURE|RETRY) for Work .*PeopleScanWorker|ATLAS_FACE.*scan_rate ' <<<"$out"
+  }
   # What the first process did before the kill. The log is cleared after
   # the kill, so a later failure prints this capture as well.
   prekill_log=/tmp/atlas-kill43-prekill.txt
@@ -443,58 +453,81 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId|Cancelling work ID' |
       tail -80 || true
   }
+  # #372: seed, launch unplugged, wait for the scan job, freeze the process and
+  # prove from WorkManager's own log that the scan has not finished. Returns 2
+  # on a precondition miss (the scan already ran), after which we re-seed.
+  # Called as `arm_and_freeze || rc=$?`, where set -e is off: every step
+  # that must stop the run checks its own status and exits.
+  arm_and_freeze() {
+    adb logcat -c || true
+    run_kill_phase seed seedBeforeKill || exit 1
+    adb logcat -c || true
+    # A finished instrumentation force-stops its target package, which cancels
+    # its jobs (and --no-restart cannot start one). So the user's next open
+    # arms the scan, as on a phone: launch ATLAS once (still unplugged), wait
+    # for its gallery publication to enqueue the chain, go Home, and SIGKILL
+    # that process. From here on no Activity may start.
+    adb shell am start -W -n nl.atlas.gallery/.MainActivity >/dev/null || {
+      echo "::error::#43 could not launch ATLAS"; exit 1; }
+    for _ in $(seq 1 60); do
+      face_log | grep -q 'publication_done' && break
+      sleep 1
+    done
+    face_log | grep 'publication_done' || {
+      kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
+    # #343: publication_done is logged just before the host arms the scan, and
+    # WorkManager enqueues on its own background executor, which a loaded
+    # emulator can hold for seconds. A fixed 2 s wait sometimes killed the app
+    # before the scan job existed (only the 6 h re-arm was left), so wait for
+    # the scan worker's job itself. Never kill without it: that fails here.
+    for _ in $(seq 1 60); do
+      scan_scheduled && break
+      sleep 0.5
+    done
+    scan_scheduled || {
+      kill43_diagnostics; echo "::error::#43 the app published but never scheduled the scan worker"; exit 1; }
+    sleep 1 # let WorkManager finish persisting the enqueue
+    adb shell input keyevent KEYCODE_HOME
+    # Fail here, not after the kill, if the scan job is already gone (ran,
+    # was cancelled or replaced) while the app was still alive and unplugged.
+    scan_job="$(scan_job_id)"
+    timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
+      grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId' |
+      tail -80 > "$prekill_log" || true
+    scan_job_pending "$scan_job" || {
+      kill43_diagnostics
+      echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
+    # #372: JobScheduler may still show a pending job after GreedyScheduler
+    # has already completed it. Freeze the process before the final pending
+    # check so the worker cannot finish between that check and SIGKILL.
+    prekill_pid="$(app_pid)"
+    [[ -n "$prekill_pid" ]] || {
+      kill43_diagnostics; echo "::error::#43 no live app process to freeze"; exit 1; }
+    adb shell run-as nl.atlas.gallery kill -STOP "$prekill_pid" || {
+      kill43_diagnostics; echo "::error::#43 could not freeze pid $prekill_pid"; exit 1; }
+    [[ "$(app_pid)" == "$prekill_pid" ]] || {
+      kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
+    # An already finished scan is a precondition miss, not a restore failure:
+    # resume, kill and let the caller re-seed. Both signals are read frozen.
+    if ! scan_job_pending "$scan_job" || scan_finished_in_process; then
+      adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+      kill43_diagnostics
+      echo "#43: scan finished before the process was frozen; re-seed required"
+      kill_app || exit 1
+      return 2
+    fi
+  }
   adb shell dumpsys battery unplug
-  adb logcat -c || true
-  run_kill_phase seed seedBeforeKill
-  adb logcat -c || true
-  # A finished instrumentation force-stops its target package, which cancels
-  # its jobs (and --no-restart cannot start one). So the user's next open
-  # arms the scan, as on a phone: launch ATLAS once (still unplugged), wait
-  # for its gallery publication to enqueue the chain, go Home, and SIGKILL
-  # that process. From here on no Activity may start.
-  adb shell am start -W -n nl.atlas.gallery/.MainActivity >/dev/null
-  for _ in $(seq 1 60); do
-    face_log | grep -q 'publication_done' && break
-    sleep 1
+  freeze_attempt=1
+  while :; do
+    rc=0; arm_and_freeze || rc=$?
+    [[ "$rc" == 0 ]] && break
+    [[ "$rc" == 2 && "$freeze_attempt" -lt 2 ]] || {
+      echo "::error::#43 scan finished before the process was frozen; re-seed required (attempt $freeze_attempt)"
+      exit 1; }
+    freeze_attempt=$((freeze_attempt + 1))
+    echo "#43: precondition miss; re-seeding (attempt $freeze_attempt of 2)"
   done
-  face_log | grep 'publication_done' || {
-    kill43_diagnostics; echo "::error::#43 the app never published its catalogue"; exit 1; }
-  # #343: publication_done is logged just before the host arms the scan, and
-  # WorkManager enqueues on its own background executor, which a loaded
-  # emulator can hold for seconds. A fixed 2 s wait sometimes killed the app
-  # before the scan job existed (only the 6 h re-arm was left), so wait for
-  # the scan worker's job itself. Never kill without it: that fails here.
-  for _ in $(seq 1 60); do
-    scan_scheduled && break
-    sleep 0.5
-  done
-  scan_scheduled || {
-    kill43_diagnostics; echo "::error::#43 the app published but never scheduled the scan worker"; exit 1; }
-  sleep 1 # let WorkManager finish persisting the enqueue
-  adb shell input keyevent KEYCODE_HOME
-  # Fail here, not after the kill, if the scan job is already gone (ran,
-  # was cancelled or replaced) while the app was still alive and unplugged.
-  scan_job="$(scan_job_id)"
-  timeout 30 adb logcat -d -v brief | grep -iE 'ATLAS_FACE|WM-' |
-    grep -vE 'before schedule|is ENQUEUED; not doing|executed on JobScheduler|executed; reschedule|onStartJob|processing WorkGenerationalId' |
-    tail -80 > "$prekill_log" || true
-  scan_job_pending "$scan_job" || {
-    kill43_diagnostics
-    echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
-  # #372: JobScheduler may still show a pending job after GreedyScheduler
-  # has already completed it. Freeze the process before the final pending
-  # check so the worker cannot finish between that check and SIGKILL.
-  prekill_pid="$(app_pid)"
-  [[ -n "$prekill_pid" ]] || {
-    kill43_diagnostics; echo "::error::#43 no live app process to freeze"; exit 1; }
-  adb shell run-as nl.atlas.gallery kill -STOP "$prekill_pid"
-  [[ "$(app_pid)" == "$prekill_pid" ]] || {
-    kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
-  scan_job_pending "$scan_job" || {
-    # An already completed job is a precondition miss, not a restore failure.
-    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
-    kill43_diagnostics
-    echo "::error::#43 scan finished before the process was frozen; re-seed required"; exit 1; }
   echo "#43: scan worker job $scan_job frozen in pid $prekill_pid; SIGKILL unplugged app"
   adb shell run-as nl.atlas.gallery kill -9 "$prekill_pid"
   for _ in $(seq 1 20); do
