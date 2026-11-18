@@ -78,7 +78,7 @@ class Design6QuietStatesEvidenceTest {
             compose.runOnIdle { issue = AlbumLoadIssue.READ_FAILED }
             compose.waitForIdle()
             compose.onNodeWithText("Couldn’t refresh albums").assertExists()
-            compose.onNodeWithText("Try again").assertExists()
+            compose.onNodeWithTag("atlas-empty-action").assertExists()
             saveUiEvidence("albums-136-error-$mode.png")
         }
     }
