@@ -1,6 +1,6 @@
 package nl.atlas.gallery.featureaiedit.network
 
-import java.io.File
+import kotlin.io.path.createTempDirectory
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -8,7 +8,7 @@ import org.junit.Test
 /** Fake accepted POST: the remote ID arrives after the local cancellation journal write. */
 class EditJobJournalTest {
     @Test fun acceptedPostCannotOverwriteLocalCancel() {
-        val folder = createTempDir(prefix = "aie-cancel-")
+        val folder = createTempDirectory("aie-cancel-").toFile()
         try {
             EditJobJournal.write(folder, JSONObject().apply {
                 put("state", "submitting")
@@ -28,7 +28,7 @@ class EditJobJournalTest {
     }
 
     @Test fun normalAcceptedPostTransitionsToPolling() {
-        val folder = createTempDir(prefix = "aie-accepted-")
+        val folder = createTempDirectory("aie-accepted-").toFile()
         try {
             EditJobJournal.write(folder, JSONObject().put("state", "submitting"))
             assertFalse(recordAcceptedSubmission(folder, "b".repeat(32)))
