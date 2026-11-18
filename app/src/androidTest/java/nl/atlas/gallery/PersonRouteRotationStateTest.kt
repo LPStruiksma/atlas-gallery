@@ -21,10 +21,12 @@ class PersonRouteRotationStateTest {
     @Test fun retainedViewModelKeepsPersonRouteAcrossActivityRecreation() {
         val request = NativePersonAlbumRequest(PersonKey("synthetic-rotation-person"), "Synthetic")
         val before = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
+        val selectionHolder = before.pendingSelectionRotationState
         compose.runOnUiThread { before.nativePersonAlbumState.value = request }
         compose.activityRule.scenario.recreate()
         val after = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         assertSame(before, after)
+        assertSame(selectionHolder, after.pendingSelectionRotationState)
         assertEquals(request, after.nativePersonAlbumState.value)
         compose.runOnUiThread { after.nativePersonAlbumState.value = null }
     }
