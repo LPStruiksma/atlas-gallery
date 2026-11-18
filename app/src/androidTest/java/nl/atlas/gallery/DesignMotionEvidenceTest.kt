@@ -6,6 +6,16 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.ViewRootForTest
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.BlendMode
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.ByteArrayOutputStream
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -55,6 +65,61 @@ class DesignMotionEvidenceTest {
             .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.distinct()
     }
 
+    /**
+     * Capture the composition at the frozen Compose clock tick, not a potentially
+     * older/newer display frame from UiAutomation. Retain the physical screenshot
+     * outside the app view so the existing evidence artifact remains full-screen
+     * (including the status/navigation bars and S24 dimensions).
+     *
+     * The Compose root image is copied with SRC, not alpha-blended over a stale
+     * display image: transparent Compose pixels must not reveal an old UI frame.
+     * Return the root bitmap for exact settled-vs-reduced pixel assertions.
+     */
+    private fun saveMotionFrame(filename: String): Bitmap {
+        compose.waitForIdle()
+        val root = compose.onRoot()
+        val view = (root.fetchSemanticsNode().root as ViewRootForTest).view
+        val xy = IntArray(2)
+        compose.runOnIdle { view.getLocationOnScreen(xy) }
+        val rendered = root.captureToImage().asAndroidBitmap()
+        val display = requireNotNull(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        ) { "Cannot obtain full-screen base for $filename" }
+        try {
+            check(rendered.width == view.width && rendered.height == view.height) {
+                "$filename: Compose root ${rendered.width}x${rendered.height}, " +
+                    "host view ${view.width}x${view.height}"
+            }
+            check(xy[0] >= 0 && xy[1] >= 0 &&
+                xy[0] + rendered.width <= display.width &&
+                xy[1] + rendered.height <= display.height) {
+                "$filename: Compose image at ${xy.contentToString()} does not fit " +
+                    "${display.width}x${display.height} display"
+            }
+            val evidence = display.copy(Bitmap.Config.ARGB_8888, true)
+            try {
+                Canvas(evidence).drawBitmap(
+                    rendered, xy[0].toFloat(), xy[1].toFloat(),
+                    Paint().apply { blendMode = BlendMode.SRC }
+                )
+                val png = ByteArrayOutputStream().also {
+                    check(evidence.compress(Bitmap.CompressFormat.PNG, 100, it)) {
+                        "Cannot encode $filename"
+                    }
+                }.toByteArray()
+                writeUiEvidenceFile(uiEvidenceDisplayName(filename), png)
+            } finally {
+                evidence.recycle()
+            }
+        } catch (t: Throwable) {
+            rendered.recycle()
+            throw t
+        } finally {
+            display.recycle()
+        }
+        return rendered
+    }
+
     /** Capture the resting start before the event; clock time then measures motion. */
     private fun strip(
         name: String,
@@ -67,7 +132,7 @@ class DesignMotionEvidenceTest {
         try {
             // A post-action "start" can already be the destination state when
             // the gesture settles asynchronously. Capture the actual source.
-            saveUiEvidence("motion-137-$name-start.png")
+            saveMotionFrame("motion-137-$name-start.png")
             action()
             // First frame applies the state change and starts animations.
             compose.mainClock.advanceTimeByFrame()
@@ -75,10 +140,10 @@ class DesignMotionEvidenceTest {
             compose.mainClock.advanceTimeBy(durationMillis / 2)
             compose.waitForIdle()
             atMid()
-            saveUiEvidence("motion-137-$name-mid.png")
+            saveMotionFrame("motion-137-$name-mid.png")
             compose.mainClock.advanceTimeBy(durationMillis * 2)
             compose.waitForIdle()
-            saveUiEvidence("motion-137-$name-end.png")
+            saveMotionFrame("motion-137-$name-end.png")
         } finally {
             compose.mainClock.autoAdvance = true
         }
@@ -103,7 +168,7 @@ class DesignMotionEvidenceTest {
         compose.waitUntil(60_000L) {
             compose.onAllNodesWithTag("atlas-album-card").fetchSemanticsNodes().isNotEmpty()
         }
-        saveUiEvidence("motion-137-tab-end.png")
+        val settledTab = saveMotionFrame("motion-137-tab-end.png")
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         awaitPhotos()
 
@@ -171,7 +236,17 @@ class DesignMotionEvidenceTest {
             compose.onNodeWithTag("atlas-nav-albums").performClick()
             compose.mainClock.advanceTimeByFrame()
             compose.waitForIdle()
-            saveUiEvidence("motion-137-reduced-tab.png")
+            val reducedTab = saveMotionFrame("motion-137-reduced-tab.png")
+            try {
+                assertTrue(
+                    "animator scale 0: rendered Albums tab must match the settled " +
+                        "normal-motion Albums frame, not a clipped intermediate frame",
+                    reducedTab.sameAs(settledTab)
+                )
+            } finally {
+                reducedTab.recycle()
+                settledTab.recycle()
+            }
             compose.onNodeWithTag("atlas-nav-photos").performClick()
             compose.mainClock.advanceTimeByFrame()
             compose.waitForIdle()
@@ -186,7 +261,7 @@ class DesignMotionEvidenceTest {
             compose.waitForIdle()
             assertTrue("reduced motion: tab bar must be gone one frame after selection starts",
                 compose.onAllNodesWithTag("atlas-nav-photos").fetchSemanticsNodes().isEmpty())
-            saveUiEvidence("motion-137-reduced-selection.png")
+            saveMotionFrame("motion-137-reduced-selection.png")
         } finally {
             compose.mainClock.autoAdvance = true
         }
