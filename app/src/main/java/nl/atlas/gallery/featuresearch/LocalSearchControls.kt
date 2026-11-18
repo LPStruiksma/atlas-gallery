@@ -247,7 +247,8 @@ fun LocalSearchControls(
                             else filters.copy(text = term, nativePersonKeys = emptySet()))
                         onSubmittedQuery(term)
                     }, label = { Text(term, maxLines = 1) },
-                        modifier = Modifier.testTag("atlas-search-recent"))
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-search-recent"))
                 }
             }
         }
@@ -291,14 +292,16 @@ fun LocalSearchControls(
                         onClick = { onSearchByFace?.invoke() },
                         label = { Text("Search by face") },
                         leadingIcon = { Icon(Icons.Filled.Face, null) },
-                        modifier = Modifier.testTag("atlas-search-by-face"))
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-search-by-face"))
                 }
                 if (showSimilar) item {
                     AssistChip(
                         onClick = { onFindSimilar?.invoke() },
                         label = { Text("Find similar") },
                         leadingIcon = { Icon(Icons.Filled.ImageSearch, null) },
-                        modifier = Modifier.testTag("atlas-search-find-similar"))
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-search-find-similar"))
                 }
                 items(suggestions) { suggestion ->
                     val source = suggestion.source
@@ -325,7 +328,8 @@ fun LocalSearchControls(
                             }
                         },
                         label = { Text(source.title, maxLines = 1) },
-                        modifier = Modifier.testTag("atlas-search-suggestion")
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-search-suggestion")
                     )
                 }
             }
@@ -343,7 +347,8 @@ fun LocalSearchControls(
                         SearchMediaKind.PHOTOS -> "Photos"
                         SearchMediaKind.VIDEOS -> "Videos"
                     }) },
-                    modifier = Modifier.testTag("atlas-search-kind-${kind.name}")
+                    modifier = Modifier.heightIn(min = 48.dp)
+                        .testTag("atlas-search-kind-${kind.name}")
                 )
             }
         }

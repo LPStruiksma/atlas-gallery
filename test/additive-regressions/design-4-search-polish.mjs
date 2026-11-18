@@ -10,6 +10,10 @@ test('Search has a compact 56dp pill, accessible row targets and stable kinds', 
   assert.match(controls,/heightIn\(min = 56\.dp\).*testTag\("atlas-search-person-suggestion"\)/s);
   assert.match(controls,/SearchMediaKind\.entries/);
   assert.match(controls,/testTag\("atlas-search-field"\)/);
+  // Small-screen Search chips remain finger-sized, without changing their actions.
+  for (const tag of ["atlas-search-recent", "atlas-search-by-face", "atlas-search-find-similar", "atlas-search-suggestion", "atlas-search-kind-"]) {
+    assert.match(controls, new RegExp("heightIn\\(min = 48\\.dp\\)[\\s\\S]{0,80}testTag\\(\\\""+tag));
+  }
 });
 test('Search retains Pictures grid, exposes distinct no-results state and IME-safe layout', () => {
   assert.match(host,/AtlasFeatureGrid\([\s\S]*?viewKey = "search"/);
