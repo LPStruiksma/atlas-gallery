@@ -15,11 +15,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
+import android.os.SystemClock
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featureface.NativeFaceObservationId
@@ -29,6 +35,7 @@ import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeopleui.UnknownFacesReviewScreen
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -43,6 +50,38 @@ import org.junit.runner.RunWith
 class UnknownGroupDesignEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+
+    private lateinit var hostView: View
+
+    /** Bottom of the IME in window pixels, 0 while it is hidden. */
+    private fun imeBottom(): Int {
+        val insets = ViewCompat.getRootWindowInsets(hostView) ?: return 0
+        return if (insets.isVisible(WindowInsetsCompat.Type.ime()))
+            insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
+    }
+
+    /**
+     * #394 flake: performTextInput returns before the IME is shown, so a check
+     * that Create is displayed passed at once, and the IME inset animation then
+     * moved the sheet under the next assertion. Wait until the IME state and
+     * [tag]'s bounds have both held still for [stableMs].
+     */
+    private fun awaitSettled(tag: String, stableMs: Long = 500) {
+        var last: Pair<Int, Rect>? = null
+        var since = 0L
+        compose.waitUntil(10_000) {
+            val bounds = runCatching {
+                compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInWindow
+            }.getOrNull()
+            val now = SystemClock.uptimeMillis()
+            val sample = bounds?.let { imeBottom() to it }
+            if (sample == null || sample != last) {
+                last = sample
+                since = now
+                false
+            } else now - since >= stableMs
+        }
+    }
 
     private fun face(i: Int) = NativeFaceObservationId(i.toString(16).padStart(32, '0'))
 
@@ -66,6 +105,7 @@ class UnknownGroupDesignEvidenceTest {
         val state = review()
         val mode = if (dark) "dark" else "light"
         compose.setContent {
+            hostView = LocalView.current
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background) {
@@ -109,10 +149,14 @@ class UnknownGroupDesignEvidenceTest {
         compose.waitForIdle()
         // The Create action must stay above the keyboard while typing (#266 review of
         // the 928ad23 renders: it was hidden under the IME).
-        compose.waitUntil(5_000) {
-            runCatching {
-                compose.onNodeWithTag("atlas-group-create-person").assertIsDisplayed()
-            }.isSuccess
+        awaitSettled("atlas-group-create-person")
+        val create = compose.onNodeWithTag("atlas-group-create-person")
+            .fetchSemanticsNode().boundsInWindow
+        val ime = imeBottom()
+        if (ime > 0) {
+            val keyboardTop = hostView.rootView.height - ime
+            assertTrue("Create bottom ${create.bottom} is under the IME top $keyboardTop",
+                create.bottom <= keyboardTop + 2f)
         }
         compose.onNodeWithTag("atlas-group-face-1").assertIsDisplayed()
         compose.onNodeWithTag("atlas-group-name").assertIsDisplayed()
