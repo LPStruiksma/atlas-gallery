@@ -1745,7 +1745,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         publishedGallery.matchesGrantedScope(grants)
                 ) { worker.ensureActive() }
             }
-            if (pendingSelectionRestore === saved && batchSelection == null) {
+            if (pendingSelectionRestore === saved && batchSelection == null &&
+                readGalleryMediaGrant(context) == grants &&
+                vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                publishedGallery.matchesGrantedScope(grants)) {
                 pendingSelectionRestore = null
                 if (restored != null) {
                     selectionAlbumRoute = albumRoute
