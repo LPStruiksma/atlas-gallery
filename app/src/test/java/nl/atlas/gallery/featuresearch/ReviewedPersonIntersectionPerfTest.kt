@@ -12,7 +12,6 @@ class ReviewedPersonIntersectionPerfTest {
         MediaRecord(i.toLong(), "content://media/external/images/media/$i",
             "synthetic_$i.jpg", "Pictures/Fictional/", 100, 42, false)
 
-
     @Test fun disjointPeopleDoNotLeakMetadataAndRetainOrder() {
         val rows = List(4096) { i -> media(i) }
         val p1 = PersonEntry(1, "Fictional Ada", rows.take(1800).map { it.absolutePath }.toSet())
