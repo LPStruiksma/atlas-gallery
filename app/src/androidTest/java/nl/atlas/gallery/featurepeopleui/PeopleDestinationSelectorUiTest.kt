@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -34,6 +35,20 @@ class PeopleDestinationSelectorUiTest {
     private val first = PersonKey("ui-synthetic-first")
     private val second = PersonKey("ui-synthetic-second")
     private val source = PersonKey("ui-synthetic-source")
+
+    /**
+     * Scroll [tag] into the review list and wait until it is really on screen. Typing
+     * opens the keyboard, and imePadding can shrink the list after a scroll has been
+     * computed; a click on a row now clipped below the list selects nothing. Scrolling
+     * again until the row is displayed makes the click deterministic (#357).
+     */
+    private fun scrollUntilDisplayed(tag: String) {
+        val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
+        compose.waitUntil(5_000) {
+            screen.performScrollToNode(hasTestTag(tag))
+            runCatching { compose.onNodeWithTag(tag).assertIsDisplayed() }.isSuccess
+        }
+    }
 
     private fun face(i: Int) = NativeFaceObservationId(i.toString(16).padStart(32, '0'))
 
@@ -87,8 +102,7 @@ class PeopleDestinationSelectorUiTest {
             .performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
         compose.onNodeWithTag("atlas-group-1-destination-search")
             .performTextInput("Same Name")
-        compose.onNodeWithTag("atlas-unknown-face-review-screen")
-            .performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
+        scrollUntilDisplayed("atlas-group-1-destination-option-2")
         compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         compose.onNodeWithTag("atlas-group-1-destination-assign")
@@ -178,7 +192,7 @@ class PeopleDestinationSelectorUiTest {
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
         compose.onNodeWithTag("atlas-group-1-destination-search")
             .performTextInput("Same Name")
-        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
+        scrollUntilDisplayed("atlas-group-1-destination-option-1")
         compose.onNodeWithTag("atlas-group-1-destination-option-1").performClick()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         val oldScope = compose.onNodeWithTag("atlas-unknown-identity-group")
@@ -226,7 +240,7 @@ class PeopleDestinationSelectorUiTest {
         // against the new committed object rather than the old selection.
         // Scroll first: below the sticky faces header option 2 can sit just off screen,
         // where a click lands outside the viewport and selects nothing.
-        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
+        scrollUntilDisplayed("atlas-group-1-destination-option-2")
         compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         compose.onNodeWithTag("atlas-group-1-destination-assign")
