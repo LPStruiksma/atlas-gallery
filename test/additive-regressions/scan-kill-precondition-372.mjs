@@ -8,17 +8,16 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const script = readFileSync(resolve(root, 'scripts/ci_android_upgrade_emulator.sh'), 'utf8');
 
-// Order: seed and arm inside arm_and_freeze, freeze, re-check BOTH the
-// JobScheduler entry and WorkManager's own log while frozen, then SIGKILL.
+// Order: find the scan job and its WorkManager work ID, freeze, re-check
+// BOTH JobScheduler and WorkManager's result for that work ID, then SIGKILL.
 const sequence = [
-  'arm_and_freeze() {',
-  'run_kill_phase seed seedBeforeKill || exit 1',
+  'run_kill_phase seed seedBeforeKill',
+  'scan_job="$(scan_job_id)"',
+  'scan_work="$(scan_work_id)"',
   'scan_job_pending "$scan_job" || {',
   'prekill_pid="$(app_pid)"',
   'kill -STOP "$prekill_pid"',
-  'if ! scan_job_pending "$scan_job" || scan_finished_in_process; then',
-  'return 2',
-  'rc=0; arm_and_freeze || rc=$?',
+  'if ! scan_job_pending "$scan_job" || scan_work_finished "$scan_work"; then',
   'kill -9 "$prekill_pid"',
   'adb shell dumpsys battery set ac 1',
 ];
@@ -29,54 +28,54 @@ for (const step of sequence) {
   at = next + step.length;
 }
 
-// After the freeze, only the precondition-miss branch may resume the process.
+// After the freeze, only the precondition-miss branch may resume the process,
+// and it fails explicitly instead of becoming a later restore failure.
 const freeze = script.indexOf('kill -STOP "$prekill_pid"');
 const kill = script.indexOf('kill -9 "$prekill_pid"', freeze);
-const successPath = script.slice(freeze, kill).replace(
-  /if ! scan_job_pending "\$scan_job" \|\| scan_finished_in_process; then[\s\S]*?\n    fi\n/, ''
-);
-assert.notEqual(successPath, script.slice(freeze, kill), '#372 precondition-miss branch must be found');
-assert.doesNotMatch(successPath, /kill -CONT "\$prekill_pid"/);
-// A precondition miss re-seeds at most once, then fails with its own message.
-assert.match(script, /"\$freeze_attempt" -lt 2/);
-assert.match(script, /scan finished before the process was frozen; re-seed required \(attempt/);
+const miss = script.slice(freeze, kill).match(
+  /if ! scan_job_pending "\$scan_job" \|\| scan_work_finished "\$scan_work"; then[\s\S]*?\n  fi\n/);
+assert.ok(miss, '#372 precondition-miss branch must be found');
+assert.match(miss[0], /re-seed required"\n    exit 1/);
+assert.doesNotMatch(script.slice(freeze, kill).replace(miss[0], ''), /kill -CONT "\$prekill_pid"/);
 assert.match(script, /#43: SIGKILL worker process \$first mid-run/);
 assert.match(script, /#43 no restore after the kill/);
 
-// Behaviour: run the real helper against a fake adb. The #372 log (job still
-// listed by JobScheduler, GreedyScheduler already finished the work) must
-// count as finished; a scheduled-but-unstarted or mid-run log must not.
-const helper = script.match(/  scan_finished_in_process\(\) \{[\s\S]*?\n  \}\n/);
-assert.ok(helper, '#372 scan_finished_in_process helper must exist');
+// Behaviour: run the real helpers against a fake adb that serves log lines
+// copied from CI. #372 (run 44249225139): the killed job's own work already
+// SUCCEEDED. Run 44280551540: a first PeopleScanWorker run finished with 0
+// photos and chained a new one (Job ID 2), which is the job #43 kills.
+const helpers = ['scan_work_id', 'scan_work_finished'].map((name) => {
+  const m = script.match(new RegExp(`  ${name}\\(\\) \\{[\\s\\S]*?\\n  \\}\\n`));
+  assert.ok(m, `#372 ${name} helper must exist`);
+  return m[0];
+}).join('');
 const dir = mkdtempSync(join(tmpdir(), 'atlas-372-'));
-const fakeAdb = join(dir, 'adb');
-writeFileSync(fakeAdb, '#!/bin/sh\ncat "$ATLAS_FAKE_LOG"\n');
-chmodSync(fakeAdb, 0o755);
-const run = (log) => {
+writeFileSync(join(dir, 'adb'), '#!/bin/sh\ncat "$ATLAS_FAKE_LOG"\n');
+chmodSync(join(dir, 'adb'), 0o755);
+const bash = (log, cmd) => {
   const logFile = join(dir, 'log.txt');
   writeFileSync(logFile, log);
   try {
-    execFileSync('bash', ['-c', `${helper[0]}\nscan_finished_in_process`], {
+    return execFileSync('bash', ['-c', `${helpers}\n${cmd}`], {
       env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, ATLAS_FAKE_LOG: logFile },
-    });
-    return true;
-  } catch { return false; }
+    }).toString().trim() || 'ok';
+  } catch { return null; }
 };
-const scheduled = [
-  'D/WM-SystemJobScheduler( 2826): Scheduling work ID 3159b5a5-0000-4000-8000-000000000000 (nl.atlas.gallery.featureface.work.PeopleScanWorker), Job ID 2',
-  'D/WM-GreedyScheduler( 2826): Constraints met: Scheduling work ID WorkGenerationalId(workSpecId=3159b5a5-0000-4000-8000-000000000000, generation=0)',
-  'D/WM-GreedyScheduler( 2826): Starting work for 3159b5a5-0000-4000-8000-000000000000',
-  'I/ATLAS_FACE( 2826): publication_done mode=carried items=60',
-].join('\n') + '\n';
-const finished372 = scheduled +
-  'I/WM-WorkerWrapper( 2826): Worker result SUCCESS for Work [ id=3159b5a5-0000-4000-8000-000000000000, tags={ nl.atlas.gallery.featureface.work.PeopleScanWorker } ]\n';
-const midRun = scheduled + 'I/ATLAS_FACE( 2826): scan_batch photos=8\n';
-const rateLine = midRun + 'I/ATLAS_FACE( 2826): scan_rate photos=60 batches=8 ms=900 photos_per_s=66.67 end=DONE\n';
-const otherWorker = scheduled +
-  'I/WM-WorkerWrapper( 2826): Worker result SUCCESS for Work [ id=aaaa, tags={ nl.atlas.gallery.featureface.work.PeopleScanRearmWorker } ]\n';
-assert.equal(run(finished372), true, '#372: finished in-process scan must be a precondition miss');
-assert.equal(run(rateLine), true, 'scan_rate means the worker run ended');
-assert.equal(run(scheduled), false, 'scheduled/started scan is still killable');
-assert.equal(run(midRun), false, 'mid-run scan is still killable');
-assert.equal(run(otherWorker), false, 'the re-arm worker finishing is not the scan');
+const sched = (id, job) => `D/WM-SystemJobScheduler(12139): Scheduling work ID ${id} (nl.atlas.gallery.featureface.work.PeopleScanWorker), Job ID ${job}\n`;
+const result = (id) => `I/WM-WorkerWrapper(12139): Worker result SUCCESS for Work [ id=${id}, class=nl.atlas.gallery.featureface.work.PeopleScanWorker, tags={ nl.atlas.gallery.featureface.work.PeopleScanWorker } ]\n`;
+const A = 'ecc46b3e-809e-4477-aaa7-f887864e136f';
+const B = 'fffef864-35f2-40a7-999e-124e331ad0af';
+const R = '3159b5a5-0000-4000-8000-000000000000';
+const chained = sched(A, 0) + 'D/WM-WorkerWrapper(12139): Starting work for nl.atlas.gallery.featureface.work.PeopleScanWorker\n' +
+  'I/ATLAS_FACE(12139): scan_batch photos=0\n' + result(A) +
+  'I/WM-WorkerWrapper(12139): Setting status to enqueued for ' + B + '\n' + sched(B, 2) +
+  'I/WM-WorkerWrapper(12139): Worker result SUCCESS for Work [ id=d919d65e-a0ca-46b1-bb9d-7ce22f884279, class=nl.atlas.gallery.featureface.work.PeopleScanRearmWorker, tags={ nl.atlas.gallery.featureface.work.PeopleScanRearmWorker } ]\n';
+assert.equal(bash(chained, 'scan_work_id'), `${B} 2`, 'the chained scan job is the one to kill');
+assert.equal(bash(chained, `scan_work_finished ${B}`), null, 'chained job not finished: killable');
+assert.equal(bash(chained, `scan_work_finished ${A}`), 'ok');
+const r372 = sched(R, 2) + 'D/WM-WorkerWrapper( 2826): Starting work for nl.atlas.gallery.featureface.work.PeopleScanWorker\n' + result(R);
+assert.equal(bash(r372, 'scan_work_id'), `${R} 2`);
+assert.equal(bash(r372, `scan_work_finished ${R}`), 'ok', '#372: finished work is a precondition miss');
+assert.equal(bash(sched(R, 2), `scan_work_finished ${R}`), null, 'scheduled only: killable');
+assert.equal(bash(r372, 'scan_work_finished ""'), null, 'no work ID never counts as finished');
 console.log('scan-kill-precondition-372: source contract and helper behaviour pass');
