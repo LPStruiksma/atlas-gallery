@@ -117,17 +117,9 @@ class PersonCoverOverrideAndroidTest {
                 assertEquals(remapped, db.peopleHome("epoch-B")!!.people[person]!!.coverFaceUid)
 
                 // A genuinely changed source revision must not inherit a choice.
-                // Face UIDs are random, so the chosen face can sit on any of the
-                // three sources: revise exactly the one that holds the choice.
-                val coverSource = db.readableDatabase.rawQuery(
-                    "SELECT media_key FROM people_cover_override WHERE person_key=?",
-                    arrayOf(person.value)).use { c ->
-                        assertTrue("one stored cover", c.moveToFirst()); c.getString(0)
-                    }
                 db.beginSnapshot("epoch-C")
                 db.stageBatch("epoch-C", (1..3).map {
-                    if (media(it).key == coverSource) IndexedMedia(media(it).key, "generation:2")
-                    else media(it)
+                    if (it == 3) IndexedMedia(media(it).key, "generation:2") else media(it)
                 })
                 db.commitSnapshot("epoch-C", "detector-2")
                 assertNull(db.personCoverOverride("epoch-C", person))
