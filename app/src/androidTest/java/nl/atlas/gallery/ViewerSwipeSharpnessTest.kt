@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import coil3.SingletonImageLoader
+import coil3.memory.MemoryCache
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -73,6 +74,7 @@ class ViewerSwipeSharpnessTest {
             }
         }
         val settleToSharp = List(2) { mutableListOf<Double>() }
+        val warmBeforeSwipe = List(2) { mutableListOf<String>() }
         for (a in 0..1) {
             rule.runOnIdle { memory.clear(); open = false; arm = a }
             rule.waitForIdle()
@@ -80,6 +82,13 @@ class ViewerSwipeSharpnessTest {
             awaitStamp(photos[0].name, ViewerPhotoSharpAtKey, 0L)
             for (page in 1 until PHOTOS) {
                 Thread.sleep(PACE_MS)
+                // Was the page ahead's base warm just before the swipe, and how full the cache was.
+                val baseKey = viewerBaseMemoryKey(photos[page].uri, false, 0L) { px ->
+                    photos[page].presentationCacheKeyOrNull(px, epoch)
+                }!!
+                warmBeforeSwipe[a] += "%s/%dMB/%d".format(
+                    if (memory[MemoryCache.Key(baseKey)] != null) "warm" else "cold",
+                    memory.size shr 20, memory.keys.size)
                 val swipedAt = System.nanoTime()
                 rule.onNodeWithTag("atlas-main-pager").performTouchInput { swipeLeft() }
                 val settled = awaitStamp(photos[page].name, ViewerPhotoSettledAtKey, swipedAt)
@@ -94,10 +103,12 @@ class ViewerSwipeSharpnessTest {
         Log.i("ATLAS_SCALE", ("PERF-9 viewer swipe, %d synthetic 12MP JPEGs, 1080x2340 (emulator), " +
             "memory cache %d MB, one swipe per %d ms, %d swipes per arm, base ahead warmed in arm 1: " +
             "settle->sharp 2400 px p50 before=%.1f ms after=%.1f ms; share sharp within %.0f ms " +
-            "before=%.2f after=%.2f; raw before=%s after=%s")
+            "before=%.2f after=%.2f; raw before=%s after=%s; base ahead before each swipe " +
+            "(state/cache used/entries) before=%s after=%s")
             .format(PHOTOS, memory.maxSize shr 20, PACE_MS, before.size, p50(before), p50(after), TARGET_MS,
                 within(before), within(after),
-                before.map { "%.0f".format(it) }, after.map { "%.0f".format(it) }))
+                before.map { "%.0f".format(it) }, after.map { "%.0f".format(it) },
+                warmBeforeSwipe[0], warmBeforeSwipe[1]))
         assertTrue("settle->sharp p50 must be <= ${TARGET_MS} ms with the prefetch: $after",
             p50(after) <= TARGET_MS)
     }
