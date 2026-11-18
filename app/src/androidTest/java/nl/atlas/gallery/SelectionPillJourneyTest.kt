@@ -132,8 +132,11 @@ class SelectionPillActionsTest {
         compose.onNodeWithTag("atlas-selection-share").assertIsEnabled().performClick()
         compose.onNodeWithTag("atlas-selection-trash").assertIsEnabled().performClick()
         compose.onNodeWithTag("atlas-selection-more").performClick()
-        compose.onNodeWithTag("atlas-selection-more-favourite").performClick()
+        compose.onNodeWithTag("atlas-selection-more-favourite")
+            .assert(hasText("Favourite")).performClick()
         compose.onNodeWithTag("atlas-selection-more").performClick()
+        compose.onNodeWithTag("atlas-selection-more-favourite")
+            .assert(hasText("Unfavourite"))
         compose.onNodeWithTag("atlas-selection-copy-to-album").performClick()
         assertEquals(listOf("share", "trash-consent-callback", "favourite", "copy"), calls)
 
