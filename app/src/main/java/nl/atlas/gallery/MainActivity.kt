@@ -1182,8 +1182,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var batchOperating by remember { mutableStateOf(false) }
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
     val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
-    // Only this bounded snapshot is saved on Activity recreation. The live
-    // selection holder remains reference-bound and never enters the Bundle.
+    // The live holder is reference-bound; only a small key snapshot reaches
+    // saved instance state. The selection is never restored before validation.
     SideEffect {
         val live = batchSelection
         if (live != null) {
