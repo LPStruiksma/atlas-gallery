@@ -3,3 +3,4 @@ person-cover-chooser-dark
 person-cover-selected-page-dark
 person-cover-checked-dark
 person-cover-automatic-dark
+person-cover-checked-light

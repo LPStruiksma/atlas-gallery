@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -88,12 +90,21 @@ internal fun PersonFaceCoverChooser(
                                         else "Choose profile picture"
                                 }
                                 .testTag("atlas-person-cover-choice-$index")) {
-                            Box(Modifier.size(104.dp).clip(CircleShape),
-                                contentAlignment = Alignment.Center) {
-                                portrait(face)
+                            // Only the portrait is clipped round; the check badge sits on
+                            // top of the circle's edge so the selected state stays readable.
+                            Box(Modifier.size(104.dp)) {
+                                Box(Modifier.matchParentSize().clip(CircleShape)
+                                    .then(if (selected) Modifier.border(3.dp,
+                                        MaterialTheme.colorScheme.primary, CircleShape)
+                                        else Modifier),
+                                    contentAlignment = Alignment.Center) {
+                                    portrait(face)
+                                }
                                 if (selected) {
                                     Surface(shape = CircleShape,
                                         color = MaterialTheme.colorScheme.primary,
+                                        border = BorderStroke(2.dp,
+                                            MaterialTheme.colorScheme.background),
                                         modifier = Modifier.align(Alignment.BottomEnd)
                                             .size(30.dp).testTag("atlas-person-cover-checked")) {
                                         Icon(Icons.Filled.Check, contentDescription = "Selected",

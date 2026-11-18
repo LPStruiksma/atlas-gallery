@@ -20,7 +20,7 @@ data class NativePeopleNamesSnapshot(
     val rejected: Set<Pair<String, String>>,
     val sameUnknown: Set<Pair<String, String>>,
     val faceDecisions: Map<String, String>,
-    /** One explicit person → opaque selected face UID, never a path or image. */
+    /** One explicit person → opaque selected face UID, never a file location or picture. */
     val coverOverrides: Map<String, String> = emptyMap()
 )
 

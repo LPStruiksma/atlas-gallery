@@ -371,6 +371,14 @@ class PersonPageJourneyTest {
         waitForTag("atlas-person-cover-checked")
         settle()
         saveUiEvidence("person-cover-checked-dark.png")
+        // Design pair: the same checked chooser in the light theme.
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
+        dark = false
+        settle()
+        saveUiEvidence("person-cover-checked-light.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        dark = true
+        settle()
         compose.onNodeWithTag("atlas-person-cover-automatic").performClick()
         waitFor("profile cover reverted") {
             store.personCoverOverride(epoch, ada) == null
