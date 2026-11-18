@@ -11,7 +11,8 @@ const unit = read('app/src/test/java/nl/atlas/gallery/featurepeopleui/PeopleMedi
 const instrumentation = read('app/src/androidTest/java/nl/atlas/gallery/PeopleSortJourneyTest.kt');
 // The subtitle must be based on the existing distinct-media sort statistic, not faceCount.
 assert.match(store, /CASE WHEN f\.frame_ms IS NOT NULL THEN 1 ELSE 0 END/);
-assert.match(store, /GROUP BY media_key/);
+assert.match(store, /GROUP BY person_key,media_key/);
+assert.match(store, /GROUP BY person_key/);
 assert.match(store, /photoCount\s*=\s*photos/);
 assert.match(store, /videoCount\s*=\s*videos/);
 assert.match(review, /val photoCount: Int/);
