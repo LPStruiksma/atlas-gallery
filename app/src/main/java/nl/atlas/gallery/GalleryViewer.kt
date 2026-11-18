@@ -689,7 +689,7 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.TopCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xB8000000), Color.Transparent)))
+                .background(Brush.verticalGradient(listOf(AtlasTokens.Colors.Viewer.ChromeScrimTop, Color.Transparent)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -764,7 +764,7 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.BottomCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, AtlasTokens.Colors.Viewer.ChromeScrimBottom)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .testTag("atlas-viewer-bottom-chrome"),

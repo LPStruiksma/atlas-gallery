@@ -45,6 +45,8 @@ object AtlasTokens {
             val Scrim = Color(0xA0000000)
             val SeekInactive = Color(0xFF888888)
             val SelectionAccent = Color(0xFFB5E7DA)
+            val ChromeScrimTop = Color(0xB8000000)
+            val ChromeScrimBottom = Color(0xCC000000)
         }
         object People {
             val PortraitMuted = Color(0xFF8B95A1)
