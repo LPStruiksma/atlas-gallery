@@ -27,6 +27,7 @@ import nl.atlas.gallery.featurecuration.cleanupSize
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasPageColor
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNamedMatches
 import kotlinx.coroutines.delay
 
@@ -43,6 +44,7 @@ internal fun DeclutterScreen(
     folder: String,
     deck: List<MediaRecord>,
     onExit: () -> Unit,
+    onSearchWholeLibrary: () -> Unit,
     onTrashRequest: (List<MediaRecord>) -> Unit,
     verifying: Boolean = false
 ) {
@@ -150,7 +152,21 @@ internal fun DeclutterScreen(
             title = "Declutter",
             onBack = onExit,
             backDescription = "Back to Gallery",
-            actions = { AtlasSearch(query = searchText, onQueryChange = { searchText = it }) }
+            actions = {
+                AtlasSearch(
+                    query = searchText,
+                    onQueryChange = { searchText = it },
+                    initialScope = AtlasSearchScope.THIS_SCREEN,
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) {
+                            // A scope choice navigates to a separate host destination.
+                            // It never changes the session, staged list or Trash request.
+                            searchText = ""
+                            onSearchWholeLibrary()
+                        }
+                    }
+                )
+            }
         )
         if (verifying) {
             LinearProgressIndicator(Modifier.fillMaxWidth()
@@ -159,9 +175,17 @@ internal fun DeclutterScreen(
         if (reviewing) {
             Text("Review staged files", style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground)
+            val visiblePending = scopedNamedMatches(pending, searchText) { it.name + " " + it.album }
+            if (visiblePending.isEmpty()) {
+                Text(
+                    if (pending.isEmpty()) "No staged items" else "No matching staged items",
+                    modifier = Modifier.testTag("atlas-declutter-search-empty"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(scopedNamedMatches(pending, searchText) { it.name + " " + it.album },
+                items(visiblePending,
                     key = { it.uri }) { media ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
