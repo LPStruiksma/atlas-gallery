@@ -12,6 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.unit.Density
+import nl.atlas.gallery.featuregrid.AtlasFeatureGrid
+import org.junit.Assert.assertTrue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +50,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import android.util.Log
+import androidx.compose.ui.test.assertCountEquals
 import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryNavigation
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
@@ -109,12 +121,14 @@ class SearchOneFieldEvidenceTest {
                             personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
                             hasResults = false
                         )
-                        if (filters.text.isNotBlank()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No results", modifier =
-                                    Modifier.testTag("atlas-design-search-no-results"))
-                            }
-                        }
+                        // #134: the app's own empty results grid and copy.
+                        if (filters.text.isNotBlank()) AtlasFeatureGrid(
+                            items = emptyList(), state = rememberLazyGridState(),
+                            busy = false, onOpen = {}, viewKey = "search",
+                            showViewAs = false,
+                            emptyText = "No results for \u201C${filters.text.trim()}\u201D",
+                            emptyDetail = "Try another word or name.",
+                            modifier = Modifier.testTag("atlas-design-search-no-results"))
                     }
                 }
             }
@@ -242,6 +256,114 @@ class SearchOneFieldEvidenceTest {
                 .fetchSemanticsNodes().isEmpty()
         }
     }
+
+    /**
+     * #134 measured rules at S24+ size (450 dpi, px ÷ 2.8125 = dp): chips stay
+     * 32 dp visible (M3 adds the 48 dp touch area outside), the field is
+     * 48–56 dp, suggestion rows 56–64 dp. Then typing renders and a 200% font
+     * render where chips wrap without clipping, in both themes.
+     */
+    @Test fun measuredChipsFieldRowsTypingAndLargeFont() {
+        var darkTheme by mutableStateOf(false)
+        var fontScale by mutableStateOf(1f)
+        var queryReset by mutableStateOf(0)
+        var clearInputFocus: (() -> Unit)? = null
+        val history = EphemeralSearchHistory(listOf("beach", "Daan", "birthday", "snow",
+            "Amsterdam", "family dinner", "2019"), "synthetic-grant")
+        compose.setContent {
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+            clearInputFocus = {
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+            }
+            var filters by remember(queryReset) { mutableStateOf(LocalSearchFacets()) }
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
+                AtlasGalleryTheme(dark = darkTheme) {
+                    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+                        bottomBar = {
+                            AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {})
+                        }) { padding ->
+                        Column(Modifier.fillMaxSize().padding(padding).padding(top = 12.dp)
+                            .imePadding()) {
+                            LocalSearchControls(
+                                filters = filters, people = emptyList(), history = history,
+                                onlyTheseFacesAvailable = false,
+                                onFiltersChange = { filters = it },
+                                onSubmittedQuery = {}, onClearHistory = {},
+                                currentPermissionEpoch = "synthetic-grant",
+                                onSearchByFace = {}, onFindSimilar = {},
+                                namedPeople = people,
+                                personAvatar = { DrawnFace(it.key.hashCode().toLong()) },
+                                hasResults = false
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        val density = compose.runOnIdle {
+            InstrumentationRegistry.getInstrumentation().targetContext
+                .resources.displayMetrics.density
+        }
+        listOf(false, true).forEach { dark ->
+            val theme = if (dark) "dark" else "light"
+            compose.runOnIdle { darkTheme = dark; fontScale = 1f; queryReset++ }
+            waitFor("atlas-search-recent")
+            compose.runOnIdle { clearInputFocus?.invoke() }
+            compose.waitForIdle()
+
+            val chipPx = visibleHeightPx("atlas-search-recent", density)
+            val chipDp = chipPx / density
+            val fieldDp = boundsDp("atlas-search-field", density)
+            Log.i("ATLAS_134", "theme=$theme density=$density chip_visible_px=$chipPx " +
+                "chip_visible_dp=${"%.1f".format(chipDp)} field_dp=${"%.1f".format(fieldDp)}")
+            assertTrue("chip visible ${chipDp}dp, want 32 ± 2", chipDp in 30f..34f)
+            assertTrue("field ${fieldDp}dp, want 48–56", fieldDp in 47.5f..56.5f)
+
+            compose.onNodeWithTag("atlas-search-field").performTextInput("sus")
+            waitFor("atlas-search-person-suggestion")
+            compose.waitForIdle()
+            val rowDp = boundsDp("atlas-search-person-suggestion", density)
+            Log.i("ATLAS_134", "theme=$theme suggestion_row_dp=${"%.1f".format(rowDp)}")
+            assertTrue("suggestion row ${rowDp}dp, want 56–64", rowDp in 55.5f..64.5f)
+            saveUiEvidence("design-4-search-typing-$theme.png")
+
+            compose.runOnIdle { clearInputFocus?.invoke(); fontScale = 2f; queryReset++ }
+            waitFor("atlas-search-recent")
+            compose.waitForIdle()
+            // 200% font: every recent chip is whole on screen (wrapped, not clipped).
+            val rootWidthPx = compose.onRoot().fetchSemanticsNode().boundsInRoot.right
+            compose.onAllNodesWithTag("atlas-search-recent").fetchSemanticsNodes().forEach {
+                assertTrue("chip clipped at 200% font: ${it.boundsInRoot}",
+                    it.boundsInRoot.left >= 0f && it.boundsInRoot.right <= rootWidthPx + 1f)
+            }
+            compose.onAllNodesWithText("family dinner").assertCountEquals(1)
+            saveUiEvidence("design-4-search-font200-$theme.png")
+        }
+    }
+
+    /** Visible (drawn) height of the first [tag] node, scanned on the root image. */
+    private fun visibleHeightPx(tag: String, density: Float): Int {
+        val node = compose.onAllNodesWithTag(tag).onFirst().fetchSemanticsNode()
+        val b = node.boundsInRoot
+        val root = compose.onRoot().captureToImage().asAndroidBitmap()
+        val x = b.center.x.toInt().coerceIn(0, root.width - 1)
+        val margin = (6 * density).toInt()
+        val top = (b.top.toInt() - margin).coerceAtLeast(0)
+        val bottom = (b.bottom.toInt() + margin).coerceAtMost(root.height - 1)
+        val bg = root.getPixel(x, top)
+        fun differs(c: Int) = listOf(16, 8, 0).any { shift ->
+            kotlin.math.abs(((c shr shift) and 0xFF) - ((bg shr shift) and 0xFF)) > 6
+        }
+        val first = (top..bottom).first { differs(root.getPixel(x, it)) }
+        val last = (bottom downTo top).first { differs(root.getPixel(x, it)) }
+        return last - first + 1
+    }
+
+    private fun boundsDp(tag: String, density: Float): Float =
+        compose.onAllNodesWithTag(tag).onFirst().fetchSemanticsNode().boundsInRoot.height / density
 
     private fun waitFor(tag: String) {
         try {
