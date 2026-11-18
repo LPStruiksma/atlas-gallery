@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -249,7 +250,10 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-selection-pill").assertExists()
         compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
         ids.take(2).forEach { id ->
-            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+            val tag = "atlas-timeline-media-${id}"
+            compose.onNodeWithTag("atlas-timeline-grid")
+                .performScrollToNode(hasTestTag(tag))
+            compose.onNodeWithTag(tag).assertIsSelected()
         }
     }
 
