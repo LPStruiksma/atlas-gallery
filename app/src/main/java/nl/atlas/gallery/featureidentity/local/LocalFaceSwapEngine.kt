@@ -340,7 +340,9 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
         /** Bounds first; decodes only when the pixel count and free heap allow a full-size copy. */
         private fun decodeFull(image: EditImage): Bitmap? {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            open(image)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+            // A bounds-only decode always returns null by contract; only a stream that
+            // fails to open or empty bounds mean failure.
+            (open(image) ?: return null).use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
             val pixels = bounds.outWidth.toLong() * bounds.outHeight
             if (pixels > config.maxSourcePixels) return null
@@ -355,7 +357,10 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
 
         private fun decodeReference(image: EditImage): Bitmap? {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            open(image)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+            // A bounds-only decode always returns null by contract; only a stream that
+            // fails to open or empty bounds mean failure.
+            (open(image) ?: return null).use { BitmapFactory.decodeStream(it, null, bounds) }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
             var sample = 1
             while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= config.referenceLongEdge) sample *= 2
             val opts = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.ARGB_8888 }
