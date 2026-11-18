@@ -1228,9 +1228,23 @@ private fun PhotoPage(
     var decodedSize by remember(media.uri, focused, imageRevision) {
         mutableStateOf(IntSize.Zero)
     }
-    LaunchedEffect(viewport, decodedSize) {
+    // PERF-32 (#334): the oriented full size of a photo whose region
+    // decoders opened. Only then may a pinch go past today's 5x limit.
+    var tiledSize by remember(media.uri, focused, imageRevision) {
+        mutableStateOf<IntSize?>(null)
+    }
+    fun maxZoom(): Float = tiledSize?.let {
+        viewerMaxZoom(viewport.width, viewport.height, it.width, it.height)
+    } ?: ViewerTileZoom.BASE_MAX_ZOOM
+    // Region decoders open on the first zoom, not on every settled page.
+    val zoomedIn by remember(media.uri, focused, imageRevision) {
+        derivedStateOf { zoomPose.scale > 1.01f }
+    }
+    var zoomedOnce by remember(media.uri, focused, imageRevision) { mutableStateOf(false) }
+    LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
+    LaunchedEffect(viewport, decodedSize, tiledSize) {
         zoomPose = viewerReboundZoom(zoomPose, viewport.width, viewport.height,
-            decodedSize.width, decodedSize.height)
+            decodedSize.width, decodedSize.height, maxZoom())
         onZoomChanged(zoomPose.scale)
     }
     // The pager retains neighboring pages. Readiness belongs to the
@@ -1310,7 +1324,7 @@ private fun PhotoPage(
                                 val next = viewerZoomGesture(
                                     previous, gestureZoom, pan.x, pan.y,
                                     centroid.x, centroid.y, viewport.width, viewport.height,
-                                    decodedSize.width, decodedSize.height)
+                                    decodedSize.width, decodedSize.height, maxZoom())
                                 if (next != previous) {
                                     zoomPose = next
                                     latestZoomChanged(next.scale)
@@ -1388,6 +1402,14 @@ private fun PhotoPage(
                         onSuccess = { result ->
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                         })
+                    // PERF-32 (#334): full-resolution tiles over this base
+                    // once the photo is magnified past what 2400 px can show.
+                    ViewerRegionTileLayer(
+                        uri = media.uri, contentRevision = imageRevision,
+                        mediaStoreDegrees = media.orientationDegrees,
+                        active = zoomedOnce && decodedSize != IntSize.Zero,
+                        pose = { zoomPose }, viewport = viewport, baseSize = decodedSize,
+                        onTiledSize = { tiledSize = it })
                 }
                 // Inside the zoom layer, so the box follows pinch and pan.
                 if (faceBoxes.isNotEmpty()) FaceHighlightOverlay(faceBoxes,
