@@ -23,4 +23,12 @@ class PersonSelectionFenceTest {
         assertNull(validatedPersonSelection(keys, fence, null))
         assertNull(validatedPersonSelection(keys, null, fence))
     }
+
+    @Test fun restoredPersonKeysKeepOnlyVisibleMembersOfTheSameIdentity() {
+        assertEquals(keys, eligiblePersonSelection(keys, keys))
+        assertEquals(setOf("content://synthetic/photo-a"),
+            eligiblePersonSelection(keys, setOf("content://synthetic/photo-a")))
+        assertNull(eligiblePersonSelection(keys, setOf("content://synthetic/photo-c")))
+        assertNull(eligiblePersonSelection(emptySet(), keys))
+    }
 }
