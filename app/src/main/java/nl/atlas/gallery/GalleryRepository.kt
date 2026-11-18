@@ -19,6 +19,7 @@ import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.mutableStateOf
+import nl.atlas.gallery.featureorganization.SelectionRotationState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineStart
@@ -340,6 +341,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     // Configuration-change only: neither the person key nor name is copied to
     // saved instance state, preferences or process-death restoration.
     internal val nativePersonAlbumState = mutableStateOf<NativePersonAlbumRequest?>(null)
+    // Pending photo/album selection only survives configuration changes; never Bundle saves.
+    internal val pendingSelectionRotationState = mutableStateOf<SelectionRotationState?>(null)
     private val repo = GalleryRepository(application)
     private val peopleRepo = PeopleRepository(application)
     private val v4LinkPrefs = application.getSharedPreferences("atlas_v4_live_sync",Context.MODE_PRIVATE)
