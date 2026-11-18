@@ -1149,6 +1149,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         timelineEntryDensity = null
     }
     // Save only bounded keys, never a MediaRecord list or actionable selection.
+    // The originating destination must match before a pending request is
+    // readmitted: switching tabs after rotation cannot resurrect old selection.
     // The restored snapshot remains non-actionable until the publication,
     // current grant and exact album scope have all been verified.
     var pendingSelectionRestore by rememberSaveable(
@@ -1734,7 +1736,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             val saved = pendingSelectionRestore ?: return@LaunchedEffect
             // Async sorting and album filtering may publish empty placeholders.
             // Do not consume a pending save until the exact scope has loaded.
-            if (busy || sortPending || albumSelectionPending || visible.isEmpty()) return@LaunchedEffect
+            if (busy || sortPending || albumSelectionPending || scopedPending ||
+                visible.isEmpty()) return@LaunchedEffect
             val restored = withContext(Dispatchers.Default) {
                 val worker = currentCoroutineContext()
                 saved.restore(visible, publishedGallery.epoch, selectionGrantBits,
