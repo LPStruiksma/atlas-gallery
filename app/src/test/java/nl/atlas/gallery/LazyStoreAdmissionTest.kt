@@ -7,7 +7,7 @@ import org.junit.Test
 class LazyStoreAdmissionTest {
     @Test fun holdersDoNoWorkUntilExplicitBackgroundAdmission() {
         var opens = 0
-        val holder = LazyBackgroundHolder("People database") { ++opens; "opened" }
+        val holder = LazyBackgroundHolder("People database", isMainThread = { false }) { ++opens; "opened" }
         assertEquals(0, opens)
         assertFalse(holder.isOpened)
         assertEquals("opened", holder.get())
@@ -19,7 +19,7 @@ class LazyStoreAdmissionTest {
 
     @Test fun failedOpenIsRetriedWithoutPoisoningTheHolder() {
         var attempts = 0
-        val holder = LazyBackgroundHolder("model") {
+        val holder = LazyBackgroundHolder("model", isMainThread = { false }) {
             if (++attempts == 1) error("synthetic unavailable")
             42
         }
