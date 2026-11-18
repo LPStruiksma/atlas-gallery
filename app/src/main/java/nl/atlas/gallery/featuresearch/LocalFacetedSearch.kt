@@ -113,8 +113,14 @@ fun searchWithFacets(
     val selectedPathIntersection = if (selectedPaths.isEmpty()) null else {
         val common = selectedPaths.first().toHashSet()
         for (i in 1 until selectedPaths.size) {
-            cancellationCheckpoint()
-            common.retainAll(selectedPaths[i])
+            // Preserve cancellability during potentially large intersections.
+            val retain = selectedPaths[i]
+            val iter = common.iterator()
+            var visited = 0
+            while (iter.hasNext()) {
+                if ((visited++ and 511) == 0) cancellationCheckpoint()
+                if (iter.next() !in retain) iter.remove()
+            }
         }
         common
     }
