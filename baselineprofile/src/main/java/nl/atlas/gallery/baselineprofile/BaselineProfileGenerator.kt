@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -55,6 +56,7 @@ class BaselineProfileGenerator {
             }, null, null)
             inserted += uri
         }
+        primeCachedGrid()
     }
 
     @After
@@ -62,29 +64,37 @@ class BaselineProfileGenerator {
         inserted.forEach { resolver.delete(it, null, null) }
     }
 
+    /**
+     * Populates ATLAS's inventory cache outside profile capture (BaselineProfileRule has no
+     * setup block; JUnit leaves the order of several @Before methods open, so the fixture
+     * insert calls this last), so the captured journey is the cached-grid start the owner sees daily.
+     */
+    private fun primeCachedGrid() {
+        val device = UiDevice.getInstance(instrumentation)
+        if (Build.VERSION.SDK_INT >= 33) {
+            device.executeShellCommand("pm grant $TARGET_PACKAGE android.permission.READ_MEDIA_IMAGES")
+        }
+        device.executeShellCommand("am start -W -n $TARGET_PACKAGE/.MainActivity")
+        check(device.wait(Until.hasObject(By.textContains("photos")), UI_TIMEOUT_MS)) {
+            "ATLAS did not show its photo header after the warm-up launch"
+        }
+        device.executeShellCommand("am force-stop $TARGET_PACKAGE")
+    }
+
     @Test
     fun cachedGridColdStartAndFling() = baselineProfileRule.collect(
         packageName = TARGET_PACKAGE,
         includeInStartupProfile = true,
-        setupBlock = {
-            if (Build.VERSION.SDK_INT >= 33) {
-                device.executeShellCommand("pm grant $TARGET_PACKAGE android.permission.READ_MEDIA_IMAGES")
-            }
-
-            // Populate ATLAS's inventory cache outside profile capture, then measure a true cold start.
-            startActivityAndWait()
-            check(device.wait(Until.hasObject(By.textContains("photos")), UI_TIMEOUT_MS))
-            killProcess()
-        },
-        profileBlock = {
-            pressHome()
-            startActivityAndWait()
-            check(device.wait(Until.hasObject(By.scrollable(true)), UI_TIMEOUT_MS))
-            val grid = checkNotNull(device.findObject(By.scrollable(true)))
-            repeat(FLING_COUNT) { grid.fling(Direction.DOWN) }
-            device.waitForIdle()
-        },
-    )
+    ) {
+        pressHome()
+        startActivityAndWait()
+        check(device.wait(Until.hasObject(By.scrollable(true)), UI_TIMEOUT_MS))
+        val grid = checkNotNull(device.findObject(By.scrollable(true)))
+        // Leave the gesture margins clear so a fling is never read as a system back/home swipe.
+        grid.setGestureMargin(device.displayWidth / 5)
+        repeat(FLING_COUNT) { grid.fling(Direction.DOWN) }
+        device.waitForIdle()
+    }
 
     private fun isEmulator(): Boolean =
         Build.HARDWARE.contains("ranchu", ignoreCase = true) ||

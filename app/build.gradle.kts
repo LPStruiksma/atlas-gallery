@@ -10,6 +10,17 @@ baselineProfile {
     automaticGenerationDuringBuild = false
 }
 
+// The Baseline Profile plugin adds a `nonMinifiedRelease` build type that copies
+// `release`'s signing config, and `release` is unsigned here (release-signed.yml
+// signs it later). Sign only that emulator-installed profiling variant with the
+// debug key so the generator can install it; `release` itself is unchanged.
+androidComponents {
+    finalizeDsl { android ->
+        android.buildTypes.findByName("nonMinifiedRelease")?.signingConfig =
+            android.signingConfigs.getByName("debug")
+    }
+}
+
 // A permanent *development* signing identity is optional in CI. Do not put
 // any password or keystore in Git history; CI injects these values at build time.
 val atlasSigningPath = providers.environmentVariable("ATLAS_STABLE_SIGNING_PATH").orNull
