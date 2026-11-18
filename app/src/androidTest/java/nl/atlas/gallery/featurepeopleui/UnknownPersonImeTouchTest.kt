@@ -1,9 +1,11 @@
 package nl.atlas.gallery.featurepeopleui
 
 import android.app.Activity
-import android.os.Handler
-import android.os.Looper
+import android.os.SystemClock
 import android.view.Choreographer
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +22,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.util.concurrent.atomic.AtomicBoolean
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
@@ -100,16 +104,37 @@ class UnknownPersonImeTouchTest {
     }
 
     /**
-     * The platform invokes onProgress during an actual IME inset transition.
-     * Capture that signal on the Activity's real decor view, rather than inferring
-     * animation from the order of Compose test helpers.
+     * Real pointer injection timed by the platform's own IME show animation.
+     *
+     * #388 review: a Compose `performTouchInput` first waits for idle, so the
+     * IME transition can finish before the pointer is injected. Instead, the
+     * first IME `onProgress` (UI thread, mid-transition) starts one background
+     * thread that injects DOWN and UP through UiAutomation at [x], [y] (screen
+     * pixels), with no Compose synchronisation in between. A wrapped
+     * `Window.Callback` records the IME phase when each event actually reaches
+     * the window, which the test asserts afterwards. One tap, no retry.
      */
-    private class ImeOpeningProbe(private val activity: Activity) {
+    private class ImeOpeningTap(
+        private val activity: Activity,
+        private val x: Float,
+        private val y: Float
+    ) {
         @Volatile var openingProgress = 0
         @Volatile var started = false
         @Volatile var ended = false
         @Volatile var running = false
-        private val callback = object : WindowInsetsAnimation.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+        @Volatile var downArrived = false
+        @Volatile var upArrived = false
+        @Volatile var imeAnimatingAtDown = false
+        @Volatile var imeAnimatingAtUp = false
+        @Volatile var progressBeforeDown = 0
+        @Volatile var injectionError: Throwable? = null
+        private val fired = AtomicBoolean(false)
+        private var originalCallback: Window.Callback? = null
+
+        private fun isImeAnimating() = running && !ended
+
+        private val animation = object : WindowInsetsAnimation.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
             override fun onStart(
                 animation: WindowInsetsAnimation,
                 bounds: WindowInsetsAnimation.Bounds
@@ -127,6 +152,7 @@ class UnknownPersonImeTouchTest {
             ): WindowInsets {
                 if (running && runningAnimations.any { it.typeMask and WindowInsets.Type.ime() != 0 }) {
                     openingProgress++
+                    if (fired.compareAndSet(false, true)) Thread(::injectTap, "touch1-ime-tap").start()
                 }
                 return insets
             }
@@ -139,12 +165,53 @@ class UnknownPersonImeTouchTest {
             }
         }
 
+        private fun injectTap() {
+            try {
+                val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+                val downAt = SystemClock.uptimeMillis()
+                for ((action, at) in listOf(
+                    MotionEvent.ACTION_DOWN to downAt,
+                    MotionEvent.ACTION_UP to downAt + 40
+                )) {
+                    val event = MotionEvent.obtain(downAt, at, action, x, y, 0)
+                    event.source = InputDevice.SOURCE_TOUCHSCREEN
+                    check(automation.injectInputEvent(event, true)) { "injectInputEvent refused $action" }
+                    event.recycle()
+                }
+            } catch (t: Throwable) {
+                injectionError = t
+            }
+        }
+
         fun install() {
-            activity.runOnUiThread { activity.window.decorView.setWindowInsetsAnimationCallback(callback) }
+            activity.runOnUiThread {
+                val original = activity.window.callback
+                originalCallback = original
+                activity.window.callback = object : Window.Callback by original {
+                    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN -> {
+                                imeAnimatingAtDown = isImeAnimating()
+                                progressBeforeDown = openingProgress
+                                downArrived = true
+                            }
+                            MotionEvent.ACTION_UP -> {
+                                imeAnimatingAtUp = isImeAnimating()
+                                upArrived = true
+                            }
+                        }
+                        return original.dispatchTouchEvent(event)
+                    }
+                }
+                activity.window.decorView.setWindowInsetsAnimationCallback(animation)
+            }
         }
 
         fun remove() {
-            activity.runOnUiThread { activity.window.decorView.setWindowInsetsAnimationCallback(null) }
+            activity.runOnUiThread {
+                activity.window.decorView.setWindowInsetsAnimationCallback(null)
+                originalCallback?.let { activity.window.callback = it }
+            }
         }
     }
 
@@ -202,19 +269,39 @@ class UnknownPersonImeTouchTest {
 
     @Test fun openingImeTouchIsNeverSilentlySwallowed() {
         fixture()
-        val probe = ImeOpeningProbe(activity())
-        probe.install()
+        val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
+        // Measured with the keyboard closed: the empty filter already lists option 1.
+        val bounds = compose.onNodeWithTag("atlas-group-1-destination-option-1")
+            .fetchSemanticsNode().boundsInWindow
+        val window = IntArray(2)
+        compose.runOnIdle { activity().window.decorView.getLocationOnScreen(window) }
+        val tap = ImeOpeningTap(
+            activity(), window[0] + bounds.center.x, window[1] + bounds.center.y
+        )
+        tap.install()
         try {
+            // Focusing the field starts the IME show animation; its first
+            // onProgress injects the one tap (see ImeOpeningTap).
             compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Morgan")
-            compose.waitUntil(10_000) {
-                probe.started && probe.running && probe.openingProgress > 0
-            }
-            // No retry: phase must still be active at actual pointer injection.
-            assertTrue("IME must be animating when the touch is injected", probe.running && !probe.ended)
-            tapChoice()
-            assertTrue("IME show transition ended before the tap", probe.started && probe.openingProgress > 0)
+            compose.waitUntil(10_000) { tap.upArrived || tap.injectionError != null }
+            tap.injectionError?.let { throw AssertionError("Pointer injection failed", it) }
+            assertTrue("IME show animation must have started", tap.started)
+            assertTrue("Pointer DOWN must reach the window", tap.downArrived)
+            assertTrue(
+                "IME must still be animating when pointer DOWN reaches the window " +
+                    "(progress frames before DOWN: ${tap.progressBeforeDown})",
+                tap.imeAnimatingAtDown
+            )
+            android.util.Log.i(
+                "ATLAS_TOUCH1",
+                "opening tap: animatingAtDown=${tap.imeAnimatingAtDown} " +
+                    "animatingAtUp=${tap.imeAnimatingAtUp} progressBeforeDown=${tap.progressBeforeDown} " +
+                    "progressTotal=${tap.openingProgress}"
+            )
+            compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         } finally {
-            probe.remove()
+            tap.remove()
         }
     }
 }
