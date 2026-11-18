@@ -409,7 +409,12 @@ class WarmReleaseGate(private val release: () -> Unit) {
         try {
             return block()
         } finally {
-            try { if (pending) { pending = false; release() } } finally { lock.unlock() }
+            try { if (pending) { pending = false; release() } } finally {
+                lock.unlock()
+                // A request may race with the pending check just before unlock.
+                // Retry without waiting so a failed tryLock cannot strand it.
+                if (pending) requestRelease()
+            }
         }
     }
 
