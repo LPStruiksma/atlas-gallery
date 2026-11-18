@@ -19,7 +19,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featurealbums.AlbumPickerScreen
 import nl.atlas.gallery.featurealbums.AlbumSummary
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.AtlasSystemBarIcons
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -56,7 +62,7 @@ class AlbumPickerDesign10bEvidenceTest {
     private fun picker(title: String, albums: List<AlbumSummary>, base: String) {
         var dark by mutableStateOf(false)
         compose.setContent {
-            AtlasGalleryTheme(dark = dark) {
+            AppRoot(dark) {
                 AlbumPickerScreen(
                     title = title, albums = albums, onPick = {}, onCreate = {},
                     nameProblem = { if (it.isBlank()) "Name required" else null }, onClose = {}
@@ -83,7 +89,7 @@ class AlbumPickerDesign10bEvidenceTest {
         val many = (0 until 220).map { album(it, "Fixture album ${it + 1}") }
         var dark by mutableStateOf(true)
         compose.setContent {
-            AtlasGalleryTheme(dark = dark) {
+            AppRoot(dark) {
                 AlbumPickerScreen(
                     title = "Move to album", albums = many, onPick = {}, onCreate = {},
                     nameProblem = { null }, onClose = {}
@@ -109,7 +115,7 @@ class AlbumPickerDesign10bEvidenceTest {
         compose.setContent {
             val ime = WindowInsets.ime.getBottom(LocalDensity.current)
             SideEffect { imeBottom = ime }
-            AtlasGalleryTheme(dark = dark) {
+            AppRoot(dark) {
                 AlbumPickerScreen(
                     title = "Copy to album", albums = mixed, onPick = {}, onCreate = {},
                     nameProblem = { if (it.isBlank()) "Name required" else null }, onClose = {}
@@ -127,5 +133,19 @@ class AlbumPickerDesign10bEvidenceTest {
             compose.waitForIdle()
             saveUiEvidence("design-10b-create-dialog-${if (next) "dark" else "light"}.png")
         }
+    }
+}
+
+/**
+ * The same root MainActivity draws every route in: system bar icons for the
+ * theme, then a Surface that supplies the readable content colour. Without
+ * it, picker text falls back to black and is unreadable in dark captures.
+ */
+@Composable
+private fun AppRoot(dark: Boolean, content: @Composable () -> Unit) {
+    AtlasSystemBarIcons(dark)
+    AtlasGalleryTheme(dark = dark) {
+        Surface(Modifier.fillMaxSize(), color = DeepBg,
+            contentColor = MaterialTheme.colorScheme.onBackground) { content() }
     }
 }
