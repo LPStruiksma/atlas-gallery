@@ -39,7 +39,17 @@ class ParityCaptureContractTest(unittest.TestCase):
 
     def test_all_required_capture_rows_have_real_instrumented_producers(self):
         rows = matrix.read_contract()
-        self.assertEqual(30, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(34, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(6, sum(not r["source_png"] for r in rows))
+        remaining = ROOT / "app/src/androidTest/java/nl/atlas/gallery/ParityRemainingSurfaceJourneyTest.kt"
+        remaining_source = remaining.read_text(encoding="utf-8")
+        for name in (
+            "parity-24-pinch-large-$mode.png",
+            "parity-24-original-ratio-$mode.png",
+        ):
+            self.assertIn('saveUiEvidence("' + name + '")', remaining_source)
+        self.assertIn('"3 columns"', remaining_source)
+        self.assertIn('"atlas-ratio-gallery"', remaining_source)
         source = (ROOT / "app/src/androidTest/java/nl/atlas/gallery/"
                   "SystemThemeJourneyTest.kt").read_text(encoding="utf-8")
         for name in (

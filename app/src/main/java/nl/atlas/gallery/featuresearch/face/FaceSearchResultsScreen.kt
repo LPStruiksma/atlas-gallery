@@ -31,6 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -43,11 +46,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.CatalogSourceKey
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.PersonEntry
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featureface.search.FaceMatchTier
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 
@@ -81,7 +92,9 @@ fun FaceSearchRoute(
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     onOpenAlbum: (PersonKey, String) -> Unit,
     onOpenPeople: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val close by rememberUpdatedState(onClose)
@@ -146,7 +159,8 @@ fun FaceSearchRoute(
                                 onOpen(records, record)
                         }
                     },
-                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = onClose)
+                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = onClose,
+                    facetPeople = facetPeople, onSearchWholeLibrary = onSearchWholeLibrary)
             }
         }
     }
@@ -261,12 +275,42 @@ fun FaceSearchResultsScreen(
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     onOpenAlbum: (PersonKey, String) -> Unit,
     onOpenPeople: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
+    var searchText by remember { mutableStateOf("") }
+    val results = state as? FaceSearchState.Results
+    val source = results?.records
+    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
+        null, results, searchText, facetPeople
+    ) {
+        value = null
+        if (results != null && source != null && searchText.isNotBlank()) {
+            val worker = currentCoroutineContext()
+            val matches = withContext(Dispatchers.Default) {
+                scopedMediaMatches(source, source, facetPeople, searchText,
+                    cancellationCheckpoint = { worker.ensureActive() })
+            }
+            value = ScopedMediaSearchSnapshot(source, source, facetPeople, results.epoch,
+                searchText, AtlasSearchScope.THIS_SCREEN, matches)
+        }
+    }
+    val visibleRecords = when {
+        results == null -> null
+        searchText.isBlank() -> source
+        source == null -> null
+        else -> currentScopedMediaSearchOrNull(searchSnapshot, source, source,
+            facetPeople, results.epoch, searchText, AtlasSearchScope.THIS_SCREEN)
+    }
     Column(Modifier.fillMaxSize().testTag("atlas-face-results")) {
         Header("Search by face", "Matches found on this device, best first")
+        AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+            onScopeChange = { next ->
+                if (next == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+            })
         when (state) {
-            is FaceSearchState.Results -> ResultsGrid(state, onOpen, onOpenAlbum,
+            is FaceSearchState.Results -> ResultsGrid(state, visibleRecords, onOpen, onOpenAlbum,
                 Modifier.weight(1f))
             else -> Box(Modifier.weight(1f)) { StateScreen(state, onOpenPeople, onBack) }
         }
@@ -333,12 +377,21 @@ private fun StateScreen(state: FaceSearchState, onOpenPeople: () -> Unit, onBack
 @Composable
 private fun ResultsGrid(
     state: FaceSearchState.Results,
+    visibleRecords: List<MediaRecord>?,
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     onOpenAlbum: (PersonKey, String) -> Unit,
     modifier: Modifier
 ) {
-    val sure = state.sure
-    val possible = state.possible
+    if (visibleRecords == null) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(Modifier.testTag("atlas-face-results-scoped-searching"))
+        }
+        return
+    }
+    // The worker narrowed the already ranked face results without widening the grant.
+    val allowed = remember(visibleRecords) { visibleRecords.mapTo(HashSet()) { it.uri } }
+    val sure = state.sure.filter { it.record.uri in allowed }
+    val possible = state.possible.filter { it.record.uri in allowed }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
         modifier = modifier.testTag("atlas-face-results-grid"),
@@ -356,12 +409,15 @@ private fun ResultsGrid(
                 }
             }
         }
+        if (sure.isEmpty() && possible.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+            Text("No results in this search", Modifier.padding(20.dp))
+        }
         if (sure.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
             Text("Same person · ${sure.size}", style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(4.dp).testTag("atlas-face-results-sure-header"))
         }
         itemsIndexed(sure, key = { index, _ -> "s$index" }) { index, hit ->
-            ResultTile(hit, "atlas-face-result-$index") { onOpen(state.records, hit.record) }
+            ResultTile(hit, "atlas-face-result-$index") { onOpen(visibleRecords, hit.record) }
         }
         if (possible.isNotEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
             Text("Possible matches · ${possible.size}", style = MaterialTheme.typography.labelLarge,
@@ -370,7 +426,7 @@ private fun ResultsGrid(
         }
         itemsIndexed(possible, key = { index, _ -> "p$index" }) { index, hit ->
             ResultTile(hit, "atlas-face-result-${sure.size + index}") {
-                onOpen(state.records, hit.record)
+                onOpen(visibleRecords, hit.record)
             }
         }
         if (state.truncated) item(span = { GridItemSpan(maxLineSpan) }) {

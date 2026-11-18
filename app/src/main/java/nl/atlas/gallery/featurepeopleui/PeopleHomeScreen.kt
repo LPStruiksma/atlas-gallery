@@ -47,7 +47,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +60,9 @@ import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNameMatches
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
@@ -64,6 +70,7 @@ import nl.atlas.gallery.featurepeopleui.PeopleSortKey
 import nl.atlas.gallery.featurepeopleui.PeopleSortStats
 import nl.atlas.gallery.featurepeopleui.orderPeopleEntries
 import nl.atlas.gallery.featurepeopleui.PeopleSortEntry
+import java.util.Locale
 
 /**
  * People tab in Samsung Gallery style (#516, #643, OWNER_INTENT): the slim
@@ -102,6 +109,7 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    onSearchWholeLibrary: (() -> Unit)? = null,
     /** Persisted by the owning Activity; preferences contain only the enum. */
     sortChoice: PeopleSortChoice = PeopleSortChoice(),
     onSortChoice: (PeopleSortChoice) -> Unit = {},
@@ -125,6 +133,8 @@ fun PeopleHomeScreen(
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
+    val locale = LocalConfiguration.current.locales[0]
+    var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
     var sortSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The native review snapshot is grant-scoped and never mixed with imported
     // V4 numeric IDs. Its confirmed names appear in the same People grid.
@@ -180,6 +190,16 @@ fun PeopleHomeScreen(
         }
         orderPeopleEntries(keyed, sortChoice).map { all[it.id] }
     }
+    val filteredTiles = tiles.filter { tile ->
+        if (searchText.isBlank()) true
+        else when (tile) {
+            is PeopleGridTile.Imported -> tile.profile.name.isNotBlank() &&
+                scopedNameMatches(tile.profile.name, searchText)
+            is PeopleGridTile.Native -> tile.tile.name.isNotBlank() &&
+                scopedNameMatches(tile.tile.name, searchText)
+            is PeopleGridTile.Unnamed -> false
+        }
+    }
     val scan = peopleScanControls(discovery, actions, onStartDiscovery,
         onPauseDiscovery, onResumeDiscovery, onOpenReview)
     val overflow = buildList {
@@ -206,12 +226,20 @@ fun PeopleHomeScreen(
                     modifier = Modifier.size(48.dp).testTag("atlas-people-sort-open")) {
                     Icon(Icons.Filled.Sort, contentDescription = "Sort people")
                 }
+                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
             }
         )
         if (sortSheetOpen) PeopleSortSheet(sortChoice, onSortChoice) { sortSheetOpen = false }
         PeopleScanProgress(discovery)
-        if (tiles.isEmpty()) {
-            if (restoring) {
+        if (filteredTiles.isEmpty()) {
+            if (tiles.isNotEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No matching people")
+                }
+            } else if (restoring) {
                 Box(Modifier.fillMaxSize().testTag("atlas-people-restoring"))
             } else {
                 PeopleEmptyState(scan.start)
@@ -223,7 +251,7 @@ fun PeopleHomeScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            items(tiles.chunked(3), key = { row ->
+            items(filteredTiles.chunked(3), key = { row ->
                 row.joinToString(":") { tile -> when (tile) {
                     is PeopleGridTile.Imported -> "v4-${tile.profile.personId}"
                     is PeopleGridTile.Native -> "native-${tile.tile.person.value}"
@@ -235,11 +263,11 @@ fun PeopleHomeScreen(
                     row.forEach { tile ->
                         when (tile) {
                             is PeopleGridTile.Imported ->
-                                ProfileTile(tile.profile, onOpenProfile, portrait, Modifier.weight(1f))
+                                ProfileTile(tile.profile, onOpenProfile, portrait, locale, Modifier.weight(1f))
                             is PeopleGridTile.Native ->
                                 NativeProfileTile(tile.tile, currentNative,
                                     onOpenNativePersonAlbum, liveNativePeopleAtAction,
-                                    nativePortrait, Modifier.weight(1f))
+                                    nativePortrait, locale, Modifier.weight(1f))
                             is PeopleGridTile.Unnamed ->
                                 UnnamedGroupTile(tile, onOpenReview, nativePortrait,
                                     Modifier.weight(1f))
@@ -401,12 +429,25 @@ private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
 internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? = peopleStatusLine(state)
 
 @Composable
-private fun PortraitCircle(content: @Composable () -> Unit) {
+private fun PortraitCircle(decorative: Boolean = false, content: @Composable () -> Unit) {
     Box(
         Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .then(if (decorative) Modifier.clearAndSetSemantics { } else Modifier),
         contentAlignment = Alignment.Center
     ) { content() }
+}
+
+@Composable
+private fun MediaCountSubtitle(photos: Int, videos: Int, locale: Locale) {
+    Text(
+        peopleMediaCountLabel(photos, videos, locale),
+        modifier = Modifier.fillMaxWidth().testTag("atlas-people-count"),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1, overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center
+    )
 }
 
 @Composable
@@ -416,10 +457,14 @@ private fun NativeProfileTile(
     onOpenAlbum: ((PersonKey) -> Unit)?,
     livePeopleAtAction: (() -> PeopleHomeSummary?)?,
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit,
+    locale: Locale,
     modifier: Modifier
 ) {
     val canOpen = renderedReview != null && onOpenAlbum != null &&
         livePeopleAtAction != null
+    val counts = renderedReview?.people?.get(tile.person)
+    val photos = counts?.photoCount ?: 0
+    val videos = counts?.videoCount ?: 0
     Column(
         modifier = modifier
             .then(if (canOpen) Modifier.clickable {
@@ -427,16 +472,27 @@ private fun NativeProfileTile(
                     onOpenAlbum?.invoke(tile.person)
                 }
             } else Modifier)
+            .semantics(mergeDescendants = true) {
+                contentDescription = peopleMediaCountContentDescription(tile.name, photos, videos, locale)
+            }
             .testTag("atlas-native-person-album"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle {
+        // The named tile speaks the person's name and media counts; portrait alt text
+        // must not be appended to its merged TalkBack description.
+        PortraitCircle(decorative = true) {
             val face = tile.face
             if (face != null) nativePortrait(face) else DefaultPortrait()
         }
-        Text(tile.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis)
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(tile.name, modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            MediaCountSubtitle(photos, videos, locale)
+        }
     }
 }
 
@@ -445,20 +501,33 @@ private fun ProfileTile(
     person: PeopleProfileUi,
     onOpen: (Long) -> Unit,
     portrait: @Composable (PeopleProfileUi) -> Unit,
+    locale: Locale,
     modifier: Modifier
 ) {
+    val semantics = if (person.name.isNotBlank()) {
+        Modifier.semantics(mergeDescendants = true) {
+            contentDescription = peopleMediaCountContentDescription(
+                person.name, person.accessiblePhotos, 0, locale)
+        }
+    } else Modifier
     Column(
         modifier = modifier.clickable { onOpen(person.personId) }
+            .then(semantics)
             .testTag("atlas-people-profile-${person.personId}"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle { portrait(person) }
-        Text(person.name.ifBlank { "Add name" },
-            style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface)
+        PortraitCircle(decorative = true) { portrait(person) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(person.name.ifBlank { "Add name" }, modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface)
+            if (person.name.isNotBlank()) MediaCountSubtitle(person.accessiblePhotos, 0, locale)
+        }
     }
 }
 

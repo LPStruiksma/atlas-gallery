@@ -115,16 +115,24 @@ fun planStories(
             if (item.uri in manualUris) availableManual[item.uri] = item
             return@forEachIndexed
         }
+        // Avoid calendar conversions for rows that can contribute to neither
+        // suggestions nor a deliberate manual story.
+        val requestedManually = item.uri in manualUris
+        val eligibleForSuggestion = suggestionPolicy.enabled &&
+            item.uri !in suggestionPolicy.excludedUris
+        if (!eligibleForSuggestion && !requestedManually) return@forEachIndexed
         val date = runCatching {
             Instant.ofEpochMilli(item.takenAtMillis).atZone(zone).toLocalDate()
         }.getOrNull() ?: return@forEachIndexed
-        if (item.uri in manualUris) availableManual[item.uri] = item
-        if (suggestionPolicy.enabled && date !in suggestionPolicy.excludedDates &&
-            item.uri !in suggestionPolicy.excludedUris) {
+        if (requestedManually) availableManual[item.uri] = item
+        if (eligibleForSuggestion && date !in suggestionPolicy.excludedDates) {
             if (date.isBefore(today) && date.month == today.month && date.dayOfMonth == today.dayOfMonth) {
                 addBounded(matchingDay, date, item)
             }
-            if (YearMonth.from(date) == lastMonth) addBounded(lastMonthDays, date, item)
+            // Compare scalar fields instead of allocating a YearMonth per row.
+            if (date.year == lastMonth.year && date.monthValue == lastMonth.monthValue) {
+                addBounded(lastMonthDays, date, item)
+            }
             if (item.isFavorite && !date.isBefore(recentStart) && !date.isAfter(today)) {
                 addBounded(favoriteDays, date, item)
             }
@@ -174,15 +182,26 @@ fun planStories(
 private fun safeContentUri(value: String): Boolean = value.startsWith("content://") &&
     value.length in 11..2048 && value.none { it == '\n' || it == '\r' || it == '\u0000' }
 
-/** Keep only three candidates per calendar day, irrespective of a 150k-item catalogue. */
+/** Same total ordering as favorite-descending, time-descending, URI-ascending. */
+private fun compareStoryCandidates(a: StoryMedia, b: StoryMedia): Int {
+    if (a.isFavorite != b.isFavorite) return if (a.isFavorite) -1 else 1
+    val byTime = b.takenAtMillis.compareTo(a.takenAtMillis)
+    return if (byTime != 0) byTime else a.uri.compareTo(b.uri)
+}
+
+/** Keep only three candidates per day, without rebuilding a comparator chain or
+ * re-sorting the whole bounded list on every catalogue item. */
 private fun addBounded(
     buckets: MutableMap<LocalDate, MutableList<StoryMedia>>, date: LocalDate, item: StoryMedia
 ) {
-    val slot = buckets.getOrPut(date) { mutableListOf() }
-    slot += item
-    slot.sortWith(compareByDescending<StoryMedia> { it.isFavorite }
-        .thenByDescending { it.takenAtMillis }.thenBy { it.uri })
-    if (slot.size > MAX_PER_DAY) slot.removeAt(slot.lastIndex)
+    val slot = buckets.getOrPut(date) { ArrayList(MAX_PER_DAY) }
+    var position = 0
+    while (position < slot.size && compareStoryCandidates(slot[position], item) <= 0) {
+        position++
+    }
+    if (position >= MAX_PER_DAY) return
+    slot.add(position, item)
+    if (slot.size > MAX_PER_DAY) slot.removeAt(MAX_PER_DAY)
 }
 
 /** Round-robin calendar days avoids one camera burst monopolizing the recap. */

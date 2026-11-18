@@ -108,10 +108,11 @@ internal fun viewerDoubleTapZoom(
 /** Re-clamp on preview-to-HQ upgrade or viewport rotation. */
 internal fun viewerReboundZoom(
     pose: ViewerZoomPosition, viewportWidth: Int, viewportHeight: Int,
-    sourceWidth: Int, sourceHeight: Int
+    sourceWidth: Int, sourceHeight: Int,
+    maxScale: Float = 5f
 ): ViewerZoomPosition = viewerZoomGesture(
     pose, 1f, 0f, 0f, viewportWidth / 2f, viewportHeight / 2f,
-    viewportWidth, viewportHeight, sourceWidth, sourceHeight
+    viewportWidth, viewportHeight, sourceWidth, sourceHeight, maxScale
 )
 
 /**
