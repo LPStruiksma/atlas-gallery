@@ -355,9 +355,12 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   }
   # #343: WorkManager logs which worker each JobScheduler job is for. The
   # scan worker, not the 6 h re-arm (PeopleScanRearmWorker), is what #43 needs.
+  # Capture first: grep -q exiting early would SIGPIPE adb, and pipefail
+  # would then report a found line as missing.
   scan_scheduled() {
-    timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D |
-      grep -q 'featureface[.]work[.]PeopleScanWorker)'
+    local out
+    out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
+    grep -q 'featureface[.]work[.]PeopleScanWorker)' <<<"$out"
   }
   kill43_diagnostics() {
     face_log | tail -50
