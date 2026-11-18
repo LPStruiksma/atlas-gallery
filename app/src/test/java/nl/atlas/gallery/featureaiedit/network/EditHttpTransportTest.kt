@@ -211,6 +211,19 @@ class EditHttpTransportTest {
         }
     }
 
+
+    @Test fun oversizedJsonIsRejectedWithoutRetry() {
+        val attempts = AtomicInteger()
+        withServer({
+            attempts.incrementAndGet()
+            FakeResponse(200, body = ByteArray(1_000_001) { 'x'.code.toByte() })
+        }) { server ->
+            val result = transport(server).execute(config(), EditHttpRequest(EditHttpMethod.GET, "capabilities"))
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
+            assertEquals(1, attempts.get())
+        }
+    }
+
     @Test fun multipartAndAuthAreSentOnlyToChosenHost() {
         val count = AtomicInteger()
         var captured: FakeRequest? = null
@@ -291,7 +304,7 @@ class EditHttpTransportTest {
         }) { server ->
             val result = transport(server).execute(config().copy(readTimeoutMs = 5_000, overallTimeoutMs = 20_000),
                 EditHttpRequest(EditHttpMethod.GET, "status"), maxReplyBytes = 1_500_000)
-            assertEquals(EditHttpResult.Failed(FailureCode.SERVER, false), result)
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
             assertEquals("GET over the cap is not retried", 1, attempts.get())
         }
     }
@@ -331,7 +344,7 @@ class EditHttpTransportTest {
             }, sleeper = { })
             val result = transport.execute(config().copy(readTimeoutMs = 5_000, overallTimeoutMs = 20_000),
                 EditHttpRequest(EditHttpMethod.GET, "status"), maxReplyBytes = 1_000_000)
-            assertEquals(EditHttpResult.Failed(FailureCode.SERVER, false), result)
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
             assertEquals(1, served.get())
         } finally {
             socket.close(); thread.join(1_000)

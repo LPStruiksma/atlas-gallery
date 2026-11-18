@@ -68,7 +68,7 @@ data class EditHttpRequest(
     val body: EditHttpBody? = null
 )
 
-enum class FailureCode { INVALID_REQUEST, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER }
+enum class FailureCode { INVALID_REQUEST, RESPONSE_TOO_LARGE, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER }
 
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
@@ -93,6 +93,8 @@ class EditRequestCancellation {
         if (connection === active) connection = null
     }
 }
+
+private class ResponseTooLargeException : IOException()
 
 class EditHttpTransport(
     private val connectionFactory: (URL) -> HttpURLConnection = {
@@ -316,6 +318,9 @@ class EditHttpTransport(
             }
             if (cancel.isCancelled) return EditHttpResult.Cancelled
             return EditHttpResult.Success(status, buffer.toByteArray())
+        } catch (_: ResponseTooLargeException) {
+            return if (cancel.isCancelled) EditHttpResult.Cancelled
+                else EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false)
         } catch (_: SocketTimeoutException) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.TIMEOUT, true)
@@ -326,9 +331,9 @@ class EditHttpTransport(
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.NETWORK, true)
         } catch (_: ReplyLimitExceeded) {
-            // Over a caller-chosen cap: the same request would get the same reply, so no retry.
+            // Over a caller-chosen cap: same code as the default caps, and the same request would get the same reply, so no retry.
             return if (cancel.isCancelled) EditHttpResult.Cancelled
-                else EditHttpResult.Failed(FailureCode.SERVER, false)
+                else EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false)
         } catch (_: Exception) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
@@ -356,7 +361,7 @@ class EditHttpTransport(
             val count = input.read(block)
             if (count < 0) return
             total += count
-            if (total > max) throw IOException("response too large")
+            if (total > max) throw ResponseTooLargeException()
             output.write(block, 0, count)
         }
     }
