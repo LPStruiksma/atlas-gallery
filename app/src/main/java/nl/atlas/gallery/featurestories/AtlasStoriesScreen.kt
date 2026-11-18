@@ -281,7 +281,12 @@ fun AtlasStoriesScreen(
         onBack()
     }
     BackHandler(onBack = close)
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+      Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
@@ -305,20 +310,8 @@ fun AtlasStoriesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Your stories will appear here", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "When enough accessible photos share a date or a month, ATLAS can create a private recap. Nothing is uploaded.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         } else {
-            Text(
-                "Moments from your library",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, bottom = 12.dp)
-            )
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize().testTag("atlas-stories-grid"),
@@ -336,6 +329,7 @@ fun AtlasStoriesScreen(
                 }
             }
         }
+      }
     }
 }
 
@@ -351,12 +345,6 @@ private fun StoriesPlanningPlaceholder() {
             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(14.dp))
         Text("Getting your stories ready…", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "ATLAS is looking through your library again so you can continue where you left off.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

@@ -423,6 +423,9 @@ private fun UnknownIdentityGroupCard(
     var selected by remember(selectionScope, group) {
         mutableStateOf(emptySet<NativeFaceObservationId>())
     }
+    var splitFacesShown by remember(selectionScope, group) {
+        mutableStateOf(SPLIT_GRID_PAGE_FACES)
+    }
     val cleanedName = name.trim()
     val duplicates = if (cleanedName.isBlank()) emptyList() else albums.withIndex()
         .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
@@ -554,7 +557,10 @@ private fun UnknownIdentityGroupCard(
         if (splitting) {
             Text("Select faces that belong elsewhere.",
                 style = MaterialTheme.typography.bodySmall)
-            group.members.chunked(4).forEachIndexed { row, faces ->
+            // #356: bound the grid; a large group must not compose and decode
+            // every crop at once. Selection semantics are unchanged.
+            val gridFaces = group.members.take(splitFacesShown)
+            gridFaces.chunked(4).forEachIndexed { row, faces ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     faces.forEachIndexed { col, face ->
                         val faceIndex = row * 4 + col
@@ -572,6 +578,19 @@ private fun UnknownIdentityGroupCard(
                         }
                     }
                     repeat(4 - faces.size) { Box(Modifier.weight(1f)) }
+                }
+            }
+            val hiddenFaces = group.members.size - gridFaces.size
+            if (hiddenFaces > 0) {
+                TextButton(
+                    enabled = enabled,
+                    modifier = Modifier.testTag("${destinationTagPrefix}-show-more-faces"),
+                    onClick = {
+                        splitFacesShown = nextSplitGridLimit(
+                            splitFacesShown, group.members.size)
+                    }
+                ) {
+                    Text("Show more (${minOf(hiddenFaces, SPLIT_GRID_PAGE_FACES)} of $hiddenFaces)")
                 }
             }
             Text("${selected.size} selected")
@@ -719,6 +738,13 @@ private fun ReviewedIdentityCard(
 
 /** #579: Samsung shows a person once they are in at least this many photos. */
 const val PEOPLE_MIN_GROUP_FACES = 3
+
+/** #356: faces the "Some faces are different" grid shows per page. */
+const val SPLIT_GRID_PAGE_FACES = 40
+
+/** #356: the grid limit after one "Show more" tap, never past [total]. */
+fun nextSplitGridLimit(current: Int, total: Int): Int =
+    minOf(total, current + SPLIT_GRID_PAGE_FACES).coerceAtLeast(current)
 
 /** #266: wait for the keyboard inset before bringing the name form into view. */
 private const val NAME_FORM_SETTLE_MS = 300L

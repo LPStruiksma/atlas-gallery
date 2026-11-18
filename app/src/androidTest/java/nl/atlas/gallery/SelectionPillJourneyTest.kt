@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -132,8 +133,11 @@ class SelectionPillActionsTest {
         compose.onNodeWithTag("atlas-selection-share").assertIsEnabled().performClick()
         compose.onNodeWithTag("atlas-selection-trash").assertIsEnabled().performClick()
         compose.onNodeWithTag("atlas-selection-more").performClick()
-        compose.onNodeWithTag("atlas-selection-more-favourite").performClick()
+        compose.onNodeWithTag("atlas-selection-more-favourite")
+            .assert(hasText("Favourite")).performClick()
         compose.onNodeWithTag("atlas-selection-more").performClick()
+        compose.onNodeWithTag("atlas-selection-more-favourite")
+            .assert(hasText("Unfavourite"))
         compose.onNodeWithTag("atlas-selection-copy-to-album").performClick()
         assertEquals(listOf("share", "trash-consent-callback", "favourite", "copy"), calls)
 
