@@ -12,7 +12,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
@@ -89,7 +92,7 @@ class PeopleDestinationSelectorUiTest {
             .performTextInput("Same Name")
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
+        compose.onNodeWithTag("atlas-group-1-destination-option-2").clickOption()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         compose.onNodeWithTag("atlas-group-1-destination-assign")
             .performScrollTo().performClick()
@@ -131,7 +134,7 @@ class PeopleDestinationSelectorUiTest {
         compose.onNodeWithTag("atlas-album-3-destination-search")
             .performTextInput("Same Name")
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-1"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-1").performClick()
+        compose.onNodeWithTag("atlas-album-3-destination-option-1").clickOption()
         compose.onNodeWithTag("atlas-album-3-destination-merge")
             .performScrollTo().performClick()
         compose.runOnIdle {
@@ -140,7 +143,7 @@ class PeopleDestinationSelectorUiTest {
             assertEquals(first, merge.target)
         }
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-2"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-2").performClick()
+        compose.onNodeWithTag("atlas-album-3-destination-option-2").clickOption()
         compose.onNodeWithTag("atlas-album-3-destination-face-1")
             .performScrollTo().performClick()
         compose.onNodeWithTag("atlas-album-3-destination-reassign")
@@ -179,7 +182,7 @@ class PeopleDestinationSelectorUiTest {
         compose.onNodeWithTag("atlas-group-1-destination-search")
             .performTextInput("Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-1").performClick()
+        compose.onNodeWithTag("atlas-group-1-destination-option-1").clickOption()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         val oldScope = compose.onNodeWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNode().config[ReviewRowDiagnosticKey]
@@ -227,7 +230,7 @@ class PeopleDestinationSelectorUiTest {
         // Scroll first: below the sticky faces header option 2 can sit just off screen,
         // where a click lands outside the viewport and selects nothing.
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
+        compose.onNodeWithTag("atlas-group-1-destination-option-2").clickOption()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         compose.onNodeWithTag("atlas-group-1-destination-assign")
             .performScrollTo().performClick()
@@ -269,3 +272,13 @@ class PeopleDestinationSelectorUiTest {
     }
 
 }
+
+/**
+ * #356 CI (atlas-gallery#360, shard 0): a pointer click on a radio option that
+ * performScrollToNode left at the viewport edge, under the sticky faces header,
+ * can land outside the node and select nothing (line 183 failed that way). These
+ * tests check selection state, not hit-testing, so invoke the option's own
+ * OnClick semantics action, which does not depend on where the node sits.
+ */
+private fun SemanticsNodeInteraction.clickOption(): SemanticsNodeInteraction =
+    performSemanticsAction(SemanticsActions.OnClick)
