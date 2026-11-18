@@ -61,9 +61,10 @@ class ViewerSwipeSharpnessTest {
         rule.setContent {
             MaterialTheme {
                 CompositionLocalProvider(LocalGalleryPublicationEpoch provides epoch,
-                    // Arm 1 forces the gate: the emulator's memory cache is
-                    // smaller than the real gate (six bases); an S24+ passes it.
-                    LocalViewerBasePrefetchGate provides { _ -> arm == 1 }) {
+                    // Arm 1 forces the base ahead: the emulator's memory cache
+                    // is below the real budget (four bases for one, six for
+                    // both); an S24+ warms both sides.
+                    LocalViewerNeighbourBaseBudget provides { _ -> if (arm == 1) 1 else 0 }) {
                     key(arm) {
                         if (open) GalleryViewer(photos, photos[0].uri, onBack = {})
                         else Box(Modifier.size(120.dp))
@@ -91,9 +92,10 @@ class ViewerSwipeSharpnessTest {
         val before = settleToSharp[0]
         val after = settleToSharp[1]
         Log.i("ATLAS_SCALE", ("PERF-9 viewer swipe, %d synthetic 12MP JPEGs, 1080x2340 (emulator), " +
-            "one swipe per %d ms, %d swipes per arm: settle->sharp 2400 px p50 before=%.1f ms " +
-            "after=%.1f ms; share sharp within %.0f ms before=%.2f after=%.2f; raw before=%s after=%s")
-            .format(PHOTOS, PACE_MS, before.size, p50(before), p50(after), TARGET_MS,
+            "memory cache %d MB, one swipe per %d ms, %d swipes per arm, base ahead warmed in arm 1: " +
+            "settle->sharp 2400 px p50 before=%.1f ms after=%.1f ms; share sharp within %.0f ms " +
+            "before=%.2f after=%.2f; raw before=%s after=%s")
+            .format(PHOTOS, memory.maxSize shr 20, PACE_MS, before.size, p50(before), p50(after), TARGET_MS,
                 within(before), within(after),
                 before.map { "%.0f".format(it) }, after.map { "%.0f".format(it) }))
         assertTrue("settle->sharp p50 must be <= ${TARGET_MS} ms with the prefetch: $after",

@@ -447,7 +447,7 @@ private fun GalleryViewerSnapshot(
     // travel first. A swipe or scrub cancels this effect and every request
     // still running, so fast swipes never build a decode backlog.
     val prefetchEpoch = LocalGalleryPublicationEpoch.current
-    val basePrefetchGate = LocalViewerBasePrefetchGate.current
+    val baseBudget = LocalViewerNeighbourBaseBudget.current
     LaunchedEffect(CatalogSourceKey(items), editorReturn, prefetchEpoch, pagerState.currentPage, stripState.isScrollInProgress, pagerState.isScrollInProgress) {
         if (!stripState.isScrollInProgress && !pagerState.isScrollInProgress) {
             delay(120)
@@ -455,8 +455,8 @@ private fun GalleryViewerSnapshot(
             val focus = pagerState.currentPage
             val previous = lastPrefetchFocus
             lastPrefetchFocus = focus
-            val allowBase = basePrefetchGate(loader.memoryCache?.maxSize ?: 0L)
-            val plan = viewerSwipePrefetchPlan(focus, previous, items.size, allowBase) {
+            val bases = baseBudget(loader.memoryCache?.maxSize ?: 0L)
+            val plan = viewerSwipePrefetchPlan(focus, previous, items.size, bases) {
                 items[it].isVideo
             }
             // One stale/corrupt neighbouring URI must not prevent the others
@@ -1522,12 +1522,12 @@ private fun ViewerPhotoPreview(
 internal val LocalViewerInstantOpen = staticCompositionLocalOf { true }
 
 /**
- * PERF-9 (#138): whether neighbour bases may be prefetched for a memory cache
- * of the given size. The before/after emulator test replaces it, since a
- * small emulator cache stays below the real gate.
+ * PERF-9 (#138): how many neighbour bases may be prefetched for a memory
+ * cache of the given size. The before/after emulator test replaces it, since
+ * the emulator's small cache stays below the real budget.
  */
-internal val LocalViewerBasePrefetchGate =
-    staticCompositionLocalOf<(Long) -> Boolean> { ::viewerBasePrefetchAllowed }
+internal val LocalViewerNeighbourBaseBudget =
+    staticCompositionLocalOf<(Long) -> Int> { ::viewerNeighbourBaseBudget }
 
 /** When the focused page settled (its base became due), nanoTime; 0 before. Emulator proof only. */
 internal val ViewerPhotoSettledAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoSettledAt")

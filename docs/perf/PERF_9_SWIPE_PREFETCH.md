@@ -20,9 +20,17 @@ The neighbour prewarm did not help. It decoded 800 px under Coil's default key, 
 
 ## Memory
 
-At most two extra bases are held, one per side. A worst-case base is 2400 × 2400 × 4 B = 23 MB, and a 4:3 photo is 17 MB. Base prefetch runs only when Coil's memory cache can hold six worst-case bases (138 MB, `viewerBasePrefetchAllowed`). The S24+ cache is 256 MB. A smaller cache, such as a low-RAM phone's or the CI emulator's, gets the preview prefetch only, so the grid's tiles are not pushed out. Region tiles (PERF-32) are unaffected and still released off-page.
+At most two extra bases are held, one per side. A worst-case base is 2400 × 2400 × 4 B = 23 MB, and a 4:3 photo is 17 MB. How many neighbours get their base depends on Coil's memory cache size (`viewerNeighbourBaseBudget`):
+
+| Cache | Bases warmed | Example |
+|---|---|---|
+| at least 6 worst-case bases (138 MB) | both sides | S24+ (256 MB) |
+| at least 4 (92 MB) | the base ahead only | 6 GB phone (128 MB) |
+| less | none, previews only | 4 GB or low-RAM phone, the CI emulator |
+
+A cache too small for the shown base and two neighbours evicts a warmed base before the swipe reaches it. The first emulator run showed this: with both sides forced into a small cache, warming the base behind evicted the base ahead, and only 3 of 5 swipes landed on a cached base. Region tiles (PERF-32) are unaffected and still released off-page.
 
 ## Proof
 
-- JVM: `ViewerSwipePrefetchTest` covers the window, direction, edges, skipped videos, the memory gate, the base key and the skipped settle.
-- Emulator: `ViewerSwipeSharpnessTest` swipes forward through six synthetic 12 MP JPEGs at one swipe per 1.5 s, with base prefetch off (arm 0) and forced on (arm 1). The gate is forced because the emulator's cache is below it. It logs settle-to-sharp p50 and the share of swipes that are sharp within 100 ms to `ATLAS_SCALE`, and asserts that the p50 is at most 100 ms with prefetch on. The numbers are on the PR.
+- JVM: `ViewerSwipePrefetchTest` covers the window, direction, edges, skipped videos, the memory budget, the base key and the skipped settle.
+- Emulator: `ViewerSwipeSharpnessTest` swipes forward through six synthetic 12 MP JPEGs at one swipe per 1.5 s, with base prefetch off (arm 0) and the base ahead forced on (arm 1), since the emulator's cache is below the real budget. It logs settle-to-sharp p50 and the share of swipes that are sharp within 100 ms to `ATLAS_SCALE`, and asserts that the p50 is at most 100 ms with prefetch on. The numbers are on the PR.

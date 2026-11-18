@@ -18,9 +18,11 @@ package nl.atlas.gallery
  *   side, which requests its own preview).
  * Videos are skipped: their pages show a poster frame of their own.
  *
- * At most two extra bases are held (one per side), and only when the memory
- * cache can hold several of them next to the grid's tiles
- * ([viewerBasePrefetchAllowed]). A new swipe or a scrub cancels the effect,
+ * At most two extra bases are held, one per side, as many as the memory
+ * cache can hold next to the shown base and the grid's tiles
+ * ([viewerNeighbourBaseBudget]). A cache too small for three bases would
+ * evict a warmed base before the swipe reached it, so a smaller cache warms
+ * only the base ahead, or none. A new swipe or a scrub cancels the effect,
  * and with it every request still running. No Android type here.
  */
 internal object ViewerSwipePrefetch {
@@ -29,34 +31,42 @@ internal object ViewerSwipePrefetch {
     /** Bytes of one decoded 2400 x 2400 ARGB base, the worst case. */
     const val BASE_BYTES: Long = BASE_PIXELS.toLong() * BASE_PIXELS * 4
 
-    /** The memory cache must hold this many worst-case bases to allow base prefetch. */
-    const val MIN_BASES_IN_CACHE = 6
+    /** Worst-case bases the memory cache must hold to warm both neighbours. */
+    const val BASES_FOR_BOTH_SIDES = 6
+
+    /** Worst-case bases the memory cache must hold to warm the base ahead. */
+    const val BASES_FOR_AHEAD = 4
 }
 
 internal data class ViewerPrefetchStep(val index: Int, val base: Boolean)
 
 /**
  * The ordered prefetch for a settled [focus]. [previousFocus] gives the
- * direction of travel (forward first when it is unknown or equal). [isVideo]
- * is asked only for indices inside the catalogue.
+ * direction of travel (forward first when it is unknown or equal).
+ * [neighbourBases] (0 to 2) neighbours one step away get their base, the one
+ * ahead first; the rest get the preview. [isVideo] is asked only for indices
+ * inside the catalogue.
  */
 internal fun viewerSwipePrefetchPlan(
     focus: Int, previousFocus: Int, count: Int,
-    allowBase: Boolean, isVideo: (Int) -> Boolean
+    neighbourBases: Int, isVideo: (Int) -> Boolean
 ): List<ViewerPrefetchStep> {
     if (count <= 1 || focus !in 0 until count) return emptyList()
     val ahead = if (previousFocus in 0 until count && previousFocus > focus) -1 else 1
     val order = listOf(
-        ViewerPrefetchStep(focus + ahead, allowBase),
-        ViewerPrefetchStep(focus - ahead, allowBase),
+        ViewerPrefetchStep(focus + ahead, neighbourBases >= 1),
+        ViewerPrefetchStep(focus - ahead, neighbourBases >= 2),
         ViewerPrefetchStep(focus + 2 * ahead, false),
         ViewerPrefetchStep(focus - 2 * ahead, false))
     return order.filter { it.index in 0 until count && !isVideo(it.index) }
 }
 
-/** Base prefetch only when the memory cache holds [ViewerSwipePrefetch.MIN_BASES_IN_CACHE] bases. */
-internal fun viewerBasePrefetchAllowed(memoryCacheMaxBytes: Long): Boolean =
-    memoryCacheMaxBytes >= ViewerSwipePrefetch.BASE_BYTES * ViewerSwipePrefetch.MIN_BASES_IN_CACHE
+/** How many neighbours (0 to 2) may have their base warmed in a memory cache of this size. */
+internal fun viewerNeighbourBaseBudget(memoryCacheMaxBytes: Long): Int = when {
+    memoryCacheMaxBytes >= ViewerSwipePrefetch.BASE_BYTES * ViewerSwipePrefetch.BASES_FOR_BOTH_SIDES -> 2
+    memoryCacheMaxBytes >= ViewerSwipePrefetch.BASE_BYTES * ViewerSwipePrefetch.BASES_FOR_AHEAD -> 1
+    else -> 0
+}
 
 /**
  * The memory-cache key of a page's 2400 px base. An editor return keeps its

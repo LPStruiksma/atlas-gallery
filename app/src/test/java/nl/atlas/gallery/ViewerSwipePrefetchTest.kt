@@ -1,7 +1,6 @@
 package nl.atlas.gallery
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,9 +8,9 @@ import org.junit.Test
 /** PERF-9 (#138): the swipe prefetch window, its direction and its memory gate. */
 class ViewerSwipePrefetchTest {
     private val noVideos: (Int) -> Boolean = { false }
-    private fun plan(focus: Int, previous: Int, count: Int = 100, allowBase: Boolean = true,
+    private fun plan(focus: Int, previous: Int, count: Int = 100, bases: Int = 2,
                      isVideo: (Int) -> Boolean = noVideos) =
-        viewerSwipePrefetchPlan(focus, previous, count, allowBase, isVideo)
+        viewerSwipePrefetchPlan(focus, previous, count, bases, isVideo)
     private fun step(index: Int, base: Boolean) = ViewerPrefetchStep(index, base)
 
     @Test fun forwardSwipeWarmsTheNextBaseFirst() {
@@ -70,19 +69,31 @@ class ViewerSwipePrefetchTest {
 
     @Test fun withoutRoomForBasesOnlyPreviewsAreWarmed() {
         assertEquals(listOf(step(11, false), step(9, false), step(12, false), step(8, false)),
-            plan(10, 9, allowBase = false))
+            plan(10, 9, bases = 0))
     }
 
-    @Test fun baseGateNeedsRoomForSixBases() {
+    @Test fun aBudgetOfOneWarmsOnlyTheBaseAhead() {
+        assertEquals(listOf(step(11, true), step(9, false), step(12, false), step(8, false)),
+            plan(10, 9, bases = 1))
+        assertEquals(listOf(step(9, true), step(11, false), step(8, false), step(12, false)),
+            plan(10, 11, bases = 1))
+    }
+
+    @Test fun baseBudgetFollowsTheCacheSize() {
         val base = ViewerSwipePrefetch.BASE_BYTES
         assertEquals(2400L * 2400 * 4, base)
-        assertFalse(viewerBasePrefetchAllowed(0L))
-        assertFalse(viewerBasePrefetchAllowed(6 * base - 1))
-        assertTrue(viewerBasePrefetchAllowed(6 * base))
-        // A low-RAM device on Coil's default (20% of a 256 MB heap class) gets previews only.
-        assertFalse(viewerBasePrefetchAllowed((256L shl 20) / 5))
-        // The S24+ cache (256 MB) has room.
-        assertTrue(viewerBasePrefetchAllowed(256L shl 20))
+        assertEquals(0, viewerNeighbourBaseBudget(0L))
+        assertEquals(0, viewerNeighbourBaseBudget(4 * base - 1))
+        assertEquals(1, viewerNeighbourBaseBudget(4 * base))
+        assertEquals(1, viewerNeighbourBaseBudget(6 * base - 1))
+        assertEquals(2, viewerNeighbourBaseBudget(6 * base))
+        // A low-RAM device on Coil's default (20% of a 256 MB heap class): previews only.
+        assertEquals(0, viewerNeighbourBaseBudget((256L shl 20) / 5))
+        // A 4 GB phone (RAM / 48 = 85 MB): previews only. 6 GB (128 MB): the base ahead.
+        assertEquals(0, viewerNeighbourBaseBudget((4096L shl 20) / 48))
+        assertEquals(1, viewerNeighbourBaseBudget(128L shl 20))
+        // The S24+ cache (256 MB): both sides.
+        assertEquals(2, viewerNeighbourBaseBudget(256L shl 20))
     }
 
     @Test fun baseKeyFollowsThePageRevision() {
