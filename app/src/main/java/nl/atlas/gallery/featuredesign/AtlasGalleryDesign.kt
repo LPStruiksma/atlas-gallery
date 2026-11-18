@@ -85,7 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
+/** Original ATLAS palette: muted chrome, image-first surfaces, one cool blue accent (Quiet Frame). */
 /** Compatibility aliases: source values now live in AtlasTokens. */
 object AtlasColor {
     val Ink = AtlasTokens.Colors.Ink
@@ -110,7 +110,7 @@ object AtlasSpace {
  * #657: every container role is set explicitly. Material's defaults for the
  * roles left out are its purple baseline (dialogs, menus, sheets and text
  * fields read surfaceContainer*, surfaceTint and outline), which is how the
- * "Add name" dialog came out light lavender. Ours stay in the ink/teal family.
+ * "Add name" dialog came out light lavender. Ours stay in the Quiet Frame neutral/blue family.
  */
 internal val darkGalleryColors = darkColorScheme(
     primary = AtlasColor.Tidal,
@@ -201,7 +201,7 @@ fun AtlasGalleryTheme(
         colorScheme = if (dark) darkGalleryColors else lightGalleryColors,
         typography = Typography(
             headlineLarge = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.SemiBold, letterSpacing = AtlasTokens.Type.DisplayTracking),
+                fontWeight = FontWeight.Light, letterSpacing = AtlasTokens.Type.DisplayTracking),
             headlineMedium = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.SemiBold),
             titleLarge = MaterialTheme.typography.titleLarge.copy(
