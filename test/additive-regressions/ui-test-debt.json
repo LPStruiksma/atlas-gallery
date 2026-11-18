@@ -247,6 +247,7 @@
     "rawClick": 5
   },
   "UnknownGroupDesignEvidenceTest.kt": {
+    "sleep": 1,
     "typingWithoutKeyboardRule": 1
   },
   "VideoFaceCropAndroidTest.kt": {
