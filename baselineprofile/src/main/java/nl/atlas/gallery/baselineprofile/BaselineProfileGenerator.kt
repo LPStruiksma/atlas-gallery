@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.After
@@ -88,11 +89,24 @@ class BaselineProfileGenerator {
     ) {
         pressHome()
         startActivityAndWait()
-        check(device.wait(Until.hasObject(By.scrollable(true)), UI_TIMEOUT_MS))
-        val grid = checkNotNull(device.findObject(By.scrollable(true)))
-        // Leave the gesture margins clear so a fling is never read as a system back/home swipe.
-        grid.setGestureMargin(device.displayWidth / 5)
-        repeat(FLING_COUNT) { grid.fling(Direction.DOWN) }
+        // The grid recomposes while the cached catalogue settles, which can turn a held
+        // UiObject2 stale (first capture run, PR #389). Re-find it before every fling.
+        var flings = 0
+        repeat(FLING_COUNT + 2) {
+            if (flings >= FLING_COUNT) return@repeat
+            device.waitForIdle()
+            val grid = device.wait(Until.findObject(By.scrollable(true)), UI_TIMEOUT_MS)
+                ?: error("ATLAS showed no scrollable grid")
+            try {
+                // Leave the gesture margins clear so a fling is never read as a system back/home swipe.
+                grid.setGestureMargin(device.displayWidth / 5)
+                grid.fling(Direction.DOWN)
+                flings++
+            } catch (_: StaleObjectException) {
+                // Re-found on the next pass.
+            }
+        }
+        check(flings >= FLING_COUNT / 2) { "Only $flings grid flings ran" }
         device.waitForIdle()
     }
 
