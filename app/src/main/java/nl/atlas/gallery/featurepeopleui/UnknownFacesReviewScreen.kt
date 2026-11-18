@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,6 +48,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -431,7 +434,12 @@ private fun UnknownIdentityGroupCard(
         .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
     val nameFormView = remember { BringIntoViewRequester() }
     var nameFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(nameFocused, duplicates.isEmpty()) {
+    // #394/#409: the keyboard can take far longer than NAME_FORM_SETTLE_MS to
+    // appear (about 2 s on the CI emulator). A one-shot bringIntoView then ran
+    // before the list shrank, and the IME covered Create. Restart on every IME
+    // inset change, so the request runs once the inset has held still.
+    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+    LaunchedEffect(nameFocused, duplicates.isEmpty(), imeBottom) {
         if (nameFocused) {
             // Let the keyboard inset settle first, then show the field and its action.
             delay(NAME_FORM_SETTLE_MS)
