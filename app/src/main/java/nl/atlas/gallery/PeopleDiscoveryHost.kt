@@ -1969,6 +1969,36 @@ internal class PeopleDiscoveryHost(
     }
 
     /**
+     * COVER-3: one permission-scoped, person-checked cover edit.
+     * Called on IO; a stale chooser may not mutate People or a newer grant.
+     */
+    fun choosePersonCover(galleryGrant: String?, person: PersonKey,
+                          selectedFaceUid: String?): Boolean {
+        val epoch = displayEpoch(galleryGrant) ?: return false
+        val applied = synchronized(reviewLock) {
+            if (!scopeCurrent(epoch)) return@synchronized false
+            val ok = try { store.setPersonCoverOverride(epoch, person, selectedFaceUid) }
+                catch (_: SQLException) { false } catch (_: IllegalArgumentException) { false }
+            if (ok) {
+                // The cover edit advances the People review generation.
+                liveReview = null
+                liveHome = null
+            }
+            ok
+        }
+        if (applied) changed()
+        return applied
+    }
+
+    /** Read through the same active permission and model fence as face crops. IO only. */
+    fun currentPersonCover(galleryGrant: String?, person: PersonKey): String? {
+        val epoch = displayEpoch(galleryGrant) ?: return null
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch)) null else store.personCoverOverride(epoch, person)
+        }
+    }
+
+    /**
      * #62: scoped native names backup, distinct from the old V4 path-bearing
      * format. Both calls are blocking and must run on Dispatchers.IO.
      */
