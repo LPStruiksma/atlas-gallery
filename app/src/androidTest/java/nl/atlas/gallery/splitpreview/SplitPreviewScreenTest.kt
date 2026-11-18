@@ -18,11 +18,22 @@ import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewScreen
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewUiModel
 import org.junit.Assert.assertEquals
 import org.junit.Rule
+import org.junit.rules.RuleChain
+import nl.atlas.gallery.S24DisplayRule
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import org.junit.Test
 
 /** Every face token is generated for this test and has no media backing. */
 class SplitPreviewScreenTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    // saveUiEvidence requires the S24 1080x2340 display; the rule must wrap compose.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     private fun model(groups: Int, unsure: Int = 0) = SplitPreviewUiModel(
         groups = (1..groups).map { group ->
@@ -124,19 +135,26 @@ class SplitPreviewScreenTest {
 
     @Test fun syntheticLightDarkEvidenceCapture() {
         // Capture only these neutral glyphs. Never inject any real face crop.
-        for (dark in listOf(false, true)) {
-            compose.setContent {
-                MaterialTheme(colorScheme = if (dark)
-                    androidx.compose.material3.darkColorScheme()
-                    else androidx.compose.material3.lightColorScheme()) {
-                    SplitPreviewScreen(
-                        model(2, 1), onAccept = {}, onAdjust = {}, onCancel = {},
-                        onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> }
-                    )
+        // setContent may run once per test, so the theme flips through state.
+        var dark by mutableStateOf(false)
+        compose.setContent {
+            MaterialTheme(colorScheme = if (dark)
+                androidx.compose.material3.darkColorScheme()
+                else androidx.compose.material3.lightColorScheme()) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        SplitPreviewScreen(
+                            model(2, 1), onAccept = {}, onAdjust = {}, onCancel = {},
+                            onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> }
+                        )
+                    }
                 }
             }
+        }
+        for (next in listOf(false, true)) {
+            dark = next
             compose.waitForIdle()
-            saveUiEvidence(if (dark) "split-preview-synthetic-dark.png" else "split-preview-synthetic-light.png")
+            saveUiEvidence(if (next) "split-preview-synthetic-dark.png" else "split-preview-synthetic-light.png")
         }
     }
 }
