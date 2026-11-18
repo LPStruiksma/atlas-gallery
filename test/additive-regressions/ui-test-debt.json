@@ -239,6 +239,11 @@
   "StoriesVideoJourneyTest.kt": {
     "rawClick": 14
   },
+  "StrictModeBaselineTest.kt": {
+    "sleep": 3,
+    "typingWithoutKeyboardRule": 1,
+    "privateWait": 1
+  },
   "SystemThemeJourneyTest.kt": {
     "sleep": 2,
     "rawClick": 21,
