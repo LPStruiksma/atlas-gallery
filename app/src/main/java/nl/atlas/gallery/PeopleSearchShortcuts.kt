@@ -1,23 +1,21 @@
 package nl.atlas.gallery
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuresearch.SearchSectionHeader
 
 /**
  * Search is a bridge into the *same* reviewed People albums, not a second
@@ -63,62 +63,50 @@ internal fun PeopleSearchShortcuts(
     people: List<PersonEntry>,
     query: String,
     media: List<MediaRecord> = emptyList(),
+    /** #134: suggestion rows, not a scrolling strip: keep the list short. */
+    limit: Int = 5,
     onSelect: (Long) -> Unit
 ) {
-    val matches = findPeopleForSearch(people, query)
+    val matches = findPeopleForSearch(people, query, limit)
     if (matches.isEmpty()) return
     // Once per MediaStore catalogue, not once per person or text keystroke.
     val byPath = remember(media) { media.associateBy { it.absolutePath } }
     Column(Modifier.fillMaxWidth().testTag("atlas-search-people")) {
-        Text(
-            "People · reviewed labels",
-            modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 7.dp),
-            style = MaterialTheme.typography.labelMedium
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(matches, key = { it.id }) { person ->
-                // Identity remains the stable person ID. Only confirmed V4
-                // photo paths that resolve to this catalogue are counted.
-                val cover = person.imagePaths.firstNotNullOfOrNull { byPath[it] }
-                val accessible = person.imagePaths.count { it in byPath }
-                SuggestionChip(
-                    onClick = { onSelect(person.id) },
-                    label = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(38.dp)
-                                    .clip(RoundedCornerShape(9.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .testTag("atlas-search-person-cover-${person.id}"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (cover != null) {
-                                    MediaPreview(
-                                        cover, Modifier.fillMaxSize(),
-                                        ContentScale.Crop, 120
-                                    )
-                                } else {
-                                    Icon(Icons.Filled.Person, null, Modifier.size(24.dp))
-                                }
-                            }
-                            Column {
-                                Text(person.name, maxLines = 1)
-                                Text(
-                                    "${accessible} accessible " +
-                                        if (accessible == 1) "photo" else "photos",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.testTag("atlas-search-person-count-${person.id}")
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.testTag("atlas-search-person-${person.id}")
+        SearchSectionHeader("People · reviewed labels", Modifier.padding(top = 8.dp))
+        matches.forEach { person ->
+            // Identity remains the stable person ID. Only confirmed V4
+            // photo paths that resolve to this catalogue are counted.
+            val cover = person.imagePaths.firstNotNullOfOrNull { byPath[it] }
+            val accessible = person.imagePaths.count { it in byPath }
+            // #134: Samsung suggestion row: 56 dp, 40 dp round thumb, one line.
+            Row(
+                Modifier.fillMaxWidth().clickable { onSelect(person.id) }
+                    .heightIn(min = 56.dp).padding(horizontal = 16.dp)
+                    .testTag("atlas-search-person-${person.id}"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .testTag("atlas-search-person-cover-${person.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (cover != null) {
+                        MediaPreview(cover, Modifier.fillMaxSize(), ContentScale.Crop, 120)
+                    } else {
+                        Icon(Icons.Filled.Person, null, Modifier.size(24.dp))
+                    }
+                }
+                Text(person.name, style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+                Text(
+                    "${accessible} accessible " + if (accessible == 1) "photo" else "photos",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.testTag("atlas-search-person-count-${person.id}")
                 )
             }
         }

@@ -177,6 +177,7 @@ import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.LocalSearchControls
+import nl.atlas.gallery.featuresearch.personSearchLabel
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
 import nl.atlas.gallery.featuresearch.face.FaceSearchSession
 import nl.atlas.gallery.featuresearch.face.FaceSearchState
@@ -3637,7 +3638,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             catalogueEpoch = publishedGallery.epoch,
                             // Pinch-only, as on Samsung's grids: no View as row.
                             showViewAs = false,
-                            emptyText = "No results"
+                            // #134: name what found nothing, plus one neutral line.
+                            emptyText = personSearchLabel(namedSearchPeople, searchFacets)
+                                .let { if (it.isEmpty()) "No results" else "No results for \u201C$it\u201D" },
+                            emptyDetail = "Try another word or name."
                         )
                         }
                     }
