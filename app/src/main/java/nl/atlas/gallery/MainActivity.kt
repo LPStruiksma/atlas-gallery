@@ -1969,7 +1969,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     // #365: selection batch results appear as one snackbar above the visible
     // pill (Scaffold snackbarHost). A new result replaces the old; no Undo.
-    val selectionResults = remember { SelectionResultMessages() }
+    val selectionResults = rememberSaveable(saver = SelectionResultMessages.Saver) { SelectionResultMessages() }
     // Batch Trash is always Android's own consent dialog (createTrashRequest);
     // ATLAS never deletes directly. Only RESULT_OK means anything changed.
     val batchTrashLauncher = rememberLauncherForActivityResult(
