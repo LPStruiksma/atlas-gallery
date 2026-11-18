@@ -1795,8 +1795,8 @@ class FaceIndexStore(
             }
             // PERF-11: aggregate distinct person-media pairs in one SQL pass.
             // Do not issue one query per person (500 round trips for a 500-person
-            // screen). An indexed source scan still honors the active model,
-            // processed revision, current epoch and hidden-person fences.
+            // screen). The result keeps model/revision and epoch fences; only
+            // people in the grant-scoped summary are exposed to the UI.
             meteredStatements++
             db.rawQuery("""SELECT person_key,COUNT(*),
                     MIN(NULLIF(taken_ms,0)),MAX(NULLIF(taken_ms,0)),
