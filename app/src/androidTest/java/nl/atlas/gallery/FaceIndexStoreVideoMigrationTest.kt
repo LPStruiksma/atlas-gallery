@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.util.UUID
+import nl.atlas.gallery.featureface.FaceQuality
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.onnx.SFaceModel
 import nl.atlas.gallery.featureface.search.FaceQuery
@@ -216,6 +217,49 @@ class FaceIndexStoreVideoMigrationTest {
             assertEquals(shippedCounts, reviewCounts(db))
             grant(store, "epoch-restart", listOf(photo))
             assertEquals(mapOf(ana to "Ana"), store.peopleReview("epoch-restart")?.names)
+        }
+    }
+
+    /**
+     * COVER-0 (#164): the additive quality columns on the shipped v3 file. Old
+     * faces stay readable with no score ("not scored yet"), a new completion
+     * stores score, version and size-floor flag per face, and a restart is a
+     * no-op. Synthetic keys and scores only.
+     */
+    @Test fun shippedV3GainsNullableQualityColumnsAndNewFacesRoundTripScores() = withFile { file ->
+        writeShippedV3(file)
+        val sharp = FaceQuality(0.91f, 2, belowSizeFloor = false)
+        val small = FaceQuality(0.42f, 2, belowSizeFloor = true)
+        FaceIndexStore(contextFor(file)).use { store ->
+            val db = store.writableDatabase
+            assertEquals(3, db.version) // additive only: a revert still opens it
+            assertTrue(columns(db, "faces").containsAll(
+                setOf("quality_score", "quality_version", "quality_below_size_floor")))
+            assertEquals(shippedCounts, reviewCounts(db))
+            grant(store, "epoch-quality", listOf(photo, video))
+            assertEquals(listOf<FaceQuality?>(null, null),
+                store.qualityRecords("epoch-quality", photo.key))
+            val lease = requireNotNull(store.claim("epoch-quality", 1_000))
+            assertEquals(video.key, lease.media.key)
+            try {
+                store.completeEmbeddings(lease, listOf(box, box), listOf(vector(3), vector(4)),
+                    model, listOf(2_000L, 6_000L), listOf(sharp))
+                fail("quality/box count mismatch accepted")
+            } catch (_: IllegalArgumentException) { }
+            assertTrue(store.completeEmbeddings(lease, listOf(box, box),
+                listOf(vector(3), vector(4)), model, listOf(2_000L, 6_000L), listOf(sharp, small)))
+            assertEquals(listOf<FaceQuality?>(sharp, small),
+                store.qualityRecords("epoch-quality", video.key))
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            val db = store.writableDatabase
+            assertEquals(3, db.version)
+            grant(store, "epoch-quality-restart", listOf(photo, video))
+            assertEquals(listOf<FaceQuality?>(null, null),
+                store.qualityRecords("epoch-quality-restart", photo.key))
+            assertEquals(listOf<FaceQuality?>(sharp, small),
+                store.qualityRecords("epoch-quality-restart", video.key))
+            assertEquals(mapOf(ana to "Ana"), store.peopleReview("epoch-quality-restart")?.names)
         }
     }
 
