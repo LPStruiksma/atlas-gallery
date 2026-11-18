@@ -84,11 +84,31 @@ class LocalFaceSwapEngineAndroidTest {
         val face = TargetFace(
             FaceBox(found.left.toInt(), found.top.toInt(), (found.right).toInt(), (found.bottom).toInt()),
             (0 until 5).map { FacePoint(found.landmarks[2 * it], found.landmarks[2 * it + 1]) })
-        val refs = listOf(480 to 0.9f, 640 to 1.1f).mapIndexed { i, (s, z) ->
-            val b = SyntheticFace.bitmap(SyntheticFace.Spec(width = s, height = s, size = z))
-            image(png("ref$i.png", b), s, s)
+        // Use the exact synthetic face that YuNet detected above. The former
+        // 480/640px variants did not reliably pass reference detection in emulator
+        // CI, so all three pipeline tests exited at step 1 with NO_FACE_FOUND.
+        // Distinct files still exercise multi-reference loading and averaging.
+        val source = png("source.png", bitmap)
+        val refs = (0..1).map { i ->
+            val file = File(dir, "ref$i.png")
+            source.copyTo(file)
+            image(file, bitmap.width, bitmap.height)
         }
-        return Scene(png("source.png", bitmap), bitmap, face, refs)
+        OnnxFaceDetector.fromAssets(target.assets).use { detector ->
+            refs.forEachIndexed { i, ref ->
+                val decoded = checkNotNull(BitmapFactory.decodeFile(ref.handle)) {
+                    "Reference $i did not decode after PNG round-trip"
+                }
+                try {
+                    check(detector.detectFaces(decoded).isNotEmpty()) {
+                        "Reference $i is not detectable after PNG round-trip"
+                    }
+                } finally {
+                    decoded.recycle()
+                }
+            }
+        }
+        return Scene(source, bitmap, face, refs)
     }
 
     private fun request(scene: Scene, seed: Long = 1, mode: IdentityEditMode = IdentityEditMode.FACE, source: EditImage? = null) =
