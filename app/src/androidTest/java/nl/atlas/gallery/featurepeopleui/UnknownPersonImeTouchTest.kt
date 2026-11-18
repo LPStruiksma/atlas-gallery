@@ -7,14 +7,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import nl.atlas.gallery.MainActivity
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
@@ -27,11 +28,12 @@ import org.junit.runner.RunWith
 
 /**
  * TOUCH-1: real pointer injection, not SemanticsActions.OnClick. Only fictional
- * face vectors and names are used. The Activity supplies a genuine IME window.
+ * face vectors and names are used. The Compose host supplies a genuine IME window.
  */
 @RunWith(AndroidJUnit4::class)
 class UnknownPersonImeTouchTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val compose = createComposeRule()
+    private var hostActivity: Activity? = null
 
     private val target = PersonKey("touch-synthetic-target")
     private fun face(i: Int) = NativeFaceObservationId(i.toString(16).padStart(32, '0'))
@@ -54,7 +56,7 @@ class UnknownPersonImeTouchTest {
     }
 
     private fun imeBottom(): Int {
-        val window = compose.activity.window
+        val window = checkNotNull(hostActivity) { "Compose host Activity missing" }.window
         val decor = window.decorView
         return decor.rootWindowInsets?.getInsets(WindowInsets.Type.ime())?.bottom ?: 0
     }
@@ -62,6 +64,8 @@ class UnknownPersonImeTouchTest {
     private fun fixture() {
         val initial = review()
         compose.setContent {
+            val context = LocalContext.current
+            hostActivity = context as Activity
             MaterialTheme {
                 Surface(Modifier.fillMaxSize()) {
                     UnknownFacesReviewScreen(
