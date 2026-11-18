@@ -218,18 +218,20 @@ class ViewerLightSystemBarsTest {
     }
 }
 
+// `wm set-user-rotation` is not a command on API 31+, so the shell form left the
+// display at ROTATION_0 and the landscape wait timed out (run 43772085639).
+// UiAutomation rotates the display directly; the debug manifest lets the test
+// ComponentActivity take the change without being recreated, so the composed
+// viewer stays on screen.
 internal fun rotateViewerEvidenceLandscape() {
-    viewerEvidenceShell("wm set-user-rotation lock 1")
+    InstrumentationRegistry.getInstrumentation().uiAutomation
+        .setRotation(android.app.UiAutomation.ROTATION_FREEZE_90)
 }
 
 internal fun restoreViewerEvidencePortrait() {
-    viewerEvidenceShell("wm set-user-rotation lock 0")
-    viewerEvidenceShell("wm set-user-rotation free")
-}
-
-private fun viewerEvidenceShell(command: String) {
-    val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
-    android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+    automation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
 }
 
 private fun assertViewerChromeClearsLandscapeCutout(window: Window, rule: androidx.compose.ui.test.junit4.ComposeTestRule) {
