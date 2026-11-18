@@ -1909,7 +1909,13 @@ internal class PeopleDiscoveryHost(
         val stored = store.peopleReview(epoch) ?: return null
         LiveReview(PeopleClusterReviewState(epoch, "$epoch|${stored.generation}",
             stored.clusters, stored.names, hidden = stored.hidden), stored.generation)
-            .also { liveReview = it }
+            .also {
+                android.util.Log.i("ATLAS_GROUP_IME", "DIAG liveReview replaced " +
+                    "old=${liveReview?.let { o -> System.identityHashCode(o.state) }}@${liveReview?.storeGeneration} " +
+                    "new=${System.identityHashCode(it.state)}@$generation by " +
+                    Throwable().stackTrace.drop(1).take(4).joinToString(" < ") { f -> "${f.methodName}:${f.lineNumber}" })
+                liveReview = it
+            }
     }
 
     /**
@@ -1943,6 +1949,9 @@ internal class PeopleDiscoveryHost(
      */
     fun review(command: PeopleClusterReviewCommand): Boolean {
         val epoch = command.expectedState.permissionEpoch
+        android.util.Log.i("ATLAS_GROUP_IME", "DIAG host.review ${command.action::class.simpleName} " +
+            "expected=${System.identityHashCode(command.expectedState)} " +
+            "live=${liveReview?.let { System.identityHashCode(it.state) }} scope=${scopeCurrent(epoch)}")
         if (!scopeCurrent(epoch)) return false
         val committed = synchronized(reviewLock) {
             val live = liveReview?.takeIf { it.state === command.expectedState }
@@ -1964,6 +1973,7 @@ internal class PeopleDiscoveryHost(
                 true
             }
         }
+        android.util.Log.i("ATLAS_GROUP_IME", "DIAG host.review committed=$committed")
         changed()
         return committed
     }

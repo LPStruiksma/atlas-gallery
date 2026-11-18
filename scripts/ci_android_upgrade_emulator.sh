@@ -268,6 +268,40 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# DIAGNOSTIC ONLY (#411, branch claude/diag-411-people-tap; never merged):
+# repeat the two flaky shard-0 tests in isolation and print their logs.
+if [[ -f scripts/ci-opt-in/diag-411 && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+  if [[ "$SHARD_INDEX" != "0" ]]; then
+    gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+  fi
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+  adb logcat -G 16M || true
+  diag_fail=0
+  for i in 1 2 3 4 5 6; do
+    adb logcat -c || true
+    out="/tmp/diag411-people-$i.txt"
+    adb shell am instrument -w -r \
+      -e class nl.atlas.gallery.PeoplePrototypeJourneyTest#oneIdentityIsOneTileThenNamedFoundAndKeptAcrossRestart \
+      "$RUNNER" > "$out" 2>&1 || true
+    if grep -Fq 'OK (1 test)' "$out"; then echo "DIAG411 people run $i: PASS"; else echo "DIAG411 people run $i: FAIL"; diag_fail=1; grep -m3 -E 'Error|Exception|Timed out' "$out" | cut -c1-300 || true; fi
+    echo "::group::DIAG411 people run $i logcat"
+    timeout 30 adb logcat -d -v time -s ATLAS_GROUP_IME:V ImeTracker:V InsetsController:D || true
+    echo "::endgroup::"
+  done
+  for i in 1 2 3 4 5 6 7 8; do
+    adb logcat -c || true
+    out="/tmp/diag411-touch-$i.txt"
+    adb shell am instrument -w -r \
+      -e class nl.atlas.gallery.featurepeopleui.UnknownPersonImeTouchTest#openingImeTouchIsNeverSilentlySwallowed \
+      "$RUNNER" > "$out" 2>&1 || true
+    if grep -Fq 'OK (1 test)' "$out"; then echo "DIAG411 touch run $i: PASS"; else echo "DIAG411 touch run $i: FAIL"; diag_fail=1; grep -m3 -E 'Error|Exception' "$out" | cut -c1-300 || true; fi
+    timeout 30 adb logcat -d -s ATLAS_TOUCH1:V || true
+  done
+  echo "DIAG411 animator_duration_scale after loop: $(adb shell settings get global animator_duration_scale)"
+  exit "$diag_fail"
+fi
+
 # Preserve normal viewer/filmstrip checks and their real PNG screenshots.
 # If the mismatch lane replaced the fixture with signer B, Gradle must
 # retain the same environment or it will attempt to install signer A again.

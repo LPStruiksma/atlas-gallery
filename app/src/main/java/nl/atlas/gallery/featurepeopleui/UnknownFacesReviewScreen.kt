@@ -140,8 +140,13 @@ fun UnknownFacesReviewScreen(
     )
 
     fun sendPeopleDecision(action: PeopleReviewAction) {
-        val rendered = visiblePeople ?: return
+        val rendered = visiblePeople
         val live = liveClusterReviewAtAction?.invoke()
+        android.util.Log.i("ATLAS_GROUP_IME", "DIAG decision ${action::class.simpleName} " +
+            "rendered=${rendered?.let { System.identityHashCode(it) }} live=${live?.let { System.identityHashCode(it) }} " +
+            "same=${rendered != null && rendered === live} epoch=$currentPermissionEpoch gen=$currentSourceGeneration " +
+            "renderedGen=${rendered?.sourceGeneration} liveGen=${live?.sourceGeneration}")
+        if (rendered == null) return
         currentPeopleReviewActionOrNull(
             rendered, action, currentPermissionEpoch, currentSourceGeneration, live
         )?.let { permitted ->
