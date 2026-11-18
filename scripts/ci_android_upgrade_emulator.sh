@@ -9,6 +9,26 @@ NEW=app/build/outputs/apk/debug/app-debug.apk
 TEST=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 RUNNER=nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 
+# #377: emulator shards resolve dependencies the build job never caches (the
+# connected-test configurations), so they hit Maven Central on every run. Gradle
+# already retries 429/5xx, but by default only 3 attempts within ~3 s, which a
+# rate-limit window outlasts (run 44262648504 shard 0: HTTP 429 on
+# kotlin-stdlib-common 1.8.20 before any test ran). Allow 6 attempts with
+# 5 s doubling back-off (at most ~2.5 min of waiting) for every Gradle call here.
+# Only dependency downloads are retried; test execution is never repeated.
+# Retries alone did not hold: on 2026-11-18 shard 0 of run 44280986519 still
+# failed every Central POM with 429 within a minute. So every Gradle call here
+# also resolves Maven Central through Google's mirror (scripts/ci/central-mirror.init.gradle).
+CENTRAL_MIRROR_INIT="$PWD/scripts/ci/central-mirror.init.gradle"
+[[ -f "$CENTRAL_MIRROR_INIT" ]] || { echo "::error::Missing $CENTRAL_MIRROR_INIT"; exit 1; }
+gradle() {
+  command gradle \
+    --init-script "$CENTRAL_MIRROR_INIT" \
+    -Dorg.gradle.internal.network.retry.max.attempts=6 \
+    -Dorg.gradle.internal.network.retry.initial.backOff=5000 \
+    "$@"
+}
+
 # #143: the same synthetic test APK runs on the installed baseline and the
 # candidate at 1080x2340. Save a render for each system theme; the baseline
 # intentionally does not assert candidate-only grid geometry.

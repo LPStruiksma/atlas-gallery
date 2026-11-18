@@ -64,6 +64,29 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
 
     private val mode = if (dark) "dark" else "light"
 
+    /**
+     * DESIGN-12: check the actual Activity window, not a Compose-only theme
+     * override. The same journey saves full-device light/dark captures on the
+     * Photos and Search tabs, which include Android's system bars.
+     */
+    @Test fun mainScreenSystemBarIconsMatchSystemTheme() {
+        waitFor(hasTestTag("atlas-nav-photos"))
+        listOf("photos", "search").forEach { tab ->
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            settle()
+            compose.activityRule.scenario.onActivity { activity ->
+                val controller = WindowCompat.getInsetsController(
+                    activity.window, activity.window.decorView
+                )
+                assertEquals("$mode $tab status bar icons", !dark,
+                    controller.isAppearanceLightStatusBars)
+                assertEquals("$mode $tab navigation bar icons", !dark,
+                    controller.isAppearanceLightNavigationBars)
+            }
+            saveUiEvidence("design-12-$tab-$mode.png")
+        }
+    }
+
     @Test fun mainTabsAndPhotoDnaFollowTheSystemSetting() {
         waitFor(hasTestTag("atlas-nav-photos"))
         compose.activityRule.scenario.onActivity {
@@ -189,7 +212,13 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * colour; the photo-overlay circles are covered by existing selection tests.
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
+        // A previous sort journey may have persisted non-date ordering. Force
+        // the dated view before looking for a date header's selection circle.
         waitFor(hasTestTag("atlas-nav-photos"))
+        compose.onNodeWithTag("atlas-photos-sort").performClick()
+        compose.waitForNode(hasTestTag("atlas-photos-sort-sheet"))
+        compose.onNodeWithTag("atlas-media-sort-date_created").performClick()
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         // MediaStore inventory loads off the Compose frame clock. Wait for the
         // fixture's actual tile rather than sampling immediately after nav appears.
         val visibleTile = SemanticsMatcher("visible timeline tile") { node ->

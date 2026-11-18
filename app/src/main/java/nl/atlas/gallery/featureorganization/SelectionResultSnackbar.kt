@@ -14,6 +14,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalAccessibilityManager
@@ -45,6 +46,33 @@ data class SelectionResultMessage(
  */
 @Stable
 class SelectionResultMessages(private val now: () -> Long = { System.nanoTime() / 1_000_000L }) {
+    companion object {
+        /** Save one outcome with its original monotonic timestamp, never a fresh timeout. */
+        val Saver: Saver<SelectionResultMessages, List<Any>> = Saver(
+            save = { messages ->
+                messages.current?.let { message ->
+                    listOf(message.text, message.duration.name, message.generation,
+                        message.shownAtMillis)
+                } ?: emptyList()
+            },
+            restore = { values ->
+                SelectionResultMessages().apply {
+                    if (values.size == 4) {
+                        val text = values[0] as String
+                        val duration = SelectionResultDuration.valueOf(values[1] as String)
+                        val generation = values[2] as Long
+                        val shownAtMillis = values[3] as Long
+                        if (text.isNotBlank() && generation > 0 && shownAtMillis >= 0) {
+                            lastGeneration = generation
+                            current = SelectionResultMessage(text, duration, generation,
+                                shownAtMillis)
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     var current: SelectionResultMessage? by mutableStateOf(null)
         private set
     private var lastGeneration = 0L
