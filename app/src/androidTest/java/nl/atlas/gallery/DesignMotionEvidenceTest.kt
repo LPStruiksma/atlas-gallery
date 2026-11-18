@@ -92,6 +92,14 @@ class DesignMotionEvidenceTest {
             compose.onNodeWithTag("atlas-timeline-grid").fetchSemanticsNode()
                 .config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 12f
         }
+        // Scroll off the top and back while the clock runs, establishing the
+        // observed collapse trigger before recording the frozen-clock strip.
+        compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(12)
+        compose.waitUntil(10_000L) {
+            compose.onAllNodesWithTag("atlas-header-subtitle").fetchSemanticsNodes().isEmpty()
+        }
+        compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
+        compose.waitForNode(hasTestTag("atlas-header-subtitle"))
         strip("header", 200L) {
             compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(12)
         }
