@@ -78,6 +78,14 @@ internal data class NativePersonAlbumRequest(
 private val personPageOpenings = java.util.concurrent.atomic.AtomicLong()
 private fun nextPersonPageOpening(): Long = personPageOpenings.incrementAndGet()
 
+/** A changed permission, People generation or person identity hides controls now,
+ * rather than waiting for the coroutine that discards stale selection state. */
+internal fun validatedPersonSelection(
+    selected: Set<String>?,
+    activeFence: List<String>?,
+    currentFence: List<String>?
+): Set<String>? = selected?.takeIf { currentFence != null && activeFence == currentFence }
+
 /**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
@@ -217,7 +225,8 @@ internal fun NativePersonAlbumRoute(
     }
     androidx.compose.runtime.SideEffect {
         val live = selected
-        if (live != null && currentGrant != null && epoch != null &&
+        if (live != null && selectionFence != null &&
+            activeSelectionFence == selectionFence &&
             live.size <= 500 && live.none { it.isBlank() }) {
             val encoded = listOf(currentGrant, epoch, personIdentity) + live.sorted()
             if (pendingSelection != encoded) pendingSelection = encoded
@@ -256,6 +265,8 @@ internal fun NativePersonAlbumRoute(
             }
         }
     }
+    val actionableSelected = validatedPersonSelection(selected,
+        activeSelectionFence, selectionFence)
     val asked = question
     val samePersonCard: (@Composable () -> Unit)? =
         if (asked == null) null
@@ -337,7 +348,7 @@ internal fun NativePersonAlbumRoute(
                 if (hide) close()
             }
         },
-        selectedUris = selected,
+        selectedUris = actionableSelected,
         onSelectionChange = {
             selected = it
             activeSelectionFence = if (it != null) selectionFence else null
@@ -353,7 +364,7 @@ internal fun NativePersonAlbumRoute(
                 })
         },
         onRemoveSelected = run {
-            val chosen = selected
+            val chosen = actionableSelected
             val current = facts
             if (chosen == null || current == null || media == null ||
                 removeAction(current, media.facesByUri, chosen) == null) null
