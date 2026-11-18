@@ -18,6 +18,7 @@ on:
       - 'scripts/ci_android_upgrade_emulator.sh'
       - 'scripts/ci_ui_evidence.sh'
       - 'scripts/ci_enable_kvm.sh'
+      - 'scripts/ci_install_emulator_image.sh'
       - '.github/workflows/review-emulator-trigger.yml'
 permissions:
   contents: read

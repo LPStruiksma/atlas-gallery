@@ -64,6 +64,29 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
 
     private val mode = if (dark) "dark" else "light"
 
+    /**
+     * DESIGN-12: check the actual Activity window, not a Compose-only theme
+     * override. The same journey saves full-device light/dark captures on the
+     * Photos and Search tabs, which include Android's system bars.
+     */
+    @Test fun mainScreenSystemBarIconsMatchSystemTheme() {
+        waitFor(hasTestTag("atlas-nav-photos"))
+        listOf("photos", "search").forEach { tab ->
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            settle()
+            compose.activityRule.scenario.onActivity { activity ->
+                val controller = WindowCompat.getInsetsController(
+                    activity.window, activity.window.decorView
+                )
+                assertEquals("$mode $tab status bar icons", !dark,
+                    controller.isAppearanceLightStatusBars)
+                assertEquals("$mode $tab navigation bar icons", !dark,
+                    controller.isAppearanceLightNavigationBars)
+            }
+            saveUiEvidence("design-12-$tab-$mode.png")
+        }
+    }
+
     @Test fun mainTabsAndPhotoDnaFollowTheSystemSetting() {
         waitFor(hasTestTag("atlas-nav-photos"))
         compose.activityRule.scenario.onActivity {
