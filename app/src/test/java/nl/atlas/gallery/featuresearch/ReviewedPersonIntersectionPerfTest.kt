@@ -30,10 +30,7 @@ class ReviewedPersonIntersectionPerfTest {
     }
 
     @Test fun synthetic250kReviewedFacetTimingAndExactOrder() {
-        val rows = List(250_000) { i ->
-            MediaRecord(i.toLong(), "content://media/external/images/media/$i",
-                "synthetic_$i.jpg", "Pictures/Fictional/", 100, 42, false)
-        }
+        val rows = List(250_000) { i -> media(i) }
         val first = rows.asSequence().filterIndexed { i, _ -> i % 3 == 0 }
             .map { it.absolutePath }.toSet()
         val second = rows.asSequence().filterIndexed { i, _ -> i % 5 == 0 }
