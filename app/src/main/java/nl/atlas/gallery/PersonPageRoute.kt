@@ -228,7 +228,7 @@ internal fun NativePersonAlbumRoute(
         if (live != null && selectionFence != null &&
             activeSelectionFence == selectionFence &&
             live.size <= 500 && live.none { it.isBlank() }) {
-            val encoded = listOf(currentGrant, epoch, personIdentity) + live.sorted()
+            val encoded = selectionFence + live.sorted()
             if (pendingSelection != encoded) pendingSelection = encoded
         }
     }
