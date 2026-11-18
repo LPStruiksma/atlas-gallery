@@ -1,0 +1,7 @@
+# DESIGN-6 / #136 — capture S24+ 1080x2340 light/dark screenshots from actual emulator.
+# Synthetic empty Stories; restored playback waiting for replanned live deck.
+# Compare the centred single-line copy and fixed content bounds before/after load.
+stories-136-empty-light
+stories-136-empty-dark
+stories-136-planning-light
+stories-136-planning-dark

@@ -62,9 +62,13 @@ internal const val UI_EVIDENCE_HEIGHT = 2340
  * or all-black frame is a capture taken before anything was drawn.
  */
 internal fun uiEvidenceProblem(bitmap: Bitmap): String? {
-    if (bitmap.width != UI_EVIDENCE_WIDTH || bitmap.height != UI_EVIDENCE_HEIGHT) {
+    val portrait = bitmap.width == UI_EVIDENCE_WIDTH && bitmap.height == UI_EVIDENCE_HEIGHT
+    val landscape = bitmap.width == UI_EVIDENCE_HEIGHT && bitmap.height == UI_EVIDENCE_WIDTH
+    if (!portrait && !landscape) {
         return "is ${bitmap.width}x${bitmap.height}, not " +
-            "${UI_EVIDENCE_WIDTH}x$UI_EVIDENCE_HEIGHT: add S24DisplayRule as the outer rule"
+            "${UI_EVIDENCE_WIDTH}x$UI_EVIDENCE_HEIGHT portrait or " +
+            "${UI_EVIDENCE_HEIGHT}x$UI_EVIDENCE_WIDTH landscape: " +
+            "add S24DisplayRule as the outer rule"
     }
     val pixels = if (bitmap.config == Bitmap.Config.HARDWARE) {
         bitmap.copy(Bitmap.Config.ARGB_8888, false)

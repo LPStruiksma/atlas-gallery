@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
@@ -3002,6 +3003,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectedAlbum != null && !busy &&
                 !sortPending && !albumSelectionPending
             // Albums supplies its own photographic heading; other routes share one shell.
+            val albumDetailOpen = photosControls && album != null && albumReturnToAlbums
             val galleryHeader: @Composable () -> Unit = {
                 AtlasGalleryHeader(
                     title = when {
@@ -3013,9 +3015,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         tab == 3 -> "Search"
                         else -> "Photos"
                     },
-                    subtitle = if (photosControls && !settingsOpen && !statusOpen)
-                        photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
-                    else null,
+                    // Album detail swaps only the final count wording: Settings still
+                    // hides the subtitle and pending sort/filter still say so.
+                    subtitle = if (photosControls && !settingsOpen && !statusOpen) {
+                        if (albumDetailOpen && !sortPending && !albumSelectionPending)
+                            NumberFormat.getIntegerInstance().format(visible.size) +
+                                (if (visible.size == 1) " item" else " items")
+                        else photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
+                    } else null,
                     onBack = when {
                         statusOpen -> ({ statusOpen = false })
                         settingsOpen -> ({ settingsOpen = false })
@@ -3508,7 +3515,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 LocalSearchControls(
                             // #654: no title bar above Search (#644), so the field
                             // keeps a little air under the status bar.
-                            modifier = Modifier.padding(top = 12.dp),
+                            modifier = Modifier.padding(top = 12.dp).imePadding(),
                             filters = searchFacets,
                             people = people,
                             history = searchHistory,
