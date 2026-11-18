@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATLAS offline release floor, no network, Android SDK or personal photos."""
+"""ATLAS release floor (offline checks; the app may use the network only for user-initiated AI Edit, #191), no Android SDK or personal photos."""
 from pathlib import Path
 import re
 
@@ -15,7 +15,15 @@ albumGrid = read('app/src/main/java/nl/atlas/gallery/featurealbums/AtlasAlbumsSc
 coverPicker = read('app/src/main/java/nl/atlas/gallery/featurealbums/AtlasAlbumCoverChooser.kt')
 checks = {
     'supported API 36 / Compose 1.11 toolchain': 'compileSdk = 36' in app and 'compose-bom:2026.04.01' in app and '8.13.2' in read('build.gradle.kts'),
-    'explicit offline-only application permissions': 'android.permission.INTERNET' not in manifest and 'android.permission.WRITE_EXTERNAL_STORAGE' not in manifest and 'MANAGE_EXTERNAL_STORAGE' not in manifest,
+    # #183/#191: INTERNET is allowed only for user-initiated AI Edit, fenced by
+    # the network-scope contract (no network outside featureaiedit/) and with
+    # cleartext off. Broad storage permissions stay forbidden.
+    'explicit application permissions (network only for AI Edit)': (
+        ('android.permission.INTERNET' not in manifest or (
+            (root / 'test/additive-regressions/network-scope-191.mjs').exists() and
+            'android:usesCleartextTraffic="false"' in manifest)) and
+        'android.permission.WRITE_EXTERNAL_STORAGE' not in manifest and
+        'MANAGE_EXTERNAL_STORAGE' not in manifest),
     'filmstrip and main pager are independently testable': 'testTag("atlas-filmstrip")' in viewer and 'testTag("atlas-main-pager")' in viewer and 'atlas-photo-counter' in viewer,
     'filmstrip and zoom do not contest swipes': 'userScrollEnabled = currentZoom <= 1.01f' in viewer,
     # targetSdk 36 => edge-to-edge on Android 15+; the full-screen viewer is
