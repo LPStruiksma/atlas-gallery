@@ -19,7 +19,9 @@ assert.match(albums, /val coverCorner = RoundedCornerShape\(AtlasSpace\.CoverCor
 assert.match(albums, /style = MaterialTheme\.typography\.titleSmall/);
 assert.match(albums, /style = MaterialTheme\.typography\.labelMedium/);
 assert.match(main, /val albumDetailOpen = photosControls && album != null && albumReturnToAlbums/);
-assert.match(main, /subtitle = if \(albumDetailOpen\)/);
+assert.match(main, /subtitle = if \(photosControls && !settingsOpen && !statusOpen\) \{/);
+assert.match(main, /if \(albumDetailOpen && !sortPending && !albumSelectionPending\)/);
+assert.match(main, /else photosHeaderStatus\(sortPending, albumSelectionPending, visible\.size\)/);
 assert.match(main, /header = if \(headerScrollsWithGrid\)/);
 assert.match(theme, /saveUiEvidence\("parity-24-albums-detail-\$mode\.png"\)/);
 // Keep bounded, stage-identified waits, lazy-grid semantics and inventory diagnostics.
