@@ -530,7 +530,9 @@ fun AtlasTimelineGallery(
                 }
                 if (pendingScrub === command) pendingScrub = null
             }
-            if (ready == null) {
+            // DESIGN-6 #136: an empty library plans an empty grid too; show the
+            // quiet line there, centred in the same box, instead of nothing.
+            if (ready == null || items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (items.isEmpty() && !busy) {
                         Text("No photos here yet", Modifier.testTag("atlas-timeline-empty"))

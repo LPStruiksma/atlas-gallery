@@ -35,8 +35,8 @@ test('People has quiet unscanned/restoring/scanning and search-miss states', () 
   assert.match(people, /PeopleEmptyState\(scan\.start\)/);
 });
 
-test('Search and Stories have distinct no-results and empty/planning states', () => {
-  assert.match(search, /emptyText = "No results"/);
+// Search "No results" moved to #134 and shipped in #401 (SearchOneFieldEvidenceTest).
+test('Stories has distinct empty and planning states', () => {
   assert.match(stories, /testTag\("atlas-stories-empty"\)/);
   assert.match(stories, /testTag\("atlas-stories-planning"\)/);
 });
@@ -51,10 +51,12 @@ test('Photos permission has one real Android recovery action and no explanatory 
 test('empty and loading grids avoid a full-screen loading message', () => {
   const grid = read('app/src/main/java/nl/atlas/gallery/featuregrid/AtlasFeatureGrid.kt');
   const timeline = read('app/src/main/java/nl/atlas/gallery/featuregrid/AtlasTimelineGallery.kt');
-  assert.match(grid, /if \(!busy\) \{\s*Text\(emptyText/);
+  assert.match(grid, /if \(!busy\) Column\([\s\S]*?Text\(emptyText/);
+  assert.match(grid, /testTag\("atlas-feature-grid-empty"\)/);
   assert.doesNotMatch(grid, /Text\(if \(busy\) "Loading photos…"/);
+  assert.match(timeline, /if \(ready == null \|\| items\.isEmpty\(\)\)/);
   assert.match(timeline, /if \(items\.isEmpty\(\) && !busy\)/);
-  assert.doesNotMatch(timeline, /"Arranging timeline…"/);
+  assert.doesNotMatch(timeline, /Text\([^)]*"Arranging timeline…"/);
 });
 
 test('viewer decode errors are named while neighbour paging stays mounted', () => {
