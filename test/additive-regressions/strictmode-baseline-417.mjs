@@ -43,8 +43,8 @@ for (const phase of ['grid-first-open', 'viewer-first-open', 'people-first-open'
 const script = read('scripts/ci_android_upgrade_emulator.sh');
 const step = script.match(/strictmode_baseline_417\(\) \{[\s\S]*?\n\}/)?.[0] ?? '';
 assert.match(step, /local marker=files\/atlas-strictmode-baseline/);
-assert.match(step, /run-as "\$pkg" touch "\$marker"/);
+assert.match(step, /run-as "\$pkg" sh -c "'mkdir -p files && touch \$marker'"/);
 assert.match(step, /run-as "\$pkg" rm -f "\$marker"/);
 assert.match(step, /-e atlas_strictmode_baseline true/);
-assert.ok(step.indexOf('touch "$marker"') < step.indexOf('am start -W'), 'marker before the first launch');
+assert.ok(step.indexOf('touch $marker') < step.indexOf('am start -W'), 'marker before the first launch');
 console.log('strictmode-baseline-417 source contract OK');

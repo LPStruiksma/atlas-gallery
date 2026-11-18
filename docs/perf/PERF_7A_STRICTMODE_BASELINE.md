@@ -27,7 +27,7 @@ Both run on emulator shard 1 right after the normal suite (before its pass/fail 
 On a debug install (emulator or device), with the test APK installed:
 
 ```bash
-adb shell run-as nl.atlas.gallery touch files/atlas-strictmode-baseline
+adb shell run-as nl.atlas.gallery sh -c 'mkdir -p files && touch files/atlas-strictmode-baseline'
 adb shell am force-stop nl.atlas.gallery && adb logcat -c
 adb shell am start -W -n nl.atlas.gallery/.MainActivity      # cold start
 adb logcat -d -v brief -s StrictMode:D                        # its stacks

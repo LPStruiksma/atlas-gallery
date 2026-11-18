@@ -306,7 +306,8 @@ strictmode_baseline_417() {
   local marker=files/atlas-strictmode-baseline
   adb shell pm grant "$pkg" android.permission.READ_MEDIA_IMAGES || true
   adb shell pm grant "$pkg" android.permission.READ_MEDIA_VIDEO || true
-  if ! adb shell run-as "$pkg" touch "$marker"; then
+  # A fresh install has no files/ directory until the app first runs.
+  if ! adb shell run-as "$pkg" sh -c "'mkdir -p files && touch $marker'"; then
     echo "::warning::#417 could not create the debug StrictMode marker"; return 0
   fi
   echo "::group::#417 cold start, am start -W, debug StrictMode on"

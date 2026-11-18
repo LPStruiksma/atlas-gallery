@@ -20,7 +20,7 @@ import java.util.concurrent.Executor
  * debug install with (the API 35 emulator refused `pm enable` from the shell,
  * run 44315697453, so a disabled component cannot be the switch):
  *
- *     adb shell run-as nl.atlas.gallery touch files/atlas-strictmode-baseline
+ *     adb shell run-as nl.atlas.gallery sh -c 'mkdir -p files && touch files/atlas-strictmode-baseline'
  *
  * Android creates providers before `Application.onCreate`, so the policy also
  * covers [AtlasApplication] start-up. Violations go to logcat (tag `StrictMode`)
