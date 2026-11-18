@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // one-command git -c option. A partial clone can lazily fetch missing blobs
 // during checkout, am or diff-tree without that authorization.
 test('Codex apply clones complete blobs instead of using a promisor remote', () => {
-  const runner = readFileSync(fileURLToPath(new URL('../../bin/autodev-codex-apply-runner.mjs', import.meta.url)), 'utf8');
+  const runner = readFileSync(fileURLToPath(new URL('../../scripts/ci/codex-apply-runner.mjs', import.meta.url)), 'utf8');
   const clone = runner.match(/exec\('git',\[([\s\S]*?)\]\);/g)?.find(command => command.includes("'clone'"));
   assert.ok(clone, 'runner must invoke git clone');
   assert.match(clone, /'clone','--no-tags'/, 'clone must keep tags disabled');

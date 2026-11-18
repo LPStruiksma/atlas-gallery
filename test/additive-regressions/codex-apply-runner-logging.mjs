@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const runner = fileURLToPath(new URL('../../bin/autodev-codex-apply-runner.mjs', import.meta.url));
-const repository = 'LPStruiksma/autodev';
+const runner = fileURLToPath(new URL('../../scripts/ci/codex-apply-runner.mjs', import.meta.url));
+const repository = 'LPStruiksma/atlas-gallery';
 const prNumber = 1220;
 const commentId = 731;
 const login = 'chatgpt-codex-connector[bot]';
@@ -69,7 +69,7 @@ test('runner refuses a well-formed patch to a human-only path from trusted polic
   const dir = mkdtempSync(join(tmpdir(), 'codex-apply-policy-'));
   try {
     const head = 'a'.repeat(40);
-    const name = 'src/runtime/model-budget.mjs';
+    const name = 'app/src/main/AndroidManifest.xml';
     const patch = ['From '+'b'.repeat(40)+' Mon Sep 17 00:00:00 2001','From: Codex <codex@example.invalid>',
       'Subject: [PATCH] edit','Parent: '+head,'','---',' x','','diff --git a/'+name+' b/'+name,
       'index 1111111..2222222 100644','--- a/'+name,'+++ b/'+name,'@@ -1 +1 @@','-a','+b','-- ','2.47.0',''].join('\n');
@@ -102,7 +102,7 @@ test('runner refuses a well-formed patch to a human-only path from trusted polic
         GH_TOKEN: 'local-mock-not-a-secret' },
     });
     assert.equal(result.status, 1, result.stderr);
-    assert.match(result.stderr, /outcome=REFUSED reason=path refused \(human-only or hard-denied path\): src\/runtime\/model-budget\.mjs/);
+    assert.match(result.stderr, /outcome=REFUSED reason=path refused \(human-only or hard-denied path\): app\/src\/main\/AndroidManifest\.xml/);
     assert.doesNotMatch(result.stderr, /git must not run/);
   } finally {
     rmSync(dir, { recursive: true, force: true });

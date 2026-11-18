@@ -13,15 +13,22 @@ const pathDenied = (name) => {
     name==='.github' || name==='eval' || name==='roles';
 };
 
-// Where an applied Codex patch may write (Lukas, 2026-11-17: let Codex patches land
-// AutoDev code). Everything else, every protected or human-only path, and this
-// guard itself stay refused. Pass the trusted main's unconditionalHumanOnlyPaths
-// and candidateHardWriteDenied lists as `denied`.
-export const CODEX_WRITABLE_PREFIXES = Object.freeze(['bin/','src/','test/','docs/','memory/','tools/']);
-const selfGuard = new Set(['bin/autodev-codex-apply.mjs','bin/autodev-codex-apply-runner.mjs',
+// Where an applied Codex patch may write. Ported from LPStruiksma/autodev
+// bin/autodev-codex-apply.mjs at 2c44457 (#522); this repository's code lives in
+// app/src/, not bin/ or src/. Build files, scripts/ (CI and signing scripts) and
+// every protected or human-only path stay refused, as does this guard itself.
+// Pass the trusted main's unconditionalHumanOnlyPaths and
+// candidateHardWriteDenied lists as `denied`.
+export const CODEX_WRITABLE_PREFIXES = Object.freeze(['app/src/','test/','docs/','tools/']);
+const selfGuard = new Set(['scripts/ci/codex-apply.mjs','scripts/ci/codex-apply-runner.mjs',
   'package.json','package-lock.json']);
 const matchesDenied = (name, entry) => {
   if (typeof entry!=='string' || !entry) return true; // malformed policy refuses everything
+  // #522 port: this repository's policy also lists dot-file globs such as `.env.*`.
+  // pathDenied already refuses every path with a segment starting with '.', so a
+  // dot-led entry can only match a path that never gets here. Any other glob still
+  // refuses everything.
+  if (entry.startsWith('.') && !entry.includes('/')) return name.split('/')[0].startsWith('.');
   const base = entry.endsWith('/**') ? entry.slice(0,-3) : entry.endsWith('/') ? entry.slice(0,-1) : entry;
   if (base.includes('*')) return true;
   return name===base || name.startsWith(base+'/');

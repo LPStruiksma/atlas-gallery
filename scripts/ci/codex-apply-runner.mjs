@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { inspectCodexReply, codexPathRefusal } from './autodev-codex-apply.mjs';
+import { inspectCodexReply, codexPathRefusal } from './codex-apply.mjs';
 
 const repository=process.env.GITHUB_REPOSITORY;
 const token=process.env.GH_TOKEN;
@@ -41,7 +41,7 @@ function validComment(comment) {
     comment.issue_url==='https://api.github.com/repos/'+repository+'/issues/'+prNumber;
 }
 try {
-  if(repository!=='LPStruiksma/autodev'||!token||event.action!=='created'||
+  if(repository!=='LPStruiksma/atlas-gallery'||!token||event.action!=='created'||
      !event.issue?.pull_request || event.comment?.user?.login!=='chatgpt-codex-connector[bot]' ||
      !Number.isSafeInteger(prNumber)||!Number.isSafeInteger(commentId)) refuse('event identity');
   const comment=JSON.parse(gh(['api','repos/'+repository+'/issues/comments/'+commentId]));
@@ -59,7 +59,7 @@ try {
   if(!result.ok) refuse(result.reason);
   reportedCodexSha=result.reportedCommit||null;
   // Path policy comes from trusted main (this runner's own checkout), never the PR.
-  const protection=JSON.parse(readFileSync(new URL('../.autodev/project.json',import.meta.url),'utf8'))?.authority?.protection;
+  const protection=JSON.parse(readFileSync(new URL('../../.autodev/project.json',import.meta.url),'utf8'))?.authority?.protection;
   const denied=[protection?.unconditionalHumanOnlyPaths,protection?.candidateHardWriteDenied];
   if(denied.some(list=>!Array.isArray(list)||!list.length)) refuse('trusted path policy unreadable');
   for(const name of result.paths) {
@@ -117,11 +117,12 @@ try {
     '--force-with-lease=refs/heads/'+pr.head.ref+':'+baseSha]);
   outcome='APPLIED';
   reason='patch applied; CI dispatch not confirmed';
-  // GITHUB_TOKEN pushes do not trigger new workflows, so run CI directly on the
-  // branch ref. CI checks out github.sha, which workflow_dispatch sets at dispatch.
-  gh(['api','--method','POST','repos/'+repository+'/actions/workflows/ci.yml/dispatches',
-      '-f','ref='+pr.head.ref]);
-  reason='patch applied; CI workflow_dispatch requested on branch '+pr.head.ref;
+  // GITHUB_TOKEN pushes do not trigger new workflows, so run the build and JVM
+  // tests directly on the branch ref (no emulators: those run at next:review).
+  // The static check runs on the next pull_request event (ready for review).
+  gh(['api','--method','POST','repos/'+repository+'/actions/workflows/build-apk.yml/dispatches',
+      '-f','ref='+pr.head.ref,'-f','inputs[run_ui_tests]=false']);
+  reason='patch applied; build-apk workflow_dispatch requested on branch '+pr.head.ref;
  } catch(error) {
   reason=(outcome==='APPLIED'?'post-push failure: ':'')+String(error.message||error).slice(0,400);
   // A denied GitHub issue-comment POST must not hide the original guard failure.
@@ -130,7 +131,7 @@ try {
   if(outcome==='APPLIED') process.exitCode=1;
 } finally {
   if(folder) rmSync(folder,{recursive:true,force:true});
-  if(repository==='LPStruiksma/autodev'&&Number.isSafeInteger(prNumber)&&prNumber>0) {
+  if(repository==='LPStruiksma/atlas-gallery'&&Number.isSafeInteger(prNumber)&&prNumber>0) {
     const body='Actor: autodev/codex-apply\nStatus: '+outcome+
       '\nComment: '+String(commentId||'unknown')+
       (appliedSha?'\nApplied SHA: '+appliedSha:'')+

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { inspectCodexReply, validateCodexPatch, parseCodexPatchPaths, codexPathRefusal } from '../../bin/autodev-codex-apply.mjs';
+import { inspectCodexReply, validateCodexPatch, parseCodexPatchPaths, codexPathRefusal } from '../../scripts/ci/codex-apply.mjs';
 
 const head = 'a'.repeat(40);
 const good = [
@@ -146,18 +146,23 @@ test('reject deletes, mode changes, symlinks, zero-index edits and malformed edi
 test('path policy: writable prefixes only, never protected, human-only or the guard itself', () => {
   const policy=JSON.parse(readFileSync(new URL('../../.autodev/project.json',import.meta.url),'utf8')).authority.protection;
   const denied=[...policy.unconditionalHumanOnlyPaths,...policy.candidateHardWriteDenied];
-  for (const ok of ['bin/autodev-example.mjs','src/runtime/example.mjs','test/x.mjs','docs/a/b.md','memory/x.md','tools/x.sh'])
+  // #522 port: this repository's writable prefixes and its own human-only paths.
+  for (const ok of ['app/src/main/java/nl/atlas/gallery/X.kt','app/src/test/java/X.kt','test/x.mjs',
+    'docs/a/b.md','tools/x.py'])
     assert.equal(codexPathRefusal(ok,denied),null,ok);
-  for (const bad of ['package.json','package-lock.json','README.md','config/x.json','scripts/x.sh','eval/x.json',
-    'AGENTS.md','roles/dev.md','.github/workflows/ci.yml','.autodev/project.json','SECURITY.md',
-    'bin/autodev-codex-apply.mjs','bin/autodev-codex-apply-runner.mjs','test/additive-regressions/codex-apply.mjs',
-    'test/additive-regressions/codex-apply-new.mjs','bin/autodev-merge-join-check.mjs',
-    'test/additive-regressions/merge-join-check.mjs','src/software/promotion/x.mjs','src/kernel/contracts/a.json',
-    'src/software/review/x.mjs','src/runtime/model-budget.mjs','src/runtime/openai-wif.mjs'])
+  for (const bad of ['package.json','README.md','build.gradle.kts','settings.gradle.kts','gradle.properties',
+    'app/build.gradle.kts','app/src/main/AndroidManifest.xml','app/proguard-rules.pro','baselineprofile/x.kt',
+    'scripts/ci_android_upgrade_emulator.sh','scripts/p0_termux_owner_sign.sh','scripts/ci/codex-apply.mjs',
+    'scripts/ci/codex-apply-runner.mjs','tools/v4/private/x.json','signing/x','private/x','eval/x.json',
+    'AGENTS.md','.github/workflows/build-apk.yml','.autodev/project.json','SECURITY.md','CLAUDE.md',
+    'test/additive-regressions/codex-apply.mjs','test/additive-regressions/codex-apply-new.mjs'])
     assert.notEqual(codexPathRefusal(bad,denied),null,bad);
-  assert.notEqual(codexPathRefusal('bin/x.mjs',['src/**/x']),null,'unsupported glob refuses everything');
-  assert.notEqual(codexPathRefusal('bin/x.mjs',[42]),null,'malformed entry refuses everything');
-  assert.notEqual(codexPathRefusal('bin/x.mjs',null),null,'missing list refuses everything');
+  assert.notEqual(codexPathRefusal('docs/x.md',['src/**/x']),null,'unsupported glob refuses everything');
+  assert.equal(codexPathRefusal('docs/x.md',['.env.*']),null,'#522: a dot-file glob is covered by the dot-segment rule');
+  assert.notEqual(codexPathRefusal('docs/x.md',['docs/*.md']),null,'#522: a non-dot glob still refuses everything');
+  assert.notEqual(codexPathRefusal('.env.local',['.env.*']),null,'#522: dot files stay refused');
+  assert.notEqual(codexPathRefusal('docs/x.md',[42]),null,'malformed entry refuses everything');
+  assert.notEqual(codexPathRefusal('docs/x.md',null),null,'missing list refuses everything');
 });
 
 

@@ -36,4 +36,4 @@ jobs:
       - name: Guard, apply and report
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node trusted/bin/autodev-codex-apply-runner.mjs
+        run: node trusted/scripts/ci/codex-apply-runner.mjs
