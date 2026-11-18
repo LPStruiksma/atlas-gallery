@@ -8,6 +8,8 @@ import android.graphics.Bitmap
 import java.io.Closeable
 import java.nio.FloatBuffer
 import nl.atlas.gallery.featureface.NativeFaceObservationId
+import nl.atlas.gallery.featureface.FaceQuality
+import nl.atlas.gallery.featureface.FaceQualityScorer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 
 /**
@@ -54,7 +56,11 @@ class OnnxFaceEmbedder private constructor(
     val embedderVersion: String get() = SFaceModel.EMBEDDER_VERSION
 
     /** Embeds one detected face. Throws [IllegalArgumentException] for degenerate landmarks. */
-    fun embed(bitmap: Bitmap, face: YuNetFace): SFaceEmbedding = synchronized(lock) {
+    fun embed(bitmap: Bitmap, face: YuNetFace): SFaceEmbedding =
+        embedWithQuality(bitmap, face).first
+
+    /** One existing aligned crop feeds both SFace and photographic quality. */
+    fun embedWithQuality(bitmap: Bitmap, face: YuNetFace, sourceScale: Float = 1f): Pair<SFaceEmbedding, FaceQuality> = synchronized(lock) {
         check(!closed) { "Face embedder closed" }
         check(!bitmap.isRecycled) { "Face frame already released" }
         val m = SFaceAlignment.similarityTransform(face.landmarks)
@@ -63,7 +69,11 @@ class OnnxFaceEmbedder private constructor(
             bitmap.getPixels(it, 0, window.width, window.left, window.top, window.width, window.height)
         }
         SFaceAlignment.warpToRgbPlanar(pixels, window, m, input)
-        SFaceEmbedding(run(input), SFaceModel.EMBEDDER_VERSION)
+        // Run SFace before scoring: inference consumes the same mutable tensor.
+        val embedding = SFaceEmbedding(run(input), SFaceModel.EMBEDDER_VERSION)
+        val quality = FaceQualityScorer.score(face, bitmap.width, bitmap.height, input,
+            SFaceModel.INPUT_SIZE, sourceScale)
+        embedding to quality
     }
 
     /** Embeds every face of one frame, in order; a face with degenerate landmarks maps to null. */
