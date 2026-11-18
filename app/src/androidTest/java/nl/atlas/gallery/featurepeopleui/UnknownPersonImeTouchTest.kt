@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -303,10 +304,33 @@ class UnknownPersonImeTouchTest {
         withAnimatorScaleOne { openingImeTouch() }
     }
 
-    private fun imeVisible(): Boolean {
-        val insets = activity().window.decorView.rootWindowInsets ?: return false
-        return insets.isVisible(WindowInsets.Type.ime()) ||
-            insets.getInsets(WindowInsets.Type.ime()).bottom > 0
+    /** IME state read on the UI thread, as "visible=<b> bottom=<px>". */
+    private fun imeState(): Pair<Boolean, Int> {
+        var state = false to 0
+        compose.runOnUiThread {
+            val insets = activity().window.decorView.rootWindowInsets
+            if (insets != null) {
+                state = insets.isVisible(WindowInsets.Type.ime()) to
+                    insets.getInsets(WindowInsets.Type.ime()).bottom
+            }
+        }
+        return state
+    }
+
+    private fun imeVisible(): Boolean = imeState().let { (visible, bottom) -> visible || bottom > 0 }
+
+    /**
+     * waitUntil that names its step and the IME state on timeout, so a CI
+     * failure says which precondition stalled instead of a bare timeout.
+     */
+    private fun step(name: String, timeoutMs: Long = 10_000, condition: () -> Boolean) {
+        try {
+            compose.waitUntil(timeoutMs, condition)
+        } catch (timeout: ComposeTimeoutException) {
+            val (visible, bottom) = imeState()
+            android.util.Log.i("ATLAS_TOUCH1", "step timeout: $name imeVisible=$visible imeBottom=$bottom")
+            throw AssertionError("TOUCH-1 step '$name' timed out (imeVisible=$visible imeBottom=$bottom)", timeout)
+        }
     }
 
     /**
@@ -317,12 +341,28 @@ class UnknownPersonImeTouchTest {
      */
     private fun openingImeTouch() {
         fixture()
-        compose.waitUntil(5_000) { ValueAnimator.areAnimatorsEnabled() }
+        step("animators enabled", 5_000) { ValueAnimator.areAnimatorsEnabled() }
         val search = compose.onNodeWithTag("atlas-group-1-destination-search")
         search.performTextInput("Morgan")
-        compose.waitUntil(10_000) { imeVisible() }
-        compose.runOnIdle { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
-        compose.waitUntil(10_000) { !imeVisible() }
+        // Same settled-IME proof as settledImeTouchSelectsPerson: hiding while
+        // the show request is still in flight can be dropped by the IME.
+        val frames = ImeFrames(activity())
+        frames.start()
+        try {
+            step("keyboard settled after typing") { frames.latestBottom > 0 && frames.stableFrames >= 2 }
+        } finally {
+            frames.stop()
+        }
+        // Hide, re-requesting once a second in case one request is dropped.
+        var lastHide = 0L
+        step("keyboard hidden") {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastHide >= 1_000) {
+                lastHide = now
+                compose.runOnUiThread { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
+            }
+            !imeVisible()
+        }
         compose.waitForIdle()
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
