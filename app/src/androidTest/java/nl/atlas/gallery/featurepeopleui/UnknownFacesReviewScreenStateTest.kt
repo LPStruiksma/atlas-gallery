@@ -1,6 +1,11 @@
 package nl.atlas.gallery.featurepeopleui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,8 +13,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
+import nl.atlas.gallery.S24DisplayRule
+import nl.atlas.gallery.saveUiEvidence
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /**
  * Synthetic-only UI regression: X can retain the exact same private face_uid
@@ -19,7 +30,9 @@ import org.junit.Test
  * This test deliberately has no MediaStore grants, user photos, detector or DB.
  */
 class UnknownFacesReviewScreenStateTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    // Match the fixed S24+ dimensions required by the UI-evidence capture helper.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     private fun page(epoch: String, generation: String): NativeFaceReviewQueue {
         val candidate = DetectedFaceReviewCandidate(
@@ -36,6 +49,54 @@ class UnknownFacesReviewScreenStateTest {
         return NativeFaceReviewQueue(
             epoch, generation, listOf(candidate), 1, hasMore = false
         )
+    }
+
+    @Test fun absentOrStalePageShowsUsefulReturnPathWithoutLeakingRows() {
+        var displayedPage by mutableStateOf<NativeFaceReviewQueue?>(null)
+        var activeEpoch by mutableStateOf("grant-A")
+        var dark by mutableStateOf(false)
+        var backedOut = false
+        compose.setContent {
+            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+                Surface(Modifier.fillMaxSize()) {
+                    UnknownFacesReviewScreen(
+                        queue = displayedPage,
+                        currentPermissionEpoch = activeEpoch,
+                        currentSourceGeneration = "index-A",
+                        liveReviewStateAtAction = { null },
+                        reviewBackendReady = false,
+                        onDecide = {},
+                        onClose = { backedOut = true }
+                    )
+                }
+            }
+        }
+        val message = "Faces aren't ready to review yet. Check face discovery in People."
+        compose.onNodeWithText(message).assertExists()
+        compose.onNodeWithText(
+            "Review is unavailable until the current photo selection and face index are confirmed."
+        ).assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-pending-light.png")
+
+        compose.runOnIdle { displayedPage = page("grant-A", "index-A") }
+        compose.onNodeWithText(message).assertDoesNotExist()
+        compose.onNodeWithText("Unknown face").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-ready-light.png")
+        compose.runOnIdle { dark = true }
+        compose.waitForIdle()
+        saveUiEvidence("people-260-ready-dark.png")
+
+        // A replaced grant must suppress every row, not keep a stale thumbnail.
+        compose.runOnIdle { activeEpoch = "grant-B" }
+        compose.onNodeWithText(message).assertExists()
+        compose.onNodeWithText("Unknown face").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-review-scope-pending").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("people-260-pending-dark.png")
+        compose.onNodeWithText("Back to People").performClick()
+        compose.runOnIdle { assertTrue(backedOut) }
     }
 
     @Test fun regrantWithSameNativeUidDropsOldRememberedPreview() {

@@ -31,6 +31,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Favorite
@@ -130,6 +131,7 @@ fun GalleryViewer(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe? = null,
     onEdit: ((MediaRecord) -> Boolean)? = null,
+    onAiEdit: ((MediaRecord) -> Unit)? = null,
     // Optional immutable catalogue-scoped return anchor. Keep onBack LAST
     // so all existing GalleryViewer(items, uri) { ... } callers retain meaning.
     onExitSettledUri: ((String) -> Unit)? = null,
@@ -155,7 +157,7 @@ fun GalleryViewer(
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
-        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onExitSettledUri,
+        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
             favouriteOverrides, photoPeople, onBack)
     }
@@ -167,6 +169,7 @@ private fun GalleryViewerSnapshot(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe?,
     onEdit: ((MediaRecord) -> Boolean)?,
+    onAiEdit: ((MediaRecord) -> Unit)?,
     onExitSettledUri: ((String) -> Unit)?,
     faceSearch: ViewerFaceSearch?,
     faceHighlights: Map<String, List<IndexedFaceBox>>,
@@ -258,6 +261,7 @@ private fun GalleryViewerSnapshot(
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
+    var aiEditMenuOpen by remember { mutableStateOf(false) }
     // Pending consent requests survive activity recreation while Android's dialog is open.
     var pendingFavouriteUri by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingFavouriteValue by rememberSaveable { mutableStateOf(false) }
@@ -721,6 +725,21 @@ private fun GalleryViewerSnapshot(
                 ) {
                     Icon(Icons.Outlined.ImageSearch, "Find similar", tint = Color.White)
                 }
+                // AI Edit is inside the viewer overflow, never another permanent pencil.
+                if (onAiEdit != null && !current.isVideo &&
+                    PhotoEditorHandoff.eligible(current)) Box {
+                    IconButton(onClick = { aiEditMenuOpen = true },
+                        modifier = Modifier.testTag("atlas-viewer-more")) {
+                        Icon(Icons.Filled.MoreVert, "More photo actions", tint = Color.White)
+                    }
+                    DropdownMenu(expanded = aiEditMenuOpen,
+                        onDismissRequest = { aiEditMenuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("AI Edit") },
+                            modifier = Modifier.testTag("atlas-viewer-ai-edit"),
+                            onClick = { aiEditMenuOpen = false; onAiEdit(current) })
+                    }
+                }
                 IconButton(
                     onClick = {
                         detailsMedia = items[viewerVisibleActionIndex(scrubOverlayState.value,
@@ -1096,6 +1115,22 @@ internal fun shouldStartViewerVideoPlayer(
     focused: Boolean, rapidlyChanging: Boolean, settled: Boolean
 ): Boolean = focused && !rapidlyChanging && settled
 
+/** What one viewer video page draws (PERF-29, #330). */
+internal data class ViewerVideoLayers(val player: Boolean, val poster: Boolean)
+
+/**
+ * At most the focused, settled page mounts (and prepares) a player. The
+ * poster frame stays drawn until Media3 reports its first rendered frame,
+ * so a starting player never shows a black surface in between.
+ */
+internal fun viewerVideoLayers(
+    focused: Boolean, rapidlyChanging: Boolean, settled: Boolean,
+    firstFrameRendered: Boolean
+): ViewerVideoLayers {
+    val player = shouldStartViewerVideoPlayer(focused, rapidlyChanging, settled)
+    return ViewerVideoLayers(player = player, poster = !player || !firstFrameRendered)
+}
+
 /**
  * Video poster while scrubbing, player only after the selected frame is
  * stationary for 180ms. This prevents bursty Media3 allocations during
@@ -1134,10 +1169,16 @@ private fun ViewerVideoPage(
                 }
             }
         }) {
-        if (shouldStartViewerVideoPlayer(focused, rapidlyChanging, videoSettled)) {
+        if (viewerVideoLayers(focused, rapidlyChanging, videoSettled,
+                firstFrameRendered = false).player) {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-player")) {
                 VideoPage(media.uri, resumePositionMs, onSavePosition, onLivePosition,
-                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome)
+                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome,
+                    // Same 700px request as the poster below: a memory-cache hit.
+                    poster = {
+                        MediaPreview(media, Modifier.fillMaxSize().clearAndSetSemantics {},
+                            ContentScale.Fit, 700)
+                    })
             }
         } else {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-poster"),
@@ -1187,9 +1228,23 @@ private fun PhotoPage(
     var decodedSize by remember(media.uri, focused, imageRevision) {
         mutableStateOf(IntSize.Zero)
     }
-    LaunchedEffect(viewport, decodedSize) {
+    // PERF-32 (#334): the oriented full size of a photo whose region
+    // decoders opened. Only then may a pinch go past today's 5x limit.
+    var tiledSize by remember(media.uri, focused, imageRevision) {
+        mutableStateOf<IntSize?>(null)
+    }
+    fun maxZoom(): Float = tiledSize?.let {
+        viewerMaxZoom(viewport.width, viewport.height, it.width, it.height)
+    } ?: ViewerTileZoom.BASE_MAX_ZOOM
+    // Region decoders open on the first zoom, not on every settled page.
+    val zoomedIn by remember(media.uri, focused, imageRevision) {
+        derivedStateOf { zoomPose.scale > 1.01f }
+    }
+    var zoomedOnce by remember(media.uri, focused, imageRevision) { mutableStateOf(false) }
+    LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
+    LaunchedEffect(viewport, decodedSize, tiledSize) {
         zoomPose = viewerReboundZoom(zoomPose, viewport.width, viewport.height,
-            decodedSize.width, decodedSize.height)
+            decodedSize.width, decodedSize.height, maxZoom())
         onZoomChanged(zoomPose.scale)
     }
     // The pager retains neighboring pages. Readiness belongs to the
@@ -1269,7 +1324,7 @@ private fun PhotoPage(
                                 val next = viewerZoomGesture(
                                     previous, gestureZoom, pan.x, pan.y,
                                     centroid.x, centroid.y, viewport.width, viewport.height,
-                                    decodedSize.width, decodedSize.height)
+                                    decodedSize.width, decodedSize.height, maxZoom())
                                 if (next != previous) {
                                     zoomPose = next
                                     latestZoomChanged(next.scale)
@@ -1347,6 +1402,14 @@ private fun PhotoPage(
                         onSuccess = { result ->
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                         })
+                    // PERF-32 (#334): full-resolution tiles over this base
+                    // once the photo is magnified past what 2400 px can show.
+                    ViewerRegionTileLayer(
+                        uri = media.uri, contentRevision = imageRevision,
+                        mediaStoreDegrees = media.orientationDegrees,
+                        active = zoomedOnce && decodedSize != IntSize.Zero,
+                        pose = { zoomPose }, viewport = viewport, baseSize = decodedSize,
+                        onTiledSize = { tiledSize = it })
                 }
                 // Inside the zoom layer, so the box follows pinch and pan.
                 if (faceBoxes.isNotEmpty()) FaceHighlightOverlay(faceBoxes,
@@ -1395,7 +1458,9 @@ internal fun VideoPage(
     /** Gets a main-thread reader of the playing position while mounted, then null. */
     onLivePosition: ((() -> Long)?) -> Unit = {},
     chromeVisible: Boolean = true,
-    onToggleChrome: () -> Unit = {}
+    onToggleChrome: () -> Unit = {},
+    /** Drawn over the video surface until Media3 renders its first frame. */
+    poster: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
@@ -1447,6 +1512,15 @@ internal fun VideoPage(
             player.release()
         }
     }
+    // Declared after the release effect, so it is disposed first.
+    var firstFrameRendered by remember(player) { mutableStateOf(false) }
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onRenderedFirstFrame() { firstFrameRendered = true }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
 
     var seeking by remember(player) { mutableStateOf(false) }
     var seekFraction by remember(player) { mutableFloatStateOf(0f) }
@@ -1485,6 +1559,12 @@ internal fun VideoPage(
             this.player = player
             useController = false
         } }, modifier = Modifier.fillMaxSize())
+        if (poster != null && viewerVideoLayers(focused = true, rapidlyChanging = false,
+                settled = true, firstFrameRendered = firstFrameRendered).poster) {
+            Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-first-frame-poster")) {
+                poster()
+            }
+        }
         // The Android video surface has no tap action. This transparent
         // Compose layer gives touch users the same chrome toggle as TalkBack
         // without stealing horizontal pager drags.

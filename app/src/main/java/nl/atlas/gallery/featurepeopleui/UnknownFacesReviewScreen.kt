@@ -221,7 +221,7 @@ fun UnknownFacesReviewScreen(
             if (current == null) {
                 item {
                     Text(
-                        "Review is unavailable until the current photo selection and face index are confirmed.",
+                        "Faces aren't ready to review yet. Check face discovery in People.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.testTag("atlas-review-scope-pending")
