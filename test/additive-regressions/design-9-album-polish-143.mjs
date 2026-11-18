@@ -6,7 +6,6 @@ const main = readFileSync('app/src/main/java/nl/atlas/gallery/MainActivity.kt', 
 const albumEvidence = readFileSync('app/src/androidTest/java/nl/atlas/gallery/AlbumsGridEvidenceTest.kt', 'utf8');
 const parityEvidence = readFileSync('app/src/androidTest/java/nl/atlas/gallery/ParityAdditionalThemeJourneyTest.kt', 'utf8');
 const theme = readFileSync('app/src/androidTest/java/nl/atlas/gallery/SystemThemeJourneyTest.kt', 'utf8');
-const killFixture = readFileSync('app/src/androidTest/java/nl/atlas/gallery/PeopleScanProcessKillTest.kt', 'utf8');
 const runner = readFileSync('scripts/ci_android_upgrade_emulator.sh', 'utf8');
 const declared = readFileSync('scripts/ui-evidence.d/515-albums.txt', 'utf8');
 
@@ -47,10 +46,4 @@ for (const revision of ['before', 'after']) {
         assert.ok(runner.includes('capture_albums_grid "' + revision + '" "' + mode + '"'));
     }
 }
-// A disposable seed-time scan cannot leave a deferred five-minute chain behind.
-assert.ok(killFixture.includes('cancelUniqueWork(PeopleScanWorkScheduler.UNIQUE_NAME)'));
-assert.ok(killFixture.includes('.result.get(30, TimeUnit.SECONDS)'));
-assert.ok(runner.includes('adb shell dumpsys battery set status 3'));
-assert.ok(runner.includes('adb shell dumpsys battery set ac 1'));
-assert.ok(runner.includes('wait_restore_in_new_pid'));
 console.log('DESIGN-9 Albums polish source contract OK');

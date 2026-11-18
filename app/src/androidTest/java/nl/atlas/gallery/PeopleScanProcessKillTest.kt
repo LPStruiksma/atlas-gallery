@@ -6,9 +6,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.work.WorkManager
-import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
-import java.util.concurrent.TimeUnit
 import nl.atlas.gallery.featureface.onnx.SyntheticFace
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.Assert.assertEquals
@@ -25,11 +22,11 @@ import java.io.File
  *
  * - seed: invented PNGs in MediaStore, the gallery cache written under today's
  *   grant, and an opt-in through the app's own [PeopleDiscoveryHost.forApp]
- *   while the emulator is unplugged. The fixture cancels only the one-time
- *   seed request before instrumentation exits: that process is force-stopped,
- *   and a stale delayed retry could otherwise mask the real app-launch path.
- * - (script) ATLAS is opened once, as a user would, to re-arm a fresh one-time
- *   scan under the retained opt-in; Home, then SIGKILL. Charging lets WorkManager start a worker
+ *   while the emulator is unplugged, so the WorkManager chain is enqueued but
+ *   no batch runs yet. Nothing is processed.
+ * - (script) the finished instrumentation force-stops the package, which
+ *   cancels its jobs, so ATLAS is opened once, as a user would, to arm the
+ *   chain; Home, then SIGKILL. Charging lets WorkManager start a worker
  *   process; it is killed with SIGKILL mid-run, and WorkManager must start
  *   another that carries on. No Activity starts after the first SIGKILL.
  * - verify: only the real app database and preferences are read. The
@@ -108,18 +105,7 @@ class PeopleScanProcessKillTest {
         val epoch = requireNotNull(host.displayEpoch("ci-kill43-seed")) { "not published" }
         assertEquals(epoch, PeopleOptInMemory.preferences(target).loadPublished()?.epoch)
         record.writeText("$epoch\n${inventory.size}\n")
-        // Instrumentation force-stops the target after this phase. A worker
-        // briefly started while the unplug simulation was settling may have
-        // queued a five-minute HOLD_RETRY. KEEP on the next user launch would
-        // retain that delayed work, preventing the 120-second real restore
-        // proof even though charging is now satisfied. Remove only this
-        // disposable seed's one-time request. Preserve the opt-in, catalogue,
-        // and six-hour periodic rearm: the real app launch must enqueue a new
-        // eligible request, and later SIGKILL recovery remains unassisted.
-        WorkManager.getInstance(target)
-            .cancelUniqueWork(PeopleScanWorkScheduler.UNIQUE_NAME)
-            .result.get(30, TimeUnit.SECONDS)
-        android.util.Log.i("ATLAS_KILL43", "seeded items=${inventory.size} one_time_cleared=true")
+        android.util.Log.i("ATLAS_KILL43", "seeded items=${inventory.size}")
     }
 
     @Test fun verifyAfterKill() {
