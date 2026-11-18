@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsOff
@@ -16,6 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.util.UUID
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 
 /**
@@ -24,7 +24,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class AiEditSettingsEvidenceTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     @Test fun providerListConsentAndByokFormRenderInSettings() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext
@@ -36,7 +37,7 @@ class AiEditSettingsEvidenceTest {
         try {
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides synthetic) {
-                    MaterialTheme {
+                    AtlasEvidenceHarness {
                         AtlasSettingsScreen(
                             scanPhase = null, onPauseScan = null, onResumeScan = null,
                             visualIndexOn = null, showPhotoDetails = false, versionName = "synthetic",
