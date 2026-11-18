@@ -15,20 +15,22 @@ integrated.
 
 ## Run it
 
-Python 3.11+ with `numpy`, `opencv-python-headless`, `onnxruntime` and `onnx`.
-Network access to `github.com` release downloads, `zenodo.org` and
+Python 3.11+ with `numpy`, `opencv-python-headless`, `onnxruntime`, `onnx` and
+`ai-edge-litert` (only for the MediaPipe mask). Network access to `github.com`
+release downloads, `storage.googleapis.com`, `zenodo.org` and
 `facesyntheticspubwedata.z6.web.core.windows.net`. About 6 GB of weights and
 120 MB of fixtures are cached under `~/.cache/atlas-identity-bench/`
 (`IDENTITY_BENCH_CACHE` moves it).
 
 ```bash
-python3 -m unittest tools/identity_bench/test_identity_bench.py   # 43 tests, synthetic tensors, no downloads
+python3 -m unittest tools/identity_bench/test_identity_bench.py   # 45 tests, synthetic tensors, no downloads
 python3 -m tools.identity_bench self-test                        # the same tests
 python3 -m tools.identity_bench fetch                            # download and hash-check everything
 python3 -m tools.identity_bench one --target T04 --identity 0213ccb4776a --candidate inswapper_128
-python3 -m tools.identity_bench                                  # the full benchmark (about an hour on 4 cores)
+python3 -m tools.identity_bench                                  # the full benchmark (about two hours on 4 cores)
 python3 -m tools.identity_bench cost                             # time and memory, one fresh process per candidate
 python3 -m tools.identity_bench screen                           # all nine swap networks on the development split
+python3 -m tools.identity_bench explore --candidates inswapper_128+boost2,ghost_1_256+mask-mp   # extra candidates, same 70 pairs
 ```
 
 `one` runs a whole pipeline on one fixture and prints its numbers; it is the
@@ -55,8 +57,11 @@ quick check for a reviewer. A full run writes, under `--out` (default
    reference photos from the encoder the networks were trained against
    (`arcface_w600k_r50`), converted per network.
 4. **Mask**: a box that is exactly 0 at the crop border, times the face region
-   from a face parser run on the swapped crop (skin, brows, eyes, nose, mouth;
-   glasses, hair, ears and neck stay the target's). Optional occlusion mask.
+   (skin, brows, eyes, nose, mouth; glasses, hair, ears and neck stay the
+   target's). The region comes from a BiSeNet face parser on the swapped crop
+   (`parse`, the default), on both crops (`parse-both`), or from the Apache-2.0
+   MediaPipe multiclass segmenter (`mp`), the only mask the licence register
+   lets the app ship. `box` uses the box alone.
 5. **Colour match**: mean and spread per Lab channel inside the mask.
 6. **Paste back** at the source resolution. Where the mask is 0 the output
    pixel is the source pixel, so the untouched area is bit-identical.
@@ -64,7 +69,9 @@ quick check for a reviewer. A full run writes, under `--out` (default
    mask, blended at 0.8.
 
 A candidate is a `Config`: swap network, mask mode, colour match on or off,
-restoration on or off. Two controls calibrate the image metrics: `control-none`
+restoration on or off, and an optional pixel boost (`+boost2` swaps four
+interleaved sub-crops so a 128 px network fills a 256 px crop). Its label reads
+`name[+boostN][+mask-X][+no-colour][+gfpgan]`. Two controls calibrate the image metrics: `control-none`
 pastes the unchanged crop back, and the hard-edge control pastes a swap with an
 unfeathered box and no colour match.
 
