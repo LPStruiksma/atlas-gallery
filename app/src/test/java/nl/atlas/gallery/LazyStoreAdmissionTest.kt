@@ -31,7 +31,7 @@ class LazyStoreAdmissionTest {
 
     @Test fun noMainThreadAdmissionIncludingAfterSuccessfulWarmup() {
         val owner = Thread.currentThread()
-        val holder = LazyBackgroundHolder("model", isMainThread = { Thread.currentThread() === owner }) { "ok" }
+        val holder = LazyBackgroundHolder("model", { "ok" }, isMainThread = { Thread.currentThread() === owner })
         assertThrows(IllegalStateException::class.java) { holder.get() }
         assertFalse(holder.isOpened)
         val worker = Thread { assertEquals("ok", holder.get()) }
