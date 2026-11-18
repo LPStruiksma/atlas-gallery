@@ -1,2 +1,3 @@
-# Proof run for the UI test foundation (never merged).
-6 nl.atlas.gallery.uitest.UiTestFoundationTest
+# Proof run 2 (never merged): PeoplePrototype with only its Create click changed to tap().
+6 nl.atlas.gallery.PeoplePrototypeJourneyTest
+2 nl.atlas.gallery.uitest.UiTestFoundationTest

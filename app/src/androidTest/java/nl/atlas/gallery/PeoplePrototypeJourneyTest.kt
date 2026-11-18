@@ -45,6 +45,9 @@ import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.runPeopleScanBatch
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.uitest.keyboardInsetPx
+import nl.atlas.gallery.uitest.tap
+import nl.atlas.gallery.uitest.visibilityProblem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -218,7 +221,11 @@ class PeoplePrototypeJourneyTest {
         compose.onAllNodesWithTag("atlas-people-unnamed").onFirst().performClick()
         waitForText("Name this person")
         compose.onAllNodesWithText("Name this person").onFirst().performTextInput(NAME)
-        compose.onAllNodesWithText("Create person").onFirst().performClick()
+        val create = compose.onAllNodesWithText("Create person").onFirst()
+        android.util.Log.i("ATLAS_UITEST", "Create before tap: " +
+            (create.fetchSemanticsNode().visibilityProblem() ?: "fully visible") +
+            " keyboard=${compose.keyboardInsetPx()} px")
+        create.tap()
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",
