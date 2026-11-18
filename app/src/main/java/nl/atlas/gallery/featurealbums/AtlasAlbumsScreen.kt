@@ -335,10 +335,8 @@ fun AtlasAlbumsScreen(
                     title = if (accessFailure) "Albums need photo access"
                         else "Couldn’t refresh albums",
                     explanation = if (accessFailure)
-                        "ATLAS can only show albums you allow it to access. " +
-                            "Review your photo and video access in Library status."
-                    else "Your original photos haven’t been changed. " +
-                        "Try loading the library again.",
+                        "Review photo and video access in Library status."
+                    else "Try again.",
                     icon = Icons.Filled.Collections,
                     actionLabel = if (action == null) null else
                         if (accessFailure) "Library status" else "Try again",
@@ -358,11 +356,11 @@ fun AtlasAlbumsScreen(
                     },
                     explanation = when (mediaFilter) {
                         AlbumMediaFilter.ALL ->
-                            "Albums appear here when ATLAS can access photos or videos on this device."
+                            ""
                         AlbumMediaFilter.PHOTOS ->
-                            "None of your currently accessible albums contain photos. Try All."
+                            ""
                         AlbumMediaFilter.VIDEOS ->
-                            "None of your currently accessible albums contain videos. Try All."
+                            ""
                     },
                     icon = Icons.Filled.Collections,
                     actionLabel = if (mediaFilter == AlbumMediaFilter.ALL) null else "Show all albums",
