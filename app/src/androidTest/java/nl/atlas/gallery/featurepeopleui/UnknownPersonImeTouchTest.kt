@@ -297,7 +297,13 @@ class UnknownPersonImeTouchTest {
         }
     }
 
-    @Test fun openingImeTouchIsNeverSilentlySwallowed() = withAnimatorScaleOne {
+    // Block body: JUnit only runs void test methods (an expression body returned
+    // SemanticsNodeInteraction and failed the class with initializationError).
+    @Test fun openingImeTouchIsNeverSilentlySwallowed() {
+        withAnimatorScaleOne { openingImeTouch() }
+    }
+
+    private fun openingImeTouch() {
         fixture()
         compose.waitUntil(5_000) { ValueAnimator.areAnimatorsEnabled() }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
