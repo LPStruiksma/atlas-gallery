@@ -13,12 +13,14 @@ import java.util.concurrent.Executor
 /**
  * #417 PERF-7a: debug-build-only StrictMode baseline for main-thread disk I/O.
  *
- * This provider lives only in the debug source set and its manifest entry is
- * `android:enabled="false"`, so release builds carry no runtime policy at all and
- * the ordinary debug test suite runs unchanged (StrictMode stack capture would
- * otherwise slow its timing assertions). Enable it on a debug install with
+ * This provider lives only in the debug source set, so release builds carry no
+ * runtime policy at all. It does nothing unless the app-private marker file
+ * [MARKER] exists, so the ordinary debug test suite runs unchanged (StrictMode
+ * stack capture would otherwise slow its timing assertions). Turn it on for a
+ * debug install with (the API 35 emulator refused `pm enable` from the shell,
+ * run 44315697453, so a disabled component cannot be the switch):
  *
- *     adb shell pm enable nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller
+ *     adb shell run-as nl.atlas.gallery touch files/atlas-strictmode-baseline
  *
  * Android creates providers before `Application.onCreate`, so the policy also
  * covers [AtlasApplication] start-up. Violations go to logcat (tag `StrictMode`)
@@ -26,7 +28,9 @@ import java.util.concurrent.Executor
  */
 class DebugStrictModeInstaller : ContentProvider() {
     override fun onCreate(): Boolean {
-        StrictModeBaseline.install()
+        // One stat before the policy exists, so it is never itself recorded.
+        val marker = context?.filesDir?.resolve(MARKER)
+        if (marker?.exists() == true) StrictModeBaseline.install()
         return true
     }
 
@@ -40,6 +44,10 @@ class DebugStrictModeInstaller : ContentProvider() {
     override fun update(
         uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?
     ): Int = 0
+
+    companion object {
+        const val MARKER = "atlas-strictmode-baseline"
+    }
 }
 
 /** Main-thread StrictMode violations, labelled with the phase the test set. */

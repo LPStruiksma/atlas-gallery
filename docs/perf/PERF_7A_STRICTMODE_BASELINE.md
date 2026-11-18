@@ -7,14 +7,14 @@ This unit measures. It changes no app behaviour, no WAL, People schema or restor
 ## What is instrumented
 
 - `app/src/debug/java/nl/atlas/gallery/StrictModeBaseline.kt` holds a debug-only `ContentProvider`, `DebugStrictModeInstaller`. It sets a main-thread `StrictMode.ThreadPolicy` with `detectDiskReads()`, `detectDiskWrites()` and `detectNetwork()`, using `penaltyLog()` and a `penaltyListener` that keeps each violation with its phase label. It never uses `penaltyDeath` or `penaltyDialog`.
-- The provider is declared in `app/src/debug/AndroidManifest.xml` with `android:enabled="false"`. Release builds do not contain it. Ordinary debug installs and the normal emulator suite run without StrictMode, because capturing a stack per violation would slow their timing assertions. Android creates providers before `Application.onCreate`, so once the provider is enabled the policy also covers `AtlasApplication` start-up.
+- The provider is declared only in `app/src/debug/AndroidManifest.xml`, so release builds do not contain it. It does nothing unless the app-private marker file `files/atlas-strictmode-baseline` exists. Ordinary debug installs and the normal emulator suite therefore run without StrictMode, because capturing a stack per violation would slow their timing assertions. (A disabled component cannot be the switch: the API 35 emulator answers `pm enable` from the shell with `SecurityException: Shell cannot change component state`.) Android creates providers before `Application.onCreate`, so once the marker exists the policy also covers `AtlasApplication` start-up from the next process start.
 - `StrictModeSites` (debug, JVM-tested in `app/src/testDebug/.../StrictModeSiteTest.kt`) groups violations by phase, violation type, trigger frame and the deepest ATLAS frame. It names what was opened: `sqlite`, `shared-prefs`, `asset`, `model` (ONNX runtime), `file`, `network` or `other`. A stack that runs through the test runner or test code is marked `harness=true` and is not an app finding.
 
 ## How the two measurements are taken
 
 Both run on emulator shard 1 right after the normal suite (before its pass/fail status is applied, so an unrelated red test still leaves the baseline), in `strictmode_baseline_417` in `scripts/ci_android_upgrade_emulator.sh`. The step only reports: a violation never fails the shard, and a missing report shows as a `::warning::`.
 
-1. **Cold start.** With the provider enabled, the step runs `am force-stop` then `am start -W` six times, 4 s apart. Launch 0 is the first after the shard's reinstall. Launches 1 to 5 give `STRICT cold-start n=5 p50_ms=… p95_ms=…` from `TotalTime`. Every `StrictMode` logcat stack from those launches is printed, so `Application.onCreate` and the first Photos grid of a real, non-instrumented process are covered.
+1. **Cold start.** With the marker in place, the step runs `am force-stop` then `am start -W` six times, 4 s apart. Launch 0 is the first after the shard's reinstall. Launches 1 to 5 give `STRICT cold-start n=5 p50_ms=… p95_ms=…` from `TotalTime`. Every `StrictMode` logcat stack from those launches is printed, so `Application.onCreate` and the first Photos grid of a real, non-instrumented process are covered.
 2. **First-open flows.** `StrictModeBaselineTest` runs in its own `am instrument` process, so no earlier test has opened a store. It seeds 48 invented PNGs and then opens, in order: the Photos grid (Activity launch to first tile), the viewer (tap the first tile), People, Search, and the first typed Search query. It then re-enters Photos, the viewer, People and Search 5 times each. Each phase logs to `ATLAS_STRICT`:
    - `timing phase=… n p50_ms p95_ms`: tap to settled, measured from the test side, including a 500 ms settle. This is coarse. For first opens n=1.
    - `frames phase=…`: `dumpsys gfxinfo` total frames, janky frames, and p50/p90/p95/p99 frame time, reset at each phase start.
@@ -27,7 +27,7 @@ Both run on emulator shard 1 right after the normal suite (before its pass/fail 
 On a debug install (emulator or device), with the test APK installed:
 
 ```bash
-adb shell pm enable nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller
+adb shell run-as nl.atlas.gallery touch files/atlas-strictmode-baseline
 adb shell am force-stop nl.atlas.gallery && adb logcat -c
 adb shell am start -W -n nl.atlas.gallery/.MainActivity      # cold start
 adb logcat -d -v brief -s StrictMode:D                        # its stacks
@@ -35,7 +35,7 @@ adb shell am instrument -w -r -e atlas_strictmode_baseline true \
   -e class nl.atlas.gallery.StrictModeBaselineTest \
   nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 adb logcat -d -v brief -s ATLAS_STRICT:I                      # the table
-adb shell pm disable nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller
+adb shell run-as nl.atlas.gallery rm -f files/atlas-strictmode-baseline
 ```
 
 The test inserts and then deletes its own invented MediaStore PNGs. On a personal phone, run only the cold-start part (the first four lines and the last), which reads nothing from the library beyond what the app itself loads.

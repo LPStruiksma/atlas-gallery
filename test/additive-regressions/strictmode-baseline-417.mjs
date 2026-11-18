@@ -1,6 +1,6 @@
 // #417 PERF-7a contract: StrictMode is a debug-only, opt-in measurement. Release and
-// main code carry no runtime policy; the debug provider is off by default and only
-// the emulator baseline step turns it on, then off again.
+// main code carry no runtime policy; the debug provider is a no-op without its
+// marker file, and only the emulator baseline step creates and then removes it.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,10 +24,11 @@ for (const set of ['app/src/main', 'app/src/release']) {
 const manifest = read('app/src/debug/AndroidManifest.xml');
 const provider = manifest.match(/<provider android:name="nl\.atlas\.gallery\.DebugStrictModeInstaller"[\s\S]*?\/>/);
 assert.ok(provider, 'debug manifest declares the StrictMode provider');
-assert.match(provider[0], /android:enabled="false"/);
 assert.match(provider[0], /android:exported="false"/);
 
 const baseline = read('app/src/debug/java/nl/atlas/gallery/StrictModeBaseline.kt');
+assert.match(baseline, /if \(marker\?\.exists\(\) == true\) StrictModeBaseline\.install\(\)/);
+assert.match(baseline, /const val MARKER = "atlas-strictmode-baseline"/);
 for (const call of ['detectDiskReads()', 'detectDiskWrites()', 'penaltyLog()', 'penaltyListener(']) {
   assert.ok(baseline.includes(call), call);
 }
@@ -41,8 +42,9 @@ for (const phase of ['grid-first-open', 'viewer-first-open', 'people-first-open'
 
 const script = read('scripts/ci_android_upgrade_emulator.sh');
 const step = script.match(/strictmode_baseline_417\(\) \{[\s\S]*?\n\}/)?.[0] ?? '';
-assert.match(step, /pm enable "\$comp"/);
-assert.match(step, /pm disable "\$comp"/);
+assert.match(step, /local marker=files\/atlas-strictmode-baseline/);
+assert.match(step, /run-as "\$pkg" touch "\$marker"/);
+assert.match(step, /run-as "\$pkg" rm -f "\$marker"/);
 assert.match(step, /-e atlas_strictmode_baseline true/);
-assert.ok(step.indexOf('pm enable') < step.indexOf('am instrument'), 'enable before the run');
+assert.ok(step.indexOf('touch "$marker"') < step.indexOf('am start -W'), 'marker before the first launch');
 console.log('strictmode-baseline-417 source contract OK');

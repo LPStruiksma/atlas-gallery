@@ -29,8 +29,8 @@ import org.junit.runners.model.Statement
  * grid, the viewer, People and Search in a fresh process, on invented MediaStore
  * PNGs. It measures and reports; it never fails on a violation.
  *
- * Opt-in only (`-e atlas_strictmode_baseline true`), with the disabled-by-default
- * debug provider enabled first, in its own `am instrument` process so that no
+ * Opt-in only (`-e atlas_strictmode_baseline true`), with the debug provider's
+ * marker file created first, in its own `am instrument` process so that no
  * earlier test has opened a store yet. scripts/ci_android_upgrade_emulator.sh
  * runs it on emulator shard 1; docs/perf/PERF_7A_STRICTMODE_BASELINE.md shows how
  * to run it by hand. Output goes to logcat tag `ATLAS_STRICT`.
@@ -43,8 +43,8 @@ class StrictModeBaselineTest {
                 val args = InstrumentationRegistry.getArguments()
                 assumeTrue("Explicit atlas_strictmode_baseline=true required",
                     args.getString("atlas_strictmode_baseline") == "true")
-                assertTrue("Enable the debug provider first: adb shell pm enable " +
-                    "nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller",
+                assertTrue("Create the marker first, then start a fresh process: adb shell " +
+                    "run-as nl.atlas.gallery touch files/atlas-strictmode-baseline",
                     StrictModeBaseline.installed)
                 base.evaluate()
             }

@@ -296,18 +296,18 @@ echo "::endgroup::"
 # Report-only: a violation never fails the shard, and a missing report is a
 # warning that Review checks. It runs before the suite's own exit status is
 # applied, so an unrelated red test still leaves the baseline in the log.
-# The provider is disabled in the debug manifest and enabled only here, so
+# The debug provider stays a no-op until this step creates its marker file, so
 # the suite above ran without StrictMode.
 strictmode_baseline_417() {
   local pkg=nl.atlas.gallery
   # connectedDebugAndroidTest uninstalls its APKs when it returns.
   adb install -r "$NEW" >/dev/null || { echo "::warning::#417 reinstall failed"; return 0; }
   adb install -r "$TEST" >/dev/null || { echo "::warning::#417 test APK reinstall failed"; return 0; }
-  local comp=nl.atlas.gallery/nl.atlas.gallery.DebugStrictModeInstaller
+  local marker=files/atlas-strictmode-baseline
   adb shell pm grant "$pkg" android.permission.READ_MEDIA_IMAGES || true
   adb shell pm grant "$pkg" android.permission.READ_MEDIA_VIDEO || true
-  if ! adb shell pm enable "$comp"; then
-    echo "::warning::#417 could not enable the debug StrictMode provider"; return 0
+  if ! adb shell run-as "$pkg" touch "$marker"; then
+    echo "::warning::#417 could not create the debug StrictMode marker"; return 0
   fi
   echo "::group::#417 cold start, am start -W, debug StrictMode on"
   adb logcat -c || true
@@ -345,7 +345,7 @@ strictmode_baseline_417() {
     echo "::warning::#417 StrictMode baseline test did not pass; no first-open table this run"
     timeout 30 adb logcat -d -b crash -t 300 || true
   fi
-  adb shell pm disable "$comp" >/dev/null || true
+  adb shell run-as "$pkg" rm -f "$marker" || true
   adb shell am force-stop "$pkg"
 }
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
