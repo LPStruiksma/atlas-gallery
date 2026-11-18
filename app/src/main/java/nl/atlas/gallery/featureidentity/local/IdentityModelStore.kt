@@ -3,8 +3,6 @@ package nl.atlas.gallery.featureidentity.local
 import java.io.File
 import java.io.InputStream
 import java.io.RandomAccessFile
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 
 /*
@@ -77,36 +75,23 @@ sealed interface ModelState {
 class ModelGateException(val gate: ModelGate) : IllegalStateException("Model download not allowed: $gate")
 class ModelVerificationException(message: String) : IllegalStateException(message)
 
-/** One ranged read from the model's host. [resumed] is false when the host ignored the range. */
+/**
+ * One ranged read from the model's original host (`Range: bytes=<offset>-`).
+ * [resumed] is false when the host ignored the range and sent the whole file.
+ */
 class FetchResponse(val body: InputStream, val resumed: Boolean)
 
 fun interface ModelFetcher {
     fun open(url: String, offset: Long): FetchResponse
 }
 
-/** Plain HTTPS fetcher with a Range header for resume; no cookies, no credentials. */
-object HttpsModelFetcher : ModelFetcher {
-    override fun open(url: String, offset: Long): FetchResponse {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.instanceFollowRedirects = true
-        connection.connectTimeout = 20_000
-        connection.readTimeout = 60_000
-        connection.useCaches = false
-        if (offset > 0) connection.setRequestProperty("Range", "bytes=$offset-")
-        val code = connection.responseCode
-        if (code != 200 && code != 206) {
-            connection.disconnect()
-            throw java.io.IOException("Model host answered HTTP $code")
-        }
-        return FetchResponse(connection.inputStream, resumed = code == 206)
-    }
-}
-
 /**
  * Model files under `<noBackupFilesDir>/identity_models/`. Blocking; call from an IO
- * worker. [fetcher] is replaceable for tests; production uses [HttpsModelFetcher].
+ * worker. This package holds no network code (the #191 fence keeps network use inside
+ * featureaiedit/): the host passes the HTTPS [fetcher] that performs the one-time,
+ * user-started download. See LOCAL_ENGINE.md, "Open points".
  */
-class IdentityModelStore(root: File, private val fetcher: ModelFetcher = HttpsModelFetcher) {
+class IdentityModelStore(root: File, private val fetcher: ModelFetcher) {
     private val dir = File(root, DIR)
     private val lock = Any()
 

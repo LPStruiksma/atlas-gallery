@@ -132,6 +132,8 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
     /**
      * Model state kept across candidates. ORT sessions load lazily and are dropped on
      * [close] or when Android reports low memory; the next candidate reloads them.
+     * Neither the memory callbacks (main thread) nor [close] ever wait for a running
+     * candidate: [gate] releases at once when idle, otherwise right after the candidate.
      */
     private class Warm(
         private val app: Context,
@@ -139,7 +141,7 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
         private val modelFile: File,
         private val encoder: IdentityEncoder
     ) : WarmIdentityEngine, ComponentCallbacks2 {
-        private val lock = Any()
+        private val gate = WarmReleaseGate { releaseNow() }
         private val env = OrtEnvironment.getEnvironment()
         private var options: OrtSession.SessionOptions? = null
         private var session: OrtSession? = null
@@ -147,7 +149,7 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
         private var embedder: OnnxFaceEmbedder? = null
         private var segmenter: FaceSegmenter? = null
         private val identityCache = HashMap<List<String>, Pair<FloatArray, FloatArray?>>()
-        private var closed = false
+        @Volatile private var closed = false
 
         init { app.registerComponentCallbacks(this) }
 
@@ -173,25 +175,32 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
             segmenter?.close(); segmenter = null
         }
 
-        override fun onTrimMemory(level: Int) {
-            if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) synchronized(lock) { releaseModels() }
+        /** Runs under [gate]: drops the models, and on close also the encoder and cached identities. */
+        private fun releaseNow() {
+            releaseModels()
+            if (closed) { encoder.close(); identityCache.clear() }
         }
-        override fun onLowMemory() = synchronized(lock) { releaseModels() }
+
+        override fun onTrimMemory(level: Int) {
+            if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) gate.requestRelease()
+        }
+        override fun onLowMemory() { gate.requestRelease() }
         override fun onConfigurationChanged(newConfig: Configuration) = Unit
 
-        override fun close() = synchronized(lock) {
-            if (!closed) {
-                closed = true
-                app.unregisterComponentCallbacks(this)
-                releaseModels()
-                encoder.close()
-                identityCache.clear()
-            }
+        override fun close() {
+            if (closed) return
+            closed = true
+            app.unregisterComponentCallbacks(this)
+            gate.requestRelease()
         }
 
         override fun generate(
             request: IdentityEditRequest, workspace: File, cancellation: IdentityCancellation
-        ): IdentityEngineResult = synchronized(lock) {
+        ): IdentityEngineResult = gate.exclusive { generateExclusive(request, workspace, cancellation) }
+
+        private fun generateExclusive(
+            request: IdentityEditRequest, workspace: File, cancellation: IdentityCancellation
+        ): IdentityEngineResult {
             if (request.mode != IdentityEditMode.FACE) return IdentityEngineResult.Failure(IdentityFailureKind.MODE_UNAVAILABLE)
             if (request.references.references.isEmpty()) return IdentityEngineResult.Failure(IdentityFailureKind.NO_REFERENCES)
             cancellation.throwIfCancelled()
@@ -383,6 +392,36 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
         /** A face whose aligned crop would come from fewer source pixels than this is too small. */
         const val MIN_FACE_CROP_PX = 48.0
         const val HEAP_MARGIN_BYTES = 48L * 1024 * 1024
+    }
+}
+
+/**
+ * Serialises candidates and lets a release request (low memory, close) arrive from any
+ * thread without waiting: it runs [release] now when no candidate is running, otherwise
+ * once the running candidate finishes. Pure JVM.
+ */
+class WarmReleaseGate(private val release: () -> Unit) {
+    private val lock = java.util.concurrent.locks.ReentrantLock()
+    @Volatile private var pending = false
+
+    fun <T> exclusive(block: () -> T): T {
+        lock.lock()
+        try {
+            return block()
+        } finally {
+            try { if (pending) { pending = false; release() } } finally { lock.unlock() }
+        }
+    }
+
+    /** Never blocks. True when the release ran now; false when it waits for the running candidate. */
+    fun requestRelease(): Boolean {
+        pending = true
+        // Re-check after setting the flag, so a candidate that just finished cannot strand it.
+        if (!lock.tryLock()) return false
+        try {
+            if (pending) { pending = false; release() }
+            return true
+        } finally { lock.unlock() }
     }
 }
 
