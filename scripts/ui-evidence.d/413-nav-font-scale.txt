@@ -1,0 +1,7 @@
+#413 S24+ bottom navigation label containment, light/dark and 100/130/200% font.
+nav-413-font100-light
+nav-413-font130-light
+nav-413-font200-light
+nav-413-font100-dark
+nav-413-font130-dark
+nav-413-font200-dark
