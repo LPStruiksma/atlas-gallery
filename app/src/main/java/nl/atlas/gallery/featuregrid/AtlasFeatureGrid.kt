@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -123,7 +124,9 @@ fun AtlasFeatureGrid(
      */
     showViewAs: Boolean = true,
     /** Shown when [items] is empty and not [busy] (#654: Search says "No results"). */
-    emptyText: String = "No photos here yet"
+    emptyText: String = "No photos here yet",
+    /** #134: one short neutral line under [emptyText] (Search: no results). */
+    emptyDetail: String? = null
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE) }
@@ -237,8 +240,17 @@ fun AtlasFeatureGrid(
         if (showViewAs) GridViewAsControl(density, onChoose = ::chooseAtCentre)
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (busy) "Loading photos…" else emptyText,
-                    Modifier.testTag("atlas-feature-grid-empty"))
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 32.dp)) {
+                    Text(if (busy) "Loading photos…" else emptyText,
+                        Modifier.testTag("atlas-feature-grid-empty"),
+                        textAlign = TextAlign.Center)
+                    if (!busy && emptyDetail != null) Text(emptyDetail,
+                        Modifier.padding(top = 4.dp).testTag("atlas-feature-grid-empty-detail"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center)
+                }
             }
             return@Column
         }

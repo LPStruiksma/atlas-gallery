@@ -5,3 +5,7 @@ design-4-search-empty-light
 design-4-search-empty-dark
 design-4-search-ime-light
 design-4-search-ime-dark
+design-4-search-typing-light
+design-4-search-typing-dark
+design-4-search-font200-light
+design-4-search-font200-dark
