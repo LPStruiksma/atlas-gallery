@@ -208,7 +208,7 @@ internal fun NativePersonAlbumRoute(
         }
     }
     LaunchedEffect(request.opening, currentGrant, epoch, personIdentity,
-        CatalogSourceKey(visibleMedia), pendingSelection) {
+        CatalogSourceKey(visibleMedia ?: emptyList<MediaRecord>()), pendingSelection) {
         if (selected != null) return@LaunchedEffect
         val saved = pendingSelection
         if (saved.isEmpty()) return@LaunchedEffect
