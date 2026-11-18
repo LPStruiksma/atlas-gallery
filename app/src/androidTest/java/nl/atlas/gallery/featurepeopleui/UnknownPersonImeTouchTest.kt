@@ -21,7 +21,9 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -348,8 +350,10 @@ class UnknownPersonImeTouchTest {
         // the show request is still in flight can be dropped by the IME.
         val frames = ImeFrames(activity())
         frames.start()
+        val keyboardHeight: Int
         try {
             step("keyboard settled after typing") { frames.latestBottom > 0 && frames.stableFrames >= 2 }
+            keyboardHeight = frames.latestBottom
         } finally {
             frames.stop()
         }
@@ -366,9 +370,36 @@ class UnknownPersonImeTouchTest {
         compose.waitForIdle()
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
+        // #424: the tap must land on screen that the keyboard does not take
+        // over. The IME window takes touches in its final frame as soon as
+        // its show animation starts. A tap injected below the settled
+        // keyboard's top reached LatinIME, which opened its own
+        // PermissionsActivity, and never reached this window (run
+        // 44303296470). That is the platform routing the tap to the
+        // keyboard, not ATLAS swallowing it. So lift the choice above the
+        // keyboard's top first, and fail loudly if it cannot be lifted.
+        val option = compose.onNodeWithTag("atlas-group-1-destination-option-1")
+        val windowHeight = compose.runOnIdle { activity().window.decorView.height }
+        val keyboardTop = windowHeight - keyboardHeight
+        val clearance = 48f * activity().resources.displayMetrics.density
+        val firstBottom = option.fetchSemanticsNode().boundsInWindow.bottom
+        val lift = firstBottom - (keyboardTop - clearance)
+        if (lift > 0f) {
+            screen.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy -> scrollBy(0f, lift) }
+            compose.waitForIdle()
+        }
         // Measured with the keyboard closed, where the person sees the result.
-        val bounds = compose.onNodeWithTag("atlas-group-1-destination-option-1")
-            .fetchSemanticsNode().boundsInWindow
+        val bounds = option.fetchSemanticsNode().boundsInWindow
+        android.util.Log.i(
+            "ATLAS_TOUCH1",
+            "tap target: window=$windowHeight keyboard=$keyboardHeight keyboardTop=$keyboardTop " +
+                "optionBottom before=$firstBottom after=${bounds.bottom} lift=$lift"
+        )
+        assertTrue(
+            "Precondition: the choice (bottom ${bounds.bottom}) must sit above the settled " +
+                "keyboard top ($keyboardTop) so the opening tap is ATLAS's to handle",
+            bounds.bottom <= keyboardTop
+        )
         val window = IntArray(2)
         compose.runOnIdle { activity().window.decorView.getLocationOnScreen(window) }
         val tap = ImeOpeningTap(
