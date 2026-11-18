@@ -258,8 +258,12 @@ fun eligibleForIndexedFacesFilter(
 }
 
 /**
- * Ephemeral recents: no SharedPreferences, analytics, cloud backup, logging,
- * or automatic retention of potentially sensitive People queries.
+ * In-memory recents, fenced to one photo grant. Kept for callers and tests
+ * that pass a fixed list. The Search tab and the scoped search bars now use
+ * the persistent, on-device [SearchHistoryStore] instead (FIND-3a, #182, on
+ * the owner's ask for a search history): see SearchHistory.kt for what is
+ * stored, where, and when it is cleared. Neither is logged, exported, put in
+ * analytics, saved-state Bundles or cloud backup.
  */
 data class EphemeralSearchHistory(
     val terms: List<String> = emptyList(),
