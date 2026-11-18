@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
@@ -297,7 +298,8 @@ fun AtlasStoriesScreen(
             Text("Stories", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f).padding(start = 8.dp))
-            AtlasSearch(query = searchText, onQueryChange = { searchText = it })
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                historyScope = SearchHistoryScope.STORIES)
         }
         if (cards.isEmpty() &&
             playback.awaitingDeck(deck, currentGrantEpoch, currentCatalogRevision)) {

@@ -491,6 +491,23 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     out="$(adb shell dumpsys jobscheduler | tr -d '\r' || true)"
     grep -qE "^ *JOB androidx[.]work[.]systemjobscheduler:u0a[0-9]+/$id: .*nl[.]atlas[.]gallery/" <<<"$out"
   }
+  # #372: JobScheduler keeps listing a job after WorkManager's GreedyScheduler
+  # ran the same work in-process, so a pending entry does not prove the scan is
+  # unfinished. WorkManager's own result line for that work ID does. Match the
+  # ID, not the class: a first PeopleScanWorker run can finish (photos=0) and
+  # chain a new one, which is the job #43 kills. Read it while frozen, when no
+  # new line can appear. Capture first (SIGPIPE).
+  scan_work_id() {
+    local out
+    out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
+    sed -nE 's/.*Scheduling work ID ([0-9a-f-]+) \(nl[.]atlas[.]gallery[.]featureface[.]work[.]PeopleScanWorker\), Job ID ([0-9]+).*/\1 \2/p' <<<"$out" | tail -1
+  }
+  scan_work_finished() {
+    local id="$1" out
+    [[ -n "$id" ]] || return 1
+    out="$(timeout 30 adb logcat -d -v brief -s WM-WorkerWrapper:I || true)"
+    grep -qE "Worker result [A-Z]+ for Work \[ id=$id," <<<"$out"
+  }
   # What the first process did before the kill. The log is cleared after
   # the kill, so a later failure prints this capture as well.
   prekill_log=/tmp/atlas-kill43-prekill.txt
@@ -511,6 +528,13 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       tail -80 || true
   }
   adb shell dumpsys battery unplug
+  # #372 root cause (run 44291919363 prekill dump: "status: 2" while unplugged):
+  # `unplug` clears ac/usb but leaves the emulator's status at CHARGING, and
+  # WorkManager's in-process BatteryChargingTracker reads that status. So the
+  # charging-constrained scan ran in-process (GreedyScheduler) while
+  # "unplugged", finished and chained, racing the kill. Report DISCHARGING so
+  # the scan stays a pending JobScheduler job until the replug below.
+  adb shell dumpsys battery set status 3
   adb logcat -c || true
   run_kill_phase seed seedBeforeKill
   adb logcat -c || true
@@ -548,8 +572,44 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   scan_job_pending "$scan_job" || {
     kill43_diagnostics
     echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
-  echo "#43: scan worker job $scan_job pending; killing the unplugged app"
-  kill_app
+  # #372: JobScheduler may still show a pending job after GreedyScheduler
+  # has already completed it. Freeze the process before the final pending
+  # check so the worker cannot finish between that check and SIGKILL.
+  prekill_pid="$(app_pid)"
+  [[ -n "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 no live app process to freeze"; exit 1; }
+  adb shell run-as nl.atlas.gallery kill -STOP "$prekill_pid" || {
+    kill43_diagnostics; echo "::error::#43 could not freeze pid $prekill_pid"; exit 1; }
+  [[ "$(app_pid)" == "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
+  # #372 (runs 44280551540, 44284361706): while the gallery is still pending
+  # each PeopleScanWorker run ends at once (photos=0) and chains the next one
+  # under a new work ID and Job ID, so the job seen above can finish before
+  # the freeze. Re-read the newest scan job now that nothing can change: that
+  # is the work #43 kills. It must still be pending in JobScheduler, and
+  # WorkManager must not have logged a result for its work ID.
+  scan_job="$(scan_job_id)"
+  scan_work="$(scan_work_id)"
+  [[ "${scan_work##* }" == "$scan_job" ]] || {
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics; echo "::error::#43 no WorkManager work ID for frozen scan job ${scan_job:-?}"; exit 1; }
+  scan_work="${scan_work%% *}"
+  # An already finished scan is a precondition miss, not a restore failure.
+  # Both signals are read frozen; only this branch resumes the process.
+  if ! scan_job_pending "$scan_job" || scan_work_finished "$scan_work"; then
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics
+    echo "::error::#43 scan work $scan_work (job $scan_job) finished before the process was frozen; re-seed required"
+    exit 1
+  fi
+  echo "#43: scan worker job $scan_job frozen in pid $prekill_pid; SIGKILL unplugged app"
+  adb shell run-as nl.atlas.gallery kill -9 "$prekill_pid"
+  for _ in $(seq 1 20); do
+    [[ -z "$(app_pid)" ]] && break
+    sleep 0.5
+  done
+  [[ -z "$(app_pid)" ]] || {
+    kill43_diagnostics; echo "::error::#43 frozen app process survived SIGKILL"; exit 1; }
   adb logcat -c || true
   adb shell dumpsys battery set ac 1
   adb shell dumpsys battery set status 2
@@ -604,7 +664,6 @@ if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   capture_albums_grid "after" "light"
   capture_albums_grid "after" "dark"
 fi
-
 
 # UI evidence (#588, #586): discovery and checks live in scripts/ci_ui_evidence.sh;
 # the expected names are declared per feature in scripts/ui-evidence.d/.
