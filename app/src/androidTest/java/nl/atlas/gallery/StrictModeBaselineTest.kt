@@ -1,10 +1,8 @@
 package nl.atlas.gallery
 
-import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
-import android.view.WindowInsets
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -12,7 +10,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -23,6 +20,13 @@ import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.advanceVirtualTime
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.typeText
 
 /**
  * #417 PERF-7a: debug StrictMode baseline for the first opening of the Photos
@@ -64,7 +68,8 @@ class StrictModeBaselineTest {
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(optIn).around(S24DisplayRule())
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(optIn)
+        .around(KeyboardRule(TestKeyboard.None)).around(S24DisplayRule())
         .around(fixtures).around(gridPhase).around(compose)
 
     private val timings = linkedMapOf<String, MutableList<Long>>()
@@ -73,7 +78,7 @@ class StrictModeBaselineTest {
 
     @Test fun firstOpenFlowsReportMainThreadDiskIo() {
         // 1. Photos grid: Activity launch to the first decoded tile.
-        waitForTile()
+        firstTileTag()
         end("grid-first-open")
 
         // 2. Viewer: tap the first tile, then Back.
@@ -89,12 +94,11 @@ class StrictModeBaselineTest {
             compose.waitForNode(hasTestTag("atlas-search-field"))
         }
         begin("search-first-query")
-        compose.onNodeWithTag("atlas-search-field").performTextInput("IMG")
-        compose.waitForIdle()
-        SystemClock.sleep(SETTLE_MS)
-        compose.waitForIdle()
+        // #497: the kit types through the no-op test keyboard (KeyboardRule) and
+        // leaves it hidden, so the nav pill stays reachable for the re-entries.
+        compose.typeText(hasTestTag("atlas-search-field"), "IMG")
+        settledPhase()
         end("search-first-query")
-        hideKeyboard()
 
         // 5. Re-entries: does a site recur (per-entry cost) or was it first-open only?
         repeat(REPEATS) {
@@ -111,17 +115,15 @@ class StrictModeBaselineTest {
         if (!present("atlas-timeline-grid") && !present("atlas-feature-grid")) {
             compose.onNodeWithTag("atlas-nav-photos").performClick()
         }
-        val tile = waitForTile()
+        val tile = firstTileTag()
         begin(phase)
         compose.onNodeWithTag(tile, useUnmergedTree = true).performClick()
         compose.waitForNode(hasTestTag("atlas-viewer"))
-        compose.waitForIdle()
-        SystemClock.sleep(SETTLE_MS)
-        compose.waitForIdle()
+        settledPhase()
         end(phase)
         compose.onNodeWithTag("atlas-back").performClick()
-        compose.waitUntil(30_000L) {
-            compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
+        compose.awaitThat("the viewer to close", timeoutMs = 30_000L) {
+            !compose.exists(hasTestTag("atlas-viewer"))
         }
         compose.waitForIdle()
     }
@@ -132,26 +134,23 @@ class StrictModeBaselineTest {
         begin(phase)
         compose.onNodeWithTag(tab).performClick()
         compose.waitForNode(tags.map { hasTestTag(it) }.reduce { a, b -> a or b })
-        compose.waitForIdle()
-        SystemClock.sleep(SETTLE_MS)
-        compose.waitForIdle()
+        settledPhase()
         end(phase)
     }
 
-    /** The nav pill may hide under the keyboard; close it before the next tab tap. */
-    private fun hideKeyboard() {
-        compose.runOnUiThread {
-            compose.activity.currentFocus?.clearFocus()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                compose.activity.window.insetsController?.hide(WindowInsets.Type.ime())
-            }
-        }
-        compose.waitForIdle()
+    /**
+     * The end of a phase (#497, test kit rule 1): the window has settled and
+     * product timers have run SETTLE_MS of virtual time. Main-thread work that
+     * lands later still counts, under the `<phase>:idle` label.
+     */
+    private fun settledPhase() {
+        compose.awaitWindowSettled()
+        compose.advanceVirtualTime(SETTLE_MS)
     }
 
-    private fun waitForTile(): String {
-        compose.waitUntil(60_000L) {
-            compose.onAllNodes(tile, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+    private fun firstTileTag(): String {
+        compose.awaitThat("a decoded media tile", timeoutMs = 60_000L) {
+            compose.exists(tile, useUnmergedTree = true)
         }
         compose.waitForIdle()
         return compose.onAllNodes(tile, useUnmergedTree = true).fetchSemanticsNodes()
@@ -196,7 +195,7 @@ class StrictModeBaselineTest {
         timings.forEach { (phase, ms) ->
             val sorted = ms.sorted()
             log("timing phase=$phase n=${sorted.size} p50_ms=${pct(sorted, 50)} " +
-                "p95_ms=${pct(sorted, 95)} (tap to settled incl. ${SETTLE_MS} ms settle; test-side poll)")
+                "p95_ms=${pct(sorted, 95)} (tap to window settled + ${SETTLE_MS} ms virtual; test-side poll)")
         }
         frames.forEach { log(it) }
         sites.forEachIndexed { i, s ->

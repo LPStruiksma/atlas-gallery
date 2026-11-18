@@ -16,7 +16,7 @@ Both run on emulator shard 1 right after the normal suite (before its pass/fail 
 
 1. **Cold start.** With the marker in place, the step runs `am force-stop` then `am start -W` six times, 4 s apart. Launch 0 is the first after the shard's reinstall. Launches 1 to 5 give `STRICT cold-start n=5 p50_ms=… p95_ms=…` from `TotalTime`. Every `StrictMode` logcat stack from those launches is printed, so `Application.onCreate` and the first Photos grid of a real, non-instrumented process are covered.
 2. **First-open flows.** `StrictModeBaselineTest` runs in its own `am instrument` process, so no earlier test has opened a store. It seeds 48 invented PNGs and then opens, in order: the Photos grid (Activity launch to first tile), the viewer (tap the first tile), People, Search, and the first typed Search query. It then re-enters Photos, the viewer, People and Search 5 times each. Each phase logs to `ATLAS_STRICT`:
-   - `timing phase=… n p50_ms p95_ms`: tap to settled, measured from the test side, including a 500 ms settle. This is coarse. For first opens n=1.
+   - `timing phase=… n p50_ms p95_ms`: tap until the window has settled (`awaitWindowSettled`) and product timers have run 500 ms of virtual time (`advanceVirtualTime`), measured from the test side. This is coarse. Main-thread work that lands after a phase ends is still reported, labelled `<phase>:idle`. For first opens n=1.
    - `frames phase=…`: `dumpsys gfxinfo` total frames, janky frames, and p50/p90/p95/p99 frame time, reset at each phase start.
    - `site #n phase=… opening=… count=… trigger=… app=…`: one row per distinct main-thread opening, followed by its stack.
 

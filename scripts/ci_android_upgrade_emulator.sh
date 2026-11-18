@@ -268,13 +268,12 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
-# Opt-in stress run (docs/testing/EMULATOR_UI_TESTS.md, "Stress a test"). A
+# Opt-in stress run (docs/testing/EMULATOR_TESTS.md, "Stress a test"). A
 # head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
 # lists, each as its own instrumentation run, on every shard: each shard is
 # an independent emulator, so one dispatch gives 2 x count samples in minutes
 # instead of one sample per full suite. One "<count> <Class or Class#method>"
-# per line. Remove the file before review: without the full suite the
-# emulator-ui check cannot pass.
+# per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   if [[ "$SHARD_INDEX" != "0" ]]; then
     gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
@@ -284,7 +283,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
   adb logcat -G 16M || true
   stress_fail=0
   stress_out=/tmp/atlas-stress.txt
-  while read -r stress_count stress_target; do
+  while read -r stress_count stress_target || [[ -n "${stress_count:-}${stress_target:-}" ]]; do
     [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
     if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
           ! "${stress_target:-}" =~ ^[A-Za-z0-9_.]+(#[A-Za-z0-9_]+)?$ ]]; then
