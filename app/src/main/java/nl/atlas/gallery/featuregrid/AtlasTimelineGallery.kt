@@ -394,16 +394,20 @@ fun AtlasTimelineGallery(
                 latestPlan = null // no stale plan while 150k rows are replanned
                 val parent = coroutineContext
                 val computed = withContext(Dispatchers.Default) {
-                    val projection = ArrayList<TimelineMedia>(items.size)
+                    // PERF-6 (#127): no TimelineMedia projection and no URI
+                    // string per row. Slots read keys from `items` on demand.
+                    val anchorKey = incrementalFocus?.mediaKey
+                    val anchorHash = anchorKey?.hashCode() ?: 0
                     var incrementalAnchorIndex = -1
-                    items.forEachIndexed { i, media ->
+                    if (anchorKey != null) for (i in items.indices) {
                         if ((i and 511) == 0) parent.ensureActive()
-                        val mediaUri = media.uri
-                        if (incrementalFocus?.mediaKey == mediaUri)
+                        val media = items[i]
+                        if (media.uriHashCodeWithoutAllocation() == anchorHash && media.uri == anchorKey) {
                             incrementalAnchorIndex = i
-                        projection.add(TimelineMedia(mediaUri, media.takenAtMillis))
+                        }
                     }
-                    val index = buildGridTimelineIndex(projection, sort, density, zone, locale,
+                    val index = buildGridTimelineIndex(items.size, { items[it].takenAtMillis },
+                        { items[it].uri }, sort, density, zone, locale,
                         mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
                         parent.ensureActive()
                     }

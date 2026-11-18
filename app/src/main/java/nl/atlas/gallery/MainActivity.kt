@@ -3003,6 +3003,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectedAlbum != null && !busy &&
                 !sortPending && !albumSelectionPending
             // Albums supplies its own photographic heading; other routes share one shell.
+            val albumDetailOpen = photosControls && album != null && albumReturnToAlbums
             val galleryHeader: @Composable () -> Unit = {
                 AtlasGalleryHeader(
                     title = when {
@@ -3014,9 +3015,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         tab == 3 -> "Search"
                         else -> "Photos"
                     },
-                    subtitle = if (photosControls && !settingsOpen && !statusOpen)
-                        photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
-                    else null,
+                    // Album detail swaps only the final count wording: Settings still
+                    // hides the subtitle and pending sort/filter still say so.
+                    subtitle = if (photosControls && !settingsOpen && !statusOpen) {
+                        if (albumDetailOpen && !sortPending && !albumSelectionPending)
+                            NumberFormat.getIntegerInstance().format(visible.size) +
+                                (if (visible.size == 1) " item" else " items")
+                        else photosHeaderStatus(sortPending, albumSelectionPending, visible.size)
+                    } else null,
                     onBack = when {
                         statusOpen -> ({ statusOpen = false })
                         settingsOpen -> ({ settingsOpen = false })
