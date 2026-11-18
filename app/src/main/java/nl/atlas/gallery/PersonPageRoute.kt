@@ -132,9 +132,10 @@ internal fun NativePersonAlbumRoute(
     // Save only a bounded tuple. A restored snapshot is never actionable
     // until the current grant, People scope and source have been validated.
     var pendingSelection by androidx.compose.runtime.saveable.rememberSaveable(
-        request.opening, saver = androidx.compose.runtime.saveable.listSaver<
-            androidx.compose.runtime.MutableState<List<String>>, String>(
-            save = { it.value }, restore = { mutableStateOf(it.toList()) }
+        request.opening, saver = androidx.compose.runtime.saveable.Saver<
+            androidx.compose.runtime.MutableState<List<String>>, ArrayList<String>>(
+            save = { ArrayList(it.value) },
+            restore = { mutableStateOf(it.toList()) }
         )
     ) { mutableStateOf<List<String>>(emptyList()) }
     var selected by remember(request) { mutableStateOf<Set<String>?>(null) }
