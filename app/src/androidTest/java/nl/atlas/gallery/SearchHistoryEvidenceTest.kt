@@ -35,7 +35,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -298,7 +300,10 @@ class SearchHistoryEvidenceTest {
             val theme = if (dark) "dark" else "light"
             compose.runOnIdle { darkTheme = dark }
             waitFor("atlas-settings-search-history")
-            compose.onNodeWithText("Recent searches stay on this phone.").assertExists()
+            // The Search group sits below Advanced: bring it on screen first.
+            compose.onNodeWithTag("atlas-settings-search-history-clear").performScrollTo()
+            compose.waitForIdle()
+            compose.onNodeWithText("Recent searches stay on this phone.").assertIsDisplayed()
             saveUiEvidence("find-3a-settings-on-$theme.png")
             compose.onNodeWithTag("atlas-settings-search-history").performClick()
             waitForText("Search history off")

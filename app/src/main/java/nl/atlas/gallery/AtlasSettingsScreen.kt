@@ -100,27 +100,6 @@ internal fun AtlasSettingsScreen(
             SettingsActionRow("Export names", "atlas-people-names-export", onExportNames)
             SettingsActionRow("Import names", "atlas-people-names-import", onImportNames)
         }
-        if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
-            // Off stops saving and clears every scope (Undo on the snackbar).
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 64.dp)
-                    .toggleable(value = searchHistoryOn, role = Role.Switch,
-                        onValueChange = onSearchHistoryOn)
-                    .testTag("atlas-settings-search-history"),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-                    Text("Save search history", style = MaterialTheme.typography.bodyLarge)
-                    Text("Recent searches stay on this phone.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = searchHistoryOn, onCheckedChange = null)
-            }
-            SettingsActionRow("Clear search history", "atlas-settings-search-history-clear",
-                onClearSearchHistory)
-        }
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
@@ -168,6 +147,28 @@ internal fun AtlasSettingsScreen(
                     }
                 }
             }
+        }
+        // #427 review: below Advanced, so the existing groups keep their place on screen.
+        if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
+            // Off stops saving and clears every scope (Undo on the snackbar).
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .toggleable(value = searchHistoryOn, role = Role.Switch,
+                        onValueChange = onSearchHistoryOn)
+                    .testTag("atlas-settings-search-history"),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    Text("Save search history", style = MaterialTheme.typography.bodyLarge)
+                    Text("Recent searches stay on this phone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = searchHistoryOn, onCheckedChange = null)
+            }
+            SettingsActionRow("Clear search history", "atlas-settings-search-history-clear",
+                onClearSearchHistory)
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
