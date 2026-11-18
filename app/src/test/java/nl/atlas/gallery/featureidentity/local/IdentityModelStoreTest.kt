@@ -78,6 +78,27 @@ class IdentityModelStoreTest {
         assertEquals(0, File(root, IdentityModelStore.DIR).listFiles()!!.size)
     }
 
+    /**
+     * An app update keeps noBackupFilesDir. The store has no version-keyed folder or wipe:
+     * a new store instance (new app version) on the same folder sees the model as installed
+     * without any network access. Only a changed manifest hash makes it reinstall.
+     */
+    @Test fun installedModelSurvivesAnAppUpdateWithoutRefetching() {
+        val e = entry(LicenceTier.A)
+        IdentityModelStore(root, CountingFetcher(bytes)).install(e)
+        val afterUpdate = IdentityModelStore(root) { _, _ -> error("an installed model must not be fetched again") }
+        val state = afterUpdate.state(e)
+        assertTrue(state is ModelState.Installed)
+        assertTrue(afterUpdate.install(e).readBytes().contentEquals(bytes))
+
+        val newer = bytes.copyOf().also { it[0] = (it[0] + 1).toByte() }
+        val newerSha = MessageDigest.getInstance("SHA-256").digest(newer).joinToString("") { "%02x".format(it) }
+        val updated = e.copy(sha256 = newerSha)
+        assertNull("a new model version is not mistaken for the old file", afterUpdate.installedFile(updated))
+        val file = IdentityModelStore(root, CountingFetcher(newer)).install(updated)
+        assertTrue(file.readBytes().contentEquals(newer))
+    }
+
     @Test fun interruptedDownloadResumesFromItsOffset() {
         val e = entry(LicenceTier.B)
         val first = IdentityModelStore(root, CountingFetcher(bytes, stopAfter = 70_000))
