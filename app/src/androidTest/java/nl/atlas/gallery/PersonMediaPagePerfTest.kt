@@ -90,7 +90,7 @@ class PersonMediaPagePerfTest {
                         faceInsert.clearBindings()
                         faceInsert.bindString(1, key)
                         faceInsert.bindString(2, uid)
-                        if (n % 5 == 0) faceInsert.bindLong(3, 2000L)
+                        if ((n / people) % 5 == 0) faceInsert.bindLong(3, 2000L)
                         else faceInsert.bindNull(3)
                         faceInsert.executeInsert()
                         embeddingInsert.clearBindings()
