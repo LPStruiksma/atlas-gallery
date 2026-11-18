@@ -224,6 +224,9 @@ class PeopleDestinationSelectorUiTest {
         compose.runOnIdle { assertTrue(commands.isEmpty()) }
         // A fresh explicit choice after regrant must still work, and dispatch
         // against the new committed object rather than the old selection.
+        // Scroll first: below the sticky faces header option 2 can sit just off screen,
+        // where a click lands outside the viewport and selects nothing.
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
         compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         compose.onNodeWithTag("atlas-group-1-destination-assign")

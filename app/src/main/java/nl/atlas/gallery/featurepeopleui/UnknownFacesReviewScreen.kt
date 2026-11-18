@@ -160,6 +160,15 @@ fun UnknownFacesReviewScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                } else {
+                    item {
+                        // Identity safety copy kept from main: a confirmation is tied to one
+                        // version of a photo, so an edit sends its faces back to Unknown.
+                        Text("Editing a photo scans its faces again, so they return to Unknown.",
+                            modifier = Modifier.testTag("atlas-cluster-review-rescan-note"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 val shownGroups = peopleGroupsToShow(
                     visiblePeople.clusters.unknownClusters, showSmallGroups)
