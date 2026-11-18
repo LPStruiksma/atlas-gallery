@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,15 +42,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
@@ -431,11 +436,23 @@ private fun UnknownIdentityGroupCard(
         .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
     val nameFormView = remember { BringIntoViewRequester() }
     var nameFocused by remember { mutableStateOf(false) }
+    // #394/#409: the keyboard can take far longer than NAME_FORM_SETTLE_MS to
+    // appear (about 2 s on the CI emulator). A one-shot bringIntoView then ran
+    // before the list shrank, and the IME covered Create. Follow the IME inset
+    // and request once it has held still for NAME_FORM_SETTLE_MS.
+    // #411 review: read the inset inside snapshotFlow, not in composition.
+    // Reading it in composition recomposed this card on every IME animation
+    // frame, and a Create tap made while the keyboard opened was lost
+    // (PeoplePrototypeJourneyTest, run 44295914177).
+    val imeInsets = WindowInsets.ime
+    val density = LocalDensity.current
     LaunchedEffect(nameFocused, duplicates.isEmpty()) {
         if (nameFocused) {
-            // Let the keyboard inset settle first, then show the field and its action.
-            delay(NAME_FORM_SETTLE_MS)
-            nameFormView.bringIntoView()
+            snapshotFlow { imeInsets.getBottom(density) }.collectLatest {
+                // Let the keyboard inset settle first, then show the field and its action.
+                delay(NAME_FORM_SETTLE_MS)
+                nameFormView.bringIntoView()
+            }
         }
     }
     val suggestions = eligibleScoredGroupSuggestions(

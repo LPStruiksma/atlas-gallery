@@ -4,6 +4,8 @@
 
 **Product priority order:** (1) accurate instruction/region editing; (2) original/face/scene fidelity; (3) low-friction UX; (4) freedom for lawful personal edits (measure provider refusals separately); (5) model choice, performance and cost. Background indexing, search and People remain on-device. Only the user-selected photo, plus expressly selected mask/references, may be sent to the chosen provider. No silent fallback or automatic upload. The ordinary Samsung/system Edit pencil is unaffected.
 
+**Identity Studio (face and head replacement, goal [#467](https://github.com/LPStruiksma/atlas-gallery/issues/467)):** model landscape in [`docs/identity-studio/RESEARCH.md`](../identity-studio/RESEARCH.md); every model, weight and code licence is recorded in the register [`docs/identity-studio/LICENCES.md`](../identity-studio/LICENCES.md) before use.
+
 ## Evidence and uncertainty
 
 - **Documented** = published API contract/pricing or model-card fact; **claimed** = vendor/model-author quality claim not reproduced; **hypothesis** = proposed benchmark/runtime estimate, **unknown** = insufficient public evidence. A capability is *not* guaranteed to work reliably merely because the API accepts the corresponding field.
