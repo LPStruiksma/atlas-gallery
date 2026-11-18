@@ -38,6 +38,99 @@ class PersonMediaPagePerfTest {
         }
     }
 
+    /**
+     * PERF-11: 500 synthetic named people with 50k face observations.
+     * Verify that the lean People summary has one query regardless of people
+     * count, and that distinct media/date/video statistics retain semantics.
+     * Timing is only a witness, not an emulator-dependent hard threshold.
+     */
+    @Test fun homeSummaryFiveHundredPeopleFiftyThousandFaces() {
+        val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
+            "perf-11-home-" + UUID.randomUUID())
+        check(dir.mkdirs())
+        val file = File(dir, "synthetic.db")
+        val epoch = "perf-11-home-grant"
+        val people = 500
+        val faces = 50_000
+        try {
+            FaceIndexStore(contextFor(file)).use { store ->
+                store.beginSnapshot(epoch)
+                val media = (0 until faces).map { n ->
+                    IndexedMedia("content://synthetic/home/%06d".format(n), "r1")
+                }
+                media.chunked(500).forEach { store.stageBatch(epoch, it) }
+                store.commitSnapshot(epoch, "detector", "model-v1")
+                val db = store.writableDatabase
+                db.beginTransaction()
+                try {
+                    val personInsert = db.compileStatement(
+                        "INSERT INTO people_names(person_key,name) VALUES(?,?)")
+                    for (p in 0 until people) {
+                        personInsert.clearBindings()
+                        personInsert.bindString(1, "person-%03d".format(p))
+                        personInsert.bindString(2, "Synthetic %03d".format(p))
+                        personInsert.executeInsert()
+                    }
+                    val faceInsert = db.compileStatement(
+                        "INSERT INTO faces(media_key,ordinal,face_uid,l,t,r,b,frame_ms) VALUES(?,0,?,0.1,0.1,0.5,0.5,?)")
+                    val embeddingInsert = db.compileStatement(
+                        "INSERT INTO embeddings(face_uid,source_revision,model_version,vector) VALUES(?,'r1','model-v1',X'00')")
+                    val confirmedInsert = db.compileStatement(
+                        "INSERT INTO people_confirmed(face_uid,person_key) VALUES(?,?)")
+                    val processed = db.compileStatement(
+                        "UPDATE catalog SET state='processed',taken_ms=? WHERE media_key=?")
+                    for (n in 0 until faces) {
+                        val person = "person-%03d".format(n % people)
+                        val uid = "%032x".format(n + 1)
+                        val key = media[n].key
+                        processed.clearBindings()
+                        processed.bindLong(1, 1_600_000_000_000L + n * 1000L)
+                        processed.bindString(2, key)
+                        processed.executeUpdateDelete()
+                        faceInsert.clearBindings()
+                        faceInsert.bindString(1, key)
+                        faceInsert.bindString(2, uid)
+                        if (n % 5 == 0) faceInsert.bindLong(3, 2000L)
+                        else faceInsert.bindNull(3)
+                        faceInsert.executeInsert()
+                        embeddingInsert.clearBindings()
+                        embeddingInsert.bindString(1, uid)
+                        embeddingInsert.executeInsert()
+                        confirmedInsert.clearBindings()
+                        confirmedInsert.bindString(1, uid)
+                        confirmedInsert.bindString(2, person)
+                        confirmedInsert.executeInsert()
+                    }
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+                // The summary generation is stale: force the live fallback as
+                // happens after an old database is restored during scanning.
+                val start = SystemClock.elapsedRealtimeNanos()
+                val home = requireNotNull(store.peopleHome(epoch))
+                val elapsedMs = (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
+                android.util.Log.i("ATLAS_PERF11", "people=500 faces=50000 home_ms=$elapsedMs")
+                assertEquals(people, home.people.size)
+                for (p in 0 until people) {
+                    val person = PersonKey("person-%03d".format(p))
+                    val summary = requireNotNull(home.people[person])
+                    assertEquals(100, summary.faceCount)
+                    assertEquals(100, summary.mediaCount)
+                    assertEquals(20, summary.videoCount)
+                    assertEquals(80, summary.photoCount)
+                    assertEquals(1_600_000_000_000L + p * 1000L, summary.firstAppearanceMs)
+                    assertEquals(1_600_000_000_000L + (faces - people + p) * 1000L,
+                        summary.mostRecentAppearanceMs)
+                }
+                store.invalidatePermissionScope()
+                assertNull(store.peopleHome(epoch))
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     @Test fun personKeysetPagesFiveThousandMediaAndRespectsEpoch() {
         val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
             "perf-11-" + UUID.randomUUID())
