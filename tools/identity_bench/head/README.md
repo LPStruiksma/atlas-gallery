@@ -2,7 +2,7 @@
 
 Measured probes behind [`docs/identity-studio/FULL_HEAD.md`](../../../docs/identity-studio/FULL_HEAD.md). Full head means the hair, hairline, head shape and ears change with the face. The probe runs head-swap engines on synthetic people, times them, records peak memory, scores the output and extrapolates to the Galaxy S24+.
 
-Nothing here ships in the app. No weights, no generated people and no personal images are committed: weights are fetched from their original hosts with pinned SHA-256, and the test people are generated at run time from fixed prompts and seeds.
+Nothing here ships in the app. No weights, no generated fixture images and no personal images are committed: weights are fetched from their original hosts with pinned SHA-256, and the test people are generated at run time from fixed prompts and seeds. The one committed image is `results/sheet.jpg`, a contact sheet of this probe's synthetic people.
 
 ## Offline tests (no dependencies)
 
