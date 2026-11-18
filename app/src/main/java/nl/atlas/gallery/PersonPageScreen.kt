@@ -73,6 +73,7 @@ import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.TimelineSort
 import nl.atlas.gallery.featurepeopleui.NativePersonAlbum
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
@@ -509,6 +510,7 @@ internal fun HiddenPeopleScreen(
     Column(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-people-hidden")) {
         AtlasGalleryHeader(title = "Hidden", onBack = onBack, actions = {
             AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                historyScope = SearchHistoryScope.PEOPLE,
                 onScopeChange = { scope ->
                     if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
                 })

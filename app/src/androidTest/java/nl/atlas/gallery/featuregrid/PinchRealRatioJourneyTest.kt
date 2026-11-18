@@ -3,12 +3,17 @@ package nl.atlas.gallery.featuregrid
 import nl.atlas.gallery.waitForNode
 import android.content.Context
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasTestTag
@@ -18,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
+import androidx.compose.ui.unit.toSize
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.MainActivity
@@ -164,21 +170,102 @@ class PinchRealRatioJourneyTest {
             assertTrue("$name tile wider than the screen", bounds.width <= rootWidth)
             assertEquals("$name tile must keep its ${w}x$h proportions",
                 w.toDouble() / h, bounds.width.toDouble() / bounds.height, 0.06 * w / h)
+            // #423: the rows scroll under the floating tab pill, and a capture
+            // copies what is on screen at the tile's place, pill included. Read
+            // pixels only from a tile that is whole and clear of the chrome.
+            // By name, not by position: scrolling can change which tiles exist.
+            val one = SemanticsMatcher("real-ratio tile of $name") { candidate ->
+                tile.matches(candidate) &&
+                    candidate.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+                        .any { it == name || it.startsWith(name) }
+            }
+            val place = bringTileClearOfChrome(one, name)
             // Wait for the decode, then sample just inside all four edges.
-            compose.waitUntil(30_000L) {
-                val pixels = compose.onAllNodes(tile)[index].captureToImage().toPixelMap()
-                val centre = pixels[pixels.width / 2, pixels.height / 2]
-                val edges = listOf(
-                    pixels[2, pixels.height / 2], pixels[pixels.width - 3, pixels.height / 2],
-                    pixels[pixels.width / 2, 2], pixels[pixels.width / 2, pixels.height - 3])
-                centre.alpha > 0.99f && edges.all { edge ->
-                    kotlin.math.abs(edge.red - centre.red) < 0.04f &&
-                        kotlin.math.abs(edge.green - centre.green) < 0.04f &&
-                        kotlin.math.abs(edge.blue - centre.blue) < 0.04f
+            var last = "never sampled"
+            try {
+                compose.waitUntil(30_000L) {
+                    val (matches, seen) = sampleEdges(one)
+                    last = seen
+                    matches
                 }
+            } catch (timeout: ComposeTimeoutException) {
+                throw AssertionError("$name: tile edges never matched its centre in 30 s. " +
+                    "Last: $last. Before the read: $place. Now: ${tilePlace(one)}", timeout)
             }
         }
     }
+
+    /** Whether the tile's four edges are the colour of its centre, and what was read. */
+    private fun sampleEdges(one: SemanticsMatcher): Pair<Boolean, String> {
+        val pixels = compose.onNode(one).captureToImage().toPixelMap()
+        val centre = pixels[pixels.width / 2, pixels.height / 2]
+        val edges = listOf(
+            pixels[2, pixels.height / 2], pixels[pixels.width - 3, pixels.height / 2],
+            pixels[pixels.width / 2, 2], pixels[pixels.width / 2, pixels.height - 3])
+        val seen = "capture ${pixels.width}x${pixels.height}, centre ${centre.hex()}, " +
+            "left/right/top/bottom ${edges.joinToString("/") { it.hex() }}"
+        return (centre.alpha > 0.99f && edges.all { it.closeTo(centre) }) to seen
+    }
+
+    private data class TilePlace(val whole: Rect, val shown: Rect, val clear: Rect) {
+        /** Whole on screen and inside the band between the header and the tab pill. */
+        val readable: Boolean get() = whole == shown &&
+            whole.top >= clear.top - 1f && whole.bottom <= clear.bottom + 1f
+        override fun toString() = "tile ${whole.top.toInt()}..${whole.bottom.toInt()} px " +
+            "(visible ${shown.top.toInt()}..${shown.bottom.toInt()}), clear band " +
+            "${clear.top.toInt()}..${clear.bottom.toInt()}, readable=$readable"
+    }
+
+    /** Where the tile is, and the band of the gallery no chrome is drawn over. */
+    private fun tilePlace(one: SemanticsMatcher): TilePlace {
+        val node = compose.onNode(one).fetchSemanticsNode()
+        val gallery = compose.onNodeWithTag("atlas-ratio-gallery").fetchSemanticsNode().boundsInRoot
+        fun chrome(tag: String) = compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true)
+            .fetchSemanticsNodes().map { it.boundsInRoot }.filter { it.height > 0f }
+        val top = (chrome("atlas-header") + chrome("atlas-scrolling-header"))
+            .filter { it.top <= gallery.top + 1f }.maxOfOrNull { it.bottom } ?: gallery.top
+        val bottom = chrome("atlas-nav-pill").minOfOrNull { it.top } ?: gallery.bottom
+        return TilePlace(
+            whole = Rect(node.positionInRoot, node.size.toSize()),
+            shown = node.boundsInRoot,
+            clear = Rect(gallery.left, maxOf(gallery.top, top), gallery.right,
+                minOf(gallery.bottom, bottom)))
+    }
+
+    /**
+     * Scrolls the rows until the tile is whole inside the clear band and
+     * returns where it was before. Fails, with the place, if it cannot get there.
+     */
+    private fun bringTileClearOfChrome(one: SemanticsMatcher, name: String): TilePlace {
+        val before = tilePlace(one)
+        // What a read at the old place would have seen, for the record.
+        val unmoved = if (before.readable) "" else "; read in place: ${sampleEdges(one)}"
+        var now = before
+        var moves = 0
+        while (!now.readable && moves < 4) {
+            moves++
+            val dy = now.whole.center.y - now.clear.center.y
+            compose.onNodeWithTag("atlas-ratio-gallery")
+                .performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, dy) }
+            compose.waitForIdle()
+            now = tilePlace(one)
+        }
+        Log.i("ATLAS_PINCH", "$name before: $before$unmoved; after $moves scroll(s): $now")
+        if (!now.readable) {
+            throw AssertionError("$name cannot be brought clear of the header and the tab " +
+                "pill: was $before, now $now")
+        }
+        return before
+    }
+
+    private fun androidx.compose.ui.graphics.Color.hex(): String =
+        "#%08X".format(toArgb())
+
+    private fun androidx.compose.ui.graphics.Color.closeTo(
+        other: androidx.compose.ui.graphics.Color
+    ): Boolean = kotlin.math.abs(red - other.red) < 0.04f &&
+        kotlin.math.abs(green - other.green) < 0.04f &&
+        kotlin.math.abs(blue - other.blue) < 0.04f
 
     /** #577 diagnostics: each fixture/evidence row's timeline date and its source. */
     private fun timelineDates(): String {

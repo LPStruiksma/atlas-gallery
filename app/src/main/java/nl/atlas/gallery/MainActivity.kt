@@ -38,6 +38,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
 import nl.atlas.gallery.featuredesign.AtlasTokens
+import nl.atlas.gallery.featuredesign.AtlasTabPillHeight
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -177,6 +178,7 @@ import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.LocalSearchControls
+import nl.atlas.gallery.featuresearch.personSearchLabel
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
 import nl.atlas.gallery.featuresearch.face.FaceSearchSession
 import nl.atlas.gallery.featuresearch.face.FaceSearchState
@@ -192,6 +194,12 @@ import nl.atlas.gallery.featuresearch.GrantScopedSearchSession
 import nl.atlas.gallery.featuresearch.LocalSearchFacets
 import nl.atlas.gallery.featuresearch.SearchMediaKind
 import nl.atlas.gallery.featuresearch.EphemeralSearchHistory
+import nl.atlas.gallery.featuresearch.LocalSearchHistory
+import nl.atlas.gallery.featuresearch.SearchHistoryController
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
+import nl.atlas.gallery.featuresearch.SearchHistorySnackbarHost
+import nl.atlas.gallery.featuresearch.searchGrantLevel
+import nl.atlas.gallery.featuresearch.searchHistoryStoreFor
 import nl.atlas.gallery.featuresearch.FacetedSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentFacetedSearchOrNull
 import nl.atlas.gallery.featuresearch.searchAuthorizedSnapshot
@@ -1213,7 +1221,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // is still adopting the new grant or People identity.
     val currentSearchSession = searchSession.currentOrNull(searchGrant, peopleGeneration)
     val searchFacets = currentSearchSession?.facets ?: LocalSearchFacets()
-    val searchHistory = currentSearchSession?.recent ?: EphemeralSearchHistory()
+    val ephemeralSearchHistory = currentSearchSession?.recent ?: EphemeralSearchHistory()
     // Delayed clicks/IME may originate in an older compositional frame. The
     // event carries the rendered scope; live scopes are read at invocation.
     val latestSearchGrant = rememberUpdatedState(searchGrant)
@@ -1602,6 +1610,29 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
     }
     val namedSearchPeople = remember(nativeSearchPeople) { nativeSearchPeople.map { it.first } }
+    // FIND-3a (#182): recent searches on this phone only (app-private file,
+    // allowBackup=false). Loaded and written off the main thread; cleared
+    // for every scope when photo access is reduced. Query text is never
+    // logged, exported, or put in saved state.
+    val searchHistoryStore = remember(context) { searchHistoryStoreFor(context) }
+    val searchHistoryState = searchHistoryStore.state.collectAsState()
+    val searchHistorySnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val searchHistoryCoroutines = rememberCoroutineScope()
+    val latestNamedSearchKeys = rememberUpdatedState(
+        remember(namedSearchPeople) { namedSearchPeople.mapTo(HashSet()) { it.key } })
+    val searchHistory = remember(searchHistoryStore) {
+        SearchHistoryController(searchHistoryStore, searchHistoryState,
+            searchHistoryCoroutines, searchHistorySnackbar) { latestNamedSearchKeys.value }
+    }
+    LaunchedEffect(searchHistoryStore) {
+        withContext(Dispatchers.IO) {
+            searchHistoryStore.load()
+            searchHistoryStore.flush()
+        }
+    }
+    LaunchedEffect(grants) {
+        searchHistory.onGrant(searchGrantLevel(grants.images, grants.videos, grants.selected))
+    }
     val nativeSearchUris = rememberNativePersonUris(discoveryHost, searchGrant,
         searchFacets.nativePersonKeys, discovery.status?.people)
     val searchSnapshot = rememberAsyncFacetedSearch(sorted, people, searchFacets,
@@ -2872,6 +2903,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // The content and floating navigation share the underlying *drawn* page.
     // The recorded layer never includes the pill or selection actions.
     val tabBackdrop = rememberAtlasTabBackdropState()
+    CompositionLocalProvider(LocalSearchHistory provides searchHistory) {
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = DeepBg,
         // DeepBg is not a colorScheme colour, so contentColorFor(DeepBg) fell
@@ -3099,6 +3132,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
                             selectedScope = overviewScope,
+                            historyScope = when {
+                                personFilter != null -> SearchHistoryScope.PERSON
+                                album != null -> SearchHistoryScope.ALBUM
+                                else -> SearchHistoryScope.PHOTOS
+                            },
                             onScopeChange = { requested ->
                                 if (requested == AtlasSearchScope.LIBRARY) {
                                     // A folder/person header cannot silently turn into a library viewer.
@@ -3196,6 +3234,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
                             onDiagnostics = { statusOpen = true },
+                            searchHistoryOn = searchHistoryState.value.enabled,
+                            onSearchHistoryOn = { searchHistory.setEnabled(it) },
+                            onClearSearchHistory = { searchHistory.clearAll() },
                             onReadLastCrash = { LastCrashRecorder.read(context) },
                             onCopyLastCrash = { report ->
                                 val clipboard = context.getSystemService(
@@ -3556,7 +3597,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             modifier = Modifier.padding(top = 12.dp).imePadding(),
                             filters = searchFacets,
                             people = people,
-                            history = searchHistory,
+                            history = ephemeralSearchHistory,
+                            recentSearches = if (currentSearchSession != null)
+                                searchHistory.visible(SearchHistoryScope.GLOBAL) else emptyList(),
+                            onRemoveRecent = { searchHistory.remove(SearchHistoryScope.GLOBAL, it) },
+                            onSubmittedSearch = { entry ->
+                                if (latestSearchGrant.value != null) {
+                                    searchHistory.remember(SearchHistoryScope.GLOBAL, entry)
+                                }
+                            },
                             onlyTheseFacesAvailable = false,
                             suggestionSources = searchChoices?.choices.orEmpty(),
                             currentPermissionEpoch = searchGrant,
@@ -3584,6 +3633,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     currentSearchSession?.peopleGeneration,
                                     latestSearchGrant.value,
                                     latestPeopleGeneration.value)
+                                searchHistory.clear(SearchHistoryScope.GLOBAL)
                             },
                             onSearchByFace = {
                                 faceSession.clear()
@@ -3637,7 +3687,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             catalogueEpoch = publishedGallery.epoch,
                             // Pinch-only, as on Samsung's grids: no View as row.
                             showViewAs = false,
-                            emptyText = "No results"
+                            // #134: name what found nothing, plus one neutral line.
+                            emptyText = personSearchLabel(namedSearchPeople, searchFacets)
+                                .let { if (it.isEmpty()) "No results" else "No results for \u201C$it\u201D" },
+                            emptyDetail = "Try another word or name."
                         )
                         }
                     }
@@ -3775,6 +3828,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         }
         }
+    }
+    // FIND-3a (#182): Undo for history actions. Above the nav pill when the
+    // keyboard is closed, and right above the keyboard when it is open.
+    SearchHistorySnackbarHost(searchHistory, Modifier.align(Alignment.BottomCenter),
+        bottomClearance = if (!settingsOpen && !statusOpen) AtlasTabPillHeight + 22.dp else 8.dp)
+    }
     }
 }
 
