@@ -58,4 +58,39 @@ class WarmReleaseGateTest {
         worker.join(5_000)
         assertEquals(1, released.get())
     }
+
+    @Test fun requestRacingWithFinalReleaseDoesNotGetStranded() {
+        val released = AtomicInteger()
+        val firstReleaseEntered = CountDownLatch(1)
+        val allowFirstRelease = CountDownLatch(1)
+        val gate = WarmReleaseGate {
+            if (released.incrementAndGet() == 1) {
+                firstReleaseEntered.countDown()
+                check(allowFirstRelease.await(5, TimeUnit.SECONDS))
+            }
+        }
+        val candidateEntered = CountDownLatch(1)
+        val finishCandidate = CountDownLatch(1)
+        val worker = Thread {
+            gate.exclusive {
+                candidateEntered.countDown()
+                check(finishCandidate.await(5, TimeUnit.SECONDS))
+            }
+        }.apply { start() }
+        try {
+            assertTrue(candidateEntered.await(5, TimeUnit.SECONDS))
+            assertFalse(gate.requestRelease())
+            finishCandidate.countDown()
+            assertTrue(firstReleaseEntered.await(5, TimeUnit.SECONDS))
+            // The candidate has already consumed pending, but still holds the lock.
+            // Previously this second request was lost after the final pending check.
+            assertFalse(gate.requestRelease())
+        } finally {
+            allowFirstRelease.countDown()
+            finishCandidate.countDown()
+            worker.join(5_000)
+        }
+        assertFalse("candidate must finish", worker.isAlive)
+        assertEquals("a release request during finalization must not be stranded", 2, released.get())
+    }
 }
