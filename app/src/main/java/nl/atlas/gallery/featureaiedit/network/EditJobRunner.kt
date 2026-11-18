@@ -19,8 +19,8 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featureaiedit.settings.ProviderCredentialVault
 import nl.atlas.gallery.featureaiedit.settings.ProviderProfile
@@ -244,8 +244,8 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         // WorkManager cancels the coroutine; a blocking HttpURLConnection needs an explicit disconnect.
-        val stopHook = currentCoroutineContext()[Job]?.invokeOnCompletion(onCancelling = true,
-            invokeImmediately = true) { cancellation.cancel() }
+        val workerJob = currentCoroutineContext().job
+        val stopHook = workerJob.invokeOnCompletion { cancellation.cancel() }
         try {
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val folder = try { EditJobJournal.directory(applicationContext, id) }
