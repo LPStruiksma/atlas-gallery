@@ -36,6 +36,20 @@ class SceneCountNegationRerankTest {
             core.parse("Een menigte op een concert").count)
     }
 
+    /** #264: java.util.regex \b is ASCII-only unless (?U); "Eén" lowercases to "eén". */
+    @Test fun stressedDutchOneParsesInEveryCaseAndNormalization() {
+        val one = SceneCountNegationRerank.CountConstraint.Exact(1)
+        for (query in listOf(
+            "Eén persoon alleen op het strand",
+            "één persoon alleen op het strand",
+            "ÉÉN PERSOON OP HET STRAND",
+            "E\u0301e\u0301n persoon op het strand", // NFD, as some keyboards emit
+            "Op het strand staat één vrouw",
+        )) assertEquals(query, one, core.parse(query).count)
+        assertEquals(SceneCountNegationRerank.CountConstraint.AtLeast(1),
+            core.parse("Minstens één persoon op het strand").count)
+    }
+
     @Test fun negatedClauseAndZeroPeopleInBothLanguages() {
         val zero = SceneCountNegationRerank.CountConstraint.Exact(0)
         for (query in listOf(

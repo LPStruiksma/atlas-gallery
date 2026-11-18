@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featurevisual.nls.rerank
 
+import java.text.Normalizer
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sqrt
@@ -56,25 +57,29 @@ object SceneCountNegationRerank {
     /** [semantic] is never overwritten by the evidence-based [score]. */
     data class Ranked(val id: String, val semantic: Float, val score: Float)
 
+    // Every pattern is compiled with (?U): java.util.regex treats \b and \w as
+    // ASCII-only by default, so "\béén" never matched (no boundary before 'é').
+    /** "Eén" (sentence-initial capital) lowercases to "eén", not "één". */
+    private val stressedOne = Regex("""(?U)\b(?:eén|éen)\b""")
     private val negative = Regex(
-        """\b(?:without|with no|no|zonder|geen)\s+([\p{L}\p{M}\d\s-]+?)(?=\s+(?:in|on|at|op|bij|met|while|maar|die|dat)\b|[,.!?;:]|$)"""
+        """(?U)\b(?:without|with no|no|zonder|geen)\s+([\p{L}\p{M}\d\s-]+?)(?=\s+(?:in|on|at|op|bij|met|while|maar|die|dat)\b|[,.!?;:]|$)"""
     )
-    private val genericPeople = Regex("""^(?:(?:any|enige)\s+)?(?:people|persons|mensen|personen)$""")
+    private val genericPeople = Regex("""(?U)^(?:(?:any|enige)\s+)?(?:people|persons|mensen|personen)$""")
     private val emptyScene = Regex(
-        """\b(?:empty|deserted|leeg|lege)\s+(?:beach|church|street|room|strand|kerk|straat|kamer)\b"""
+        """(?U)\b(?:empty|deserted|leeg|lege)\s+(?:beach|church|street|room|strand|kerk|straat|kamer)\b"""
     )
     private val quantity = Regex(
-        """\b(?:(at least|ten minste|minstens)\s+)?(one|two|three|four|1|2|3|4|een|één|twee|drie|vier)\s+(?:[\p{L}]+\s+){0,2}(?:people|persons|person|men|man|women|woman|mensen|personen|persoon|mannen|man|vrouwen|vrouw)\b"""
+        """(?U)\b(?:(at least|ten minste|minstens)\s+)?(one|two|three|four|1|2|3|4|een|één|twee|drie|vier)\s+(?:[\p{L}]+\s+){0,2}(?:people|persons|person|men|man|women|woman|mensen|personen|persoon|mannen|man|vrouwen|vrouw)\b"""
     )
     private val singleton = Regex(
-        """\b(?:a single|single|an|a|een enkele|één|een)\s+(?:person|persoon|man|woman|vrouw|bride|bruid)\b"""
+        """(?U)\b(?:a single|single|an|a|een enkele|één|een)\s+(?:person|persoon|man|woman|vrouw|bride|bruid)\b"""
     )
     private val individual = Regex(
-        """\b(?:a|an|een|één)\s+(?:(?:young|old|jonge|oude)\s+)?(?:man|woman|person|persoon|vrouw|bride|bruid)\b"""
+        """(?U)\b(?:a|an|een|één)\s+(?:(?:young|old|jonge|oude)\s+)?(?:man|woman|person|persoon|vrouw|bride|bruid)\b"""
     )
-    private val crowd = Regex("""\b(?:crowd|crowded|menigte|mensenmassa)\b""")
-    private val singleActor = Regex("""\b(?:someone|somebody|iemand)\b""")
-    private val couple = Regex("""\b(?:a couple|een stel)\b""")
+    private val crowd = Regex("""(?U)\b(?:crowd|crowded|menigte|mensenmassa)\b""")
+    private val singleActor = Regex("""(?U)\b(?:someone|somebody|iemand)\b""")
+    private val couple = Regex("""(?U)\b(?:a couple|een stel)\b""")
     private val numbers = mapOf(
         "one" to 1, "1" to 1, "een" to 1, "één" to 1,
         "two" to 2, "2" to 2, "twee" to 2,
@@ -89,7 +94,10 @@ object SceneCountNegationRerank {
      * are outside this contract and receive no speculative evidence.
      */
     fun parse(query: String): Semantics {
-        val text = query.lowercase(Locale.ROOT).trim()
+        // NFC first so a decomposed "e\u0301" compares equal to "é".
+        val text = Normalizer.normalize(query, Normalizer.Form.NFC)
+            .lowercase(Locale.ROOT).trim()
+            .replace(stressedOne, "één")
         val clause = negative.find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
         val count = when {
             clause != null && genericPeople.matches(clause) -> CountConstraint.Exact(0)
