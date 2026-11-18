@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/baseline-profile.yml'
+      - 'baselineprofile/**'
 permissions:
   contents: read
 concurrency:
