@@ -47,6 +47,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
@@ -305,15 +306,15 @@ class PersonPageJourneyTest {
         }
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
         compose.setContent { page() }
-        waitForTag("atlas-person-page")
-        ids.forEach { waitForTag("atlas-timeline-media-$it") }
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        ids.forEach { compose.waitForNode(hasTestTag("atlas-timeline-media-$it"), WAIT_MS, useUnmergedTree = true) }
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
             .performTouchInput { longClick() }
-        waitForText("1 selected")
-        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        compose.waitForNode(hasText("1 selected"), WAIT_MS)
+        compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
 
         fun assertPersonSelection() {
-            waitForText("2 selected")
+            compose.waitForNode(hasText("2 selected"), WAIT_MS)
             compose.onNodeWithTag("atlas-person-select-count").assertExists()
             compose.onNodeWithTag("atlas-person-remove-confirm").assertExists()
             // Both controls remain inside the current S24+ viewport, apart
@@ -352,7 +353,7 @@ class PersonPageJourneyTest {
                     visibleBottom - visibleTop >=
                         (selectedTile.bottom - selectedTile.top) * 0.5f)
             }
-            waitForText("2 selected")
+            compose.waitForNode(hasText("2 selected"), WAIT_MS)
         }
 
         fun rotateAndReattach(landscape: Boolean) {
@@ -374,7 +375,7 @@ class PersonPageJourneyTest {
                 applyAtlasSystemBars(it.window, dark = dark)
                 it.setContent { page() }
             }
-            waitFor("person page laid out in requested orientation") {
+            compose.awaitThat("person page laid out in requested orientation", WAIT_MS) {
                 val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
                 val bounds = roots.maxByOrNull {
                     it.boundsInRoot.width * it.boundsInRoot.height
@@ -386,13 +387,13 @@ class PersonPageJourneyTest {
 
         try {
             assertPersonSelection()
-            settle()
+            compose.awaitScreenStill("selection-404-dark-person-portrait-before")
             saveUiEvidence("selection-404-dark-person-portrait-before.png")
             rotateAndReattach(landscape = true)
-            settle()
+            compose.awaitScreenStill("selection-404-dark-person-landscape")
             saveUiEvidence("selection-404-dark-person-landscape.png")
             rotateAndReattach(landscape = false)
-            settle()
+            compose.awaitScreenStill("selection-404-dark-person-portrait-after")
             saveUiEvidence("selection-404-dark-person-portrait-after.png")
 
             dark = false
@@ -400,45 +401,45 @@ class PersonPageJourneyTest {
                 applyAtlasSystemBars(it.window, dark = false)
             }
             assertPersonSelection()
-            settle()
+            compose.awaitScreenStill("selection-404-light-person-portrait-before")
             saveUiEvidence("selection-404-light-person-portrait-before.png")
             rotateAndReattach(landscape = true)
-            settle()
+            compose.awaitScreenStill("selection-404-light-person-landscape")
             saveUiEvidence("selection-404-light-person-landscape.png")
             increasedFontScale = true
             assertPersonSelection() // 130% text must keep count/action in bounds.
-            settle()
+            compose.awaitScreenStill("selection-404-light-person-landscape-font130")
             saveUiEvidence("selection-404-light-person-landscape-font130.png")
             increasedFontScale = false
             rotateAndReattach(landscape = false)
-            settle()
+            compose.awaitScreenStill("selection-404-light-person-portrait-after")
             saveUiEvidence("selection-404-light-person-portrait-after.png")
 
             // Negative journey on the same real rendered person route: a
             // newer publication must immediately disable the old action and
             // permanently discard the snapshot, even if identity later reverts.
             catalogueEpoch = 2L
-            waitFor("publication mismatch drops the person selection") {
+            compose.awaitThat("publication mismatch drops the person selection", WAIT_MS) {
                 compose.onAllNodesWithTag("atlas-person-select-count")
                     .fetchSemanticsNodes().isEmpty() &&
                     holder.value?.encoded?.isEmpty() == true
             }
             catalogueEpoch = 1L
-            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[0]}"), WAIT_MS, useUnmergedTree = true)
             compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
 
             // A changed grant is an independent invalidation boundary.
             compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
                 .performTouchInput { longClick() }
-            waitForText("1 selected")
+            compose.waitForNode(hasText("1 selected"), WAIT_MS)
             routeGrant = "2"
-            waitFor("grant mismatch drops the person selection") {
+            compose.awaitThat("grant mismatch drops the person selection", WAIT_MS) {
                 compose.onAllNodesWithTag("atlas-person-select-count")
                     .fetchSemanticsNodes().isEmpty() &&
                     holder.value?.encoded?.isEmpty() == true
             }
             routeGrant = grant
-            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[0]}"), WAIT_MS, useUnmergedTree = true)
             compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
         } finally {
             instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
