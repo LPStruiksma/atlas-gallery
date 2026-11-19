@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,10 +86,13 @@ class StoriesHostRouteTest {
             val deck = if (empty || revision !in releasedRevisions) null else
                 planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
+            // Like MainActivity's host: its system-bar colour and icon ink for
+            // the theme, the page colour behind the bars, and the route padded
+            // by them so the title clears the status bar (#570 review).
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
-                // Like MainActivity's host, which pads the Stories route by the
-                // system bars: the title must clear the status bar (#570 review).
-                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)) {
                     AtlasStoriesScreen(
                         deck = deck,
                         currentGrantEpoch = tokens?.grantEpoch,

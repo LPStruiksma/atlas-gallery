@@ -59,6 +59,7 @@ class Design6QuietStatesEvidenceTest {
         var issue by mutableStateOf<AlbumLoadIssue?>(null)
         var loading by mutableStateOf(false)
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
@@ -138,6 +139,7 @@ class Design6QuietStatesEvidenceTest {
         var restoring by mutableStateOf(false)
         val epoch = "synthetic-design-6-grant"
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
@@ -202,6 +204,7 @@ class Design6QuietStatesEvidenceTest {
         var dark by mutableStateOf(false)
         var denied by mutableStateOf(false)
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
@@ -247,6 +250,7 @@ class Design6QuietStatesEvidenceTest {
         var items by mutableStateOf<List<MediaRecord>>(emptyList())
         val invented = inventedMedia(24, 913_600_000L)
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
@@ -301,6 +305,7 @@ class Design6QuietStatesEvidenceTest {
         var dark by mutableStateOf(false)
         val selected = inventedMedia(5, 913_620_000L)
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
@@ -338,6 +343,7 @@ class Design6QuietStatesEvidenceTest {
         var dark by mutableStateOf(false)
         val invented = inventedMedia(3, 913_610_000L)
         compose.setContent {
+            Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     GalleryViewer(invented, invented[0].uri, onBack = {})
@@ -363,5 +369,22 @@ class Design6QuietStatesEvidenceTest {
             }
             awaitDecodeError()
         }
+    }
+}
+
+/**
+ * DESIGN-6 evidence: the app's own system bars for the theme under test
+ * ([applyAtlasSystemBars]: page colour behind the bars, icon ink that reads on
+ * it), so a route rendered on its own shows a legible status bar (#570 review).
+ */
+@androidx.compose.runtime.Composable
+internal fun Design6SystemBars(dark: Boolean) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        var context = view.context
+        while (context is android.content.ContextWrapper && context !is android.app.Activity) {
+            context = context.baseContext
+        }
+        (context as? android.app.Activity)?.let { applyAtlasSystemBars(it.window, dark) }
     }
 }
