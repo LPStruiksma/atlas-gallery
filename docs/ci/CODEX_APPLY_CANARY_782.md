@@ -10,3 +10,4 @@ Append exactly one line at the end of this file:
 Codex auto-apply proof: relay-782 atlas-gallery-535
 
 Do not change any other line or any other file. A successful proof requires the installed workflow to apply Codex's format-patch and publish an APPLIED receipt with the actual new PR head SHA.
+Codex auto-apply proof: relay-782 atlas-gallery-535
