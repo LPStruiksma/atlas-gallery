@@ -39,7 +39,7 @@ class AtlasProtocolProviderContractTest : ImageEditProviderContract() {
                         Fixture.CANCELLABLE_ASYNC -> if (count <= 2) "running" else "succeeded"
                         else -> "succeeded"
                     }
-                    FakeResponse.json("""{"status":"$status","progress":40,"refusal":{"code":"SYNTHETIC_REFUSAL","message":"never echo"}}""")
+                    FakeResponse.json("""{"status":"$status","progress":40,"refusal":{"code":"SYNTHETIC_REFUSAL","message":"never echo"}}""",\n                        delayMs = if (fixture == Fixture.CANCELLABLE_ASYNC && count <= 2) 50 else 0)
                 }
                 req.method == "DELETE" -> FakeResponse.json("""{"status":"cancelled"}""")
                 else -> FakeResponse.json("{}", 404)
@@ -109,7 +109,7 @@ class ComfyUiProviderContractTest : ImageEditProviderContract() {
                         fixture == Fixture.SLOW_ASYNC || (fixture == Fixture.CANCELLABLE_ASYNC && n <= 2) -> ""
                         else -> """"outputs":{"9":{"images":[{"filename":"synthetic.png","subfolder":"","type":"output"}]}}"""
                     }
-                    if (entry.isEmpty()) FakeResponse.json("{}")
+                    if (entry.isEmpty()) FakeResponse.json("{}",\n                        delayMs = if (fixture == Fixture.CANCELLABLE_ASYNC && n <= 2) 50 else 0)
                     else FakeResponse.json("""{"abcdef0123456789abcdef0123456789":{$entry}}""")
                 }
                 req.path.startsWith("/view?") -> FakeResponse(200, image, contentType = "image/png")
