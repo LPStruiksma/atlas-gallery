@@ -43,7 +43,7 @@ and visually compare the synthetic output fixture when using a new model.
 
 | Field | Actual evidence |
 | --- | --- |
-| App code SHA measured | `289a4b9be07f33e238704c453b0198e07ad6de41` (candidate head of PR #613; the evidence commit on top changes only this doc) |
+| App code SHA measured | `289a4b9be07f33e238704c453b0198e07ad6de41` (candidate head of PR #613). The PR head adds this doc and a clean merge of `main` 7c64ca9, whose overlap (fb038d2, aggregate diagnostics export) times cluster publication after a drain and is outside the per-photo scan the benchmark measures |
 | How | Throwaway head `2073eb3` = `289a4b9` + `scripts/ci-opt-in/stress-classes` + `-e atlasFaceScanBench true` in the stress loop (script only, no app or test change). [Run 44633056258](https://github.com/LPStruiksma/atlas-gallery/actions/runs/44633056258), `build-apk.yml` dispatch, API 35 |
 | API level / device | API 35 CI emulator, 2 CPUs, production ORT intra-op threads = 1; shard 0 and shard 1 are separate emulators |
 | Input | 24 synthetic 4032×3024 JPEGs, 48 faces processed in every pass (identical counts) |
