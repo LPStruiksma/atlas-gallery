@@ -1,6 +1,13 @@
 package nl.atlas.gallery
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.UiAutomation
+import android.hardware.display.DisplayManager
+import android.view.Display
+import android.view.Surface
+import org.junit.rules.TestRule
+import org.junit.runner.Description
+import org.junit.runners.model.Statement
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -168,7 +175,7 @@ class DeclutterSearchLandscapeEvidenceTest {
     // 184 dp at density 450: the landscape keyboard height the frames assume.
     @get:Rule val chain: RuleChain = RuleChain
         .outerRule(KeyboardRule(TestKeyboard.Fixed, fixedHeightPx = 518))
-        .around(S24DisplayRule(landscape = true)).around(rule)
+        .around(S24DisplayRule()).around(LandscapeRule()).around(rule)
 
     @Test fun landscapeKeyboardKeepsEveryControlAboveTheIme() =
         syntheticDeck("Pictures/ATLAS-Declutter-341L/") { deck ->
@@ -210,6 +217,39 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
             }
             rule.runOnIdle { assertEquals(0, left) }
+        }
+}
+
+/**
+ * Rotates the S24+ display to landscape before the Activity starts, and puts
+ * it back to portrait (then unfrozen) afterwards, as PersonPageJourneyTest
+ * does. An earlier version swapped the wm size instead; that left the device
+ * in a state that broke a later album test in the same shard.
+ */
+internal class LandscapeRule : TestRule {
+    override fun apply(base: Statement, description: Description): Statement =
+        object : Statement() {
+            override fun evaluate() {
+                val instrumentation = InstrumentationRegistry.getInstrumentation()
+                val automation = instrumentation.uiAutomation
+                automation.setRotation(UiAutomation.ROTATION_FREEZE_90)
+                try {
+                    val display = instrumentation.targetContext
+                        .getSystemService(DisplayManager::class.java)
+                        .getDisplay(Display.DEFAULT_DISPLAY)
+                    val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
+                    while (display.rotation != Surface.ROTATION_90) {
+                        check(android.os.SystemClock.uptimeMillis() < deadline) {
+                            "display did not rotate to landscape (rotation ${display.rotation})"
+                        }
+                        runCatching { automation.waitForIdle(100L, 1_000L) }
+                    }
+                    base.evaluate()
+                } finally {
+                    automation.setRotation(UiAutomation.ROTATION_FREEZE_0)
+                    automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+                }
+            }
         }
 }
 
