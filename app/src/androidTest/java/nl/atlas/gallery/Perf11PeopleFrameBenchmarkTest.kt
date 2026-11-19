@@ -59,6 +59,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -108,6 +110,7 @@ class Perf11PeopleFrameBenchmarkTest {
     /** Collects FrameMetrics TOTAL_DURATION (ms) between start and stop. */
     private class FrameRecorder(private val window: Window) {
         private val thread = HandlerThread("frame-metrics-perf11a").apply { start() }
+        private val handler = Handler(thread.looper)
         private val samples = Collections.synchronizedList(ArrayList<Double>())
         private val listener = Window.OnFrameMetricsAvailableListener { _, metrics, _ ->
             samples += metrics.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000.0
@@ -115,12 +118,21 @@ class Perf11PeopleFrameBenchmarkTest {
 
         fun start() {
             samples.clear()
-            window.addOnFrameMetricsAvailableListener(listener, Handler(thread.looper))
+            window.addOnFrameMetricsAvailableListener(listener, handler)
         }
 
+        /**
+         * Drains the metrics already queued on the handler thread (no sleep:
+         * docs/testing/EMULATOR_TESTS.md), then stops listening. Callers
+         * wait for idle first, so the last stepped frame has been drawn.
+         */
         fun stop(): DoubleArray {
+            repeat(2) {
+                val drained = CountDownLatch(1)
+                handler.post { drained.countDown() }
+                check(drained.await(5, TimeUnit.SECONDS)) { "frame metrics thread stuck" }
+            }
             window.removeOnFrameMetricsAvailableListener(listener)
-            Thread.sleep(200) // late callbacks for the last frames
             return synchronized(samples) { samples.toDoubleArray() }
         }
 
