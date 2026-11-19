@@ -1,6 +1,14 @@
 package nl.atlas.gallery
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.lifecycle.ViewModelProvider
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -249,6 +257,132 @@ class PersonPageJourneyTest {
             compose.waitForIdle()
         }
         waitForTag("atlas-ratio-gallery")
+    }
+
+    /**
+     * #404: unlike a plain composition/theme toggle, this recreates the real
+     * ComponentActivity four times. The test supplies its fixture-backed page
+     * content again in the new Activity, as MainActivity does in onCreate;
+     * only the ViewModel-owned selection snapshot crosses that boundary.
+     * No real people or photos are used.
+     */
+    @Test fun selectionOnPersonPageSurvivesRealActivityRotation() {
+        val grant = "1" // Matches the synthetic catalogueEpoch and the live grant fence.
+        val host = host()
+        drain(host, grant)
+        val epoch = checkNotNull(host.displayEpoch(grant))
+        val group = store.peopleReview(epoch)!!.clusters.unknownClusters
+            .maxBy { it.members.size }
+        val matchingUris = checkNotNull(host.personPageFaces(grant, group.members)).keys
+        val ids = records.filter { it.uri in matchingUris }.take(2).map { it.id }
+        assertEquals("two authorized synthetic person photos", 2, ids.size)
+        val request = NativePersonAlbumRequest(PersonPageTarget.Unnamed(group.id), "")
+        val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
+            .pendingPersonSelectionRotationState
+        var dark by mutableStateOf(true)
+
+        // On each Activity instance, re-attach the same synthetic route with
+        // the SAME configuration-retained holder, not a Bundle/rememberSaveable.
+        val page: @Composable () -> Unit = {
+            if (composing) {
+                AtlasGalleryTheme(dark = dark) {
+                    Surface(Modifier.fillMaxSize(), color = DeepBg,
+                        contentColor = MaterialTheme.colorScheme.onBackground) {
+                        val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
+                        NativePersonAlbumRoute(host, grant, request,
+                            discovery.status?.people, records, rememberLazyGridState(), 1L,
+                            selectionRotationState = holder, onBack = {},
+                            onOpen = { _, _ -> })
+                    }
+                }
+            }
+        }
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        compose.setContent { page() }
+        waitForTag("atlas-person-page")
+        ids.forEach { waitForTag("atlas-timeline-media-$it") }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+            .performTouchInput { longClick() }
+        waitForText("1 selected")
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+
+        fun assertPersonSelection() {
+            waitForText("2 selected")
+            compose.onNodeWithTag("atlas-person-select-count").assertExists()
+            compose.onNodeWithTag("atlas-person-remove-confirm").assertExists()
+            ids.forEach { id ->
+                val tag = "atlas-timeline-media-$id"
+                compose.onNodeWithTag("atlas-timeline-grid")
+                    .performScrollToNode(hasTestTag(tag))
+                compose.onNodeWithTag(tag).assertIsSelected()
+            }
+            // Both controls remain inside the current S24+ viewport, apart
+            // from each other, in portrait AND constrained landscape.
+            val root = compose.onRoot().getUnclippedBoundsInRoot()
+            val count = compose.onNodeWithTag("atlas-person-select-count")
+                .getUnclippedBoundsInRoot()
+            val action = compose.onNodeWithTag("atlas-person-remove-confirm")
+                .getUnclippedBoundsInRoot()
+            assertTrue("selection header is inside viewport", count.top >= root.top &&
+                count.bottom < action.top)
+            assertTrue("person action stays inside navigation-safe viewport",
+                action.bottom <= root.bottom)
+        }
+
+        fun rotateAndReattach(landscape: Boolean) {
+            var before = 0
+            compose.activityRule.scenario.onActivity {
+                before = System.identityHashCode(it)
+            }
+            instrumentation.uiAutomation.setRotation(
+                if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+                else android.app.UiAutomation.ROTATION_FREEZE_0)
+            waitFor("ComponentActivity recreated by rotation") {
+                var after = before
+                compose.activityRule.scenario.onActivity {
+                    after = System.identityHashCode(it)
+                }
+                after != before
+            }
+            compose.activityRule.scenario.onActivity {
+                applyAtlasSystemBars(it.window, dark = dark)
+                it.setContent { page() }
+            }
+            waitFor("person page laid out in requested orientation") {
+                val root = compose.onRoot().getUnclippedBoundsInRoot()
+                (root.right - root.left > root.bottom - root.top) == landscape
+            }
+            assertPersonSelection()
+        }
+
+        try {
+            assertPersonSelection()
+            settle()
+            saveUiEvidence("selection-404-dark-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            settle()
+            saveUiEvidence("selection-404-dark-person-landscape.png")
+            rotateAndReattach(landscape = false)
+            settle()
+            saveUiEvidence("selection-404-dark-person-portrait-after.png")
+
+            dark = false
+            compose.activityRule.scenario.onActivity {
+                applyAtlasSystemBars(it.window, dark = false)
+            }
+            assertPersonSelection()
+            settle()
+            saveUiEvidence("selection-404-light-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            settle()
+            saveUiEvidence("selection-404-light-person-landscape.png")
+            rotateAndReattach(landscape = false)
+            settle()
+            saveUiEvidence("selection-404-light-person-portrait-after.png")
+        } finally {
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
     }
 
     @Test fun nameOnThePersonPageThenReopenShowsTheNameAndHideSurvivesRestart() {
