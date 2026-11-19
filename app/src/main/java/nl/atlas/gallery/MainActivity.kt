@@ -993,7 +993,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Exact local folder paths remain in app-private preferences; never put them
     // in a saved-instance Bundle (which Android can hand to other components).
     val albumOrderStore = remember(context) {
-        context.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
+        // #435: application context, so the warmed-up file is reused without disk access.
+        context.applicationContext.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
     }
     var albumCustomOrder by remember {
         mutableStateOf(
@@ -1098,7 +1099,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return publishedNow.displayItems(actual).takeIf { it === media }
     }
     val mediaSortPrefs = remember(context) {
-        context.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
     }
     var sort by remember {
         mutableStateOf(
@@ -1906,7 +1907,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             // G's dated LazyGrid has additional full-span HEADER slots.
             // Resolve the photo's slot using G's exact pure index off-main;
             // never scroll to the raw MediaRecord index after a dated group.
-            val shared = context.getSharedPreferences(
+            val shared = context.applicationContext.getSharedPreferences(
                 "atlas_featuregrid_density", android.content.Context.MODE_PRIVATE)
             val density = GridDensity.fromColumns(
                 shared.getInt("photos", GridDensity.MEDIUM.columns))

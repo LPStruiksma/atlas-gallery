@@ -45,3 +45,13 @@ The test inserts and then deletes its own invented MediaStore PNGs. On a persona
 - Emulator numbers are not Galaxy S24+ numbers. The emulator uses software rendering, so frame times are high in absolute terms. Compare phases with each other, not with the targets in #119.
 - StrictMode may drop a repeat of the same violation within about a second, so `count` is a lower bound.
 - `#128` is not complete until debug StrictMode runs clean with the persistence checks passing. The per-head table lives on the PR and on #417, not in this file, so it always names the exact head it came from.
+
+## PERF-7b follow-up (#435)
+
+The baseline at #421 head b2fdc57 found eight main-thread openings on the first Photos grid (table on #435). #435 moves rows 2 to 8 off Main:
+
+- `GalleryViewModel` opens `atlas_v4_live_sync` lazily and reads it only on IO (the linked/not-linked text is filled in from IO; the resume poll checks the link on IO).
+- `GalleryInventoryCacheFile` resolves `noBackupFilesDir` on first IO, and `refreshForAccessChange` splits its restore into a no-IO `beginRestore` on Main and a `settle` on IO. Any read, write or delete settles first, so the old bytes are still gone before anything sees them.
+- `StartupPreferenceWarmup` opens the album order, Pictures sort, grid density, People opt-in and V4 link preference files on IO in `AtlasApplication.onCreate`. The grid opens them through `applicationContext`, so its synchronous reads find the file already loaded and never wait on disk.
+
+Row 1 (`MicroThumbnails.install`) is left to PERF-1 PR #146, which owns that start-up path.
