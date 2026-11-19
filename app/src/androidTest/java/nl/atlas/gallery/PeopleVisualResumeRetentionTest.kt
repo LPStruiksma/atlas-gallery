@@ -471,13 +471,23 @@ class PeopleVisualResumeRetentionTest {
     @Test fun recentsResumeKeepsPeopleVisualAndLibrary() {
         assumeTrue("grant-loss phases run only their own methods", phase == null)
         seedNamedPeopleAndVisual()
+        awaitGalleryQuiet()
+        val seeded = snapshot()
         // A plain photo that case (b) deletes while backgrounded.
         val doomed = insertPlain("IMG_RESUME620_FILLER.png", System.currentTimeMillis() - 400_000_000L)
         val doomedId = ContentUris.parseId(doomed)
         compose.awaitThat("filler photo published", timeoutMs = 60_000L) {
             vm.publishedInventory.value.items.any { it.id == doomedId }
         }
-        // It joins the catalogue as a skipped row (no face, not a fixture).
+        // It joins both catalogues as a skipped row (no face, not a fixture).
+        // Wait for the People host's own publication of it, not only the
+        // gallery's: drainScan alone can finish on the previous epoch, and
+        // the late filler publication then looked like a restage in (a)
+        // (run 44634551934, shard 0).
+        compose.awaitThat("filler staged in the face and visual catalogues", timeoutMs = 60_000L) {
+            val now = snapshot()
+            now.faceTotal == seeded.faceTotal + 1 && now.visualTotal == seeded.visualTotal + 1
+        }
         drainScan()
         awaitGalleryQuiet()
         val base = snapshot()
@@ -559,7 +569,6 @@ class PeopleVisualResumeRetentionTest {
         assertEquals("(b2) a delete queues no visual row", afterB1.visualQueued, b2.visualQueued)
         assertEquals("(b2) only the deleted visual row goes", afterB1.visualDone - 1, b2.visualDone)
         assertLibraryReadable("(b2)")
-        saveUiEvidence("resume620-after-people.png")
     }
 
     // (c) True Android grant loss across `adb shell pm revoke` (see class doc).
@@ -588,7 +597,6 @@ class PeopleVisualResumeRetentionTest {
         assertNull("the published visual scope is dropped", choices.loadPublishedVisual())
         assertNull("no face catalogue may stay readable", faces?.activeEpoch())
         Log.i(TAG, "event=grant_verify hidden=true")
-        saveUiEvidence("grantloss620-after-people.png")
     }
 
     @Test fun grantLossCleanup() {
