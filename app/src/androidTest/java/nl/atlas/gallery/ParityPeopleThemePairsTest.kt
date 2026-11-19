@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -211,17 +212,24 @@ class ParityPeopleThemePairsTest {
                 AtlasGalleryTheme(dark = dark) {
                     Surface(Modifier.fillMaxSize(), color = DeepBg,
                         contentColor = MaterialTheme.colorScheme.onBackground) {
-                        GalleryViewer(listOf(photo), photo.uri, photoPeople = port, onBack = {})
+                        key(dark) {
+                            GalleryViewer(listOf(photo), photo.uri, photoPeople = port,
+                                onBack = {})
+                        }
                     }
                 }
             }
         }
-        compose.tap(hasTestTag("atlas-viewer-details-open"))
-        compose.waitForNode(hasTestTag("atlas-details-people"), useUnmergedTree = true)
-        compose.onNodeWithTag("atlas-details-people").performScrollTo()
-        compose.onNodeWithText("Ada").assertExists()
-        compose.onNodeWithText("Bram").assertExists()
-        capturePair("parity-24-viewer-details-people") {
+        // Details is a modal sheet (its own window). Each theme gets a fresh
+        // viewer (key(dark) above) and opens Details itself, so the capture
+        // never depends on a sheet surviving a theme recomposition.
+        capturePair("parity-24-viewer-details-people", prepare = {
+            compose.tap(hasTestTag("atlas-viewer-details-open"))
+            compose.waitForNode(hasTestTag("atlas-details-people"), useUnmergedTree = true)
+            compose.onNodeWithTag("atlas-details-people").performScrollTo()
+            compose.onNodeWithText("Ada").assertExists()
+            compose.onNodeWithText("Bram").assertExists()
+        }) {
             compose.onAllNodesWithTag("atlas-details-people").fetchSemanticsNodes().isNotEmpty() &&
                 compose.onAllNodesWithText("Ada").fetchSemanticsNodes().isNotEmpty()
         }
@@ -297,9 +305,12 @@ class ParityPeopleThemePairsTest {
     /**
      * Dark first, then the same composition in light: flips the ATLAS theme
      * and the window's bar icons together, as MainActivity does when the phone
-     * setting changes. [stillShown] must hold in both themes before saving.
+     * setting changes. [prepare] runs after each flip (a route that needs to
+     * open a window again); [stillShown] must then hold before saving.
      */
-    private fun capturePair(prefix: String, stillShown: () -> Boolean) {
+    private fun capturePair(
+        prefix: String, prepare: () -> Unit = {}, stillShown: () -> Boolean
+    ) {
         for (isDark in listOf(true, false)) {
             compose.activityRule.scenario.onActivity {
                 applyAtlasSystemBars(it.window, dark = isDark)
@@ -308,7 +319,10 @@ class ParityPeopleThemePairsTest {
             // Rule 6: a theme flip changes the window; wait for it, not a time.
             compose.waitForIdle()
             compose.awaitWindowSettled()
-            assertTrue("$prefix: subject not shown in ${mode(isDark)}", stillShown())
+            prepare()
+            compose.waitForIdle()
+            compose.awaitWindowSettled()
+            compose.awaitThat("$prefix: subject shown in ${mode(isDark)}") { stillShown() }
             saveUiEvidence("$prefix-${mode(isDark)}.png")
         }
     }

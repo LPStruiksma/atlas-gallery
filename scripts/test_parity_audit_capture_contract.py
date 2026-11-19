@@ -57,7 +57,7 @@ class ParityCaptureContractTest(unittest.TestCase):
             "parity-24-viewer-details-people",
             "parity-24-search-person",
         ):
-            self.assertIn('capturePair("' + prefix + '")', people)
+            self.assertIn('capturePair("' + prefix + '"', people)
         self.assertIn('saveUiEvidence("$prefix-${mode(isDark)}.png")', people)
         self.assertIn("PeopleReviewAction.NameCluster", people)
         self.assertIn('"atlas-details-people"', people)
