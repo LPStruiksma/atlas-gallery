@@ -17,6 +17,7 @@ import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -78,8 +79,13 @@ import java.util.concurrent.atomic.AtomicLong
  *    pass of the People screen that already holds the loaded grid. The open
  *    includes the grant-scoped [FaceIndexStore.peopleHome] read on IO, the
  *    composition and the first draw, like the host does it.
- *  - Person page: "open" until the first draw pass of [PersonPageScreen] with
- *    its grid, fed by keyset-paged [FaceIndexStore.personMediaPage] reads.
+ *  - Person page: "open" until the first draw pass of [PersonPageScreen] whose
+ *    grid has laid out at least one photo tile, fed by keyset-paged
+ *    [FaceIndexStore.personMediaPage] reads. The timeline plans its rows on
+ *    Dispatchers.Default and draws "Arranging timeline…" until then, which
+ *    the Compose idle check does not wait for (#564), so a draw pass alone is
+ *    not the grid. The time to the first draw of any page content is
+ *    reported next to it (`first_any_draw_raw_ms`).
  *    PersonPageRoute's own resolution path (owned by PR #420) is not used.
  *  - Person grid fling: platform FrameMetrics TOTAL_DURATION per frame,
  *    frame-stepped so every animation frame is really drawn; share of frames
@@ -186,6 +192,13 @@ class Perf11PeopleFrameBenchmarkTest {
             ?.startsWith("atlas-timeline-media-") == true
     }
 
+    /**
+     * True once the grid has measured a photo tile. Day headers span the full
+     * line; photo tiles are one of at least three columns (GridDensity.LARGE).
+     */
+    private fun LazyGridLayoutInfo.holdsPhotoTile(): Boolean =
+        visibleItemsInfo.any { it.size.width in 1 until viewportSize.width / 2 }
+
     /** Waits until [stamp] is set by a draw pass and returns it. */
     private fun awaitDraw(stamp: AtomicLong): Long {
         compose.waitUntil(120_000L) { stamp.get() != 0L }
@@ -252,6 +265,7 @@ class Perf11PeopleFrameBenchmarkTest {
         var open by mutableStateOf(false)
         var run by mutableIntStateOf(0)
         val drawn = AtomicLong(0L)
+        val anyDraw = AtomicLong(0L)
         val pageSizes = Collections.synchronizedList(ArrayList<Int>())
         compose.setContent {
             AtlasEvidenceHarness {
@@ -263,14 +277,26 @@ class Perf11PeopleFrameBenchmarkTest {
                     }
                     val shown = items
                     if (shown != null) {
+                        // New per open: a kept state would still hold the
+                        // previous open's layout before this grid exists.
+                        val gridState = rememberLazyGridState()
                         Box(Modifier.fillMaxSize().drawWithContent {
                             drawContent()
-                            drawn.compareAndSet(0L, System.nanoTime())
+                            val now = System.nanoTime()
+                            anyDraw.compareAndSet(0L, now)
+                            // #564: the timeline plans its rows off the main
+                            // thread and draws "Arranging timeline…" first.
+                            // Reading layoutInfo here redraws this box when
+                            // the grid lays out, so the stamp is the first
+                            // frame that holds a photo tile.
+                            if (gridState.layoutInfo.holdsPhotoTile()) {
+                                drawn.compareAndSet(0L, now)
+                            }
                         }) {
                             PersonPageScreen(
                                 ui = PersonPageUi(name = "Synthetic 000", items = shown,
                                     hidden = false, mayHide = true),
-                                gridState = rememberLazyGridState(),
+                                gridState = gridState,
                                 catalogueEpoch = 11L,
                                 opening = run.toLong(),
                                 portrait = {},
@@ -291,13 +317,15 @@ class Perf11PeopleFrameBenchmarkTest {
             }
         }
         val samples = ArrayList<Double>()
+        val anyDrawMs = ArrayList<Double>()
         repeat(OPENS) { i ->
-            compose.runOnIdle { open = false; drawn.set(0L); pageSizes.clear() }
+            compose.runOnIdle { open = false; drawn.set(0L); anyDraw.set(0L); pageSizes.clear() }
             compose.waitForIdle()
             var t0 = 0L
             compose.runOnIdle { run = i; t0 = System.nanoTime(); open = true }
             val t1 = awaitDraw(drawn)
             samples += (t1 - t0) / 1e6
+            anyDrawMs += (anyDraw.get() - t0) / 1e6
             compose.waitForIdle()
             assertTrue("first person frame shows grid tiles",
                 compose.onAllNodes(timelineTile, useUnmergedTree = true)
@@ -347,8 +375,9 @@ class Perf11PeopleFrameBenchmarkTest {
         val allocSupported = allocCount > 0 || allocBytes > 0
         report("PERF-11A-person-open-fling", JSONObject()
             .put("inputs", "person_items=$BIG_PERSON_ITEMS page=$PAGE catalogue=${fx.catalogue}; " +
-                "24px synthetic PNG thumbnails; signal=first draw pass holding the person grid")
-            .put("open", opens(samples, 200.0))
+                "24px synthetic PNG thumbnails; signal=first draw pass whose grid holds a photo tile")
+            .put("open", opens(samples, 200.0)
+                .put("first_any_draw_raw_ms", JSONArray(anyDrawMs.map { BenchmarkReport.round1(it) })))
             .put("fling", JSONObject()
                 .put("flings", FLINGS)
                 .put("frames", fling.size)
