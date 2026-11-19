@@ -346,21 +346,18 @@ class PersonPageJourneyTest {
         }
 
         fun rotateAndReattach(landscape: Boolean) {
-            var before = 0
-            compose.activityRule.scenario.onActivity {
-                before = System.identityHashCode(it)
-            }
+            lateinit var before: ComponentActivity
+            compose.activityRule.scenario.onActivity { before = it }
             instrumentation.uiAutomation.setRotation(
                 if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
                 else android.app.UiAutomation.ROTATION_FREEZE_0)
-            waitFor("ComponentActivity recreated by rotation") {
-                var after = before
-                compose.activityRule.scenario.onActivity {
-                    after = System.identityHashCode(it)
-                }
-                after != before
-            }
+            // UiAutomation rotation can update the window configuration in place
+            // on the API35 fixture Activity. Explicitly recreate after requesting
+            // orientation so this test actually exercises an Activity boundary,
+            // rather than waiting for a system-dependent automatic relaunch.
+            compose.activityRule.scenario.recreate()
             compose.activityRule.scenario.onActivity {
+                assertTrue("rotation must replace the ComponentActivity", it !== before)
                 val retained = ViewModelProvider(it)[GalleryViewModel::class.java]
                     .pendingPersonSelectionRotationState
                 assertSame("snapshot lives in the Activity-retained ViewModel", holder, retained)
