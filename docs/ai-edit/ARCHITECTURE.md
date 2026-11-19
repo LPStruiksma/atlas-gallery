@@ -17,6 +17,8 @@ Remove embedded GPS/EXIF and unnecessary identifying metadata from outbound copi
 
 ## Provider-neutral interface and capability negotiation
 
+Keep provider research in [PROVIDERS.md](PROVIDERS.md); document implemented adapter behavior only in the stable [adapter directory](adapters/), one file per adapter.
+
 Conceptual request (not a committed Kotlin API):
 
 ```text
