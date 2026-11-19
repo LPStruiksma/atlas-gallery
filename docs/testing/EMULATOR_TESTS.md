@@ -96,6 +96,18 @@ So tests bring their own. The androidTest APK carries two input methods (nothing
 
 Kit code that the system starts must be plain Java on `android.*` only. The system runs an input method in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
 
+## Stress a test
+
+One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a test, commit `scripts/ci-opt-in/stress-classes` on a throwaway branch and dispatch `build-apk.yml` with `run_ui_tests`:
+
+```
+# <count> <Class or Class#method>
+8 nl.atlas.gallery.PeoplePrototypeJourneyTest
+8 nl.atlas.gallery.testkit.TestKitSelfTest#tapWithAnEffectFailsWhenNothingHappens
+```
+
+Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.

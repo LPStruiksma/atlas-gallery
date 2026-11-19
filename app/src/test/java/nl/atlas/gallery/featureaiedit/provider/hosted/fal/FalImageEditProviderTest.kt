@@ -215,6 +215,17 @@ class FalImageEditProviderTest {
         }
     }
 
+    @Test fun documentedStructuredPolicyErrorIsARefusalWithoutMessageLeakage() {
+        val privateMessage = "private moderation explanation"
+        FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"), result = {
+            FakeResponse.json("""{"detail":[{"type":"content_policy_violation","msg":"$privateMessage"}]}""", 422)
+        })).use { h ->
+            val result = h.provider().submit(request()).await(maxPolls = 200) as EditOutcome.Refused
+            assertEquals("fal:content_policy_violation", result.providerCode)
+            assertFalse(result.toString().contains(privateMessage))
+        }
+    }
+
     @Test fun cancelDuringQueueCallsDocumentedCancelEndpoint() {
         FalHarness(FakeFalQueue(statuses = listOf("IN_QUEUE"))).use { h ->
             val job = h.provider().submit(request())

@@ -5,46 +5,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * DESIGN-1: central, value-preserving visual constants. No visual redesign:
- * existing semantic roles keep the exact ARGB and dp/sp values in use on main.
+ * DESIGN-1: central visual constants. Since 2026-11-18 the values follow the
+ * Quiet Frame look (docs/design/QUIET_FRAME.md); role names are unchanged.
  */
 object AtlasTokens {
     object Colors {
-        val Ink = Color(0xFF11171B)
-        val InkRaised = Color(0xFF1D272C)
-        val Mist = Color(0xFFF5F7F4)
+        val Ink = Color(0xFF111318)
+        val InkRaised = Color(0xFF17191F)
+        val Mist = Color(0xFFF6F7F9)
         val Paper = Color(0xFFFFFFFF)
-        val Tidal = Color(0xFF9DE1D2)
-        val DeepTidal = Color(0xFF176D61)
-        val WarmGray = Color(0xFFB5C2C0)
-        val QuietGray = Color(0xFF50625F)
+        val Tidal = Color(0xFF7FA8FF)
+        val DeepTidal = Color(0xFF2A62D4)
+        val WarmGray = Color(0xFFB4B8C1)
+        val QuietGray = Color(0xFF4A4F59)
 
         object Dark {
-            val PrimaryContainer = Color(0xFF1F4F47)
-            val OnPrimaryContainer = Color(0xFFC6F2E7)
-            val SecondaryContainer = Color(0xFF2E3B3E)
-            val OnSecondaryContainer = Color(0xFFDCE6E3)
-            val Foreground = Color(0xFFF7FAF8)
-            val SurfaceVariant = Color(0xFF2A3539)
-            val OnSurfaceVariant = Color(0xFFD0DDDA)
-            val InverseSurface = Color(0xFFE6ECEA)
-            val Outline = Color(0xFF7F8F8C)
-            val OutlineVariant = Color(0xFF3A4649)
-            val SurfaceBright = Color(0xFF323D42)
-            val SurfaceLowest = Color(0xFF0B0D10)
-            val SurfaceLow = Color(0xFF161D21)
-            val SurfaceHigh = Color(0xFF243035)
-            val Pill = Color(0xFF262B30)
+            val PrimaryContainer = Color(0xFF1E2D4A)
+            val OnPrimaryContainer = Color(0xFFD6E3FF)
+            val SecondaryContainer = Color(0xFF23262E)
+            val OnSecondaryContainer = Color(0xFFECEDF0)
+            val Foreground = Color(0xFFECEDF0)
+            val SurfaceVariant = Color(0xFF23262E)
+            val OnSurfaceVariant = Color(0xFFB4B8C1)
+            val InverseSurface = Color(0xFFECEDF0)
+            val Outline = Color(0xFF6E737D)
+            val OutlineVariant = Color(0xFF2E313A)
+            val SurfaceBright = Color(0xFF2B2E37)
+            val SurfaceLowest = Color(0xFF0B0C0F)
+            val SurfaceLow = Color(0xFF131519)
+            val SurfaceHigh = Color(0xFF1D2027)
+            val Pill = Color(0xFF23262E)
         }
         object Viewer {
             val FilmstripTrack = Color(0xFF2A2A2A)
             val Favourite = Color(0xFFFF4D5E)
             val Backdrop = Color(0xFF171A20)
-            val ActionPill = Color(0xB3202124)
+            val ActionPill = Color(0xD91C1E25)
             val MediaTrack = Color(0xFF292929)
             val Scrim = Color(0xA0000000)
             val SeekInactive = Color(0xFF888888)
-            val SelectionAccent = Color(0xFFB5E7DA)
+            val SelectionAccent = Color(0xFF7FA8FF)
             val ChromeScrimTop = Color(0xB8000000)
             val ChromeScrimBottom = Color(0xCC000000)
         }
@@ -57,22 +57,22 @@ object AtlasTokens {
             val Accent = Color(0xFF3E91FF)
         }
         object Shell {
-            val DarkSurface = Color(0xFF171B21)
+            val DarkSurface = Color(0xFF17191F)
             val DarkAccent = Viewer.SelectionAccent
         }
         object Light {
-            val PrimaryContainer = Color(0xFFBDEDE2)
-            val OnPrimaryContainer = Color(0xFF00382F)
-            val SecondaryContainer = Color(0xFFDDE7E4)
-            val SurfaceVariant = Color(0xFFE3EBE8)
-            val InverseSurface = Color(0xFF2A3236)
-            val InverseForeground = Color(0xFFEFF3F1)
-            val Outline = Color(0xFF70807D)
-            val OutlineVariant = Color(0xFFC9D3D0)
-            val SurfaceDim = Color(0xFFD9DFDC)
-            val SurfaceLow = Color(0xFFF8FAF8)
-            val SurfaceContainer = Color(0xFFF1F4F2)
-            val SurfaceHigh = Color(0xFFFBFCFB)
+            val PrimaryContainer = Color(0xFFDCE6FF)
+            val OnPrimaryContainer = Color(0xFF0B2A66)
+            val SecondaryContainer = Color(0xFFECEEF2)
+            val SurfaceVariant = Color(0xFFECEEF2)
+            val InverseSurface = Color(0xFF23262E)
+            val InverseForeground = Color(0xFFECEDF0)
+            val Outline = Color(0xFF737885)
+            val OutlineVariant = Color(0xFFD5D8DF)
+            val SurfaceDim = Color(0xFFDDE0E6)
+            val SurfaceLow = Color(0xFFFAFBFC)
+            val SurfaceContainer = Color(0xFFF1F3F6)
+            val SurfaceHigh = Color(0xFFFBFBFD)
         }
     }
 
@@ -88,21 +88,21 @@ object AtlasTokens {
     }
 
     object Spacing {
-        val Gutter = 18.dp
+        val Gutter = 16.dp
         val Section = 28.dp
         val TileGap = 10.dp
         val MinimumTarget = 48.dp
         val PillEdge = 12.dp
         val TabHeight = 60.dp
         val HeaderHeight = 56.dp
-        val GridGap = 3.dp
+        val GridGap = 2.dp
     }
 
     object Radii {
         val Cover = 20.dp
         val EmptyVisual = 28.dp
         val GridTile = 3.dp
-        val PersonCard = 24.dp
+        val PersonCard = 20.dp
         val PersonCover = 18.dp
     }
 
