@@ -95,10 +95,12 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
         rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
         rule.waitForIdle()
+        awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-empty-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-empty-dark.png")
 
         // This is an actual saved playback position, not a forced planning tag.
@@ -117,10 +119,12 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
         rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
         rule.waitForIdle()
+        awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-planning-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-planning-dark.png")
     }
 

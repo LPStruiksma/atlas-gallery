@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 
 /**
@@ -105,3 +108,52 @@ internal fun uiEvidenceProblem(bitmap: Bitmap): String? {
 
 private const val BLANK_STRIDE = 6
 private const val BLANK_RATIO = 2_000
+
+/**
+ * #366: SystemUI redraws the status-bar icons some time after the window asks
+ * for a new appearance, later than Compose goes idle: one CI planning-dark
+ * shot (run 44602607148) still had the light theme's dark icons on the dark
+ * page. Before a capture after a theme switch, poll for up to 5 s until the
+ * status-bar band holds icon ink of the right kind: light on [dark], else dark.
+ */
+internal fun awaitStatusBarIconInk(dark: Boolean) {
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    val res = instrumentation.targetContext.resources
+    val id = res.getIdentifier("status_bar_height", "dimen", "android")
+    val band = if (id != 0) res.getDimensionPixelSize(id) else 0
+    check(band > 0) { "No status bar height to sample" }
+    val deadline = SystemClock.uptimeMillis() + 5_000L
+    var hits = statusBarInkSamples(instrumentation.uiAutomation.takeScreenshot(), band, dark)
+    while (hits < STATUS_INK_MIN) {
+        check(SystemClock.uptimeMillis() < deadline) {
+            "Status-bar icons never turned ${if (dark) "light" else "dark"} ($hits ink samples)"
+        }
+        Thread.sleep(250L)
+        hits = statusBarInkSamples(instrumentation.uiAutomation.takeScreenshot(), band, dark)
+    }
+}
+
+private fun statusBarInkSamples(shot: Bitmap?, band: Int, dark: Boolean): Int {
+    val bitmap = requireNotNull(shot) { "Screenshot acquisition failed" }
+    val pixels = if (bitmap.config == Bitmap.Config.HARDWARE) {
+        bitmap.copy(Bitmap.Config.ARGB_8888, false)
+    } else bitmap
+    try {
+        var hits = 0
+        for (y in 0 until minOf(band, pixels.height) step 2) {
+            for (x in 0 until pixels.width step 2) {
+                val c = pixels.getPixel(x, y)
+                val l = (0.2126 * Color.red(c) + 0.7152 * Color.green(c) +
+                    0.0722 * Color.blue(c)) / 255.0
+                if (if (dark) l > 0.65 else l < 0.6) hits++
+            }
+        }
+        return hits
+    } finally {
+        if (pixels !== bitmap) pixels.recycle()
+        bitmap.recycle()
+    }
+}
+
+/** A clock and a few icons cover hundreds of 2-px samples; noise covers none. */
+private const val STATUS_INK_MIN = 40
