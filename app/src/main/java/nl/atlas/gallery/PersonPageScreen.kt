@@ -293,7 +293,8 @@ private fun PersonHeader(
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).testTag("atlas-person-name"))
+                modifier = Modifier.weight(1f).semantics { heading() }
+                    .testTag("atlas-person-name"))
             if (items != null) {
                 val videos = items.count { it.isVideo }
                 Text(nl.atlas.gallery.featurepeopleui.personPageCount(items.size - videos, videos),
