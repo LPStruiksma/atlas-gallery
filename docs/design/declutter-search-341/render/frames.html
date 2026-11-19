@@ -86,6 +86,12 @@ body.dark .menu{box-shadow:0 3px 8px rgba(0,0,0,.6);outline:1px solid #ffffff10}
 .badge{width:26px;height:26px;border-radius:13px;background:#E8590C;color:#fff;font:700 14px/26px Inter,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
 .tgt{border:1.5px dashed #E8590C;border-radius:6px}
 .inset{background:repeating-linear-gradient(135deg,rgba(232,89,12,.16) 0 6px,transparent 6px 12px);border:1px solid rgba(232,89,12,.55);color:#B3440A;font:600 9px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:center}
+body.qf{--page:#F6F7F9;--bg:#F6F7F9;--on-bg:#111318;--surface:#FFFFFF;--on-surface:#111318;--low:#FFFFFF;--cont:#FFFFFF;--high:#FFFFFF;--variant:#4A4F59;--primary:#2F6BE0;--on-primary:#FFFFFF;--outline:#5F6470;--outline-var:#ECEEF2;--sec-cont:#2F6BE0;--on-sec-cont:#FFFFFF;--kbd:#ECEEF2;--key:#FFFFFF;--key-ink:#111318;--track:#ECEEF2;font-family:'Inter Tight',Inter,sans-serif}
+body.qf.dark{--page:#0B0C0F;--bg:#0B0C0F;--on-bg:#ECEDF0;--surface:#17191F;--on-surface:#ECEDF0;--low:#17191F;--cont:#17191F;--high:#23262E;--variant:#B4B8C1;--primary:#7FA8FF;--on-primary:#0B0C0F;--outline:#9A9EA8;--outline-var:#23262E;--sec-cont:#7FA8FF;--on-sec-cont:#0B0C0F;--kbd:#17191F;--key:#23262E;--key-ink:#ECEDF0;--track:#23262E}
+body.qf .chip{border-radius:999px}body.qf .item{border-radius:20px;padding:8px}body.qf .thumb{border-radius:4px}body.qf .menu{border-radius:20px}body.qf .field{border-radius:999px}
+.menu.inline .mc{flex-direction:row;align-items:center;gap:8px;padding:0 8px}.menu.inline .field{width:240px}
+.clear{background:rgba(46,160,67,.18);border-top:1.5px dashed #2EA043;border-bottom:1.5px dashed #2EA043;color:#1A7F37;font:700 10px/1 Inter,sans-serif;display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 6px 0 0}
+body.dark .clear{color:#7EE787}
 body.land .kbd .k{height:34px}body.land .kbd{gap:6px}
 body.dark .inset{color:#FFB38A}
 .tag{position:absolute;z-index:101;left:8px;bottom:calc(var(--nb) + 6px);font:700 11px/1.3 Inter,sans-serif;background:#E8590C;color:#fff;border-radius:6px;padding:4px 7px;max-width:250px}
@@ -110,6 +116,7 @@ const FILES=[["IMG_20240612_093114.jpg","8.4 MB"],["VID_20240614_181502.mp4","21
 const P=new URLSearchParams(location.search);
 const F=P.get('f'), ANN=P.get('ann')!=='0', LAND=P.get('land')==='1';
 if(LAND)document.body.classList.add('land');
+if(P.get('qf')==='1')document.body.classList.add('qf');
 if(P.get('theme')==='dark') document.body.classList.add('dark');
 const W=LAND?832:384, H=LAND?384:832, ST=LAND?24:29, NB=LAND?0:16, IME=LAND?184:324;
 document.body.style.setProperty('--st',ST+'px');document.body.style.setProperty('--nb',NB+'px');
@@ -125,6 +132,7 @@ function swipe(staged){return `${header()}<div class="meta">IMG_20240612_093114.
 function review(list,q,o={}){const n=o.count??list.length;return `${header({active:o.active})}${o.verifying?'<div class="prog"><i></i></div>':''}<h2>Review staged files</h2><div class="list">${o.listHtml??rows(list,q,o.verifying)}</div><div class="tbtn" style="align-self:flex-start">Return to swiping</div><div class="btn filled ${o.disabled?'dis':''}" style="flex:none">Move ${n} to Android Trash…</div>${o.after??''}`}
 function menu(o){const top=ST+4+4+48, w=328, left=12+(W-24)-4-w; const chips=`<div class="chips"><div class="chip ${o.lib?'':'on'}">${o.lib?'':I.check}This screen</div><div class="chip ${o.lib?'on':''}">${o.lib?I.check:''}Whole library</div></div>`;
   const field=`<div style="display:flex;align-items:center"><div class="field ${o.focus?'focus':''}">${I.search}${o.q?`<span class="val">${o.q}${o.focus?'<span class="caret"></span>':''}</span>`:(o.focus?'<span class="caret" style="margin-left:-6px"></span><span style="margin-left:-6px">Search</span>':'Search')}</div><div class="ib" style="color:var(--variant)">${I.close}</div></div>`;
+  if(o.inline){const fld=field.replace('<div style="display:flex;align-items:center">','').replace(/<div class="ib" style="color:var\(--variant\)">.*<\/div><\/div>$/,'');const cls=`<div class="ib" style="color:var(--variant)">${I.close}</div>`;return {top,right:16,html:`<div class="menu inline" style="top:${top}px;right:16px"><div class="mc">${fld}${chips.replace('class="chips"','class="chips" style="height:48px"')}${cls}</div></div>`}}
   return {top,left,w,html:`<div class="menu" style="top:${top}px;left:${left}px;width:${w}px"><div class="mc">${field}${chips}${o.extra??''}</div></div>`}}
 function kbd(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="kbd" style="height:${IME+NB}px">${LAND?'':'<div class="sug"><span>img</span><span>image</span><span>vid</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
 function colStyle(imeOpen){const b=imeOpen?IME+NB:NB;return `top:${ST+4}px;bottom:${b+4}px`}
@@ -145,12 +153,12 @@ case 'S2-no-match': { const q='beach'; body=review([], q, {active:true,count:12,
 case 'S3-verifying': { body=review(FILES.slice(0,7),'',{verifying:true,disabled:true}); badge(17,W-40,ST+4+56+8-6); tagText='S3 · Verifying before Android Trash: search cannot enable actions'; insets(false); break;}
 case 'S4-error': { body=review(FILES.slice(0,7),''); extra=`<div class="toast" style="bottom:${NB+120}px">Couldn't verify selected files. Nothing was trashed.</div>`; badge(18,22,H-NB-170); tagText='S4 · Existing host error (Toast from MainActivity); retry = press Move again'; insets(false); break;}
 case 'S5-long': { const many=[]; for(let i=0;i<14;i++) many.push([FILES[i%12][0].replace('.', `_${String(i).padStart(3,'0')}.`),FILES[i%12][1]]); body=review(many,'',{count:214,disabled:true,after:`<div class="meta" style="flex:none">Review at most 200 files per Trash request. Unstage others or split into another session.</div>`}); badge(19,W-40,H-NB-120); tagText='S5 · 214 staged: lazy list, max-200 guard unchanged by filter'; insets(false); break;}
-case 'L-landscape-keyboard': { const q='IMG'; body=review(qMatch(q),q,{active:true,count:12}); const m=menu({q,focus:true}); extra=m.html+kbd(); anns.push({risk:[m.left,H-IME,m.w,m.top+126-(H-IME)]}); badge(20,m.left-14,H-IME-10); tagText='L · Landscape + IME: chip row may sit under keyboard (risk, verify)'; insets(true); break;}
+case 'L-landscape-keyboard': { const q='IMG'; body=review(qMatch(q),q,{active:true,count:12}); const m=menu({q,focus:true,inline:true}); extra=m.html+kbd(); const pb=m.top+8+56+8; anns.push({clear:[0,pb,W,H-IME-pb,`${H-IME-pb} dp clear above IME`]}); tgt(16,ST+8,48,48); badge(20,W-16-8-26,m.top-14); badge(21,6,ST+2); tgt(W-16-8-48,m.top+8+4,48,48); badge(22,W-150,pb-13); tagText='L'; insets(true); break;}
 default: body='unknown frame '+F;
 }
 const imeOpen=F==='C-keyboard'||F==='L-landscape-keyboard';
 R.innerHTML=status()+`<div class="col" style="${colStyle(imeOpen)}">${body}</div>`+extra+(imeOpen?'':nav());
-if(ANN){let a='';for(const x of anns){if(x.n)a+=`<div class="ann badge" style="left:${x.x}px;top:${x.y}px">${x.n}</div>`;else if(x.t)a+=`<div class="ann tgt" style="left:${x.t[0]}px;top:${x.t[1]}px;width:${x.t[2]}px;height:${x.t[3]}px"></div>`;else if(x.inset)a+=`<div class="ann inset" style="${x.right?'justify-content:flex-end;padding-right:6px;':''}left:${x.inset[0]}px;top:${x.inset[1]}px;width:${x.inset[2]}px;height:${x.inset[3]}px">${x.inset[3]>8?x.inset[4]:''}</div>`;else if(x.risk)a+=`<div class="ann risk" style="left:${x.risk[0]}px;top:${x.risk[1]}px;width:${x.risk[2]}px;height:${Math.max(4,x.risk[3])}px"></div>`}
+if(ANN){let a='';for(const x of anns){if(x.n)a+=`<div class="ann badge" style="left:${x.x}px;top:${x.y}px">${x.n}</div>`;else if(x.t)a+=`<div class="ann tgt" style="left:${x.t[0]}px;top:${x.t[1]}px;width:${x.t[2]}px;height:${x.t[3]}px"></div>`;else if(x.inset)a+=`<div class="ann inset" style="${x.right?'justify-content:flex-end;padding-right:6px;':''}left:${x.inset[0]}px;top:${x.inset[1]}px;width:${x.inset[2]}px;height:${x.inset[3]}px">${x.inset[3]>8?x.inset[4]:''}</div>`;else if(x.clear)a+=`<div class="ann clear" style="left:${x.clear[0]}px;top:${x.clear[1]}px;width:${x.clear[2]}px;height:${x.clear[3]}px">${x.clear[4]}</div>`;else if(x.risk)a+=`<div class="ann risk" style="left:${x.risk[0]}px;top:${x.risk[1]}px;width:${x.risk[2]}px;height:${Math.max(4,x.risk[3])}px"></div>`}
   R.insertAdjacentHTML('beforeend',a)}
 document.title='ready';
 </script></body></html>

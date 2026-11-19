@@ -217,6 +217,17 @@ class GeminiImageEditProviderTest {
         }
     }
 
+    @Test fun documentedRpcErrorInfoPolicyReasonIsARefusalWithoutMessageLeakage() {
+        val privateMessage = "private provider explanation"
+        val reply = """{"error":{"code":400,"message":"$privateMessage","status":"INVALID_ARGUMENT",
+            "details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"IMAGE_SAFETY"}]}}"""
+        GeminiHarness { FakeResponse.json(reply, 400) }.use { h ->
+            val result = outcome(h) as EditOutcome.Refused
+            assertEquals("error:IMAGE_SAFETY", result.providerCode)
+            assertFalse(result.toString().contains(privateMessage))
+        }
+    }
+
     @Test fun timeoutIsRetryableAndNotReplayed() {
         GeminiHarness { FakeResponse.json(successReply(), delayMs = 1_000) }.use { h ->
             val result = h.provider(readTimeoutMs = 150).submit(request()).await() as EditOutcome.Failed

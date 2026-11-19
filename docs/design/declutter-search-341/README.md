@@ -4,7 +4,7 @@
 
 - Contact sheets: [light](contact-sheet-light.png) · [dark](contact-sheet-dark.png)
 - Frames: [`frames/`](frames/). There are 13 frames, each in light and dark. Every frame is exactly 1080 × 2340 px (landscape is 2340 × 1080).
-- Generator: [`render/frames.html`](render/frames.html) and [`render/render.mjs`](render/render.mjs). Run `node docs/design/declutter-search-341/render/render.mjs [outDir] [--clean]`. `--clean` drops the orange annotations. The committed PNGs are then reduced to 256 colours with Pillow to keep the repository small.
+- Generator: [`render/frames.html`](render/frames.html) and [`render/render.mjs`](render/render.mjs). Run `node docs/design/declutter-search-341/render/render.mjs [outDir] [--clean] [--only=<frame>]`. `--clean` drops the orange annotations; `--only` re-renders one frame. The committed PNGs are then reduced to 256 colours with Pillow to keep the repository small.
 
 ## How the frames were made, and what is assumed
 
@@ -20,7 +20,9 @@
 | Font | Inter standing in for Roboto | Render container only |
 | Popup position | Right edge of the panel aligned to the search icon, top edge at the icon's bottom | M3 `DropdownMenu` default. Exact device bounds are **unverified** |
 
-Orange hatching marks insets. Dashed orange boxes mark 48 dp touch targets. Numbered badges point to the legend below. The red band (frame L) marks a risk.
+Orange hatching marks insets. Dashed orange boxes mark 48 dp touch targets. Numbered badges point to the legend below. The green band (frame L) marks the clearance between the panel and the keyboard.
+
+**Colours.** Frame L was revised on 2026-11-18 after Quiet Frame ([`QUIET_FRAME.md`](../QUIET_FRAME.md)) was approved, so it uses the Quiet Frame tokens: ground, surface, ink and accent colours, fully rounded chips and field, and a 20 dp panel radius. The other frames still use the earlier palette. The frames decide layout and behaviour; the implementation takes its colours from Quiet Frame.
 
 ## Frames and legend
 
@@ -38,7 +40,7 @@ Orange hatching marks insets. Dashed orange boxes mark 48 dp touch targets. Numb
 | **S3-verifying** | **17** The existing `atlas-declutter-verifying` progress bar shows. The `Keep` buttons and the Trash button are disabled, as on `main`. Search cannot enable any of them. |
 | **S4-error** | **18** This is the existing host error: a Toast from `MainActivity`, "Couldn't verify selected files. Nothing was trashed." Retrying means pressing Move again. Search adds no error state of its own, because it is a local in-memory filter with no IO. The Toast is drawn here; Android draws the real one. |
 | **S5-long** | **19** 214 staged files. The list is a `LazyColumn` with 160 px thumbnails and no eager decode. The existing max-200 guard disables Move and shows its message. A filter does not get around the guard, because it counts all staged files, not just the matches. |
-| **L-landscape-keyboard** | **20** **Risk found.** In landscape with the keyboard up, the bottom of the panel (about 211 dp) sits below the top of the keyboard (about 200 dp), so the chip row can be partly covered. The `safeDrawing` column also leaves no staged rows visible. Proposed handling: the Search key and Back hide the keyboard first, which brings the chips and rows back. Measure on a device before merge. If the chips are hidden even after the keyboard is dismissed, that blocks the merge. |
+| **L-landscape-keyboard** | *Revised 2026-11-18 after preflight [#6988128847](https://github.com/LPStruiksma/atlas-gallery/issues/341#issuecomment-6988128847) found the chip row under the keyboard.* **20** **Inset-aware single-row panel.** When the window has less than about 280 dp of height above the IME (landscape with the keyboard up), `AtlasSearch` lays out the query field (240 dp), **This screen**, **Whole library** and **Close** in one row instead of two. The panel is 72 dp tall (8 + 56 + 8), so its bottom sits at about 152 dp, against a keyboard top at about 200 dp (184 dp landscape IME, assumed). Portrait keeps the two-row panel (frames B and C). Proposed implementation: the shared component measures `WindowInsets.ime` and the window height, switches to the row layout below that threshold, and relaxes its 360 dp width cap only in that layout. No new component and no change to the swipe deck. **21** **Back** (header, 48 dp) stays visible above the keyboard. **22** About 48 dp stays clear above the IME (green band). The Move button stays above the keyboard through `safeDrawing`, and its count stays at 12. **Search does not need the keyboard dismissed first:** the field keeps focus and the cursor while either chip is tapped. Tapping **Whole library** goes straight to the D1 dialog (or D2 when nothing is staged), and the keyboard closes as the panel closes. **Focus and Back:** system Back with the keyboard up hides the keyboard first, leaves the panel open and keeps the query. A second Back closes the panel and clears the query. A third Back leaves Declutter, as on `main`. While the panel is open, a tap on the header Back button first closes the panel (a `DropdownMenu` popup takes outside taps), as in portrait. Close (48 dp) clears the query and collapses the panel. TalkBack order: field, This screen (selected), Whole library, Close. **Still true:** in landscape with the keyboard up, the `safeDrawing` column leaves no staged rows visible. They come back when the keyboard hides. Measure the real Samsung Keyboard height and popup bounds on the S24+ before merge. |
 
 ## Accessibility and interaction notes (proposed; to verify on device)
 

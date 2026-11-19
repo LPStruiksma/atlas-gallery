@@ -61,6 +61,26 @@ A stored service (`ProviderProfile`) has a `kind`: `ATLAS_PROTOCOL` (custom serv
 
 ## Errors, refusals and provider constraints
 
+### Bounded HTTP errors and documented hosted refusal shapes (AIE-24, #456)
+
+`EditHttpTransport` retains at most **64 KiB** from a 4xx/5xx response solely for an adapter to
+inspect a documented structured error. An advertised or streamed body over that limit is
+discarded; it is never placed in a failure's `toString()`, logs, telemetry, or user-visible text.
+The HTTP status keeps its existing auth/quota/client/server mapping and retryability. Reading an
+error does not change deadlines, cancellation, the rule that POST is never replayed, or the
+existing bounded retry of idempotent calls.
+
+Adapters match only allowlisted machine fields, never a provider's free-text `message`/`msg`:
+
+| Provider shape | ATLAS outcome | Reviewed source and date |
+|---|---|---|
+| Gemini `google.rpc.Status.error.details[].reason`, when the reason is one of Gemini's documented prompt/finish policy reasons (for example `IMAGE_SAFETY`) | `Refused("error:<reason>")`; other HTTP errors retain their technical mapping | [Google RPC error model](https://cloud.google.com/apis/design/errors#error_model) and [Gemini `FinishReason` / `BlockedReason` reference](https://ai.google.dev/api/generate-content#FinishReason), reviewed **2026-11-18** |
+| fal validation `detail[].type == "content_policy_violation"` | `Refused("fal:content_policy_violation")`; any other 422 remains an invalid-request failure | [fal queue/API error handling](https://docs.fal.ai/model-apis/model-endpoints/queue), reviewed **2026-11-18** |
+
+Successful Gemini `promptFeedback.blockReason`/policy `finishReason` and fal
+`has_nsfw_concepts=true` keep their existing refusal mappings. Unknown codes and prose are not
+guessed into policy refusals.
+
 | Outcome | Meaning | UI/telemetry treatment |
 |---|---|---|
 | `refused_policy` | Provider explicitly declines a prompt/image under its policy or moderation | State a **provider refusal**, with a sanitized category/code when available; don't imply a network defect or promise a different provider will comply |
