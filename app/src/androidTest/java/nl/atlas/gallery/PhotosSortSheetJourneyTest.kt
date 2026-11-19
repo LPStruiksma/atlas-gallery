@@ -7,9 +7,11 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -45,7 +47,7 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         // Set the desired mode explicitly and verify what the sheet renders.
         for (choice in MediaSortKey.entries) {
             open()
-            compose.onNodeWithTag(choice.tag()).performClick()
+            compose.tap(hasTestTag(choice.tag()))
             closed()
             compose.waitForNode(hasText("photos & videos", substring = true))
             compose.onNodeWithTag("atlas-nav-photos").assertIsSelected()
@@ -66,7 +68,7 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         open()
         compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
         compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
-        compose.onNodeWithTag("atlas-photos-reshuffle").performClick()
+        compose.tap(hasTestTag("atlas-photos-reshuffle"))
         closed()
         compose.onNodeWithTag("atlas-nav-photos").assertIsSelected()
 
@@ -81,9 +83,16 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         closed()
     }
 
+    /**
+     * Opens the sheet and returns once its first and last choice exist (rule 5):
+     * the sheet is a separate window that attaches a moment after the tap.
+     */
     private fun open() {
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.waitForNode(hasTestTag("atlas-photos-sort-sheet"))
+        compose.tap(hasTestTag("atlas-photos-sort"))
+        compose.awaitThat("the sort sheet open with all choices") {
+            compose.exists(hasTestTag(MediaSortKey.entries.first().tag())) &&
+                compose.exists(hasTestTag(MediaSortKey.entries.last().tag()))
+        }
     }
 
     private fun closed() {
@@ -130,12 +139,19 @@ abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
         }
     }
 
+    /**
+     * Waits up to 10 s for an ATLAS window to hold focus, pressing Wait on a
+     * launcher ANR dialog meanwhile. As before, a timeout is not a failure
+     * here: the Back assertions that follow decide.
+     */
     private fun awaitAppFocus() {
-        val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
-        while (!APP_FOCUS.containsMatchIn(describeFocus()) &&
-            android.os.SystemClock.uptimeMillis() < deadline) {
-            clearSystemAnrDialogs(attempts = 1)
-            Thread.sleep(250L)
+        try {
+            compose.awaitThat("an ATLAS window to hold focus", timeoutMs = 10_000L) {
+                APP_FOCUS.containsMatchIn(describeFocus()) ||
+                    clearSystemAnrDialogs(attempts = 1).let { false }
+            }
+        } catch (timeout: AssertionError) {
+            android.util.Log.w("ATLAS_SORT_BACK", "no ATLAS focus after 10 s: ${timeout.message}")
         }
     }
 

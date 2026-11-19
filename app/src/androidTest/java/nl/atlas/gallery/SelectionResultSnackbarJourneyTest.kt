@@ -56,6 +56,8 @@ import nl.atlas.gallery.featureorganization.SelectionResultDuration
 import nl.atlas.gallery.featureorganization.SelectionResultMessages
 import nl.atlas.gallery.featureorganization.SelectionResultSnackbarHost
 import nl.atlas.gallery.featureorganization.albumTransferMessage
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -98,14 +100,14 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
-        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(0)
 
         // 1. Before: Android's own Trash consent over the selection. No ATLAS result yet.
-        compose.onNodeWithTag("atlas-selection-trash").performClick()
+        compose.tap(hasTestTag("atlas-selection-trash"))
         val consent = waitForTrashConsent()
-        Thread.sleep(600L) // let the system dialog finish its enter animation
+        awaitScreenStill("the Trash consent dialog's enter animation")
         saveUiEvidence("selection-result-365-$theme-trash-prompt.png")
 
         // 2. Cancel: the photos stay, the selection stays, one honest result above its pill.
@@ -121,7 +123,7 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
         // 3. Accept: Android trashes the two items, selection ends, the new
         //    result replaces the old one and anchors to the nav pill.
-        compose.onNodeWithTag("atlas-selection-trash").performClick()
+        compose.tap(hasTestTag("atlas-selection-trash"))
         waitForTrashConsent().allow()
         waitForResumed()
         compose.waitForNode(resultWithText("Moved selected items to Android Trash"))
@@ -163,9 +165,9 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
             compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
             compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
-            compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+            compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
             compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
-            compose.onNodeWithTag("atlas-selection-trash").performClick()
+            compose.tap(hasTestTag("atlas-selection-trash"))
             waitForTrashConsent().cancel()
             waitForResumed()
             compose.waitForNode(resultWithText(text))
@@ -180,6 +182,8 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
             assertNotOverVisiblePill()
             saveUiEvidence("selection-result-376-$theme-rotation-landscape.png")
             val hold = LANDSCAPE_HOLD_MS - (android.os.SystemClock.uptimeMillis() - shownAt)
+            // Deliberately real time, not an outcome: the result's deadline counts
+            // real monotonic ms, and this hold is what makes a restarted timer visible.
             if (hold > 0) Thread.sleep(hold)
             compose.waitForIdle()
             assertOneResult(text)
@@ -402,6 +406,40 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
         }
     }
 
+    /**
+     * A system dialog is not a Compose window, so awaitWindowSettled() cannot
+     * see it (and it holds focus, which that wait requires for ATLAS). Instead
+     * wait until two screenshots in a row are identical: the dialog's enter
+     * animation has ended. Evidence only, so a screen that never stops changing
+     * is logged rather than failed; saveUiEvidence still checks the frame.
+     */
+    private fun awaitScreenStill(what: String) {
+        var last: IntArray? = null
+        try {
+            compose.awaitThat("the screen to stop changing after $what", timeoutMs = 5_000L) {
+                val now = screenSample()
+                (now != null && now.contentEquals(last)).also { last = now }
+            }
+        } catch (timeout: AssertionError) {
+            android.util.Log.w("AtlasSelectionResult", "screen still changing: ${timeout.message}")
+        }
+    }
+
+    /** A coarse grid of screen pixels, enough to tell a moving dialog from a still one. */
+    private fun screenSample(): IntArray? {
+        val shot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            ?: return null
+        try {
+            val step = 24
+            return IntArray((shot.width / step) * (shot.height / step)) { i ->
+                val columns = shot.width / step
+                shot.getPixel((i % columns) * step, (i / columns) * step)
+            }
+        } finally {
+            shot.recycle()
+        }
+    }
+
     private fun waitForTrashConsent(): TrashConsent {
         val automation = interactiveUiAutomation()
         val deadline = System.currentTimeMillis() + 60_000L
@@ -568,12 +606,15 @@ private fun assertAboveAnchor(compose: ComposeTestRule, anchorTag: String) {
     // wm size/density change the window insets can still be moving, and one
     // run measured 11.0 dp while the same head's other run passed. A layout
     // that stays outside the brief still fails, with the last measurement.
-    val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
-    while (true) {
-        compose.waitForIdle()
-        val problem = anchorProblem(compose, anchorTag) ?: return
-        if (android.os.SystemClock.uptimeMillis() >= deadline) throw AssertionError(problem)
-        Thread.sleep(250L)
+    compose.waitForIdle()
+    var problem: String? = null
+    try {
+        compose.awaitThat("the result to sit in its brief above $anchorTag", timeoutMs = 10_000L) {
+            problem = anchorProblem(compose, anchorTag)
+            problem == null
+        }
+    } catch (timeout: AssertionError) {
+        throw AssertionError(problem ?: timeout.message, timeout)
     }
 }
 
