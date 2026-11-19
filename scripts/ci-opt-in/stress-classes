@@ -1,4 +1,0 @@
-# #448 diagnostic (removed before review): in ONE process, does the keyboard
-# test break the album proportions test run after it? Control: album alone.
-2 nl.atlas.gallery.Diag448AlbumOnlySuite
-2 nl.atlas.gallery.Diag448AfterKeyboardSuite
