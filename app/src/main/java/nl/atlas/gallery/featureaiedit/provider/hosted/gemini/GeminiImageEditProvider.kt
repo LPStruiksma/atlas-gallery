@@ -285,17 +285,22 @@ data class GeminiModel(
             aspectRatios = WIDE
         )
 
-        /** Nano Banana Pro: thinking model for the hardest edits. Preview id, may change. */
+        /**
+         * Nano Banana Pro: thinking model for the hardest edits. Stable (GA) id since
+         * 2026-05-28; the old `gemini-3-pro-image-preview` was shut down 2026-06-25
+         * (ai.google.dev/gemini-api/docs/deprecations, read 2026-11-19, #463).
+         * Pro documents only the ten common aspect ratios: 1:4, 4:1, 1:8, 8:1 are Flash-only.
+         */
         val PRO = GeminiModel(
-            id = "gemini-3-pro-image-preview",
-            displayName = "Nano Banana Pro (preview)",
+            id = "gemini-3-pro-image",
+            displayName = "Nano Banana Pro",
             maxInputImages = 14,
             sizes = listOf(
                 GeminiSize("1K", ONE_K, usd(14, "List price ~US\$0.134 per 1K image plus input (PROVIDERS.md [G2], 2026-11-15)")),
                 GeminiSize("2K", TWO_K, usd(14, "List price ~US\$0.134 per 2K image plus input (PROVIDERS.md [G2], 2026-11-15)")),
                 GeminiSize("4K", FOUR_K, usd(25, "List price ~US\$0.24 per 4K image plus input (PROVIDERS.md [G2], 2026-11-15)"))
             ),
-            aspectRatios = WIDE
+            aspectRatios = COMMON
         )
 
         /** Nano Banana 2 Lite: fastest, up to 3 input images, 1K only. Price not in PROVIDERS.md. */
