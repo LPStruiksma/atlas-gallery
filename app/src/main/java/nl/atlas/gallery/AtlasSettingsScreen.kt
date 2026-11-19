@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -70,10 +71,22 @@ internal fun AtlasSettingsScreen(
     /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
-    onClearSearchHistory: () -> Unit = {}
+    onClearSearchHistory: () -> Unit = {},
+    performance: PerformanceAggregates = PerformanceSession.aggregate
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
+    var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    // Aggregate is not Compose state; refresh the read-only report once its
+    // latest preview and heap samples have been forwarded.
+    var performanceReadVersion by remember { mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
+        if (performanceExpanded) {
+            PerformanceSession.updateViewer()
+            PerformanceSession.sampleHeap()
+            performanceReadVersion++
+        }
+    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -128,6 +141,51 @@ internal fun AtlasSettingsScreen(
                     "atlas-people-link-v4", onLinkV4)
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
+                }
+                SettingsActionRow("Performance", "atlas-settings-performance",
+                    onClick = { performanceExpanded = !performanceExpanded },
+                    value = if (performanceExpanded) "Hide" else "Show")
+                if (performanceExpanded) {
+                    // Explicit read, not a hot polling loop or a MediaStore query.
+                    val metrics = listOf(
+                        Triple("Cold start → cached grid", "cold_start_ms", "ms"),
+                        Triple("Viewer preview", "viewer_ms", "ms"),
+                        Triple("Grid frame (active scroll)", "grid_frame_ms", "ms"),
+                        Triple("Face scan", "face_photos_min", "photos/min"),
+                        Triple("Visual index", "visual_photos_min", "photos/min"),
+                        Triple("Java heap / maximum", "heap_fraction", "fraction")
+                    )
+                    val actionLabels = listOf(
+                        "App open → cached grid", "Grid scroll / fling", "Open photo",
+                        "Viewer swipe", "Face + visual indexing", "New photo appears",
+                        "Return from viewer", "Memory / stability", "Open People",
+                        "Open person / scroll", "Search", "Grid pinch zoom",
+                        "Viewer full-res zoom", "Video first frame", "Tabs / albums",
+                        "Selection", "Bulk actions", "People review", "Stories",
+                        "Details / favourite", "Duplicate / trash review", "Sort / Settings"
+                    )
+                    val allMetrics = metrics + actionLabels.mapIndexed { index, title ->
+                        Triple("A${index + 1} · $title", "action_a${index + 1}_ms", "ms")
+                    }
+                    val measurements = remember(performanceReadVersion) {
+                        allMetrics.map { spec -> spec to performance.snapshot(spec.second) }
+                    }
+                    measurements.forEach { (spec, summary) ->
+                        val (title, metric, unit) = spec
+                        val value = if (summary.count == 0) "Not measured" else
+                            "p50 %.2f · p90 %.2f · p95 %.2f %s · n=%d".format(
+                                java.util.Locale.US, summary.p50, summary.p90, summary.p95, unit, summary.count)
+                        SettingsMetricRow(title, "atlas-perf-$metric", value)
+                    }
+                    val jank = remember(performanceReadVersion) {
+                        performance.positiveFraction("grid_frame_over_budget") to
+                            performance.snapshot("grid_frame_over_budget").count
+                    }
+                    val jankLabel = if (jank.first == null) "Not measured" else
+                        "%.1f%% over display frame budget · n=%d".format(
+                            java.util.Locale.US, jank.first!! * 100.0, jank.second)
+                    SettingsMetricRow("Grid frame budget violations",
+                        "atlas-perf-grid-jank", jankLabel)
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
@@ -225,5 +283,14 @@ private fun SettingsActionRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun SettingsMetricRow(label: String, tag: String, value: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag)) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(value, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -16,6 +16,7 @@ import nl.atlas.gallery.featureface.FaceScanBatchPolicy
 import nl.atlas.gallery.featureface.FaceScanStepResult
 import nl.atlas.gallery.featureface.FaceScanStep
 import nl.atlas.gallery.featurevisual.VisualScanResult
+import nl.atlas.gallery.PerformanceSession
 
 /**
  * Bounded WorkManager bridge. SQLite alone checkpoints scan progress.
@@ -132,6 +133,7 @@ suspend fun runPeopleScanBatch(
         }
         val jobContext = currentCoroutineContext()
         val budget = FaceBatchBudget(maxPhotos = 8, maxElapsedMs = 2_000)
+        val faceStageStartMs = SystemClock.elapsedRealtime()
         val scan = FaceScanBatchPolicy(
             clockElapsedMs = { SystemClock.elapsedRealtime() },
             step = {
@@ -144,6 +146,10 @@ suspend fun runPeopleScanBatch(
             }
         ).run(budget)
         jobContext.ensureActive()
+        PerformanceSession.recordThroughput(
+            "face_photos_min", scan.photosIndexed,
+            SystemClock.elapsedRealtime() - faceStageStartMs
+        )
         // Second stage: its own bounded step, rechecking every guard per item,
         // so a thermal or grant change mid-batch stops it before the next image.
         val guard = {
@@ -151,8 +157,13 @@ suspend fun runPeopleScanBatch(
         }
         // The step checks the guard before any work and reports a hold, so a
         // run whose faces are done still comes back for its visual queue.
+        val visualStageStartMs = SystemClock.elapsedRealtime()
         val visual: VisualScanResult? = session.visualStage?.run(guard)
         jobContext.ensureActive()
+        if (visual != null) PerformanceSession.recordThroughput(
+            "visual_photos_min", visual.indexed,
+            SystemClock.elapsedRealtime() - visualStageStartMs
+        )
         // Cluster publication and any next batch are the host's decision,
         // made against the same live session checks.
         session.afterBatch(scan, visual)
