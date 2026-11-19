@@ -147,45 +147,19 @@ internal fun AtlasSettingsScreen(
                     value = if (performanceExpanded) "Hide" else "Show")
                 if (performanceExpanded) {
                     // Explicit read, not a hot polling loop or a MediaStore query.
-                    val metrics = listOf(
-                        Triple("Cold start → cached grid", "cold_start_ms", "ms"),
-                        Triple("Viewer preview", "viewer_ms", "ms"),
-                        Triple("Grid frame (active scroll)", "grid_frame_ms", "ms"),
-                        Triple("Face scan", "face_photos_min", "photos/min"),
-                        Triple("Visual index", "visual_photos_min", "photos/min"),
-                        Triple("Java heap / maximum", "heap_fraction", "fraction")
-                    )
-                    val actionLabels = listOf(
-                        "App open → cached grid", "Grid scroll / fling", "Open photo",
-                        "Viewer swipe", "Face + visual indexing", "New photo appears",
-                        "Return from viewer", "Memory / stability", "Open People",
-                        "Open person / scroll", "Search", "Grid pinch zoom",
-                        "Viewer full-res zoom", "Video first frame", "Tabs / albums",
-                        "Selection", "Bulk actions", "People review", "Stories",
-                        "Details / favourite", "Duplicate / trash review", "Sort / Settings"
-                    )
-                    val allMetrics = metrics + actionLabels.mapIndexed { index, title ->
-                        Triple("A${index + 1} · $title", "action_a${index + 1}_ms", "ms")
+                    // #121 brief rev 2: six headline rows first, action details below.
+                    val overview = remember(performanceReadVersion) {
+                        PerformanceReport.overview(performance)
                     }
-                    val measurements = remember(performanceReadVersion) {
-                        allMetrics.map { spec -> spec to performance.snapshot(spec.second) }
+                    val actions = remember(performanceReadVersion) {
+                        PerformanceReport.actions(performance)
                     }
-                    measurements.forEach { (spec, summary) ->
-                        val (title, metric, unit) = spec
-                        val value = if (summary.count == 0) "Not measured" else
-                            "p50 %.2f · p90 %.2f · p95 %.2f %s · n=%d".format(
-                                java.util.Locale.US, summary.p50, summary.p90, summary.p95, unit, summary.count)
-                        SettingsMetricRow(title, "atlas-perf-$metric", value)
-                    }
-                    val jank = remember(performanceReadVersion) {
-                        performance.positiveFraction("grid_frame_over_budget") to
-                            performance.snapshot("grid_frame_over_budget").count
-                    }
-                    val jankLabel = if (jank.first == null) "Not measured" else
-                        "%.1f%% over display frame budget · n=%d".format(
-                            java.util.Locale.US, jank.first!! * 100.0, jank.second)
-                    SettingsMetricRow("Grid frame budget violations",
-                        "atlas-perf-grid-jank", jankLabel)
+                    overview.forEach { SettingsMetricRow(it) }
+                    Text("Action details",
+                        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)
+                            .testTag("atlas-perf-actions-heading"),
+                        style = MaterialTheme.typography.titleSmall)
+                    actions.forEach { SettingsMetricRow(it) }
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
@@ -287,10 +261,12 @@ private fun SettingsActionRow(
 }
 
 @Composable
-private fun SettingsMetricRow(label: String, tag: String, value: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(value, style = MaterialTheme.typography.bodySmall,
+private fun SettingsMetricRow(row: PerformanceReport.Row) {
+    // Label above, value below: a long value wraps under the label and never
+    // squeezes it (#610), also at 200% font. Read-only, no click target.
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(row.tag)) {
+        Text(row.label, style = MaterialTheme.typography.bodyLarge)
+        Text(row.value, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

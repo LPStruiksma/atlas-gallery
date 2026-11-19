@@ -1,3 +1,10 @@
-# PERF-0 synthetic Settings baseline screenshot, top metrics + A1-A11 inventory
-perf-0-settings-top
-perf-0-settings-actions
+# PERF-0 (#121 brief rev 2) Settings Performance report, synthetic aggregates only.
+perf-0-overview-light-populated
+perf-0-overview-dark-populated
+perf-0-overview-light-empty
+perf-0-overview-dark-empty
+perf-0-actions-light-populated
+perf-0-actions-dark-populated
+perf-0-actions-light-empty
+perf-0-actions-dark-empty
+perf-0-overview-light-populated-font200

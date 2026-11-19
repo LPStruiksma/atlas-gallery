@@ -10,7 +10,10 @@ import kotlin.math.ceil
 class PerformanceAggregates(private val capacity: Int = 256) {
     init { require(capacity in 1..4096) }
 
-    data class Summary(val count: Int, val p50: Double?, val p90: Double?, val p95: Double?)
+    data class Summary(
+        val count: Int, val p50: Double?, val p90: Double?, val p95: Double?,
+        val max: Double? = null
+    )
     private val keys = setOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
         "grid_frame_over_budget",
         "face_photos_min", "visual_photos_min", "heap_fraction") +
@@ -30,7 +33,7 @@ class PerformanceAggregates(private val capacity: Int = 256) {
         if (sorted.isEmpty()) return Summary(0, null, null, null)
         fun percentile(fraction: Double) =
             sorted[(ceil(sorted.size * fraction).toInt() - 1).coerceIn(sorted.indices)]
-        return Summary(sorted.size, percentile(0.50), percentile(0.90), percentile(0.95))
+        return Summary(sorted.size, percentile(0.50), percentile(0.90), percentile(0.95), sorted.last())
     }
 
     /** Proportion of sampled frames exceeding the actual display frame budget. */
