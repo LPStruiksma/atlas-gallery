@@ -285,6 +285,8 @@ class PersonPageJourneyTest {
         val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
             .pendingPersonSelectionRotationState
         var dark by mutableStateOf(true)
+        var routeGrant by mutableStateOf(grant)
+        var catalogueEpoch by mutableStateOf(1L)
 
         // On each Activity instance, re-attach the same synthetic route with
         // the SAME configuration-retained holder, not a Bundle/rememberSaveable.
@@ -294,8 +296,9 @@ class PersonPageJourneyTest {
                     Surface(Modifier.fillMaxSize(), color = DeepBg,
                         contentColor = MaterialTheme.colorScheme.onBackground) {
                         val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
-                        NativePersonAlbumRoute(host, grant, request,
-                            discovery.status?.people, records, rememberLazyGridState(), 1L,
+                        NativePersonAlbumRoute(host, routeGrant, request,
+                            discovery.status?.people, records, rememberLazyGridState(),
+                            catalogueEpoch,
                             selectionRotationState = holder, onBack = {},
                             onOpen = { _, _ -> })
                     }
@@ -398,6 +401,33 @@ class PersonPageJourneyTest {
             rotateAndReattach(landscape = false)
             settle()
             saveUiEvidence("selection-404-light-person-portrait-after.png")
+
+            // Negative journey on the same real rendered person route: a
+            // newer publication must immediately disable the old action and
+            // permanently discard the snapshot, even if identity later reverts.
+            catalogueEpoch = 2L
+            waitFor("publication mismatch drops the person selection") {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            catalogueEpoch = 1L
+            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
+
+            // A changed grant is an independent invalidation boundary.
+            compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+                .performTouchInput { longClick() }
+            waitForText("1 selected")
+            routeGrant = "2"
+            waitFor("grant mismatch drops the person selection") {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            routeGrant = grant
+            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
         } finally {
             instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
             instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
