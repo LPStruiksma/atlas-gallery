@@ -1,2 +1,4 @@
-# Settings rows (2026-11-19, PR #571): long Face scanning status sits under its title.
-settings-long-value-row
+# Settings rows (#610, PR #571): long Face scanning status sits under its title.
+settings-long-value-row-light
+settings-long-value-row-dark
+settings-long-value-row-dark-font130
