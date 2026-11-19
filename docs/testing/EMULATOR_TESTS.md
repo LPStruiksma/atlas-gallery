@@ -94,6 +94,8 @@ So tests bring their own. The androidTest APK carries two input methods (nothing
 
 `typeText`, `hideKeyboard` and `awaitKeyboardShown` work the same with either. No migrated test depends on LatinIME.
 
+In a Dialog or Popup the kit sends keyboard requests to the focused window. A Dialog sits above the keyboard, so its own IME inset stays 0 while the keyboard is up; the kit then counts the keyboard as up when that window asks for it and the input method's window is on screen, and waits until the Dialog has stopped moving. Each keyboard wait logs, under `ATLAS_TESTKIT`, every Compose window with its focus and IME inset and which one it picked.
+
 Kit code that the system starts must be plain Java on `android.*` only. The system runs an input method in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
 
 ## Stress a test
