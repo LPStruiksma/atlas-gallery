@@ -1,5 +1,11 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.ComponentActivity
@@ -13,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -42,7 +49,8 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class AiEditUiEvidenceTest {
     private val compose = createAndroidComposeRule<ComponentActivity>()
-    @get:Rule val rules = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val rules = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(compose)
     private val candidate = AiEditWorkingCandidate(
         id = "synthetic", fileName = "synthetic.png", parentId = null,
         prompt = "Brighten the sky", providerId = "atlas-synthetic-mock",
@@ -191,16 +199,21 @@ class AiEditUiEvidenceTest {
         // Focus the text input to exercise the IME-inset path on devices that
         // show a software keyboard for instrumentation text entry.
         compose.runOnIdle {
+            // Verify the IME path in the real full-screen geometry; the compact
+            // 320 × 420 dp host above checks the no-keyboard scrolling case.
+            compact = false
             state = AiEditUiState(phase = AiEditPhase.Composing, prompt = "Brighten")
         }
         compose.waitForIdle()
         compose.onNodeWithTag("atlas-ai-edit-prompt").performScrollTo()
-        compose.onNodeWithTag("atlas-ai-edit-prompt").performClick()
-        compose.onNodeWithTag("atlas-ai-edit-prompt").performTextInput(" sky")
+        compose.tap(hasTestTag("atlas-ai-edit-prompt"))
+        // This assertion measures layout against the IME, not just system bars.
+        compose.typeText(hasTestTag("atlas-ai-edit-prompt"), " sky", KeyboardAfter.Shown)
         compose.onNodeWithTag("atlas-ai-edit-generate").performScrollTo()
         compose.waitForIdle()
         assertWithinHost("atlas-ai-edit-generate")
         assertWithinBars("atlas-ai-edit-generate")
+        compose.hideKeyboard()
         File(compose.activity.cacheDir, "aie-evidence-before.png").delete()
         File(compose.activity.cacheDir, "aie-evidence-after.png").delete()
     }

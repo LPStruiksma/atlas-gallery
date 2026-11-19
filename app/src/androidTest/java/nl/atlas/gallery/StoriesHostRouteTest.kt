@@ -21,7 +21,11 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasTestTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.featurestories.AtlasStoriesScreen
 import nl.atlas.gallery.featurestories.StoryPlaybackState
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
@@ -99,8 +103,7 @@ class StoriesHostRouteTest {
         // This is an actual saved playback position, not a forced planning tag.
         dark = false
         empty = false
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
         // Save the live deck, then withhold the newly minted revision's
@@ -147,11 +150,13 @@ class StoriesHostRouteTest {
         }
         rule.onNodeWithTag("atlas-albums-stories-entry")
             .assertTextContains("1 story from your library")
-            .performClick()
+        rule.tap(hasTestTag("atlas-albums-stories-entry"))
+        rule.awaitThat("the Stories grid open") { rule.exists(hasTestTag("atlas-story-on_this_day")) }
         rule.onNodeWithTag("atlas-stories-grid").assertExists()
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
+        rule.tap(hasTestTag("atlas-story-on_this_day"))
+        rule.awaitThat("the story player open") { rule.exists(hasTestTag("atlas-story-open-gallery")) }
         rule.onNodeWithTag("atlas-story-player").assertExists()
-        rule.onNodeWithTag("atlas-story-open-gallery").performClick()
+        rule.tap(hasTestTag("atlas-story-open-gallery"))
         rule.runOnIdle {
             assertEquals(listOf(deck.cards.single().items.first().uri), opened.toList())
         }
@@ -206,8 +211,7 @@ class StoriesHostRouteTest {
                 }
             }
         }
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of $size").assertExists()
         rule.onNodeWithTag("atlas-story-open-gallery").performClick()
@@ -259,8 +263,7 @@ class StoriesHostRouteTest {
         rule.waitUntil(10_000L) {
             rule.onAllNodesWithTag("atlas-story-on_this_day").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
 
@@ -286,8 +289,7 @@ class StoriesHostRouteTest {
 
         // Open the 3-moment story; after a recreate where the story is gone
         // entirely there is nothing to reopen either.
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithContentDescription("Moment 1 of 3").assertExists()
         source = records.take(1)
         restoration.emulateSavedInstanceStateRestore()
@@ -350,8 +352,7 @@ class StoriesHostRouteTest {
         }
 
         fun playStoryToMomentTwo() {
-            rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-            rule.onNodeWithTag("atlas-story-pause").performClick()
+            openStoryPaused()
             rule.onNodeWithTag("atlas-story-next").performClick()
             rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
         }
@@ -370,14 +371,14 @@ class StoriesHostRouteTest {
             holdNewDecks = false
             rule.onNodeWithTag("atlas-albums-stories-entry")
                 .assertTextContains("1 story from your library")
-                .performClick()
-            rule.onNodeWithTag("atlas-stories-grid").assertExists()
+            rule.tap(hasTestTag("atlas-albums-stories-entry"))
+            rule.awaitThat("the Stories grid open") { rule.exists(hasTestTag("atlas-stories-grid")) }
             rule.onNodeWithTag("atlas-story-player").assertDoesNotExist()
             rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
         }
 
         // System Back while the restore waits.
-        rule.onNodeWithTag("atlas-albums-stories-entry").performClick()
+        rule.tap(hasTestTag("atlas-albums-stories-entry"))
         playStoryToMomentTwo()
         recreateWhileTheDeckIsNotReady()
         rule.runOnIdle { requireNotNull(dispatcher).onBackPressed() }
@@ -400,5 +401,15 @@ class StoriesHostRouteTest {
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
         rule.onNodeWithContentDescription("Resume slideshow").assertExists()
         rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
+    }
+
+    /**
+     * Opens the On this day story and pauses it. The player replaces the grid,
+     * so wait for its controls before the pause tap (rule 5).
+     */
+    private fun openStoryPaused() {
+        rule.tap(hasTestTag("atlas-story-on_this_day"))
+        rule.awaitThat("the story player open") { rule.exists(hasTestTag("atlas-story-pause")) }
+        rule.tap(hasTestTag("atlas-story-pause"))
     }
 }

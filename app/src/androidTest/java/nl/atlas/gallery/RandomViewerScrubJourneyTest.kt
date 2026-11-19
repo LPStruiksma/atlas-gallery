@@ -16,6 +16,9 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -56,8 +59,7 @@ class RandomViewerScrubJourneyTest {
 
         // Photos -> Random, then the fixture album (it inherits the order).
         waitFor(hasText("photos & videos", substring = true))
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-media-sort-random").performClick()
+        pickInSortSheet("atlas-media-sort-random")
         waitFor(hasText("photos & videos", substring = true))
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         val card = hasTestTag("atlas-album-card") and hasText(FOLDER, substring = true)
@@ -118,8 +120,7 @@ class RandomViewerScrubJourneyTest {
         compose.onNodeWithTag("atlas-header-back").performClick()
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         waitFor(hasText("photos & videos", substring = true))
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-reshuffle").performClick()
+        pickInSortSheet("atlas-photos-reshuffle")
         waitFor(hasText("photos & videos", substring = true))
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         waitFor(card)
@@ -210,6 +211,16 @@ class RandomViewerScrubJourneyTest {
     }
 
     private fun waitFor(matcher: SemanticsMatcher) = compose.waitForNode(matcher)
+
+    /** Opens the Photos sort sheet, waits for [item] in it (rule 5), taps it and waits for the sheet to close. */
+    private fun pickInSortSheet(item: String) {
+        compose.tap(hasTestTag("atlas-photos-sort"))
+        compose.awaitThat("the sort sheet open with $item") { compose.exists(hasTestTag(item)) }
+        compose.tap(hasTestTag(item))
+        compose.awaitThat("the sort sheet closed after $item") {
+            !compose.exists(hasTestTag("atlas-photos-sort-sheet"))
+        }
+    }
 
     private companion object {
         const val FIXTURES = 40

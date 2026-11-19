@@ -158,6 +158,7 @@ import nl.atlas.gallery.featureorganization.planAlbumTransfer
 import nl.atlas.gallery.featureorganization.SamsungSelectionTopBar
 import nl.atlas.gallery.featureorganization.toggleAll
 import nl.atlas.gallery.featureorganization.GalleryBatchSelection
+import nl.atlas.gallery.featureorganization.SelectionRotationState
 import nl.atlas.gallery.featureorganization.MAX_BATCH_SHARE_ITEMS
 import nl.atlas.gallery.featureorganization.MAX_BATCH_TRASH_ITEMS
 import nl.atlas.gallery.featureorganization.resolveBatchSelection
@@ -992,7 +993,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Exact local folder paths remain in app-private preferences; never put them
     // in a saved-instance Bundle (which Android can hand to other components).
     val albumOrderStore = remember(context) {
-        context.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
+        // #435: application context, so the warmed-up file is reused without disk access.
+        context.applicationContext.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
     }
     var albumCustomOrder by remember {
         mutableStateOf(
@@ -1097,7 +1099,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return publishedNow.displayItems(actual).takeIf { it === media }
     }
     val mediaSortPrefs = remember(context) {
-        context.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
     }
     var sort by remember {
         mutableStateOf(
@@ -1154,13 +1156,31 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         withFrameNanos { }
         timelineEntryDensity = null
     }
-    // D batch selection: in-memory only, bound to one list reference + epoch.
+    // Save only bounded keys, never a MediaRecord list or actionable selection.
+    // A pending snapshot stays non-actionable until the current grant,
+    // publication and destination have been reconciled.
+    // The restored snapshot remains non-actionable until the publication,
+    // current grant and exact album scope have all been verified.
+    // Unlike rememberSaveable, this pending selection is never written to a Bundle:
+    // it survives Activity recreation through vm, but not process death.
+    var pendingSelectionRestore by remember(vm) { vm.pendingSelectionRotationState }
     var batchSelection by remember {
         mutableStateOf<GalleryBatchSelection?>(null, referentialEqualityPolicy())
     }
     var batchOperating by remember { mutableStateOf(false) }
-    // The album a Photos selection was started in; another album ends it.
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
+    val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
+    // A live selection is mirrored for Activity recreation. A restored
+    // snapshot is only a pending request until reconciled with the publication.
+    SideEffect {
+        val live = batchSelection
+        if (live != null) {
+            val snapshot = SelectionRotationState.capture(live,
+                selectionAlbumRoute?.relativePath, selectionAlbumRoute?.volumeName,
+                selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
+            if (pendingSelectionRestore != snapshot) pendingSelectionRestore = snapshot
+        }
+    }
     // Search text, selected reviewed identities and recents belong to ONE
     // permission publication AND one confirmed People generation. Neither
     // tokens nor queries are saved across process/Activity recreation.
@@ -1214,8 +1234,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
     var peopleNumbersOpen by remember { mutableStateOf(false) }
-    // In memory only: a person key or name never enters saved instance state.
-    var nativePersonAlbum by remember { mutableStateOf<NativePersonAlbumRequest?>(null) }
+    // A retained ViewModel owns the person route across Activity rotation.
+    // Its key and name never enter saved instance state; process death drops it.
+    var nativePersonAlbum by remember(vm) { vm.nativePersonAlbumState }
     val nativePersonGridState = rememberLazyGridState()
     // An old render must NEVER expose old Person IDs/terms while LaunchedEffect
     // is still adopting the new grant or People identity.
@@ -1696,20 +1717,56 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // library reload of the same view keeps it (Samsung GRID:S4): the URIs
     // still in the newly published list stay selected, the rest drop out.
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch, tab,
-        originalProportions, timelineEnabled, personFilter, albumRoute) {
-        val selection = batchSelection ?: return@LaunchedEffect
-        if (tab != 0 || originalProportions || !timelineEnabled || personFilter != null ||
-            selectionAlbumRoute != albumRoute || !grants.hasAny ||
-            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L) {
+        originalProportions, timelineEnabled, personFilter, albumRoute,
+        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending) {
+        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+            personFilter != null || !grants.hasAny ||
+            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
+        if (invalidScope) {
             batchSelection = null
-        } else if (selection.source !== visible || selection.epoch != publishedGallery.epoch) {
-            val source = visible
-            val epoch = publishedGallery.epoch
-            val rebased = withContext(Dispatchers.Default) {
-                val worker = currentCoroutineContext()
-                selection.rebasedOnto(source, epoch) { worker.ensureActive() }
+            pendingSelectionRestore = null
+            return@LaunchedEffect
+        }
+        val selection = batchSelection
+        if (selection != null) {
+            if (selectionAlbumRoute != albumRoute) {
+                batchSelection = null
+                pendingSelectionRestore = null
+            } else if (selection.source !== visible ||
+                selection.epoch != publishedGallery.epoch) {
+                val rebased = withContext(Dispatchers.Default) {
+                    val worker = currentCoroutineContext()
+                    selection.rebasedOnto(visible, publishedGallery.epoch) {
+                        worker.ensureActive()
+                    }
+                }
+                if (batchSelection === selection) batchSelection = rebased
             }
-            if (batchSelection === selection) batchSelection = rebased
+        } else {
+            val saved = pendingSelectionRestore ?: return@LaunchedEffect
+            // Async sorting and album filtering may publish empty placeholders.
+            // Do not consume a pending save until the exact scope has loaded.
+            if (busy || sortPending || albumSelectionPending || scopedPending ||
+                visible.isEmpty()) return@LaunchedEffect
+            val restored = withContext(Dispatchers.Default) {
+                val worker = currentCoroutineContext()
+                saved.restore(visible, publishedGallery.epoch, selectionGrantBits,
+                    albumRoute?.relativePath, albumRoute?.volumeName,
+                    albumRoute?.mediaFilter?.name,
+                    authorized = readGalleryMediaGrant(context) == grants &&
+                        publishedGallery.matchesGrantedScope(grants)
+                ) { worker.ensureActive() }
+            }
+            if (pendingSelectionRestore === saved && batchSelection == null &&
+                readGalleryMediaGrant(context) == grants &&
+                vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                publishedGallery.matchesGrantedScope(grants)) {
+                pendingSelectionRestore = null
+                if (restored != null) {
+                    selectionAlbumRoute = albumRoute
+                    batchSelection = restored
+                }
+            }
         }
     }
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch) {
@@ -1850,7 +1907,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             // G's dated LazyGrid has additional full-span HEADER slots.
             // Resolve the photo's slot using G's exact pure index off-main;
             // never scroll to the raw MediaRecord index after a dated group.
-            val shared = context.getSharedPreferences(
+            val shared = context.applicationContext.getSharedPreferences(
                 "atlas_featuregrid_density", android.content.Context.MODE_PRIVATE)
             val density = GridDensity.fromColumns(
                 shared.getInt("photos", GridDensity.MEDIUM.columns))
@@ -2009,6 +2066,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
             selectionResults.show("Moved selected items to Android Trash")
         } else {
@@ -2023,6 +2081,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -2056,6 +2115,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         selectionResults.show(albumTransferMessage(plan.mode, plan.target.title, result))
         if (result.done > 0) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -2404,7 +2464,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
             viewerUri != null -> closeViewer()
-            batchSelection != null -> batchSelection = null
+            batchSelection != null -> {
+                batchSelection = null
+                pendingSelectionRestore = null
+            }
             personFilter != null -> personFilter = null
             tab == 0 && album != null -> {
                 album = null
@@ -2944,6 +3007,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
                                     openAiEdit(photo)
                                     batchSelection = null
+                                    pendingSelectionRestore = null
                                 })
                             } ?: emptyList()
                     ) + (if (Build.VERSION.SDK_INT >= 30) listOf(
@@ -3397,6 +3461,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             // The existing deferred effect re-checks grant,
                                             // route and URI before scrolling the ratio list.
@@ -3452,6 +3517,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             pendingRatioAnchor = request.focal?.let {
                                                 it.itemIndex to it.mediaKey
@@ -3715,6 +3781,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 sorted = sorted,
                                 gridState = nativePersonGridState,
                                 catalogueEpoch = publishedGallery.epoch,
+                                selectionRotationState = vm.pendingPersonSelectionRotationState,
                                 onBack = { nativePersonAlbum = null },
                                 onOpen = { items, record -> openViewer(items, record.uri) },
                                 facetPeople = people,
@@ -3767,8 +3834,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     v4SyncSummary = v4SyncState
                                 ),
                                 actions = discovery.status?.actions ?: PeopleActionAvailability(),
-                                restoring = access && discovery.status == null &&
-                                    discoveryHost.discoveryOptedIn(),
+                                restoring = peopleHomeRestoring(access,
+                                    discoveryHost.discoveryOptedIn(), discovery.status),
                                 onOpenProfile = { id ->
                                     personBwFolderOnly = false
                                     personFilter = id

@@ -18,6 +18,10 @@ import nl.atlas.gallery.featureaiedit.save.AiEditSaver
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // #435: load the preference files the first Photos grid reads, off Main.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }
+        }
         // Persist one privacy-redacted trace before Android's original crash handler runs.
         LastCrashRecorder.install(this)
         // Finish interrupted AI-copy cleanup after process death. No gallery

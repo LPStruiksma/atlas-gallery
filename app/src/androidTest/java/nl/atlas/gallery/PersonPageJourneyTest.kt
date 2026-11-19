@@ -1,6 +1,20 @@
 package nl.atlas.gallery
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.lifecycle.ViewModelProvider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -61,6 +75,7 @@ import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import androidx.compose.ui.test.SemanticsMatcher
@@ -235,6 +250,200 @@ class PersonPageJourneyTest {
             compose.waitForIdle()
         }
         compose.waitForNode(hasTestTag("atlas-ratio-gallery"), WAIT_MS, useUnmergedTree = true)
+    }
+
+    /**
+     * #404: unlike a plain composition/theme toggle, this recreates the real
+     * ComponentActivity four times. The test supplies its fixture-backed page
+     * content again in the new Activity, as MainActivity does in onCreate;
+     * only the ViewModel-owned selection snapshot crosses that boundary.
+     * No real people or photos are used.
+     */
+    @Test fun selectionOnPersonPageSurvivesRealActivityRotation() {
+        val grant = "1" // Matches the synthetic catalogueEpoch and the live grant fence.
+        val host = host()
+        drain(host, grant)
+        val epoch = checkNotNull(host.displayEpoch(grant))
+        val group = store.peopleReview(epoch)!!.clusters.unknownClusters
+            .maxBy { it.members.size }
+        val matchingUris = checkNotNull(host.personPageFaces(grant, group.members)).keys
+        val selectedRecords = records.filter { it.uri in matchingUris }.take(2)
+        assertEquals("two authorized synthetic person photos", 2, selectedRecords.size)
+        val ids = selectedRecords.map { it.id }
+        val expectedUris = selectedRecords.map { it.uri }.toSet()
+        val request = NativePersonAlbumRequest(PersonPageTarget.Unnamed(group.id), "")
+        val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
+            .pendingPersonSelectionRotationState
+        var dark by mutableStateOf(true)
+        var increasedFontScale by mutableStateOf(false)
+        var routeGrant by mutableStateOf(grant)
+        var catalogueEpoch by mutableStateOf(1L)
+
+        // On each Activity instance, re-attach the same synthetic route with
+        // the SAME configuration-retained holder, not a Bundle/rememberSaveable.
+        val page: @Composable () -> Unit = {
+            if (composing) {
+                AtlasGalleryTheme(dark = dark) {
+                    val density = LocalDensity.current
+                    // Synthetic font-scale stress without changing the emulator's
+                    // global setting: the selection action must still fit landscape.
+                    CompositionLocalProvider(LocalDensity provides Density(
+                        density.density, if (increasedFontScale) 1.3f else density.fontScale
+                    )) {
+                        Surface(Modifier.fillMaxSize(), color = DeepBg,
+                            contentColor = MaterialTheme.colorScheme.onBackground) {
+                            val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
+                            NativePersonAlbumRoute(host, routeGrant, request,
+                                discovery.status?.people, records, rememberLazyGridState(),
+                                catalogueEpoch,
+                                selectionRotationState = holder, onBack = {},
+                                onOpen = { _, _ -> })
+                        }
+                    }
+                }
+            }
+        }
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        compose.setContent { page() }
+        waitForTag("atlas-person-page")
+        ids.forEach { waitForTag("atlas-timeline-media-$it") }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+            .performTouchInput { longClick() }
+        waitForText("1 selected")
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+
+        fun assertPersonSelection() {
+            waitForText("2 selected")
+            compose.onNodeWithTag("atlas-person-select-count").assertExists()
+            compose.onNodeWithTag("atlas-person-remove-confirm").assertExists()
+            // Both controls remain inside the current S24+ viewport, apart
+            // from each other, in portrait AND constrained landscape.
+            val root = compose.onRoot().getUnclippedBoundsInRoot()
+            val count = compose.onNodeWithTag("atlas-person-select-count")
+                .getUnclippedBoundsInRoot()
+            val action = compose.onNodeWithTag("atlas-person-remove-confirm")
+                .getUnclippedBoundsInRoot()
+            assertTrue("selection header is inside viewport", count.top >= root.top &&
+                count.bottom < action.top)
+            assertTrue("person action stays inside navigation-safe viewport",
+                action.bottom <= root.bottom)
+            ids.forEach { id ->
+                val tag = "atlas-timeline-media-$id"
+                compose.onNodeWithTag("atlas-timeline-grid")
+                    .performScrollToNode(hasTestTag(tag))
+                compose.onNodeWithTag(tag).assertIsSelected()
+            }
+            compose.waitForIdle()
+            assertEquals("configuration holder keeps exactly the same keys",
+                expectedUris, holder.value?.encoded?.drop(3)?.toSet())
+            assertEquals(request.opening, holder.value?.opening)
+            // #404: visible semantics alone can mean a 5px sliver below the
+            // person avatar, with the checked overlay entirely hidden.
+            // Require at least half of a selected square above the action bar
+            // and below the pinned person header in every landscape capture.
+            val selectedTile = compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
+                .assertIsDisplayed().getUnclippedBoundsInRoot()
+            if (root.right - root.left > root.bottom - root.top) {
+                val pinnedHeader = compose.onNodeWithTag("atlas-scrolling-header")
+                    .getUnclippedBoundsInRoot()
+                val visibleTop = maxOf(selectedTile.top, pinnedHeader.bottom, root.top)
+                val visibleBottom = minOf(selectedTile.bottom, action.top, root.bottom)
+                assertTrue("checked person tile must be at least half visible in landscape",
+                    visibleBottom - visibleTop >=
+                        (selectedTile.bottom - selectedTile.top) * 0.5f)
+            }
+            waitForText("2 selected")
+        }
+
+        fun rotateAndReattach(landscape: Boolean) {
+            lateinit var before: ComponentActivity
+            compose.activityRule.scenario.onActivity { before = it }
+            instrumentation.uiAutomation.setRotation(
+                if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+                else android.app.UiAutomation.ROTATION_FREEZE_0)
+            // UiAutomation rotation can update the window configuration in place
+            // on the API35 fixture Activity. Explicitly recreate after requesting
+            // orientation so this test actually exercises an Activity boundary,
+            // rather than waiting for a system-dependent automatic relaunch.
+            compose.activityRule.scenario.recreate()
+            compose.activityRule.scenario.onActivity {
+                assertTrue("rotation must replace the ComponentActivity", it !== before)
+                val retained = ViewModelProvider(it)[GalleryViewModel::class.java]
+                    .pendingPersonSelectionRotationState
+                assertSame("snapshot lives in the Activity-retained ViewModel", holder, retained)
+                applyAtlasSystemBars(it.window, dark = dark)
+                it.setContent { page() }
+            }
+            waitFor("person page laid out in requested orientation") {
+                val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+                val bounds = roots.maxByOrNull {
+                    it.boundsInRoot.width * it.boundsInRoot.height
+                }?.boundsInRoot
+                bounds != null && (bounds.width > bounds.height) == landscape
+            }
+            assertPersonSelection()
+        }
+
+        try {
+            assertPersonSelection()
+            settle()
+            saveUiEvidence("selection-404-dark-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            settle()
+            saveUiEvidence("selection-404-dark-person-landscape.png")
+            rotateAndReattach(landscape = false)
+            settle()
+            saveUiEvidence("selection-404-dark-person-portrait-after.png")
+
+            dark = false
+            compose.activityRule.scenario.onActivity {
+                applyAtlasSystemBars(it.window, dark = false)
+            }
+            assertPersonSelection()
+            settle()
+            saveUiEvidence("selection-404-light-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            settle()
+            saveUiEvidence("selection-404-light-person-landscape.png")
+            increasedFontScale = true
+            assertPersonSelection() // 130% text must keep count/action in bounds.
+            settle()
+            saveUiEvidence("selection-404-light-person-landscape-font130.png")
+            increasedFontScale = false
+            rotateAndReattach(landscape = false)
+            settle()
+            saveUiEvidence("selection-404-light-person-portrait-after.png")
+
+            // Negative journey on the same real rendered person route: a
+            // newer publication must immediately disable the old action and
+            // permanently discard the snapshot, even if identity later reverts.
+            catalogueEpoch = 2L
+            waitFor("publication mismatch drops the person selection") {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            catalogueEpoch = 1L
+            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
+
+            // A changed grant is an independent invalidation boundary.
+            compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+                .performTouchInput { longClick() }
+            waitForText("1 selected")
+            routeGrant = "2"
+            waitFor("grant mismatch drops the person selection") {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            routeGrant = grant
+            waitForTag("atlas-timeline-media-${ids[0]}")
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
+        } finally {
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
     }
 
     @Test fun nameOnThePersonPageThenReopenShowsTheNameAndHideSurvivesRestart() {

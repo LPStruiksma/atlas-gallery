@@ -392,6 +392,9 @@ class PeopleDiscoveryHostTest {
         granted = false
         grant = null
         compose.awaitThat("scheduler cancel on revoke", WAIT_MS) { scheduler.cancels.get() >= 1 }
+        // revoke() cancels the scheduler before it invalidates the store, on
+        // the publication's IO thread: wait for that step too, then assert.
+        compose.awaitThat("store hides the epoch on revoke", WAIT_MS) { store.progress(epoch) == null }
         assertNull(batch())
         assertNull(store.progress(epoch))
         assertNull(store.clusterState(epoch))
