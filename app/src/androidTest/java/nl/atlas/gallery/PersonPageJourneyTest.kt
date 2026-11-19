@@ -10,6 +10,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -314,16 +315,6 @@ class PersonPageJourneyTest {
             waitForText("2 selected")
             compose.onNodeWithTag("atlas-person-select-count").assertExists()
             compose.onNodeWithTag("atlas-person-remove-confirm").assertExists()
-            ids.forEach { id ->
-                val tag = "atlas-timeline-media-$id"
-                compose.onNodeWithTag("atlas-timeline-grid")
-                    .performScrollToNode(hasTestTag(tag))
-                compose.onNodeWithTag(tag).assertIsSelected()
-            }
-            compose.waitForIdle()
-            assertEquals("configuration holder keeps exactly the same keys",
-                expectedUris, holder.value?.encoded?.drop(3)?.toSet())
-            assertEquals(request.opening, holder.value?.opening)
             // Both controls remain inside the current S24+ viewport, apart
             // from each other, in portrait AND constrained landscape.
             val root = compose.onRoot().getUnclippedBoundsInRoot()
@@ -335,6 +326,20 @@ class PersonPageJourneyTest {
                 count.bottom < action.top)
             assertTrue("person action stays inside navigation-safe viewport",
                 action.bottom <= root.bottom)
+            ids.forEach { id ->
+                val tag = "atlas-timeline-media-$id"
+                compose.onNodeWithTag("atlas-timeline-grid")
+                    .performScrollToNode(hasTestTag(tag))
+                compose.onNodeWithTag(tag).assertIsSelected()
+            }
+            compose.waitForIdle()
+            assertEquals("configuration holder keeps exactly the same keys",
+                expectedUris, holder.value?.encoded?.drop(3)?.toSet())
+            assertEquals(request.opening, holder.value?.opening)
+            // Leave the count and contextual action visible in every capture,
+            // even when the selected tiles required a scroll to inspect.
+            compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
+            waitForText("2 selected")
         }
 
         fun rotateAndReattach(landscape: Boolean) {
