@@ -373,6 +373,43 @@ class EditHttpTransportTest {
         }
     }
 
+    /** #464: a provider's documented non-secret headers are sent as given, beside the auth. */
+    @Test fun extraHeadersAreSentBesideAuth() {
+        var captured: FakeRequest? = null
+        withServer({ captured = it; FakeResponse(200, body = "{}".toByteArray()) }) { server ->
+            val result = transport(server).execute(config(),
+                EditHttpRequest(EditHttpMethod.POST, "submit", EditHttpBody.Json("{}".toByteArray()),
+                    mapOf("X-Fal-Object-Lifecycle-Preference" to """{"expiration_duration_seconds":3600}""")),
+                EditHttpAuth.Scheme("Key", "synthetic"))
+            assertTrue(result is EditHttpResult.Success)
+            assertEquals("""{"expiration_duration_seconds":3600}""",
+                captured!!.headers["x-fal-object-lifecycle-preference"])
+            assertEquals("Key synthetic", captured!!.headers["authorization"])
+            assertEquals("no-store", captured!!.headers["cache-control"])
+        }
+    }
+
+    @Test fun unsafeExtraHeadersAreRefusedBeforeConnecting() {
+        val calls = AtomicInteger()
+        withServer({ calls.incrementAndGet(); FakeResponse(200) }) { server ->
+            val transport = transport(server)
+            for (headers in listOf(
+                mapOf("Authorization" to "Bearer x"), mapOf("authorization" to "x"), mapOf("Cookie" to "a=b"),
+                mapOf("Host" to "evil.example"), mapOf("Content-Type" to "text/plain"), mapOf("Accept" to "*/*"),
+                mapOf("Cache-Control" to "max-age=60"), mapOf("x-goog-api-key" to "k"), mapOf("X-Api" to "a\r\nX-Evil: 1"),
+                mapOf("X-Api" to "a\u0000b"), mapOf("X-Api" to ""), mapOf("X-Api" to "a".repeat(1025)),
+                mapOf("X Api" to "a"), mapOf("" to "a"), mapOf("X-Custom" to "a"),
+                (1..5).associate { "X-H$it" to "v" }
+            )) {
+                val auth = if (headers.keys.singleOrNull() == "X-Custom") EditHttpAuth.CustomHeader("X-Custom", "s")
+                    else EditHttpAuth.None
+                assertEquals(headers.keys.toString(), EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false),
+                    transport.execute(config(), EditHttpRequest(EditHttpMethod.GET, "status", headers = headers), auth))
+            }
+            assertEquals(0, calls.get())
+        }
+    }
+
     @Test fun invalidSchemeOrSecretIsRefusedBeforeConnecting() {
         val calls = AtomicInteger()
         withServer({ calls.incrementAndGet(); FakeResponse(200) }) { server ->
