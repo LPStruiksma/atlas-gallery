@@ -38,7 +38,9 @@ import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 /**
@@ -177,10 +179,13 @@ class PerfA2GridFlingFramesBenchmarkTest {
         // one down. Compose synchronization happens only BETWEEN captures.
         for ((index, down) in listOf(true, true, false, false, true).withIndex()) {
             val sampler = WindowFrames(compose.activity.window)
+            var postGestureFrames = false
             val captured = try {
                 sampler.start()
                 injectFling(x, if (down) bottom else top, if (down) top else bottom)
-                SystemClock.sleep(550L) // include natural inertia/settling
+                // Keep capturing until 12 real post-release window frames,
+                // or report that the emulator stopped drawing before then.
+                postGestureFrames = sampler.awaitPostGestureFrames(12, 950L)
                 sampler.stop()
             } finally {
                 sampler.close()
@@ -207,6 +212,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 .put("frames", sample.frames.size)
                 .put("callback_reports_dropped", captured.sumOf { it.droppedCallbacks })
                 .put("nonpositive_vsync_intervals", sample.nonPositive)
+                .put("post_release_12_frames_observed", postGestureFrames)
                 .put("stats", stats(sample.frames.map { it.durationNs }, sample.intervals, budgetNs)))
             before = after
         }
@@ -238,22 +244,49 @@ class PerfA2GridFlingFramesBenchmarkTest {
     }
 
     private fun injectFling(x: Float, startY: Float, endY: Float) {
+        // Schedule a real-uptime input sequence rather than advancing the
+        // Compose test clock. Await the last injected event, not a timer.
         val automation = instrumentation.uiAutomation
         val downAt = SystemClock.uptimeMillis()
-        fun send(action: Int, y: Float) {
-            val motion = MotionEvent.obtain(downAt, SystemClock.uptimeMillis(), action, x, y, 0)
-            try {
-                motion.source = InputDevice.SOURCE_TOUCHSCREEN
-                assertTrue("Input injection failed", automation.injectInputEvent(motion, true))
-            } finally { motion.recycle() }
+        val scheduled = Executors.newSingleThreadScheduledExecutor()
+        val finished = CountDownLatch(1)
+        val failure = AtomicReference<Throwable?>(null)
+        try {
+            for (step in 0..13) {
+                scheduled.schedule(Runnable {
+                    try {
+                        if (failure.get() == null) {
+                            val action = when (step) {
+                                0 -> MotionEvent.ACTION_DOWN
+                                13 -> MotionEvent.ACTION_UP
+                                else -> MotionEvent.ACTION_MOVE
+                            }
+                            val y = when (step) {
+                                0 -> startY
+                                13 -> endY
+                                else -> startY + (endY - startY) * step / 12f
+                            }
+                            val event = MotionEvent.obtain(
+                                downAt, SystemClock.uptimeMillis(), action, x, y, 0)
+                            try {
+                                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                                check(automation.injectInputEvent(event, true)) {
+                                    "Real touchscreen injection failed at step " + step
+                                }
+                            } finally { event.recycle() }
+                        }
+                    } catch (t: Throwable) {
+                        failure.compareAndSet(null, t)
+                    } finally {
+                        if (step == 13) finished.countDown()
+                    }
+                }, step * 16L, TimeUnit.MILLISECONDS)
+            }
+            check(finished.await(10, TimeUnit.SECONDS)) { "Scheduled real-time gesture never finished" }
+            failure.get()?.let { throw it }
+        } finally {
+            scheduled.shutdownNow()
         }
-        send(MotionEvent.ACTION_DOWN, startY)
-        repeat(12) { i ->
-            SystemClock.sleep(16L)
-            send(MotionEvent.ACTION_MOVE, startY + (endY - startY) * (i + 1) / 12f)
-        }
-        SystemClock.sleep(16L)
-        send(MotionEvent.ACTION_UP, endY)
     }
 
     private data class Frame(val vsyncNs: Long, val durationNs: Long, val droppedCallbacks: Int)
@@ -263,9 +296,18 @@ class PerfA2GridFlingFramesBenchmarkTest {
         private val frames = Collections.synchronizedList(ArrayList<Frame>())
         private var startNs = 0L
         private var active = false
+        @Volatile private var postReleaseLatch: CountDownLatch? = null
         private val listener = Window.OnFrameMetricsAvailableListener { _, data, dropped ->
             frames.add(Frame(data.getMetric(FrameMetrics.VSYNC_TIMESTAMP),
                 data.getMetric(FrameMetrics.TOTAL_DURATION), dropped))
+            postReleaseLatch?.countDown()
+        }
+        fun awaitPostGestureFrames(count: Int, timeoutMs: Long): Boolean {
+            val latch = CountDownLatch(count)
+            postReleaseLatch = latch
+            val completed = latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+            postReleaseLatch = null
+            return completed
         }
         fun start() {
             check(!active)
