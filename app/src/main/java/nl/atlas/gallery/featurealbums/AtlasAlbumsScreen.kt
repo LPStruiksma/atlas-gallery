@@ -268,7 +268,16 @@ private fun AtlasAlbumSortMenu(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(albumSortLabel(choice), style = MaterialTheme.typography.bodyLarge)
+                        // #20 brief: the selected row shows accent text as well as the
+                        // accent radio; the label wraps (never clips) at large font scales.
+                        Text(
+                            albumSortLabel(choice),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (choice == sort) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+                                .testTag("atlas-album-sort-label-" + choice.name.lowercase())
+                        )
                         RadioButton(selected = choice == sort, onClick = null)
                     }
                 }

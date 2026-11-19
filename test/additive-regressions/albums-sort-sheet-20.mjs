@@ -40,3 +40,23 @@ test("Albums sort sheet follows Quiet Frame: surface colour and 28 dp top radius
   assert.match(sortMenu, /topStart = AtlasTokens\.Radii\.Sheet, topEnd = AtlasTokens\.Radii\.Sheet/);
   assert.doesNotMatch(sortMenu, /surfaceContainerLow/);
 });
+
+test("selected Albums sort label uses accent text as well as the radio (#20 brief item 2)", () => {
+  assert.match(
+    sortMenu,
+    /color = if \(choice == sort\) MaterialTheme\.colorScheme\.primary\s*else MaterialTheme\.colorScheme\.onSurface/,
+  );
+  assert.match(sortMenu, /Modifier\.weight\(1f\)/, "label wraps instead of squeezing the radio");
+});
+
+test("a 200% font capture of the Albums sort sheet is declared and journeyed (#20 brief item 6)", () => {
+  const manifest = readFileSync(new URL("../../scripts/ui-evidence.d/12-albums-sort.txt", import.meta.url), "utf8");
+  for (const mode of ["light", "dark"]) assert.match(manifest, new RegExp("^albums-12-font200-" + mode + "$", "m"));
+  const journey = readFileSync(
+    new URL("../../app/src/androidTest/java/nl/atlas/gallery/featurealbums/AlbumsSortSheetJourneyTest.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(journey, /fontScale = 2f/);
+  assert.match(journey, /lineCount in 1\.\.2/);
+  assert.match(journey, /hasVisualOverflow/);
+});

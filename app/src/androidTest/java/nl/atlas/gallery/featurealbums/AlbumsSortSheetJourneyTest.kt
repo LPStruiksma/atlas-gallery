@@ -16,6 +16,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -55,32 +60,7 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
 
     @Test fun allFourSortsCloseReopenRemainSelectedAndBackDismisses() {
         val callbacks = mutableListOf<AlbumSort>()
-        rule.setContent {
-            var sort by remember { mutableStateOf(AlbumSort.RECENT) }
-            AtlasGalleryTheme(dark = dark) {
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                        AtlasAlbumsScreen(
-                            albums = albums,
-                            sort = sort,
-                            onSort = { chosen -> callbacks += chosen; sort = chosen },
-                            onOpenAlbum = {},
-                            mediaFilter = AlbumMediaFilter.ALL,
-                            onMediaFilterChange = {},
-                            onReorderAlbums = { error("A sort choice cannot reorder albums") },
-                            coverIllustration = { album ->
-                                val tones = listOf(
-                                    Color(0xFF618D96), Color(0xFFB2A18C),
-                                    Color(0xFF5E8374), Color(0xFF7A738F)
-                                )
-                                Box(Modifier.fillMaxSize().background(
-                                    tones[album.mediaCount % tones.size]))
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        show(callbacks)
 
         for (choice in AlbumSort.entries) {
             open()
@@ -110,6 +90,78 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
         closed()
         rule.runOnIdle { assertEquals(before, callbacks.size) }
         assertEquals(AlbumSort.entries.toList(), callbacks)
+    }
+
+    /**
+     * #20 brief item 6: at 200% font the four labels stay whole on one or two
+     * lines, all four rows stay inside the sheet and on screen; the render
+     * shows the sheet anchored to the bottom above the navigation inset.
+     */
+    @Test fun twoHundredPercentFontKeepsLabelsWholeAndSheetAnchored() {
+        val callbacks = mutableListOf<AlbumSort>()
+        show(callbacks, initial = AlbumSort.COUNT, fontScale = 2f)
+        open()
+        AlbumSort.entries.forEach { entry ->
+            rule.onNodeWithTag(entry.tag()).assertIsDisplayed()
+            val label = rule.onNodeWithTag("atlas-album-sort-label-" + entry.name.lowercase(),
+                useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            label.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            val layout = layouts.single()
+            assertTrue("${entry.name} label is one or two lines at 200%",
+                layout.lineCount in 1..2)
+            assertTrue("${entry.name} label is not clipped at 200%",
+                !layout.hasVisualOverflow)
+        }
+        rule.onNodeWithTag(AlbumSort.COUNT.tag()).assertIsSelected()
+        val sheet = rule.onNodeWithTag("atlas-album-sort-sheet").fetchSemanticsNode().boundsInRoot
+        val lastRow = rule.onNodeWithTag(AlbumSort.CUSTOM.tag()).fetchSemanticsNode().boundsInRoot
+        val firstRow = rule.onNodeWithTag(AlbumSort.RECENT.tag()).fetchSemanticsNode().boundsInRoot
+        assertTrue("all four choices sit inside the sheet",
+            firstRow.top >= sheet.top && lastRow.bottom <= sheet.bottom)
+        rule.waitForIdle()
+        saveUiEvidence("albums-12-font200-$mode.png")
+        back()
+        closed()
+        rule.runOnIdle { assertTrue("dismiss changes nothing", callbacks.isEmpty()) }
+    }
+
+    private fun show(
+        callbacks: MutableList<AlbumSort>,
+        initial: AlbumSort = AlbumSort.RECENT,
+        fontScale: Float = 1f
+    ) {
+        rule.setContent {
+            var sort by remember { mutableStateOf(initial) }
+            val base = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(base.density, fontScale = fontScale)
+            ) {
+                AtlasGalleryTheme(dark = dark) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                            AtlasAlbumsScreen(
+                                albums = albums,
+                                sort = sort,
+                                onSort = { chosen -> callbacks += chosen; sort = chosen },
+                                onOpenAlbum = {},
+                                mediaFilter = AlbumMediaFilter.ALL,
+                                onMediaFilterChange = {},
+                                onReorderAlbums = { error("A sort choice cannot reorder albums") },
+                                coverIllustration = { album ->
+                                    val tones = listOf(
+                                        Color(0xFF618D96), Color(0xFFB2A18C),
+                                        Color(0xFF5E8374), Color(0xFF7A738F)
+                                    )
+                                    Box(Modifier.fillMaxSize().background(
+                                        tones[album.mediaCount % tones.size]))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun open() {

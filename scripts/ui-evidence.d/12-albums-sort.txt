@@ -8,3 +8,5 @@ albums-12-recent-dark
 albums-12-name-dark
 albums-12-count-dark
 albums-12-custom-dark
+albums-12-font200-light
+albums-12-font200-dark
