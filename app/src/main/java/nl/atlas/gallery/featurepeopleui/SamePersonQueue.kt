@@ -2,6 +2,7 @@ package nl.atlas.gallery.featurepeopleui
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
+import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 import nl.atlas.gallery.featurepeople.identity.SamePersonHypotheses
 
 /**
@@ -37,6 +38,10 @@ data class SamePersonQueue(val items: List<SamePersonQueueItem>, val open: Int)
  * nothing. Order: the answer that would move the most faces first, then the
  * engine's own strength, so the largest loose pieces go first. [skipped]
  * questions ([SamePersonQueueItem.key]) are left out of [SamePersonQueue.items].
+ * HUB-1B (#211): a question one of whose sides is marked "not one person"
+ * ([MixedGroupMarks.marked]) is no question at all: it is left out of both
+ * the items and the [SamePersonQueue.open] count, and every other question
+ * stays as it was.
  *
  * Reads every unnamed group's vectors; call it off the main thread.
  */
@@ -50,6 +55,7 @@ fun samePersonQueue(
     if (state == null) return SamePersonQueue(emptyList(), 0)
     val clusters = state.clusters
     val members = clusters.unknownClusters.associate { it.id to it.members }
+    val mixed = MixedGroupMarks.marked(clusters)
     fun sample(faces: List<NativeFaceObservationId>): List<NativeFaceObservationId> {
         if (faces.size <= samples) return faces
         // Evenly spread, so the samples are not all from one burst of photos.
@@ -63,6 +69,7 @@ fun samePersonQueue(
             .groupBy({ it.value }, { it.key })
         for (q in SamePersonHypotheses.forPeople(clusters, asking, limit = 10_000)) {
             val own = confirmed[q.person]?.sortedBy { it.localHex } ?: continue
+            if (q.group in mixed) continue
             val group = members[q.group] ?: continue
             all += Scored(SamePersonQueueItem(PersonPageTarget.Named(q.person),
                 state.names[q.person], own.size, sample(own),
@@ -70,6 +77,7 @@ fun samePersonQueue(
         }
     }
     for (q in SamePersonHypotheses.of(clusters, limit = SamePersonHypotheses.MAX_GROUPS)) {
+        if (q.first in mixed || q.second in mixed) continue
         val first = members[q.first] ?: continue
         val second = members[q.second] ?: continue
         all += Scored(SamePersonQueueItem(PersonPageTarget.Unnamed(q.first), null,
@@ -80,6 +88,21 @@ fun samePersonQueue(
     return SamePersonQueue(
         ordered.asSequence().map { it.item }.filter { it.key !in skipped }.take(limit).toList(),
         ordered.size)
+}
+
+/**
+ * HUB-1B (#211): "Not one person" for the [subject] side, the [other] side
+ * or both sides of [item], as one review action. Null when no unnamed side
+ * is chosen: a named person is never marked mixed.
+ */
+fun samePersonQueueMixed(
+    item: SamePersonQueueItem, subject: Boolean, other: Boolean
+): PeopleReviewAction.MarkMixedGroups? {
+    val groups = LinkedHashSet<FaceClusterId>()
+    val subjectSide = item.subject
+    if (subject && subjectSide is PersonPageTarget.Unnamed) groups += subjectSide.cluster
+    if (other) groups += item.other
+    return if (groups.isEmpty()) null else PeopleReviewAction.MarkMixedGroups(groups)
 }
 
 /** The owner's answer to [item]: the same action its person page would send. */

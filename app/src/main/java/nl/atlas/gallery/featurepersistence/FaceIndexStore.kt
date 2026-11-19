@@ -1691,6 +1691,7 @@ class FaceIndexStore(
                 "Cluster publication changed membership or anchor"
             }
             writeMatched(db, PeopleReviewRecords.matchedRows(state))
+            writeMixedGroups(db, PeopleReviewRecords.rows(state.reviews).mixedGroups)
             meteredStatements += 2
             val (dirty, due) = if (more) 1 to PUBLICATION_CONTINUES else 0 to 0
             db.execSQL("""UPDATE cluster_generation SET dirty=?,pending=?,published=?
@@ -1708,6 +1709,27 @@ class FaceIndexStore(
             if (!more) finishedPublication = state
             true
         }
+
+    /**
+     * HUB-1B (#211): a publication re-states "not one person" facts for the
+     * groups that carried them ([ClusterPublication.publish]), in its own
+     * transaction, so a reader never sees new membership with old marks.
+     */
+    private fun writeMixedGroups(db: SQLiteDatabase, rows: Set<Pair<String, String>>) {
+        val delta = PeopleReviewRecords.setDelta(reviewRows(db).mixedGroups, rows)
+        for ((anchor, fingerprint) in delta.delete) {
+            meteredStatements++
+            db.delete("people_mixed_group", "anchor_uid=? AND fingerprint=?",
+                arrayOf(anchor, fingerprint))
+        }
+        for ((anchor, fingerprint) in delta.insert) {
+            meteredStatements++
+            db.insertOrThrow("people_mixed_group", null, ContentValues().apply {
+                put("anchor_uid", anchor); put("fingerprint", fingerprint)
+            })
+        }
+        check(reviewRows(db).mixedGroups == rows) { "Cluster publication lost mixed groups" }
+    }
 
     /**
      * Never show incomplete cluster membership, including after a restart:
