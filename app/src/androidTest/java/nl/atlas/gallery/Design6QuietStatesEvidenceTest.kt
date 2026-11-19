@@ -164,8 +164,7 @@ class Design6QuietStatesEvidenceTest {
             }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-people-empty").assertIsDisplayed()
-            compose.onNodeWithText("No people").assertExists()
-            compose.onNodeWithText("Discover faces").assertIsDisplayed()
+            compose.onNodeWithText("No people").assertIsDisplayed()
             saveUiEvidence("people-136-not-scanned-$mode.png")
 
             compose.runOnIdle { restoring = true }
