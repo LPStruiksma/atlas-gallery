@@ -43,12 +43,12 @@ class PerformanceSettingsJourneyTest {
         compose.waitForNode(hasTestTag("atlas-perf-cold_start_ms"))
         compose.onNodeWithTag("atlas-perf-cold_start_ms").performScrollTo()
             .assertIsDisplayed()
-        saveUiEvidence("perf-0-settings-top")
+        saveUiEvidence("perf-0-settings-top.png")
 
         compose.onNodeWithTag("atlas-perf-grid-jank").performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithTag("atlas-perf-action_a11_ms").performScrollTo()
             .assertIsDisplayed()
-        saveUiEvidence("perf-0-settings-actions")
+        saveUiEvidence("perf-0-settings-actions.png")
     }
 }
