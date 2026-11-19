@@ -23,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,6 +44,7 @@ import java.io.ByteArrayOutputStream
  */
 @RunWith(AndroidJUnit4::class)
 class PhotoDnaMediaStoreCrashScaleTest {
+    private companion object { const val STEP_TIMEOUT_MS = 120_000L }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val fixtures = CrashScaleMediaStoreFixtures()
@@ -50,27 +52,38 @@ class PhotoDnaMediaStoreCrashScaleTest {
     @get:Rule val chain: RuleChain = RuleChain.outerRule(fixtures).around(compose)
 
     @Test fun twoThousandMediaStoreCopiesSurvivePhotoDnaOpenAndVisualIndexOn() {
+        try {
+            journey()
+        } catch (failure: Throwable) {
+            // awaitThat already names the step, the screen and the device;
+            // add the tag-only Albums state that #80 diagnoses with.
+            logAlbumsUiState("failed-step")
+            throw failure
+        }
+    }
+
+    private fun journey() {
         val crashBefore = LastCrashRecorder.read(context)
         val started = SystemClock.elapsedRealtime()
-        waitFor("Albums nav") { exists("atlas-nav-albums") }
+        compose.awaitThat("Albums nav", STEP_TIMEOUT_MS) { exists("atlas-nav-albums") }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         logAlbumsUiState("albums-selected")
         // A header also exists during the initial loading state. Opening its
         // menu there races the transition to the loaded grid and can lose the
         // popup. Wait for the actual grid before interacting with overflow.
-        waitFor("loaded Albums grid") {
+        compose.awaitThat("loaded Albums grid", STEP_TIMEOUT_MS) {
             exists("atlas-album-grid") && exists("atlas-header-more")
         }
         logAlbumsUiState("albums-grid-ready")
         logAlbumsUiState("before-overflow")
         compose.onNodeWithTag("atlas-header-more").performClick()
         logAlbumsUiState("after-overflow")
-        waitFor("Photo DNA menu") { exists("atlas-albums-menu-photo-dna") }
+        compose.awaitThat("Photo DNA menu", STEP_TIMEOUT_MS) { exists("atlas-albums-menu-photo-dna") }
         compose.onNodeWithTag("atlas-albums-menu-photo-dna").performClick()
-        waitFor("Photo DNA route") { exists("atlas-photo-dna") }
+        compose.awaitThat("Photo DNA route", STEP_TIMEOUT_MS) { exists("atlas-photo-dna") }
         // The two byte-identical sets of 1,000 invented files must be hashed
         // from MediaStore, not merely supplied as in-memory CurationAssets.
-        waitFor("1,000-copy Photo DNA group", 180_000L) {
+        compose.awaitThat("1,000-copy Photo DNA group", 180_000L) {
             compose.onAllNodesWithText("1000 copies", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -79,9 +92,9 @@ class PhotoDnaMediaStoreCrashScaleTest {
         scaleLog("photo-dna", started)
 
         compose.onNodeWithTag("atlas-photo-dna-back").performClick()
-        waitFor("People nav") { exists("atlas-nav-people") }
+        compose.awaitThat("People nav", STEP_TIMEOUT_MS) { exists("atlas-nav-people") }
         compose.onNodeWithTag("atlas-nav-people").performClick()
-        waitFor("People home") { exists("atlas-people-home") }
+        compose.awaitThat("People home", STEP_TIMEOUT_MS) { exists("atlas-people-home") }
         // Start the real opted-in face scope if it is off. Scan is not drained
         // here: this test checks the visual switch's initialization, not 2k
         // expensive ONNX embeddings or a charging-only background scan.
@@ -96,26 +109,26 @@ class PhotoDnaMediaStoreCrashScaleTest {
                 instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
             }
         }
-        waitFor("People menu after opt-in") { exists("atlas-header-more") }
+        compose.awaitThat("People menu after opt-in", STEP_TIMEOUT_MS) { exists("atlas-header-more") }
         compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor("Library status") { exists("atlas-library-status") }
+        compose.awaitThat("Library status", STEP_TIMEOUT_MS) { exists("atlas-library-status") }
         compose.onNodeWithTag("atlas-library-status").performClick()
-        waitFor("Visual index entry") { exists("atlas-people-visual-index") }
+        compose.awaitThat("Visual index entry", STEP_TIMEOUT_MS) { exists("atlas-people-visual-index") }
         compose.onNodeWithTag("atlas-people-visual-index").performClick()
-        waitFor("Visual index switch") { exists("atlas-visual-index-switch") }
-        waitFor("Visual index can enable", 120_000L) {
+        compose.awaitThat("Visual index switch", STEP_TIMEOUT_MS) { exists("atlas-visual-index-switch") }
+        compose.awaitThat("Visual index can enable", 120_000L) {
             runCatching {
                 compose.onNodeWithTag("atlas-visual-index-switch").assertIsEnabled()
             }.isSuccess
         }
         compose.onNodeWithTag("atlas-visual-index-switch").performClick()
-        waitFor("Visual index enabled", 120_000L) {
+        compose.awaitThat("Visual index enabled", 120_000L) {
             runCatching { compose.onNodeWithTag("atlas-visual-index-switch").assertIsOn() }.isSuccess
         }
         scaleLog("visual-index-on", started)
         // Leave the background stage off for subsequent tests on this shard.
         compose.onNodeWithTag("atlas-visual-index-switch").performClick()
-        waitFor("Visual index disabled") {
+        compose.awaitThat("Visual index disabled", STEP_TIMEOUT_MS) {
             runCatching { compose.onNodeWithTag("atlas-visual-index-switch").assertIsOff() }.isSuccess
         }
         assertEquals("no new handled/fatal exception during the routes",
@@ -125,18 +138,6 @@ class PhotoDnaMediaStoreCrashScaleTest {
     private fun exists(tag: String): Boolean =
         compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true)
             .fetchSemanticsNodes().isNotEmpty()
-
-    private fun waitFor(step: String, timeout: Long = 120_000L, done: () -> Boolean) {
-        try {
-            compose.waitUntil(timeout) { done() }
-        } catch (e: Throwable) {
-            logAlbumsUiState("failed-step")
-            // The step label comes from this test; never include the UI's
-            // text, descriptions, media labels or raw semantics in CI logs.
-            throw AssertionError("Crash-scale step failed: $step; " +
-                "elapsed_ms=${SystemClock.elapsedRealtime() - fixtures.startedAt}", e)
-        }
-    }
 
     /**
      * Bounded, tag-only snapshot for the emulator fixture. This intentionally
