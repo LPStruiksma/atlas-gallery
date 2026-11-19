@@ -18,7 +18,7 @@ const bench = read("app/src/androidTest/java/nl/atlas/gallery/benchmark/FaceScan
 const evidence = read("docs/people/FACE_QUALITY_V2.md");
 
 assert.match(reader, /sourceScale/);
-assert.match(pipeline, /embedWithQuality\(bitmap, face, .*sourceScale/);
+assert.match(pipeline, /embedWithQuality\(bitmap, face,\s*\(frame as AndroidBitmapFaceFrame\)\.sourceScale/);
 assert.match(embedder, /scoreWithoutEmbedding/);
 assert.match(store, /fun pendingQualitySource\(/);
 assert.match(store, /fun backfillQualityIfNull\(/);
