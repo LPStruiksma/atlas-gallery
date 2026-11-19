@@ -482,7 +482,14 @@ fun AtlasScrollAwayHeader(
     header: @Composable () -> Unit,
     content: @Composable (headerHeight: Dp) -> Unit
 ) {
-    var headerPx by remember { mutableIntStateOf(0) }
+    // The shell header is at least 56 dp. Reserve that height on its first
+    // layout, before onSizeChanged runs; a zero-height initial inset otherwise
+    // shows the first Albums row under the header for one frame on a tab tap.
+    // Later measurements still handle larger headers (e.g. font scaling).
+    val density = LocalDensity.current
+    var headerPx by remember(density) {
+        mutableIntStateOf(with(density) { AtlasHeaderHeight.roundToPx() })
+    }
     // Flips only when the grid crosses its top, not on every scroll frame.
     val collapsed by remember(gridState) { derivedStateOf { gridState.scrolledFromTop() } }
     Box(modifier.clipToBounds()) {
