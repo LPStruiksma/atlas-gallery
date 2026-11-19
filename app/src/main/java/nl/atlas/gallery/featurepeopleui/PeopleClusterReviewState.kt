@@ -384,7 +384,9 @@ fun reviewPeopleCluster(
         rejected.size > ClusterReviewFacts.MAX_FACTS) return null
     val newFacts = ClusterReviewFacts(
         confirmed = confirmed.toMap(), cannotLink = cannotLink.toSet(),
-        rejectedPeople = rejected.toSet(), sameUnknown = same.toSet()
+        rejectedPeople = rejected.toSet(), sameUnknown = same.toSet(),
+        // HUB-1A (#210): no action here writes them yet; carry them unchanged.
+        mixedGroups = prior.mixedGroups
     )
     if (newFacts == prior && names == state.names && hidden == state.hidden) return null
     // Names and visibility alone never re-cluster (and keep the same object).
