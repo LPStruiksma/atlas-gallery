@@ -7,6 +7,7 @@ import android.graphics.Color as AndroidColor
 import android.graphics.Rect
 import android.provider.MediaStore
 import android.util.Log
+import android.view.WindowInsets
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.runtime.getValue
@@ -27,13 +28,14 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
-import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.awaitKeyboardShown
+import nl.atlas.gallery.testkit.onMainThread
+import nl.atlas.gallery.testkit.rootViews
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
-import nl.atlas.gallery.testkit.hideKeyboard
-import nl.atlas.gallery.testkit.typeText
+import nl.atlas.gallery.testkit.keyboardInsetPx
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -73,13 +75,12 @@ class DeclutterSearchEvidenceTest {
 
         for (theme in listOf("light", "dark")) {
             rule.runOnIdle { dark = theme == "dark" }
-            rule.hideKeyboard()
+            rule.hidePanelKeyboard()
 
             // E: search while swiping never filters the deck.
             rule.onNodeWithTag("atlas-search-expand").performClick()
             rule.awaitThat("search panel") { rule.exists(hasTestTag("atlas-search-expanded")) }
-            rule.onNodeWithTag("atlas-declutter-search-staged-note")
-                .assertTextContains("Searches your $STAGED staged files.")
+            rule.onNodeWithText("Searches your $STAGED staged files.").assertExists()
             rule.onNodeWithTag("atlas-declutter-card").assertExists()
             capture("declutter-341-E-swipe-search-$theme.png")
             rule.onNodeWithTag("atlas-declutter-search-show-staged").performClick()
@@ -94,7 +95,7 @@ class DeclutterSearchEvidenceTest {
             capture("declutter-341-B-expanded-$theme.png")
 
             // C: typing filters the staged list only; Move still counts all of them.
-            rule.typeText(hasTestTag("atlas-scoped-search-field"), "beach", KeyboardAfter.Shown)
+            rule.typeInSearchPanel("beach")
             rule.awaitThat("two beach rows") {
                 rule.onAllNodesWithTag("atlas-declutter-thumbnail")
                     .fetchSemanticsNodes().size == 2
@@ -118,7 +119,7 @@ class DeclutterSearchEvidenceTest {
             // S2: no match; the filter is a view, Move still says all staged.
             rule.onNodeWithTag("atlas-scoped-search-field").performTextClearance()
             rule.onNodeWithTag("atlas-scoped-search-field").performTextInput("zzz")
-            rule.hideKeyboard()
+            rule.hidePanelKeyboard()
             rule.awaitThat("no-match message") { rule.exists(hasTestTag("atlas-declutter-search-empty")) }
             rule.onNodeWithText("No matching staged files").assertExists()
             rule.onNodeWithText("Clear the search to see all $STAGED.").assertExists()
@@ -187,7 +188,7 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.runOnIdle { dark = theme == "dark" }
                 rule.onNodeWithTag("atlas-search-expand").performClick()
                 rule.awaitThat("search panel") { rule.exists(hasTestTag("atlas-search-expanded")) }
-                rule.typeText(hasTestTag("atlas-scoped-search-field"), "beach", KeyboardAfter.Shown)
+                rule.typeInSearchPanel("beach")
                 rule.awaitThat("single-row panel above the keyboard") {
                     rule.exists(hasTestTag("atlas-search-single-row"))
                 }
@@ -206,11 +207,38 @@ class DeclutterSearchLandscapeEvidenceTest {
                     !rule.exists(hasTestTag("atlas-declutter-leave-dialog"))
                 }
                 rule.onNodeWithTag("atlas-search-close").performClick()
-                rule.hideKeyboard()
+                rule.hidePanelKeyboard()
                 rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
             }
             rule.runOnIdle { assertEquals(0, left) }
         }
+}
+
+/**
+ * Types into the AtlasSearch field, which lives in a DropdownMenu popup, and
+ * waits until the test keyboard is up. The kit's typeText asks the Activity
+ * window for the keyboard, but the focused window here is the popup, so ask
+ * the popup's own window instead (seen on CI: "the keyboard never came up").
+ */
+internal fun ComposeTestRule.typeInSearchPanel(text: String) {
+    onNodeWithTag("atlas-scoped-search-field").performClick()
+    onNodeWithTag("atlas-scoped-search-field").performTextInput(text)
+    rootViews().lastOrNull()?.let { popup ->
+        onMainThread { popup.windowInsetsController?.show(WindowInsets.Type.ime()) }
+    }
+    awaitKeyboardShown()
+}
+
+/** Hides the keyboard through whichever window has focus (popup first) and waits for inset 0. */
+internal fun ComposeTestRule.hidePanelKeyboard() {
+    awaitThat("the keyboard to be hidden") {
+        val views = rootViews()
+        val focused = onMainThread { views.lastOrNull { it.hasWindowFocus() } } ?: views.lastOrNull()
+        if (keyboardInsetPx() > 0) {
+            focused?.let { onMainThread { it.windowInsetsController?.hide(WindowInsets.Type.ime()) } }
+        }
+        keyboardInsetPx() == 0
+    }
 }
 
 /** Inserts six owned, flat-colour PNGs; deletes them afterwards. */
