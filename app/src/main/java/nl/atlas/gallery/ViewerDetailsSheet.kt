@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -252,7 +253,9 @@ private fun ViewerDetailRow(label: String, value: String) {
  */
 @Composable
 private fun ViewerAiEditedRow() {
+    // One TalkBack stop that reads the whole phrase.
     Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)
+        .semantics(mergeDescendants = true) {}
         .testTag("atlas-details-ai-edited")) {
         Text(AI_EDITED_LABEL, style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface)
