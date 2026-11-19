@@ -308,9 +308,9 @@ class UnknownFacesKeyboardInsetsTest {
             "$tag=${runCatching { unclipped(tag) }.getOrNull()}"
         }
         val header = runCatching { headerBounds() }.getOrNull()
-        val (keyboard, height) = compose.runOnUiThread {
-            compose.keyboardInsetPx() to compose.activity.window.decorView.rootView.height
-        }
+        // keyboardInsetPx() synchronises with Compose, so never call it on the UI thread.
+        val keyboard = compose.keyboardInsetPx()
+        val height = compose.runOnUiThread { compose.activity.window.decorView.rootView.height }
         Log.i(LOG_TAG, "$label window=$height keyboard=$keyboard keyboardTop=${height - keyboard} " +
             "header=$header | $parts")
     }
