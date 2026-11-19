@@ -221,6 +221,21 @@ class PeopleDiscoveryHostTest {
         assertEquals(startsAfter, scheduler.starts.get())
     }
 
+    @Test fun aggregateDiagnosticsAreOptedInAndGrantFenced() {
+        val h = host()
+        assertEquals(false, h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").dirty)
+        h.start("scope", inventory)
+        val observed = h.aggregateDiagnostics("scope")
+        assertEquals(true, observed.optedIn)
+        assertNotNull(observed.dirty)
+        assertNotNull(observed.pending)
+        assertNull(h.aggregateDiagnostics("another-scope").dirty)
+        granted = false
+        assertNull(h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").pending)
+    }
+
     // The Compose rule must dispose its content before the SQLite fixture closes.
     // JUnit @After runs *before* rule teardown; closing there races the review
     // screen's outstanding database reads on API35.
@@ -408,6 +423,9 @@ class PeopleDiscoveryHostTest {
         granted = false
         grant = null
         waitFor("scheduler cancel on revoke") { scheduler.cancels.get() >= 1 }
+        // revoke() cancels the scheduler before it invalidates the store, on
+        // the publication's IO thread: wait for that step too, then assert.
+        waitFor("store hides the epoch on revoke") { store.progress(epoch) == null }
         assertNull(batch())
         assertNull(store.progress(epoch))
         assertNull(store.clusterState(epoch))

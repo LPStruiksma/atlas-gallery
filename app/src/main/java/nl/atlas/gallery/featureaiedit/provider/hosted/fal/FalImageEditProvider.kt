@@ -57,6 +57,11 @@ import kotlin.math.ln
  * - cancel: `PUT https://queue.fal.run/{owner}/{alias}/requests/{id}/cancel`.
  * Images go up inline as base64 data URIs (no fal storage upload, no third URL). Results are
  * downloaded only from fal's media hosts, over HTTPS, without the key, with a bounded size.
+ * fal result URLs are public to anyone holding them until they expire, so every submit asks fal
+ * to expire generated objects after [RESULT_EXPIRY_SECONDS] (`X-Fal-Object-Lifecycle-Preference`,
+ * the header `@fal-ai/client` 1.11.0 sends for `storageSettings.expiresIn`). A result URL on any
+ * host outside [isFalMediaHost] fails closed with `RESULT_HOST_REJECTED`; the allowlist is never
+ * widened at run time (#464, `docs/ai-edit/adapters/fal.md`).
  * The submit POST is never replayed: a lost reply may still have been queued and billed.
  */
 class FalImageEditProvider(
@@ -146,7 +151,8 @@ class FalImageEditProvider(
 
         // 1. Submit once.
         val submitted = exchange.execute(
-            FalCall(FalMethod.POST, queueConfig().copy(maxAttempts = 1), model.endpoint, input, withKey = true),
+            FalCall(FalMethod.POST, queueConfig().copy(maxAttempts = 1), model.endpoint, input, withKey = true,
+                headers = SUBMIT_HEADERS),
             key, context.cancellation
         )
         val requestId = when (submitted) {
@@ -315,6 +321,17 @@ class FalImageEditProvider(
         private val ENDPOINT = Regex("[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*){1,4}")
         private val REQUEST_ID = Regex("[A-Za-z0-9-]{1,128}")
         private val DIRECT = Executor { it.run() }
+
+        /**
+         * Lifetime fal is asked to give generated result objects (#464): one hour, the client's
+         * `"1h"` preset. Results are downloaded seconds after `COMPLETED`, so this only bounds
+         * how long a public result URL stays retrievable afterwards.
+         */
+        const val RESULT_EXPIRY_SECONDS = 3_600
+        const val LIFECYCLE_HEADER = "X-Fal-Object-Lifecycle-Preference"
+        internal val SUBMIT_HEADERS = mapOf(
+            LIFECYCLE_HEADER to "{\"expiration_duration_seconds\":$RESULT_EXPIRY_SECONDS}"
+        )
 
         /** fal's media CDN hosts (for example `v3b.fal.media` in the official client). */
         fun isFalMediaHost(host: String): Boolean =
