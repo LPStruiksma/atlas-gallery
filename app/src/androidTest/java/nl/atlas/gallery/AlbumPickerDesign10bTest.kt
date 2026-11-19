@@ -1,9 +1,13 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -68,11 +72,11 @@ class AlbumPickerDesign10bTest {
         rule.onNodeWithText("Move to album").assertIsDisplayed()
         rule.onNodeWithTag("atlas-album-picker-create").performClick()
         rule.onNodeWithTag("atlas-create-album-confirm").assertIsNotEnabled()
-        rule.onNodeWithTag("atlas-create-album-name").performTextInput("Taken")
+        rule.typeText(hasTestTag("atlas-create-album-name"), "Taken", KeyboardAfter.Hidden)
         rule.onNodeWithTag("atlas-create-album-confirm").assertIsNotEnabled()
-        rule.onNodeWithTag("atlas-create-album-name").performTextInput(" new")
+        rule.typeText(hasTestTag("atlas-create-album-name"), " new", KeyboardAfter.Hidden)
         rule.onNodeWithTag("atlas-create-album-confirm").assertIsEnabled()
-        rule.onNodeWithTag("atlas-create-album-confirm").performClick()
+        rule.tap(hasTestTag("atlas-create-album-confirm"))
         rule.runOnIdle { assertEquals(listOf("Taken new"), created) }
     }
 }

@@ -1,5 +1,8 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import androidx.compose.foundation.Canvas
@@ -20,6 +23,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -93,10 +97,10 @@ class PeopleSearchAppEvidenceTest {
         // FIND-0: People list search exists even with no reviewed names.
         compose.onNodeWithTag("atlas-search-expand").performClick()
         waitFor(compose, hasTestTag("atlas-scoped-search-field"))
-        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.typeText(hasTestTag("atlas-scoped-search-field"), "Ada", KeyboardAfter.Hidden)
         compose.waitForIdle()
         saveUiEvidence("find-0-people-scoped.png")
-        compose.onNodeWithContentDescription("Close search").performClick()
+        compose.tap(hasContentDescription("Close search"))
 
         compose.onNodeWithTag("atlas-header-more").performClick()
         // #584: Samsung's People ⋮ → Hidden.
@@ -117,10 +121,10 @@ class PeopleSearchAppEvidenceTest {
         // Hidden People shares the same name search without changing hidden state.
         compose.onNodeWithTag("atlas-search-expand").performClick()
         waitFor(compose, hasTestTag("atlas-scoped-search-field"))
-        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.typeText(hasTestTag("atlas-scoped-search-field"), "Ada", KeyboardAfter.Hidden)
         compose.waitForIdle()
         saveUiEvidence("find-0-people-hidden-scoped.png")
-        compose.onNodeWithContentDescription("Close search").performClick()
+        compose.tap(hasContentDescription("Close search"))
         dismissWithBack(compose, hasTestTag("atlas-people-hidden"))
         waitFor(compose, hasTestTag("atlas-people-home"))
 
@@ -155,7 +159,7 @@ class PeopleSearchAppEvidenceTest {
         saveUiEvidence("search.png")
 
         // #654: a query with no hits says "No results", not "No photos here yet".
-        compose.onNodeWithTag("atlas-search-field").performTextInput("qzxqzx")
+        compose.typeText(hasTestTag("atlas-search-field"), "qzxqzx", KeyboardAfter.Hidden)
         waitFor(compose, hasTestTag("atlas-feature-grid-empty") and
             androidx.compose.ui.test.hasText("No results", substring = true))
         assertNoText(compose, "No photos here yet")

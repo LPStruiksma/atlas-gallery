@@ -1,21 +1,18 @@
 package nl.atlas.gallery
 
-import android.util.Log
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
-import androidx.compose.runtime.SideEffect
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.awaitKeyboardShown
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featurealbums.AlbumPickerScreen
 import nl.atlas.gallery.featurealbums.AlbumSummary
@@ -111,10 +108,7 @@ class AlbumPickerDesign10bEvidenceTest {
 
     @Test fun createDialogWithKeyboard() {
         var dark by mutableStateOf(false)
-        var imeBottom by mutableIntStateOf(0)
         compose.setContent {
-            val ime = WindowInsets.ime.getBottom(LocalDensity.current)
-            SideEffect { imeBottom = ime }
             AppRoot(dark) {
                 AlbumPickerScreen(
                     title = "Copy to album", albums = mixed, onPick = {}, onCreate = {},
@@ -122,17 +116,17 @@ class AlbumPickerDesign10bEvidenceTest {
                 )
             }
         }
-        compose.onNodeWithTag("atlas-album-picker-create").performClick()
-        compose.onNodeWithTag("atlas-create-album-name").performClick()
-        compose.onNodeWithTag("atlas-create-album-name").performTextInput("Fixture trip")
+        compose.tap(hasTestTag("atlas-album-picker-create"))
+        compose.typeText(hasTestTag("atlas-create-album-name"), "Fixture trip", KeyboardAfter.Shown)
         for (next in listOf(false, true)) {
             dark = next
-            val shown = runCatching { compose.waitUntil(5_000) { imeBottom > 0 } }.isSuccess
-            // Report, don't fail: some CI images run without a soft keyboard.
-            Log.i("ATLAS_EVIDENCE", "design-10b create dialog ime visible=$shown bottomPx=$imeBottom dark=$next")
+            // The evidence is specifically a create dialog with its keyboard visible.
+            // Fail with the shared device report rather than silently capture without IME.
+            compose.awaitKeyboardShown()
             compose.waitForIdle()
             saveUiEvidence("design-10b-create-dialog-${if (next) "dark" else "light"}.png")
         }
+        compose.hideKeyboard()
     }
 }
 

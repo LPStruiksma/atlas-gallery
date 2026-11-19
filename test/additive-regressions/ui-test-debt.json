@@ -9,23 +9,16 @@
     "privateWait": 1
   },
   "AiEditUiEvidenceTest.kt": {
-    "rawClick": 4,
-    "typingWithoutKeyboardRule": 1
+    "rawClick": 3
   },
   "AlbumBatchJourneyTest.kt": {
     "rawClick": 13
   },
-  "AlbumPickerDesign10bEvidenceTest.kt": {
-    "rawClick": 2,
-    "typingWithoutKeyboardRule": 1
-  },
   "AlbumPickerDesign10bTest.kt": {
-    "rawClick": 5,
-    "typingWithoutKeyboardRule": 2
+    "rawClick": 4
   },
   "AlbumsGridEvidenceTest.kt": {
-    "rawClick": 5,
-    "typingWithoutKeyboardRule": 1,
+    "rawClick": 4,
     "privateWait": 1
   },
   "CompactHeaderJourneyTest.kt": {
@@ -125,8 +118,7 @@
     "sleep": 1
   },
   "PeopleSearchEvidenceTest.kt": {
-    "rawClick": 17,
-    "typingWithoutKeyboardRule": 3,
+    "rawClick": 15,
     "privateWait": 1
   },
   "PeopleSortJourneyTest.kt": {
@@ -137,8 +129,6 @@
     "rawClick": 2
   },
   "PersonNameSearchEvidenceTest.kt": {
-    "rawClick": 2,
-    "typingWithoutKeyboardRule": 2,
     "privateWait": 1
   },
   "PersonPageJourneyTest.kt": {
@@ -197,9 +187,8 @@
     "privateWait": 2
   },
   "SearchOneFieldEvidenceTest.kt": {
-    "rawClick": 6,
+    "rawClick": 4,
     "rawCapture": 1,
-    "typingWithoutKeyboardRule": 4,
     "privateWait": 1
   },
   "SearchPeopleNavigationTest.kt": {
@@ -212,7 +201,6 @@
   "SelectionMoreJourneyTest.kt": {
     "sleep": 1,
     "rawClick": 17,
-    "typingWithoutKeyboardRule": 1,
     "privateWait": 1
   },
   "SelectionPillJourneyTest.kt": {
@@ -339,10 +327,6 @@
   },
   "featurepeopleui/UnknownSplitGridCapTest.kt": {
     "rawClick": 2
-  },
-  "featuresearch/AtlasSearchPersistentInlineTest.kt": {
-    "rawClick": 1,
-    "typingWithoutKeyboardRule": 2
   },
   "featuresearch/FaceSearchJourneyTest.kt": {
     "sleep": 1,
