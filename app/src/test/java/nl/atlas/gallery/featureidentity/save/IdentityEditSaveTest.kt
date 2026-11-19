@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featureidentity.save
 
-import android.net.Uri
 import nl.atlas.gallery.featureaiedit.provider.EditImage
 import nl.atlas.gallery.featureaiedit.provider.ImageFormat
 import nl.atlas.gallery.featureidentity.engine.EngineRoute
@@ -23,14 +22,13 @@ class IdentityEditSaveTest {
     )
 
     @Test fun mapsOnlyDurablePrivateIdentityProvenance() {
-        val request = IdentityEditSave.Request(
-            originalUri = Uri.parse("content://media/external/images/media/1"),
-            candidateUri = Uri.parse("content://candidate/3"),
-            originalRevision = "revision-1", candidate = candidate(),
+        // Request holds android.net.Uri, which is a null-returning stub on the JVM; the
+        // Request path is covered by IdentityEditSaveAndroidTest.
+        val lineage = IdentityEditSave.provenance(
+            candidate = candidate(),
             profileId = "0123456789abcdef0123456789abcdef", variantId = null,
             refinementParent = "candidate-2"
         )
-        val lineage = IdentityEditSave.provenance(request)
         assertEquals(1, lineage.schemaVersion)
         assertEquals("head", lineage.kind)
         assertEquals("atlas-fake-identity", lineage.engineId)

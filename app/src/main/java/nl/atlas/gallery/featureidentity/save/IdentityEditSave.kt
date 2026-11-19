@@ -49,16 +49,26 @@ internal class IdentityEditSave(
     )
 
     companion object {
-        internal fun provenance(request: Request) = IdentityEditLineage(
-            kind = request.candidate.mode.name.lowercase(),
-            engineId = request.candidate.engineId,
-            engineVersion = request.candidate.engineVersion,
-            route = request.candidate.route.name.lowercase(),
-            profileId = request.profileId,
-            variantId = request.variantId,
-            candidateIndex = request.candidate.number,
-            seed = request.candidate.variation.seed,
-            refinementParent = request.refinementParent
+        internal fun provenance(request: Request) = provenance(
+            request.candidate, request.profileId, request.variantId, request.refinementParent
+        )
+
+        /** Uri-free so JVM unit tests (android.jar stubs: `Uri.parse` returns null) can call it. */
+        internal fun provenance(
+            candidate: IdentityCandidate,
+            profileId: String,
+            variantId: String?,
+            refinementParent: String?
+        ) = IdentityEditLineage(
+            kind = candidate.mode.name.lowercase(),
+            engineId = candidate.engineId,
+            engineVersion = candidate.engineVersion,
+            route = candidate.route.name.lowercase(),
+            profileId = profileId,
+            variantId = variantId,
+            candidateIndex = candidate.number,
+            seed = candidate.variation.seed,
+            refinementParent = refinementParent
         )
     }
 }
