@@ -30,8 +30,8 @@ test('fal safety flags are refusals and no model is called uncensored', () => {
   assert.doesNotMatch(provider + exchange, /uncensored/i);
 });
 
-test('PROVIDERS.md records the fal adapter with dated sources', () => {
-  const doc = readFileSync(join(root, 'docs/ai-edit/PROVIDERS.md'), 'utf8');
-  assert.match(doc, /### fal\.ai queue \(#429\), 2026-11-18/);
+test('the fal adapter document records dated sources', () => {
+  const doc = readFileSync(join(root, 'docs/ai-edit/adapters/fal.md'), 'utf8');
+  assert.match(doc, /# fal\.ai queue \(#429\), 2026-11-18/);
   assert.match(doc, /@fal-ai\/client` 1\.11\.0/);
 });
