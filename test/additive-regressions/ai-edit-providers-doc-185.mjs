@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 // introduced this test fails (RED); it needs no credentials, network or media.
 const path = "docs/ai-edit/PROVIDERS.md";
 const doc = readFileSync(path, "utf8");
+const architecture = readFileSync("docs/ai-edit/ARCHITECTURE.md", "utf8");
 
 for (const title of [
   "Evidence and uncertainty",
@@ -38,4 +39,8 @@ assert.ok(urls.some(x => x.includes("bfl.ai")));
 assert.ok(urls.some(x => x.includes("huggingface.co/Qwen")));
 assert.ok(urls.some(x => x.includes("runpod.io/pricing")));
 assert.match(doc, /No (paid API|live inference|personal media)/i);
+assert.match(doc, /\[adapter directory\]\(adapters\/\)/);
+assert.equal([...doc.matchAll(/\]\(adapters\/\)/g)].length, 1, "PROVIDERS.md needs one stable adapter-directory pointer");
+assert.doesNotMatch(doc, /GeminiImageEditProvider|FalImageEditProvider/);
+assert.match(architecture, /document implemented adapter behavior only in the stable \[adapter directory\]\(adapters\/\), one file per adapter/);
 console.log("PASS: AIE-0 source-backed comparison, licensing, refusal and cost coverage");

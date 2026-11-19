@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -20,7 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
 /**
@@ -46,8 +50,15 @@ fun AtlasSearch(
     imageTool: (@Composable () -> Unit)? = null,
     filtersTool: (@Composable () -> Unit)? = null,
     historyTool: (@Composable () -> Unit)? = null,
-    suggestionsTool: (@Composable () -> Unit)? = null
+    suggestionsTool: (@Composable () -> Unit)? = null,
+    /**
+     * FIND-3a (#182): this bar's own recent searches (never per album or
+     * person id). Null, or no [LocalSearchHistory], shows no history.
+     */
+    historyScope: SearchHistoryScope? = null
 ) {
+    val history = LocalSearchHistory.current.takeIf { historyScope != null }
+    val keyboard = LocalSoftwareKeyboardController.current
     var expanded by remember { mutableStateOf(initialExpanded) }
     var localScope by remember { mutableStateOf(initialScope) }
     val scope = selectedScope ?: localScope
@@ -74,6 +85,13 @@ fun AtlasSearch(
                     singleLine = true,
                     placeholder = { Text("Search") },
                     leadingIcon = { Icon(Icons.Filled.Search, null) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        if (history != null && historyScope != null && query.isNotBlank()) {
+                            history.remember(historyScope, SearchHistoryEntry(query.trim()))
+                        }
+                        keyboard?.hide()
+                    }),
                     modifier = Modifier.weight(1f).testTag("atlas-scoped-search-field")
                 )
                 IconButton(onClick = close) {
@@ -103,6 +121,18 @@ fun AtlasSearch(
             imageTool?.invoke()
             filtersTool?.invoke()
             historyTool?.invoke()
+            if (history != null && historyScope != null && showQueryField && query.isBlank()) {
+                RecentSearchPills(
+                    entries = history.visible(historyScope),
+                    labelOf = { it.text },
+                    onPick = { entry ->
+                        onQueryChange(boundSearchQueryInput(entry.text))
+                        history.remember(historyScope, entry)
+                    },
+                    onRemove = { history.remove(historyScope, it) },
+                    onClear = { history.clear(historyScope) }
+                )
+            }
             suggestionsTool?.invoke()
         }
     }

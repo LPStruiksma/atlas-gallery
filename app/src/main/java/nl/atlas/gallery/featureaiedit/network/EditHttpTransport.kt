@@ -31,7 +31,8 @@ data class EditHttpConfig(
     }
 }
 
-enum class EditHttpMethod { GET, POST, DELETE }
+/** PUT is never replayed unless the caller marks that request idempotent (see [EditHttpTransport.execute]). */
+enum class EditHttpMethod { GET, POST, DELETE, PUT }
 
 sealed interface EditHttpAuth {
     data object None : EditHttpAuth
@@ -40,6 +41,14 @@ sealed interface EditHttpAuth {
     }
     data class CustomHeader(val headerName: String, val secret: String) : EditHttpAuth {
         override fun toString(): String = "CustomHeader([REDACTED])"
+    }
+    /**
+     * `Authorization: <scheme> <secret>` for providers with their own scheme word, for example
+     * fal.ai's `Key`. The scheme is fixed in adapter code (letters only, at most 16), never typed
+     * by a user; the secret is validated exactly like [Bearer]'s.
+     */
+    data class Scheme(val scheme: String, val secret: String) : EditHttpAuth {
+        override fun toString(): String = "Scheme([REDACTED])"
     }
 }
 
@@ -63,7 +72,23 @@ enum class FailureCode { INVALID_REQUEST, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER 
 
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
-    data class Failed(val code: FailureCode, val retryable: Boolean) : EditHttpResult
+    /**
+     * A transport failure. [errorBody] is available only so an adapter can recognize a
+     * provider's documented, structured refusal. It is always bounded by
+     * [EditHttpTransport.MAX_ERROR_REPLY] and deliberately omitted from [toString].
+     */
+    class Failed(
+        val code: FailureCode,
+        val retryable: Boolean,
+        val status: Int? = null,
+        val errorBody: ByteArray = byteArrayOf()
+    ) : EditHttpResult {
+        // Preserve the pre-body value semantics used by callers and tests; the body is diagnostic
+        // input to an adapter, not part of the public failure identity.
+        override fun equals(other: Any?): Boolean = other is Failed && code == other.code && retryable == other.retryable
+        override fun hashCode(): Int = 31 * code.hashCode() + retryable.hashCode()
+        override fun toString(): String = "Failed(code=$code, retryable=$retryable, status=$status, errorBody=[REDACTED])"
+    }
     data object Cancelled : EditHttpResult
 }
 
@@ -96,13 +121,24 @@ class EditHttpTransport(
      * Rejections have fixed code-only messages. Never expose server response bodies, exception
      * messages, URLs, tokens or headers in logs, diagnostics, failures, or usage exports.
      * POST is never replayed: the server may have accepted a job before losing the response.
+     * PUT is replayed only when [idempotent] is true.
+     *
+     * Reply size: by default a JSON reply is held in memory up to 1 MB and a [downloadTo] file up
+     * to 32 MB. [maxReplyBytes] raises (or lowers) that bound for this one request, up to
+     * [MAX_REPLY_CEILING]; a reply above it fails with `SERVER`, never retried. With [downloadTo]
+     * the reply (of any method but DELETE) is spooled to that app-private file through an 8 KB
+     * buffer, so even a 40 MB reply costs about 8 KB of heap. Without it the reply is buffered in
+     * memory (peak about 3x its size while growing and copying), so an in-memory cap may not
+     * exceed [MAX_IN_MEMORY_REPLY].
      */
     fun execute(
         config: EditHttpConfig,
         request: EditHttpRequest,
         auth: EditHttpAuth = EditHttpAuth.None,
         cancellation: EditRequestCancellation = EditRequestCancellation(),
-        downloadTo: File? = null
+        downloadTo: File? = null,
+        maxReplyBytes: Int? = null,
+        idempotent: Boolean = false
     ): EditHttpResult {
         if (cancellation.isCancelled) return EditHttpResult.Cancelled
         val url = verifiedUrl(config, request.path)
@@ -118,9 +154,20 @@ class EditHttpTransport(
                     return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
                 auth.headerName to auth.secret
             }
+            is EditHttpAuth.Scheme -> {
+                if (!SCHEME.matches(auth.scheme) || auth.scheme.equals("Basic", ignoreCase = true) ||
+                    !safeSecret(auth.secret) || auth.secret.any { it == ' ' })
+                    return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
+                "Authorization" to (auth.scheme + " " + auth.secret)
+            }
         }
-        if ((request.method == EditHttpMethod.POST) != (request.body != null) ||
-            (downloadTo != null && request.method != EditHttpMethod.GET))
+        val bodyAllowed = request.method == EditHttpMethod.POST || request.method == EditHttpMethod.PUT
+        if ((request.method == EditHttpMethod.POST && request.body == null) ||
+            (!bodyAllowed && request.body != null) ||
+            (downloadTo != null && request.method == EditHttpMethod.DELETE))
+            return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
+        if (maxReplyBytes != null && (maxReplyBytes !in 1..MAX_REPLY_CEILING ||
+                (downloadTo == null && maxReplyBytes > MAX_IN_MEMORY_REPLY)))
             return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
         val payload = request.body?.let { buildBody(it) }
         if (request.body != null && payload == null)
@@ -132,10 +179,12 @@ class EditHttpTransport(
             if (clockMs() >= deadline) return EditHttpResult.Failed(FailureCode.TIMEOUT, true)
             attempt++
             val result = once(url, request.method, payload, header, config,
-                deadline, cancellation, downloadTo)
+                deadline, cancellation, downloadTo, maxReplyBytes)
             if (cancellation.isCancelled) return EditHttpResult.Cancelled
             if (result !is EditHttpResult.Failed || !result.retryable ||
-                request.method == EditHttpMethod.POST || attempt >= config.maxAttempts) return result
+                request.method == EditHttpMethod.POST ||
+                (request.method == EditHttpMethod.PUT && !idempotent) ||
+                attempt >= config.maxAttempts) return result
             val wait = min(250L shl (attempt - 1), (deadline - clockMs()).coerceAtLeast(0L))
             if (wait == 0L) return EditHttpResult.Failed(FailureCode.TIMEOUT, true)
             try { sleeper(wait) } catch (_: InterruptedException) {
@@ -222,7 +271,8 @@ class EditHttpTransport(
     private fun once(
         url: URL, method: EditHttpMethod, payload: Payload?,
         header: Pair<String, String>?, config: EditHttpConfig, deadline: Long,
-        cancel: EditRequestCancellation, destination: File?
+        cancel: EditRequestCancellation, destination: File?,
+        replyCap: Int? = null
     ): EditHttpResult {
         var connection: HttpURLConnection? = null
         var temp: File? = null
@@ -248,23 +298,28 @@ class EditHttpTransport(
             }
             val status = connection.responseCode
             if (status !in 200..299) {
-                return when (status) {
-                    401, 403 -> EditHttpResult.Failed(FailureCode.AUTH, false)
-                    408 -> EditHttpResult.Failed(FailureCode.TIMEOUT, true)
-                    429 -> EditHttpResult.Failed(FailureCode.QUOTA, false)
-                    400, 404, 405, 411, 413, 415, 422 -> EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
-                    in 500..599 -> EditHttpResult.Failed(FailureCode.SERVER, true)
-                    else -> EditHttpResult.Failed(FailureCode.SERVER, false) // includes ALL redirects
+                val body = if (status in 400..599) readErrorBody(connection, deadline, cancel)
+                    else byteArrayOf()
+                val mapped = when (status) {
+                    401, 403 -> FailureCode.AUTH to false
+                    408 -> FailureCode.TIMEOUT to true
+                    429 -> FailureCode.QUOTA to false
+                    400, 404, 405, 411, 413, 415, 422 -> FailureCode.INVALID_REQUEST to false
+                    in 500..599 -> FailureCode.SERVER to true
+                    else -> FailureCode.SERVER to false // includes ALL redirects
                 }
+                return EditHttpResult.Failed(mapped.first, mapped.second, status, body)
             }
             val stream = connection.inputStream
+            if (replyCap != null && connection.contentLengthLong > replyCap) throw ReplyLimitExceeded()
             if (destination != null) {
                 if (destination.exists() || destination.parentFile?.isDirectory != true)
                     return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
                 temp = File.createTempFile(".atlas-edit-", ".part", destination.parentFile)
                 FileOutputStream(temp).use { output ->
                     stream.use { input ->
-                        copyBounded(input, output, deadline, cancel)
+                        if (replyCap == null) copyBounded(input, output, deadline, cancel)
+                        else copyBounded(input, CappedOutput(output, replyCap), deadline, cancel, replyCap + BLOCK)
                     }
                     output.fd.sync()
                 }
@@ -274,7 +329,10 @@ class EditHttpTransport(
                 return EditHttpResult.Success(status, file = destination)
             }
             val buffer = ByteArrayOutputStream()
-            stream.use { copyBounded(it, buffer, deadline, cancel, MAX_JSON) }
+            stream.use {
+                if (replyCap == null) copyBounded(it, buffer, deadline, cancel, MAX_JSON)
+                else copyBounded(it, CappedOutput(buffer, replyCap), deadline, cancel, replyCap + BLOCK)
+            }
             if (cancel.isCancelled) return EditHttpResult.Cancelled
             return EditHttpResult.Success(status, buffer.toByteArray())
         } catch (_: SocketTimeoutException) {
@@ -286,6 +344,10 @@ class EditHttpTransport(
         } catch (_: IOException) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.NETWORK, true)
+        } catch (_: ReplyLimitExceeded) {
+            // Over a caller-chosen cap: the same request would get the same reply, so no retry.
+            return if (cancel.isCancelled) EditHttpResult.Cancelled
+                else EditHttpResult.Failed(FailureCode.SERVER, false)
         } catch (_: Exception) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
@@ -296,6 +358,29 @@ class EditHttpTransport(
                 it.disconnect()
             }
         }
+    }
+
+    private fun readErrorBody(
+        connection: HttpURLConnection,
+        deadline: Long,
+        cancel: EditRequestCancellation
+    ): ByteArray {
+        if (connection.contentLengthLong > MAX_ERROR_REPLY) return byteArrayOf()
+        val input = connection.errorStream ?: return byteArrayOf()
+        val output = ByteArrayOutputStream(minOf(connection.contentLength.coerceAtLeast(0), MAX_ERROR_REPLY))
+        val block = ByteArray(8192)
+        return try {
+            input.use {
+                while (output.size() < MAX_ERROR_REPLY) {
+                    if (cancel.isCancelled || clockMs() >= deadline) return byteArrayOf()
+                    val count = it.read(block, 0, minOf(block.size, MAX_ERROR_REPLY - output.size()))
+                    if (count < 0) return output.toByteArray()
+                    output.write(block, 0, count)
+                }
+                // Exactly 64 KiB is allowed. One additional byte means the body is not retained.
+                if (it.read() < 0) output.toByteArray() else byteArrayOf()
+            }
+        } catch (_: IOException) { byteArrayOf() }
     }
 
     private fun copyBounded(
@@ -318,7 +403,33 @@ class EditHttpTransport(
         }
     }
 
+    /** Counts bytes on their way to [target] and stops at [cap]; copyBounded's own cap sits one block higher. */
+    private class CappedOutput(private val target: java.io.OutputStream, private val cap: Int) : java.io.OutputStream() {
+        private var written = 0L
+        override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
+        override fun write(b: ByteArray, off: Int, len: Int) {
+            written += len
+            if (written > cap) throw ReplyLimitExceeded()
+            target.write(b, off, len)
+        }
+        override fun flush() = target.flush()
+    }
+
+    /** Not an IOException on purpose: it must not take the retryable network-failure path. */
+    private class ReplyLimitExceeded : RuntimeException()
+
     companion object {
+        const val MAX_ERROR_REPLY = 64 * 1024
+        /**
+         * Largest reply a caller may allow for one request. The largest documented hosted output
+         * is a 4096 x 4096 image (Gemini `imageSize` 4K): about 25 MB as a photographic PNG, about
+         * 33 MB once base64-encoded inside a JSON reply, so 40 MB leaves headroom for the envelope.
+         */
+        const val MAX_REPLY_CEILING = 40_000_000
+        /** Larger raised caps must spool to a file: 8 MB in memory peaks near 24 MB of heap. */
+        const val MAX_IN_MEMORY_REPLY = 8_000_000
+        private const val BLOCK = 8192
+        private val SCHEME = Regex("[A-Za-z]{1,16}")
         private const val MAX_UPLOAD = 20_000_000
         private const val MAX_JSON = 1_000_000
         private const val MAX_DOWNLOAD = 32_000_000
