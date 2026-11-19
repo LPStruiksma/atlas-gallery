@@ -4,6 +4,8 @@ Unit [#468](https://github.com/LPStruiksma/atlas-gallery/issues/468) (IDS-1), go
 
 **Rule (goal #467):** every model, weight and code dependency that Identity Studio uses, benchmarks or ports gets a row here before it is used. Each row was read at the linked source on the date given. Where the text could not be reached or does not exist, the row says **unverified**; nothing here is guessed. A downloadable file is not treated as unrestricted. Weights whose licence forbids redistribution are never committed to this public repository.
 
+**Bench admission rule (IDS-13):** a benchmark run may use a model only when its row permits the proposed use and all stated preconditions have been met. A historic measurement does not grant permission to re-run a model.
+
 This register records what the published texts say and what ATLAS will do about it. It is an engineering record, not legal advice.
 
 ## How to read a row
