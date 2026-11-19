@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.foundation.layout.fillMaxSize
@@ -349,8 +350,11 @@ class PersonPageJourneyTest {
                 it.setContent { page() }
             }
             waitFor("person page laid out in requested orientation") {
-                val root = compose.onRoot().getUnclippedBoundsInRoot()
-                (root.right - root.left > root.bottom - root.top) == landscape
+                val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+                val bounds = roots.maxByOrNull {
+                    it.boundsInRoot.width * it.boundsInRoot.height
+                }?.boundsInRoot
+                bounds != null && (bounds.width > bounds.height) == landscape
             }
             assertPersonSelection()
         }
