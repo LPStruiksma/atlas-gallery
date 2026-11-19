@@ -80,7 +80,8 @@ class FaceEmbeddingPipeline(
                 val bitmap = (frame as? AndroidBitmapFaceFrame)?.bitmap
                     ?: throw IllegalArgumentException("SFace needs a private bounded bitmap")
                 detector.detectFaces(bitmap).map { face ->
-                    val (embedding, quality) = embedder.embedWithQuality(bitmap, face)
+                    val (embedding, quality) = embedder.embedWithQuality(bitmap, face,
+                        (frame as AndroidBitmapFaceFrame).sourceScale)
                     FaceEmbeddedDetection(FacePixelBounds(
                         floor(face.left.toDouble()).toInt(), floor(face.top.toDouble()).toInt(),
                         ceil(face.right.toDouble()).toInt(), ceil(face.bottom.toDouble()).toInt()
