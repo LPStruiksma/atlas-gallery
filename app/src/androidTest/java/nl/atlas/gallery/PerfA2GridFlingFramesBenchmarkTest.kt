@@ -328,6 +328,14 @@ class PerfA2GridFlingFramesBenchmarkTest {
                     rounded(100.0 * valid.count { it > budgetNs } / valid.size))
                 .put("intervals_over_budget", intervals.count { it > budgetNs })
                 .put("intervals_gt_2_refresh", intervals.count { it > budgetNs * 2 })
+                .put("render_budget_bins", JSONObject()
+                    .put("within_budget", valid.count { it <= budgetNs })
+                    .put("one_to_two_budgets", valid.count { it > budgetNs && it <= 2 * budgetNs })
+                    .put("over_two_budgets", valid.count { it > 2 * budgetNs }))
+                .put("interval_budget_bins", JSONObject()
+                    .put("within_budget", intervals.count { it <= budgetNs })
+                    .put("one_to_two_budgets", intervals.count { it > budgetNs && it <= 2 * budgetNs })
+                    .put("over_two_budgets", intervals.count { it > 2 * budgetNs }))
         }
     }
 }
