@@ -24,3 +24,5 @@ selection-404-dark-person-portrait-after
 selection-404-light-person-portrait-before
 selection-404-light-person-landscape
 selection-404-light-person-portrait-after
+# 130% text-scale constrained landscape: checked tile and contextual action visible.
+selection-404-light-person-landscape-font130

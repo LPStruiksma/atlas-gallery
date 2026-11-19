@@ -101,6 +101,21 @@ internal fun eligiblePersonSelection(requested: Set<String>, visible: Set<String
     requested.intersect(visible).takeIf { it.isNotEmpty() }
 
 /**
+ * Never keep a previous smaller snapshot when the live selection is too large
+ * to encode, malformed, or fenced to another person/grant. In particular a
+ * select-all of 501+ keys must not restore the earlier 2-3 keys on rotation.
+ */
+internal fun encodePersonSelectionForRotation(
+    live: Set<String>,
+    selectionFence: List<String>?,
+    activeSelectionFence: List<String>?
+): List<String> = if (live.isNotEmpty() && live.size <= 500 &&
+    live.none { it.isBlank() } && selectionFence != null &&
+    activeSelectionFence == selectionFence) {
+    selectionFence + live.sorted()
+} else emptyList()
+
+/**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
  * and narrowed on Default, newest first. Every action is computed from the
@@ -241,13 +256,13 @@ internal fun NativePersonAlbumRoute(
     }
     androidx.compose.runtime.SideEffect {
         val live = selected
-        if (live != null && selectionFence != null &&
-            activeSelectionFence == selectionFence &&
-            live.size <= 500 && live.none { it.isBlank() }) {
-            val encoded = selectionFence + live.sorted()
-            if (pendingSelection != encoded) pendingSelection = encoded
-        }
-        val snapshot = PersonSelectionRotationSnapshot(request.opening, pendingSelection)
+        val encoded = if (live != null) {
+            encodePersonSelectionForRotation(live, selectionFence, activeSelectionFence)
+        } else pendingSelection
+        // An over-limit or invalid live selection invalidates the old snapshot,
+        // rather than restoring a stale subset after Activity recreation.
+        if (pendingSelection != encoded) pendingSelection = encoded
+        val snapshot = PersonSelectionRotationSnapshot(request.opening, encoded)
         if (selectionRotationState.value != snapshot) selectionRotationState.value = snapshot
     }
     LaunchedEffect(request.opening, currentGrant, epoch, personIdentity,

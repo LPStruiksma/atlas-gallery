@@ -4,7 +4,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
@@ -285,6 +289,7 @@ class PersonPageJourneyTest {
         val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
             .pendingPersonSelectionRotationState
         var dark by mutableStateOf(true)
+        var increasedFontScale by mutableStateOf(false)
         var routeGrant by mutableStateOf(grant)
         var catalogueEpoch by mutableStateOf(1L)
 
@@ -293,14 +298,21 @@ class PersonPageJourneyTest {
         val page: @Composable () -> Unit = {
             if (composing) {
                 AtlasGalleryTheme(dark = dark) {
-                    Surface(Modifier.fillMaxSize(), color = DeepBg,
-                        contentColor = MaterialTheme.colorScheme.onBackground) {
-                        val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
-                        NativePersonAlbumRoute(host, routeGrant, request,
-                            discovery.status?.people, records, rememberLazyGridState(),
-                            catalogueEpoch,
-                            selectionRotationState = holder, onBack = {},
-                            onOpen = { _, _ -> })
+                    val density = LocalDensity.current
+                    // Synthetic font-scale stress without changing the emulator's
+                    // global setting: the selection action must still fit landscape.
+                    CompositionLocalProvider(LocalDensity provides Density(
+                        density.density, if (increasedFontScale) 1.3f else density.fontScale
+                    )) {
+                        Surface(Modifier.fillMaxSize(), color = DeepBg,
+                            contentColor = MaterialTheme.colorScheme.onBackground) {
+                            val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
+                            NativePersonAlbumRoute(host, routeGrant, request,
+                                discovery.status?.people, records, rememberLazyGridState(),
+                                catalogueEpoch,
+                                selectionRotationState = holder, onBack = {},
+                                onOpen = { _, _ -> })
+                        }
                     }
                 }
             }
@@ -339,9 +351,11 @@ class PersonPageJourneyTest {
             assertEquals("configuration holder keeps exactly the same keys",
                 expectedUris, holder.value?.encoded?.drop(3)?.toSet())
             assertEquals(request.opening, holder.value?.opening)
-            // Leave the count and contextual action visible in every capture,
-            // even when the selected tiles required a scroll to inspect.
-            compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
+            // The avatar header occupies most of a landscape viewport.
+            // Keep the grid scrolled to a checked tile for every screenshot,
+            // rather than resetting to index 0 and hiding all checked overlays.
+            compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
+                .assertIsDisplayed()
             waitForText("2 selected")
         }
 
@@ -395,6 +409,11 @@ class PersonPageJourneyTest {
             rotateAndReattach(landscape = true)
             settle()
             saveUiEvidence("selection-404-light-person-landscape.png")
+            increasedFontScale = true
+            assertPersonSelection() // 130% text must keep count/action in bounds.
+            settle()
+            saveUiEvidence("selection-404-light-person-landscape-font130.png")
+            increasedFontScale = false
             rotateAndReattach(landscape = false)
             settle()
             saveUiEvidence("selection-404-light-person-portrait-after.png")
