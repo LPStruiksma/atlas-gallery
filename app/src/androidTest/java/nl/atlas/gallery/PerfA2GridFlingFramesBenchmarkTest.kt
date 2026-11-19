@@ -194,7 +194,12 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 ": before=" + before.scroll + ", after=" + after.scroll,
                 abs(after.scroll - before.scroll) > 1f)
             val sample = summarize(captured)
-            assertTrue("No hardware-window frames on throw " + (index + 1),
+            assertTrue("Insufficient window metrics on throw " + (index + 1) +
+                ": callbacks=" + captured.size + ", valid=" + sample.frames.size +
+                ", intervals=" + sample.intervals.size +
+                ", timestamps=" + captured.take(4).map { it.vsyncNs } +
+                ", durations=" + captured.take(4).map { it.durationNs } +
+                ", postRelease12=" + postGestureFrames,
                 sample.frames.size >= 4 && sample.intervals.isNotEmpty())
             durations.addAll(sample.frames.map { it.durationNs })
             intervals.addAll(sample.intervals)
@@ -208,6 +213,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 .put("tiles_after", after.tiles)
                 .put("scroll_delta_px", rounded(after.scroll - before.scroll))
                 .put("frames", sample.frames.size)
+                .put("frame_callbacks", captured.size)
                 .put("callback_reports_dropped", captured.sumOf { it.droppedCallbacks })
                 .put("nonpositive_vsync_intervals", sample.nonPositive)
                 .put("post_release_12_frames_observed", postGestureFrames)
@@ -292,7 +298,6 @@ class PerfA2GridFlingFramesBenchmarkTest {
         private val worker = HandlerThread("perf-a2a-window-frames").apply { start() }
         private val handler = Handler(worker.looper)
         private val frames = Collections.synchronizedList(ArrayList<Frame>())
-        private var startNs = 0L
         private var active = false
         @Volatile private var postReleaseLatch: CountDownLatch? = null
         private val listener = Window.OnFrameMetricsAvailableListener { _, data, dropped ->
@@ -309,21 +314,21 @@ class PerfA2GridFlingFramesBenchmarkTest {
         }
         fun start() {
             check(!active)
-            startNs = System.nanoTime()
             window.addOnFrameMetricsAvailableListener(listener, handler)
             active = true
         }
         fun stop(): List<Frame> {
             check(active)
-            val endNs = System.nanoTime()
             window.removeOnFrameMetricsAvailableListener(listener)
             active = false
             val latch = CountDownLatch(1)
             check(handler.post { latch.countDown() })
             check(latch.await(5, TimeUnit.SECONDS)) { "FrameMetrics worker did not drain" }
-            return synchronized(frames) {
-                frames.filter { it.vsyncNs in startNs..endNs }.sortedBy { it.vsyncNs }
-            }
+            // Listener registration bounds this gesture's sample. Do not compare
+            // rendering VSYNC_TIMESTAMP to JVM System.nanoTime(): an absolute
+            // cross-clock filter can silently discard real emulator callbacks.
+            // Keep only frames with reported metrics in summarize().
+            return synchronized(frames) { frames.toList().sortedBy { it.vsyncNs } }
         }
         override fun close() {
             if (active) window.removeOnFrameMetricsAvailableListener(listener)
