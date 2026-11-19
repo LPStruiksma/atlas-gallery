@@ -42,6 +42,7 @@ import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurevisual.ImageEmbedder
 import nl.atlas.gallery.featurevisual.store.VisualIndexStore
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -329,14 +330,14 @@ class PeopleVisualResumeRetentionTest {
 
     /** Opt in through the real People tab, scan, name the synthetic person, visual on. */
     private fun seedNamedPeopleAndVisual(): String {
-        waitFor("Photos tab") { has("atlas-nav-photos") }
+        compose.awaitThat("Photos tab", timeoutMs = 60_000L) { has("atlas-nav-photos") }
         compose.runOnUiThread { vm.refresh() }
-        waitFor("synthetic photos in gallery") {
+        compose.awaitThat("synthetic photos in gallery", timeoutMs = 60_000L) {
             vm.publishedInventory.value.items.count { it.id in specs } == PHOTOS
         }
         compose.onNodeWithTag("atlas-nav-people").performClick()
-        waitFor("People tab") { has("atlas-people-home") }
-        waitFor("Discover faces") {
+        compose.awaitThat("People tab", timeoutMs = 60_000L) { has("atlas-people-home") }
+        compose.awaitThat("Discover faces", timeoutMs = 60_000L) {
             compose.onAllNodesWithText("Discover faces").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onAllNodesWithText("Discover faces").onFirst().performClick()
@@ -351,15 +352,17 @@ class PeopleVisualResumeRetentionTest {
         assertTrue("visual toggle activates with synthetic fixture", scanner.setVisualIndex(true))
         assertNotNull(choices.loadPublishedVisual())
         drainScan()
-        waitFor("named People tile") { has("atlas-native-person-album") }
+        compose.awaitThat("named People tile", timeoutMs = 60_000L) { has("atlas-native-person-album") }
         return epoch
     }
 
     /** Runs bounded batches until faces and the visual queue are both empty. */
     private fun drainScan(): String {
-        val deadline = SystemClock.elapsedRealtime() + 120_000L
+        var drained: String? = null
         var batches = 0
-        while (SystemClock.elapsedRealtime() < deadline) {
+        // Each poll runs one bounded batch; the wait ends on the outcome.
+        compose.awaitThat("synthetic face and visual scans drained", timeoutMs = 120_000L) {
+            check(++batches <= 2_000) { "scan failed to reach a stable epoch" }
             val before = PeopleScanWorkRuntime.acquire(target)?.use { it.epoch }
             val result = runBlocking { runPeopleScanBatch(target) { false } }
             if (before != null && result?.stop == FaceBatchStop.NO_PENDING &&
@@ -369,27 +372,24 @@ class PeopleVisualResumeRetentionTest {
                 val visualQueued = visualEpoch?.let { visual?.progress(it) }
                     ?.let { it.queued + it.running } ?: 0
                 if (progress != null && progress.processed >= PHOTOS && visualQueued == 0)
-                    return before
+                    drained = before
             }
-            check(++batches <= 600) { "scan failed to reach a stable epoch" }
-            Thread.sleep(100)
+            drained != null
         }
-        error("Timed out waiting for the synthetic face and visual scans")
+        return requireNotNull(drained)
     }
 
     /** Waits until no gallery publication happened for [quietMs]. */
     private fun awaitGalleryQuiet(quietMs: Long = 2_000L) {
-        val deadline = SystemClock.elapsedRealtime() + 30_000L
         var epoch = vm.publishedInventory.value.epoch
         var since = SystemClock.elapsedRealtime()
-        while (SystemClock.elapsedRealtime() < deadline) {
-            Thread.sleep(100)
+        compose.awaitThat("no gallery publication for $quietMs ms", timeoutMs = 30_000L) {
             val now = vm.publishedInventory.value.epoch
             if (now != epoch || vm.busy.value) {
                 epoch = now; since = SystemClock.elapsedRealtime()
-            } else if (SystemClock.elapsedRealtime() - since >= quietMs) return
+                false
+            } else SystemClock.elapsedRealtime() - since >= quietMs
         }
-        error("gallery publications did not settle")
     }
 
     private fun background() {
@@ -420,9 +420,9 @@ class PeopleVisualResumeRetentionTest {
 
     private fun sampleUntil(label: String, timeoutMs: Long, settled: (Snapshot) -> Boolean): Pair<Snapshot, Gaps> {
         val gaps = Gaps()
-        val deadline = SystemClock.elapsedRealtime() + timeoutMs
         var lastEpoch: String? = faces?.activeEpoch()
-        while (true) {
+        var last: Snapshot? = null
+        compose.awaitThat(label, timeoutMs) {
             val s = snapshot()
             gaps.samples++
             if (s.faceEpoch == null) gaps.peopleUnreadable++
@@ -433,11 +433,10 @@ class PeopleVisualResumeRetentionTest {
             if (status?.enabled != true) gaps.visualOptInOff++
             if (status?.total == null) gaps.visualTotalUnknown++
             if (vm.publishedInventory.value.items.count { it.id in specs } < PHOTOS) gaps.libraryEmpty++
-            if (settled(s)) return s to gaps
-            if (SystemClock.elapsedRealtime() > deadline)
-                throw AssertionError("$label did not settle in $timeoutMs ms; last=$s gaps=$gaps")
-            Thread.sleep(25)
+            last = s
+            settled(s)
         }
+        return requireNotNull(last) to gaps
     }
 
     /** First frame after resume on People: never "No people" or "Discover faces". */
@@ -445,13 +444,13 @@ class PeopleVisualResumeRetentionTest {
         val started = SystemClock.elapsedRealtime()
         val seen = linkedSetOf<String>()
         try {
-            compose.waitUntil(FIRST_PEOPLE_MS) {
+            compose.awaitThat("$label: named People after resume", FIRST_PEOPLE_MS) {
                 if (has("atlas-people-empty")) seen += "No people"
                 if (compose.onAllNodesWithText("Discover faces").fetchSemanticsNodes()
                         .isNotEmpty()) seen += "Discover faces"
                 has("atlas-native-person-album")
             }
-        } catch (error: Throwable) {
+        } catch (error: AssertionError) {
             throw AssertionError("$label: named People not shown within $FIRST_PEOPLE_MS ms; " +
                 "states seen: $seen", error)
         }
@@ -461,12 +460,12 @@ class PeopleVisualResumeRetentionTest {
 
     private fun assertLibraryReadable(label: String) {
         compose.onNodeWithTag("atlas-nav-photos").performClick()
-        waitFor("$label Photos grid") { has("atlas-timeline-grid") }
+        compose.awaitThat("$label Photos grid", timeoutMs = 60_000L) { has("atlas-timeline-grid") }
         compose.onNodeWithTag("atlas-first-scan").assertDoesNotExist()
         compose.onNodeWithTag("atlas-nav-albums").performClick()
-        waitFor("$label Albums first frame") { has("atlas-album-card") }
+        compose.awaitThat("$label Albums first frame", timeoutMs = 60_000L) { has("atlas-album-card") }
         compose.onNodeWithTag("atlas-nav-people").performClick()
-        waitFor("$label People again") { has("atlas-native-person-album") }
+        compose.awaitThat("$label People again", timeoutMs = 60_000L) { has("atlas-native-person-album") }
     }
 
     @Test fun recentsResumeKeepsPeopleVisualAndLibrary() {
@@ -475,7 +474,7 @@ class PeopleVisualResumeRetentionTest {
         // A plain photo that case (b) deletes while backgrounded.
         val doomed = insertPlain("IMG_RESUME620_FILLER.png", System.currentTimeMillis() - 400_000_000L)
         val doomedId = ContentUris.parseId(doomed)
-        waitFor("filler photo published") {
+        compose.awaitThat("filler photo published", timeoutMs = 60_000L) {
             vm.publishedInventory.value.items.any { it.id == doomedId }
         }
         // It joins the catalogue as a skipped row (no face, not a fixture).
@@ -577,13 +576,10 @@ class PeopleVisualResumeRetentionTest {
             !readGalleryMediaGrant(target).images)
         // The app itself must notice the revoke on launch: the opt-in and both
         // published scopes go, so a later re-grant cannot silently revive them.
-        val deadline = SystemClock.elapsedRealtime() + 15_000L
-        while (choices.load() != null || choices.loadPublished() != null) {
+        compose.awaitThat("the launch under a revoked grant drops the People opt-in " +
+            "and its published scope", timeoutMs = 15_000L) {
             assertTrue("a revoked grant showed a named person", !has("atlas-native-person-album"))
-            if (SystemClock.elapsedRealtime() > deadline) throw AssertionError(
-                "the launch under a revoked grant kept the People opt-in " +
-                    "(optIn=${choices.load() != null} published=${choices.loadPublished() != null})")
-            Thread.sleep(100)
+            choices.load() == null && choices.loadPublished() == null
         }
         compose.waitForIdle()
         assertTrue("a revoked grant showed a named person", !has("atlas-native-person-album"))
@@ -610,11 +606,6 @@ class PeopleVisualResumeRetentionTest {
 
     private fun has(tag: String): Boolean =
         compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
-
-    private fun waitFor(label: String, predicate: () -> Boolean) {
-        try { compose.waitUntil(60_000, predicate) }
-        catch (error: Throwable) { throw AssertionError("Waiting for $label", error) }
-    }
 
     private companion object {
         const val TAG = "ATLAS_RESUME620"
