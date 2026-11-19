@@ -1,5 +1,9 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.ComponentActivity
@@ -13,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -195,12 +200,14 @@ class AiEditUiEvidenceTest {
         }
         compose.waitForIdle()
         compose.onNodeWithTag("atlas-ai-edit-prompt").performScrollTo()
-        compose.onNodeWithTag("atlas-ai-edit-prompt").performClick()
-        compose.onNodeWithTag("atlas-ai-edit-prompt").performTextInput(" sky")
+        compose.tap(hasTestTag("atlas-ai-edit-prompt"))
+        // This assertion measures layout against the IME, not just system bars.
+        compose.typeText(hasTestTag("atlas-ai-edit-prompt"), " sky", KeyboardAfter.Shown)
         compose.onNodeWithTag("atlas-ai-edit-generate").performScrollTo()
         compose.waitForIdle()
         assertWithinHost("atlas-ai-edit-generate")
         assertWithinBars("atlas-ai-edit-generate")
+        compose.hideKeyboard()
         File(compose.activity.cacheDir, "aie-evidence-before.png").delete()
         File(compose.activity.cacheDir, "aie-evidence-after.png").delete()
     }

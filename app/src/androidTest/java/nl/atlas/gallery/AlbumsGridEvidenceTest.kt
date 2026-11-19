@@ -1,5 +1,8 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import android.Manifest
 import android.content.ContentValues
 import android.graphics.Bitmap
@@ -9,6 +12,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.onNodeWithTag
@@ -97,10 +101,10 @@ class AlbumsGridEvidenceTest {
         // FIND-0: the shared search filters this Albums overview without switching
         // to global Search. Every folder/photo is generated in this fixture.
         compose.onNodeWithTag("atlas-search-expand").performClick()
-        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Camera")
+        compose.typeText(hasTestTag("atlas-scoped-search-field"), "Camera", KeyboardAfter.Hidden)
         compose.waitForIdle()
         saveUiEvidence("find-0-albums-scoped.png")
-        compose.onNodeWithContentDescription("Close search").performClick()
+        compose.tap(hasContentDescription("Close search"))
         compose.waitForIdle()
         // Stories and Photo DNA live only in the Albums overflow (spec §3).
         compose.onNodeWithTag("atlas-header-more").performClick()

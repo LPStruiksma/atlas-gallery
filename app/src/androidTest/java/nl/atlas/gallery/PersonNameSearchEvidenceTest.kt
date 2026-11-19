@@ -1,5 +1,8 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -31,7 +34,6 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.unit.dp
@@ -126,24 +128,24 @@ class PersonNameSearchEvidenceTest {
                 }
             }
         }
-        compose.onNodeWithTag("atlas-search-field").performTextInput("sus")
+        compose.typeText(hasTestTag("atlas-search-field"), "sus", KeyboardAfter.Hidden)
         waitFor("atlas-search-person-suggestion")
         compose.waitForIdle()
         saveUiEvidence("search-person-suggest.png")
 
-        compose.onAllNodesWithTag("atlas-search-person-suggestion").onFirst().performClick()
+        compose.tap(hasTestTag("atlas-search-person-suggestion"))
         waitFor("atlas-search-person-chip")
         compose.runOnIdle { assertEquals(6, shown) }
         saveUiEvidence("search-person-chip.png")
 
-        compose.onNodeWithTag("atlas-search-field").performTextInput("2019")
+        compose.typeText(hasTestTag("atlas-search-field"), "2019", KeyboardAfter.Hidden)
         // Even ids whose id % 3 == 1 (2019): 4 and 10.
         compose.waitUntil(10_000L) { shown == 2 }
         compose.waitForIdle()
         saveUiEvidence("search-person-year.png")
 
         // The chip's × removes the person; the year alone remains.
-        compose.onNodeWithTag("atlas-search-person-chip").performClick()
+        compose.tap(hasTestTag("atlas-search-person-chip"))
         compose.waitUntil(10_000L) { shown == 4 }
     }
 

@@ -1,5 +1,9 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -142,10 +146,11 @@ class SearchOneFieldEvidenceTest {
             compose.runOnIdle { clearInputFocus?.invoke() }
             compose.waitForIdle()
             saveUiEvidence("design-4-search-rest-${if (dark) "dark" else "light"}.png")
-            compose.onNodeWithTag("atlas-search-field").performTextInput("unlikely-match")
+            compose.typeText(hasTestTag("atlas-search-field"), "unlikely-match", KeyboardAfter.Shown)
             waitFor("atlas-design-search-no-results")
             compose.waitForIdle()
             saveUiEvidence("design-4-search-ime-${if (dark) "dark" else "light"}.png")
+            compose.hideKeyboard()
             compose.runOnIdle { clearInputFocus?.invoke() }
             compose.waitForIdle()
             saveUiEvidence("design-4-search-empty-${if (dark) "dark" else "light"}.png")
@@ -232,7 +237,7 @@ class SearchOneFieldEvidenceTest {
         saveUiEvidence("search-644-recents.png")
 
         // Typing a name: person suggestions; face/similar chips step aside.
-        compose.onNodeWithTag("atlas-search-field").performTextInput("sus")
+        compose.typeText(hasTestTag("atlas-search-field"), "sus", KeyboardAfter.Hidden)
         waitFor("atlas-search-person-suggestion")
         compose.onNodeWithTag("atlas-search-by-face").assertDoesNotExist()
         compose.onNodeWithTag("atlas-search-recent").assertDoesNotExist()
@@ -240,7 +245,7 @@ class SearchOneFieldEvidenceTest {
         saveUiEvidence("search-644-typing.png")
 
         // Person chip plus results: now the type filter appears.
-        compose.onAllNodesWithTag("atlas-search-person-suggestion").onFirst().performClick()
+        compose.tap(hasTestTag("atlas-search-person-suggestion"))
         waitFor("atlas-search-person-chip")
         waitFor("atlas-search-kind-ALL")
         waitFor("evidence-results")
@@ -248,9 +253,9 @@ class SearchOneFieldEvidenceTest {
         saveUiEvidence("search-644-results.png")
 
         // A query without results hides it again.
-        compose.onNodeWithTag("atlas-search-person-chip").performClick()
+        compose.tap(hasTestTag("atlas-search-person-chip"))
         compose.onNodeWithTag("atlas-search-field").performTextClearance()
-        compose.onNodeWithTag("atlas-search-field").performTextInput("zzzz")
+        compose.typeText(hasTestTag("atlas-search-field"), "zzzz", KeyboardAfter.Hidden)
         compose.waitUntil(10_000L) {
             compose.onAllNodes(hasTestTag("atlas-search-kind-ALL"))
                 .fetchSemanticsNodes().isEmpty()
@@ -330,7 +335,7 @@ class SearchOneFieldEvidenceTest {
             assertTrue("header inset ${headerStart}dp, want 16", headerStart in 15f..17f)
             assertTrue("chip inset ${chipStart}dp, want 16", chipStart in 15f..17f)
 
-            compose.onNodeWithTag("atlas-search-field").performTextInput("sus")
+            compose.typeText(hasTestTag("atlas-search-field"), "sus", KeyboardAfter.Hidden)
             waitFor("atlas-search-person-suggestion")
             compose.waitForIdle()
             val rowDp = boundsDp("atlas-search-person-suggestion", density)
