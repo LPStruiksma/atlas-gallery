@@ -156,6 +156,33 @@ class DeclutterSearchEvidenceTest {
     private companion object { const val STAGED = 4 }
 }
 
+/**
+ * Types into the AtlasSearch field, which lives in a DropdownMenu popup, and
+ * waits until the test keyboard is up. The kit's typeText asks the Activity
+ * window for the keyboard, but the focused window here is the popup, so ask
+ * the popup's own window instead (seen on CI: "the keyboard never came up").
+ */
+internal fun ComposeTestRule.typeInSearchPanel(text: String) {
+    onNodeWithTag("atlas-scoped-search-field").performClick()
+    onNodeWithTag("atlas-scoped-search-field").performTextInput(text)
+    rootViews().lastOrNull()?.let { popup ->
+        onMainThread { popup.windowInsetsController?.show(WindowInsets.Type.ime()) }
+    }
+    awaitKeyboardShown()
+}
+
+/** Hides the keyboard through whichever window has focus (popup first) and waits for inset 0. */
+internal fun ComposeTestRule.hidePanelKeyboard() {
+    awaitThat("the keyboard to be hidden") {
+        val views = rootViews()
+        val focused = onMainThread { views.lastOrNull { it.hasWindowFocus() } } ?: views.lastOrNull()
+        if (keyboardInsetPx() > 0) {
+            focused?.let { onMainThread { it.windowInsetsController?.hide(WindowInsets.Type.ime()) } }
+        }
+        keyboardInsetPx() == 0
+    }
+}
+
 /** Inserts six owned, flat-colour PNGs; deletes them afterwards. */
 internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
     val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
