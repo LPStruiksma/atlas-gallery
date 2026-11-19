@@ -3,7 +3,11 @@ package nl.atlas.gallery.featuresearch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,11 +25,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+
+/**
+ * FIND-5 (#341, frame L): below this much window height above the keyboard
+ * (landscape with the IME up), the field, both scope chips and Close share
+ * one row so none of them sits under the keyboard.
+ */
+internal const val ATLAS_SEARCH_SINGLE_ROW_BELOW_DP = 280
+
+/** True when the panel must use its single-row layout (frame L). */
+internal fun atlasSearchSingleRow(windowHeightDp: Int, imeBottomDp: Int): Boolean =
+    imeBottomDp > 0 && windowHeightDp - imeBottomDp < ATLAS_SEARCH_SINGLE_ROW_BELOW_DP
 
 /**
  * Single shared search surface, with an icon-anchored expansion on overview
@@ -73,48 +91,78 @@ fun AtlasSearch(
             selectScope(initialScope)
         }
     }
+    // Read the keyboard inset here, in the host window: the DropdownMenu
+    // popup below does not receive the IME inset itself.
+    val density = LocalDensity.current
+    val imeBottomDp = with(density) { WindowInsets.ime.getBottom(density).toDp().value.toInt() }
+    val singleRow = showQueryField && showScopeChips &&
+        atlasSearchSingleRow(LocalConfiguration.current.screenHeightDp, imeBottomDp)
+    val queryField: @Composable (Modifier) -> Unit = { fieldModifier ->
+        OutlinedTextField(
+            value = query,
+            onValueChange = { onQueryChange(boundSearchQueryInput(it)) },
+            singleLine = true,
+            placeholder = { Text("Search") },
+            leadingIcon = { Icon(Icons.Filled.Search, null) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = {
+                if (history != null && historyScope != null && query.isNotBlank()) {
+                    history.remember(historyScope, SearchHistoryEntry(query.trim()))
+                }
+                keyboard?.hide()
+            }),
+            modifier = fieldModifier.testTag("atlas-scoped-search-field")
+        )
+    }
+    val closeButton: @Composable () -> Unit = {
+        IconButton(onClick = close, modifier = Modifier.testTag("atlas-search-close")) {
+            Icon(Icons.Filled.Close, contentDescription = "Close search")
+        }
+    }
+    val scopeChips: @Composable () -> Unit = {
+        FilterChip(
+            selected = scope == AtlasSearchScope.THIS_SCREEN,
+            onClick = {
+                selectScope(AtlasSearchScope.THIS_SCREEN)
+            },
+            label = { Text("This screen") },
+            modifier = Modifier.testTag("atlas-search-scope-screen")
+        )
+        FilterChip(
+            selected = scope == AtlasSearchScope.LIBRARY,
+            onClick = {
+                selectScope(AtlasSearchScope.LIBRARY)
+            },
+            label = { Text("Whole library") },
+            modifier = Modifier.testTag("atlas-search-scope-library")
+        )
+    }
     val contents: @Composable () -> Unit = {
         Column(
-            Modifier.widthIn(max = 360.dp).testTag("atlas-search-expanded"),
+            (if (singleRow) Modifier else Modifier.widthIn(max = 360.dp))
+                .testTag("atlas-search-expanded"),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (showQueryField) Row(Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { onQueryChange(boundSearchQueryInput(it)) },
-                    singleLine = true,
-                    placeholder = { Text("Search") },
-                    leadingIcon = { Icon(Icons.Filled.Search, null) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
-                        if (history != null && historyScope != null && query.isNotBlank()) {
-                            history.remember(historyScope, SearchHistoryEntry(query.trim()))
-                        }
-                        keyboard?.hide()
-                    }),
-                    modifier = Modifier.weight(1f).testTag("atlas-scoped-search-field")
-                )
-                IconButton(onClick = close) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close search")
+            if (singleRow) {
+                // Frame L: field, This screen, Whole library, Close in one
+                // row (also the TalkBack order), all above the keyboard.
+                Row(
+                    Modifier.padding(horizontal = 8.dp).testTag("atlas-search-single-row"),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    queryField(Modifier.width(240.dp))
+                    scopeChips()
+                    closeButton()
                 }
-            }
-            if (showScopeChips) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = scope == AtlasSearchScope.THIS_SCREEN,
-                    onClick = {
-                        selectScope(AtlasSearchScope.THIS_SCREEN)
-                    },
-                    label = { Text("This screen") },
-                    modifier = Modifier.testTag("atlas-search-scope-screen")
-                )
-                FilterChip(
-                    selected = scope == AtlasSearchScope.LIBRARY,
-                    onClick = {
-                        selectScope(AtlasSearchScope.LIBRARY)
-                    },
-                    label = { Text("Whole library") },
-                    modifier = Modifier.testTag("atlas-search-scope-library")
-                )
+            } else {
+                if (showQueryField) Row(Modifier.fillMaxWidth()) {
+                    queryField(Modifier.weight(1f))
+                    closeButton()
+                }
+                if (showScopeChips) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    scopeChips()
+                }
             }
             textTool?.invoke()
             faceTool?.invoke()

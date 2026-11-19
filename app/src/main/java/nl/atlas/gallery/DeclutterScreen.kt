@@ -44,7 +44,7 @@ internal fun DeclutterScreen(
     folder: String,
     deck: List<MediaRecord>,
     onExit: () -> Unit,
-    onSearchWholeLibrary: () -> Unit,
+    onSearchWholeLibrary: () -> Unit = {},
     onTrashRequest: (List<MediaRecord>) -> Unit,
     verifying: Boolean = false
 ) {
@@ -55,6 +55,9 @@ internal fun DeclutterScreen(
     var session by remember(CatalogSourceKey(deck)) { mutableStateOf(DeclutterSession()) }
     var reviewing by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
     var confirming by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
+    // FIND-5 (#341): the panel's scope, and the D1 "leave Declutter?" step.
+    var searchScope by remember(CatalogSourceKey(deck)) { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
+    var confirmingLeave by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
     var dragX by remember(CatalogSourceKey(deck), session.position) { mutableFloatStateOf(0f) }
     // A held swipe is not a settled card: postpone hires/player allocation.
     var dragging by remember(CatalogSourceKey(deck), session.position) { mutableStateOf(false) }
@@ -111,6 +114,44 @@ internal fun DeclutterScreen(
         mediaSettled, dragging, reviewing, verifying
     )
     val maxTrashBatch = 200
+    // Whole library leaves this transient route. It never submits Trash; the
+    // staged session ends exactly as Back ends it today.
+    val searchWholeLibrary = {
+        confirmingLeave = false
+        searchText = ""
+        onSearchWholeLibrary()
+    }
+
+    if (confirmingLeave) {
+        AlertDialog(
+            onDismissRequest = {
+                confirmingLeave = false
+                searchScope = AtlasSearchScope.THIS_SCREEN
+            },
+            title = { Text("Search whole library?") },
+            text = { Text(
+                "This leaves Declutter. Your " +
+                (if (pendingCount == 1) "1 staged choice" else "$pendingCount staged choices") +
+                " will be cleared. Nothing is moved to Trash."
+            ) },
+            confirmButton = {
+                TextButton(
+                    onClick = searchWholeLibrary,
+                    modifier = Modifier.testTag("atlas-declutter-leave-search")
+                ) { Text("Search library") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        confirmingLeave = false
+                        searchScope = AtlasSearchScope.THIS_SCREEN
+                    },
+                    modifier = Modifier.testTag("atlas-declutter-leave-stay")
+                ) { Text("Stay") }
+            },
+            modifier = Modifier.testTag("atlas-declutter-leave-dialog")
+        )
+    }
 
     if (confirming) {
         AlertDialog(
@@ -157,12 +198,42 @@ internal fun DeclutterScreen(
                     query = searchText,
                     onQueryChange = { searchText = it },
                     initialScope = AtlasSearchScope.THIS_SCREEN,
+                    selectedScope = searchScope,
                     onScopeChange = { scope ->
                         if (scope == AtlasSearchScope.LIBRARY) {
                             // A scope choice navigates to a separate host destination.
                             // It never changes the session, staged list or Trash request.
-                            searchText = ""
-                            onSearchWholeLibrary()
+                            if (pendingCount > 0) {
+                                searchScope = AtlasSearchScope.LIBRARY
+                                confirmingLeave = true
+                            } else {
+                                searchWholeLibrary()
+                            }
+                        } else {
+                            searchScope = AtlasSearchScope.THIS_SCREEN
+                        }
+                    },
+                    // Frame E: while swiping, search never filters the deck.
+                    suggestionsTool = if (reviewing) null else {
+                        {
+                            Column(
+                                Modifier.padding(horizontal = 12.dp)
+                                    .testTag("atlas-declutter-search-staged-note")
+                            ) {
+                                Text(
+                                    when (pendingCount) {
+                                        0 -> "Searches your staged files. None yet."
+                                        1 -> "Searches your 1 staged file."
+                                        else -> "Searches your $pendingCount staged files."
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (pendingCount > 0) TextButton(
+                                    onClick = { reviewing = true },
+                                    enabled = !verifying,
+                                    modifier = Modifier.testTag("atlas-declutter-search-show-staged")
+                                ) { Text("Show staged files") }
+                            }
                         }
                     }
                 )
@@ -177,11 +248,19 @@ internal fun DeclutterScreen(
                 color = MaterialTheme.colorScheme.onBackground)
             val visiblePending = scopedNamedMatches(pending, searchText) { it.name + " " + it.album }
             if (visiblePending.isEmpty()) {
-                Text(
-                    if (pending.isEmpty()) "No staged items" else "No matching staged items",
-                    modifier = Modifier.testTag("atlas-declutter-search-empty"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // S1 / S2: the filter is only a view; Move still counts every staged file.
+                Column(Modifier.testTag("atlas-declutter-search-empty")) {
+                    Text(
+                        if (pending.isEmpty()) "No staged files yet" else "No matching staged files",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        if (pending.isEmpty()) "Swipe left on a photo to stage it."
+                        else "Clear the search to see all ${pending.size}.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)) {

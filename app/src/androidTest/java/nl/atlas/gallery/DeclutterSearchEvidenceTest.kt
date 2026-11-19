@@ -1,0 +1,303 @@
+package nl.atlas.gallery
+
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.graphics.Color as AndroidColor
+import android.graphics.Rect
+import android.provider.MediaStore
+import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.typeText
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.runner.RunWith
+
+/**
+ * FIND-5 (#341): implementation renders of the Design PASS frames
+ * (https://github.com/LPStruiksma/atlas-gallery/issues/341#issuecomment-6991033025)
+ * at S24+ size, light and dark. Search filters only the staged list, the Trash
+ * count never follows the filter, and Whole library asks before it drops
+ * staged choices. Owned synthetic images only; never personal media.
+ */
+@RunWith(AndroidJUnit4::class)
+class DeclutterSearchEvidenceTest {
+    private val rule = createComposeRule()
+
+    // 324 dp at density 450: the portrait keyboard height the frames assume.
+    @get:Rule val chain: RuleChain = RuleChain
+        .outerRule(KeyboardRule(TestKeyboard.Fixed, fixedHeightPx = 911))
+        .around(S24DisplayRule()).around(rule)
+
+    @Test fun portraitFramesBCD1S2EInBothThemes() = withSyntheticDeck { deck ->
+        var dark by mutableStateOf(false)
+        var left = 0
+        var trashRequests = 0
+        rule.setContent {
+            AtlasGalleryTheme(dark = dark) {
+                DeclutterScreen("Pictures/ATLAS-Declutter-341/", deck,
+                    onExit = {}, onSearchWholeLibrary = { left++ },
+                    onTrashRequest = { trashRequests++ })
+            }
+        }
+        // Stage the first four (two beach, two receipts), keep swiping position 4.
+        repeat(STAGED) { rule.onNodeWithTag("atlas-declutter-discard").performClick() }
+
+        for (theme in listOf("light", "dark")) {
+            rule.runOnIdle { dark = theme == "dark" }
+            rule.hideKeyboard()
+
+            // E: search while swiping never filters the deck.
+            rule.onNodeWithTag("atlas-search-expand").performClick()
+            rule.awaitThat("search panel") { rule.exists(hasTestTag("atlas-search-expanded")) }
+            rule.onNodeWithTag("atlas-declutter-search-staged-note")
+                .assertTextContains("Searches your $STAGED staged files.")
+            rule.onNodeWithTag("atlas-declutter-card").assertExists()
+            capture("declutter-341-E-swipe-search-$theme.png")
+            rule.onNodeWithTag("atlas-declutter-search-show-staged").performClick()
+            rule.awaitThat("review list") { rule.exists(hasTestTag("atlas-declutter-trash")) }
+            rule.onNodeWithText("Review staged files").assertExists()
+
+            // B: expanded, This screen selected, staged rows still visible below.
+            rule.onNodeWithTag("atlas-search-scope-screen").assertIsSelected()
+            rule.onNodeWithTag("atlas-search-scope-library").assertIsNotSelected()
+            assertEquals(STAGED, rule.onAllNodesWithTag("atlas-declutter-thumbnail")
+                .fetchSemanticsNodes().size)
+            capture("declutter-341-B-expanded-$theme.png")
+
+            // C: typing filters the staged list only; Move still counts all of them.
+            rule.typeText(hasTestTag("atlas-scoped-search-field"), "beach", KeyboardAfter.Shown)
+            rule.awaitThat("two beach rows") {
+                rule.onAllNodesWithTag("atlas-declutter-thumbnail")
+                    .fetchSemanticsNodes().size == 2
+            }
+            rule.onNodeWithTag("atlas-declutter-trash")
+                .assertTextContains("Move $STAGED to Android Trash", substring = true)
+            assertAboveIme(listOf("Return to swiping", "Move $STAGED to Android Trash…"))
+            capture("declutter-341-C-keyboard-$theme.png")
+
+            // D1: Whole library with staged choices asks first; Stay keeps everything.
+            rule.onNodeWithTag("atlas-search-scope-library").performClick()
+            rule.awaitThat("leave dialog") { rule.exists(hasTestTag("atlas-declutter-leave-dialog")) }
+            rule.onNodeWithText("Your $STAGED staged choices will be cleared", substring = true)
+                .assertExists()
+            capture("declutter-341-D1-confirm-$theme.png")
+            rule.onNodeWithTag("atlas-declutter-leave-stay").performClick()
+            rule.awaitThat("dialog closed") { !rule.exists(hasTestTag("atlas-declutter-leave-dialog")) }
+            rule.onNodeWithTag("atlas-search-scope-screen").assertIsSelected()
+            assertEquals("Stay must not leave Declutter", 0, left)
+
+            // S2: no match; the filter is a view, Move still says all staged.
+            rule.onNodeWithTag("atlas-scoped-search-field").performTextClearance()
+            rule.onNodeWithTag("atlas-scoped-search-field").performTextInput("zzz")
+            rule.hideKeyboard()
+            rule.awaitThat("no-match message") { rule.exists(hasTestTag("atlas-declutter-search-empty")) }
+            rule.onNodeWithText("No matching staged files").assertExists()
+            rule.onNodeWithText("Clear the search to see all $STAGED.").assertExists()
+            rule.onNodeWithTag("atlas-declutter-trash")
+                .assertTextContains("Move $STAGED to Android Trash", substring = true)
+            capture("declutter-341-S2-no-match-$theme.png")
+
+            // Close clears the query and collapses the panel; back to swiping.
+            rule.onNodeWithTag("atlas-search-close").performClick()
+            rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
+            assertEquals(STAGED, rule.onAllNodesWithTag("atlas-declutter-thumbnail")
+                .fetchSemanticsNodes().size)
+            rule.onNodeWithText("Return to swiping").performClick()
+        }
+
+        // Search library: leaves through the host callback, never through Trash.
+        rule.onNodeWithTag("atlas-search-expand").performClick()
+        rule.onNodeWithTag("atlas-search-scope-library").performClick()
+        rule.onNodeWithTag("atlas-declutter-leave-search").performClick()
+        rule.runOnIdle {
+            assertEquals(1, left)
+            assertEquals("leaving must never request Trash", 0, trashRequests)
+        }
+    }
+
+    private fun withSyntheticDeck(body: (List<MediaRecord>) -> Unit) =
+        syntheticDeck("Pictures/ATLAS-Declutter-341/", body)
+
+    private fun capture(name: String) {
+        rule.waitForIdle()
+        Thread.sleep(500)
+        rule.waitForIdle()
+        saveUiEvidence(name)
+    }
+
+    private fun assertAboveIme(labels: List<String>) = assertLabelsAboveIme(labels)
+
+    private companion object { const val STAGED = 4 }
+}
+
+/**
+ * FIND-5 frame L: landscape with the keyboard up. The panel switches to one row
+ * (field, This screen, Whole library, Close) that sits above the keyboard, and
+ * Whole library works without dismissing the keyboard first.
+ */
+@RunWith(AndroidJUnit4::class)
+class DeclutterSearchLandscapeEvidenceTest {
+    private val rule = createComposeRule()
+
+    // 184 dp at density 450: the landscape keyboard height the frames assume.
+    @get:Rule val chain: RuleChain = RuleChain
+        .outerRule(KeyboardRule(TestKeyboard.Fixed, fixedHeightPx = 518))
+        .around(S24DisplayRule(landscape = true)).around(rule)
+
+    @Test fun landscapeKeyboardKeepsEveryControlAboveTheIme() =
+        syntheticDeck("Pictures/ATLAS-Declutter-341L/") { deck ->
+            var dark by mutableStateOf(false)
+            var left = 0
+            rule.setContent {
+                AtlasGalleryTheme(dark = dark) {
+                    DeclutterScreen("Pictures/ATLAS-Declutter-341L/", deck,
+                        onExit = {}, onSearchWholeLibrary = { left++ }, onTrashRequest = {})
+                }
+            }
+            repeat(3) { rule.onNodeWithTag("atlas-declutter-discard").performClick() }
+            rule.onNodeWithTag("atlas-declutter-review").performClick()
+            for (theme in listOf("light", "dark")) {
+                rule.runOnIdle { dark = theme == "dark" }
+                rule.onNodeWithTag("atlas-search-expand").performClick()
+                rule.awaitThat("search panel") { rule.exists(hasTestTag("atlas-search-expanded")) }
+                rule.typeText(hasTestTag("atlas-scoped-search-field"), "beach", KeyboardAfter.Shown)
+                rule.awaitThat("single-row panel above the keyboard") {
+                    rule.exists(hasTestTag("atlas-search-single-row"))
+                }
+                assertLabelsAboveIme(listOf("This screen", "Whole library", "Close search",
+                    "Back to Gallery"))
+                rule.waitForIdle()
+                Thread.sleep(500)
+                rule.waitForIdle()
+                saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
+
+                // Whole library is reachable with the keyboard still up.
+                rule.onNodeWithTag("atlas-search-scope-library").performClick()
+                rule.awaitThat("leave dialog") {
+                    rule.exists(hasTestTag("atlas-declutter-leave-dialog"))
+                }
+                rule.onNodeWithTag("atlas-declutter-leave-stay").performClick()
+                rule.awaitThat("dialog closed") {
+                    !rule.exists(hasTestTag("atlas-declutter-leave-dialog"))
+                }
+                rule.onNodeWithTag("atlas-search-close").performClick()
+                rule.hideKeyboard()
+                rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
+            }
+            rule.runOnIdle { assertEquals(0, left) }
+        }
+}
+
+/** Inserts six owned, flat-colour PNGs; deletes them afterwards. */
+internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
+    val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
+    val specs = listOf(
+        "BEACH_SYNTHETIC_01.png" to AndroidColor.rgb(33, 145, 192),
+        "RECEIPT_SYNTHETIC_02.png" to AndroidColor.rgb(214, 196, 160),
+        "BEACH_SYNTHETIC_03.png" to AndroidColor.rgb(237, 178, 92),
+        "RECEIPT_SYNTHETIC_04.png" to AndroidColor.rgb(150, 160, 170),
+        "SKY_SYNTHETIC_05.png" to AndroidColor.rgb(120, 170, 230),
+        "FOREST_SYNTHETIC_06.png" to AndroidColor.rgb(60, 130, 80)
+    )
+    val uris = specs.map { (name, colour) ->
+        val uri = requireNotNull(resolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH, folder)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        ))
+        val bitmap = Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888)
+        try {
+            bitmap.eraseColor(colour)
+            resolver.openOutputStream(uri)!!.use {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            bitmap.recycle()
+        }
+        resolver.update(uri, ContentValues().apply {
+            put(MediaStore.MediaColumns.IS_PENDING, 0)
+        }, null, null)
+        uri
+    }
+    try {
+        body(specs.mapIndexed { i, (name, _) ->
+            MediaRecord(341L + i, uris[i].toString(), name, folder,
+                (6 - i) * 2_000_000L, 341L + i, false)
+        })
+    } finally {
+        uris.forEach { resolver.delete(it, null, null) }
+    }
+}
+
+/**
+ * Every labelled control ends above the keyboard window, in screen
+ * coordinates. Accessibility bounds cover popups too (the search panel is a
+ * DropdownMenu window), which Compose window-relative bounds do not.
+ */
+internal fun assertLabelsAboveIme(labels: List<String>) {
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    automation.serviceInfo = automation.serviceInfo.apply {
+        flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+    }
+    var imeTop = -1
+    val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
+    while (imeTop < 0 && android.os.SystemClock.uptimeMillis() < deadline) {
+        automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            ?.let { window -> Rect().also { window.getBoundsInScreen(it) } }
+            ?.takeIf { it.height() > 0 }?.let { imeTop = it.top }
+        if (imeTop < 0) Thread.sleep(100)
+    }
+    assertTrue("keyboard window must be up", imeTop > 0)
+    for (label in labels) {
+        val matches = automation.windows
+            .filter { it.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            .mapNotNull { it.root }
+            .flatMap { it.findAccessibilityNodeInfosByText(label) }
+            .filter { node ->
+                node.text?.toString() == label || node.contentDescription?.toString() == label ||
+                    node.childLabels().contains(label)
+            }
+        assertTrue("no visible control labelled '$label'", matches.isNotEmpty())
+        for (node in matches) {
+            val bounds = Rect().also { node.getBoundsInScreen(it) }
+            Log.i("ATLAS_EVIDENCE", "declutter-341 '$label' bounds=$bounds imeTop=$imeTop")
+            assertTrue("'$label' (bottom ${bounds.bottom}) sits under the keyboard (top $imeTop)",
+                bounds.bottom <= imeTop)
+        }
+    }
+}
+
+private fun AccessibilityNodeInfo.childLabels(): List<String> =
+    (0 until childCount).mapNotNull { getChild(it) }
+        .flatMap { listOfNotNull(it.text?.toString(), it.contentDescription?.toString()) }
