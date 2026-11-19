@@ -305,6 +305,7 @@ class FaceIndexStore(
         createPeopleCoverTable(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
+        createMixedGroupTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
         createPersonMediaIndexes(db)
@@ -596,6 +597,7 @@ class FaceIndexStore(
         db.execSQL("""CREATE INDEX IF NOT EXISTS people_cannot_link_b
             ON people_cannot_link(face_b)""")
         createSameUnknownTable(db)
+        createMixedGroupTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_rejected(
@@ -744,6 +746,23 @@ class FaceIndexStore(
             CHECK(face_a < face_b), PRIMARY KEY(face_a, face_b))""")
         db.execSQL("""CREATE INDEX IF NOT EXISTS people_same_unknown_b
             ON people_same_unknown(face_b)""")
+    }
+
+    /**
+     * HUB-1A (#210): a "not one person" answer for an unnamed group, kept as
+     * its anchor face and the SHA-256 fingerprint of its exact membership
+     * ([MixedGroup]). The anchor cascades with its embedding like every other
+     * face-keyed fact, so a source change, rescan or model bump drops it.
+     * Additive and created on open like `people_same_unknown`, without a
+     * [SCHEMA_VERSION] bump: a build without it (a plain revert) opens the
+     * same file and ignores the table.
+     */
+    private fun createMixedGroupTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_mixed_group(
+            anchor_uid TEXT NOT NULL REFERENCES embeddings(face_uid) ON DELETE CASCADE,
+            fingerprint TEXT NOT NULL CHECK(length(fingerprint)=64
+                AND fingerprint NOT GLOB '*[^0-9a-f]*'),
+            PRIMARY KEY(anchor_uid, fingerprint))""")
     }
 
     /**
@@ -1440,12 +1459,14 @@ class FaceIndexStore(
         return PeopleReviewRecords.Rows(confirmed,
             pairs("SELECT face_a,face_b FROM people_cannot_link"),
             pairs("SELECT face_uid,person_key FROM people_rejected"),
-            pairs("SELECT face_a,face_b FROM people_same_unknown"))
+            pairs("SELECT face_a,face_b FROM people_same_unknown"),
+            pairs("SELECT anchor_uid,fingerprint FROM people_mixed_group"))
     }
     private fun reviewFacts(db: SQLiteDatabase): ClusterReviewFacts {
         val rows = reviewRows(db)
         return if (rows.confirmed.isEmpty() && rows.cannotLink.isEmpty() &&
-            rows.rejected.isEmpty() && rows.sameUnknown.isEmpty())
+            rows.rejected.isEmpty() && rows.sameUnknown.isEmpty() &&
+            rows.mixedGroups.isEmpty())
             ClusterReviewFacts.NONE else PeopleReviewRecords.facts(rows)
     }
     private fun personNames(db: SQLiteDatabase): Map<PersonKey, String> {
@@ -1815,7 +1836,8 @@ class FaceIndexStore(
                 names.keys.associateWith { resolvedPersonCover(db,
                     storedEmbedderVersion(db) ?: "", it) }.mapNotNull { (person, face) ->
                     face?.let { person to it }
-                }.toMap())
+                }.toMap(),
+                pairs("SELECT anchor_uid,fingerprint FROM people_mixed_group"))
         }
 
     /**
@@ -1941,6 +1963,18 @@ class FaceIndexStore(
             }
             for ((person, uid) in incoming.coverOverrides) {
                 if (storePersonCover(db, version, person, uid)) applied++ else skipped++
+            }
+            // HUB-1A (#210): only for an anchor face of the current model;
+            // a fact never regroups, so it needs no publication.
+            val oldMixed = reviewRows(db).mixedGroups
+            for ((anchor, fingerprint) in incoming.mixedGroups) {
+                if (anchor !in faces) { skipped++; continue }
+                if ((anchor to fingerprint) !in oldMixed) {
+                    db.insertOrThrow("people_mixed_group", null, ContentValues().apply {
+                        put("anchor_uid", anchor); put("fingerprint", fingerprint)
+                    })
+                }
+                applied++
             }
             if (applied > 0) {
                 bumpReviewRevision(db, reviewRevision(db))
@@ -2115,6 +2149,8 @@ class FaceIndexStore(
                 PeopleReviewRecords.setDelta(old.rejected, newRows.rejected))
             pairDelta("people_same_unknown", "face_a", "face_b",
                 PeopleReviewRecords.setDelta(old.sameUnknown, newRows.sameUnknown))
+            pairDelta("people_mixed_group", "anchor_uid", "fingerprint",
+                PeopleReviewRecords.setDelta(old.mixedGroups, newRows.mixedGroups))
             pairDelta("people_names", "person_key", "name", PeopleReviewRecords.mapDelta(
                 personNames(db).entries.associate { it.key.value to it.value }, nameRows))
             val hiddenDelta = PeopleReviewRecords.setDelta(hiddenPeople(db), hiddenRows)

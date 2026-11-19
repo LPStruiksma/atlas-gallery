@@ -4,6 +4,7 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FacePair
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.RejectedPerson
 
@@ -83,14 +84,17 @@ object PeopleReviewRecords {
         val cannotLink: Set<Pair<String, String>>,
         val rejected: Set<Pair<String, String>>,
         /** #580 "same person" answers for two unnamed groups, stored ordered (a < b). */
-        val sameUnknown: Set<Pair<String, String>> = emptySet()
+        val sameUnknown: Set<Pair<String, String>> = emptySet(),
+        /** HUB-1A (#210) "not one person" groups: anchor face uid to membership fingerprint. */
+        val mixedGroups: Set<Pair<String, String>> = emptySet()
     )
 
     fun rows(facts: ClusterReviewFacts): Rows = Rows(
         confirmed = facts.confirmed.entries.associate { (f, p) -> f.localHex to p.value },
         cannotLink = facts.cannotLink.mapTo(HashSet()) { it.first.localHex to it.second.localHex },
         rejected = facts.rejectedPeople.mapTo(HashSet()) { it.observation.localHex to it.person.value },
-        sameUnknown = facts.sameUnknown.mapTo(HashSet()) { it.first.localHex to it.second.localHex }
+        sameUnknown = facts.sameUnknown.mapTo(HashSet()) { it.first.localHex to it.second.localHex },
+        mixedGroups = facts.mixedGroups.mapTo(HashSet()) { it.anchor.localHex to it.fingerprint }
     )
 
     fun facts(rows: Rows): ClusterReviewFacts = ClusterReviewFacts(
@@ -105,6 +109,9 @@ object PeopleReviewRecords {
         },
         sameUnknown = rows.sameUnknown.mapTo(HashSet()) { (a, b) ->
             FacePair.of(NativeFaceObservationId(a), NativeFaceObservationId(b))
+        },
+        mixedGroups = rows.mixedGroups.mapTo(HashSet()) { (anchor, fingerprint) ->
+            MixedGroup(NativeFaceObservationId(anchor), fingerprint)
         }
     )
 
