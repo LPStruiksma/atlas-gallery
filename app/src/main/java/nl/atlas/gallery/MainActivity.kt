@@ -4014,9 +4014,8 @@ private fun GalleryGrid(
     onOpen: (MediaRecord) -> Unit
 ) {
     if (items.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(if (busy) "Loading media…" else "No photos here yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        // DESIGN-6 #136: shared quiet state; nothing while busy (state 7).
+        if (!busy) AtlasEmptyState(title = "No photos yet")
         return
     }
     LazyVerticalGrid(

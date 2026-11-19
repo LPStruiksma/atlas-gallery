@@ -154,11 +154,11 @@ class PeopleSearchAppEvidenceTest {
         compose.waitForIdle()
         saveUiEvidence("search.png")
 
-        // #654: a query with no hits says "No results", not "No photos here yet".
+        // #654: a query with no hits says "No results", not "No photos yet".
         compose.onNodeWithTag("atlas-search-field").performTextInput("qzxqzx")
         waitFor(compose, hasTestTag("atlas-feature-grid-empty") and
             androidx.compose.ui.test.hasText("No results", substring = true))
-        assertNoText(compose, "No photos here yet")
+        assertNoText(compose, "No photos yet")
         compose.waitForIdle()
         saveUiEvidence("search-654-empty.png")
     }

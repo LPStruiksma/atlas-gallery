@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featurealbums.AlbumLoadIssue
@@ -56,6 +57,7 @@ class Design6QuietStatesEvidenceTest {
     @Test fun albumsEmptyDeniedAndRetryAreRenderedInBothThemes() {
         var dark by mutableStateOf(false)
         var issue by mutableStateOf<AlbumLoadIssue?>(null)
+        var loading by mutableStateOf(false)
         compose.setContent {
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -67,6 +69,7 @@ class Design6QuietStatesEvidenceTest {
                             onOpenAlbum = {},
                             mediaFilter = AlbumMediaFilter.ALL,
                             onMediaFilterChange = {},
+                            isLoading = loading,
                             loadIssue = issue,
                             onOpenLibraryStatus = {},
                             onRetry = {})
@@ -76,25 +79,57 @@ class Design6QuietStatesEvidenceTest {
         }
         for (theme in listOf(false, true)) {
             val mode = if (theme) "dark" else "light"
-            compose.runOnIdle { dark = theme; issue = null }
+            compose.runOnIdle { dark = theme; issue = null; loading = false }
             compose.waitForIdle()
-            compose.onNodeWithText("Your albums will appear here").assertExists()
+            compose.onNodeWithText("No albums yet").assertIsDisplayed()
             compose.onNodeWithTag("atlas-empty-action").assertDoesNotExist()
+            assertQuietTitleCentred()
             saveUiEvidence("albums-136-empty-$mode.png")
 
             compose.runOnIdle { issue = AlbumLoadIssue.ACCESS_NOT_GRANTED }
             compose.waitForIdle()
             compose.onNodeWithText("Albums need photo access").assertIsDisplayed()
             // Centered content must remain visible in the bounded viewport.
-            compose.onNodeWithText("Library status").assertExists()
+            compose.onNodeWithText("Library status").assertIsDisplayed()
             saveUiEvidence("albums-136-denied-$mode.png")
 
             compose.runOnIdle { issue = AlbumLoadIssue.READ_FAILED }
             compose.waitForIdle()
-            compose.onNodeWithText("Couldn’t refresh albums").assertIsDisplayed()
-            compose.onNodeWithTag("atlas-empty-action").assertExists()
+            compose.onNodeWithText("Couldn’t load albums").assertIsDisplayed()
+            compose.onNodeWithText("Try again").assertIsDisplayed()
             saveUiEvidence("albums-136-error-$mode.png")
+
+            // State 7: a load shows nothing for 300 ms, then one quiet line.
+            compose.mainClock.autoAdvance = false
+            compose.runOnIdle { issue = null; loading = true }
+            compose.mainClock.advanceTimeBy(100L)
+            compose.onNodeWithTag("atlas-quiet-loading").assertExists()
+            compose.onNodeWithTag("atlas-quiet-loading-line").assertDoesNotExist()
+            compose.mainClock.autoAdvance = true
+            compose.waitUntil(5_000L) {
+                compose.onAllNodesWithTag("atlas-quiet-loading-line")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Loading albums…").assertIsDisplayed()
+            val header = compose.onNodeWithText("Albums").getBoundsInRoot()
+            saveUiEvidence("albums-136-loading-$mode.png")
+
+            // The load resolves to empty: the header does not move.
+            compose.runOnIdle { loading = false }
+            compose.waitForIdle()
+            compose.onNodeWithText("No albums yet").assertIsDisplayed()
+            val after = compose.onNodeWithText("Albums").getBoundsInRoot()
+            assertEquals(header.top.value, after.top.value, 1f)
+            saveUiEvidence("albums-136-loading-resolved-$mode.png")
         }
+    }
+
+    /** The shared quiet title sits in the horizontal centre of the screen. */
+    private fun assertQuietTitleCentred() {
+        val root = compose.onRoot().getBoundsInRoot()
+        val title = compose.onNodeWithTag("atlas-quiet-title").getBoundsInRoot()
+        assertEquals(((root.left + root.right) / 2).value,
+            ((title.left + title.right) / 2).value, 1f)
     }
 
     @Test fun peopleNotScannedRestoringAndScanningAreRenderedInBothThemes() {
@@ -128,8 +163,9 @@ class Design6QuietStatesEvidenceTest {
                 dark = theme; phase = FaceDiscoveryPhase.READY; restoring = false
             }
             compose.waitForIdle()
-            compose.onNodeWithTag("atlas-people-empty").assertExists()
+            compose.onNodeWithTag("atlas-people-empty").assertIsDisplayed()
             compose.onNodeWithText("No people").assertExists()
+            compose.onNodeWithText("Discover faces").assertIsDisplayed()
             saveUiEvidence("people-136-not-scanned-$mode.png")
 
             compose.runOnIdle { restoring = true }
@@ -144,7 +180,15 @@ class Design6QuietStatesEvidenceTest {
             }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-people-progress").assertExists()
+            // A thin progress line, no spinner wall; the centre just waits.
+            compose.onNodeWithText("No people yet").assertExists()
+            compose.onNodeWithText("Discover faces").assertDoesNotExist()
             saveUiEvidence("people-136-scanning-$mode.png")
+
+            compose.runOnIdle { phase = FaceDiscoveryPhase.FINISHED }
+            compose.waitForIdle()
+            compose.onNodeWithText("No people found").assertIsDisplayed()
+            saveUiEvidence("people-136-no-faces-$mode.png")
         }
     }
 
@@ -187,7 +231,7 @@ class Design6QuietStatesEvidenceTest {
             compose.runOnIdle { dark = theme; denied = false }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-timeline-empty").assertExists()
-            compose.onNodeWithText("No photos here yet").assertExists()
+            compose.onNodeWithText("No photos yet").assertIsDisplayed()
             saveUiEvidence("photos-136-empty-$mode.png")
 
             compose.runOnIdle { denied = true }
@@ -249,6 +293,48 @@ class Design6QuietStatesEvidenceTest {
         }
     }
 
+    /**
+     * State 1c: with Android's "selected photos" access the grid shows just the
+     * selected photos. ATLAS adds no banner, label or prompt above them; changing
+     * the selection is left to Android Settings. Invented records only.
+     */
+    @Test fun photosPartialAccessShowsTheSelectionWithNoBanner() {
+        var dark by mutableStateOf(false)
+        val selected = inventedMedia(5, 913_620_000L)
+        compose.setContent {
+            AtlasGalleryTheme(dark = dark) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Box(Modifier.fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        AtlasTimelineGallery(
+                            items = selected,
+                            sort = TimelineSort.NEWEST,
+                            gridState = rememberLazyGridState(),
+                            onOpen = {},
+                            viewKey = "photos-136-partial")
+                    }
+                }
+            }
+        }
+        for (theme in listOf(false, true)) {
+            val mode = if (theme) "dark" else "light"
+            compose.runOnIdle { dark = theme }
+            compose.waitUntil(30_000L) {
+                compose.onAllNodesWithTag("atlas-timeline-grid")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.waitForIdle()
+            compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
+            compose.onNodeWithTag("atlas-quiet-title").assertDoesNotExist()
+            for (banner in listOf("selected", "access", "Allow", "Manage", "more photos")) {
+                assertTrue("partial access shows a banner: $banner",
+                    compose.onAllNodesWithText(banner, substring = true, ignoreCase = true)
+                        .fetchSemanticsNodes().isEmpty())
+            }
+            saveUiEvidence("photos-136-partial-access-$mode.png")
+        }
+    }
+
     @Test fun viewerDecodeErrorIsNamedAndNeighbourSwipeStillWorks() {
         var dark by mutableStateOf(false)
         val invented = inventedMedia(3, 913_610_000L)
@@ -268,7 +354,7 @@ class Design6QuietStatesEvidenceTest {
             compose.runOnIdle { dark = theme }
             awaitDecodeError()
             compose.waitForIdle()
-            compose.onNodeWithText("Can't open photo", useUnmergedTree = true).assertExists()
+            compose.onNodeWithText("Can’t open photo", useUnmergedTree = true).assertExists()
             saveUiEvidence("viewer-136-decode-error-$mode.png")
 
             // The failed page must not trap the user: a swipe still pages on.

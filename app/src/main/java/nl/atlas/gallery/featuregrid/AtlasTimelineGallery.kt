@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featuregrid
 
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.featuredesign.scrolledFromTop
 import nl.atlas.gallery.featuredesign.LocalAtlasHeaderCollapsed
@@ -533,10 +534,12 @@ fun AtlasTimelineGallery(
             // DESIGN-6 #136: an empty library plans an empty grid too; show the
             // quiet line there, centred in the same box, instead of nothing.
             if (ready == null || items.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(bottom = LocalAtlasBottomChrome.current),
-                    contentAlignment = Alignment.Center) {
+                // The shared quiet state centres itself above the nav pill;
+                // while busy the box stays empty (state 7: no spinner wall).
+                Box(Modifier.fillMaxSize()) {
                     if (items.isEmpty() && !busy) {
-                        Text("No photos here yet", Modifier.testTag("atlas-timeline-empty"))
+                        AtlasEmptyState(title = "No photos yet",
+                            titleTag = "atlas-timeline-empty")
                     }
                 }
             } else {

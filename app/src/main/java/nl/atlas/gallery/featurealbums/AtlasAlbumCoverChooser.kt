@@ -113,44 +113,28 @@ fun AtlasAlbumCoverChooser(
             isLoading -> {
                 // Background next-page work has not yet published a complete
                 // grant-bound projection. Do not misreport this as revocation.
-                AtlasGalleryLoading("Finding album cover choices…")
+                AtlasGalleryLoading("Loading covers…", bottomInset = 0.dp)
             }
-            candidates == null -> {
-                Box(Modifier.fillMaxSize()) {
-                    AtlasEmptyState(
-                        title = "Album access changed",
-                        explanation = "The library changed while choosing a cover. " +
-                            "Return to Albums and open this picker again.",
-                        icon = Icons.Filled.Collections,
-                        actionLabel = "Close cover picker",
-                        onAction = onDismiss
-                    )
-                }
-            }
-            coverRenderer == null -> {
-                Box(Modifier.fillMaxSize()) {
-                    AtlasEmptyState(
-                        title = "Cover previews unavailable",
-                        explanation = "A current, permission-aware photo preview is needed " +
-                            "before you can choose a cover.",
-                        icon = Icons.Filled.Collections,
-                        actionLabel = "Close cover picker",
-                        onAction = onDismiss
-                    )
-                }
-            }
-            candidates.isEmpty() -> {
-                Box(Modifier.fillMaxSize()) {
-                    AtlasEmptyState(
-                        title = "No accessible cover choices",
-                        explanation = "There are no currently available media items " +
-                            "matching this album and type filter.",
-                        icon = Icons.Filled.Collections,
-                        actionLabel = "Close cover picker",
-                        onAction = onDismiss
-                    )
-                }
-            }
+            // DESIGN-6 #136: one short line and the real way out (close).
+            candidates == null -> AtlasEmptyState(
+                title = "Album changed",
+                explanation = "Open the cover picker again.",
+                actionLabel = "Close",
+                onAction = onDismiss,
+                bottomInset = 0.dp
+            )
+            coverRenderer == null -> AtlasEmptyState(
+                title = "Covers can’t be shown",
+                actionLabel = "Close",
+                onAction = onDismiss,
+                bottomInset = 0.dp
+            )
+            candidates.isEmpty() -> AtlasEmptyState(
+                title = "No covers to choose",
+                actionLabel = "Close",
+                onAction = onDismiss,
+                bottomInset = 0.dp
+            )
             else -> {
                 Text(
                     if (pageCursor == null)

@@ -116,6 +116,10 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
         rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
         rule.waitForIdle()
+        // #136 state 7: the line appears only after the 300 ms quiet period.
+        rule.waitUntil(5_000L) {
+            rule.onAllNodesWithTag("atlas-quiet-loading-line").fetchSemanticsNodes().isNotEmpty()
+        }
         saveUiEvidence("stories-136-planning-light.png")
         dark = true
         rule.waitForIdle()

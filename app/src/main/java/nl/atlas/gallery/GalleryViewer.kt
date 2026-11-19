@@ -1475,7 +1475,10 @@ private fun PhotoPage(
                 if (previewFailed && decodedSize == IntSize.Zero && focused) {
                     Box(Modifier.fillMaxSize().testTag("atlas-viewer-decode-error"),
                         contentAlignment = Alignment.Center) {
-                        Text("Can't open photo", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // DESIGN-6 #136: one quiet line in Quiet Frame's dark ink-muted;
+                        // the viewer ground is black in both themes.
+                        Text("Can’t open photo", style = MaterialTheme.typography.bodyMedium,
+                            color = AtlasTokens.Colors.Dark.OnSurfaceVariant)
                     }
                 }
                 // Inside the zoom layer, so the box follows pinch and pan.
