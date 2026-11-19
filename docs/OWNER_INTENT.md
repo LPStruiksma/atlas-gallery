@@ -3,7 +3,8 @@
 Set by Lukas, 2026-11-09 (Strategy thread, after first daily use of ATLAS on his S24+). This page wins over any older ATLAS design doc in this repo. Every ATLAS Dev checks a change against it, and every Review names it in the receipt; a change that drifts from it is BLOCKING.
 
 ## What ATLAS is
-1. **Base: an exact Samsung Gallery replica**, plus **sort by file size**. Look, layout, motion and behaviour follow Samsung Gallery 15.9 on every surface he uses daily. "Not a half-baked knockoff."
+1. **Base: Samsung Gallery layout and behaviour**, plus **sort by file size**. Layout, navigation, gestures and behaviour follow Samsung Gallery 15.9 on every surface he uses daily. "Not a half-baked knockoff."
+   **Look: ATLAS's own "Quiet Frame" design** (Lukas, 2026-11-18, design-direction decision in the "Redesign ATLAS into a modern app" project thread). Colour, type, surfaces, shapes and motion follow [`docs/design/QUIET_FRAME.md`](design/QUIET_FRAME.md), not Samsung's visuals. Where the parity spec describes how something *looks*, Quiet Frame wins; where it describes where something *is* or how it *behaves*, the parity spec still wins.
 2. **Source of truth for "how Samsung does it":** the private Samsung parity research archive (raw research dataset) and the private Samsung parity research archive (187 findings). The parity spec built from them is `docs/product/SAMSUNG_PARITY_SPEC.md` (#509). Cite finding IDs. The research is reference only; write our own Kotlin.
 3. **Extras sit where Samsung would put them.** Face/People search, "find similar", Photo DNA, declutter and the file-size sort live in menus, Search, the People tab or the viewer overflow, never as extra chrome on core screens.
 4. **Fast and snappy over cautious.** It is his personal app. No blocking screens, consent ceremony or safety text beyond what Android itself enforces; refresh in the background; open instantly into the cached gallery.
