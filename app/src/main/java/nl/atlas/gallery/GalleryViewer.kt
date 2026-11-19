@@ -160,6 +160,9 @@ fun GalleryViewer(
     // Favourite results outlive a remount (a Trash rebuilds the list), keyed by URI,
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
+    // BENCH-1 (#572): which photos' 2400 px base decoded with an Ultra HDR
+    // gain map, as reported by their own page. Only the focused one counts.
+    val gainmapByUri = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
@@ -490,6 +493,10 @@ private fun GalleryViewerSnapshot(
     }
     // Samsung hides the status and navigation bars together with its chrome.
     ViewerSystemBars(visible = chromeVisible)
+    // BENCH-1 (#572): window HDR only while the focused photo has a gain map.
+    val focusedForHdr = items.getOrNull(pagerState.currentPage)
+    ViewerHdrWindowMode(focusedHasGainmap = focusedForHdr != null && !focusedForHdr.isVideo &&
+        gainmapByUri[focusedForHdr.uri] == true)
 
     // Live drag transforms are animated back on cancellation and read only by
     // their owning layers, not by the full viewer on each pointer frame.
@@ -673,7 +680,10 @@ private fun GalleryViewerSnapshot(
                     onPreviewReady = if (focused && timingProbe != null) {
                         { timingProbe.firstPreviewReady(page) }
                     } else null,
-                    openingPage = onEntryPage && page == start)
+                    openingPage = onEntryPage && page == start,
+                    onGainmapDecoded = { hasGainmap ->
+                        gainmapByUri[media.uri] = hasGainmap
+                    })
             }
         }
         }
@@ -1118,7 +1128,7 @@ private fun ViewerSystemBars(visible: Boolean) {
     }
 }
 
-private tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
+internal tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
     when (this) {
         is android.app.Activity -> this
         is android.content.ContextWrapper -> baseContext.viewerHostActivity()
@@ -1244,7 +1254,8 @@ private fun PhotoPage(
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
-    openingPage: Boolean = false
+    openingPage: Boolean = false,
+    onGainmapDecoded: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
@@ -1454,6 +1465,7 @@ private fun PhotoPage(
                         onSuccess = { result ->
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                             if (sharpAt == 0L) sharpAt = System.nanoTime()
+                            onGainmapDecoded(viewerImageHasGainmap(result.result.image))
                         })
                     // PERF-32 (#334): full-resolution tiles over this base
                     // once the photo is magnified past what 2400 px can show.
