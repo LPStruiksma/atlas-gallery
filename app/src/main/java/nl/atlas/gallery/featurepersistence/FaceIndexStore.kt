@@ -12,6 +12,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.FaceQuality
+import nl.atlas.gallery.featureface.FaceMediaKey
+import nl.atlas.gallery.featureface.UnknownFaceBox
+import nl.atlas.gallery.featureface.FaceQualityBackfillFace
+import nl.atlas.gallery.featureface.FaceQualityBackfillSource
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterDiagnostics
@@ -422,6 +426,8 @@ class FaceIndexStore(
         if ("quality_score" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SCORE_COLUMN")
         if ("quality_version" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_VERSION_COLUMN")
         if ("quality_below_size_floor" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SIZE_COLUMN")
+        // Index only the legacy rows that actually need maintenance; no per-scan cost.
+        db.execSQL("CREATE INDEX IF NOT EXISTS face_quality_pending ON faces(media_key) WHERE quality_score IS NULL")
     }
 
     private fun createClusterGeneration(db: SQLiteDatabase) {
@@ -1378,6 +1384,85 @@ class FaceIndexStore(
             check(recorded) { "Embedded scan completion was not persisted" }
             true
         } }
+    }
+
+    /**
+     * COVER-0b: one existing processed media source with NULL quality, carrying
+     * only the source-key/box/frame and already-stored face uid. The active
+     * embedding version and revision must match; neither old-model vectors
+     * nor inaccessible/stale catalog rows may enter maintenance.
+     *
+     * The keyset cursor lets a batch skip undecodable or unmatched sources
+     * without repeatedly decoding the same source in a tight WorkManager loop.
+     */
+    fun pendingQualitySource(epoch: String, afterMediaKey: String? = null): FaceQualityBackfillSource? =
+        authorizedEmbeddingRead(epoch, null) { db, embedderVersion ->
+            val suffix = if (afterMediaKey == null) "" else " AND f.media_key > ?"
+            val args = if (afterMediaKey == null) arrayOf(embedderVersion)
+                else arrayOf(embedderVersion, afterMediaKey)
+            val header = db.rawQuery("""SELECT f.media_key,c.revision,c.detector_version
+                FROM faces f JOIN catalog c ON c.media_key=f.media_key
+                JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+                WHERE f.quality_score IS NULL AND c.state='processed'
+                AND e.model_version=?$suffix
+                ORDER BY f.media_key,f.ordinal LIMIT 1""", args).use { cursor ->
+                if (!cursor.moveToFirst()) null else Triple(
+                    cursor.getString(0), cursor.getString(1), cursor.getString(2))
+            } ?: return@authorizedEmbeddingRead null
+            val faces = db.rawQuery("""SELECT f.face_uid,f.l,f.t,f.r,f.b,f.frame_ms
+                FROM faces f JOIN embeddings e ON e.face_uid=f.face_uid
+                WHERE f.media_key=? AND f.quality_score IS NULL
+                AND e.source_revision=? AND e.model_version=?
+                ORDER BY f.ordinal LIMIT 33""",
+                arrayOf(header.first, header.second, embedderVersion)).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) add(FaceQualityBackfillFace(
+                        cursor.getString(0),
+                        UnknownFaceBox(cursor.getFloat(1), cursor.getFloat(2),
+                            cursor.getFloat(3), cursor.getFloat(4)),
+                        if (cursor.isNull(5)) null else cursor.getLong(5)))
+                }
+            }
+            if (faces.isEmpty()) null else FaceQualityBackfillSource(
+                FaceMediaKey(header.first, header.second), header.third, embedderVersion, faces)
+        }
+
+    /**
+     * Single short SQLite transaction: a re-grant, changed source, new model,
+     * or a competing scan defeats this write. Never replace a known score and
+     * never update vectors, clustering, review decisions or identity rows.
+     */
+    fun backfillQualityIfNull(
+        epoch: String, source: FaceQualityBackfillSource, scores: Map<String, FaceQuality>
+    ): Int {
+        validEpoch(epoch)
+        require(scores.keys.all { uid -> source.faces.any { it.uid == uid } })
+        if (scores.isEmpty()) return 0
+        return write { db ->
+            if (currentEpoch(db) != epoch ||
+                storedEmbedderVersion(db) != source.embedderVersion) return@write 0
+            val stillCurrent = db.rawQuery("""SELECT 1 FROM catalog
+                WHERE media_key=? AND revision=? AND detector_version=?
+                AND state='processed'""",
+                arrayOf(source.media.canonicalMediaKey, source.media.sourceRevision,
+                    source.detectorVersion)).use { it.moveToFirst() }
+            if (!stillCurrent) return@write 0
+            var written = 0
+            for ((uid, quality) in scores) {
+                val values = ContentValues().apply {
+                    put("quality_score", quality.score.toDouble())
+                    put("quality_version", quality.qualityVersion)
+                    put("quality_below_size_floor", if (quality.belowSizeFloor) 1 else 0)
+                }
+                written += db.update("faces", values,
+                    """face_uid=? AND media_key=? AND quality_score IS NULL
+                    AND EXISTS(SELECT 1 FROM embeddings e WHERE e.face_uid=faces.face_uid
+                        AND e.source_revision=? AND e.model_version=?)""",
+                    arrayOf(uid, source.media.canonicalMediaKey,
+                        source.media.sourceRevision, source.embedderVersion))
+            }
+            written
+        }
     }
 
     /** Empty: every face is a photo face. Else one non-negative time (or null) per box. */
