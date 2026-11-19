@@ -38,6 +38,9 @@ import nl.atlas.gallery.featureidentity.engine.TargetFace
 import nl.atlas.gallery.featureidentity.target.TargetFaceSelection
 import nl.atlas.gallery.saveUiEvidence
 import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.advanceVirtualTime
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.hideKeyboard
@@ -233,8 +236,8 @@ class SwapPersonEvidenceTest {
 
     private fun shot(name: String) {
         compose.waitForIdle()
-        // Let the new frame reach the screen: run 2 caught the S1 skeleton after the people had loaded.
-        Thread.sleep(250)
+        // Draw a few frames so the new state reaches the screen: run 2 caught the S1 skeleton after the people had loaded.
+        compose.advanceVirtualTime(48)
         compose.waitForIdle()
         saveUiEvidence("ids8-$name-${if (dark) "dark" else "light"}-${(fontScale * 100).toInt()}.png")
     }
@@ -260,6 +263,9 @@ class SwapPersonEvidenceTest {
         compose.onAllNodesWithTag("swap-person-skeleton").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty()) }
         shot("s1-loading")
         act { current!!.drain() }
+        compose.awaitThat("the people in place of the grey circles") {
+            !compose.exists(hasTestTag("swap-person-skeleton")) && compose.exists(hasTestTag("swap-person-tile"))
+        }
         compose.onNodeWithTag("swap-looks-badge", useUnmergedTree = true).assertExists()
         shot("s1-people")
         show(Harness(Host(count = 14))) { machine.start(); drain() }
