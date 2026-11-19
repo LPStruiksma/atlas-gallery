@@ -53,6 +53,30 @@ class TargetFaceSelectorTest {
             400f, 400f, FacePoint(20f, 70f), 48f))
     }
 
+    @Test fun sidewaysPhotoDetectionAndTapShareRawSpace() {
+        // Raw 400x200 shown rotated 90° clockwise: upright 200x400. A face detected upright at
+        // x 20..80, y 140..200 is raw x 140..200, y 120..180 (raw = (y, rawHeight - x)).
+        val upright = candidate(20, 140, 80, 200).face
+        val raw = TargetFaceSelector.uprightToRaw(upright, 400, 200, 90)
+        assertEquals(FaceBox(140, 120, 200, 180), raw.box)
+        assertEquals(FacePoint(140f, 180f), raw.landmarks[0])
+        // The same upright point the user taps (centre 50,170; view 400x400, letterbox x=100)
+        // hits the raw-space face through faceAtTap with the same rotation.
+        assertSame(raw, TargetFaceSelector.faceAtTap(listOf(raw), 400, 200, 90,
+            400f, 400f, FacePoint(150f, 170f), 0f))
+        // The unmapped upright box would be missed: the coordinate spaces really differ.
+        assertNull(TargetFaceSelector.faceAtTap(listOf(upright), 400, 200, 90,
+            400f, 400f, FacePoint(150f, 170f), 0f))
+    }
+
+    @Test fun uprightToRawRoundTripsEveryRotation() {
+        val p = FacePoint(30f, 50f)
+        assertEquals(p, TargetFaceSelector.uprightToRaw(p, 400, 200, 0))
+        assertEquals(FacePoint(50f, 170f), TargetFaceSelector.uprightToRaw(p, 400, 200, 90))
+        assertEquals(FacePoint(370f, 150f), TargetFaceSelector.uprightToRaw(p, 400, 200, 180))
+        assertEquals(FacePoint(350f, 30f), TargetFaceSelector.uprightToRaw(p, 400, 200, 270))
+    }
+
     @Test fun poorQualityFaceRemainsTappableButIsNotAutoSelected() {
         val blurry = candidate(300, 200, 700, 650, sharpness = .01, confidence = .9)
         assertEquals(TargetFaceSelection.Ask(listOf(blurry.face)),

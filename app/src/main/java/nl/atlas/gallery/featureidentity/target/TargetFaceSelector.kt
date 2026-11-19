@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featureidentity.target
 
+import kotlin.math.ceil
 import kotlin.math.hypot
 import nl.atlas.gallery.featureidentity.engine.FaceBox
 import nl.atlas.gallery.featureidentity.engine.FacePoint
@@ -23,7 +24,11 @@ sealed interface TargetFaceSelection {
     data class Ask(val faces: List<TargetFace>) : TargetFaceSelection
 }
 
-/** Pure selection and tap geometry; Android decoding and YuNet invocation live in [TargetFaceDetection]. */
+/**
+ * Pure selection and tap geometry; Android decoding and YuNet invocation live in [TargetFaceDetection].
+ * Every [TargetFace] here is in raw stored pixels (EXIF orientation not applied), the space the
+ * identity engine decodes in.
+ */
 object TargetFaceSelector {
     const val AREA_WEIGHT = 0.45
     const val CENTRE_WEIGHT = 0.20
@@ -86,16 +91,38 @@ object TargetFaceSelector {
         val x = (tap.x - (viewWidth - uprightWidth * scale) / 2f) / scale
         val y = (tap.y - (viewHeight - uprightHeight * scale) / 2f) / scale
         if (x !in 0f..uprightWidth.toFloat() || y !in 0f..uprightHeight.toFloat()) return null
-        val raw = when (clockwiseDegrees) {
-            0 -> FacePoint(x, y)
-            90 -> FacePoint(y, rawHeight - x)
-            180 -> FacePoint(rawWidth - x, rawHeight - y)
-            else -> FacePoint(rawWidth - y, x)
-        }
+        val raw = uprightToRaw(FacePoint(x, y), rawWidth, rawHeight, clockwiseDegrees)
         faces.firstOrNull { it.box.contains(raw) }?.let { return it }
         val sourceTolerance = tolerancePx / scale
         return faces.minByOrNull { distance(raw, it.box) }
             ?.takeIf { distance(raw, it.box) <= sourceTolerance }
+    }
+
+    /**
+     * Maps a point in upright (EXIF-applied, displayed) pixels to raw stored pixels, where the
+     * stored frame is shown after a clockwise rotation of [clockwiseDegrees].
+     */
+    fun uprightToRaw(point: FacePoint, rawWidth: Int, rawHeight: Int, clockwiseDegrees: Int): FacePoint =
+        when (clockwiseDegrees) {
+            0 -> point
+            90 -> FacePoint(point.y, rawHeight - point.x)
+            180 -> FacePoint(rawWidth - point.x, rawHeight - point.y)
+            270 -> FacePoint(rawWidth - point.y, point.x)
+            else -> throw IllegalArgumentException("Rotation must be 0, 90, 180 or 270")
+        }
+
+    /** [uprightToRaw] for a whole face: box corners re-ordered, each landmark mapped. */
+    fun uprightToRaw(face: TargetFace, rawWidth: Int, rawHeight: Int, clockwiseDegrees: Int): TargetFace {
+        val a = uprightToRaw(FacePoint(face.box.left.toFloat(), face.box.top.toFloat()), rawWidth, rawHeight, clockwiseDegrees)
+        val b = uprightToRaw(FacePoint(face.box.right.toFloat(), face.box.bottom.toFloat()), rawWidth, rawHeight, clockwiseDegrees)
+        val left = minOf(a.x, b.x).toInt().coerceIn(0, rawWidth - 1)
+        val top = minOf(a.y, b.y).toInt().coerceIn(0, rawHeight - 1)
+        val right = ceil(maxOf(a.x, b.x).toDouble()).toInt().coerceIn(left + 1, rawWidth)
+        val bottom = ceil(maxOf(a.y, b.y).toDouble()).toInt().coerceIn(top + 1, rawHeight)
+        return TargetFace(
+            FaceBox(left, top, right, bottom),
+            face.landmarks.map { uprightToRaw(it, rawWidth, rawHeight, clockwiseDegrees) }
+        )
     }
 
     private fun distance(point: FacePoint, box: FaceBox): Double {

@@ -11,15 +11,24 @@ import nl.atlas.gallery.featureidentity.engine.FacePoint
 import nl.atlas.gallery.featureidentity.engine.IdentityEngineCapabilities
 import nl.atlas.gallery.featureidentity.engine.TargetFace
 
-/** Orientation-aware, bounded decode adapter for the app's existing YuNet detector. */
+/**
+ * Orientation-aware, bounded decode adapter for the app's existing YuNet detector.
+ *
+ * `ImageDecoder` applies EXIF orientation, so YuNet sees the upright frame. Results are mapped back
+ * to raw stored pixels with [clockwiseDegrees] (the photo's EXIF/MediaStore orientation, the same
+ * value passed to [TargetFaceSelector.faceAtTap]), because the identity engine decodes without
+ * EXIF. Selection by area and centre is rotation-invariant, so it can run in raw space too.
+ */
 object TargetFaceDetection {
     const val MAX_DETECTION_PIXELS = 1_048_576L
 
     fun detect(
         source: ImageDecoder.Source,
+        clockwiseDegrees: Int,
         engine: IdentityEngineCapabilities,
         detectorFactory: () -> OnnxFaceDetector
     ): List<TargetFaceCandidate> {
+        require(clockwiseDegrees in setOf(0, 90, 180, 270))
         val limit = minOf(MAX_DETECTION_PIXELS, engine.maxSourcePixels)
         var fullWidth = 0
         var fullHeight = 0
@@ -37,7 +46,13 @@ object TargetFaceDetection {
             val faces = detectorFactory().use { it.detectFaces(bitmap) }
             val sx = fullWidth.toDouble() / bitmap.width
             val sy = fullHeight.toDouble() / bitmap.height
-            return faces.mapNotNull { candidate(it, bitmap, sx, sy, fullWidth, fullHeight) }
+            val rawWidth = if (clockwiseDegrees % 180 == 0) fullWidth else fullHeight
+            val rawHeight = if (clockwiseDegrees % 180 == 0) fullHeight else fullWidth
+            return faces.mapNotNull { detected ->
+                candidate(detected, bitmap, sx, sy, fullWidth, fullHeight)?.let {
+                    it.copy(face = TargetFaceSelector.uprightToRaw(it.face, rawWidth, rawHeight, clockwiseDegrees))
+                }
+            }
         } finally {
             bitmap.recycle()
         }
