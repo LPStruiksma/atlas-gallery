@@ -71,6 +71,7 @@ import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import androidx.compose.ui.test.SemanticsMatcher
@@ -275,8 +276,10 @@ class PersonPageJourneyTest {
         val group = store.peopleReview(epoch)!!.clusters.unknownClusters
             .maxBy { it.members.size }
         val matchingUris = checkNotNull(host.personPageFaces(grant, group.members)).keys
-        val ids = records.filter { it.uri in matchingUris }.take(2).map { it.id }
-        assertEquals("two authorized synthetic person photos", 2, ids.size)
+        val selectedRecords = records.filter { it.uri in matchingUris }.take(2)
+        assertEquals("two authorized synthetic person photos", 2, selectedRecords.size)
+        val ids = selectedRecords.map { it.id }
+        val expectedUris = selectedRecords.map { it.uri }.toSet()
         val request = NativePersonAlbumRequest(PersonPageTarget.Unnamed(group.id), "")
         val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
             .pendingPersonSelectionRotationState
@@ -317,6 +320,10 @@ class PersonPageJourneyTest {
                     .performScrollToNode(hasTestTag(tag))
                 compose.onNodeWithTag(tag).assertIsSelected()
             }
+            compose.waitForIdle()
+            assertEquals("configuration holder keeps exactly the same keys",
+                expectedUris, holder.value?.encoded?.drop(3)?.toSet())
+            assertEquals(request.opening, holder.value?.opening)
             // Both controls remain inside the current S24+ viewport, apart
             // from each other, in portrait AND constrained landscape.
             val root = compose.onRoot().getUnclippedBoundsInRoot()
@@ -346,6 +353,9 @@ class PersonPageJourneyTest {
                 after != before
             }
             compose.activityRule.scenario.onActivity {
+                val retained = ViewModelProvider(it)[GalleryViewModel::class.java]
+                    .pendingPersonSelectionRotationState
+                assertSame("snapshot lives in the Activity-retained ViewModel", holder, retained)
                 applyAtlasSystemBars(it.window, dark = dark)
                 it.setContent { page() }
             }
