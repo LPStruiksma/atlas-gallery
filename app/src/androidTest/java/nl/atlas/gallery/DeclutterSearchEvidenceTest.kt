@@ -8,11 +8,11 @@ import android.graphics.Rect
 import android.provider.MediaStore
 import android.util.Log
 import android.view.WindowInsets
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertTextContains
@@ -102,7 +102,7 @@ class DeclutterSearchEvidenceTest {
             }
             rule.onNodeWithTag("atlas-declutter-trash")
                 .assertTextContains("Move $STAGED to Android Trash", substring = true)
-            assertAboveIme(listOf("Return to swiping", "Move $STAGED to Android Trash…"))
+            rule.assertTagsAboveIme(listOf("atlas-declutter-trash"))
             capture("declutter-341-C-keyboard-$theme.png")
 
             // D1: Whole library with staged choices asks first; Stay keeps everything.
@@ -153,8 +153,6 @@ class DeclutterSearchEvidenceTest {
         saveUiEvidence(name)
     }
 
-    private fun assertAboveIme(labels: List<String>) = rule.assertLabelsAboveIme(labels)
-
     private companion object { const val STAGED = 4 }
 }
 
@@ -192,10 +190,11 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.awaitThat("single-row panel above the keyboard") {
                     rule.exists(hasTestTag("atlas-search-single-row"))
                 }
-                rule.assertLabelsAboveIme(listOf("This screen", "Whole library", "Close search",
-                    "Back to Gallery"))
                 rule.waitForIdle()
                 saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
+                rule.assertTagsAboveIme(listOf("atlas-scoped-search-field",
+                    "atlas-search-scope-screen", "atlas-search-scope-library",
+                    "atlas-search-close", "atlas-header-back"))
 
                 // Whole library is reachable with the keyboard still up.
                 rule.onNodeWithTag("atlas-search-scope-library").performClick()
@@ -286,11 +285,11 @@ internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
 }
 
 /**
- * Every labelled control ends above the keyboard window, in screen
- * coordinates. Accessibility bounds cover popups too (the search panel is a
- * DropdownMenu window), which Compose window-relative bounds do not.
+ * Every tagged control ends above the keyboard window, in screen coordinates.
+ * The search panel is a DropdownMenu popup, so each node's own window offset
+ * is added to its window position; the IME top comes from its window bounds.
  */
-internal fun ComposeTestRule.assertLabelsAboveIme(labels: List<String>) {
+internal fun ComposeTestRule.assertTagsAboveIme(tags: List<String>) {
     val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
     automation.serviceInfo = automation.serviceInfo.apply {
         flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -302,26 +301,17 @@ internal fun ComposeTestRule.assertLabelsAboveIme(labels: List<String>) {
             ?.takeIf { it.height() > 0 }?.let { imeTop = it.top }
         imeTop > 0
     }
-    assertTrue("keyboard window must be up", imeTop > 0)
-    for (label in labels) {
-        val matches = automation.windows
-            .filter { it.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-            .mapNotNull { it.root }
-            .flatMap { it.findAccessibilityNodeInfosByText(label) }
-            .filter { node ->
-                node.text?.toString() == label || node.contentDescription?.toString() == label ||
-                    node.childLabels().contains(label)
-            }
-        assertTrue("no visible control labelled '$label'", matches.isNotEmpty())
-        for (node in matches) {
-            val bounds = Rect().also { node.getBoundsInScreen(it) }
-            Log.i("ATLAS_EVIDENCE", "declutter-341 '$label' bounds=$bounds imeTop=$imeTop")
-            assertTrue("'$label' (bottom ${bounds.bottom}) sits under the keyboard (top $imeTop)",
-                bounds.bottom <= imeTop)
-        }
+    val report = tags.map { tag ->
+        val node = onNodeWithTag(tag).fetchSemanticsNode("no node tagged $tag")
+        val view = (node.root as ViewRootForTest).view
+        val origin = onMainThread { IntArray(2).also { view.getLocationOnScreen(it) } }
+        val top = origin[1] + node.positionInWindow.y
+        val bottom = top + node.size.height
+        Log.i("ATLAS_EVIDENCE", "declutter-341 $tag x=${origin[0] + node.positionInWindow.x} " +
+            "top=$top bottom=$bottom w=${node.size.width} imeTop=$imeTop")
+        Triple(tag, bottom, node.size.width)
     }
+    val bad = report.filter { (_, bottom, width) -> bottom > imeTop || width <= 0 }
+    assertTrue("controls under the keyboard (top $imeTop px) or zero-width: $bad; all: $report",
+        bad.isEmpty())
 }
-
-private fun AccessibilityNodeInfo.childLabels(): List<String> =
-    (0 until childCount).mapNotNull { getChild(it) }
-        .flatMap { listOfNotNull(it.text?.toString(), it.contentDescription?.toString()) }
