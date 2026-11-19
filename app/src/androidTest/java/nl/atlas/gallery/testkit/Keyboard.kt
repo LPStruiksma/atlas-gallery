@@ -26,6 +26,17 @@ enum class KeyboardAfter {
 internal const val TEST_KIT_LOG_TAG = "ATLAS_TESTKIT"
 
 /**
+ * Compose roots are ordered with the Activity first, but a Dialog or Popup
+ * may own window focus (and therefore the IME). Use that focused root when
+ * issuing keyboard requests and reading its insets.
+ */
+private fun ComposeTestRule.keyboardWindow(): View? {
+    val roots = rootViews()
+    return roots.firstOrNull { view -> onMainThread { view.hasWindowFocus() } }
+        ?: roots.firstOrNull()
+}
+
+/**
  * Types [text] into the node (semantics, not key presses) and leaves the
  * keyboard in the named state. Typing focuses the field, and focus asks the
  * system for the keyboard, which arrives 0.3 to 2 s later on real time.
@@ -41,7 +52,7 @@ fun ComposeTestRule.typeText(
         KeyboardAfter.Hidden -> hideKeyboard(showExpected = true)
         KeyboardAfter.Shown -> {
             // A field that already had focus does not ask for the keyboard again.
-            rootViews().firstOrNull()?.let { view ->
+            keyboardWindow()?.let { view ->
                 onMainThread { view.windowInsetsController?.show(WindowInsets.Type.ime()) }
             }
             awaitKeyboardShown()
@@ -51,7 +62,7 @@ fun ComposeTestRule.typeText(
 
 /** The keyboard's bottom inset in px, as this rule's window sees it now. */
 fun ComposeTestRule.keyboardInsetPx(): Int =
-    rootViews().firstOrNull()?.let { view -> onMainThread { view.keyboardInset() } } ?: 0
+    keyboardWindow()?.let { view -> onMainThread { view.keyboardInset() } } ?: 0
 
 /**
  * Hides the keyboard and returns when its inset has been 0 on every frame
@@ -71,7 +82,7 @@ fun ComposeTestRule.hideKeyboard(
     showExpected: Boolean = false,
     arrivalMs: Long = 3_000L
 ) {
-    val view = rootViews().firstOrNull() ?: return
+    val view = keyboardWindow() ?: return
     val noKeyboard = selectedInputMethod().endsWith(TestKeyboard.None.service)
     if (showExpected && !noKeyboard) {
         val until = SystemClock.uptimeMillis() + arrivalMs
@@ -118,7 +129,7 @@ fun ComposeTestRule.hideKeyboard(
 fun ComposeTestRule.awaitKeyboardShown(
     timeoutMs: Long = 10_000L, stillMs: Long = 300L, productSettleMs: Long = 500L
 ): Int {
-    val view = rootViews().firstOrNull()
+    val view = keyboardWindow()
         ?: throw AssertionError("awaitKeyboardShown(): no Compose window")
     val start = SystemClock.uptimeMillis()
     var last = Int.MIN_VALUE
@@ -160,7 +171,8 @@ fun ComposeTestRule.awaitKeyboardShown(
  */
 fun ComposeTestRule.assertAboveKeyboard(matcher: SemanticsMatcher, clearancePx: Int = 0) {
     val node = onNode(matcher).fetchSemanticsNode("assertAboveKeyboard(): no ${matcher.description}")
-    val view = rootViews().first()
+    val view = keyboardWindow()
+        ?: throw AssertionError("assertAboveKeyboard(): no Compose window")
     val (keyboard, windowHeight) = onMainThread { view.keyboardInset() to view.rootView.height }
     val whole = Rect(node.positionInWindow, node.size.toSize())
     val keyboardTop = windowHeight - keyboard
