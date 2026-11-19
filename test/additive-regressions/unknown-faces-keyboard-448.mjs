@@ -37,6 +37,9 @@ test('Unknown faces list uses atlasImePadding, keeps 16 dp under Create, compact
   assert.match(screen, /nameFormView\.bringIntoView\(Rect\(/);
   assert.match(screen, /UnknownGroupHeader\(group, clusterFacePreview, compact = compactHeader\)/);
   assert.match(screen, /derivedStateOf \{[\s\S]*?reviewImeInsets\.getBottom\(reviewDensity\) > 0/);
+  // The request keeps the field below the sticky header, which it measures.
+  assert.match(screen, /onSizeChanged \{ stickyHeaderPx\.intValue = it\.height \}/);
+  assert.match(screen, /val top = minOf\(0f, nameFieldTop - headerPx\)/);
 });
 
 test('AI Edit is a full-screen route whose safeDrawing already consumes the IME', () => {

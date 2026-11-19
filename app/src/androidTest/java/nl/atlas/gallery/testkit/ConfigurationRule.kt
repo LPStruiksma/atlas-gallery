@@ -43,10 +43,20 @@ class ConfigurationRule : TestRule {
     /** Freezes the display at 0° (portrait) or 90° (landscape). */
     fun rotate(landscape: Boolean) {
         remember("rotation") {
+            // Put back exactly what was there: the frozen rotation, and auto-rotate
+            // only if it was on. A bare unfreeze would switch auto-rotate on for
+            // every later test in the shard.
+            val autoRotate = testShell("settings get system accelerometer_rotation") == "1"
+            val userRotation = testShell("settings get system user_rotation").toIntOrNull() ?: 0
             {
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-                automation.setRotation(UiAutomation.ROTATION_FREEZE_0)
-                automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+                automation.setRotation(when (userRotation) {
+                    1 -> UiAutomation.ROTATION_FREEZE_90
+                    2 -> UiAutomation.ROTATION_FREEZE_180
+                    3 -> UiAutomation.ROTATION_FREEZE_270
+                    else -> UiAutomation.ROTATION_FREEZE_0
+                })
+                if (autoRotate) automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             }
         }
         InstrumentationRegistry.getInstrumentation().uiAutomation.setRotation(

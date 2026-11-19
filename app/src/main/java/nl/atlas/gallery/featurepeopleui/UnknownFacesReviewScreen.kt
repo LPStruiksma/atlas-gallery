@@ -39,6 +39,7 @@ import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
@@ -48,7 +49,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.semantics.SemanticsPropertyKey
@@ -162,6 +165,9 @@ fun UnknownFacesReviewScreen(
     val reviewImeInsets = WindowInsets.ime
     val reviewDensity = LocalDensity.current
     var listHeightPx by remember { mutableIntStateOf(0) }
+    // #448: the sticky header's height. The name form asks to be shown below
+    // it, not merely inside the list, or in landscape the header covers the field.
+    val stickyHeaderPx = remember { mutableIntStateOf(0) }
     val compactHeader by remember(reviewDensity) {
         derivedStateOf {
             reviewImeInsets.getBottom(reviewDensity) > 0 && listHeightPx > 0 &&
@@ -217,7 +223,9 @@ fun UnknownFacesReviewScreen(
                     visiblePeople.clusters.unknownClusters, showSmallGroups)
                 shownGroups.forEachIndexed { index, group ->
                     stickyHeader {
-                        UnknownGroupHeader(group, clusterFacePreview, compact = compactHeader)
+                        Box(Modifier.onSizeChanged { stickyHeaderPx.intValue = it.height }) {
+                            UnknownGroupHeader(group, clusterFacePreview, compact = compactHeader)
+                        }
                     }
                     item {
                         UnknownIdentityGroupCard(
@@ -227,7 +235,8 @@ fun UnknownFacesReviewScreen(
                             onAction = ::sendPeopleDecision,
                             resolveDestination = ::resolveDestination,
                             destinationTagPrefix = "atlas-group-${index + 1}-destination",
-                            preview = clusterFacePreview
+                            preview = clusterFacePreview,
+                            stickyHeaderPx = { stickyHeaderPx.intValue }
                         )
                     }
                 }
@@ -465,7 +474,8 @@ private fun UnknownIdentityGroupCard(
     onAction: (PeopleReviewAction) -> Unit,
     resolveDestination: (List<NativePersonAlbum>, Int?, PersonKey?) -> PersonKey?,
     destinationTagPrefix: String,
-    preview: @Composable (NativeFaceObservationId) -> Unit
+    preview: @Composable (NativeFaceObservationId) -> Unit,
+    stickyHeaderPx: () -> Int = { 0 }
 ) {
     var name by remember(selectionScope, group) { mutableStateOf("") }
     var tooLong by remember(selectionScope, group) { mutableStateOf(false) }
@@ -489,6 +499,9 @@ private fun UnknownIdentityGroupCard(
     val nameFormView = remember { BringIntoViewRequester() }
     // #448: the name form's size, so the request can keep a margin under Create.
     var nameFormSize by remember { mutableStateOf(IntSize.Zero) }
+    // #448: where the name field starts inside the form, so the request can
+    // keep the field (not only the form) clear of the sticky header.
+    var nameFieldTop by remember { mutableFloatStateOf(0f) }
     var nameFocused by remember { mutableStateOf(false) }
     // #394/#409: the keyboard can take far longer than NAME_FORM_SETTLE_MS to
     // appear (about 2 s on the CI emulator). A one-shot bringIntoView then ran
@@ -502,13 +515,19 @@ private fun UnknownIdentityGroupCard(
     val density = LocalDensity.current
     LaunchedEffect(nameFocused, duplicates.isEmpty()) {
         if (nameFocused) {
-            snapshotFlow { imeInsets.getBottom(density) }.collectLatest {
+            // The header height is read here too: it shrinks to one row once
+            // the keyboard is up in landscape, and the request follows it.
+            snapshotFlow { imeInsets.getBottom(density) to stickyHeaderPx() }.collectLatest {
+                (_, headerPx) ->
                 // Let the keyboard inset settle first, then show the field and its action.
                 delay(NAME_FORM_SETTLE_MS)
                 // #448 brief: Create's bottom stays at least 16 dp above the
-                // keyboard. Ask for the form plus that margin below it.
+                // keyboard. Ask for the form plus that margin below it, and, above
+                // the field, room for the sticky header so it never covers the
+                // field. On a short viewport "Who is this?" may sit under the header.
                 val margin = with(density) { NAME_FORM_KEYBOARD_MARGIN.toPx() }
-                nameFormView.bringIntoView(Rect(0f, 0f, nameFormSize.width.toFloat(),
+                val top = minOf(0f, nameFieldTop - headerPx)
+                nameFormView.bringIntoView(Rect(0f, top, nameFormSize.width.toFloat(),
                     nameFormSize.height + margin))
             }
         }
@@ -542,6 +561,7 @@ private fun UnknownIdentityGroupCard(
             isError = tooLong,
             supportingText = if (tooLong) { { Text("Use a shorter name.") } } else null,
             modifier = Modifier.fillMaxWidth().testTag("atlas-group-name")
+                .onPlaced { nameFieldTop = it.positionInParent().y }
                 .onFocusChanged { nameFocused = it.isFocused }
         )
         if (duplicates.isNotEmpty()) {
