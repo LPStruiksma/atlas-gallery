@@ -65,4 +65,26 @@ class PerformanceAggregatesTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun rejectsUnboundedCapacity() { PerformanceAggregates(capacity = 5000) }
+
+    @Test fun coldStartOriginIsProcessStartNotFirstCollectorUse() {
+        // Process started at t=1_000 ms; the collector is first touched only
+        // at t=1_700 ms (after the first grid frame was drawn). The origin
+        // must stay the process start, so the sample is 700 ms, not ~0.
+        var now = 1_000L
+        var processStartReads = 0
+        val clock = ColdStartClock(
+            processStartElapsedMs = { processStartReads++; 1_000L },
+            nowElapsedMs = { now }
+        )
+        now = 1_700L
+        assertEquals(700.0, clock.elapsedMs()!!, 0.0)
+        now = 2_500L
+        assertEquals(1_500.0, clock.elapsedMs()!!, 0.0)
+        assertEquals(2, processStartReads)
+    }
+
+    @Test fun coldStartRejectsMissingOrInconsistentClocks() {
+        assertEquals(null, ColdStartClock({ 0L }, { 5_000L }).elapsedMs())
+        assertEquals(null, ColdStartClock({ 6_000L }, { 5_000L }).elapsedMs())
+    }
 }

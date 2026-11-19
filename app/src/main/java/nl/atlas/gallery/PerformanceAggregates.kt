@@ -44,13 +44,35 @@ class PerformanceAggregates(private val capacity: Int = 256) {
     @Synchronized fun metricNames(): List<String> = samples.keys.sorted()
 }
 
+/**
+ * Cold-start origin that does not depend on when [PerformanceSession] is first
+ * touched. The default origin is the OS-recorded process start
+ * (Process.getStartElapsedRealtime, API 24+), read at measurement time, so a
+ * lazily initialised collector cannot move it. Clocks are injectable for JVM tests.
+ */
+class ColdStartClock(
+    private val processStartElapsedMs: () -> Long,
+    private val nowElapsedMs: () -> Long
+) {
+    /** Milliseconds since process start, or null when the clocks disagree. */
+    fun elapsedMs(): Double? {
+        val start = processStartElapsedMs()
+        val now = nowElapsedMs()
+        if (start <= 0L || now < start) return null
+        return (now - start).toDouble()
+    }
+}
+
 /** One-process capture only; UI reads a snapshot on demand. */
 internal object PerformanceSession {
     val aggregate = PerformanceAggregates()
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private var peakHeapFraction = 0.0
-    private val processStartNanos = android.os.SystemClock.elapsedRealtimeNanos()
+    private val coldStart = ColdStartClock(
+        processStartElapsedMs = { android.os.Process.getStartElapsedRealtime() },
+        nowElapsedMs = { android.os.SystemClock.elapsedRealtime() }
+    )
     private var firstGridReported = false
     // Only the first preview after opening a viewer counts as A3; later
     // filmstrip selections are A4. No selected index or URI is retained here.
@@ -96,7 +118,7 @@ internal object PerformanceSession {
 
     @Synchronized fun firstGridFrame() {
         if (firstGridReported) return
-        val elapsed = (android.os.SystemClock.elapsedRealtimeNanos() - processStartNanos) / 1_000_000.0
+        val elapsed = coldStart.elapsedMs() ?: return
         if (aggregate.record("cold_start_ms", elapsed)) {
             recordActionMs(1, elapsed)
             firstGridReported = true

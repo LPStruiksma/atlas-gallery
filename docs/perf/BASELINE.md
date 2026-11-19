@@ -16,7 +16,7 @@ The viewer probe reports selection/pager entry → first Coil preview. This is n
 
 | Action | Live timing boundary in PERF-0 | Status |
 |---|---|---|
-| A1 App open → cached grid | Process start → first Compose Photos grid frame | Proxy wired |
+| A1 App open → cached grid | OS process start (`Process.getStartElapsedRealtime`) → first Compose Photos grid frame | Proxy wired |
 | A2 Grid scroll / fling | Consecutive active-scroll Compose frame intervals | Wired |
 | A3 Open photo | Initial viewer page entry → preview-ready | Preview proxy wired |
 | A4 Viewer swipe | Subsequent page entry or filmstrip selection → preview-ready | Preview proxy wired |
