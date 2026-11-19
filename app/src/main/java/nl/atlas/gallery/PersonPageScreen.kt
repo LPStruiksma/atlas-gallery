@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -134,6 +135,11 @@ internal fun PersonPageScreen(
 ) {
     val items = ui.items
     val selecting = selectedUris != null
+    // The full face header leaves only a few pixels of grid on an S24+
+    // landscape selection (and on short split-screen windows). Keep the
+    // person identity and count, but make room for checked thumbnails and the
+    // bottom action while selecting; non-selection views remain unchanged.
+    val compactSelectionHeader = selecting && LocalConfiguration.current.screenHeightDp < 500
     val title = ui.name ?: "Add name"
     val menu = buildList {
         add(AtlasHeaderMenuItem(if (ui.name == null) "Add name" else "Edit name",
@@ -165,7 +171,8 @@ internal fun PersonPageScreen(
                         actions = { searchAction?.invoke() })
                 }
                 PersonHeader(ui, title, items, portrait,
-                    onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }))
+                    onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }),
+                    compact = compactSelectionHeader)
                 if (!selecting) samePerson?.invoke()
             }
         }
@@ -275,8 +282,29 @@ private fun PersonHeader(
     title: String,
     items: List<MediaRecord>?,
     portrait: @Composable () -> Unit,
-    onName: (() -> Unit)?
+    onName: (() -> Unit)?,
+    compact: Boolean = false
 ) {
+    if (compact) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).testTag("atlas-person-name"))
+            if (items != null) {
+                val videos = items.count { it.isVideo }
+                Text(nl.atlas.gallery.featurepeopleui.personPageCount(items.size - videos, videos),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp)
+                        .testTag("atlas-person-album-count"))
+            }
+        }
+        return
+    }
     Column(
         Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
