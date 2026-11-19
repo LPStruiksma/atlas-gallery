@@ -29,3 +29,14 @@ test("all existing album sorts are accessible radio choices without new catalog 
     assert.match(source, new RegExp("AlbumSort\\." + choice + "\\s*->"));
   }
 });
+
+test("Albums sort sheet follows Quiet Frame: surface colour and 28 dp top radius from tokens", () => {
+  const tokens = readFileSync(
+    new URL("../../app/src/main/java/nl/atlas/gallery/featuredesign/AtlasTokens.kt", import.meta.url),
+    "utf8",
+  );
+  assert.match(tokens, /val Sheet = 28\.dp/);
+  assert.match(sortMenu, /containerColor = MaterialTheme\.colorScheme\.surface,/);
+  assert.match(sortMenu, /topStart = AtlasTokens\.Radii\.Sheet, topEnd = AtlasTokens\.Radii\.Sheet/);
+  assert.doesNotMatch(sortMenu, /surfaceContainerLow/);
+});

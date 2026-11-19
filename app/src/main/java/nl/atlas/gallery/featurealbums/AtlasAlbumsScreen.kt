@@ -61,6 +61,7 @@ import nl.atlas.gallery.featuredesign.AtlasScrollAwayHeader
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuredesign.AtlasSpace
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.featuresearch.AtlasSearch
 import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
@@ -242,7 +243,10 @@ private fun AtlasAlbumSortMenu(
         ModalBottomSheet(
             onDismissRequest = { showSort = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            // Quiet Frame sheet: surface colour, 28 dp top corners (QUIET_FRAME.md).
+            shape = RoundedCornerShape(
+                topStart = AtlasTokens.Radii.Sheet, topEnd = AtlasTokens.Radii.Sheet),
+            containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.testTag("atlas-album-sort-sheet")
         ) {
