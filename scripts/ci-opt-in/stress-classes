@@ -1,5 +1,4 @@
-# #448 diagnostic (removed before review): does UnknownFacesKeyboardInsetsTest
-# leave state that breaks the album proportions test run after it?
-2 nl.atlas.gallery.featuregrid.OriginalProportionsAlbumJourneyTest#albumAtOriginalProportionsTimelineOn
-1 nl.atlas.gallery.UnknownFacesKeyboardInsetsTest
-2 nl.atlas.gallery.featuregrid.OriginalProportionsAlbumJourneyTest#albumAtOriginalProportionsTimelineOn
+# #448 diagnostic (removed before review): in ONE process, does the keyboard
+# test break the album proportions test run after it? Control: album alone.
+2 nl.atlas.gallery.Diag448AlbumOnlySuite
+2 nl.atlas.gallery.Diag448AfterKeyboardSuite
