@@ -97,7 +97,7 @@ class ComfyUiProvider(
         val replacements = mutableMapOf<String, Any?>(
             "{{image}}" to originalName,
             "{{prompt}}" to request.instruction,
-            "{{seed}}" to (request.options[CapabilityKey("seed")] as? OptionValue.IntegerValue)?.value ?: 0L
+            "{{seed}}" to ((request.options[CapabilityKey("seed")] as? OptionValue.IntegerValue)?.value ?: 0L)
         )
         if (request.mask != null) {
             val mask = SelfHostedWire.selected(images, request.mask, ResizePlan.Keep)
