@@ -202,10 +202,14 @@ fun AtlasTimelineGallery(
      */
     header: (@Composable () -> Unit)? = null,
     /** Tests and screenshots: keep the fast-scroll handle shown and grabbable. */
-    fastScrollAlwaysShown: Boolean = false
+    fastScrollAlwaysShown: Boolean = false,
+    mediaSort: nl.atlas.gallery.MediaSort? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE) }
+    // #435: application context reuses the file StartupPreferenceWarmup loaded off Main.
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE)
+    }
     var density by rememberSaveable(viewKey) {
         mutableStateOf(entryDensity ?: GridDensity.fromColumns(
             prefs.getInt(viewKey, GridDensity.MEDIUM.columns)
@@ -381,10 +385,10 @@ fun AtlasTimelineGallery(
             // Reuse only completed plans for this exact authorized inventory,
             // viewport, sort, locale and time zone. Remember invalidates the
             // entire bounded cache on a new catalogue/grant or layout geometry.
-            val recentPlans = remember(sourceKey, sort, bounds, headerHeightPx, locale, zone) {
+            val recentPlans = remember(sourceKey, sort, mediaSort, bounds, headerHeightPx, locale, zone) {
                 RecentGridDensityPlans<TimelinePlan>(capacity = 2)
             }
-            LaunchedEffect(sourceKey, sort, density, bounds, headerHeightPx, locale, zone) {
+            LaunchedEffect(sourceKey, sort, mediaSort, density, bounds, headerHeightPx, locale, zone) {
                 draggingFraction = null
                 val cached = recentPlans.get(density)
                 if (cached != null) {
@@ -406,7 +410,13 @@ fun AtlasTimelineGallery(
                             incrementalAnchorIndex = i
                         }
                     }
-                    val index = buildGridTimelineIndex(items.size, { items[it].takenAtMillis },
+                    val byModified = mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED
+                    val index = buildGridTimelineIndex(items.size, { i ->
+                            val media = items[i]
+                            if (byModified && media.modifiedAtSeconds > 0L &&
+                                media.modifiedAtSeconds <= Long.MAX_VALUE / 1000L
+                            ) media.modifiedAtSeconds * 1000L else media.takenAtMillis
+                        },
                         { items[it].uri }, sort, density, zone, locale,
                         mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
                         parent.ensureActive()
@@ -809,6 +819,7 @@ fun AtlasTimelineGallery(
             TimelineFastScrollLayer(
                 items = items,
                 sort = sort,
+                mediaSort = mediaSort,
                 gridState = gridState,
                 sourceKey = sourceKey,
                 timelineFor = { info ->
@@ -838,6 +849,7 @@ fun AtlasTimelineGallery(
 private fun TimelineFastScrollLayer(
     items: List<MediaRecord>,
     sort: TimelineSort,
+    mediaSort: nl.atlas.gallery.MediaSort?,
     gridState: LazyGridState,
     sourceKey: GridCatalogIdentity,
     timelineFor: (LazyGridLayoutInfo) -> GridTimelineIndex?,
@@ -865,8 +877,11 @@ private fun TimelineFastScrollLayer(
     val destination = tl?.scrubTarget(shownFraction)
     // The bubble follows the ACTIVE sort: dates, size buckets or position.
     val label = destination?.let { target ->
-        fastScrollBubbleLabel(sort, target.dateLabel,
-            items.getOrNull(target.mediaIndex)?.sizeBytes ?: 0L, target.mediaIndex, items.size)
+        val media = items.getOrNull(target.mediaIndex)
+        if (mediaSort != null) fastScrollBubbleLabel(mediaSort, target.dateLabel,
+            media?.sizeBytes ?: 0L, media?.name.orEmpty(), target.mediaIndex, items.size)
+        else fastScrollBubbleLabel(sort, target.dateLabel,
+            media?.sizeBytes ?: 0L, target.mediaIndex, items.size)
     }
     TimelineFastScroller(
         fraction = shownFraction,

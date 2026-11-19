@@ -16,3 +16,11 @@ selection-result-365-dark-partial-transfer-selection-pill
 selection-result-365-dark-stale-selection-pill
 selection-result-365-dark-replaced-selection-pill
 selection-result-365-dark-reanchored-nav-pill
+# #376 rotation (SelectionResultLight/DarkJourneyTest): one result kept through
+# portrait -> landscape -> portrait, each a recreated MainActivity.
+selection-result-376-light-rotation-portrait-before
+selection-result-376-light-rotation-landscape
+selection-result-376-light-rotation-portrait-after
+selection-result-376-dark-rotation-portrait-before
+selection-result-376-dark-rotation-landscape
+selection-result-376-dark-rotation-portrait-after

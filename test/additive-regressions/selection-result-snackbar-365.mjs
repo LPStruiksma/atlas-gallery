@@ -56,7 +56,7 @@ test('the honest result copy is kept word for word', () => {
 test('one host lives in the Scaffold snackbar slot, above whichever bar is shown', () => {
   assert.match(main, /snackbarHost = \{ SelectionResultSnackbarHost\(selectionResults\) \}/);
   assert.equal(main.match(/SelectionResultSnackbarHost\(/g).length, 1);
-  assert.equal(main.match(/remember \{ SelectionResultMessages\(\) \}/g).length, 1);
+  assert.equal(main.match(/rememberSaveable\(saver = SelectionResultMessages\.Saver\) \{ SelectionResultMessages\(\) \}/g).length, 1);
 });
 
 test('the host replaces instead of stacking, auto-dismisses and offers no Undo', () => {

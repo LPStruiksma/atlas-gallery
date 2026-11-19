@@ -1,0 +1,15 @@
+# FIND-3a (#182): persistent recent searches, synthetic API35 renders (SearchHistoryEvidenceTest).
+find-3a-global-recents-light
+find-3a-global-recents-dark
+find-3a-global-removed-ime-light
+find-3a-global-removed-ime-dark
+find-3a-global-font200-light
+find-3a-global-font200-dark
+find-3a-empty-light
+find-3a-empty-dark
+find-3a-scoped-album-light
+find-3a-scoped-album-dark
+find-3a-settings-on-light
+find-3a-settings-on-dark
+find-3a-settings-off-light
+find-3a-settings-off-dark

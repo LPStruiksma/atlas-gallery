@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ATLASGallery"
 include(":app")
+include(":baselineprofile")

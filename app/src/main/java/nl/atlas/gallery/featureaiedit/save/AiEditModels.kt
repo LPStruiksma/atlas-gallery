@@ -57,7 +57,9 @@ data class AiEditCandidate(
     val format: AiEditImageFormat = AiEditImageFormat.JPEG,
     val keepGps: Boolean = false,
     val createdAtMillis: Long = System.currentTimeMillis(),
-    val candidateParentUri: Uri? = null
+    val candidateParentUri: Uri? = null,
+    /** Optional app-private identity metadata. It is never written to EXIF. */
+    val identity: IdentityEditLineage? = null
 ) {
     init {
         require(originalUri.scheme == "content" && originalUri.authority == "media")
@@ -83,8 +85,38 @@ data class AiEditLineage(
     val prompt: String,
     val settingsJson: String,
     val createdAtMillis: Long,
-    val candidateParentUri: String?
+    val candidateParentUri: String?,
+    /** Null for records written before Identity Studio support. */
+    val identity: IdentityEditLineage? = null
 )
+
+/** Versioned, private provenance for an accepted Identity Studio candidate. */
+data class IdentityEditLineage(
+    val schemaVersion: Int = SCHEMA_VERSION,
+    val kind: String,
+    val engineId: String,
+    val engineVersion: String,
+    val route: String,
+    val profileId: String,
+    val variantId: String?,
+    val candidateIndex: Int,
+    val seed: Long,
+    val refinementParent: String?
+) {
+    init {
+        require(schemaVersion == SCHEMA_VERSION)
+        require(kind == "face" || kind == "head")
+        require(engineId.isNotBlank() && engineId.length <= 128)
+        require(engineVersion.isNotBlank() && engineVersion.length <= 128)
+        require(route == "local" || route == "self_hosted" || route == "paid")
+        require(profileId.isNotBlank() && profileId.length <= 128)
+        require(variantId == null || variantId.isNotBlank() && variantId.length <= 128)
+        require(candidateIndex >= 0)
+        require(refinementParent == null || refinementParent.isNotBlank() && refinementParent.length <= 128)
+    }
+
+    companion object { const val SCHEMA_VERSION = 1 }
+}
 
 data class AiEditSaveResult(
     val uri: Uri,

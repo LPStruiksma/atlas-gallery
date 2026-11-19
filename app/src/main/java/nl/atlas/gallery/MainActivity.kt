@@ -38,6 +38,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
 import nl.atlas.gallery.featuredesign.AtlasTokens
+import nl.atlas.gallery.featuredesign.AtlasTabPillHeight
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -157,6 +158,7 @@ import nl.atlas.gallery.featureorganization.planAlbumTransfer
 import nl.atlas.gallery.featureorganization.SamsungSelectionTopBar
 import nl.atlas.gallery.featureorganization.toggleAll
 import nl.atlas.gallery.featureorganization.GalleryBatchSelection
+import nl.atlas.gallery.featureorganization.SelectionRotationState
 import nl.atlas.gallery.featureorganization.MAX_BATCH_SHARE_ITEMS
 import nl.atlas.gallery.featureorganization.MAX_BATCH_TRASH_ITEMS
 import nl.atlas.gallery.featureorganization.resolveBatchSelection
@@ -177,6 +179,7 @@ import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.LocalSearchControls
+import nl.atlas.gallery.featuresearch.personSearchLabel
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
 import nl.atlas.gallery.featuresearch.face.FaceSearchSession
 import nl.atlas.gallery.featuresearch.face.FaceSearchState
@@ -192,6 +195,12 @@ import nl.atlas.gallery.featuresearch.GrantScopedSearchSession
 import nl.atlas.gallery.featuresearch.LocalSearchFacets
 import nl.atlas.gallery.featuresearch.SearchMediaKind
 import nl.atlas.gallery.featuresearch.EphemeralSearchHistory
+import nl.atlas.gallery.featuresearch.LocalSearchHistory
+import nl.atlas.gallery.featuresearch.SearchHistoryController
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
+import nl.atlas.gallery.featuresearch.SearchHistorySnackbarHost
+import nl.atlas.gallery.featuresearch.searchGrantLevel
+import nl.atlas.gallery.featuresearch.searchHistoryStoreFor
 import nl.atlas.gallery.featuresearch.FacetedSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentFacetedSearchOrNull
 import nl.atlas.gallery.featuresearch.searchAuthorizedSnapshot
@@ -426,6 +435,25 @@ internal fun rememberAsyncSortedCatalog(
             val sortContext = currentCoroutineContext()
             CatalogSortSnapshot(media, order, seed,
                 sortMedia(media, order, seed) { sortContext.ensureActive() })
+        }
+    }
+    return result
+}
+
+/** The common sort pipeline is keyed by source identity, sort and shuffle seed. */
+@Composable
+internal fun rememberAsyncSortedCatalog(
+    media: List<MediaRecord>, sort: MediaSort, seed: Long
+): MediaSortSnapshot? {
+    val result by produceState<MediaSortSnapshot?>(
+        initialValue = null, key1 = CatalogSourceKey(media), key2 = sort, key3 = seed
+    ) {
+        value = null
+        value = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            MediaSortSnapshot(media, sort, seed,
+                sortMedia(media, sort, seed,
+                    cancellationCheckpoint = { worker.ensureActive() }))
         }
     }
     return result
@@ -965,7 +993,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Exact local folder paths remain in app-private preferences; never put them
     // in a saved-instance Bundle (which Android can hand to other components).
     val albumOrderStore = remember(context) {
-        context.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
+        // #435: application context, so the warmed-up file is reused without disk access.
+        context.applicationContext.getSharedPreferences("atlas_album_order", android.content.Context.MODE_PRIVATE)
     }
     var albumCustomOrder by remember {
         mutableStateOf(
@@ -1069,7 +1098,26 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             !publishedNow.showable(actual)) return null
         return publishedNow.displayItems(actual).takeIf { it === media }
     }
-    var sort by rememberSaveable { mutableStateOf(SortOrder.NEWEST) }
+    val mediaSortPrefs = remember(context) {
+        context.applicationContext.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
+    }
+    var sort by remember {
+        mutableStateOf(
+            MediaSort(
+                MediaSortKey.entries.firstOrNull {
+                    it.name == mediaSortPrefs.getString("pictures.key", null)
+                } ?: MediaSortKey.DATE_CREATED,
+                SortDirection.entries.firstOrNull {
+                    it.name == mediaSortPrefs.getString("pictures.direction", null)
+                } ?: SortDirection.DESCENDING
+            )
+        )
+    }
+    fun updatePicturesSort(chosen: MediaSort) {
+        sort = chosen
+        mediaSortPrefs.edit().putString("pictures.key", chosen.key.name)
+            .putString("pictures.direction", chosen.direction.name).apply()
+    }
     var randomSeed by rememberSaveable { mutableLongStateOf(12345L) }
     var originalProportions by rememberSaveable { mutableStateOf(false) }
     val albumFailed = remember { mutableStateOf(false) }
@@ -1108,13 +1156,31 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         withFrameNanos { }
         timelineEntryDensity = null
     }
-    // D batch selection: in-memory only, bound to one list reference + epoch.
+    // Save only bounded keys, never a MediaRecord list or actionable selection.
+    // A pending snapshot stays non-actionable until the current grant,
+    // publication and destination have been reconciled.
+    // The restored snapshot remains non-actionable until the publication,
+    // current grant and exact album scope have all been verified.
+    // Unlike rememberSaveable, this pending selection is never written to a Bundle:
+    // it survives Activity recreation through vm, but not process death.
+    var pendingSelectionRestore by remember(vm) { vm.pendingSelectionRotationState }
     var batchSelection by remember {
         mutableStateOf<GalleryBatchSelection?>(null, referentialEqualityPolicy())
     }
     var batchOperating by remember { mutableStateOf(false) }
-    // The album a Photos selection was started in; another album ends it.
     var selectionAlbumRoute by remember { mutableStateOf<AlbumRoute?>(null) }
+    val selectionGrantBits = "${grants.images}:${grants.videos}:${grants.selected}"
+    // A live selection is mirrored for Activity recreation. A restored
+    // snapshot is only a pending request until reconciled with the publication.
+    SideEffect {
+        val live = batchSelection
+        if (live != null) {
+            val snapshot = SelectionRotationState.capture(live,
+                selectionAlbumRoute?.relativePath, selectionAlbumRoute?.volumeName,
+                selectionAlbumRoute?.mediaFilter?.name, selectionGrantBits)
+            if (pendingSelectionRestore != snapshot) pendingSelectionRestore = snapshot
+        }
+    }
     // Search text, selected reviewed identities and recents belong to ONE
     // permission publication AND one confirmed People generation. Neither
     // tokens nor queries are saved across process/Activity recreation.
@@ -1168,14 +1234,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
     var peopleNumbersOpen by remember { mutableStateOf(false) }
-    // In memory only: a person key or name never enters saved instance state.
-    var nativePersonAlbum by remember { mutableStateOf<NativePersonAlbumRequest?>(null) }
+    // A retained ViewModel owns the person route across Activity rotation.
+    // Its key and name never enter saved instance state; process death drops it.
+    var nativePersonAlbum by remember(vm) { vm.nativePersonAlbumState }
     val nativePersonGridState = rememberLazyGridState()
     // An old render must NEVER expose old Person IDs/terms while LaunchedEffect
     // is still adopting the new grant or People identity.
     val currentSearchSession = searchSession.currentOrNull(searchGrant, peopleGeneration)
     val searchFacets = currentSearchSession?.facets ?: LocalSearchFacets()
-    val searchHistory = currentSearchSession?.recent ?: EphemeralSearchHistory()
+    val ephemeralSearchHistory = currentSearchSession?.recent ?: EphemeralSearchHistory()
     // Delayed clicks/IME may originate in an older compositional frame. The
     // event carries the rendered scope; live scopes are read at invocation.
     val latestSearchGrant = rememberUpdatedState(searchGrant)
@@ -1564,6 +1631,29 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
     }
     val namedSearchPeople = remember(nativeSearchPeople) { nativeSearchPeople.map { it.first } }
+    // FIND-3a (#182): recent searches on this phone only (app-private file,
+    // allowBackup=false). Loaded and written off the main thread; cleared
+    // for every scope when photo access is reduced. Query text is never
+    // logged, exported, or put in saved state.
+    val searchHistoryStore = remember(context) { searchHistoryStoreFor(context) }
+    val searchHistoryState = searchHistoryStore.state.collectAsState()
+    val searchHistorySnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val searchHistoryCoroutines = rememberCoroutineScope()
+    val latestNamedSearchKeys = rememberUpdatedState(
+        remember(namedSearchPeople) { namedSearchPeople.mapTo(HashSet()) { it.key } })
+    val searchHistory = remember(searchHistoryStore) {
+        SearchHistoryController(searchHistoryStore, searchHistoryState,
+            searchHistoryCoroutines, searchHistorySnackbar) { latestNamedSearchKeys.value }
+    }
+    LaunchedEffect(searchHistoryStore) {
+        withContext(Dispatchers.IO) {
+            searchHistoryStore.load()
+            searchHistoryStore.flush()
+        }
+    }
+    LaunchedEffect(grants) {
+        searchHistory.onGrant(searchGrantLevel(grants.images, grants.videos, grants.selected))
+    }
     val nativeSearchUris = rememberNativePersonUris(discoveryHost, searchGrant,
         searchFacets.nativePersonKeys, discovery.status?.people)
     val searchSnapshot = rememberAsyncFacetedSearch(sorted, people, searchFacets,
@@ -1627,20 +1717,56 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // library reload of the same view keeps it (Samsung GRID:S4): the URIs
     // still in the newly published list stay selected, the rest drop out.
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch, tab,
-        originalProportions, timelineEnabled, personFilter, albumRoute) {
-        val selection = batchSelection ?: return@LaunchedEffect
-        if (tab != 0 || originalProportions || !timelineEnabled || personFilter != null ||
-            selectionAlbumRoute != albumRoute || !grants.hasAny ||
-            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L) {
+        originalProportions, timelineEnabled, personFilter, albumRoute,
+        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending) {
+        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+            personFilter != null || !grants.hasAny ||
+            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
+        if (invalidScope) {
             batchSelection = null
-        } else if (selection.source !== visible || selection.epoch != publishedGallery.epoch) {
-            val source = visible
-            val epoch = publishedGallery.epoch
-            val rebased = withContext(Dispatchers.Default) {
-                val worker = currentCoroutineContext()
-                selection.rebasedOnto(source, epoch) { worker.ensureActive() }
+            pendingSelectionRestore = null
+            return@LaunchedEffect
+        }
+        val selection = batchSelection
+        if (selection != null) {
+            if (selectionAlbumRoute != albumRoute) {
+                batchSelection = null
+                pendingSelectionRestore = null
+            } else if (selection.source !== visible ||
+                selection.epoch != publishedGallery.epoch) {
+                val rebased = withContext(Dispatchers.Default) {
+                    val worker = currentCoroutineContext()
+                    selection.rebasedOnto(visible, publishedGallery.epoch) {
+                        worker.ensureActive()
+                    }
+                }
+                if (batchSelection === selection) batchSelection = rebased
             }
-            if (batchSelection === selection) batchSelection = rebased
+        } else {
+            val saved = pendingSelectionRestore ?: return@LaunchedEffect
+            // Async sorting and album filtering may publish empty placeholders.
+            // Do not consume a pending save until the exact scope has loaded.
+            if (busy || sortPending || albumSelectionPending || scopedPending ||
+                visible.isEmpty()) return@LaunchedEffect
+            val restored = withContext(Dispatchers.Default) {
+                val worker = currentCoroutineContext()
+                saved.restore(visible, publishedGallery.epoch, selectionGrantBits,
+                    albumRoute?.relativePath, albumRoute?.volumeName,
+                    albumRoute?.mediaFilter?.name,
+                    authorized = readGalleryMediaGrant(context) == grants &&
+                        publishedGallery.matchesGrantedScope(grants)
+                ) { worker.ensureActive() }
+            }
+            if (pendingSelectionRestore === saved && batchSelection == null &&
+                readGalleryMediaGrant(context) == grants &&
+                vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                publishedGallery.matchesGrantedScope(grants)) {
+                pendingSelectionRestore = null
+                if (restored != null) {
+                    selectionAlbumRoute = albumRoute
+                    batchSelection = restored
+                }
+            }
         }
     }
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch) {
@@ -1781,23 +1907,23 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             // G's dated LazyGrid has additional full-span HEADER slots.
             // Resolve the photo's slot using G's exact pure index off-main;
             // never scroll to the raw MediaRecord index after a dated group.
-            val shared = context.getSharedPreferences(
+            val shared = context.applicationContext.getSharedPreferences(
                 "atlas_featuregrid_density", android.content.Context.MODE_PRIVATE)
             val density = GridDensity.fromColumns(
                 shared.getInt("photos", GridDensity.MEDIUM.columns))
-            val timelineSort = when (sort) {
-                SortOrder.NEWEST -> TimelineSort.NEWEST
-                SortOrder.OLDEST -> TimelineSort.OLDEST
-                SortOrder.LARGEST -> TimelineSort.LARGEST
-                SortOrder.SMALLEST -> TimelineSort.SMALLEST
-                SortOrder.RANDOM -> TimelineSort.RANDOM
+            val timelineSort = when (sort.key) {
+                MediaSortKey.DATE_CREATED, MediaSortKey.DATE_MODIFIED ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.NEWEST else TimelineSort.OLDEST
+                MediaSortKey.SIZE ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.LARGEST else TimelineSort.SMALLEST
+                MediaSortKey.FILE_NAME, MediaSortKey.RANDOM -> TimelineSort.RANDOM
             }
             val timeline = withContext(Dispatchers.Default) {
                 val worker = currentCoroutineContext()
                 val projection = ArrayList<TimelineMedia>(source.size)
                 source.forEachIndexed { i, item ->
                     if ((i and 511) == 0) worker.ensureActive()
-                    projection.add(TimelineMedia(item.uri, item.takenAtMillis))
+                    projection.add(TimelineMedia(item.uri, if (sort.key == MediaSortKey.DATE_MODIFIED && item.modifiedAtSeconds > 0L && item.modifiedAtSeconds <= Long.MAX_VALUE / 1000L) item.modifiedAtSeconds * 1000L else item.takenAtMillis))
                 }
                 buildGridTimelineIndex(projection, timelineSort, density,
                     ZoneId.systemDefault(), Locale.getDefault()) {
@@ -1931,7 +2057,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     // #365: selection batch results appear as one snackbar above the visible
     // pill (Scaffold snackbarHost). A new result replaces the old; no Undo.
-    val selectionResults = remember { SelectionResultMessages() }
+    val selectionResults = rememberSaveable(saver = SelectionResultMessages.Saver) { SelectionResultMessages() }
     // Batch Trash is always Android's own consent dialog (createTrashRequest);
     // ATLAS never deletes directly. Only RESULT_OK means anything changed.
     val batchTrashLauncher = rememberLauncherForActivityResult(
@@ -1940,6 +2066,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
             selectionResults.show("Moved selected items to Android Trash")
         } else {
@@ -1954,6 +2081,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         batchOperating = false
         if (result.resultCode == Activity.RESULT_OK) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -1987,6 +2115,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         selectionResults.show(albumTransferMessage(plan.mode, plan.target.title, result))
         if (result.done > 0) {
             batchSelection = null
+            pendingSelectionRestore = null
             vm.refresh()
         }
     }
@@ -2335,7 +2464,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
             viewerUri != null -> closeViewer()
-            batchSelection != null -> batchSelection = null
+            batchSelection != null -> {
+                batchSelection = null
+                pendingSelectionRestore = null
+            }
             personFilter != null -> personFilter = null
             tab == 0 && album != null -> {
                 album = null
@@ -2834,6 +2966,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // The content and floating navigation share the underlying *drawn* page.
     // The recorded layer never includes the pill or selection actions.
     val tabBackdrop = rememberAtlasTabBackdropState()
+    CompositionLocalProvider(LocalSearchHistory provides searchHistory) {
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = DeepBg,
         // DeepBg is not a colorScheme colour, so contentColorFor(DeepBg) fell
@@ -2873,6 +3007,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
                                     openAiEdit(photo)
                                     batchSelection = null
+                                    pendingSelectionRestore = null
                                 })
                             } ?: emptyList()
                     ) + (if (Build.VERSION.SDK_INT >= 30) listOf(
@@ -3061,6 +3196,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
                             selectedScope = overviewScope,
+                            historyScope = when {
+                                personFilter != null -> SearchHistoryScope.PERSON
+                                album != null -> SearchHistoryScope.ALBUM
+                                else -> SearchHistoryScope.PHOTOS
+                            },
                             onScopeChange = { requested ->
                                 if (requested == AtlasSearchScope.LIBRARY) {
                                     // A folder/person header cannot silently turn into a library viewer.
@@ -3077,7 +3217,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         )
                         if (photosControls && !settingsOpen) PhotosSortAction(
-                            order = sort, onSort = { sort = it }, onShuffle = { randomSeed++ })
+                            sort = sort, onSort = { updatePicturesSort(it) }, onShuffle = { randomSeed++ })
                     }
                 )
             }
@@ -3158,6 +3298,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 linkV4Launcher.launch(arrayOf("text/*", "text/csv", "application/csv", "*/*"))
                             },
                             onDiagnostics = { statusOpen = true },
+                            searchHistoryOn = searchHistoryState.value.enabled,
+                            onSearchHistoryOn = { searchHistory.setEnabled(it) },
+                            onClearSearchHistory = { searchHistory.clearAll() },
                             onReadLastCrash = { LastCrashRecorder.read(context) },
                             onCopyLastCrash = { report ->
                                 val clipboard = context.getSystemService(
@@ -3269,16 +3412,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             key(if (albumRoute == null) "photos-timeline" else CatalogSourceKey(visible)) {
                                 AtlasTimelineGallery(
                                     items = visible,
-                                    sort = when (sort) {
-                                        SortOrder.NEWEST -> TimelineSort.NEWEST
-                                        SortOrder.OLDEST -> TimelineSort.OLDEST
-                                        SortOrder.LARGEST -> TimelineSort.LARGEST
-                                        SortOrder.SMALLEST -> TimelineSort.SMALLEST
-                                        SortOrder.RANDOM -> TimelineSort.RANDOM
-                                    },
+                                    sort = when (sort.key) {
+                MediaSortKey.DATE_CREATED, MediaSortKey.DATE_MODIFIED ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.NEWEST else TimelineSort.OLDEST
+                MediaSortKey.SIZE ->
+                    if (sort.direction == SortDirection.DESCENDING) TimelineSort.LARGEST else TimelineSort.SMALLEST
+                MediaSortKey.FILE_NAME, MediaSortKey.RANDOM -> TimelineSort.RANDOM
+            },
                                     gridState = timelineGridState,
                                     onOpen = { openViewer(visible, it.uri) },
                                     viewKey = "photos",
+                                    mediaSort = sort,
                                     busy = busy || sortPending || albumSelectionPending || scopedPending,
                                     catalogueEpoch = publishedGallery.epoch,
                                     preserveScrollOnIncremental = publishedGallery.incremental && albumRoute == null,
@@ -3317,6 +3461,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             // The existing deferred effect re-checks grant,
                                             // route and URI before scrolling the ratio list.
@@ -3372,6 +3517,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             request.isCurrentFor(publishedGallery.epoch,
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingRatioReturn = null
                                             pendingRatioAnchor = request.focal?.let {
                                                 it.itemIndex to it.mediaKey
@@ -3517,7 +3663,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             modifier = Modifier.padding(top = 12.dp).imePadding(),
                             filters = searchFacets,
                             people = people,
-                            history = searchHistory,
+                            history = ephemeralSearchHistory,
+                            recentSearches = if (currentSearchSession != null)
+                                searchHistory.visible(SearchHistoryScope.GLOBAL) else emptyList(),
+                            onRemoveRecent = { searchHistory.remove(SearchHistoryScope.GLOBAL, it) },
+                            onSubmittedSearch = { entry ->
+                                if (latestSearchGrant.value != null) {
+                                    searchHistory.remember(SearchHistoryScope.GLOBAL, entry)
+                                }
+                            },
                             onlyTheseFacesAvailable = false,
                             suggestionSources = searchChoices?.choices.orEmpty(),
                             currentPermissionEpoch = searchGrant,
@@ -3545,6 +3699,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     currentSearchSession?.peopleGeneration,
                                     latestSearchGrant.value,
                                     latestPeopleGeneration.value)
+                                searchHistory.clear(SearchHistoryScope.GLOBAL)
                             },
                             onSearchByFace = {
                                 faceSession.clear()
@@ -3598,7 +3753,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             catalogueEpoch = publishedGallery.epoch,
                             // Pinch-only, as on Samsung's grids: no View as row.
                             showViewAs = false,
-                            emptyText = "No results"
+                            // #134: name what found nothing, plus one neutral line.
+                            emptyText = personSearchLabel(namedSearchPeople, searchFacets)
+                                .let { if (it.isEmpty()) "No results" else "No results for \u201C$it\u201D" },
+                            emptyDetail = "Try another word or name."
                         )
                         }
                     }
@@ -3623,6 +3781,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 sorted = sorted,
                                 gridState = nativePersonGridState,
                                 catalogueEpoch = publishedGallery.epoch,
+                                selectionRotationState = vm.pendingPersonSelectionRotationState,
                                 onBack = { nativePersonAlbum = null },
                                 onOpen = { items, record -> openViewer(items, record.uri) },
                                 facetPeople = people,
@@ -3736,6 +3895,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         }
         }
+    }
+    // FIND-3a (#182): Undo for history actions. Above the nav pill when the
+    // keyboard is closed, and right above the keyboard when it is open.
+    SearchHistorySnackbarHost(searchHistory, Modifier.align(Alignment.BottomCenter),
+        bottomClearance = if (!settingsOpen && !statusOpen) AtlasTabPillHeight + 22.dp else 8.dp)
+    }
     }
 }
 

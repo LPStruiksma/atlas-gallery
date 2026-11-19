@@ -16,8 +16,14 @@ RUNNER=nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 # kotlin-stdlib-common 1.8.20 before any test ran). Allow 6 attempts with
 # 5 s doubling back-off (at most ~2.5 min of waiting) for every Gradle call here.
 # Only dependency downloads are retried; test execution is never repeated.
+# Retries alone did not hold: on 2026-11-18 shard 0 of run 44280986519 still
+# failed every Central POM with 429 within a minute. So every Gradle call here
+# also resolves Maven Central through Google's mirror (scripts/ci/central-mirror.init.gradle).
+CENTRAL_MIRROR_INIT="$PWD/scripts/ci/central-mirror.init.gradle"
+[[ -f "$CENTRAL_MIRROR_INIT" ]] || { echo "::error::Missing $CENTRAL_MIRROR_INIT"; exit 1; }
 gradle() {
   command gradle \
+    --init-script "$CENTRAL_MIRROR_INIT" \
     -Dorg.gradle.internal.network.retry.max.attempts=6 \
     -Dorg.gradle.internal.network.retry.initial.backOff=5000 \
     "$@"
@@ -262,6 +268,51 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# Opt-in stress run (docs/testing/EMULATOR_TESTS.md, "Stress a test"). A
+# head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
+# lists, each as its own instrumentation run, on every shard: each shard is
+# an independent emulator, so one dispatch gives 2 x count samples in minutes
+# instead of one sample per full suite. One "<count> <Class or Class#method>"
+# per line. Remove the file before review: the static guard fails while the file exists.
+if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+  if [[ "$SHARD_INDEX" != "0" ]]; then
+    gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+  fi
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+  adb logcat -G 16M || true
+  stress_fail=0
+  stress_out=/tmp/atlas-stress.txt
+  while read -r stress_count stress_target || [[ -n "${stress_count:-}${stress_target:-}" ]]; do
+    [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
+    if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
+          ! "${stress_target:-}" =~ ^[A-Za-z0-9_.]+(#[A-Za-z0-9_]+)?$ ]]; then
+      echo "::error::Bad scripts/ci-opt-in/stress-classes line: $stress_count ${stress_target:-}"
+      exit 1
+    fi
+    for ((stress_run = 1; stress_run <= stress_count; stress_run++)); do
+      adb logcat -c || true
+      # </dev/null: adb shell would otherwise read the rest of the list.
+      adb shell am instrument -w -r -e class "$stress_target" "$RUNNER" \
+        > "$stress_out" 2>&1 < /dev/null || true
+      if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
+        echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
+      else
+        echo "STRESS $stress_target run $stress_run/$stress_count: FAIL"
+        stress_fail=1
+        grep -E 'INSTRUMENTATION_STATUS: (test|stack)=|^Error in |^Tests run|^FAILURES|AssertionError|Exception' \
+          "$stress_out" | cut -c1-600 | head -60 || true
+      fi
+      echo "::group::STRESS $stress_target run $stress_run logcat"
+      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V \
+        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
+      echo "::endgroup::"
+    done
+  done < scripts/ci-opt-in/stress-classes
+  echo "NOTICE: opt-in stress head; full emulator suite skipped on purpose"
+  exit "$stress_fail"
+fi
+
 # Preserve normal viewer/filmstrip checks and their real PNG screenshots.
 # If the mismatch lane replaced the fixture with signer B, Gradle must
 # retain the same environment or it will attempt to install signer A again.
@@ -286,6 +337,67 @@ echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
 timeout 30 adb logcat -d -s ATLAS_SCALE:I || echo "ATLAS_SCALE logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
+# #417 PERF-7a: debug StrictMode baseline on shard 1 (or an unsharded run).
+# Report-only: a violation never fails the shard, and a missing report is a
+# warning that Review checks. It runs before the suite's own exit status is
+# applied, so an unrelated red test still leaves the baseline in the log.
+# The debug provider stays a no-op until this step creates its marker file, so
+# the suite above ran without StrictMode.
+strictmode_baseline_417() {
+  local pkg=nl.atlas.gallery
+  # connectedDebugAndroidTest uninstalls its APKs when it returns.
+  adb install -r "$NEW" >/dev/null || { echo "::warning::#417 reinstall failed"; return 0; }
+  adb install -r "$TEST" >/dev/null || { echo "::warning::#417 test APK reinstall failed"; return 0; }
+  local marker=files/atlas-strictmode-baseline
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_IMAGES || true
+  adb shell pm grant "$pkg" android.permission.READ_MEDIA_VIDEO || true
+  # A fresh install has no files/ directory until the app first runs.
+  if ! adb shell run-as "$pkg" sh -c "'mkdir -p files && touch $marker'"; then
+    echo "::warning::#417 could not create the debug StrictMode marker"; return 0
+  fi
+  echo "::group::#417 cold start, am start -W, debug StrictMode on"
+  adb logcat -c || true
+  local totals=() i out total
+  for i in 0 1 2 3 4 5; do
+    adb shell am force-stop "$pkg"
+    out="$(adb shell am start -W -n "$pkg/.MainActivity" | tr -d '\r' || true)"
+    total="$(sed -n 's/^TotalTime: *//p' <<< "$out")"
+    echo "launch $i $(grep -E '^(LaunchState|TotalTime):' <<< "$out" | tr '\n' ' ')"
+    # Launch 0 is the first after this shard's reinstall; 1-5 are the sample.
+    [[ "$i" != "0" && "$total" =~ ^[0-9]+$ ]] && totals+=("$total")
+    sleep 4
+  done
+  if (( ${#totals[@]} > 0 )); then
+    printf '%s\n' "${totals[@]}" | sort -n | awk '{v[NR]=$1} END {
+      p50=v[int((NR-1)*0.5+0.5)+1]; p95=v[int((NR-1)*0.95+0.5)+1];
+      printf "STRICT cold-start n=%d p50_ms=%d p95_ms=%d (am start -W TotalTime, launches 1-%d)\n", NR, p50, p95, NR }'
+  else
+    echo "STRICT cold-start unavailable: no TotalTime from am start -W"
+  fi
+  echo "STRICT cold-start violations: $(timeout 30 adb logcat -d -v brief -s StrictMode:D |
+    grep -c 'StrictMode policy violation' || true) logged over 6 launches"
+  timeout 30 adb logcat -d -v brief -s StrictMode:D | head -n 900 || true
+  echo "::endgroup::"
+  adb shell am force-stop "$pkg"
+  adb logcat -c || true
+  local capture=/tmp/atlas-strictmode-417.txt
+  adb shell am instrument -w -r -e atlas_strictmode_baseline true \
+    -e class nl.atlas.gallery.StrictModeBaselineTest "$RUNNER" > "$capture" 2>&1 || true
+  tail -n 40 "$capture"
+  echo "::group::#417 first-open flows (ATLAS_STRICT, synthetic MediaStore PNGs)"
+  timeout 30 adb logcat -d -v brief -s ATLAS_STRICT:I || echo "ATLAS_STRICT logcat unavailable"
+  echo "::endgroup::"
+  if ! grep -Fq 'OK (1 test)' "$capture"; then
+    echo "::warning::#417 StrictMode baseline test did not pass; no first-open table this run"
+    timeout 30 adb logcat -d -b crash -t 300 || true
+  fi
+  adb shell run-as "$pkg" rm -f "$marker" || true
+  adb shell am force-stop "$pkg"
+}
+if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
+  ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  strictmode_baseline_417
+fi
 if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
 # #31: the two real-process People/visual/grid/Albums phases cannot run in
 # one instrumentation invocation: force-stop must kill the target process
@@ -424,6 +536,23 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
     out="$(adb shell dumpsys jobscheduler | tr -d '\r' || true)"
     grep -qE "^ *JOB androidx[.]work[.]systemjobscheduler:u0a[0-9]+/$id: .*nl[.]atlas[.]gallery/" <<<"$out"
   }
+  # #372: JobScheduler keeps listing a job after WorkManager's GreedyScheduler
+  # ran the same work in-process, so a pending entry does not prove the scan is
+  # unfinished. WorkManager's own result line for that work ID does. Match the
+  # ID, not the class: a first PeopleScanWorker run can finish (photos=0) and
+  # chain a new one, which is the job #43 kills. Read it while frozen, when no
+  # new line can appear. Capture first (SIGPIPE).
+  scan_work_id() {
+    local out
+    out="$(timeout 30 adb logcat -d -v brief -s WM-SystemJobScheduler:D || true)"
+    sed -nE 's/.*Scheduling work ID ([0-9a-f-]+) \(nl[.]atlas[.]gallery[.]featureface[.]work[.]PeopleScanWorker\), Job ID ([0-9]+).*/\1 \2/p' <<<"$out" | tail -1
+  }
+  scan_work_finished() {
+    local id="$1" out
+    [[ -n "$id" ]] || return 1
+    out="$(timeout 30 adb logcat -d -v brief -s WM-WorkerWrapper:I || true)"
+    grep -qE "Worker result [A-Z]+ for Work \[ id=$id," <<<"$out"
+  }
   # What the first process did before the kill. The log is cleared after
   # the kill, so a later failure prints this capture as well.
   prekill_log=/tmp/atlas-kill43-prekill.txt
@@ -444,6 +573,13 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       tail -80 || true
   }
   adb shell dumpsys battery unplug
+  # #372 root cause (run 44291919363 prekill dump: "status: 2" while unplugged):
+  # `unplug` clears ac/usb but leaves the emulator's status at CHARGING, and
+  # WorkManager's in-process BatteryChargingTracker reads that status. So the
+  # charging-constrained scan ran in-process (GreedyScheduler) while
+  # "unplugged", finished and chained, racing the kill. Report DISCHARGING so
+  # the scan stays a pending JobScheduler job until the replug below.
+  adb shell dumpsys battery set status 3
   adb logcat -c || true
   run_kill_phase seed seedBeforeKill
   adb logcat -c || true
@@ -481,8 +617,44 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   scan_job_pending "$scan_job" || {
     kill43_diagnostics
     echo "::error::#43 the scan worker's job ${scan_job:-?} was no longer pending before the kill"; exit 1; }
-  echo "#43: scan worker job $scan_job pending; killing the unplugged app"
-  kill_app
+  # #372: JobScheduler may still show a pending job after GreedyScheduler
+  # has already completed it. Freeze the process before the final pending
+  # check so the worker cannot finish between that check and SIGKILL.
+  prekill_pid="$(app_pid)"
+  [[ -n "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 no live app process to freeze"; exit 1; }
+  adb shell run-as nl.atlas.gallery kill -STOP "$prekill_pid" || {
+    kill43_diagnostics; echo "::error::#43 could not freeze pid $prekill_pid"; exit 1; }
+  [[ "$(app_pid)" == "$prekill_pid" ]] || {
+    kill43_diagnostics; echo "::error::#43 app process changed during freeze"; exit 1; }
+  # #372 (runs 44280551540, 44284361706): while the gallery is still pending
+  # each PeopleScanWorker run ends at once (photos=0) and chains the next one
+  # under a new work ID and Job ID, so the job seen above can finish before
+  # the freeze. Re-read the newest scan job now that nothing can change: that
+  # is the work #43 kills. It must still be pending in JobScheduler, and
+  # WorkManager must not have logged a result for its work ID.
+  scan_job="$(scan_job_id)"
+  scan_work="$(scan_work_id)"
+  [[ "${scan_work##* }" == "$scan_job" ]] || {
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics; echo "::error::#43 no WorkManager work ID for frozen scan job ${scan_job:-?}"; exit 1; }
+  scan_work="${scan_work%% *}"
+  # An already finished scan is a precondition miss, not a restore failure.
+  # Both signals are read frozen; only this branch resumes the process.
+  if ! scan_job_pending "$scan_job" || scan_work_finished "$scan_work"; then
+    adb shell run-as nl.atlas.gallery kill -CONT "$prekill_pid" || true
+    kill43_diagnostics
+    echo "::error::#43 scan work $scan_work (job $scan_job) finished before the process was frozen; re-seed required"
+    exit 1
+  fi
+  echo "#43: scan worker job $scan_job frozen in pid $prekill_pid; SIGKILL unplugged app"
+  adb shell run-as nl.atlas.gallery kill -9 "$prekill_pid"
+  for _ in $(seq 1 20); do
+    [[ -z "$(app_pid)" ]] && break
+    sleep 0.5
+  done
+  [[ -z "$(app_pid)" ]] || {
+    kill43_diagnostics; echo "::error::#43 frozen app process survived SIGKILL"; exit 1; }
   adb logcat -c || true
   adb shell dumpsys battery set ac 1
   adb shell dumpsys battery set status 2
