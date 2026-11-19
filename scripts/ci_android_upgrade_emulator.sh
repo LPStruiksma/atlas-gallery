@@ -293,7 +293,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
     for ((stress_run = 1; stress_run <= stress_count; stress_run++)); do
       adb logcat -c || true
       # </dev/null: adb shell would otherwise read the rest of the list.
-      adb shell am instrument -w -r -e class "$stress_target" "$RUNNER" \
+      adb shell am instrument -w -r -e atlasFaceScanBench true -e class "$stress_target" "$RUNNER" \
         > "$stress_out" 2>&1 < /dev/null || true
       if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
@@ -305,7 +305,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
       timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V \
-        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
+        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I ATLAS_SCALE:V ATLAS_FACE:V AndroidRuntime:E TestRunner:V || true
       echo "::endgroup::"
     done
   done < scripts/ci-opt-in/stress-classes
