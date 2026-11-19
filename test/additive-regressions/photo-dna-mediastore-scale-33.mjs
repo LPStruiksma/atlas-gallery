@@ -10,6 +10,15 @@ const source = readFileSync(
 assert.match(source, /2_000/);
 assert.match(source, /MediaStore\.Images\.Media\.EXTERNAL_CONTENT_URI/);
 assert.match(source, /createAndroidComposeRule<MainActivity>/);
+assert.match(source, /waitFor\\("loaded Albums grid"\\)/);
+assert.match(source, /exists\\("atlas-album-grid"\\) && exists\\("atlas-header-more"\\)/);
+assert.match(source, /logAlbumsUiState\\("before-overflow"\\)/);
+assert.match(source, /logAlbumsUiState\\("after-overflow"\\)/);
+assert.match(source, /logAlbumsUiState\\("failed-step"\\)/);
+assert.match(source, /SemanticsProperties\\.Selected/);
+assert.match(source, /loading_combined=\\$loading/);
+assert.match(source, /visible_album_cards=\\$visibleAlbumCards/);
+assert.match(source, /photo_dna_menu=/);
 assert.match(source, /atlas-photo-dna-back/);
 assert.match(source, /1000 copies/);
 assert.match(source, /atlas-visual-index-switch/);
