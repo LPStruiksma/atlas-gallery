@@ -37,6 +37,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.util.concurrent.TimeUnit
 import java.util.Collections
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
 import kotlin.math.abs
 
 /**
@@ -93,7 +95,7 @@ class GalleryMediaStoreObserverJourneyTest {
         }
         resolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, trace)
         try {
-            compose.waitUntil(90_000L) {
+            compose.awaitThat("the 72 synthetic images published with full gallery access", timeoutMs = 90_000L) {
                 val publication = vm.publishedInventory.value
                 !vm.busy.value && !publication.fromCache &&
                     publication.observedGrant?.images == true &&
@@ -105,13 +107,12 @@ class GalleryMediaStoreObserverJourneyTest {
             for (choice in listOf("atlas-media-sort-date_created",
                     "atlas-media-sort-direction-descending")) {
                 compose.onNodeWithTag("atlas-photos-sort").performClick()
-                compose.waitUntil(10_000L) {
-                    compose.onAllNodesWithTag(choice).fetchSemanticsNodes().isNotEmpty()
+                compose.awaitThat("sort option $choice in the sheet", timeoutMs = 10_000L) {
+                    compose.exists(hasTestTag(choice))
                 }
                 compose.onNodeWithTag(choice).performClick()
-                compose.waitUntil(10_000L) {
-                    compose.onAllNodesWithTag("atlas-photos-sort-sheet")
-                        .fetchSemanticsNodes().isEmpty()
+                compose.awaitThat("sort sheet closed after $choice", timeoutMs = 10_000L) {
+                    !compose.exists(hasTestTag("atlas-photos-sort-sheet"))
                 }
             }
             compose.onNodeWithTag("atlas-timeline-grid").performScrollToIndex(0)
@@ -124,11 +125,18 @@ class GalleryMediaStoreObserverJourneyTest {
                 val (uri, writtenAt) = insertFictionalImage(resolver, index)
                 disposable += uri
                 val id = ContentUris.parseId(uri)
-                compose.waitUntil(12_000L) {
+                // MediaProvider may send a collection-wide callback instead of an
+                // exact row change. The ViewModel then correctly falls back to
+                // a full scan, whose publication has incremental=false. A tile
+                // already on screen must not be ignored until another delta
+                // happens (CI shard 0: runs 44419277477 and 44433328673).
+                // Avoid reading Compose semantics until the provider has
+                // actually published this item.
+                compose.awaitThat("insert $index is in inventory and rendered",
+                    timeoutMs = 12_000L) {
                     val pub = vm.publishedInventory.value
-                    pub.incremental && pub.items.any { it.id == id && !it.isVideo } &&
-                        compose.onAllNodes(hasTestTag("atlas-timeline-media-$id"))
-                            .fetchSemanticsNodes().isNotEmpty()
+                    pub.items.any { it.id == id && !it.isVideo } &&
+                        compose.exists(hasTestTag("atlas-timeline-media-$id"))
                 }
                 samples += TimeUnit.NANOSECONDS.toMillis(
                     SystemClock.elapsedRealtimeNanos() - writtenAt)
@@ -159,13 +167,15 @@ class GalleryMediaStoreObserverJourneyTest {
             val (scrolledUri, _) = insertFictionalImage(resolver, 100)
             disposable += scrolledUri
             val scrolledId = ContentUris.parseId(scrolledUri)
-            compose.waitUntil(12_000L) {
+            compose.awaitThat("scrolled insertion published incrementally",
+                timeoutMs = 12_000L) {
                 val pub = vm.publishedInventory.value
                 pub.incremental && pub.items.any { it.id == scrolledId }
             }
             // Await Compose's asynchronous sort and anchor re-plan, not merely
             // the ViewModel flow emission.
-            compose.waitUntil(12_000L) {
+            compose.awaitThat("the same scrolled tile stays rendered",
+                timeoutMs = 12_000L) {
                 val nodes = compose.onAllNodes(mediaTags).fetchSemanticsNodes()
                 nodes.any { it.config.getOrElseNullable(SemanticsProperties.TestTag) { null } == anchoredTag }
             }
@@ -183,7 +193,8 @@ class GalleryMediaStoreObserverJourneyTest {
             }
             val burstIds = burst.map(ContentUris::parseId).toSet()
             assertEquals(50, burstIds.size)
-            compose.waitUntil(30_000L) {
+            compose.awaitThat("all 50 burst IDs published incrementally",
+                timeoutMs = 30_000L) {
                 val pub = vm.publishedInventory.value
                 pub.incremental &&
                     pub.items.filter { !it.isVideo && it.id in burstIds }
@@ -196,7 +207,8 @@ class GalleryMediaStoreObserverJourneyTest {
             val deletedId = ContentUris.parseId(scrolledUri)
             assertEquals(1, resolver.delete(scrolledUri, null, null))
             disposable.remove(scrolledUri)
-            compose.waitUntil(12_000L) {
+            compose.awaitThat("deleted image removed from the inventory",
+                timeoutMs = 12_000L) {
                 vm.publishedInventory.value.items.none { it.id == deletedId && !it.isVideo }
             }
 
@@ -210,7 +222,8 @@ class GalleryMediaStoreObserverJourneyTest {
                 resolver.notifyChange(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     null, ContentResolver.NOTIFY_UPDATE)
             }
-            compose.waitUntil(30_000L) {
+            compose.awaitThat("observer callback during busy scan gets a follow-up",
+                timeoutMs = 30_000L) {
                 !vm.busy.value && vm.publishedInventory.value.epoch >= epochBefore + 2L
             }
             Log.i("ATLAS_PERF10", "event=busy_observer_followup published=true")
