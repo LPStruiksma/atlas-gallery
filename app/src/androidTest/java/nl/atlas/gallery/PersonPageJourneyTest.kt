@@ -351,11 +351,21 @@ class PersonPageJourneyTest {
             assertEquals("configuration holder keeps exactly the same keys",
                 expectedUris, holder.value?.encoded?.drop(3)?.toSet())
             assertEquals(request.opening, holder.value?.opening)
-            // The avatar header occupies most of a landscape viewport.
-            // Keep the grid scrolled to a checked tile for every screenshot,
-            // rather than resetting to index 0 and hiding all checked overlays.
-            compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
-                .assertIsDisplayed()
+            // #404: visible semantics alone can mean a 5px sliver below the
+            // person avatar, with the checked overlay entirely hidden.
+            // Require at least half of a selected square above the action bar
+            // and below the pinned person header in every landscape capture.
+            val selectedTile = compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
+                .assertIsDisplayed().getUnclippedBoundsInRoot()
+            if (root.width > root.height) {
+                val pinnedHeader = compose.onNodeWithTag("atlas-scrolling-header")
+                    .getUnclippedBoundsInRoot()
+                val visibleTop = maxOf(selectedTile.top, pinnedHeader.bottom, root.top)
+                val visibleBottom = minOf(selectedTile.bottom, action.top, root.bottom)
+                assertTrue("checked person tile must be at least half visible in landscape",
+                    visibleBottom - visibleTop >=
+                        (selectedTile.bottom - selectedTile.top) * 0.5f)
+            }
             waitForText("2 selected")
         }
 
