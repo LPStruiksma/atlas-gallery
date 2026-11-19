@@ -1,0 +1,3 @@
+# <count> <Class or Class#method>
+1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest
+1 nl.atlas.gallery.testkit.KeyboardHealthTest
