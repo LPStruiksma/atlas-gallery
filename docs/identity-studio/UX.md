@@ -124,7 +124,8 @@ border and scale 1.08 (150 ms). A new batch from Change face/person starts after
 | No face | "We couldn't find a face in this photo" | Close | `s2-no-face` |
 | Face too small | "This face is small, results may look soft" | Try anyway · Cancel | `s2-face-small` |
 | Making k/4 | Photo visible, shimmer on the face, placeholder tiles, "Making 4 versions…" | Wait · ✕ | `s3-generating-0`, `-2` |
-| Studio | Version 1 selected, mixed batch, look chip | Swipe · tap · Save | `s4-studio` |
+| Studio | Version 1 selected, mixed batch | Swipe · tap · Save | `s4-studio` |
+| Look chips | Row scrolled to "Glasses" | Tap a look chip | `s4-look-chip` |
 | Hold Original | The original while the pill is held | Release | `s4-hold-original` |
 | ⋮ menu | Change face · Change person · Photos used for <name> | Pick | `s4-menu` |
 | More/refine running | Spinner before the chips, pending tiles | Wait | `s4-refine-running` |
@@ -144,7 +145,7 @@ border and scale 1.08 (150 ms). A new batch from Change face/person starts after
 | Name with keyboard | Field above the keyboard, chosen faces above it | Done | `s8-name-keyboard` |
 
 Every render exists in light and dark at 100% and 200% font
-(`scripts/ui-evidence.d/467-swap-person.txt`, 132 images), all synthetic: drawn cartoon faces,
+(`scripts/ui-evidence.d/467-swap-person.txt`, 136 images), all synthetic: drawn cartoon faces,
 invented names and `FakeIdentityEditEngine`.
 
 ## Motion and access

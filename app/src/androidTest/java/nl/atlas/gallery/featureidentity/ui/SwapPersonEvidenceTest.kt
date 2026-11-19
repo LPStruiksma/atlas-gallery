@@ -18,6 +18,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -321,8 +322,12 @@ class SwapPersonEvidenceTest {
         // S4 studio: mixed first batch (face, hair, face, hair), look chip "Glasses".
         show(Harness()) { studio() }
         assertEquals(listOf(false, true, false, true), current!!.state.versions.map { it.hair })
-        compose.onNodeWithTag("swap-chip-Glasses", useUnmergedTree = true).assertExists()
+        assertEquals(listOf("Glasses"), current!!.state.otherLooks.map { it.label })
         shot("s4-studio")
+        // The look chip sits after the refine chips; scroll the row to it.
+        compose.onNodeWithTag("swap-refine-row").performScrollToNode(hasTestTag("swap-chip-Glasses"))
+        compose.onNodeWithTag("swap-chip-Glasses").assertExists()
+        shot("s4-look-chip")
         compose.onNodeWithTag("swap-original-pill").performTouchInput { down(center) }
         compose.waitForIdle()
         shot("s4-hold-original")
