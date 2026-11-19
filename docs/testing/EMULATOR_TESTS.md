@@ -124,7 +124,7 @@ Each shard runs three things in order, and each leaves its own lines in the job 
 
 After the suite the script prints the `ATLAS_BASELINE` and `ATLAS_DIAG` lines in one group, next to `ATLAS_PERF10`. So for a red shard: read the failing test's own message, then its `ATLAS_DIAG` line, then any drift line just before it.
 
-`AtlasRunListenerSelfTest` proves the listener on a device. It is skipped unless the runner argument `atlas_listener_selftest=true` is set, which only the opt-in stress run passes: list `1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest` in `scripts/ci-opt-in/stress-classes` on a throwaway branch. Its first test leaves the keyboard up, its second must start at inset 0 after one drift line naming the first, and its third fails on purpose to print an `ATLAS_DIAG` line (so that stress run is red by design).
+`AtlasRunListenerSelfTest` proves the listener on a device. It is skipped unless the runner argument `atlas_listener_selftest=true` is set, which only the opt-in stress run passes: list `1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest` in `scripts/ci-opt-in/stress-classes` on a throwaway branch. Its first test ends with the keyboard up and a `wm size` override, its second must start with the keyboard hidden and the display back at the baseline after one drift line naming the first, and its third fails on purpose to print an `ATLAS_DIAG` line (so that stress run is red by design). A keyboard left up by a test's own Activity is usually gone before the next test anyway: the runner's ActivityFinisher closes every Activity after each test. A keyboard drift line therefore points at a window outside the test, such as a system dialog or a crashed or leftover app.
 
 ## When an emulator test fails
 
