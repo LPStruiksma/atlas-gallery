@@ -82,6 +82,9 @@ class FaceQualityBackfillRunner(
         } catch (_: SecurityException) {
             // Current permission may have changed. No row is written.
             return FaceQualityBackfillResult(held = true)
+        } catch (_: FaceScanIoFailure) {
+            // A decoder/provider failure is not an inferred quality result.
+            return FaceQualityBackfillResult(source.media.canonicalMediaKey)
         } catch (_: IOException) {
             // Unreadable source: leave its old observations unscored.
             return FaceQualityBackfillResult(source.media.canonicalMediaKey)
