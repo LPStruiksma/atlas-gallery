@@ -17,7 +17,8 @@ import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
-import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.featureaiedit.save.AiEditDetails
+import nl.atlas.gallery.featureaiedit.save.aiEditDetailsFor
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -88,9 +89,11 @@ internal fun ViewerDetailsSheet(
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
-    var provenance by remember(media.uri) { mutableStateOf<AiEditProvenanceGroup?>(null) }
+    // #458: ordinary Details render at once; the AI marker is added in place
+    // once app-private lineage confirms it. Any failure means no marker.
+    var aiEdit by remember(media.uri) { mutableStateOf<AiEditDetails?>(null) }
     LaunchedEffect(media.uri) {
-        provenance = withContext(Dispatchers.IO) {
+        aiEdit = withContext(Dispatchers.IO) {
             runCatching {
                 val store = AiEditLineageStore(context.applicationContext)
                 // Only show media still readable under the current grant.
@@ -101,16 +104,7 @@ internal fun ViewerDetailsSheet(
                         null, null, null
                     )?.use { it.moveToFirst() } == true
                 } catch (_: RuntimeException) { false }
-                val parent = store.get(media.uri)
-                if (parent != null && parent.originalUri != media.uri &&
-                    visible(parent.originalUri))
-                    AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
-                else {
-                    val children = store.all().asSequence()
-                        .filter { it.originalUri == media.uri && it.editedUri != media.uri }
-                        .map { it.editedUri }.distinct().filter(::visible).sorted().toList()
-                    if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
-                }
+                aiEditDetailsFor(media.uri, store.get(media.uri), store::all, ::visible)
             }.getOrNull()
         }
     }
@@ -171,7 +165,8 @@ internal fun ViewerDetailsSheet(
                 Spacer(Modifier.height(16.dp))
             }
             ViewerDetailRow("Name", facts.filename)
-            provenance?.let { group ->
+            if (aiEdit?.editedWithAi == true) ViewerAiEditedRow()
+            aiEdit?.group?.let { group ->
                 if (group.originalUri == media.uri) {
                     ViewerDetailRow("AI versions (${group.editedUris.size})", "Saved AI edits")
                 } else {
@@ -228,6 +223,23 @@ private fun ViewerDetailRow(label: String, value: String) {
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
+
+/**
+ * #458: one plain-text row, read by TalkBack as the whole phrase. Not a
+ * button and not colour-coded; it sits between Name and "Edited from…".
+ */
+@Composable
+private fun ViewerAiEditedRow() {
+    Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)
+        .testTag("atlas-details-ai-edited")) {
+        Text(AI_EDITED_LABEL, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+/** #458: the one user-facing phrase for a saved AI edit (Details and Photo DNA). */
+internal const val AI_EDITED_LABEL = "Edited with AI"
 
 /**
  * The same presentation facts as the full details sheet, without a provider

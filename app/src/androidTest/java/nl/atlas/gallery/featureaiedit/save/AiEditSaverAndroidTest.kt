@@ -2,6 +2,7 @@ package nl.atlas.gallery.featureaiedit.save
 
 import android.content.ContentValues
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.media.ExifInterface
 import android.net.Uri
@@ -57,14 +58,15 @@ class AiEditSaverAndroidTest {
         return uri
     }
 
-    private fun recipe(original: Uri, candidate: Uri, keepGps: Boolean = false) =
+    private fun recipe(original: Uri, candidate: Uri, keepGps: Boolean = false,
+                       format: AiEditImageFormat = AiEditImageFormat.JPEG) =
         AiEditCandidate(
             originalUri = original, candidateUri = candidate,
             originalRevision = "synthetic-r1",
             provider = "synthetic-provider", model = "pixel-only", modelVersion = "test-v1",
             prompt = "Make these synthetic pixels blue",
             settingsJson = "{\"temperature\":0}",
-            format = AiEditImageFormat.JPEG, keepGps = keepGps, createdAtMillis = 123456L
+            format = format, keepGps = keepGps, createdAtMillis = 123456L
         )
 
     private fun bytes(uri: Uri): ByteArray = resolver.openInputStream(uri)!!.use { it.readBytes() }
@@ -103,6 +105,47 @@ class AiEditSaverAndroidTest {
         assertEquals(1, refreshed)
         assertEquals(result.uri, focused)
         assertEquals(original.toString(), store.get(result.uri.toString())!!.originalUri)
+    }
+
+    /**
+     * #458: every supported output MIME carries the IPTC Digital Source Type
+     * XMP in its standard location, still decodes at full size, keeps the
+     * EXIF allowlist, and leaves the original (which carries no label) intact.
+     */
+    @Test fun savedEditCarriesAiXmpForEverySupportedMimeAndOriginalStaysUnlabelled() = runBlocking {
+        val original = image("label-source-" + UUID.randomUUID() + ".jpg", Color.RED, withExif = true)
+        val before = bytes(original)
+        assertNull("A non-AI photo carries no ATLAS AI label",
+            AiEditXmp.read(before, AiEditImageFormat.JPEG))
+        for (format in AiEditImageFormat.values()) {
+            val candidate = image("label-candidate-" + UUID.randomUUID() + ".jpg", Color.BLUE)
+            val result = AiEditSaver(context, store).save(
+                recipe(original, candidate, format = format))
+            created += result.uri
+            assertEquals(format.mimeType, value(result.uri, MediaStore.Images.Media.MIME_TYPE))
+            // Reopen from MediaStore after publish: this is what leaves the phone.
+            val saved = bytes(result.uri)
+            assertEquals("$format XMP readback", AiEditXmp.packet,
+                AiEditXmp.read(saved, format))
+            val decoded = BitmapFactory.decodeByteArray(saved, 0, saved.size)
+            assertNotNull("$format must still decode after labelling", decoded)
+            assertEquals(12, decoded.width); assertEquals(8, decoded.height)
+            decoded.recycle()
+            val savedExif = exif(result.uri)
+            assertEquals("$format Software", "ATLAS AI Edit",
+                savedExif.getAttribute(ExifInterface.TAG_SOFTWARE))
+            assertEquals("2020:01:02 03:04:05",
+                savedExif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL))
+            assertNull(savedExif.getAttribute(ExifInterface.TAG_GPS_LATITUDE))
+            if (format == AiEditImageFormat.JPEG) {
+                // The platform's own reader finds the standard APP1 XMP.
+                val platformXmp = savedExif.getAttribute(ExifInterface.TAG_XMP)
+                assertTrue("platform XMP: $platformXmp",
+                    platformXmp?.contains(AiEditXmp.DIGITAL_SOURCE_TYPE) == true)
+            }
+            assertEquals(original.toString(), store.get(result.uri.toString())!!.originalUri)
+        }
+        assertArrayEquals("Original MediaStore bytes must never change", before, bytes(original))
     }
 
     @Test fun failedPublishDeletesPendingRowAndRollsBackLineage() = runBlocking {

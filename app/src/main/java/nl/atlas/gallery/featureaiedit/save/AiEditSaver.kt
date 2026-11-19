@@ -137,6 +137,19 @@ internal class AiEditSaver(
         } ?: error("Cannot write new image metadata")
     }
 
+    /**
+     * #458: add the portable AI label (IPTC Digital Source Type in XMP) to
+     * the still-pending copy, after EXIF so the platform writer cannot drop
+     * it. Only this app-owned pending row is rewritten; never the original.
+     */
+    private fun embedAiXmp(target: Uri, format: AiEditImageFormat) {
+        val encoded = resolver.openInputStream(target)?.use { it.readBytes() }
+            ?: error("Cannot read new image for AI metadata")
+        val labelled = AiEditXmp.embed(encoded, format)
+        resolver.openOutputStream(target, "wt")?.use { it.write(labelled) }
+            ?: error("Cannot write AI metadata")
+    }
+
     private fun pendingValues(source: SourceFacts, name: String,
                               format: AiEditImageFormat): ContentValues =
         ContentValues().apply {
@@ -174,6 +187,7 @@ internal class AiEditSaver(
                 compressPixels(candidate.candidateUri, candidate.format, it)
             } ?: error("Cannot write accepted image")
             copyExif(candidate.originalUri, inserted, candidate)
+            embedAiXmp(inserted, candidate.format)
             val lineage = AiEditLineage(
                 editedUri = inserted.toString(),
                 originalUri = candidate.originalUri.toString(),
