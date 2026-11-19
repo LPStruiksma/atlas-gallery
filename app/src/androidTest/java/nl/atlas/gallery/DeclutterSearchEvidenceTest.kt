@@ -187,6 +187,11 @@ class DeclutterSearchLandscapeEvidenceTest {
             try {
             rule.activityRule.scenario.recreate()
             rule.activityRule.scenario.onActivity { activity ->
+                // Deterministic keyboard insets: the app's screens resize for the
+                // IME; a recreated bare test Activity may otherwise pan instead.
+                @Suppress("DEPRECATION")
+                activity.window.setSoftInputMode(
+                    android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
                 activity.setContent {
                     AtlasGalleryTheme(dark = dark) {
                         DeclutterScreen("Pictures/ATLAS-Declutter-341L/", deck,
@@ -305,6 +310,14 @@ internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
         })
     } finally {
         uris.forEach { resolver.delete(it, null, null) }
+        // MediaStore reuses the deleted rows' ids for the next insert, so a later
+        // test's fixture can get these exact content:// URIs. Drop the decoded
+        // copies, or Coil serves this deck's flat colours for that fixture
+        // (OriginalProportionsAlbumJourneyTest failed this way in the same shard).
+        val loader = coil3.SingletonImageLoader.get(
+            InstrumentationRegistry.getInstrumentation().targetContext)
+        loader.memoryCache?.clear()
+        loader.diskCache?.clear()
     }
 }
 
