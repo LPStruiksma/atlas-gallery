@@ -5,7 +5,13 @@ import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URL
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -178,6 +184,36 @@ class EditHttpTransportTest {
             assertFalse(result.toString().contains("editor.example"))
     }
 
+
+    @Test fun workerStopDisconnectsARequestBlockedOnTheServerReply() {
+        val requestArrived = CountDownLatch(1)
+        withServer({ requestArrived.countDown(); FakeResponse(200, delayMs = 4_000) }) { server ->
+            val slow = EditHttpConfig("https://editor.example/v1/", setOf("editor.example"),
+                connectTimeoutMs = 500, readTimeoutMs = 8_000, overallTimeoutMs = 10_000)
+            var result: EditHttpResult? = null
+            var elapsedMs = 0L
+            runBlocking {
+                val worker = launch(Dispatchers.IO) {
+                    withContext(Dispatchers.IO) {
+                        val cancellation = EditRequestCancellation()
+                        val watcher = WorkerStopWatcher(this) { cancellation.cancel() }
+                        try {
+                            val start = System.nanoTime()
+                            result = transport(server).execute(slow,
+                                EditHttpRequest(EditHttpMethod.GET, "edits/abc"), cancellation = cancellation)
+                            elapsedMs = (System.nanoTime() - start) / 1_000_000L
+                        } finally { watcher.release() }
+                    }
+                }
+                assertTrue(requestArrived.await(5, TimeUnit.SECONDS))
+                worker.cancel()
+                worker.join()
+            }
+            // The read is blocked for 4 s on the server; the stop must disconnect it well before that.
+            assertEquals(EditHttpResult.Cancelled, result)
+            assertTrue("stop took ${elapsedMs} ms", elapsedMs < 2_000)
+        }
+    }
 
     @Test fun authenticationAndInvalidRequestsMapToFixedCodes() = withServer({ request ->
             val status = when (request.path) {

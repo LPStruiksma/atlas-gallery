@@ -19,8 +19,6 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featureaiedit.settings.ProviderCredentialVault
 import nl.atlas.gallery.featureaiedit.settings.ProviderProfile
@@ -247,9 +245,9 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        // WorkManager cancels the coroutine; a blocking HttpURLConnection needs an explicit disconnect.
-        val workerJob = currentCoroutineContext().job
-        val stopHook = workerJob.invokeOnCompletion { cancellation.cancel() }
+        // WorkManager cancels the coroutine; a blocking HttpURLConnection needs an explicit
+        // disconnect at cancellation time, not at completion (see WorkerStopWatcher).
+        val stopWatcher = WorkerStopWatcher(this) { cancellation.cancel() }
         try {
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val folder = try { EditJobJournal.directory(applicationContext, id) }
@@ -397,7 +395,7 @@ class EditJobWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             }
             else -> { fail(folder, "REMOTE_ERROR"); Result.failure() }
         }
-        } finally { stopHook.dispose() }
+        } finally { stopWatcher.release() }
     }
 
     private fun supportsSingleImage(bytes: ByteArray): Boolean = try {
