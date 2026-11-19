@@ -15,3 +15,12 @@ selection-404-light-album-portrait-after
 selection-404-dark-album-portrait-before
 selection-404-dark-album-landscape
 selection-404-dark-album-portrait-after
+
+# Person scope: real Activity recreation on fictional face images with a
+# configuration-retained selection holder, checked keys and constrained layout.
+selection-404-dark-person-portrait-before
+selection-404-dark-person-landscape
+selection-404-dark-person-portrait-after
+selection-404-light-person-portrait-before
+selection-404-light-person-landscape
+selection-404-light-person-portrait-after
