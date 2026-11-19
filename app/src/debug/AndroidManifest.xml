@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <!-- Compose UI tests host content in this ui-test-manifest activity. Landscape
+             evidence (#142) rotates the display mid-test; handling the change here keeps
+             the composed content instead of recreating an empty activity. -->
+        <activity android:name="androidx.activity.ComponentActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:name="nl.atlas.gallery.CrashProbeActivity"
             android:process=":crash_probe"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+        <!-- #417 PERF-7a: debug-only StrictMode baseline. A no-op unless the marker
+             file files/atlas-strictmode-baseline exists (adb shell run-as nl.atlas.gallery
+             touch files/atlas-strictmode-baseline), so the normal suite is unchanged.
+             Providers start before Application.onCreate; the high initOrder puts it
+             ahead of the app's other providers. -->
+        <provider android:name="nl.atlas.gallery.DebugStrictModeInstaller"
+            android:authorities="${applicationId}.debug-strictmode"
+            android:exported="false"
+            android:initOrder="1000" />
     </application>
 </manifest>

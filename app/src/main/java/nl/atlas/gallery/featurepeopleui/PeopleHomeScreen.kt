@@ -2,6 +2,8 @@ package nl.atlas.gallery.featurepeopleui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +24,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PeopleOutline
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,21 +41,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuredesign.AtlasTokens
+import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.scopedNameMatches
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
+import nl.atlas.gallery.featurepeopleui.PeopleSortKey
+import nl.atlas.gallery.featurepeopleui.PeopleSortStats
+import nl.atlas.gallery.featurepeopleui.orderPeopleEntries
+import nl.atlas.gallery.featurepeopleui.PeopleSortEntry
+import java.util.Locale
 
 /**
  * People tab in Samsung Gallery style (#516, #643, OWNER_INTENT): the slim
@@ -76,6 +98,7 @@ fun PeopleHomeScreen(
     v4OneTimeImportMode: ReviewedV4ImportMode = ReviewedV4ImportMode.REPLACES,
     modifier: Modifier = Modifier,
     onStartDiscovery: (() -> Unit)? = null,
+    onScanNow: (() -> Unit)? = null,
     onPauseDiscovery: (() -> Unit)? = null,
     onResumeDiscovery: (() -> Unit)? = null,
     onOpenReview: (() -> Unit)? = null,
@@ -87,6 +110,10 @@ fun PeopleHomeScreen(
     /** Host-owned People ⋮ entries (Hidden). */
     menuItems: List<AtlasHeaderMenuItem> = emptyList(),
     onOpenLibraryStatus: (() -> Unit)? = null,
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    /** Persisted by the owning Activity; preferences contain only the enum. */
+    sortChoice: PeopleSortChoice = PeopleSortChoice(),
+    onSortChoice: (PeopleSortChoice) -> Unit = {},
     /**
      * #31: a kept opt-in whose catalogue is still being restored. Shows a
      * quiet page, never "No people" and "Discover faces" for a library that
@@ -107,16 +134,9 @@ fun PeopleHomeScreen(
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
-    // This remembers only a generic layout choice, never a private person name.
-    var profileOrder by remember { mutableStateOf(ReviewedPeopleOrder.AS_PROVIDED) }
-    val orderedProfiles = remember(state.profiles, profileOrder) {
-        // Stable partition: unnamed profiles trail named ones without erasing
-        // the chosen Original order, Most photos, or Name ordering.
-        val selectedOrder = orderReviewedPeopleProfiles(state.profiles, profileOrder)
-        val named = selectedOrder.filterNot { it.name.isBlank() }
-        val unnamed = selectedOrder.filter { it.name.isBlank() }
-        named + unnamed
-    }
+    val locale = LocalConfiguration.current.locales[0]
+    var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
+    var sortSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The native review snapshot is grant-scoped and never mixed with imported
     // V4 numeric IDs. Its confirmed names appear in the same People grid.
     val currentNative = nativePeopleReview?.takeIf {
@@ -144,26 +164,52 @@ fun PeopleHomeScreen(
         }
     }
     // Both sources retain their own click contract and identity type.
-    val tiles = orderedProfiles.map { PeopleGridTile.Imported(it) } +
-        nativeTiles.map { PeopleGridTile.Native(it) } + unnamedTiles
+    val tiles = remember(state.profiles, nativeTiles, unnamedTiles, currentNative, sortChoice) {
+        val all: List<PeopleGridTile> = buildList {
+            addAll(state.profiles.map { PeopleGridTile.Imported(it) })
+            addAll(nativeTiles.map { PeopleGridTile.Native(it) })
+            addAll(unnamedTiles)
+        }
+        val keyed = all.mapIndexed { index, tile ->
+            val stats = when (tile) {
+                is PeopleGridTile.Imported -> PeopleSortStats(tile.profile.accessiblePhotos,
+                    tile.profile.firstAppearanceMs, tile.profile.mostRecentAppearanceMs)
+                is PeopleGridTile.Native -> currentNative?.people?.get(tile.tile.person)?.let {
+                    PeopleSortStats(it.mediaCount, it.firstAppearanceMs, it.mostRecentAppearanceMs)
+                } ?: PeopleSortStats(0, null, null)
+                is PeopleGridTile.Unnamed -> PeopleSortStats(0, null, null)
+            }
+            PeopleSortEntry(index, when (tile) {
+                is PeopleGridTile.Imported -> tile.profile.name
+                is PeopleGridTile.Native -> tile.tile.name
+                is PeopleGridTile.Unnamed -> ""
+            }, stats, randomKey = when (tile) {
+                is PeopleGridTile.Imported -> "v4:${tile.profile.personId}"
+                is PeopleGridTile.Native -> "native:${tile.tile.person.value}"
+                is PeopleGridTile.Unnamed -> "unnamed:${tile.face.localHex}"
+            })
+        }
+        orderPeopleEntries(keyed, sortChoice).map { all[it.id] }
+    }
+    val filteredTiles = tiles.filter { tile ->
+        if (searchText.isBlank()) true
+        else when (tile) {
+            is PeopleGridTile.Imported -> tile.profile.name.isNotBlank() &&
+                scopedNameMatches(tile.profile.name, searchText)
+            is PeopleGridTile.Native -> tile.tile.name.isNotBlank() &&
+                scopedNameMatches(tile.tile.name, searchText)
+            is PeopleGridTile.Unnamed -> false
+        }
+    }
     val scan = peopleScanControls(discovery, actions, onStartDiscovery,
         onPauseDiscovery, onResumeDiscovery, onOpenReview)
     val overflow = buildList {
-        if (state.profiles.size > 1) {
-            ReviewedPeopleOrder.entries.forEach { option ->
-                add(AtlasHeaderMenuItem(
-                    label = when (option) {
-                        ReviewedPeopleOrder.AS_PROVIDED -> "Original order"
-                        ReviewedPeopleOrder.MOST_PHOTOS -> "Most photos"
-                        ReviewedPeopleOrder.NAME -> "Name"
-                    },
-                    testTag = "atlas-people-sort-${option.name}",
-                    checked = profileOrder == option,
-                    onClick = { profileOrder = option }
-                ))
-            }
-        }
         addAll(menuItems)
+        if (onScanNow != null && !currentPermissionEpoch.isNullOrBlank() &&
+            discovery.phase != FaceDiscoveryPhase.UNAVAILABLE &&
+            discovery.phase != FaceDiscoveryPhase.PERMISSION_REQUIRED) {
+            add(AtlasHeaderMenuItem("Scan now", "atlas-people-scan-now", onClick = onScanNow))
+        }
         // #643: scan and review are People actions, so they sit in ⋮ rather
         // than as buttons on the page. The empty page keeps "Discover faces".
         if (scan.start != null && tiles.isNotEmpty()) add(AtlasHeaderMenuItem(
@@ -175,11 +221,27 @@ fun PeopleHomeScreen(
         AtlasGalleryHeader(
             title = "People",
             menuItems = overflow,
-            onOpenLibraryStatus = onOpenLibraryStatus
+            onOpenLibraryStatus = onOpenLibraryStatus,
+            actions = {
+                IconButton(onClick = { sortSheetOpen = true },
+                    modifier = Modifier.size(48.dp).testTag("atlas-people-sort-open")) {
+                    Icon(Icons.Filled.Sort, contentDescription = "Sort people")
+                }
+                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    historyScope = SearchHistoryScope.PEOPLE,
+                    onScopeChange = { scope ->
+                        if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                    })
+            }
         )
+        if (sortSheetOpen) PeopleSortSheet(sortChoice, onSortChoice) { sortSheetOpen = false }
         PeopleScanProgress(discovery)
-        if (tiles.isEmpty()) {
-            if (restoring) {
+        if (filteredTiles.isEmpty()) {
+            if (tiles.isNotEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No matching people")
+                }
+            } else if (restoring) {
                 Box(Modifier.fillMaxSize().testTag("atlas-people-restoring"))
             } else {
                 PeopleEmptyState(scan.start)
@@ -191,11 +253,11 @@ fun PeopleHomeScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            items(tiles.chunked(3), key = { row ->
+            items(filteredTiles.chunked(3), key = { row ->
                 row.joinToString(":") { tile -> when (tile) {
                     is PeopleGridTile.Imported -> "v4-${tile.profile.personId}"
                     is PeopleGridTile.Native -> "native-${tile.tile.person.value}"
-                    // Position only: a private face uid is never a lazy (saveable) key.
+                    // An opaque face id is not a saved UI key; use the source row index.
                     is PeopleGridTile.Unnamed -> "unnamed-${unnamedTiles.indexOf(tile)}"
                 } }
             }) { row ->
@@ -203,11 +265,11 @@ fun PeopleHomeScreen(
                     row.forEach { tile ->
                         when (tile) {
                             is PeopleGridTile.Imported ->
-                                ProfileTile(tile.profile, onOpenProfile, portrait, Modifier.weight(1f))
+                                ProfileTile(tile.profile, onOpenProfile, portrait, locale, Modifier.weight(1f))
                             is PeopleGridTile.Native ->
                                 NativeProfileTile(tile.tile, currentNative,
                                     onOpenNativePersonAlbum, liveNativePeopleAtAction,
-                                    nativePortrait, Modifier.weight(1f))
+                                    nativePortrait, locale, Modifier.weight(1f))
                             is PeopleGridTile.Unnamed ->
                                 UnnamedGroupTile(tile, onOpenReview, nativePortrait,
                                     Modifier.weight(1f))
@@ -216,6 +278,51 @@ fun PeopleHomeScreen(
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
+        }
+    }
+}
+
+/** Compact sheet; the sort icon is in the header, not the overflow menu. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun PeopleSortSheet(
+    selected: PeopleSortChoice,
+    onSelect: (PeopleSortChoice) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("atlas-people-sort-sheet")) {
+        Text("Sort people", style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            PeopleSortKey.entries.forEach { key ->
+                listOf(false, true).forEach { descending ->
+                    val option = PeopleSortChoice(key, descending)
+                    val label = when (key) {
+                        PeopleSortKey.MEDIA_COUNT -> if (descending)
+                            "Media count · most first" else "Media count · fewest first"
+                        PeopleSortKey.NAME -> if (descending) "Name · Z–A" else "Name · A–Z"
+                        PeopleSortKey.MOST_RECENT -> if (descending)
+                            "Most recent · newest first" else "Most recent · oldest first"
+                        PeopleSortKey.FIRST_APPEARANCE -> if (descending)
+                            "First appearance · newest first" else "First appearance · oldest first"
+                        PeopleSortKey.RANDOM -> if (descending) "Random · reverse" else "Random"
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            onSelect(option)
+                            onDismiss()
+                        }.testTag("atlas-people-sort-${key.name}-${if (descending) "desc" else "asc"}")
+                            .padding(horizontal = 24.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selected == option, onClick = null)
+                        Text(label, modifier = Modifier.padding(start = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
@@ -297,39 +404,52 @@ private fun peopleScanControls(
 )
 
 /**
- * #643: while a scan is queued, runs or is paused, one thin line under the
- * title and nothing else: no text, no button. The count stays readable for
- * TalkBack as the line's state ("Finding people · 3 of 10").
+ * #46: show a readable status line, not an animated scan bar for queued or
+ * charger-held work. Accessible status text and counters share one formatter.
  */
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
-    val line = peopleProgressLine(state) ?: return
-    Box(Modifier.fillMaxWidth().semantics { stateDescription = line }
+    val line = state.statusNote ?: peopleProgressLine(state) ?: return
+    Column(Modifier.fillMaxWidth().semantics { stateDescription = line }
         .testTag("atlas-people-progress-line")) {
-        val progress = state.progress
-        val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
-        if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
-        else LinearProgressIndicator(bar)
+        Text(line,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                .semantics { stateDescription = line }.testTag("atlas-people-status"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (state.statusNote == null && (state.phase == FaceDiscoveryPhase.SCANNING ||
+            state.phase == FaceDiscoveryPhase.GROUPING)) {
+            val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
+            val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
+            if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
+            else LinearProgressIndicator(modifier = bar)
+        }
     }
 }
 
-/** The scan state as words, "Finding people · 3 of 10", or null when idle. */
-internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? {
-    val count = if (state.eligible > 0) " · ${state.processed} of ${state.eligible}" else ""
-    return when (state.phase) {
-        FaceDiscoveryPhase.QUEUED, FaceDiscoveryPhase.SCANNING -> "Finding people$count"
-        FaceDiscoveryPhase.PAUSED -> "Paused$count"
-        else -> null
-    }
+/** The same words shown in Settings and People, with scoped progress counts. */
+internal fun peopleProgressLine(state: FaceDiscoveryUiState): String? = peopleStatusLine(state)
+
+@Composable
+private fun PortraitCircle(decorative: Boolean = false, content: @Composable () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .then(if (decorative) Modifier.clearAndSetSemantics { } else Modifier),
+        contentAlignment = Alignment.Center
+    ) { content() }
 }
 
 @Composable
-private fun PortraitCircle(content: @Composable () -> Unit) {
-    Box(
-        Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        contentAlignment = Alignment.Center
-    ) { content() }
+private fun MediaCountSubtitle(photos: Int, videos: Int, locale: Locale) {
+    Text(
+        peopleMediaCountLabel(photos, videos, locale),
+        modifier = Modifier.fillMaxWidth().testTag("atlas-people-count"),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1, overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center
+    )
 }
 
 @Composable
@@ -339,10 +459,14 @@ private fun NativeProfileTile(
     onOpenAlbum: ((PersonKey) -> Unit)?,
     livePeopleAtAction: (() -> PeopleHomeSummary?)?,
     nativePortrait: @Composable (NativeFaceObservationId) -> Unit,
+    locale: Locale,
     modifier: Modifier
 ) {
     val canOpen = renderedReview != null && onOpenAlbum != null &&
         livePeopleAtAction != null
+    val counts = renderedReview?.people?.get(tile.person)
+    val photos = counts?.photoCount ?: 0
+    val videos = counts?.videoCount ?: 0
     Column(
         modifier = modifier
             .then(if (canOpen) Modifier.clickable {
@@ -350,16 +474,27 @@ private fun NativeProfileTile(
                     onOpenAlbum?.invoke(tile.person)
                 }
             } else Modifier)
+            .semantics(mergeDescendants = true) {
+                contentDescription = peopleMediaCountContentDescription(tile.name, photos, videos, locale)
+            }
             .testTag("atlas-native-person-album"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle {
+        // The named tile speaks the person's name and media counts; portrait alt text
+        // must not be appended to its merged TalkBack description.
+        PortraitCircle(decorative = true) {
             val face = tile.face
             if (face != null) nativePortrait(face) else DefaultPortrait()
         }
-        Text(tile.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis)
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(tile.name, modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            MediaCountSubtitle(photos, videos, locale)
+        }
     }
 }
 
@@ -368,20 +503,33 @@ private fun ProfileTile(
     person: PeopleProfileUi,
     onOpen: (Long) -> Unit,
     portrait: @Composable (PeopleProfileUi) -> Unit,
+    locale: Locale,
     modifier: Modifier
 ) {
+    val semantics = if (person.name.isNotBlank()) {
+        Modifier.semantics(mergeDescendants = true) {
+            contentDescription = peopleMediaCountContentDescription(
+                person.name, person.accessiblePhotos, 0, locale)
+        }
+    } else Modifier
     Column(
         modifier = modifier.clickable { onOpen(person.personId) }
+            .then(semantics)
             .testTag("atlas-people-profile-${person.personId}"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PortraitCircle { portrait(person) }
-        Text(person.name.ifBlank { "Add name" },
-            style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface)
+        PortraitCircle(decorative = true) { portrait(person) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(person.name.ifBlank { "Add name" }, modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (person.name.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface)
+            if (person.name.isNotBlank()) MediaCountSubtitle(person.accessiblePhotos, 0, locale)
+        }
     }
 }
 
@@ -417,11 +565,11 @@ fun UnknownFaceReviewCard(
     }
     // Stable, nonsensitive test tag. Never log a private MediaStore source key.
     Card(modifier = modifier.fillMaxWidth().testTag("atlas-unknown-face-review"),
-        shape = RoundedCornerShape(24.dp)) {
+        shape = RoundedCornerShape(AtlasTokens.Radii.PersonCard)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.fillMaxWidth().height(168.dp)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest,
-                    RoundedCornerShape(18.dp)),
+                    RoundedCornerShape(AtlasTokens.Radii.PersonCover)),
                 contentAlignment = Alignment.Center) { sourcePreview() }
             Text(candidate.title, style = MaterialTheme.typography.titleMedium)
             Text(candidate.explanation, style = MaterialTheme.typography.bodySmall,

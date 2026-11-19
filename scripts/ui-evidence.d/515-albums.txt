@@ -2,3 +2,8 @@
 albums-after-populated
 albums-menu
 albums-sort
+# #143 paired baseline/candidate system-theme screenshots
+albums-before-light
+albums-before-dark
+albums-after-light
+albums-after-dark

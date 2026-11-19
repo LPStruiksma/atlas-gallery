@@ -1,12 +1,15 @@
 package nl.atlas.gallery
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -55,7 +58,9 @@ class PhotoDnaPlanningFailureRouteTest {
         val calls = AtomicInteger()
         val failNext = AtomicBoolean(true)
         var dark by mutableStateOf(false)
+        var statusTopPx = -1
         rule.setContent {
+            statusTopPx = WindowInsets.statusBars.getTop(LocalDensity.current)
             AtlasGalleryTheme(dark = dark) {
                 // The root Surface MainActivity draws behind every route, so the
                 // dark evidence shows the dark background, not a bare window.
@@ -82,8 +87,13 @@ class PhotoDnaPlanningFailureRouteTest {
             .assertTextContains(PhotoDnaCopy.FAILED_STATUS, substring = true)
         rule.onNodeWithTag("atlas-photo-dna-progress").assertDoesNotExist()
         rule.onNodeWithTag("atlas-photo-dna-retry").assertExists()
+        // #73: under edge-to-edge the Photo DNA back row must not hide behind
+        // the S24+ status bar. Test both the back hit target and the title.
+        assertHeaderClearsStatusBar(statusTopPx)
         capture("photo-dna-42-failed-light.png")
         rule.runOnIdle { dark = true }
+        rule.waitForIdle()
+        assertHeaderClearsStatusBar(statusTopPx)
         capture("photo-dna-42-failed-dark.png")
 
         val report = requireNotNull(LastCrashRecorder.read(context))
@@ -96,6 +106,16 @@ class PhotoDnaPlanningFailureRouteTest {
         rule.onNodeWithTag("atlas-photo-dna-failed").assertDoesNotExist()
         // One throwing call, then both files hashed by the retry.
         assertEquals(1 + records.size, calls.get())
+    }
+
+    private fun assertHeaderClearsStatusBar(statusTopPx: Int) {
+        assertTrue("S24+ status bar must report a nonzero inset: $statusTopPx",
+            statusTopPx > 0)
+        for (tag in listOf("atlas-photo-dna-back", "atlas-photo-dna-title")) {
+            val bounds = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInWindow
+            assertTrue("$tag top ${bounds.top} overlaps status bar $statusTopPx",
+                bounds.top >= statusTopPx)
+        }
     }
 
     private fun capture(name: String) {

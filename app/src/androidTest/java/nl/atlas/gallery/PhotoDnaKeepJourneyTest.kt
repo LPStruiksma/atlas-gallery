@@ -6,7 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.featurepersistence.CurationKeepStore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -53,6 +56,7 @@ class PhotoDnaKeepJourneyTest {
         // Members are ordered by URI, so index 1 is the second inserted copy.
         compose.onAllNodes(hasTestTag("photo-dna-keeper"))[1].performClick()
         compose.onAllNodes(hasTestTag("photo-dna-keeper"))[1].assertIsSelected()
+        logKeepSnapshot("after-choice")
 
         // Leave and reopen: still decided.
         compose.onNodeWithTag("atlas-photo-dna-back").performClick()
@@ -60,6 +64,7 @@ class PhotoDnaKeepJourneyTest {
         compose.onNodeWithTag("atlas-header-more").performClick()
         waitFor("Photo DNA menu", hasTestTag("atlas-albums-menu-photo-dna"))
         compose.onNodeWithTag("atlas-albums-menu-photo-dna").performClick()
+        logKeepSnapshot("after-reopen")
         waitFor("decided after reopen", hasTestTag("photo-dna-keeper") and
             hasText("ATLAS_DNA_KEEP_B.png") and isSelected())
 
@@ -137,11 +142,55 @@ class PhotoDnaKeepJourneyTest {
 
     private fun waitFor(step: String, matcher: SemanticsMatcher) = waitUntil(step) { exists(matcher) }
 
+    /**
+     * Read-only synthetic diagnostics compare a saved receipt with Selected
+     * semantics. Only the A/B/C fixture codes are logged, never URIs or hashes.
+     */
+    private fun logKeepSnapshot(stage: String) {
+        val receipt = runCatching {
+            val uris = fixtures.copyUris().map { it.toString() }
+            CurationKeepStore(InstrumentationRegistry.getInstrumentation().targetContext).use { store ->
+                store.readableDatabase.rawQuery(
+                    "SELECT keeper_key FROM keep_receipts WHERE keeper_key IN (?, ?, ?)",
+                    uris.toTypedArray()
+                ).use { cursor ->
+                    val saved = mutableListOf<String>()
+                    while (cursor.moveToNext()) {
+                        saved += when (uris.indexOf(cursor.getString(0))) {
+                            0 -> "A"
+                            1 -> "B"
+                            2 -> "C"
+                            else -> "unknown"
+                        }
+                    }
+                    saved.sorted().joinToString(",").ifEmpty { "none" }
+                }
+            }
+        }.getOrElse { "error=" + it.javaClass.simpleName }
+        val visible = runCatching {
+            compose.onAllNodes(hasTestTag("photo-dna-keeper"), useUnmergedTree = true)
+                .fetchSemanticsNodes().map { node ->
+                    val caption = node.config.getOrElse(SemanticsProperties.Text) { emptyList() }
+                        .joinToString(" ") { it.text }
+                    val member = when {
+                        caption.contains("ATLAS_DNA_KEEP_A.png") -> "A"
+                        caption.contains("ATLAS_DNA_KEEP_B.png") -> "B"
+                        caption.contains("ATLAS_DNA_KEEP_C.png") -> "C"
+                        else -> "other"
+                    }
+                    val selected = node.config.getOrElse(SemanticsProperties.Selected) { false }
+                    "$member:$selected"
+                }.joinToString(",").ifEmpty { "none" }
+        }.getOrElse { "error=" + it.javaClass.simpleName }
+        Log.i("ATLAS_DIAG_KEEP", "stage=$stage receipt=$receipt selected=$visible")
+    }
+
     /** A timeout names its step and the visible texts, on one line for the CI log. */
     private fun waitUntil(step: String, condition: () -> Boolean) {
         try {
             compose.waitUntil(60_000L, condition)
         } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            logKeepSnapshot("timeout-$step")
             val texts = runCatching {
                 compose.onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true)
                     .fetchSemanticsNodes().flatMap { node ->
@@ -160,6 +209,8 @@ private class KeepFixtures : TestRule {
     private val inserted = mutableListOf<Uri>()
     private val copies = mutableListOf<Uri>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    fun copyUris(): List<Uri> = copies.toList()
 
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {

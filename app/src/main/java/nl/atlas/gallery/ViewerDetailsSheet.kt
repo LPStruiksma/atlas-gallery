@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
+import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
+import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -86,6 +88,32 @@ internal fun ViewerDetailsSheet(
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
+    var provenance by remember(media.uri) { mutableStateOf<AiEditProvenanceGroup?>(null) }
+    LaunchedEffect(media.uri) {
+        provenance = withContext(Dispatchers.IO) {
+            runCatching {
+                val store = AiEditLineageStore(context.applicationContext)
+                // Only show media still readable under the current grant.
+                fun visible(uri: String): Boolean = try {
+                    context.contentResolver.query(
+                        android.net.Uri.parse(uri),
+                        arrayOf(android.provider.MediaStore.MediaColumns._ID),
+                        null, null, null
+                    )?.use { it.moveToFirst() } == true
+                } catch (_: RuntimeException) { false }
+                val parent = store.get(media.uri)
+                if (parent != null && parent.originalUri != media.uri &&
+                    visible(parent.originalUri))
+                    AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
+                else {
+                    val children = store.all().asSequence()
+                        .filter { it.originalUri == media.uri && it.editedUri != media.uri }
+                        .map { it.editedUri }.distinct().filter(::visible).sorted().toList()
+                    if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
+                }
+            }.getOrNull()
+        }
+    }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {
         mutableStateOf<ViewerDimensions?>(null)
     }
@@ -123,7 +151,11 @@ internal fun ViewerDetailsSheet(
     ) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp).padding(bottom = 36.dp)
+                .padding(horizontal = 24.dp)
+                // The scrollable rows clear the 3-button navigation area
+                // even with a viewer sheet drawn edge-to-edge (#680).
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = 36.dp)
         ) {
             Text("Details", color = muted, style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(12.dp))
@@ -139,6 +171,13 @@ internal fun ViewerDetailsSheet(
                 Spacer(Modifier.height(16.dp))
             }
             ViewerDetailRow("Name", facts.filename)
+            provenance?.let { group ->
+                if (group.originalUri == media.uri) {
+                    ViewerDetailRow("AI versions (${group.editedUris.size})", "Saved AI edits")
+                } else {
+                    ViewerDetailRow("Edited from…", "Original photo (AI edit)")
+                }
+            }
             facts.relativeFolder?.let { ViewerDetailRow("Path", it) }
             facts.fileSize?.let { ViewerDetailRow("Size", it) }
             val resolution = when {

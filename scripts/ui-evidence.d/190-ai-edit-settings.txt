@@ -1,0 +1,25 @@
+# AIE-19 (#430): real Compose Settings → AI Edit, synthetic preferences, isolated vault, fake key check.
+aie-19-settings-row-light
+aie-19-empty-light
+aie-19-add-main-light
+aie-19-add-light
+aie-19-key-ime-light
+aie-19-key-rejected-light
+aie-19-checking-light
+aie-19-services-light
+aie-19-unverified-light
+aie-19-remove-confirm-light
+aie-19-remove-default-light
+aie-19-many-light
+aie-19-settings-row-dark
+aie-19-empty-dark
+aie-19-add-main-dark
+aie-19-add-dark
+aie-19-key-ime-dark
+aie-19-key-rejected-dark
+aie-19-checking-dark
+aie-19-services-dark
+aie-19-unverified-dark
+aie-19-remove-confirm-dark
+aie-19-remove-default-dark
+aie-19-many-dark

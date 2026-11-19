@@ -8,6 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
@@ -47,13 +51,15 @@ import nl.atlas.gallery.featurepeopleui.PeopleHomeScreen
 import nl.atlas.gallery.featurepeopleui.PeopleHomeUiState
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
-import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -67,7 +73,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class PeopleDiscoveryHostTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
 
     private val target = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(target.cacheDir, "people-discovery-host-" + UUID.randomUUID())
@@ -86,6 +92,8 @@ class PeopleDiscoveryHostTest {
 
     @Volatile private var granted = true
     @Volatile private var charging = true
+    @Volatile private var batteryPercent = 100
+    @Volatile private var thermalStatus = 0
     private val decoded = AtomicInteger()
     private val scheduler = RecordingScheduler()
 
@@ -144,18 +152,85 @@ class PeopleDiscoveryHostTest {
                         480, 480, 0.4f + 0.02f * id, 0.5f, 0.8f + 0.01f * id)))
                 }
             },
-            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true) },
+            power = { PeoplePowerState(charging, batteryNotLow = true, storageNotLow = true,
+                batteryPercent = batteryPercent, thermalStatus = thermalStatus) },
             scheduler = scheduler,
             publishClusters = publish?.invoke(store) ?: store::publishClustersIfDue,
             optInMemory = optIn
         )
     }
 
-    @After fun cleanUp() {
-        PeopleScanWorkRuntime.clear()
-        if (::store.isInitialized) store.close()
-        dir.deleteRecursively()
+    /**
+     * #61: a genuine fake-media host batch remains safe unplugged, and the
+     * charging-constrained WorkManager chain is rearmed when manual mode ends.
+     * A separate screenshot test declares the light/dark rendered proof.
+     */
+    @Test fun manualUnpluggedScanRearmsChargingOnlyWorkAndHonorsStops() {
+        charging = false
+        batteryPercent = 80
+        thermalStatus = 0
+        val host = host()
+        val grant = "manual-unplugged"
+        host.setForegroundVisible(true)
+        val token = requireNotNull(host.beginManualForeground(grant, inventory))
+        assertTrue(host.manualScanActive(token))
+        assertTrue(scheduler.cancels.get() > 0)
+        val first = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true, isStopped = { false })
+        }
+        assertNotNull(first)
+        assertTrue("synthetic photo indexed", first!!.photosIndexed > 0)
+        val indexed = decoded.get()
+        assertEquals(0, scheduler.nexts.get())
+        assertEquals(0, scheduler.laters.get())
+
+        batteryPercent = 29
+        val low = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true },
+                manualForeground = true, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, low?.stop)
+        assertEquals(indexed, decoded.get())
+        assertEquals("Battery below 30%", host.manualHoldReason(token))
+
+        batteryPercent = 80
+        thermalStatus = 2
+        val hot = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { false },
+                manualForeground = true, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, hot?.stop)
+        assertEquals("Waiting for phone to cool", host.manualHoldReason(token))
+        assertEquals(indexed, decoded.get())
+
+        thermalStatus = 0
+        val startsBefore = scheduler.starts.get()
+        host.setForegroundVisible(false)
+        assertFalse(host.manualScanActive(token))
+        assertTrue("restore charging-only worker on foreground exit",
+            scheduler.starts.get() > startsBefore)
+        val workerHeld = runBlocking {
+            runPeopleScanBatch(target, thermalAllowed = { true }, isStopped = { false })
+        }
+        assertEquals(FaceBatchStop.HELD, workerHeld?.stop)
+        assertEquals(indexed, decoded.get())
+        // Old job's finally cannot rearm twice or end a newer token.
+        val startsAfter = scheduler.starts.get()
+        host.stopManualForeground(token)
+        assertEquals(startsAfter, scheduler.starts.get())
     }
+
+    // The Compose rule must dispose its content before the SQLite fixture closes.
+    // JUnit @After runs *before* rule teardown; closing there races the review
+    // screen's outstanding database reads on API35.
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(object : ExternalResource() {
+        override fun after() {
+            PeopleScanWorkRuntime.clear()
+            if (::store.isInitialized) store.close()
+            dir.deleteRecursively()
+        }
+    }).around(compose)
 
     private fun batch() = runBlocking { runPeopleScanBatch(target) { false } }
 
@@ -210,7 +285,7 @@ class PeopleDiscoveryHostTest {
         waitForText("Discover faces")
         compose.onNodeWithText("Discover faces").performClick()
         waitFor("weak photo scanner start") { scheduler.starts.get() == 1 }
-        waitForProgress("Finding people · 0 of 1")
+        waitForProgress("Starting · 0 of 1")
         assertEquals(1, host.status(grant).provenance!!.weakPhotoRows)
         assertEquals(1, host.status(grant).provenance!!.sourcePhotoRows)
         assertEquals(1, batch()!!.photosIndexed)
@@ -218,6 +293,37 @@ class PeopleDiscoveryHostTest {
         assertEquals(1, decoded.get())
         assertTrue(compose.onAllNodesWithText("Face discovery needs attention")
             .fetchSemanticsNodes().isEmpty())
+    }
+
+    /**
+     * #260: an already-open review must not keep the initial empty queue after
+     * discovery publishes faces in the SAME permission epoch. Synthetic photos
+     * only; the scheduler does not run background work in this fixture.
+     */
+    @Test fun openReviewReloadsAfterScanChangesSamePermissionEpoch() {
+        val host = host()
+        host.start("gallery-7", inventory)
+        val firstEpoch = host.displayEpoch("gallery-7")
+        compose.setContent {
+            MaterialTheme {
+                PeopleReviewRoute(host, "gallery-7", onClose = {})
+            }
+        }
+
+        // Page is loaded before any batch has produced a face.
+        waitForText("No unknown-face observations are awaiting review.")
+        compose.onAllNodesWithTag("atlas-unknown-identity-group")
+            .fetchSemanticsNodes().let { assertTrue(it.isEmpty()) }
+
+        drain()
+        assertEquals("scan stays in the same grant/index epoch", firstEpoch,
+            host.displayEpoch("gallery-7"))
+        waitFor("new face groups on the already-open review") {
+            compose.onAllNodesWithTag("atlas-unknown-identity-group")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("No unknown-face observations are awaiting review.")
+            .assertDoesNotExist()
     }
 
     @Test fun optInScanProgressClustersReviewThenRevokeStops() {
@@ -251,7 +357,7 @@ class PeopleDiscoveryHostTest {
 
         compose.onNodeWithText("Discover faces").performClick()
         waitFor("scheduler start") { scheduler.starts.get() == 1 }
-        waitForProgress("Finding people · 0 of 10")
+        waitForProgress("Starting · 0 of 10")
         // #664: pause/resume moved to Settings; the scan keeps progressing
         // without opening the old People overflow control here.
 
@@ -261,7 +367,7 @@ class PeopleDiscoveryHostTest {
         assertTrue("batch indexed photos: $first", first!!.photosIndexed in 1..8)
         assertTrue(first.stop == FaceBatchStop.PHOTO_LIMIT || first.stop == FaceBatchStop.TIME_LIMIT)
         assertEquals(1, scheduler.nexts.get())
-        waitForProgress("Finding people · ${first.photosIndexed} of 10")
+        waitForProgress("Starting · ${first.photosIndexed} of 10")
 
         // Drain: the last batch publishes clusters (scanFinished) and chains nothing.
         var stop = first.stop
@@ -275,10 +381,11 @@ class PeopleDiscoveryHostTest {
         assertNotNull("drained scan must publish clusters", clusters)
         assertTrue(clusters!!.unknownClusters.isNotEmpty())
 
-        // #516/#643: the thin progress line belongs to the scanning phases; a
-        // drained scan drops it and ⋮ offers the review action.
-        waitFor("progress line gone") {
-            compose.onAllNodesWithTag("atlas-people-progress-line")
+        // #516/#643/#46: a drained scan keeps its truthful Finished status,
+        // but the animated progress bar is reserved for active work.
+        waitForProgress("Finished · 10 of 10")
+        waitFor("animated progress bar gone") {
+            compose.onAllNodesWithTag("atlas-people-progress")
                 .fetchSemanticsNodes().isEmpty()
         }
         openMenuFor("atlas-people-review")
@@ -382,8 +489,8 @@ class PeopleDiscoveryHostTest {
         val group = host.reviewPage("gallery-7")!!.clusters!!.clusters.unknownClusters.first()
         val person = PersonKey("native-" + group.id.anchor.localHex)
 
-        compose.onAllNodesWithText("New person's name")[0].performTextInput("Synthetic Ada")
-        compose.onAllNodesWithText("Name this group")[0].performClick()
+        compose.onAllNodesWithText("Name this person")[0].performTextInput("Synthetic Ada")
+        compose.onAllNodesWithText("Create person")[0].performClick()
         waitFor("name committed") {
             store.peopleReview(epoch)?.names?.get(person) == "Synthetic Ada"
         }

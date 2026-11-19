@@ -1,0 +1,12 @@
+# Issue #23 · Samsung parity R3/P8: measured photo grid↔Viewer continuity.
+# Emulator 1080x2340; synthetic locally inserted photos only.
+# Mid-motion captures are taken with Compose's test clock at +80 ms.
+# This manifest declares evidence; PNGs are not proof until exact-head CI exports them.
+shared-23-enter-light
+shared-23-exit-light
+shared-23-far-scrub-light
+shared-23-reduced-light
+shared-23-enter-dark
+shared-23-exit-dark
+shared-23-far-scrub-dark
+shared-23-reduced-dark

@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,10 +29,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
+import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
+import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 
 /**
  * #664: one Samsung-style Settings destination for the gallery's existing
@@ -51,9 +57,20 @@ internal fun AtlasSettingsScreen(
     onLinkV4: () -> Unit,
     onDiagnostics: () -> Unit,
     scanLoading: Boolean = false,
+    scanHasSavedOptIn: Boolean = false,
+    scanPhotoAccess: Boolean = true,
+    visualStatus: VisualIndexStatus? = null,
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
-    onShareLastCrash: (String) -> Unit = {}
+    onShareLastCrash: (String) -> Unit = {},
+    onExportNames: () -> Unit = {},
+    onImportNames: () -> Unit = {},
+    onScanNow: (() -> Unit)? = null,
+    scanStatusNote: String? = null,
+    /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
+    searchHistoryOn: Boolean? = null,
+    onSearchHistoryOn: (Boolean) -> Unit = {},
+    onClearSearchHistory: () -> Unit = {}
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
@@ -62,18 +79,9 @@ internal fun AtlasSettingsScreen(
         FaceDiscoveryPhase.PAUSED -> onResumeScan
         else -> null
     }
-    val scanValue = if (scanLoading) "Restoring…" else when (scanPhase) {
-        FaceDiscoveryPhase.SCANNING -> "On · Pause"
-        FaceDiscoveryPhase.QUEUED -> "Starting"
-        FaceDiscoveryPhase.PAUSED -> "Paused · Resume"
-        FaceDiscoveryPhase.PERMISSION_REQUIRED -> "Permission required"
-        FaceDiscoveryPhase.BATTERY_LOW -> "Battery low"
-        FaceDiscoveryPhase.STORAGE_LOW -> "Storage low"
-        FaceDiscoveryPhase.FAILED -> "Needs attention"
-        FaceDiscoveryPhase.UNAVAILABLE, null -> "Unavailable"
-        FaceDiscoveryPhase.READY -> "Not started"
-        FaceDiscoveryPhase.FINISHED, FaceDiscoveryPhase.REVIEW_AVAILABLE -> "Finished"
-    }
+    val scanValue = scanStatusNote ?: if (scanLoading) "Restoring…" else faceScanSettingsValue(
+        scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .testTag("atlas-settings-screen")
@@ -83,15 +91,32 @@ internal fun AtlasSettingsScreen(
         SettingsGroup("People", "atlas-library-people-tools") {
             SettingsActionRow("Face scanning", "atlas-settings-face-scanning",
                 scanAction, scanValue)
+            SettingsActionRow("Scan now", "atlas-settings-scan-now", onScanNow,
+                if (onScanNow == null) "Photo access required" else "Foreground · works on battery")
             if (visualIndexOn != null) {
                 SettingsActionRow("Visual search index", "atlas-people-visual-index",
-                    onVisualIndex, if (visualIndexOn) "On" else "Off")
+                    onVisualIndex.takeIf { visualStatus != null }, visualIndexStatusText(visualIndexOn, visualStatus,
+                        scanPhase, scanLoading, scanPhotoAccess))
             }
             SettingsActionRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
+            SettingsActionRow("Export names", "atlas-people-names-export", onExportNames)
+            SettingsActionRow("Import names", "atlas-people-names-import", onImportNames)
         }
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
+        }
+        SettingsGroup("Editing", "atlas-settings-ai-edit") {
+            // #430: the row opens the "AI Edit" sub-screen; its label matches that title and
+            // its value is the status (the default service), not a description.
+            var aiEditOpen by rememberSaveable { mutableStateOf(false) }
+            val context = LocalContext.current
+            val defaultService = remember(context, aiEditOpen) {
+                ProviderSettingsStore(context).defaultProvider()?.name
+            }
+            SettingsActionRow("AI Edit", "atlas-settings-ai-edit-open",
+                onClick = { aiEditOpen = true }, value = defaultService ?: "Not set up")
+            if (aiEditOpen) AiEditSettingsDialog(onClose = { aiEditOpen = false })
         }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
@@ -130,6 +155,28 @@ internal fun AtlasSettingsScreen(
                     }
                 }
             }
+        }
+        // #427 review: below Advanced, so the existing groups keep their place on screen.
+        if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
+            // Off stops saving and clears every scope (Undo on the snackbar).
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .toggleable(value = searchHistoryOn, role = Role.Switch,
+                        onValueChange = onSearchHistoryOn)
+                    .testTag("atlas-settings-search-history"),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    Text("Save search history", style = MaterialTheme.typography.bodyLarge)
+                    Text("Recent searches stay on this phone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = searchHistoryOn, onCheckedChange = null)
+            }
+            SettingsActionRow("Clear search history", "atlas-settings-search-history-clear",
+                onClearSearchHistory)
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)

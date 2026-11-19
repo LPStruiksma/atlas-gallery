@@ -41,8 +41,9 @@ def fetch(img_id, split, cache, max_side):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", required=True)
-    ap.add_argument("--metadata", required=True, help="Open Images *-images-with-rotation.csv rows for these ids")
-    ap.add_argument("--split", default="train")
+    ap.add_argument("--metadata", required=True, action="append",
+                    help="Open Images *-images-with-rotation.csv rows for these ids (repeatable)")
+    ap.add_argument("--split", default="train", help="S3 folder, unless the manifest has a Split column")
     ap.add_argument("--cache", required=True)
     ap.add_argument("--max-side", type=int, default=640)
     ap.add_argument("--out", required=True)
@@ -50,16 +51,17 @@ def main():
     os.makedirs(a.cache, exist_ok=True)
 
     lic = {}
-    with open(a.metadata, newline="") as f:
-        for r in csv.DictReader(f):
-            lic[r["ImageID"]] = r["License"]
+    for meta in a.metadata:
+        with open(meta, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                lic[r["ImageID"]] = r["License"]
     rows = list(csv.DictReader(open(a.manifest, newline="")))
     ok = [r for r in rows if any(x in lic.get(r["ImageID"], "") for x in ALLOWED)]
     print(f"manifest {len(rows)}; licence CC BY 2.0 confirmed {len(ok)}")
 
     kept = []
     with cf.ThreadPoolExecutor(16) as ex:
-        futs = {ex.submit(fetch, r["ImageID"], a.split, a.cache, a.max_side): r for r in ok}
+        futs = {ex.submit(fetch, r["ImageID"], r.get("Split") or a.split, a.cache, a.max_side): r for r in ok}
         for fu in cf.as_completed(futs):
             r = futs[fu]
             try:
@@ -69,10 +71,11 @@ def main():
                 print(f"skip {r['ImageID']}: {type(e).__name__}: {e}")
     kept.sort(key=lambda r: r["ImageID"])
     with open(a.out, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["ImageID", "Labels", "License"])
+        extra = [k for k in ("Labels", "Split") if k in rows[0]]
+        w = csv.DictWriter(f, fieldnames=["ImageID", *extra, "License"])
         w.writeheader()
         for r in kept:
-            w.writerow({"ImageID": r["ImageID"], "Labels": r["Labels"], "License": lic[r["ImageID"]]})
+            w.writerow({"ImageID": r["ImageID"], **{k: r[k] for k in extra}, "License": lic[r["ImageID"]]})
     print(f"fetched {len(kept)}")
 
 

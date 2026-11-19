@@ -1,0 +1,3 @@
+# PERF-3 (#124): viewer open latency. ViewerOpenLatencyTest: 1080x2340, a
+# generated 12 MP JPEG opened from its warmed grid tile, first idle frame.
+viewer-open-first-frame

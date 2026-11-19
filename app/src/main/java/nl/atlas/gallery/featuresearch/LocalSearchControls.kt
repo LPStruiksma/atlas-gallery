@@ -1,10 +1,12 @@
 package nl.atlas.gallery.featuresearch
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +26,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,7 +50,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -90,8 +95,23 @@ fun LocalSearchControls(
      */
     hasResults: Boolean = false,
     /** #644: Search has no title bar, so its one ⋮ also opens Library status. */
-    onOpenLibraryStatus: (() -> Unit)? = null
+    onOpenLibraryStatus: (() -> Unit)? = null,
+    /**
+     * FIND-3a (#182): persistent recents for this scope, already filtered for
+     * the current grant and named people. Non-null replaces [history]'s terms
+     * with removable pills; null keeps the older in-memory pills.
+     */
+    recentSearches: List<SearchHistoryEntry>? = null,
+    /** FIND-3a: the pill's ✕ (the caller offers Undo). */
+    onRemoveRecent: (SearchHistoryEntry) -> Unit = {},
+    /** FIND-3a: a submitted search as words plus picked people, for history. */
+    onSubmittedSearch: ((SearchHistoryEntry) -> Unit)? = null
 ) {
+    val submitted: (LocalSearchFacets) -> Unit = { next ->
+        onSubmittedQuery(personSearchLabel(namedPeople, next))
+        onSubmittedSearch?.invoke(
+            SearchHistoryEntry(next.text.trim(), next.nativePersonKeys.toList()))
+    }
     // This private, transient picker input must not survive either a photo
     // regrant OR a reviewed People-catalog replacement. The identity wrapper
     // makes the key O(1), never List.equals over a large publication.
@@ -108,18 +128,19 @@ fun LocalSearchControls(
         // Samsung Search: one rounded field with ⋮ beside it; × resets.
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
+            TextField(
                 value = filters.text,
                 onValueChange = {
                     onFiltersChange(filters.copy(text = boundSearchQueryInput(it)))
                 },
                 placeholder = { Text("Search") },
                 singleLine = true,
-                shape = RoundedCornerShape(28.dp),
+                // #134: one fully rounded, filled field without an outline.
+                shape = CircleShape,
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
-                // Reset must also be available after clearing all advanced facets:
-                // the query itself can still be active when the filters close.
-                trailingIcon = if (filters != LocalSearchFacets()) ({
+                // #134: × only while there is text. Every other facet keeps its
+                // own undo (person chip, All, Clear date/filters/albums/people).
+                trailingIcon = if (filters.text.isNotEmpty()) ({
                     IconButton(onClick = { onFiltersChange(LocalSearchFacets()) },
                         modifier = Modifier.testTag("atlas-search-reset-all")) {
                         Icon(Icons.Filled.Close, contentDescription = "Reset search and filters")
@@ -133,9 +154,16 @@ fun LocalSearchControls(
                     val next = if (exact != null) filters.copy(text = exact.remainder,
                         nativePersonKeys = filters.nativePersonKeys + exact.person.key) else filters
                     if (exact != null) onFiltersChange(next)
-                    onSubmittedQuery(personSearchLabel(namedPeople, next))
+                    submitted(next)
                 }),
-                modifier = Modifier.weight(1f).testTag("atlas-search-field")
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp).testTag("atlas-search-field"),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
             )
             Box {
                 IconButton(onClick = { overflowOpen = true },
@@ -178,6 +206,7 @@ fun LocalSearchControls(
                             Icon(Icons.Filled.Close, "Remove ${person.name}",
                                 Modifier.size(InputChipDefaults.IconSize))
                         },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-person-chip")
                     )
                 }
@@ -197,9 +226,10 @@ fun LocalSearchControls(
                                 val next = filters.copy(text = match.remainder,
                                     nativePersonKeys = filters.nativePersonKeys + match.person.key)
                                 onFiltersChange(next)
-                                onSubmittedQuery(personSearchLabel(namedPeople, next))
+                                submitted(next)
                             }
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            // #134: 56 dp row (not 56 + padding), 16 dp screen inset.
+                            .heightIn(min = 56.dp).padding(horizontal = 16.dp)
                             .testTag("atlas-search-person-suggestion"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -213,22 +243,34 @@ fun LocalSearchControls(
                 }
             }
         }
-        if (filters.text.isBlank() && pickedPeople.isEmpty() && currentRecents.terms.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+        if (recentSearches != null) {
+            if (filters.text.isBlank() && pickedPeople.isEmpty()) RecentSearchPills(
+                entries = recentSearches,
+                labelOf = { entry ->
+                    personSearchLabel(namedPeople, LocalSearchFacets(text = entry.text,
+                        nativePersonKeys = entry.personKeys.toSet()))
+                },
+                onPick = { entry ->
+                    val next = filters.copy(text = entry.text,
+                        nativePersonKeys = entry.personKeys.toSet())
+                    onFiltersChange(next)
+                    submitted(next)
+                },
+                onRemove = onRemoveRecent,
+                onClear = onClearHistory
+            )
+        } else if (filters.text.isBlank() && pickedPeople.isEmpty() && currentRecents.terms.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(end = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("Recent searches", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SearchSectionHeader("Recent searches")
                 TextButton(onClick = onClearHistory) { Text("Clear") }
             }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            // #134: compact pills that wrap (200% font keeps every chip whole).
+            SearchChipFlow {
                 // Query text is potentially a private Person name. Never put it in
-                // a LazySaveableStateHolder key or Android saved-state Bundle.
-                // These recents are stateless chips, so position keys suffice.
-                items(currentRecents.terms.take(10)) { term ->
+                // a saveable key or Android saved-state Bundle: no keys here.
+                currentRecents.terms.take(10).forEach { term ->
                     AssistChip(onClick = {
                         // A recent "Susanne 2019" comes back as her chip plus "2019".
                         val exact = exactPersonInQuery(namedPeople, term)
@@ -237,6 +279,7 @@ fun LocalSearchControls(
                             else filters.copy(text = term, nativePersonKeys = emptySet()))
                         onSubmittedQuery(term)
                     }, label = { Text(term, maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-recent"))
                 }
             }
@@ -250,46 +293,85 @@ fun LocalSearchControls(
                     "$MAX_SEARCH_QUERY_TERMS words. Shorten the query to see matches.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 18.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
                     .testTag("atlas-search-query-limit")
             )
         }
-        val suggestions = remember(CatalogSourceKey(suggestionSources), filters.text) {
-            planLocalSearchSuggestions(suggestionSources, filters.text)
+        // Build this immutable index once per authorized summary publication.
+        // While it builds, display no private suggestions; never search the
+        // entire catalog on the Compose thread after each typed character.
+        val suggestionKey = CatalogSourceKey(suggestionSources)
+        val publicationKey = remember(currentPermissionEpoch, suggestionKey) {
+            currentPermissionEpoch to suggestionKey
         }
+        val indexState by androidx.compose.runtime.produceState(
+            initialValue = Pair<Any?, IndexedSearchSuggestions?>(null, null),
+            key1 = publicationKey
+        ) {
+            value = Pair(null, null)
+            if (!currentPermissionEpoch.isNullOrBlank()) {
+                val index = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    IndexedSearchSuggestions(suggestionSources)
+                }
+                value = Pair(publicationKey, index)
+            }
+        }
+        val indexedSuggestions = if (indexState.first == publicationKey)
+            indexState.second else null
+        // Using produceState for matching as well keeps posting scans and sort
+        // off Compose's frame. A changed query starts with an empty value,
+        // rather than briefly showing the previous query's private names.
+        val typedSuggestions = filters.text
+        val suggestionState by androidx.compose.runtime.produceState(
+            initialValue = Triple<Any?, String, List<SearchSuggestion>>(null, "", emptyList()),
+            key1 = publicationKey, key2 = indexedSuggestions,
+            key3 = typedSuggestions
+        ) {
+            value = Triple(null, "", emptyList())
+            val index = indexedSuggestions
+            if (index != null && !currentPermissionEpoch.isNullOrBlank()) {
+                // A short debounce prevents stale work while typing rapidly.
+                kotlinx.coroutines.delay(20)
+                val matches = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    index.search(typedSuggestions)
+                }
+                value = Triple(publicationKey, typedSuggestions, matches)
+            }
+        }
+        // The completed worker answer is fenced to both the query and the
+        // publication/grant identity, including on the first recomposition.
+        val suggestions = if (suggestionState.first == publicationKey &&
+            suggestionState.second == typedSuggestions &&
+            indexedSuggestions != null && !currentPermissionEpoch.isNullOrBlank())
+            suggestionState.third else emptyList()
         // #644: at rest, Search by face and Find similar are Search suggestions
         // (Samsung's place for them), not a row of extra chrome above results.
         val atRest = filters == LocalSearchFacets() && personMatches.isEmpty()
         val showFace = atRest && onSearchByFace != null
         val showSimilar = atRest && onFindSimilar != null
         if (suggestions.isNotEmpty() || showFace || showSimilar) {
-            Text("Suggestions",
-                modifier = Modifier.padding(horizontal = 18.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Stateless chips intentionally use Compose's default numeric
-                // position keys. A custom SearchSuggestionSource data-class key
-                // is not Bundle-saveable and can crash lazy item state restore;
-                // it also risks writing private album paths into saved keys.
-                if (showFace) item {
+            SearchSectionHeader("Suggestions")
+            SearchChipFlow {
+                // Stateless chips without keys: a SearchSuggestionSource key is
+                // not Bundle-saveable and could write private album paths into
+                // saved state.
+                if (showFace) {
                     AssistChip(
                         onClick = { onSearchByFace?.invoke() },
                         label = { Text("Search by face") },
                         leadingIcon = { Icon(Icons.Filled.Face, null) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-by-face"))
                 }
-                if (showSimilar) item {
+                if (showSimilar) {
                     AssistChip(
                         onClick = { onFindSimilar?.invoke() },
                         label = { Text("Find similar") },
                         leadingIcon = { Icon(Icons.Filled.ImageSearch, null) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-find-similar"))
                 }
-                items(suggestions) { suggestion ->
+                suggestions.forEach { suggestion ->
                     val source = suggestion.source
                     AssistChip(
                         onClick = {
@@ -314,6 +396,7 @@ fun LocalSearchControls(
                             }
                         },
                         label = { Text(source.title, maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-suggestion")
                     )
                 }
@@ -332,7 +415,8 @@ fun LocalSearchControls(
                         SearchMediaKind.PHOTOS -> "Photos"
                         SearchMediaKind.VIDEOS -> "Videos"
                     }) },
-                    modifier = Modifier.testTag("atlas-search-kind-${kind.name}")
+                    shape = SearchChipShape,
+                        modifier = Modifier.testTag("atlas-search-kind-${kind.name}")
                 )
             }
         }
@@ -341,7 +425,7 @@ fun LocalSearchControls(
         if (dateOptions.size > 1) {
             Text(
                 "Media date · unknown dates are excluded when filtered",
-                modifier = Modifier.padding(horizontal = 18.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -356,6 +440,7 @@ fun LocalSearchControls(
                             onFiltersChange(filters.copy(dateWindow = option.window))
                         },
                         label = { Text(option.label, maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-date-${option.choice.name}")
                     )
                 }
@@ -370,12 +455,12 @@ fun LocalSearchControls(
                     "An earlier date selection is still active.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 18.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp)
                         .testTag("atlas-search-date-historical")
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
@@ -386,7 +471,7 @@ fun LocalSearchControls(
         }
         if (filters.hasActiveFilterFacets()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
@@ -396,7 +481,7 @@ fun LocalSearchControls(
             }
         }
         if (filters.albumPaths.isNotEmpty() || filters.albumLocations.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Selected albums · any", style = MaterialTheme.typography.labelMedium)
                 TextButton(onClick = {
@@ -417,6 +502,7 @@ fun LocalSearchControls(
                         label = { Text(
                             "${location.relativePath.trimEnd('/').substringAfterLast('/').ifEmpty { "Root" }} · ${location.volumeName}",
                             maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-album-facet")
                     )
                 }
@@ -429,13 +515,14 @@ fun LocalSearchControls(
                         label = { Text(
                             "${path.trimEnd('/').substringAfterLast('/').ifEmpty { "Root" }} · all volumes",
                             maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-album-facet")
                     )
                 }
             }
         }
         if (people.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("People together · all selected", style = MaterialTheme.typography.labelMedium)
                 if (filters.confirmedPersonIds.isNotEmpty()) {
@@ -461,7 +548,7 @@ fun LocalSearchControls(
                     "Use searchable name text (up to 160 characters and 12 words).",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 18.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp)
                         .testTag("atlas-people-picker-limit")
                 )
             }
@@ -488,13 +575,14 @@ fun LocalSearchControls(
                                 onlyTheseIndexedFaces = false))
                         },
                         label = { Text(person.name, maxLines = 1) },
+                        shape = SearchChipShape,
                         modifier = Modifier.testTag("atlas-search-person-facet-${person.id}")
                     )
                 }
             }
         }
         if (filters.confirmedPersonIds.isNotEmpty()) {
-            Column(Modifier.padding(horizontal = 18.dp),
+            Column(Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 FilterChip(
                     selected = filters.onlyTheseIndexedFaces && onlyTheseFacesAvailable,
@@ -502,7 +590,8 @@ fun LocalSearchControls(
                     onClick = { onFiltersChange(filters.copy(
                         onlyTheseIndexedFaces = !filters.onlyTheseIndexedFaces)) },
                     label = { Text("Only these indexed faces") },
-                    modifier = Modifier.testTag("atlas-search-indexed-faces")
+                    shape = SearchChipShape,
+                        modifier = Modifier.testTag("atlas-search-indexed-faces")
                 )
                 Text(
                     if (onlyTheseFacesAvailable)
@@ -537,3 +626,23 @@ fun LocalSearchControls(
 internal fun personSearchLabel(people: List<SearchPerson>, filters: LocalSearchFacets): String =
     (people.filter { it.key in filters.nativePersonKeys }.map { it.name } +
         listOf(filters.text.trim())).filter { it.isNotEmpty() }.joinToString(" ")
+
+/** #134: Samsung-style pill. Chips stay M3's 32 dp; M3 adds the 48 dp touch area. */
+internal val SearchChipShape: Shape = CircleShape
+
+/** #134: section header: titleSmall, sentence case, 16 dp start inset. */
+@Composable
+internal fun SearchSectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier = modifier.padding(start = 16.dp, end = 16.dp),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** #134: chips wrap with an 8 dp gap inside the 16 dp screen inset. */
+@Composable
+private fun SearchChipFlow(content: @Composable () -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) { content() }
+}

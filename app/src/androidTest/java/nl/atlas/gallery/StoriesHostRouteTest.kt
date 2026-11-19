@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.MaterialTheme
+import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -20,12 +21,17 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasTestTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.featurestories.AtlasStoriesScreen
 import nl.atlas.gallery.featurestories.StoryPlaybackState
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.rules.RuleChain
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,7 +45,8 @@ import java.time.ZoneId
  */
 @RunWith(AndroidJUnit4::class)
 class StoriesHostRouteTest {
-    @get:Rule val rule = createComposeRule()
+    private val rule = createComposeRule()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(rule)
 
     private val zone = ZoneId.systemDefault()
     private val today = LocalDate.now(zone)
@@ -54,6 +61,66 @@ class StoriesHostRouteTest {
                 .atZone(zone).toInstant().toEpochMilli(),
             isVideo = false
         )
+    }
+
+    /** DESIGN-6: synthetic, S24-sized, light/dark empty and saved-planning states. */
+    @Test fun quietStoriesEmptyAndPlanningEvidence() {
+        val restoration = StateRestorationTester(rule)
+        var empty by mutableStateOf(true)
+        var holdNewDecks by mutableStateOf(false)
+        val releasedRevisions = mutableSetOf<Long>()
+        var dark by mutableStateOf(false)
+        restoration.setContent {
+            // A recreated host mints a new catalogue revision; that deck
+            // remains unavailable while the synthetic planner is held.
+            val revision = rememberStoryCatalogRevision(records)
+            if (!holdNewDecks) releasedRevisions += revision
+            val tokens = storyPlanTokensOrNull(full, 3L, true,
+                catalogRevision = revision, epochDay = today.toEpochDay())
+            val deck = if (empty || revision !in releasedRevisions) null else
+                planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
+            val playback = rememberStoryPlaybackState(deck)
+            AtlasGalleryTheme(dark = dark) {
+                AtlasStoriesScreen(
+                    deck = deck,
+                    currentGrantEpoch = tokens?.grantEpoch,
+                    currentCatalogRevision = tokens?.catalogRevision,
+                    onBack = {},
+                    onOpenMedia = {},
+                    playback = playback
+                )
+            }
+        }
+        rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
+        rule.waitForIdle()
+        saveUiEvidence("stories-136-empty-light.png")
+        dark = true
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        saveUiEvidence("stories-136-empty-dark.png")
+
+        // This is an actual saved playback position, not a forced planning tag.
+        dark = false
+        empty = false
+        openStoryPaused()
+        rule.onNodeWithTag("atlas-story-next").performClick()
+        rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
+        // Save the live deck, then withhold the newly minted revision's
+        // deck during restoration. Setting a waiting flag after restoration
+        // was too late: the old deck had already settled the saved position.
+        holdNewDecks = true
+        rule.waitForIdle()
+        restoration.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
+        rule.waitForIdle()
+        saveUiEvidence("stories-136-planning-light.png")
+        dark = true
+        rule.waitForIdle()
+        rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        saveUiEvidence("stories-136-planning-dark.png")
     }
 
     @Test fun entryOpensStoryAndAReplacedOrRevokedGrantHidesTheStaleDeck() {
@@ -83,11 +150,13 @@ class StoriesHostRouteTest {
         }
         rule.onNodeWithTag("atlas-albums-stories-entry")
             .assertTextContains("1 story from your library")
-            .performClick()
+        rule.tap(hasTestTag("atlas-albums-stories-entry"))
+        rule.awaitThat("the Stories grid open") { rule.exists(hasTestTag("atlas-story-on_this_day")) }
         rule.onNodeWithTag("atlas-stories-grid").assertExists()
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
+        rule.tap(hasTestTag("atlas-story-on_this_day"))
+        rule.awaitThat("the story player open") { rule.exists(hasTestTag("atlas-story-open-gallery")) }
         rule.onNodeWithTag("atlas-story-player").assertExists()
-        rule.onNodeWithTag("atlas-story-open-gallery").performClick()
+        rule.tap(hasTestTag("atlas-story-open-gallery"))
         rule.runOnIdle {
             assertEquals(listOf(deck.cards.single().items.first().uri), opened.toList())
         }
@@ -142,8 +211,7 @@ class StoriesHostRouteTest {
                 }
             }
         }
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of $size").assertExists()
         rule.onNodeWithTag("atlas-story-open-gallery").performClick()
@@ -195,8 +263,7 @@ class StoriesHostRouteTest {
         rule.waitUntil(10_000L) {
             rule.onAllNodesWithTag("atlas-story-on_this_day").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithTag("atlas-story-next").performClick()
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
 
@@ -222,8 +289,7 @@ class StoriesHostRouteTest {
 
         // Open the 3-moment story; after a recreate where the story is gone
         // entirely there is nothing to reopen either.
-        rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-        rule.onNodeWithTag("atlas-story-pause").performClick()
+        openStoryPaused()
         rule.onNodeWithContentDescription("Moment 1 of 3").assertExists()
         source = records.take(1)
         restoration.emulateSavedInstanceStateRestore()
@@ -286,8 +352,7 @@ class StoriesHostRouteTest {
         }
 
         fun playStoryToMomentTwo() {
-            rule.onNodeWithTag("atlas-story-on_this_day").performClick()
-            rule.onNodeWithTag("atlas-story-pause").performClick()
+            openStoryPaused()
             rule.onNodeWithTag("atlas-story-next").performClick()
             rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
         }
@@ -306,14 +371,14 @@ class StoriesHostRouteTest {
             holdNewDecks = false
             rule.onNodeWithTag("atlas-albums-stories-entry")
                 .assertTextContains("1 story from your library")
-                .performClick()
-            rule.onNodeWithTag("atlas-stories-grid").assertExists()
+            rule.tap(hasTestTag("atlas-albums-stories-entry"))
+            rule.awaitThat("the Stories grid open") { rule.exists(hasTestTag("atlas-stories-grid")) }
             rule.onNodeWithTag("atlas-story-player").assertDoesNotExist()
             rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
         }
 
         // System Back while the restore waits.
-        rule.onNodeWithTag("atlas-albums-stories-entry").performClick()
+        rule.tap(hasTestTag("atlas-albums-stories-entry"))
         playStoryToMomentTwo()
         recreateWhileTheDeckIsNotReady()
         rule.runOnIdle { requireNotNull(dispatcher).onBackPressed() }
@@ -336,5 +401,15 @@ class StoriesHostRouteTest {
         rule.onNodeWithContentDescription("Moment 2 of 4").assertExists()
         rule.onNodeWithContentDescription("Resume slideshow").assertExists()
         rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
+    }
+
+    /**
+     * Opens the On this day story and pauses it. The player replaces the grid,
+     * so wait for its controls before the pause tap (rule 5).
+     */
+    private fun openStoryPaused() {
+        rule.tap(hasTestTag("atlas-story-on_this_day"))
+        rule.awaitThat("the story player open") { rule.exists(hasTestTag("atlas-story-pause")) }
+        rule.tap(hasTestTag("atlas-story-pause"))
     }
 }

@@ -85,98 +85,99 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Original ATLAS palette: muted chrome, image-first surfaces, restrained teal accent. */
+/** Original ATLAS palette: muted chrome, image-first surfaces, one cool blue accent (Quiet Frame). */
+/** Compatibility aliases: source values now live in AtlasTokens. */
 object AtlasColor {
-    val Ink = Color(0xFF11171B)
-    val InkRaised = Color(0xFF1D272C)
-    val Mist = Color(0xFFF5F7F4)
-    val Paper = Color(0xFFFFFFFF)
-    val Tidal = Color(0xFF9DE1D2)
-    val DeepTidal = Color(0xFF176D61)
-    val WarmGray = Color(0xFFB5C2C0)
-    val QuietGray = Color(0xFF50625F)
+    val Ink = AtlasTokens.Colors.Ink
+    val InkRaised = AtlasTokens.Colors.InkRaised
+    val Mist = AtlasTokens.Colors.Mist
+    val Paper = AtlasTokens.Colors.Paper
+    val Tidal = AtlasTokens.Colors.Tidal
+    val DeepTidal = AtlasTokens.Colors.DeepTidal
+    val WarmGray = AtlasTokens.Colors.WarmGray
+    val QuietGray = AtlasTokens.Colors.QuietGray
 }
 
 object AtlasSpace {
-    val Gutter = 18.dp
-    val Section = 28.dp
-    val TileGap = 10.dp
-    val MinimumTarget = 48.dp
-    val CoverCorner = 20.dp
+    val Gutter = AtlasTokens.Spacing.Gutter
+    val Section = AtlasTokens.Spacing.Section
+    val TileGap = AtlasTokens.Spacing.TileGap
+    val MinimumTarget = AtlasTokens.Spacing.MinimumTarget
+    val CoverCorner = AtlasTokens.Radii.Cover
 }
 
 /*
  * #657: every container role is set explicitly. Material's defaults for the
  * roles left out are its purple baseline (dialogs, menus, sheets and text
  * fields read surfaceContainer*, surfaceTint and outline), which is how the
- * "Add name" dialog came out light lavender. Ours stay in the ink/teal family.
+ * "Add name" dialog came out light lavender. Ours stay in the Quiet Frame neutral/blue family.
  */
 internal val darkGalleryColors = darkColorScheme(
     primary = AtlasColor.Tidal,
     onPrimary = AtlasColor.Ink,
-    primaryContainer = Color(0xFF1F4F47),
-    onPrimaryContainer = Color(0xFFC6F2E7),
+    primaryContainer = AtlasTokens.Colors.Dark.PrimaryContainer,
+    onPrimaryContainer = AtlasTokens.Colors.Dark.OnPrimaryContainer,
     inversePrimary = AtlasColor.DeepTidal,
     secondary = AtlasColor.WarmGray,
     onSecondary = AtlasColor.Ink,
-    secondaryContainer = Color(0xFF2E3B3E),
-    onSecondaryContainer = Color(0xFFDCE6E3),
+    secondaryContainer = AtlasTokens.Colors.Dark.SecondaryContainer,
+    onSecondaryContainer = AtlasTokens.Colors.Dark.OnSecondaryContainer,
     tertiary = AtlasColor.WarmGray,
     onTertiary = AtlasColor.Ink,
-    tertiaryContainer = Color(0xFF2E3B3E),
-    onTertiaryContainer = Color(0xFFDCE6E3),
-    background = AtlasColor.Ink,
-    onBackground = Color(0xFFF7FAF8),
+    tertiaryContainer = AtlasTokens.Colors.Dark.SecondaryContainer,
+    onTertiaryContainer = AtlasTokens.Colors.Dark.OnSecondaryContainer,
+    background = AtlasTokens.Colors.Dark.SurfaceLowest,
+    onBackground = AtlasTokens.Colors.Dark.Foreground,
     surface = AtlasColor.InkRaised,
-    onSurface = Color(0xFFF7FAF8),
-    surfaceVariant = Color(0xFF2A3539),
-    onSurfaceVariant = Color(0xFFD0DDDA),
+    onSurface = AtlasTokens.Colors.Dark.Foreground,
+    surfaceVariant = AtlasTokens.Colors.Dark.SurfaceVariant,
+    onSurfaceVariant = AtlasTokens.Colors.Dark.OnSurfaceVariant,
     surfaceTint = AtlasColor.InkRaised,
-    inverseSurface = Color(0xFFE6ECEA),
+    inverseSurface = AtlasTokens.Colors.Dark.InverseSurface,
     inverseOnSurface = AtlasColor.Ink,
-    outline = Color(0xFF7F8F8C),
-    outlineVariant = Color(0xFF3A4649),
-    surfaceBright = Color(0xFF323D42),
-    surfaceDim = AtlasColor.Ink,
-    surfaceContainerLowest = Color(0xFF0B0D10),
-    surfaceContainerLow = Color(0xFF161D21),
-    surfaceContainer = Color(0xFF1D272C),
-    surfaceContainerHigh = Color(0xFF243035),
-    surfaceContainerHighest = Color(0xFF2A3539)
+    outline = AtlasTokens.Colors.Dark.Outline,
+    outlineVariant = AtlasTokens.Colors.Dark.OutlineVariant,
+    surfaceBright = AtlasTokens.Colors.Dark.SurfaceBright,
+    surfaceDim = AtlasTokens.Colors.Dark.SurfaceLowest,
+    surfaceContainerLowest = AtlasTokens.Colors.Dark.SurfaceLowest,
+    surfaceContainerLow = AtlasTokens.Colors.Dark.SurfaceLow,
+    surfaceContainer = AtlasTokens.Colors.InkRaised,
+    surfaceContainerHigh = AtlasTokens.Colors.Dark.SurfaceHigh,
+    surfaceContainerHighest = AtlasTokens.Colors.Dark.SurfaceVariant
 )
 
 internal val lightGalleryColors = lightColorScheme(
     primary = AtlasColor.DeepTidal,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFBDEDE2),
-    onPrimaryContainer = Color(0xFF00382F),
+    primaryContainer = AtlasTokens.Colors.Light.PrimaryContainer,
+    onPrimaryContainer = AtlasTokens.Colors.Light.OnPrimaryContainer,
     inversePrimary = AtlasColor.Tidal,
     secondary = AtlasColor.DeepTidal,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFDDE7E4),
+    secondaryContainer = AtlasTokens.Colors.Light.SecondaryContainer,
     onSecondaryContainer = AtlasColor.Ink,
     tertiary = AtlasColor.QuietGray,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFDDE7E4),
+    tertiaryContainer = AtlasTokens.Colors.Light.SecondaryContainer,
     onTertiaryContainer = AtlasColor.Ink,
     background = AtlasColor.Mist,
     onBackground = AtlasColor.Ink,
     surface = AtlasColor.Paper,
     onSurface = AtlasColor.Ink,
-    surfaceVariant = Color(0xFFE3EBE8),
+    surfaceVariant = AtlasTokens.Colors.Light.SurfaceVariant,
     onSurfaceVariant = AtlasColor.QuietGray,
     surfaceTint = AtlasColor.Paper,
-    inverseSurface = Color(0xFF2A3236),
-    inverseOnSurface = Color(0xFFEFF3F1),
-    outline = Color(0xFF70807D),
-    outlineVariant = Color(0xFFC9D3D0),
+    inverseSurface = AtlasTokens.Colors.Light.InverseSurface,
+    inverseOnSurface = AtlasTokens.Colors.Light.InverseForeground,
+    outline = AtlasTokens.Colors.Light.Outline,
+    outlineVariant = AtlasTokens.Colors.Light.OutlineVariant,
     surfaceBright = AtlasColor.Paper,
-    surfaceDim = Color(0xFFD9DFDC),
-    surfaceContainerLowest = AtlasColor.Paper,
-    surfaceContainerLow = Color(0xFFF8FAF8),
-    surfaceContainer = Color(0xFFF1F4F2),
-    surfaceContainerHigh = Color(0xFFFBFCFB),
-    surfaceContainerHighest = Color(0xFFE3EBE8)
+    surfaceDim = AtlasTokens.Colors.Light.SurfaceDim,
+    surfaceContainerLowest = AtlasColor.Mist,
+    surfaceContainerLow = AtlasTokens.Colors.Light.SurfaceLow,
+    surfaceContainer = AtlasTokens.Colors.Light.SurfaceContainer,
+    surfaceContainerHigh = AtlasTokens.Colors.Light.SurfaceHigh,
+    surfaceContainerHighest = AtlasTokens.Colors.Light.SurfaceVariant
 )
 
 /**
@@ -200,14 +201,14 @@ fun AtlasGalleryTheme(
         colorScheme = if (dark) darkGalleryColors else lightGalleryColors,
         typography = Typography(
             headlineLarge = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.SemiBold, letterSpacing = (-0.6f).sp),
+                fontWeight = FontWeight.Light, letterSpacing = AtlasTokens.Type.DisplayTracking),
             headlineMedium = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.SemiBold),
             titleLarge = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.SemiBold),
             titleMedium = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Medium),
-            bodyMedium = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp)
+            bodyMedium = MaterialTheme.typography.bodyMedium.copy(lineHeight = AtlasTokens.Type.BodyLineHeight)
         ),
         content = content
     )
@@ -404,10 +405,10 @@ val LocalAtlasBottomChrome = compositionLocalOf { 0.dp }
  */
 val AtlasPillColor: Color
     @Composable @ReadOnlyComposable get() =
-        if (LocalAtlasDark.current) Color(0xFF262B30).copy(alpha = 0.80f)
-        else Color(0xFFFFFFFF).copy(alpha = 0.90f)
-val AtlasPillEdge = 12.dp
-val AtlasTabPillHeight = 60.dp
+        if (LocalAtlasDark.current) AtlasTokens.Colors.Dark.Pill.copy(alpha = 0.80f)
+        else AtlasTokens.Colors.Paper.copy(alpha = 0.90f)
+val AtlasPillEdge = AtlasTokens.Spacing.PillEdge
+val AtlasTabPillHeight = AtlasTokens.Spacing.TabHeight
 
 @Composable
 private fun AtlasTabItem(
@@ -435,7 +436,7 @@ private fun AtlasTabItem(
         Text(
             destination.title,
             color = tint,
-            fontSize = 11.sp,
+            fontSize = AtlasTokens.Type.NavigationLabel,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
@@ -487,7 +488,7 @@ fun AtlasScrollAwayHeader(
 }
 
 /** Samsung Gallery-style slim bar: everything sits in one row of at most this height. */
-val AtlasHeaderHeight = 56.dp
+val AtlasHeaderHeight = AtlasTokens.Spacing.HeaderHeight
 
 /**
  * One overflow (⋮) entry. [checked] non-null renders a checkmark state, so a
@@ -628,7 +629,7 @@ fun AtlasEmptyState(
         } else {
             Box(
                 Modifier.size(98.dp).background(
-                    MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(28.dp)),
+                    MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(AtlasTokens.Radii.EmptyVisual)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

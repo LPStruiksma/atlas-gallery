@@ -1,0 +1,2 @@
+# Proxy only. Fake/CI has zero third-party Python dependencies.
+Pillow>=10,<13

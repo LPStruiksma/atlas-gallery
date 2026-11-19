@@ -32,11 +32,13 @@ Keep the USB backup of the key; GitHub secrets cannot be read back.
 
 ## Lukas: phone updater (S24+, once)
 
-1. Make a read-only token: <https://github.com/settings/personal-access-tokens/new> → name `Obtainium ATLAS`, expiry 1 year, **Only select repositories** → `atlas-native`, **Repository permissions → Contents: Read-only**. Generate and copy it.
-2. Install **Obtainium** from <https://github.com/ImranR98/Obtainium/releases> (the `app-arm64-v8a-release.apk`) or F-Droid.
-3. Obtainium → **Settings** → GitHub → paste the token into **GitHub personal access token**.
-4. **Add app** → URL `https://github.com/LPStruiksma/atlas-native` → **Add**. It finds the newest `v0.3.*` release and offers `ATLAS-0.3.<code>.apk`.
-5. Tap **Install**. Android shows "Update"; because the signer is the same key as the Mac build, ATLAS keeps its data.
+`atlas-gallery` is a public repository (since 2026-11-13), so Obtainium needs **no GitHub token**.
+
+1. Install **Obtainium** from <https://github.com/ImranR98/Obtainium/releases> (the `app-arm64-v8a-release.apk`) or F-Droid.
+2. **Add app** → URL `https://github.com/LPStruiksma/atlas-gallery` → **Add**. It finds the newest `v0.3.*` release and offers `ATLAS-0.3.<code>.apk`.
+3. Tap **Install**. Android shows "Update". Because the signer is the same permanent key, ATLAS keeps its data.
+
+Historical: before the move, Obtainium pointed at the private `atlas-native` repository and needed a read-only token. That entry and token can be removed.
 
 After that, Obtainium checks in the background and notifies you when a new ATLAS release exists; one tap installs it.
 

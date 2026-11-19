@@ -1,0 +1,155 @@
+Commit: 6c47c8e4cee6ecfd8eaa88eabe3504f7be16ea59 — added the standalone render-evidence recipe. [docs/agents/codex-render-recipe.mdL1-L128](https://github.com/LPStruiksma/autodev/blob/bd18ffc20da162477264e6b948064db12c94d4a5/docs/agents/codex-render-recipe.md#L1-L128)
+
+⚠️ `npm run check:additive-regressions`: fail, 125 files — `r11-reproduction.mjs` could not run `git -C /workspace/autodev fetch --quiet origin` because this checkout has no `origin` remote.
+
+```diff
+From 6c47c8e4cee6ecfd8eaa88eabe3504f7be16ea59 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 14 Nov 2026 16:41:32 +0000
+Subject: [PATCH] docs: add Codex render evidence recipe
+Parent: bd18ffc20da162477264e6b948064db12c94d4a5
+
+---
+ docs/agents/codex-render-recipe.md | 128 +++++++++++++++++++++++++++++
+ 1 file changed, 128 insertions(+)
+ create mode 100644 docs/agents/codex-render-recipe.md
+
+diff --git a/docs/agents/codex-render-recipe.md b/docs/agents/codex-render-recipe.md
+new file mode 100644
+index 0000000..cd491e5
+--- /dev/null
++++ b/docs/agents/codex-render-recipe.md
+@@ -0,0 +1,128 @@
++# Codex browser-render evidence recipe
++
++Use this recipe for bounded, bot-reported browser evidence from a Codex Cloud
++(Legacy) task started by a GitHub connector-authored mention on an existing pull
++request. The method was proved only in the bounded
++[#1245 investigation](https://github.com/LPStruiksma/autodev/issues/1245)
++and [#1246 pull-request probe](https://github.com/LPStruiksma/autodev/pull/1246#issuecomment-6876788211).
++The resulting report is evidence, not a Review receipt.
++
++## 1. Pin and verify the input
++
++Put the full expected pull-request head SHA and the target page path in the task.
++At the very start, run:
++
++    git rev-parse HEAD
++    test -f path/to/target-page.html
++
++Compare the complete `git rev-parse HEAD` output with the requested SHA and
++confirm that the named target exists at that checkout. On either mismatch, stop
++and report the expected SHA, actual SHA, and path result. Do not fetch a
++different revision, invent a substitute fixture, or report a render PASS. This
++guard matters because an issue-started task in
++[#1245](https://github.com/LPStruiksma/autodev/issues/1245#issuecomment-6876853336)
++checked out the default branch without a remote and therefore could not produce
++exact-head pull-request evidence.
++
++Mention-based render tasks must be started **only on pull requests**, never on
++issues. Do not put the bot handle in any other issue or pull-request comment or
++body; an unintended mention can start another task.
++
++## 2. Resolve the browser tooling and serve locally
++
++Choose the smallest folder that contains the target and its required assets.
++Serve that folder only on loopback, for example:
++
++    python3 -m http.server 4173 --bind 127.0.0.1 --directory path/to/folder
++
++Record the exact server command and port. Before capture, report the Playwright
++CLI version with `npx playwright --version`. In the capture script, resolve
++`playwright` from the repository installation first. Only if local resolution
++fails, obtain the global module root with `npm root -g` and resolve
++`<global-root>/playwright`. If neither module resolves, report the attempted
++commands and actual errors and stop.
++
++Launch Chromium through the resolved Playwright module and record
++`browser.version()`. A Legacy environment entry is not proof that Chromium can
++launch: if launch or navigation fails, report the exact error and stop. The
++bounded #1246 run reported Playwright 1.56.1 and Chromium 141.0.7390.37, but a
++new run must measure rather than assume those versions. The original bot report
++is available in [#1246](https://github.com/LPStruiksma/autodev/pull/1246#issuecomment-6876829707),
++with the bounded interpretation recorded in the
++[#1245 Strategy disposition](https://github.com/LPStruiksma/autodev/issues/1245#issuecomment-6876843385).
++
++## 3. Capture one page at two viewports
++
++Create a fresh output directory outside the checkout, such as one returned by
++`mktemp -d` under `/tmp`. Launch Chromium with a 390 x 844 viewport, create one
++page, and navigate to the loopback target URL **exactly once**. Wait for the
++target's documented ready condition, then:
++
++1. Save a PNG of the 390 x 844 page into the temporary directory.
++2. On that **same page**, call `page.setViewportSize({ width: 1280, height: 800 })`.
++3. Without reloading or navigating again, save the 1280 x 800 PNG.
++
++Do not create a second page. Preserving one page instance avoids silently
++changing application state or randomized content between viewport captures.
++
++If useful, after the screen captures call
++`page.emulateMedia({ media: 'print' })` and capture another PNG from the same
++page. Label it **print-layout proxy**. It is not actual PDF proof and must not be
++reported as one.
++
++## 4. Record keyboard and ARIA evidence separately
++
++Keyboard and accessibility observations are textual evidence separate from the
++PNGs. Starting from a documented focus state, press `Tab` one step at a time and
++record, for every observed step, its ordinal position, visible focus indicator,
++element role, accessible label or visible text, and the action reached. Note
++skipped, trapped, off-screen, or unlabeled focus explicitly. State when the
++sequence ended and which keys, controls, states, and directions were not tested.
++
++Also capture and report Playwright's ARIA snapshot for the relevant page or
++locator. Keep the keyboard-focus log and ARIA snapshot distinct: an ARIA
++snapshot describes an accessibility-tree view, while tabbing samples one
++keyboard path. Neither proves complete keyboard operation, correct screen-reader
++behavior, accessible naming in every state, or conformance with an accessibility
++standard.
++
++## 5. Verify and inspect every image
++
++For each PNG, including an optional print-layout proxy:
++
++1. Compute and report SHA-256, for example with `sha256sum /tmp/.../image.png`.
++2. Read the PNG data and report its actual pixel width and height; do not infer
++   dimensions only from the requested viewport.
++3. Open or view the image file directly.
++4. Report only text and graphics actually visible in the pixels, plus visible
++   clipping and horizontal or vertical overflow. Report these findings per
++   image and distinguish observed pixels from assumptions about the DOM, source,
++   CSS, or intended layout.
++
++Do not claim visual inspection based on source code, DOM text, console output,
++or screenshot creation alone. Keep the PNGs outside the checkout and include
++their temporary paths in the evidence report when useful; do not commit them.
++
++## 6. Report scope and limits
++
++Reply on the task pull request with the expected and actual full SHA, verified
++target path, server command and port, target URL, Playwright and Chromium
++versions, whether global fallback was needed, navigation count, PNG paths,
++hashes, actual dimensions, pixel observations, keyboard-focus log, ARIA
++snapshot, and every exact failure. Clearly label observation versus inference.
++
++The report does **not** prove:
++
++- real PDF bytes or pagination, unless a generated PDF was actually rendered
++  and inspected;
++- behavior on physical phones, tablets, displays, keyboards, or other devices;
++- complete accessibility, screen-reader behavior, or keyboard coverage; or
++- browser availability in another repository or environment.
++
++The owner-confirmed Legacy environment inventory is a dated 2026-11-14 snapshot
++from [#1245](https://github.com/LPStruiksma/autodev/issues/1245#issuecomment-6876804186):
++autodev had two environments, and ai-act-ready, atlas-gallery, ct-forge,
++family-archive, FBWear, festplan, geoasset, igwear, and zzp-dossier were listed
++as provisioned. Environment presence alone does not prove Chromium launch in
++those repositories; every task must still report its own successful launch and
++measured versions, or its actual error.
+-- 
+2.43.0
+```
+
+ [View task →](https://chatgpt.com/s/cd_6af88dbda624819189acff309f7d6d4d)

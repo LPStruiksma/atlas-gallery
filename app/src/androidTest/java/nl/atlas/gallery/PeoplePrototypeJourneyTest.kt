@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
@@ -117,8 +118,31 @@ class PeoplePrototypeJourneyTest {
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * #411: a failed run used to end with the keyboard open, and on the CI
+     * emulator the next tests then never got a keyboard (diagnostic
+     * 44326214186, shard 1). Close it while the activity is still alive.
+     */
+    private val closeKeyboard = object : TestRule {
+        override fun apply(base: Statement, description: Description) = object : Statement() {
+            override fun evaluate() {
+                try {
+                    base.evaluate()
+                } finally {
+                    runCatching {
+                        compose.runOnUiThread {
+                            compose.activity.window.insetsController
+                                ?.hide(android.view.WindowInsets.Type.ime())
+                        }
+                        compose.waitForIdle()
+                    }
+                }
+            }
+        }
+    }
+
     @get:Rule val chain: RuleChain =
-        RuleChain.outerRule(S24DisplayRule()).around(setup).around(compose)
+        RuleChain.outerRule(S24DisplayRule()).around(setup).around(compose).around(closeKeyboard)
 
     private fun insertFaces() {
         val now = System.currentTimeMillis()
@@ -216,9 +240,14 @@ class PeoplePrototypeJourneyTest {
 
         // 3. Name the group in the app's review.
         compose.onAllNodesWithTag("atlas-people-unnamed").onFirst().performClick()
-        waitForText("New person's name")
-        compose.onAllNodesWithText("New person's name").onFirst().performTextInput(NAME)
-        compose.onAllNodesWithText("Name this group").onFirst().performClick()
+        waitForText("Name this person")
+        compose.onAllNodesWithText("Name this person").onFirst().performTextInput(NAME)
+        // #424: a person types the name on the keyboard, so Create is tapped
+        // after it has opened. performTextInput is instant: tapping now lands
+        // while the keyboard slides in and the list resizes under the finger,
+        // and the tap was lost on main too (run 44314754535).
+        awaitKeyboardSettled()
+        tapCreateInsideViewport()
         waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",
@@ -451,6 +480,53 @@ class PeoplePrototypeJourneyTest {
         }
     }
 
+    /**
+     * #411: performClick taps the centre of the node's CLIPPED bounds. While
+     * the keyboard shrinks the imePadding list, Create can sit below the
+     * viewport until the screen's own bringIntoView runs, and a tap at the
+     * viewport edge reaches nothing (12 of 12 isolated runs in diagnostic
+     * 44326214186 never reached Create's onClick). That bringIntoView waits
+     * NAME_FORM_SETTLE_MS on the test's virtual clock, which real time spent
+     * waiting for the keyboard does not advance. So: advance the clock past
+     * it, scroll Create into view, prove its UNCLIPPED bounds sit inside the
+     * list's viewport, then tap.
+     */
+    private fun tapCreateInsideViewport() {
+        compose.mainClock.advanceTimeBy(NAME_FORM_SETTLE_MS_IN_APP + 200L)
+        compose.waitForIdle()
+        val create = compose.onAllNodesWithText("Create person").onFirst()
+        create.performScrollTo()
+        compose.waitForIdle()
+        val node = create.fetchSemanticsNode()
+        val top = node.positionInRoot.y
+        val bottom = top + node.size.height
+        val viewport = compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .fetchSemanticsNode().boundsInRoot
+        android.util.Log.i("ATLAS_GROUP_IME", "people prototype: Create unclipped $top..$bottom " +
+            "clipped ${node.boundsInRoot.top}..${node.boundsInRoot.bottom} " +
+            "viewport ${viewport.top}..${viewport.bottom}")
+        assertTrue("Create (unclipped $top..$bottom) must sit inside the list viewport " +
+            "(${viewport.top}..${viewport.bottom}) before the tap",
+            top >= viewport.top && bottom <= viewport.bottom)
+        create.performClick()
+    }
+
+    /** The IME inset is positive and has held one value across 300 ms of samples. */
+    private fun awaitKeyboardSettled() {
+        var last = -1
+        var since = 0L
+        waitFor("the keyboard to open and settle") {
+            val bottom = compose.runOnUiThread {
+                compose.activity.window.decorView.rootWindowInsets
+                    ?.getInsets(android.view.WindowInsets.Type.ime())?.bottom ?: 0
+            }
+            val now = SystemClock.uptimeMillis()
+            if (bottom != last) { last = bottom; since = now }
+            bottom > 0 && now - since >= 300
+        }
+        compose.waitForIdle()
+    }
+
     private fun waitForTag(tag: String) = waitFor("tag $tag") {
         compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
     }
@@ -471,5 +547,7 @@ class PeoplePrototypeJourneyTest {
         const val PHOTOS = 6
         const val NAME = "Synthetic Ada"
         const val FOLDER = "ATLAS-People-Prototype"
+        /** Mirrors the private NAME_FORM_SETTLE_MS in UnknownFacesReviewScreen.kt. */
+        const val NAME_FORM_SETTLE_MS_IN_APP = 300L
     }
 }
