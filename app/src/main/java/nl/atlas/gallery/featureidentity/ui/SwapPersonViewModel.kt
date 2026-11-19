@@ -235,7 +235,8 @@ data class SwapPersonUiState(
     val pages: List<Int?> get() = listOf<Int?>(null) + versions.map { it.key }
     val otherLooks: List<SwapLook> get() {
         val looks = person?.looks.orEmpty()
-        val current = selectedVersion?.request?.lookId ?: lookId
+        val sel = selectedVersion?.request
+        val current = if (sel != null && sel.profileId == person?.profileId) sel.lookId else lookId
         return looks.filter { it.id != current }.let { if (looks.size > 1) it else emptyList() }
     }
 
@@ -481,7 +482,13 @@ class SwapPersonMachine(
     /** A look chip: 2 versions from another saved look of this person. */
     fun useLook(look: SwapLook) {
         val person = state.person ?: return
-        val base = state.selectedVersion?.request ?: state.versions.lastOrNull()?.request ?: return
+        // The chips are this person's looks, so the request must be this person's too: after Change person
+        // the selection can still be an earlier person's version (#615 review).
+        val mine = state.selectedVersion?.request?.takeIf { it.profileId == person.profileId }
+            ?: state.versions.lastOrNull { it.request.profileId == person.profileId }?.request
+        val target = mine?.target ?: state.target ?: return
+        val base = mine ?: VersionRequest(person.profileId, look.id, target, IdentityEditMode.FACE,
+            preferencesFor(IdentityEditMode.FACE, basePreferences))
         background {
             val key = person.profileId to look.id
             val refs = references[key] ?: when (val r = runCatching { host.references(person.profileId, look.id) }
@@ -521,7 +528,12 @@ class SwapPersonMachine(
         val version = state.versions.firstOrNull { it.key == key } ?: return pump()
         pumping = true
         background {
-            val outcome = make(version.request)
+            // Copy the finished file out of the session folder here, on the worker: a full-size copy on
+            // the main thread would stall the studio while versions fill in (#615 review).
+            val outcome = when (val made = make(version.request)) {
+                is Made.Ok -> made.copy(kept = made.candidate.file?.let { runCatching { keeper.keep(key, it) }.getOrNull() })
+                else -> made
+            }
             onMain {
                 pumping = false
                 finish(key, outcome)
@@ -531,7 +543,7 @@ class SwapPersonMachine(
     }
 
     private sealed interface Made {
-        data class Ok(val candidate: IdentityCandidate) : Made
+        data class Ok(val candidate: IdentityCandidate, val kept: File? = null) : Made
         data class Failed(val kind: IdentityFailureKind?) : Made
         data object Cancelled : Made
     }
@@ -567,7 +579,7 @@ class SwapPersonMachine(
     private fun finish(key: Int, made: Made) {
         when (made) {
             is Made.Ok -> {
-                val kept = made.candidate.file?.let { runCatching { keeper.keep(key, it) }.getOrNull() }
+                val kept = made.kept
                 val candidate = if (kept != null) made.candidate.copy(file = kept) else made.candidate
                 val image = if (kept != null) EditImage(kept.path, candidate.image.width, candidate.image.height, ImageFormat.PNG)
                 else candidate.image

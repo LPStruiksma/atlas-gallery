@@ -61,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -86,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nl.atlas.gallery.featureaiedit.provider.EditImage
 import nl.atlas.gallery.featureidentity.engine.FaceBox
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /** Shared zoom for the canvas: it carries across swipes so a detail is compared at the same spot. */
@@ -99,6 +101,9 @@ internal class SwapZoom {
         offset = Offset(offset.x.coerceIn(-mx, mx), offset.y.coerceIn(-my, my))
     }
 }
+
+/** How far past the picture's edge a zoomed drag must go before it moves to the next version. */
+internal const val EDGE_HANDOFF_DP = 72
 
 /** Plain TalkBack label for a strip tile or pager page. */
 internal fun versionLabel(state: SwapPersonUiState, key: Int?): String {
@@ -130,6 +135,7 @@ internal fun CandidateStudioScreen(
     onView: (String) -> Unit
 ) {
     val zoom = remember { SwapZoom() }
+    val scope = rememberCoroutineScope()
     var holdingOriginal by remember { mutableStateOf(false) }
     val pages = state.pages
     val selectedPage = pages.indexOf(state.selected).coerceAtLeast(0)
@@ -157,7 +163,11 @@ internal fun CandidateStudioScreen(
                 val key = pages.getOrNull(page)
                 val version = state.versions.firstOrNull { it.key == key }
                 CanvasPage(state, source, version, zoom, holdingOriginal,
-                    onHold = { holdingOriginal = it })
+                    onHold = { holdingOriginal = it },
+                    onEdgeSwipe = { step ->
+                        val to = (pager.currentPage + step).coerceIn(0, pages.size - 1)
+                        if (to != pager.currentPage) scope.launch { pager.animateScrollToPage(to) }
+                    })
             }
             OriginalPill(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 12.dp)) { holdingOriginal = it }
             StudioCanvasMessages(state, machine, onView, Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
@@ -217,9 +227,11 @@ private fun CanvasPage(
     version: SwapVersion?,
     zoom: SwapZoom,
     holdingOriginal: Boolean,
-    onHold: (Boolean) -> Unit
+    onHold: (Boolean) -> Unit,
+    onEdgeSwipe: (Int) -> Unit
 ) {
     val target = version?.request?.target ?: state.target
+    val handOff = with(LocalDensity.current) { EDGE_HANDOFF_DP.dp.toPx() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
@@ -228,16 +240,27 @@ private fun CanvasPage(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
+                    // Zoomed: a one-finger drag pans; dragging on past the edge of the picture hands off to
+                    // the next or previous version (viewer VIEW:V21), keeping the zoom. Never mid-pan.
+                    var overscroll = 0f
+                    var multi = false
                     do {
                         val event = awaitPointerEvent()
                         val fingers = event.changes.count { it.pressed }
+                        if (fingers >= 2) multi = true
                         if (fingers >= 2 || zoom.scale > 1f) {
+                            val pan = event.calculatePan()
                             zoom.scale = (zoom.scale * event.calculateZoom()).coerceIn(1f, 8f)
-                            zoom.offset += event.calculatePan()
+                            val wanted = zoom.offset + pan
+                            zoom.offset = wanted
                             if (zoom.scale <= 1.01f) zoom.reset() else zoom.clamp(w, h)
+                            val past = wanted.x - zoom.offset.x
+                            overscroll = if (multi || zoom.scale <= 1f || past == 0f || (overscroll != 0f && past * overscroll < 0f)) 0f
+                                else overscroll + past
                             event.changes.forEach { if (it.positionChanged()) it.consume() }
                         }
                     } while (event.changes.any { it.pressed })
+                    if (!multi && abs(overscroll) >= handOff) onEdgeSwipe(if (overscroll < 0f) 1 else -1)
                 }
             }
             .pointerInput(target) {
@@ -497,6 +520,33 @@ internal fun SplitCompareScreen(state: SwapPersonUiState, source: EditImage, spl
                 }
                 SplitSide(state, split.newer, imageOf(split.newer), zoom, Modifier.fillMaxWidth().weight(1f - divider.coerceIn(.2f, .8f)),
                     "swap-split-b") { machine.select(split.newer) }
+            }
+        }
+        SplitStrip(state, source, split, machine)
+    }
+}
+
+/**
+ * The versions under the split, so a third one can be brought in without leaving: a long press
+ * (or a tap) on a tile replaces the side that has been shown longest. The two shown are outlined.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SplitStrip(state: SwapPersonUiState, source: EditImage, split: SwapOverlay.Split, machine: SwapPersonMachine) {
+    val keys = listOf<Int?>(null) + state.ready.map { it.key }
+    LazyRow(Modifier.fillMaxWidth().height(72.dp).testTag("swap-split-strip"),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        items(keys, key = { it ?: -1 }) { key ->
+            val v = state.versions.firstOrNull { it.key == key }
+            val shown = key == split.older || key == split.newer
+            val label = versionLabel(state, key).substringBefore(", selected")
+            Box(Modifier.size(56.dp).clip(RoundedCornerShape(10.dp))
+                .then(if (shown) Modifier.border(2.dp, SwapColors.Accent, RoundedCornerShape(10.dp)) else Modifier)
+                .combinedClickable(onClick = { machine.split(key) }, onLongClick = { machine.split(key) })
+                .testTag("swap-split-tile-${key ?: "original"}")
+                .semantics { contentDescription = if (shown) "$label, shown" else "Show $label in the split" }) {
+                FaceCropImage(v?.image ?: source, (v?.request?.target ?: state.target)?.box, Modifier.fillMaxSize())
             }
         }
     }

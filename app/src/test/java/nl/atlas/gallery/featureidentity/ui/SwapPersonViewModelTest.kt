@@ -232,6 +232,42 @@ class SwapPersonViewModelTest {
         assertTrue(m.state.versions.all { it.batch == 1 })
     }
 
+    @Test fun lookChipAfterChangePersonUsesTheNewPersonEvenWithAnOldVersionSelected() {
+        val m = machine(); m.start(); m.pickPerson(host.people.first { it.name == "Ada" })
+        val adaVersion = m.state.versions.first().key
+        m.changePerson()
+        val eli = host.people.first { it.name == "Eli" }
+        m.pickPerson(eli)
+        // Pick one of Ada's versions, still in the strip, then Eli's "Glasses" chip.
+        m.select(adaVersion)
+        assertEquals(listOf("Glasses"), m.state.otherLooks.map { it.label })
+        m.useLook(SwapLook("gl", "Glasses"))
+        val made = m.state.versions.takeLast(2)
+        assertTrue(made.all { it.request.profileId == eli.profileId && it.request.lookId == "gl" })
+        assertTrue(made.all { it.status == VersionStatus.READY })
+    }
+
+    @Test fun finishedVersionsAreCopiedOnTheWorkerNotTheMainThread() {
+        val onWorker = ThreadLocal.withInitial { false }
+        val keptOn = ArrayList<Boolean>()
+        val keeper = object : SwapVersionKeeper {
+            val folder = FolderVersionKeeper(File(root, "kept"))
+            override fun keep(key: Int, file: File): File? { keptOn += onWorker.get(); return folder.keep(key, file) }
+            override fun clear() = folder.clear()
+        }
+        val m = SwapPersonMachine(
+            host = host, engine = FakeIdentityEditEngine(FakeIdentityEngineConfig()), source = source,
+            workspaceRoot = File(root, "work"), saver = saver, keeper = keeper,
+            worker = { r -> val was = onWorker.get(); onWorker.set(true); try { r.run() } finally { onWorker.set(was) } },
+            main = { r -> val was = onWorker.get(); onWorker.set(false); try { r.run() } finally { onWorker.set(was) } },
+            sessionSeed = { 42L }
+        )
+        m.start(); m.pickPerson(host.people[0])
+        assertEquals(4, m.state.ready.size)
+        assertEquals(List(4) { true }, keptOn)
+        assertTrue(m.state.ready.all { it.image?.handle?.contains("kept") == true })
+    }
+
     @Test fun changePersonAndFaceKeepVersionsAndAppendABatch() {
         val m = machine(); m.start(); m.pickPerson(host.people[0])
         val firstBatch = m.state.versions.map { it.key }

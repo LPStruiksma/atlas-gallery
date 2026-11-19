@@ -90,11 +90,13 @@ border and scale 1.08 (150 ms). A new batch from Change face/person starts after
   successful save, ✕ leaves without asking (the person got their copy).
 - **Change face / Change person** (fix 6e): existing versions are kept; the new batch is appended and
   the selection jumps to its first version when it is ready. Compare all shows every version.
-- **Zoomed swipe**: when zoomed, a horizontal drag pans and the pager is locked; change version from
-  the strip. The pager never jumps mid-pan.
+- **Zoomed swipe**: zoom carries across versions. When zoomed, a horizontal drag pans; dragging on
+  72 dp past the picture's edge moves to the next or previous version on release, keeping the zoom
+  (viewer `VIEW:V21` hand-off). The strip also changes version. Never a jump mid-pan.
 - **Split**: the selected version and the long-pressed tile, stacked in portrait, linked zoom and pan,
-  draggable divider. Tap a side to pick it; Back or ✕ exits. A third long press replaces the side
-  shown longest.
+  draggable divider, with a small strip of every ready version under it (the two shown outlined).
+  Tap a side to pick it; Back or ✕ exits. A long press (or tap) on a third version in that strip
+  replaces the side shown longest.
 - **S8**: pick 3–12 photos. The first picked photo has nothing to match against, so a multi-face photo
   always asks "Which one is <name>?" ("this person" for a new profile) with "Skip this photo". Later
   photos are matched locally by the host (`SwapPersonHost.matchFace`) and ask only when the margin is
@@ -104,8 +106,10 @@ border and scale 1.08 (150 ms). A new batch from Change face/person starts after
   after install from their original hosts) is the host's concern; the sheet only states the size.
 - **Save** goes through `SwapPersonSaver`; IDS-10's `IdentityEditSave` is the production saver (file
   name `<source-stem>_AI_<n>`, never a person's name). IDS-11 constructs it with the source URI.
+- **Look chips after Change person** are the current person's looks, and their versions are always
+  that person's, even while an earlier person's version is selected.
 - **Rotation and process death**: `SwapPersonViewModel` keeps the machine across rotation. Every
-  finished version is copied out of the session folder (`cacheDir/atlas-identity-kept/<flow>`), and a
+  finished version is copied out of the session folder on the worker thread (`cacheDir/atlas-identity-kept/<flow>`), and a
   small text snapshot (ids, face geometry, kept-file paths, variation) goes into `SavedStateHandle`.
   After process death the versions and the chosen version come back without running the engine;
   More and refine reopen a session on demand.

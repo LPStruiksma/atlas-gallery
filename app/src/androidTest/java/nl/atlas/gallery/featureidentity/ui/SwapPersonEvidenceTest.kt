@@ -20,6 +20,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.S24DisplayRule
@@ -247,7 +250,7 @@ class SwapPersonEvidenceTest {
         machine.pickPerson(state.listedPeople.first { it.name == names[person] }); drain()
     }
 
-    private fun renderAll() {
+    private fun setFlow() {
         compose.setContent {
             val base = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
@@ -257,6 +260,10 @@ class SwapPersonEvidenceTest {
                 }
             }
         }
+    }
+
+    private fun renderAll() {
+        setFlow()
 
         // S1 person sheet.
         show(Harness()) { machine.start() }
@@ -417,6 +424,37 @@ class SwapPersonEvidenceTest {
         shot("s8-name-keyboard")
         compose.hideKeyboard()
         compose.runOnIdle { current?.release(); current = null }
+    }
+
+    /** Review of #615: a third version reaches Split from inside it, and a zoomed drag hands off at the edge. */
+    @Test fun splitThirdPickAndZoomedEdgeHandOff() {
+        dark = false; fontScale = 1f
+        setFlow()
+        show(Harness()) { studio() }
+        val keys = current!!.state.versions.map { it.key }
+        assertEquals(keys[0], current!!.state.selected)
+
+        // Long press tile 2: split of version 1 and 2. Long press version 3 in the split strip: it replaces version 1.
+        compose.onNodeWithTag("swap-tile-2").performTouchInput { longClick() }
+        compose.awaitThat("the split") { compose.exists(hasTestTag("swap-split")) }
+        assertEquals(SwapOverlay.Split(keys[0], keys[1]), current!!.state.overlay)
+        compose.onNodeWithTag("swap-split-tile-${keys[2]}").performTouchInput { longClick() }
+        compose.awaitThat("version 3 in the split") { current!!.state.overlay == SwapOverlay.Split(keys[1], keys[2]) }
+        act { current!!.machine.closeOverlay() }
+
+        // Zoom in on the face, then drag left until the picture's edge hands off to version 2.
+        compose.onNodeWithTag("swap-canvas").performTouchInput { doubleClick(center) }
+        compose.waitForIdle()
+        var swipes = 0
+        while (current!!.state.selected == keys[0] && swipes < 8) {
+            compose.onNodeWithTag("swap-canvas").performTouchInput {
+                swipeLeft(startX = right - 8f, endX = left + 8f, durationMillis = 400)
+            }
+            compose.waitForIdle()
+            swipes++
+        }
+        compose.awaitThat("version 2 after the zoomed hand-off") { current!!.state.selected == keys[1] }
+        assertTrue("a zoomed drag pans before it hands off", swipes >= 1)
     }
 
     @Test fun light100() { dark = false; fontScale = 1f; renderAll() }
