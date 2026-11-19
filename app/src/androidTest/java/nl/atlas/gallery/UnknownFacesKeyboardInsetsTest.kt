@@ -22,7 +22,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.toSize
@@ -266,8 +268,14 @@ class UnknownFacesKeyboardInsetsTest {
     }
 
     private fun focusNameField() {
-        compose.onNodeWithTag("atlas-group-name").performScrollTo()
-        compose.tap(hasTestTag("atlas-group-name"))
+        compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .performScrollToNode(hasTestTag("atlas-group-name"))
+        compose.waitForIdle()
+        // Focus by semantics: after the scroll the sticky header can sit over
+        // part of the field in landscape, and a pointer tap would land on it.
+        // Focus opens the keyboard the same way a tap does.
+        compose.onNodeWithTag("atlas-group-name")
+            .performSemanticsAction(SemanticsActions.RequestFocus)
     }
 
     /**
@@ -277,7 +285,9 @@ class UnknownFacesKeyboardInsetsTest {
      */
     private fun openReview() {
         compose.waitForIdle()
-        if (compose.exists(hasTestTag("atlas-group-name"), useUnmergedTree = true)) {
+        // The list is lazy: in landscape the name field can sit below the
+        // fold and is not composed, so look for the list itself.
+        if (compose.exists(hasTestTag("atlas-unknown-face-review-screen"), useUnmergedTree = true)) {
             steady()
             return
         }
