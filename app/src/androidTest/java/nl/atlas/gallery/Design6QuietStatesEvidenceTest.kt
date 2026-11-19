@@ -271,7 +271,11 @@ class Design6QuietStatesEvidenceTest {
             val mode = if (theme) "dark" else "light"
             compose.runOnIdle { dark = theme; items = emptyList() }
             compose.waitForIdle()
-            val area = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
+            // A theme switch re-applies the system bars; Android may deliver
+            // the resulting safeDrawing inset a few frames later (CI saw the
+            // bottom move 3.2 dp after idle). Measure the box once it settles,
+            // so the check below compares media arriving, not inset delivery.
+            val area = settledBounds("photos-136-area")
             val line = compose.onNodeWithTag("atlas-timeline-empty").getBoundsInRoot()
             // The quiet line sits at the centre of the content area, not the screen.
             assertEquals(((area.top + area.bottom) / 2).value,
@@ -287,13 +291,27 @@ class Design6QuietStatesEvidenceTest {
             }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
-            val loaded = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
+            val loaded = settledBounds("photos-136-area")
             // Content arrives in the same box: nothing above or around it moved.
             assertTrue("content area moved: $area -> $loaded",
                 kotlin.math.abs((loaded.top - area.top).value) <= tolerance &&
                     kotlin.math.abs((loaded.bottom - area.bottom).value) <= tolerance)
             saveUiEvidence("photos-136-jump-after-$mode.png")
         }
+    }
+
+    /** Bounds of [tag] once they have read the same for 450 ms (at most 5 s). */
+    private fun settledBounds(tag: String): androidx.compose.ui.unit.DpRect {
+        var last = compose.onNodeWithTag(tag).getBoundsInRoot()
+        var since = android.os.SystemClock.uptimeMillis()
+        compose.waitUntil(5_000L) {
+            val now = compose.onNodeWithTag(tag).getBoundsInRoot()
+            val clock = android.os.SystemClock.uptimeMillis()
+            if (now != last) { last = now; since = clock }
+            clock - since >= 450L
+        }
+        compose.waitForIdle()
+        return compose.onNodeWithTag(tag).getBoundsInRoot()
     }
 
     /**
