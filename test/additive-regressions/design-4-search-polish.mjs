@@ -27,5 +27,6 @@ test('Search retains Pictures grid, exposes distinct no-results state and IME-sa
   assert.match(host,/AtlasFeatureGrid\([\s\S]*?viewKey = "search"/);
   assert.match(host,/"No results for \\u201C\$it\\u201D"/);
   assert.match(host,/emptyDetail = "Try another word or name\."/);
-  assert.match(host,/Modifier\.padding\(top = 12\.dp\)\.imePadding\(\)/);
+  // #448: IME-safe without stacking on the scaffold bottom padding.
+  assert.match(host,/Modifier\.padding\(top = 12\.dp\)\.atlasImePadding\(\)/);
 });
