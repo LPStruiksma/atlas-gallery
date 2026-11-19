@@ -1,0 +1,13 @@
+# #364 DESIGN-10b: Copy/Move album picker, empty state, Create dialog with keyboard,
+# 220-album scroll and bottom inset. Synthetic album names only.
+design-10b-copy-picker-light
+design-10b-copy-picker-dark
+design-10b-move-picker-light
+design-10b-move-picker-dark
+design-10b-empty-picker-light
+design-10b-empty-picker-dark
+design-10b-picker-220-scrolled-dark
+design-10b-picker-220-bottom-inset-dark
+design-10b-picker-220-bottom-inset-light
+design-10b-create-dialog-light
+design-10b-create-dialog-dark

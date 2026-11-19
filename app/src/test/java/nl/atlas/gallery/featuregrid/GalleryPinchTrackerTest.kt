@@ -51,7 +51,7 @@ class GalleryPinchTrackerTest {
         assertEquals(GalleryZoomStop.LARGE, small.destination())
         val big = GalleryPinchTracker(GalleryZoomStop.ORIGINAL, slop)
         big.pinch(from = 430f, to = 40f)
-        assertEquals(GalleryZoomStop.SMALL, big.destination())
+        assertEquals(GalleryZoomStop.YEAR, big.destination())
     }
 
     /** The #475 probe never started: its fingers moved less than slop. Slop is measured on the span itself. */

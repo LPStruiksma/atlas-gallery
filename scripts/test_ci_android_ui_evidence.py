@@ -86,6 +86,13 @@ class EvidenceCollectionTest(unittest.TestCase):
                 for fname, text in declared.items():
                     (ddir / fname).write_text(text, encoding="utf-8")
                 env["ATLAS_UI_EVIDENCE_DECLARED_DIR"] = str(ddir)
+            # The verifier's parity step is for real, complete emulator
+            # evidence. This host-only fake-adb fixture must explicitly opt
+            # into the generic declared-set checker even when using the real
+            # declaration directory, so arbitrary byte stubs cannot be
+            # reported as full parity captures.
+            if declared is None:
+                env["ATLAS_UI_EVIDENCE_DECLARED_DIR"] = str(DECLARED)
             env.update(extra_env or {})
             proc = subprocess.run(["bash", str(SCRIPT), mode], cwd=work, env=env,
                                   text=True, capture_output=True, timeout=30)

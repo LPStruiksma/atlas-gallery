@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurecuration.cleanupSize
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasPageColor
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 import kotlinx.coroutines.delay
 
 /** #663: the same phone-style sizes as Photo DNA ("1 KB", "4.2 MB"). */
@@ -47,6 +49,7 @@ internal fun DeclutterScreen(
     // The review deck may contain 150k entries; never ask Compose to
     // structurally compare List contents in remember/effect keys. Fresh
     // immutable deck generations reset safely even with equal metadata.
+    var searchText by remember(CatalogSourceKey(deck)) { mutableStateOf("") }
     var session by remember(CatalogSourceKey(deck)) { mutableStateOf(DeclutterSession()) }
     var reviewing by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
     var confirming by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
@@ -146,7 +149,8 @@ internal fun DeclutterScreen(
         AtlasGalleryHeader(
             title = "Declutter",
             onBack = onExit,
-            backDescription = "Back to Gallery"
+            backDescription = "Back to Gallery",
+            actions = { AtlasSearch(query = searchText, onQueryChange = { searchText = it }) }
         )
         if (verifying) {
             LinearProgressIndicator(Modifier.fillMaxWidth()
@@ -157,7 +161,8 @@ internal fun DeclutterScreen(
                 color = MaterialTheme.colorScheme.onBackground)
             LazyColumn(Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(pending, key = { it.uri }) { media ->
+                items(scopedNamedMatches(pending, searchText) { it.name + " " + it.album },
+                    key = { it.uri }) { media ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(6.dp),

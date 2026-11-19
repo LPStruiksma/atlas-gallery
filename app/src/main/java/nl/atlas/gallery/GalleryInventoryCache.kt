@@ -138,22 +138,43 @@ internal object GalleryInventoryCacheCodec {
  * encoder cannot publish after access loss. The lock protects both the
  * final rename and deletion (including the temporary file).
  */
-internal class GalleryInventoryCacheFile(private val file: File) {
+internal class GalleryInventoryCacheFile(fileProvider: () -> File) {
+    constructor(file: File) : this({ file })
+
+    /**
+     * #435: resolved on first IO, never in the constructor. Reading
+     * `noBackupFilesDir` checks (and may create) the directory, which is a
+     * disk read on whichever thread builds this wrapper, usually Main.
+     */
+    private val file: File by lazy(fileProvider)
     private val fileLock = Any()
     private val revoked = AtomicBoolean(false)
+    /** Guarded by [fileLock]: a [beginRestore] cleanup not yet done on disk. */
+    private var pendingRestore = PendingRestore.NONE
+
+    private enum class PendingRestore { NONE, TEMP_ONLY, FILE_AND_TEMP }
 
     fun read(checkActive: () -> Unit = {}): GalleryInventoryCacheCodec.Snapshot? =
         synchronized(fileLock) {
+            settleLocked()
             if (revoked.get() || !file.isFile) null
             else try {
                 file.inputStream().use { GalleryInventoryCacheCodec.decode(it, checkActive) }
             } catch (cancelled: java.util.concurrent.CancellationException) {
                 throw cancelled
-            } catch (_: Exception) { null }
+            } catch (_: Exception) { null
+            } catch (_: OutOfMemoryError) {
+                // #41: the phone ran out of heap in decode twice in one day.
+                // The cache is an optimisation: without it the scan fills the
+                // screen. The half-built list is unreachable from here on.
+                android.util.Log.w("ATLAS_SCAN", "event=cache_read_out_of_memory")
+                null
+            }
         }
 
     fun write(grant: GalleryMediaGrant, items: List<MediaRecord>, checkActive: () -> Unit = {}) {
         synchronized(fileLock) {
+            settleLocked()
             if (revoked.get()) return
             val tmp = File(file.parentFile, file.name + ".tmp")
             try {
@@ -171,6 +192,12 @@ internal class GalleryInventoryCacheFile(private val file: File) {
             } catch (e: Exception) {
                 tmp.delete()
                 if (e is java.util.concurrent.CancellationException) throw e
+            }
+            catch (_: OutOfMemoryError) {
+                // #41: a cache that cannot be written is skipped, never fatal;
+                // the previous cache file stays as it was.
+                tmp.delete()
+                android.util.Log.w("ATLAS_SCAN", "event=cache_write_out_of_memory")
             }
         }
     }
@@ -190,14 +217,52 @@ internal class GalleryInventoryCacheFile(private val file: File) {
         delete()
     }
 
-    /** Regranted access may write fresh cache bytes after the old generation drains. */
-    fun restore() {
+    /**
+     * Regranted access may write fresh cache bytes after the old generation
+     * drains. Bytes from a revoked generation, and any selected-photos cache
+     * (the selection itself may have changed under the same flags), are
+     * cleared first.
+     *
+     * #284: a full-library refresh under an unrevoked grant keeps the current
+     * file. Every cold start runs this refresh; deleting here left no
+     * trusted inventory on disk until the new scan finished and its write
+     * landed, so a process killed in that window (a long scan on a large
+     * library) could not resume People scanning in the background. Readers
+     * still check the stored grant ([cachedFaceInventory] exactly,
+     * [mayShowCachedGalleryInventory] by scope), and the scan overwrites it.
+     */
+    fun restore(current: GalleryMediaGrant) {
+        beginRestore(current)
+        settle()
+    }
+
+    /**
+     * #435: the no-IO half of [restore], safe on Main. It decides now, under
+     * the lock, what [restore] would delete and clears the revoked flag; the
+     * deletion itself runs at the next [settle], [read], [write] or delete,
+     * whichever comes first, so nothing can read or write the old bytes before
+     * they are gone. The caller queues [settle] on an IO dispatcher.
+     */
+    fun beginRestore(current: GalleryMediaGrant) {
         synchronized(fileLock) {
-            // Clear any surviving old-grant bytes before allowing new writes.
-            file.delete()
-            File(file.parentFile, file.name + ".tmp").delete()
+            val clearFile = revoked.get() || !current.hasAny || current.selectionScoped
+            pendingRestore = if (clearFile || pendingRestore == PendingRestore.FILE_AND_TEMP)
+                PendingRestore.FILE_AND_TEMP else PendingRestore.TEMP_ONLY
             revoked.set(false)
         }
+    }
+
+    /** Runs the disk half of a [beginRestore], if one is still due. Blocking IO. */
+    fun settle() {
+        synchronized(fileLock) { settleLocked() }
+    }
+
+    private fun settleLocked() {
+        val pending = pendingRestore
+        if (pending == PendingRestore.NONE) return
+        pendingRestore = PendingRestore.NONE
+        if (pending == PendingRestore.FILE_AND_TEMP) file.delete()
+        File(file.parentFile, file.name + ".tmp").delete()
     }
 
     /**
@@ -206,12 +271,14 @@ internal class GalleryInventoryCacheFile(private val file: File) {
      */
     fun deleteIfRevoked() {
         synchronized(fileLock) {
+            settleLocked()
             if (revoked.get()) delete()
         }
     }
 
     fun delete() {
         synchronized(fileLock) {
+            pendingRestore = PendingRestore.NONE
             file.delete()
             File(file.parentFile, file.name + ".tmp").delete()
         }

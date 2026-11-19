@@ -1,0 +1,68 @@
+package nl.atlas.gallery.featurepeopleui
+
+import java.util.Locale
+
+/** Sort preference contains no names or media identifiers; a stable seed is used for random. */
+enum class PeopleSortKey { MEDIA_COUNT, NAME, MOST_RECENT, FIRST_APPEARANCE, RANDOM }
+data class PeopleSortChoice(val key: PeopleSortKey = PeopleSortKey.MEDIA_COUNT,
+                            val descending: Boolean = true)
+data class PeopleSortStats(val mediaCount: Int, val firstMs: Long?, val recentMs: Long?) {
+    init { require(mediaCount >= 0) }
+}
+data class PeopleSortEntry(
+    val id: Int, val name: String, val stats: PeopleSortStats,
+    /** Transient source-qualified identity; never saved in sort preferences. */
+    val randomKey: String = id.toString()
+)
+
+/**
+ * No media reads here. Indexed database / reviewed V4 projection supply the statistics.
+ * A blank name always trails named people, in either direction. Undated entries
+ * likewise trail dated entries. Person IDs are never persisted or logged.
+ */
+fun orderPeopleEntries(
+    entries: List<PeopleSortEntry>, choice: PeopleSortChoice, seed: Int = 0x5174
+): List<PeopleSortEntry> {
+    fun keyOf(entry: PeopleSortEntry): Long? = when (choice.key) {
+        PeopleSortKey.MEDIA_COUNT -> entry.stats.mediaCount.toLong()
+        PeopleSortKey.MOST_RECENT -> entry.stats.recentMs
+        PeopleSortKey.FIRST_APPEARANCE -> entry.stats.firstMs
+        else -> null
+    }
+    val randomOrder = if (choice.key == PeopleSortKey.RANDOM) {
+        // Stable per-identity ranks, not a shuffled list: inserting a new
+        // identity cannot change the relative order of existing identities.
+        // Source-qualified keys are transient and are not stored or logged.
+        entries.associate { entry ->
+            val rank = ("$seed:" + entry.randomKey).fold(0x811c9dc5.toInt()) { hash, char ->
+                (hash xor char.code) * 16777619
+            }
+            entry.id to (rank.toLong() and 0xffffffffL)
+        }
+    } else emptyMap()
+    return entries.sortedWith(Comparator { a, b ->
+        val named = a.name.isNotBlank().compareTo(b.name.isNotBlank())
+        if (named != 0) return@Comparator -named
+        if (choice.key == PeopleSortKey.RANDOM) {
+            val order = (randomOrder[a.id] ?: 0L).compareTo(randomOrder[b.id] ?: 0L)
+            if (order != 0) return@Comparator if (choice.descending) -order else order
+            // Hash collisions do not depend on where a tile was inserted.
+            val tie = a.randomKey.compareTo(b.randomKey)
+            if (tie != 0) return@Comparator if (choice.descending) -tie else tie
+            return@Comparator a.id.compareTo(b.id)
+        }
+        if (choice.key == PeopleSortKey.NAME) {
+            val order = a.name.lowercase(Locale.ROOT).compareTo(b.name.lowercase(Locale.ROOT))
+            if (order != 0) return@Comparator if (choice.descending) -order else order
+        } else {
+            val left = keyOf(a)
+            val right = keyOf(b)
+            if (left == null && right != null) return@Comparator 1
+            if (right == null && left != null) return@Comparator -1
+            val order = if (left != null && right != null) left.compareTo(right) else 0
+            if (order != 0) return@Comparator if (choice.descending) -order else order
+        }
+        val nameOrder = a.name.lowercase(Locale.ROOT).compareTo(b.name.lowercase(Locale.ROOT))
+        if (nameOrder != 0) nameOrder else a.id.compareTo(b.id)
+    })
+}

@@ -4,9 +4,13 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <!-- #183/#191: only user-initiated AI Edit (featureaiedit/**) may use the network.
+         Indexing, People and search stay on-device; see test/additive-regressions/network-scope-191.mjs. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:name=".AtlasApplication"
         android:allowBackup="false"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="ATLAS"

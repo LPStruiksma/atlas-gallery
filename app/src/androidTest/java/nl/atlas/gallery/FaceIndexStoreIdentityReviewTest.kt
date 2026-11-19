@@ -24,6 +24,7 @@ import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
 import nl.atlas.gallery.featurepersistence.PeopleReviewRecords
 import nl.atlas.gallery.featurepersistence.StoredPeopleReview
+import nl.atlas.gallery.featurepersistence.StoredPersonSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -447,6 +448,284 @@ class FaceIndexStoreIdentityReviewTest {
         }
     }
 
+    private fun dirty(store: FaceIndexStore): Boolean =
+        store.readableDatabase.rawQuery("SELECT dirty FROM cluster_generation WHERE singleton=1",
+            null).use { check(it.moveToFirst()); it.getInt(0) == 1 }
+    private fun photo(key: String): Int = Regex("/(\\d+)#").find(key)!!.groupValues[1].toInt()
+    private fun faceOf(store: FaceIndexStore, epoch: String, n: Int) =
+        NativeFaceObservationId(store.embeddingRecords(epoch, media(n).key).single().nativeFaceUid)
+
+    /**
+     * #178: real grant-scoped SQLite, not prefilled sort statistics. Two faces
+     * of one video count once even across confirmed and matched identity rows;
+     * dates, source revisions, and permission epochs constrain the result.
+     */
+    @Test fun peopleSortReadsDistinctCurrentMediaAndAppearanceDates() = withStore { store ->
+        val rows = (1..6).map { n ->
+            if (n == 2) IndexedMedia("content://synthetic/primary/video/2#video",
+                "generation:1") else media(n)
+        }
+        val dates = longArrayOf(100L, 900L, 0L, 300L, 400L, 0L)
+        store.beginSnapshot("sort-A")
+        store.stageBatch("sort-A", rows, dates)
+        store.commitSnapshot("sort-A", "detector-1", model)
+        var now = 1_000L
+        while (true) {
+            val lease = store.claim("sort-A", now++) ?: break
+            val n = photo(lease.media.key)
+            val boxes = if (n == 2) listOf(box,
+                IndexedFaceBox(0.55f, 0.2f, 0.9f, 0.8f)) else listOf(box)
+            // The video has one confirmed-looking face (axis 0) and a
+            // separate unknown face (axis 9), in different keyframes.
+            val axes = when (n) {
+                2 -> listOf(0, 9)
+                1, 3 -> listOf(0)
+                4, 5 -> listOf(5)
+                else -> listOf(12)
+            }
+            assertTrue(store.completeEmbeddings(lease, boxes,
+                axes.map(::vector), model,
+                if (n == 2) listOf(100L, 200L) else emptyList()))
+        }
+        assertTrue(store.materializeClusters("sort-A"))
+        val first = requireNotNull(store.peopleReview("sort-A"))
+        val ada = PersonKey("sort-ada")
+        val ben = PersonKey("sort-ben")
+        val adaCluster = first.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 1) in it.members
+        }
+        val namedAda = requireNotNull(reviewPeopleCluster(uiState("sort-A", first),
+            PeopleReviewAction.NameCluster(adaCluster.id, ada, "Ada")))
+        assertNotNull(commit(store, "sort-A", first.generation, namedAda))
+        val next = requireNotNull(store.peopleReview("sort-A"))
+        val benCluster = next.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 4) in it.members
+        }
+        val namedBen = requireNotNull(reviewPeopleCluster(uiState("sort-A", next),
+            PeopleReviewAction.NameCluster(benCluster.id, ben, "Ben")))
+        assertNotNull(commit(store, "sort-A", next.generation, namedBen))
+
+        // Synthetic confirmed+matched overlap: Ada owns frame 0 of video 2;
+        // the other frame is still an unknown cluster member. Assign that
+        // member as a match to Ada. UNION must count the video only once.
+        val db = store.writableDatabase
+        val secondVideoFace = db.rawQuery(
+            "SELECT face_uid FROM faces WHERE media_key=? AND ordinal=1",
+            arrayOf(rows[1].key)
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            cursor.getString(0)
+        }
+        assertEquals(1, db.rawQuery(
+            "SELECT COUNT(*) FROM cluster_members WHERE face_uid=?",
+            arrayOf(secondVideoFace)
+        ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
+        db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
+            arrayOf(secondVideoFace, ada.value))
+        // A matched-only photo must add one media item. Without this row an
+        // aggregate that ignores people_matched would falsely pass the video
+        // overlap assertion above.
+        val matchedOnlyPhoto = faceOf(store, "sort-A", 6).localHex
+        assertEquals(1, db.rawQuery(
+            "SELECT COUNT(*) FROM cluster_members WHERE face_uid=?",
+            arrayOf(matchedOnlyPhoto)
+        ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
+        db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
+            arrayOf(matchedOnlyPhoto, ada.value))
+        assertTrue(count(store, "people_matched") >= 2)
+        val home = requireNotNull(store.peopleHome("sort-A"))
+        assertEquals(setOf(ada, ben), home.people.keys)
+        assertEquals(4, home.people.getValue(ada).mediaCount)
+        assertEquals(3, home.people.getValue(ada).photoCount)
+        assertEquals(1, home.people.getValue(ada).videoCount)
+        assertEquals(2, home.people.getValue(ben).mediaCount)
+        assertEquals(2, home.people.getValue(ben).photoCount)
+        assertEquals(0, home.people.getValue(ben).videoCount)
+        for (summary in home.people.values) {
+            assertEquals(summary.mediaCount, summary.photoCount + summary.videoCount)
+        }
+        assertEquals(100L, home.people.getValue(ada).firstAppearanceMs)
+        assertEquals(900L, home.people.getValue(ada).mostRecentAppearanceMs)
+        assertEquals(300L, home.people.getValue(ben).firstAppearanceMs)
+        assertEquals(400L, home.people.getValue(ben).mostRecentAppearanceMs)
+        assertTrue(home.people.getValue(ada).faceCount >= 3)
+
+        fun order(key: nl.atlas.gallery.featurepeopleui.PeopleSortKey,
+                  descending: Boolean): List<PersonKey> {
+            val byIndex = home.people.keys.toList()
+            val keyed = home.people.entries.mapIndexed { index, (_, summary) ->
+                nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
+                    nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
+                        summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
+            }
+            return nl.atlas.gallery.featurepeopleui.orderPeopleEntries(keyed,
+                nl.atlas.gallery.featurepeopleui.PeopleSortChoice(key, descending))
+                .map { byIndex[it.id] }
+        }
+        val mediaCount = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT
+        val name = nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME
+        val recent = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT
+        val firstDate = nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE
+        val random = nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM
+        assertEquals(listOf(ada, ben), order(mediaCount, true))
+        assertEquals(listOf(ben, ada), order(mediaCount, false))
+        assertEquals(listOf(ada, ben), order(name, false))
+        assertEquals(listOf(ben, ada), order(name, true))
+        assertEquals(listOf(ada, ben), order(recent, true))
+        assertEquals(listOf(ben, ada), order(recent, false))
+        assertEquals(listOf(ben, ada), order(firstDate, true))
+        assertEquals(listOf(ada, ben), order(firstDate, false))
+        assertEquals(order(random, false).reversed(), order(random, true))
+
+        // An entirely undated identity has no invented zero-epoch date.
+        val unreviewed = requireNotNull(store.peopleReview("sort-A"))
+        val cid = PersonKey("sort-cid")
+        val cidCluster = unreviewed.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 6) in it.members
+        }
+        val namedCid = requireNotNull(reviewPeopleCluster(uiState("sort-A", unreviewed),
+            PeopleReviewAction.NameCluster(cidCluster.id, cid, "Cid")))
+        assertNotNull(commit(store, "sort-A", unreviewed.generation, namedCid))
+        val datedAndUndated = requireNotNull(store.peopleHome("sort-A"))
+        assertEquals(1, datedAndUndated.people.getValue(cid).mediaCount)
+        assertNull(datedAndUndated.people.getValue(cid).firstAppearanceMs)
+        assertNull(datedAndUndated.people.getValue(cid).mostRecentAppearanceMs)
+        val orderedPeople = datedAndUndated.people.entries.mapIndexed { index, (_, summary) ->
+            nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
+                nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
+                    summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
+        }
+        val peopleKeys = datedAndUndated.people.keys.toList()
+        for (sortKey in listOf(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE,
+                nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT)) {
+            for (descending in listOf(false, true)) {
+                val ordered = nl.atlas.gallery.featurepeopleui.orderPeopleEntries(
+                    orderedPeople, nl.atlas.gallery.featurepeopleui.PeopleSortChoice(
+                        sortKey, descending))
+                assertEquals(cid, peopleKeys[ordered.last().id])
+            }
+        }
+
+        // The previous epoch is not a permission to read. An edited source
+        // removes its old observation while a fresh grant keeps others.
+        store.beginSnapshot("sort-B")
+        store.stageBatch("sort-B", rows.map {
+            if (it.key == rows[1].key) it.copy(revision = "generation:2") else it
+        }, dates)
+        store.commitSnapshot("sort-B", "detector-1", model)
+        assertNull(store.peopleHome("sort-A"))
+        val refreshed = requireNotNull(store.peopleHome("sort-B"))
+        assertEquals(2, refreshed.people.getValue(ada).mediaCount)
+        assertEquals(2, refreshed.people.getValue(ada).photoCount)
+        assertEquals(0, refreshed.people.getValue(ada).videoCount)
+        store.invalidatePermissionScope()
+        assertNull(store.peopleHome("sort-B"))
+    }
+
+    /**
+     * #178 PERF: pre-seeded synthetic People-home rows isolate the 500-person
+     * indexed statistics read path. Other tests exercise real identity commits.
+     * No real-person data is present, and no UI/main-thread call occurs here.
+     */
+    @Test fun peopleHome500PersonStatisticsReadRemainsBounded() = withStore { store ->
+        val epoch = "sort-perf"
+        val first = scannedLibrary(store, epoch)
+        val named = nameBiggest(epoch, first, PersonKey("perf-000"), "Perf 000")
+        assertNotNull(commit(store, epoch, first.generation, named))
+        val db = store.writableDatabase
+        db.beginTransaction()
+        try {
+            for (i in 1 until 500) {
+                val key = "perf-" + i.toString().padStart(3, '0')
+                db.execSQL("""INSERT INTO people_home(person_key,name,face_count,cover_uid)
+                    VALUES(?,?,1,?)""", arrayOf(key, "Perf $i", "synthetic-cover"))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        // Both person-key lookup arms are indexed, so 500 independent people
+        // must not force a full-catalog scan. Time cap is deliberately generous
+        // for GitHub-hosted Android emulators (not a production benchmark).
+        val indexes = db.rawQuery("""SELECT name FROM sqlite_master WHERE
+            type='index' AND name IN ('people_confirmed_person','people_matched_person')""",
+            null).use { cursor ->
+            buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) }
+        }
+        assertEquals(setOf("people_confirmed_person", "people_matched_person"), indexes)
+        val started = android.os.SystemClock.elapsedRealtime()
+        val home = requireNotNull(store.peopleHome(epoch))
+        val elapsed = android.os.SystemClock.elapsedRealtime() - started
+        assertEquals(500, home.people.size)
+        assertEquals(0, home.people.getValue(PersonKey("perf-499")).mediaCount)
+        assertTrue("500 indexed People queries took ${elapsed}ms", elapsed < 45_000L)
+    }
+
+    /**
+     * #39: while a scan adds faces (the generation is dirty until the next
+     * publication), People keeps serving the last published people and
+     * groups, and a review commits against that snapshot.
+     */
+    @Test fun lastPublishedPeopleStayServedAndReviewableWhileNewFacesWait() = withStore { store ->
+        // Photos 1..3: one person, named Ana; photos 4..6: an unnamed group of three.
+        grant(store, "epoch-A", (1..6).map { media(it) })
+        scanAll(store, "epoch-A") { if (photo(it) <= 3) 0 else 5 }
+        val stored = requireNotNull(store.peopleReview("epoch-A"))
+        val anaGroup = stored.clusters.unknownClusters.single { faceOf(store, "epoch-A", 1) in it.members }
+        val named = requireNotNull(reviewPeopleCluster(uiState("epoch-A", stored),
+            PeopleReviewAction.NameCluster(anaGroup.id, ana, "Ana")))
+        val published = requireNotNull(commit(store, "epoch-A", stored.generation, named))
+        val group = requireNotNull(store.peopleHome("epoch-A")).unnamed.single()
+        assertEquals(3, group.faceCount)
+
+        // A later grant adds photo 7; the scan embeds its face, no publication yet.
+        grant(store, "epoch-B", (1..7).map { media(it) })
+        val lease = requireNotNull(store.claim("epoch-B", 5_000))
+        assertEquals(media(7).key, lease.media.key)
+        assertTrue(store.completeEmbeddings(lease, listOf(box), listOf(vector(9)), model))
+        assertTrue("a new face leaves the generation dirty", dirty(store))
+        val pending = faceOf(store, "epoch-B", 7)
+
+        assertEquals(published, store.peopleReviewGeneration("epoch-B"))
+        val home = requireNotNull(store.peopleHome("epoch-B")) { "People home is served during a scan" }
+        assertEquals(published, home.generation)
+        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid,
+            mediaCount = 3, firstAppearanceMs = null, mostRecentAppearanceMs = null),
+            home.people.getValue(ana))
+        assertEquals(listOf(group), home.unnamed)
+        val review = requireNotNull(store.peopleReview("epoch-B")) {
+            "the person page is served during a scan" }
+        assertEquals(published, review.generation)
+        assertFalse("a pending face is not in the published snapshot", pending in review.clusters)
+        assertEquals(3, review.clusters.reviews.confirmed.size)
+        assertEquals(mapOf(ana to "Ana"), review.names)
+        assertNotNull(store.personMatchInputs("epoch-B"))
+
+        // A review computed from that snapshot commits while the face waits.
+        val bo = PersonKey("person-bo")
+        val second = requireNotNull(reviewPeopleCluster(uiState("epoch-B", review),
+            PeopleReviewAction.NameCluster(review.clusters.unknownClusters.single().id, bo, "Bo")))
+        val reviewed = requireNotNull(commit(store, "epoch-B", review.generation, second)) {
+            "reviews are allowed while new faces wait" }
+        assertTrue("the commit publishes no pending face", dirty(store))
+        assertNull(commit(store, "epoch-B", review.generation, second)) // stale replay
+        val homeAfterReview = requireNotNull(store.peopleHome("epoch-B"))
+        assertEquals(reviewed, homeAfterReview.generation)
+        assertEquals(mapOf(ana to "Ana", bo to "Bo"),
+            homeAfterReview.people.mapValues { it.value.name })
+        assertTrue(homeAfterReview.unnamed.isEmpty())
+
+        // The next publication places the new face and keeps both names.
+        assertTrue(store.materializeClusters("epoch-B"))
+        assertFalse(dirty(store))
+        val after = requireNotNull(store.peopleReview("epoch-B"))
+        assertNotEquals(reviewed, after.generation)
+        assertTrue(pending in after.clusters)
+        assertEquals(mapOf(ana to "Ana", bo to "Bo"), after.names)
+        assertEquals(6, after.clusters.reviews.confirmed.size)
+        assertMatchesStored(store, after)
+    }
+
     @Test fun staleGenerationRevokedEpochAndDirtyClustersRefuseCommit() = withStore { store ->
         val stored = scannedLibrary(store)
         val named = nameBiggest("epoch-A", stored)
@@ -460,15 +739,21 @@ class FaceIndexStoreIdentityReviewTest {
         val stranger = reread.clusters.unknownClusters.single()
         val second = requireNotNull(reviewPeopleCluster(uiState("epoch-A", reread),
             PeopleReviewAction.NameCluster(stranger.id, PersonKey("person-bo"), "Bo")))
-        // A new grant that edits a photo makes clusters dirty: no commit until
-        // they are published, even with the still-current generation.
+        // A new grant that edits a photo removes its face (the stranger) and
+        // makes clusters dirty. #39: People is still served without that face,
+        // under a new generation, so the snapshot that held it cannot commit.
         grant(store, "epoch-B", (1..5).map { if (it == 4) media(4, rev = 2) else media(it) })
-        assertNull(store.peopleReview("epoch-B"))
+        assertTrue(dirty(store))
+        val served = requireNotNull(store.peopleReview("epoch-B"))
+        assertNotEquals(committed, served.generation)
+        assertEquals(served.generation, store.peopleReviewGeneration("epoch-B"))
+        assertTrue(served.clusters.unknownClusters.isEmpty())
+        assertEquals(3, requireNotNull(store.peopleHome("epoch-B")).people.getValue(ana).faceCount)
         assertNull(commit(store, "epoch-B", committed, second))
         assertNull(commit(store, "epoch-A", committed, second)) // superseded epoch
         scanAll(store, "epoch-B") { 9 }
         val fresh = requireNotNull(store.peopleReview("epoch-B"))
-        assertNotEquals(committed, fresh.generation) // publication advanced it
+        assertNotEquals(served.generation, fresh.generation) // publication advanced it
         assertNull(commit(store, "epoch-B", committed, second))
         assertTrue(fresh.names.keys == setOf(ana))
         // Revocation hides names and facts and refuses writes.
@@ -483,10 +768,14 @@ class FaceIndexStoreIdentityReviewTest {
     @Test fun sourceChangeDropsFactsForOldObservationsAndModelBumpClearsNames() = withStore { store ->
         val stored = scannedLibrary(store)
         val named = nameBiggest("epoch-A", stored)
-        val cluster = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        // Split off photo 2's face, never photo 1's: members are sorted by random
+        // observation UIDs, so members.first() picked photo 1 a third of the time,
+        // and then the photo 1 edit below invalidated no confirmation at all.
+        val split = faceOf(store, "epoch-A", 2)
+        assertTrue(stored.clusters.unknownClusters.any { it.members.size == 3 && split in it.members })
         // Split-off barrier and a rejection, so every v3 table holds rows.
         val withBarrier = requireNotNull(reviewPeopleCluster(named,
-            PeopleReviewAction.SplitPerson(ana, setOf(cluster.members.first()))))
+            PeopleReviewAction.SplitPerson(ana, setOf(split))))
         assertNotNull(commit(store, "epoch-A", stored.generation, withBarrier))
         assertEquals(2, count(store, "people_confirmed"))
         assertEquals(2, count(store, "people_cannot_link"))
@@ -494,8 +783,7 @@ class FaceIndexStoreIdentityReviewTest {
 
         val oldUid = store.embeddingRecords("epoch-A", media(1).key).single().nativeFaceUid
         val oldId = NativeFaceObservationId(oldUid)
-        assertTrue(oldId in withBarrier.clusters.reviews.confirmed ||
-            withBarrier.clusters.reviews.rejectedPeople.any { it.observation == oldId })
+        assertTrue(oldId in withBarrier.clusters.reviews.confirmed)
         // Photo 1 edited: its observation is rescanned under a new ID.
         val changed = listOf(media(1, rev = 2)) + (2..4).map { media(it) }
         grant(store, "epoch-B", changed)
@@ -511,17 +799,50 @@ class FaceIndexStoreIdentityReviewTest {
             it.first in after.clusters && it.second in after.clusters })
         assertEquals(mapOf(ana to "Ana"), after.names) // other photos still name Ana
 
-        // Embedder bump: every observation is new, so identity starts empty.
+        // #48: a model change invalidates old vectors but never erases typed names.
         grant(store, "epoch-C", changed, embedder = "$model-vNext")
         assertEquals(0, count(store, "embeddings"))
         assertEquals(0, count(store, "people_confirmed"))
         assertEquals(0, count(store, "people_cannot_link"))
         assertEquals(0, count(store, "people_rejected"))
-        assertEquals(0, count(store, "people_names"))
+        assertEquals(1, count(store, "people_names"))
         scanAll(store, "epoch-C", embedder = "$model-vNext") { 0 }
         val bumped = requireNotNull(store.peopleReview("epoch-C"))
-        assertTrue(bumped.names.isEmpty())
-        assertTrue(bumped.clusters.reviews.confirmed.isEmpty())
+        assertEquals(mapOf(ana to "Ana"), bumped.names)
+        // The earlier source edit invalidated one of the two confirmations.
+        // Only the remaining source-matched face may survive the model bump.
+        assertEquals(1, bumped.clusters.reviews.confirmed.size)
+        assertTrue(bumped.clusters.reviews.confirmed.keys.none { it == oldId })
+        assertEquals(0, count(store, "people_cannot_link"))
+        assertEquals(0, count(store, "people_rejected"))
+    }
+
+    /** #48: only exact source + detector + box continuity can restore a confirmation. */
+    @Test fun modelBumpKeepsNamesButDoesNotCarryChangedFaceBox() = withStore { store ->
+        val original = scannedLibrary(store)
+        val named = nameBiggest("epoch-A", original)
+        assertNotNull(commit(store, "epoch-A", original.generation, named))
+        val oldConfirmed = store.peopleReview("epoch-A")!!.clusters.reviews.confirmed.keys
+        assertEquals(3, oldConfirmed.size)
+
+        grant(store, "epoch-B", (1..4).map { media(it) }, embedder = "$model-v2")
+        // The untouched user names survive immediately; old vectors and facts do not.
+        assertEquals(1, count(store, "people_names"))
+        assertEquals(0, count(store, "embeddings"))
+        assertEquals(0, count(store, "people_confirmed"))
+        var now = 1000L
+        while (true) {
+            val lease = store.claim("epoch-B", now++) ?: break
+            val isChanged = lease.media.key == media(1).key
+            val nextBox = if (isChanged) IndexedFaceBox(0.15f, 0.2f, 0.5f, 0.8f) else box
+            assertTrue(store.completeEmbeddings(lease, listOf(nextBox),
+                listOf(vector(0)), "$model-v2"))
+        }
+        assertTrue(store.materializeClusters("epoch-B"))
+        val restored = requireNotNull(store.peopleReview("epoch-B"))
+        assertEquals(mapOf(ana to "Ana"), restored.names)
+        assertEquals(2, restored.clusters.reviews.confirmed.size)
+        assertTrue(restored.clusters.reviews.confirmed.keys.none { it in oldConfirmed })
     }
 
     @Test fun suppressedFactWriteRollsBackWholeReview() = withStore { store ->

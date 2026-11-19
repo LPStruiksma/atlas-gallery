@@ -1,0 +1,10 @@
+# #18: Samsung-like viewer video chrome; invented local H.264/PNG only.
+# ViewerVideoChromeJourneyTest: 1080x2340, both app themes, held-frame extraction.
+viewer-video-dark-still
+viewer-video-dark-playing
+viewer-video-dark-paused
+viewer-video-dark-seek
+viewer-video-light-still
+viewer-video-light-playing
+viewer-video-light-paused
+viewer-video-light-seek

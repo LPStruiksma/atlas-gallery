@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const read = (path) => readFileSync(resolve(root, path), 'utf8');
+const host = read('app/src/main/java/nl/atlas/gallery/PeopleDiscoveryHost.kt');
+const micro = read('app/src/main/java/nl/atlas/gallery/featuremedia/MicroThumbnails.kt');
+
+// A cold-start permission observation must not erase previously chosen
+// face/visual discovery, and genuinely revoked scopes must stay hidden.
+// A fresh process has no scope after a real OS revoke as well as a pending refresh.
+// The actual Android grant loss must clear the saved opt-in unconditionally.
+assert.match(host, /if \(!photoGrantCurrent\(\)\) \{\s*Log\.i\("ATLAS_FACE", "publication_revoke cause=android_grant_lost"\)\s*revoke\(\)/);
+assert.doesNotMatch(host, /if \(synchronized\(lock\) \{ scope == null \}\)/);
+assert.match(host, /visualOptedIn = optedIn && optInMemory\.loadVisual\(\)/);
+assert.match(host, /optInMemory\.saveVisual\(true\)/);
+assert.match(host, /optInMemory\.saveVisual\(false\)/);
+assert.match(host, /fun scopeCurrent\(epoch: String\): Boolean =\s*liveEpoch == epoch && synchronized\(lock\) \{ optedIn \} && photoGrantCurrent\(\)/);
+
+const settings = read('app/src/main/java/nl/atlas/gallery/AtlasSettingsScreen.kt');
+const activity = read('app/src/main/java/nl/atlas/gallery/MainActivity.kt');
+
+// While asynchronous publication is restoring the real host, Settings must
+// say so rather than showing the terminal "Unavailable" status.
+assert.match(activity, /scanLoading = access && discovery\.status == null/);
+assert.match(settings, /if \(scanLoading\) "Restoring…" else/);
+
+// Not cacheDir: Android is allowed to purge cacheDir under storage pressure,
+// which makes every gallery relaunch regenerate all micro thumbnails.
+assert.match(micro, /MicroThumbnailStore\(File\(context\.noBackupFilesDir, "atlas-micro-v1"\)/);
+assert.match(micro, /if \(!now && \(wasAllowed \|\| first\)\)/);
+// connectedDebugAndroidTest can uninstall/reinstall both test and target APKs;
+// the separate-process phase must reinstall them before granting photo access.
+const ciScript = read('scripts/ci_android_upgrade_emulator.sh');
+const afterConnected = ciScript.split('if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi')[1];
+assert.ok(afterConnected, 'relaunch checks must run after a successful connected test suite');
+const appInstall = afterConnected.indexOf('adb install -r "$NEW"');
+const testInstall = afterConnected.indexOf('adb install -r "$TEST"');
+const mediaGrant = afterConnected.indexOf('adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES');
+assert.ok(appInstall >= 0 && testInstall > appInstall && mediaGrant > testInstall,
+  'reinstall both APKs after the connected suite and before the real-process photo grant');
+
+console.log('relaunch-durability-31: source contracts pass');

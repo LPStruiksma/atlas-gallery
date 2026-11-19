@@ -47,7 +47,9 @@ class FaceCatalogPublisher(
     private val checkActive: () -> Unit = {},
     private val batchSize: Int = FaceDiscoveryContract.MAX_CATALOG_BATCH,
     private val maxPhotoRows: Int = FaceCatalogLimits.MAX_PHOTOS,
-    private val maxVideoRows: Int = FaceCatalogLimits.MAX_VIDEOS
+    private val maxVideoRows: Int = FaceCatalogLimits.MAX_VIDEOS,
+    /** #31: the previous catalogue stays readable until this one commits. */
+    private val keepActiveReadable: Boolean = false
 ) {
     init {
         require(batchSize in 1..FaceDiscoveryContract.MAX_CATALOG_BATCH)
@@ -73,7 +75,7 @@ class FaceCatalogPublisher(
             checkScope(permissionEpoch)
             // Begin immediately hides every prior observation from a revoked
             // scope, without deleting confirmed V4 People data.
-            storeStep(permissionEpoch) { store.beginSnapshot(permissionEpoch) }
+            storeStep(permissionEpoch) { store.beginSnapshot(permissionEpoch, keepActiveReadable) }
             snapshotBegun = true
             for (row in sourceRows) {
                 checkActive()

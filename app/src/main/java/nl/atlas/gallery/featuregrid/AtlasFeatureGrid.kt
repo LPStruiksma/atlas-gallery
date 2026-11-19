@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,9 +48,14 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.layout.ContentScale
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.SharedPhotoOrigins
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 
 private const val DENSITY_PREFS = "atlas_featuregrid_density"
 
@@ -68,7 +74,7 @@ fun GridViewAsControl(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("View as", style = MaterialTheme.typography.labelMedium)
-        GridDensity.entries.forEach { choice ->
+        GridDensity.entries.takeWhile { it.columns <= GridDensity.SMALL.columns }.forEach { choice ->
             FilterChip(
                 selected = choice == density,
                 onClick = { onChoose(choice) },
@@ -76,6 +82,8 @@ fun GridViewAsControl(
                     GridDensity.LARGE -> "Large"
                     GridDensity.MEDIUM -> "Medium"
                     GridDensity.SMALL -> "Small"
+                    GridDensity.MONTH -> "Month"
+                    GridDensity.YEAR -> "Year"
                 }) },
                 modifier = Modifier.testTag("atlas-grid-density-${choice.columns}")
                     .semantics { contentDescription = "${choice.accessibleName}, ${choice.columns} columns" }
@@ -116,15 +124,25 @@ fun AtlasFeatureGrid(
      */
     showViewAs: Boolean = true,
     /** Shown when [items] is empty and not [busy] (#654: Search says "No results"). */
-    emptyText: String = "No photos here yet"
+    emptyText: String = "No photos here yet",
+    /** #134: one short neutral line under [emptyText] (Search: no results). */
+    emptyDetail: String? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE) }
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE)
+    }
+    // Ungrouped Search/People/fallback screens have no chronological overview.
+    // They must not inherit a 12/28-column Photos preference without the headers.
+    fun classic(value: GridDensity): GridDensity =
+        if (value.columns > GridDensity.SMALL.columns) GridDensity.SMALL else value
     var density by rememberSaveable(viewKey) {
-        mutableStateOf(entryDensity ?: GridDensity.fromColumns(prefs.getInt(viewKey, GridDensity.MEDIUM.columns)))
+        mutableStateOf(classic(entryDensity ?: GridDensity.fromColumns(
+            prefs.getInt(viewKey, GridDensity.MEDIUM.columns))))
     }
     LaunchedEffect(viewKey, entryDensity) {
-        if (entryDensity != null && density != entryDensity) density = entryDensity
+        val requested = entryDensity?.let(::classic)
+        if (requested != null && density != requested) density = requested
     }
     LaunchedEffect(viewKey, density) { prefs.edit().putInt(viewKey, density.columns).apply() }
 
@@ -154,7 +172,7 @@ fun AtlasFeatureGrid(
     }
 
     fun chooseDensity(next: GridDensity, focus: Offset) {
-        if (next == density) return
+        if (next == density || next.columns > GridDensity.SMALL.columns) return
         val layout = state.layoutInfo
         val visibleCells = layout.visibleItemsInfo.mapNotNull { cell ->
             val media = items.getOrNull(cell.index) ?: return@mapNotNull null
@@ -224,8 +242,17 @@ fun AtlasFeatureGrid(
         if (showViewAs) GridViewAsControl(density, onChoose = ::chooseAtCentre)
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (busy) "Loading photos…" else emptyText,
-                    Modifier.testTag("atlas-feature-grid-empty"))
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 32.dp)) {
+                    Text(if (busy) "Loading photos…" else emptyText,
+                        Modifier.testTag("atlas-feature-grid-empty"),
+                        textAlign = TextAlign.Center)
+                    if (!busy && emptyDetail != null) Text(emptyDetail,
+                        Modifier.padding(top = 4.dp).testTag("atlas-feature-grid-empty-detail"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center)
+                }
             }
             return@Column
         }
@@ -243,11 +270,11 @@ fun AtlasFeatureGrid(
             state = state,
             contentPadding = PaddingValues(start = 3.dp, end = 3.dp,
                 bottom = LocalAtlasBottomChrome.current),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
+            verticalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
             modifier = Modifier.fillMaxSize().galleryPinchLadder(sourceEpoch, density, state, newTracker = { slop ->
                 GalleryPinchTracker(GalleryZoomStop.forDensity(density), slop,
-                    allowOriginal = originalCurrent != null)
+                    allowOriginal = originalCurrent != null, allowOverview = false)
             }) { next, focus ->
                 if (next == GalleryZoomStop.ORIGINAL) requestOriginal(focus)
                 else next.squareDensityOrNull()?.let { chooseDensity(it, focus) }
@@ -264,7 +291,8 @@ fun AtlasFeatureGrid(
                             add(CustomAccessibilityAction(LARGER_TILES_ACTION) {
                                 chooseAtCentre(larger); true })
                         }
-                        GridDensity.entries.getOrNull(density.ordinal + 1)?.let { smaller ->
+                        GridDensity.entries.getOrNull(density.ordinal + 1)
+                            ?.takeIf { it.columns <= GridDensity.SMALL.columns }?.let { smaller ->
                             add(CustomAccessibilityAction(SMALLER_TILES_ACTION) {
                                 chooseAtCentre(smaller); true })
                         }
@@ -274,9 +302,16 @@ fun AtlasFeatureGrid(
             }.testTag("atlas-feature-grid")
         ) {
             itemsIndexed(items, key = { index, _ -> gridLazySaveablePositionKey(index) }) { _, media ->
-                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
+                // Keep coordinates outside Compose state: scroll frames must not
+                // recompose every visible tile merely to track its rectangle.
+                val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
+                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(AtlasTokens.Radii.GridTile))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable(onClickLabel = "Open ${media.name}") { currentOpen(media) }
+                    .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
+                    .clickable(onClickLabel = "Open ${media.name}") {
+                        SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
+                        currentOpen(media)
+                    }
                     .testTag("atlas-grid-media-${media.id}-${if (media.isVideo) "video" else "photo"}")) {
                     // Existing Coil media request and cache remain owned by the host.
                     // A fixed request size across 3/4/7 does not force extra decodes

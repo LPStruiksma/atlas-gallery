@@ -24,6 +24,15 @@ internal object ThumbnailPrefetchPlan {
     const val LOOKAHEAD_SECONDS = 0.35f
 
     /**
+     * Hard ceiling on slots per side, whatever `columns` says. The widest real
+     * grid (28 columns at the densest zoom stop) needs 12 * 28 = 336 slots;
+     * without a ceiling a corrupt or extreme column count against a large
+     * catalogue asked for an IntArray of ~2^31 slots (OutOfMemoryError in the
+     * PERF-21 scale tests, run 43848830646).
+     */
+    const val MAX_SLOTS_PER_SIDE = 512
+
+    /**
      * Rows to warm ahead for a scroll speed in rows per second (sign ignored).
      * Non-finite speeds are treated as idle rather than as "infinitely fast".
      */
@@ -54,17 +63,36 @@ internal object ThumbnailPrefetchPlan {
         if (slotCount <= 0 || columns <= 0 || firstVisible < 0 || lastVisible < firstVisible) {
             return IntArray(0)
         }
+        // A completely out-of-range visible span has no valid near-side window.
+        if (firstVisible >= slotCount) return IntArray(0)
         val last = min(lastVisible, slotCount - 1)
-        val ahead = rowsAhead(rowsPerSecond) * columns
-        val behind = ROWS_BEHIND * columns
+        val availableAfter = slotCount - 1 - last
+        val availableBefore = firstVisible
+
+        // Clip before converting to Int. MAX_ROWS_AHEAD * Int.MAX_VALUE fits Long;
+        // each side is bounded by its physical gap and by MAX_SLOTS_PER_SIDE.
+        fun boundedRows(rows: Int, available: Int): Int =
+            (rows.toLong() * columns.toLong())
+                .coerceAtMost(available.toLong())
+                .coerceAtMost(MAX_SLOTS_PER_SIDE.toLong())
+                .toInt()
+        val aheadAfter = boundedRows(rowsAhead(rowsPerSecond), availableAfter)
+        val aheadBefore = boundedRows(rowsAhead(rowsPerSecond), availableBefore)
+        val behindAfter = boundedRows(ROWS_BEHIND, availableAfter)
+        val behindBefore = boundedRows(ROWS_BEHIND, availableBefore)
+        val idleAfter = boundedRows(IDLE_ROWS_AHEAD, availableAfter)
+        val idleBefore = boundedRows(IDLE_ROWS_AHEAD, availableBefore)
         // Idle: warm both sides equally (a user may scroll either way next).
-        val (forward, backward) = when {
-            direction > 0 -> ahead to behind
-            direction < 0 -> behind to ahead
-            else -> IDLE_ROWS_AHEAD * columns to IDLE_ROWS_AHEAD * columns
+        val after = when {
+            direction > 0 -> aheadAfter
+            direction < 0 -> behindAfter
+            else -> idleAfter
         }
-        val after = min(forward, slotCount - 1 - last).coerceAtLeast(0)
-        val before = min(backward, firstVisible).coerceAtLeast(0)
+        val before = when {
+            direction < 0 -> aheadBefore
+            direction > 0 -> behindBefore
+            else -> idleBefore
+        }
         val out = IntArray(after + before)
         var n = 0
         if (direction == 0) {

@@ -1,0 +1,6 @@
+# #260: synthetic Unknown faces review screen states, captured by UnknownFacesReviewScreenStateTest.
+# Ready and pending states in light/dark; required by the fail-closed aggregate UI-evidence check.
+people-260-pending-dark
+people-260-pending-light
+people-260-ready-dark
+people-260-ready-light

@@ -1,0 +1,2 @@
+# #39 People keeps the last published person while a scan adds faces (PeoplePrototypeJourneyTest).
+people-39-during-scan

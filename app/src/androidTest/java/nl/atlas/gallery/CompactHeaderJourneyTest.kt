@@ -19,6 +19,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +34,7 @@ import org.junit.runners.model.Statement
 /**
  * #492 compact Samsung-style header in the real Activity, on invented PNGs
  * inserted by this test (emulator only, deleted afterwards). Screenshots go
- * to the emulator-only Pictures/ATLAS-UI-Evidence folder for the PR.
+ * to the emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR) for the PR.
  */
 @RunWith(AndroidJUnit4::class)
 class CompactHeaderJourneyTest {
@@ -61,34 +64,40 @@ class CompactHeaderJourneyTest {
         assertSlimHeader()
 
         // Sort is one icon; its menu marks the current order and offers Reshuffle for Random.
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-newest").assertIsSelected()
-        compose.onNodeWithTag("atlas-photos-sort-random").performClick()
+        openPopup("atlas-photos-sort", "atlas-media-sort-date_created")
+        compose.onNodeWithTag("atlas-media-sort-date_created").assertIsSelected()
+        compose.tap(hasTestTag("atlas-media-sort-random"))
+        awaitClosed("atlas-photos-sort-sheet")
         // A new order is computed off Main and republishes the Photos header
         // when it lands; a menu opened before that is closed with it. Wait for
         // "Ordering library…" to settle, as a user would see it (#530).
         waitForSortSettled()
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-random").assertIsSelected()
+        openPopup("atlas-photos-sort", "atlas-media-sort-random")
+        compose.onNodeWithTag("atlas-media-sort-random").assertIsSelected()
         compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
-        compose.onNodeWithTag("atlas-photos-sort-newest").performClick()
+        compose.tap(hasTestTag("atlas-media-sort-date_created"))
+        awaitClosed("atlas-photos-sort-sheet")
         waitForSortSettled()
 
         // Former chip row + settings gear now live in the overflow menu.
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsSelected()
         // #494: no "Original proportions" entry; pinching reaches that view.
         compose.onNodeWithTag("atlas-original-proportions").assertDoesNotExist()
         compose.onNodeWithTag("atlas-library-status").assertExists()
         compose.waitForIdle()
         saveUiEvidence("header-photos-menu.png")
-        compose.onNodeWithTag("atlas-timeline-toggle").performClick()
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        // Each menu item closes the menu; wait for that before opening it again,
+        // so the next lookup cannot find the closing menu's item.
+        compose.tap(hasTestTag("atlas-timeline-toggle"))
+        awaitClosed("atlas-timeline-toggle")
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsNotSelected()
-        compose.onNodeWithTag("atlas-timeline-toggle").performClick()
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        compose.tap(hasTestTag("atlas-timeline-toggle"))
+        awaitClosed("atlas-timeline-toggle")
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsSelected()
-        compose.onNodeWithTag("atlas-library-status").performClick()
+        compose.tap(hasTestTag("atlas-library-status"))
 
         // Settings gets a Back arrow in the same slim bar.
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
@@ -112,9 +121,8 @@ class CompactHeaderJourneyTest {
         compose.onNodeWithTag("atlas-nav-search").performClick()
         waitFor(hasTestTag("atlas-search-field"))
         compose.onNodeWithTag("atlas-header").assertDoesNotExist()
-        compose.onNodeWithTag("atlas-search-overflow").performClick()
-        waitFor(hasTestTag("atlas-library-status"))
-        compose.onNodeWithTag("atlas-library-status").performClick()
+        openPopup("atlas-search-overflow", "atlas-library-status")
+        compose.tap(hasTestTag("atlas-library-status"))
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-search-field"))
@@ -125,6 +133,17 @@ class CompactHeaderJourneyTest {
         val height = compose.onNodeWithTag("atlas-header").getUnclippedBoundsInRoot().height
         assertTrue("Header is $height tall; #492 wants at most 64dp", height <= 64.dp)
     }
+
+    /** Taps [opener] and waits until [firstItem] of the window it opens exists (rule 5). */
+    private fun openPopup(opener: String, firstItem: String) {
+        compose.tap(hasTestTag(opener))
+        compose.awaitThat("$firstItem in the window opened by $opener") {
+            compose.exists(hasTestTag(firstItem))
+        }
+    }
+
+    private fun awaitClosed(tag: String) =
+        compose.awaitThat("$tag gone (its window closed)") { !compose.exists(hasTestTag(tag)) }
 
     private fun waitForSortSettled() =
         waitFor(hasText("photos & videos", substring = true))
@@ -142,7 +161,8 @@ class CompactHeaderJourneyTest {
  * ([resolveMediaDate]), because MediaStore keeps no DATE_TAKEN for a PNG
  * without EXIF. Without it every screenshot dated "now" (DATE_MODIFIED) and
  * sorted ahead of the test fixtures, pushing them out of the first rows.
- * scripts/ci_android_upgrade_emulator.sh pulls the prefixed name.
+ * scripts/ci_ui_evidence.sh pulls the prefixed name. Since #703 the file
+ * is no longer in MediaStore, so the date hint only keeps the name stable.
  */
 internal const val UI_EVIDENCE_PREFIX = "IMG_20010101_000000_"
 
@@ -182,21 +202,40 @@ internal fun saveUiEvidence(filename: String) {
         }
         Thread.sleep(250L)
     }
-    val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, uiEvidenceDisplayName(filename))
-        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ATLAS-UI-Evidence/")
-    }
-    val uri = requireNotNull(target.contentResolver.insert(
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)) {
-        "Could not create a synthetic UI-evidence image"
-    }
-    try {
-        requireNotNull(target.contentResolver.openOutputStream(uri)) {
-            "Could not write synthetic UI-evidence image"
-        }.use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "Screenshot encoding failed" } }
+    val png = try {
+        java.io.ByteArrayOutputStream().also {
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "Screenshot encoding failed" }
+        }.toByteArray()
     } finally {
         bitmap.recycle()
+    }
+    writeUiEvidenceFile(uiEvidenceDisplayName(filename), png)
+}
+
+/**
+ * #703: where the CI script pulls evidence from. It is shell-owned scratch
+ * space outside shared storage, so MediaStore never indexes a screenshot and
+ * no later test finds one in its gallery. Gradle's uninstall leaves it alone.
+ */
+internal const val UI_EVIDENCE_DEVICE_DIR = "/data/local/tmp/atlas-ui-evidence"
+
+/** Writes [bytes] through the shell user, which owns [UI_EVIDENCE_DEVICE_DIR]. */
+internal fun writeUiEvidenceFile(name: String, bytes: ByteArray) {
+    require(Regex("^[A-Za-z0-9][A-Za-z0-9_.-]*$").matches(name)) { "Bad UI-evidence name $name" }
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+        throw IllegalStateException("UI evidence needs API 31+ (CI runs API 35)")
+    }
+    val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+    fun drain(fd: android.os.ParcelFileDescriptor) =
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
+    drain(automation.executeShellCommand("mkdir -p $UI_EVIDENCE_DEVICE_DIR"))
+    val path = "$UI_EVIDENCE_DEVICE_DIR/$name"
+    val (stdout, stdin) = automation.executeShellCommandRw("dd of=$path")
+    android.os.ParcelFileDescriptor.AutoCloseOutputStream(stdin).use { it.write(bytes) }
+    drain(stdout) // dd has finished once its output closes
+    val size = String(drain(automation.executeShellCommand("stat -c %s $path"))).trim()
+    check(size == bytes.size.toString()) {
+        "UI evidence $name: wrote ${bytes.size} bytes, device has '$size'"
     }
 }
 

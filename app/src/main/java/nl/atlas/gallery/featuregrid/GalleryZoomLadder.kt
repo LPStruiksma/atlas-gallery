@@ -6,18 +6,20 @@ import kotlin.math.ln
 import kotlin.math.sign
 
 /**
- * The four usable phone zoom stops, from full-size uncropped rows to overview.
- * The 12/28-column month/year views need independent grouping and are not
- * fabricated by applying tiny square cells to a 150k-item daily catalogue.
+ * Six phone zoom stops, from original-ratio rows through 3/4/7-column
+ * thumbnails to 12-column month and 28-column year overview layouts.
+ * The overview group headers are planned by TimelineIndex, not the gesture.
  */
 enum class GalleryZoomStop {
-    ORIGINAL, LARGE, MEDIUM, SMALL;
+    ORIGINAL, LARGE, MEDIUM, SMALL, MONTH, YEAR;
 
     fun squareDensityOrNull(): GridDensity? = when (this) {
         ORIGINAL -> null
         LARGE -> GridDensity.LARGE
         MEDIUM -> GridDensity.MEDIUM
         SMALL -> GridDensity.SMALL
+        MONTH -> GridDensity.MONTH
+        YEAR -> GridDensity.YEAR
     }
 
     companion object {
@@ -25,6 +27,8 @@ enum class GalleryZoomStop {
             GridDensity.LARGE -> LARGE
             GridDensity.MEDIUM -> MEDIUM
             GridDensity.SMALL -> SMALL
+            GridDensity.MONTH -> MONTH
+            GridDensity.YEAR -> YEAR
         }
     }
 }
@@ -49,7 +53,9 @@ data class GalleryZoomRequest(
  */
 class GalleryZoomGesture(
     private val initial: GalleryZoomStop,
-    private val allowOriginal: Boolean = true
+    private val allowOriginal: Boolean = true,
+    /** Plain Search/People grids keep their historical three square sizes. */
+    private val allowOverview: Boolean = true
 ) {
     var progress: Float = 0f
         private set
@@ -59,18 +65,18 @@ class GalleryZoomGesture(
         val maxStep = if (factor < 0.5f || factor > 2f) 0.2f else 0.5f
         val step = (-ln(factor.toDouble()) / ln(1.5)).toFloat().coerceIn(-maxStep, maxStep)
         val minimum = if (allowOriginal) 0 else GalleryZoomStop.LARGE.ordinal
+        val maximum = if (allowOverview) GalleryZoomStop.entries.lastIndex else GalleryZoomStop.SMALL.ordinal
         progress = (progress + step).coerceIn(
             (minimum - initial.ordinal).toFloat(),
-            (GalleryZoomStop.entries.lastIndex - initial.ordinal).toFloat()
+            (maximum - initial.ordinal).toFloat()
         )
     }
 
     fun settle(): GalleryZoomStop {
         val steps = floor(abs(progress) + 0.75f).toInt() * progress.sign.toInt()
         val minimum = if (allowOriginal) 0 else GalleryZoomStop.LARGE.ordinal
-        return GalleryZoomStop.entries[(initial.ordinal + steps).coerceIn(
-            minimum, GalleryZoomStop.entries.lastIndex
-        )]
+        val maximum = if (allowOverview) GalleryZoomStop.entries.lastIndex else GalleryZoomStop.SMALL.ordinal
+        return GalleryZoomStop.entries[(initial.ordinal + steps).coerceIn(minimum, maximum)]
     }
 }
 

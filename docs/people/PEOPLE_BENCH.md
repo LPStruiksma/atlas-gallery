@@ -331,6 +331,50 @@ java ... -Dautoadd=$C/auto -Dearly=$C/early.txt [-DsameName=1] PeopleBenchKt $C/
 python3 -I tools/people_bench/judge_autoadd.py $C/auto $C/auth
 ```
 
+## Phase 1 path on the bench
+
+Phase 1 (#580, now atlas-gallery#51) asks that the owner's 20 largest people each be one group.
+`PeopleBench -Dphase1=DIR` plays the owner's path on the two sets of 48 libraries: group all faces
+with the measured rule; for each recurring reference identity (10+ faces), largest first, name
+the unnamed group holding most of its faces, as it stands, mistakes included; let
+`FaceClusterer.update` add sure faces on their own; list the questions the app would ask.
+`phase1.py` judges it with the reference model. `-Dfloors=` sweeps
+`ClusterPolicy.personMatchFloor` (shipped: 0.45). Faces of the named people only:
+
+| floor | set | under the name | in a group asked about | loose, not asked (3+ / pairs / alone) | joined on their own: wrong / unsure | questions with a name: yes / no |
+|---|---|---|---|---|---|---|
+| 0.45 | 1 (55 people, 1,454 faces) | 90.2% | 57 | 3 / 7 / 76 | 18: 0 / 0 | 32 / 8 |
+| 0.40 | 1 | 91.1% | 43 | 0 / 5 / 81 | 33: 0 / 0 | 27 / 7 |
+| 0.38 | 1 | 91.8% | 32 | 0 / 5 / 82 | 43: 0 / 0 | 19 / 7 |
+| 0.35 | 1 | 92.8% | 15 | 0 / 7 / 82 | 60: 0 / 1 | 6 / 7 |
+| 0.33 | 1 | 93.6% | 10 | 3 / 5 / 75 | 77: 1 / 5 | 4 / 7 |
+| 0.30 | 1 | 94.9% | 5 | 5 / 7 / 57 | 117: 5 / 19 | 3 / 6 |
+| 0.45 | 2, held out (63 people, 1,488 faces) | 86.9% | 63 | 14 / 3 / 112 | 30: 0 / 0 | 36 / 12 |
+| 0.40 | 2 | 88.0% | 46 | 9 / 3 / 118 | 47: 0 / 0 | 27 / 12 |
+| 0.38 | 2 | 88.4% | 38 | 9 / 3 / 119 | 54: 0 / 0 | 22 / 12 |
+| 0.35 | 2 | 89.7% | 13 | 7 / 3 / 125 | 83: 0 / 3 | 5 / 4 |
+| 0.33 | 2 | 91.3% | 8 | 6 / 2 / 109 | 117: 2 / 7 | 4 / 4 |
+
+What it says:
+
+- **The questions are the lever for the `top20` target.** At 0.45 the loose groups of 3+ of a named
+  person almost all carry a question for that name (57 and 63 faces asked about, 3 and 14 not), and
+  three in four of those questions are a yes. Answering the list (People ⋮ → Same person?) is what
+  takes a person to `+0/0`.
+- **Lowering the floor closes questions, safely down to about 0.38.** From 0.45 to 0.40 or 0.38 the
+  engine itself joins 15 to 25 more faces per set, all of them yes answers the owner would otherwise
+  give (the "no" questions stay), with no wrong or unsure face in 80 (0.40) or 97 (0.38) joined
+  faces. At 0.35 4 of 143 are unsure, at 0.33 3 of 194 are wrong (1.5%), at 0.30 4.3%. Zero of
+  about 100 still allows up to about 3% of joined faces (under 0.1% of a person's faces); more sets
+  would tighten it.
+- **Lone faces are what is left, and no question reaches them.** After the questions, 5 to 8% of a
+  named person's faces sit alone, under every floor that is still safe. `top20` cannot see them (it
+  counts loose groups with a question), so `+0/0` overstates how whole a person is by that much.
+  They are below the face rule's reach; Phase 2 evidence (same event, body, attire) is the way in.
+
+Not yet the owner's library: bench people have 10 to 225 faces (median about 20), the owner's top 20 have 80 to 720,
+and a larger person both scores a lone face more steadily and attracts more strangers.
+
 ## The phone's own numbers
 
 The bench cannot see the owner's library, and nothing from that library may leave

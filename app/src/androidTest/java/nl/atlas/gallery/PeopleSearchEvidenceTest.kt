@@ -22,7 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -57,7 +60,7 @@ import org.junit.runner.RunWith
  * #516 rendered proof in the real Activity on invented PNGs: People is a
  * plain page (no banner, explainer, V4 card or index panel), its secondary
  * actions sit in ⋮, and Search is one field. Screenshots go to the
- * emulator-only Pictures/ATLAS-UI-Evidence folder for the PR.
+ * emulator-only UI-evidence folder (UI_EVIDENCE_DEVICE_DIR) for the PR.
  */
 @RunWith(AndroidJUnit4::class)
 class PeopleSearchAppEvidenceTest {
@@ -87,6 +90,13 @@ class PeopleSearchAppEvidenceTest {
             "Choose V4 export", "Connect V4")
         compose.waitForIdle()
         saveUiEvidence("people-empty.png")
+        // FIND-0: People list search exists even with no reviewed names.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        waitFor(compose, hasTestTag("atlas-scoped-search-field"))
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.waitForIdle()
+        saveUiEvidence("find-0-people-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
 
         compose.onNodeWithTag("atlas-header-more").performClick()
         // #584: Samsung's People ⋮ → Hidden.
@@ -104,6 +114,13 @@ class PeopleSearchAppEvidenceTest {
         waitFor(compose, androidx.compose.ui.test.hasText("No hidden people"))
         compose.waitForIdle()
         saveUiEvidence("people-hidden.png")
+        // Hidden People shares the same name search without changing hidden state.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        waitFor(compose, hasTestTag("atlas-scoped-search-field"))
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("Ada")
+        compose.waitForIdle()
+        saveUiEvidence("find-0-people-hidden-scoped.png")
+        compose.onNodeWithContentDescription("Close search").performClick()
         dismissWithBack(compose, hasTestTag("atlas-people-hidden"))
         waitFor(compose, hasTestTag("atlas-people-home"))
 
@@ -140,7 +157,7 @@ class PeopleSearchAppEvidenceTest {
         // #654: a query with no hits says "No results", not "No photos here yet".
         compose.onNodeWithTag("atlas-search-field").performTextInput("qzxqzx")
         waitFor(compose, hasTestTag("atlas-feature-grid-empty") and
-            androidx.compose.ui.test.hasText("No results"))
+            androidx.compose.ui.test.hasText("No results", substring = true))
         assertNoText(compose, "No photos here yet")
         compose.waitForIdle()
         saveUiEvidence("search-654-empty.png")
@@ -162,10 +179,41 @@ class PeopleSearchStateEvidenceTest {
     private val names = listOf("Ada", "Ben", "Chloé", "Daan", "Eva", "Femke", "Gijs", "")
 
     /**
-     * #643: while a scan runs, People shows the grid and one thin line under
-     * the title: no status text, no button. Pause and review sit in ⋮, next
-     * to Hidden; the V4 import is not there. Idle, the line is gone too.
+     * #643/#46: while a scan runs, People shows a readable status and
+     * one thin animated bar. Pause and review remain in ⋮ next to Hidden.
+     * The completed status remains visible after the animated bar goes away.
      */
+    /** #31: the async permission/catalogue gap renders a restoring state, not a lost scan. */
+    @Test fun settingsRendersRestoringWhileTheGalleryPublicationIsPending() {
+        compose.setContent {
+            AtlasEvidenceHarness {
+                AtlasSettingsScreen(
+                    scanPhase = null,
+                    onPauseScan = null,
+                    onResumeScan = null,
+                    visualIndexOn = true,
+                    showPhotoDetails = false,
+                    versionName = "test",
+                    onVisualIndex = {},
+                    onPeopleNumbers = {},
+                    onPhotoDetails = {},
+                    onImportV4 = {},
+                    onLinkV4 = {},
+                    onDiagnostics = {},
+                    scanLoading = true
+                )
+            }
+        }
+        waitFor(compose, hasTestTag("atlas-settings-face-scanning"))
+        // Both saved face and visual opt-ins are restoring, not unavailable.
+        assertEquals(2, compose.onAllNodesWithText("Restoring…")
+            .fetchSemanticsNodes().size)
+        compose.onNodeWithText("Unavailable").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-people-visual-index").assertExists()
+        compose.waitForIdle()
+        saveUiEvidence("settings-31-restoring.png")
+    }
+
     @Test fun settingsPausesAndResumesOnlyWhenTheHostOffersActions() {
         var phase by mutableStateOf(FaceDiscoveryPhase.SCANNING)
         var pauses = 0
@@ -231,7 +279,9 @@ class PeopleSearchStateEvidenceTest {
         compose.onNodeWithTag("atlas-people-progress-line")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription,
                 "Finding people · 320 of 1000"))
-        assertNoText(compose, "Finding people", "Pause scanning", "Review unknown faces")
+        // #46 makes the active scan text visible; controls still live in ⋮.
+        compose.onNodeWithText("Finding people · 320 of 1000").assertExists()
+        assertNoText(compose, "Pause scanning", "Review unknown faces")
         compose.waitForIdle()
         saveUiEvidence("people-grid.png")
 

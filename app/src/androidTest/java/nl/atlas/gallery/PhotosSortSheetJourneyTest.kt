@@ -1,0 +1,185 @@
+package nl.atlas.gallery
+
+import android.accessibilityservice.AccessibilityService
+import android.os.ParcelFileDescriptor
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.runner.Description
+import org.junit.runner.RunWith
+import org.junit.runners.model.Statement
+
+/**
+ * #19, Samsung parity spec §2: the real Photos action opens a bottom choice
+ * sheet. These two emulator journeys use invented media, both phone themes
+ * and S24+ screenshots. No production/personal MediaStore content is needed.
+ */
+@RunWith(AndroidJUnit4::class)
+class PhotosSortLightJourneyTest : PhotosSortSheetJourneyTest(dark = false)
+
+@RunWith(AndroidJUnit4::class)
+class PhotosSortDarkJourneyTest : PhotosSortSheetJourneyTest(dark = true)
+
+abstract class PhotosSortSheetJourneyTest(private val dark: Boolean) {
+    private val compose = createAndroidComposeRule<MainActivity>()
+    private val fixtures = SyntheticHeaderFixtures()
+    private val mode = if (dark) "dark" else "light"
+
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+        .around(PhotosSortNightModeRule(dark)).around(fixtures).around(compose)
+
+    @Test fun everySortChoiceIsAccessibleSelectedAndClosesToPhotos() {
+        compose.waitForNode(hasTestTag("atlas-photos-sort"))
+        compose.waitForNode(hasText("photos & videos", substring = true))
+        // A previous journey can leave Pictures persisted in any sort mode.
+        // Set the desired mode explicitly and verify what the sheet renders.
+        for (choice in MediaSortKey.entries) {
+            open()
+            compose.tap(hasTestTag(choice.tag()))
+            closed()
+            compose.waitForNode(hasText("photos & videos", substring = true))
+            compose.onNodeWithTag("atlas-nav-photos").assertIsSelected()
+
+            open()
+            compose.onNodeWithTag(choice.tag()).assertIsSelected()
+            MediaSortKey.entries.forEach { entry ->
+                compose.onNodeWithTag(entry.tag()).assertExists()
+            }
+            // Each of the five new choices has a rendered
+            // light/dark sheet with its active radio indicator.
+            compose.waitForIdle()
+            saveUiEvidence("sort-12-${choice.name.lowercase()}-$mode.png")
+            back()
+            closed()
+        }
+
+        open()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
+        compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
+        compose.tap(hasTestTag("atlas-photos-reshuffle"))
+        closed()
+        compose.onNodeWithTag("atlas-nav-photos").assertIsSelected()
+
+        // Android Back dismisses without applying another order.
+        open()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
+        back()
+        closed()
+        open()
+        compose.onNodeWithTag(MediaSortKey.RANDOM.tag()).assertIsSelected()
+        back()
+        closed()
+    }
+
+    /**
+     * Opens the sheet and returns once its first and last choice exist (rule 5):
+     * the sheet is a separate window that attaches a moment after the tap.
+     */
+    private fun open() {
+        compose.tap(hasTestTag("atlas-photos-sort"))
+        compose.awaitThat("the sort sheet open with all choices") {
+            compose.exists(hasTestTag(MediaSortKey.entries.first().tag())) &&
+                compose.exists(hasTestTag(MediaSortKey.entries.last().tag()))
+        }
+    }
+
+    private fun closed() {
+        compose.waitUntil(10_000L) {
+            compose.onAllNodes(hasTestTag("atlas-photos-sort-sheet"))
+                .fetchSemanticsNodes().isEmpty()
+        }
+    }
+
+    private fun back() {
+        // #82: on CI a launcher ANR dialog ("Application Not Responding:
+        // com.android.launcher3") took window focus just before the final Back,
+        // consumed it, and the sheet correctly stayed open (PR #115 shard 0,
+        // ATLAS_SORT_BACK log). Only press Back once ATLAS holds focus; the
+        // gesture and the sheet assertion are unchanged.
+        awaitAppFocus()
+        val before = describeFocus()
+        android.util.Log.i("ATLAS_SORT_BACK", "before Android Back: $before")
+        val accepted = try {
+            InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(
+                AccessibilityService.GLOBAL_ACTION_BACK)
+        } finally {
+            android.util.Log.i("ATLAS_SORT_BACK", "after Android Back: ${describeFocus()}")
+        }
+        assertTrue("Android Back action accepted (before: $before)", accepted)
+        // The API35 emulator's Launcher3 sometimes raises an ANR between
+        // awaitAppFocus() and the global Back action. That system dialog can
+        // consume Back, leaving this app's sheet open. Only retry when the
+        // launcher ANR was actually focused AND the sheet remains present;
+        // an app-owned sheet that fails to close must still fail this test.
+        compose.waitForIdle()
+        val after = describeFocus()
+        if (after.contains("Application Not Responding: com.android.launcher3") &&
+            compose.onAllNodes(hasTestTag("atlas-photos-sort-sheet"))
+                .fetchSemanticsNodes().isNotEmpty()) {
+            clearSystemAnrDialogs(attempts = 1)
+            awaitAppFocus()
+            val retriedFrom = describeFocus()
+            assertTrue("ATLAS must regain focus after Launcher3 ANR: $retriedFrom",
+                APP_FOCUS.containsMatchIn(retriedFrom))
+            assertTrue("Android Back retry after Launcher3 ANR accepted",
+                InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(
+                    AccessibilityService.GLOBAL_ACTION_BACK))
+        }
+    }
+
+    /**
+     * Waits up to 10 s for an ATLAS window to hold focus, pressing Wait on a
+     * launcher ANR dialog meanwhile. As before, a timeout is not a failure
+     * here: the Back assertions that follow decide.
+     */
+    private fun awaitAppFocus() {
+        try {
+            compose.awaitThat("an ATLAS window to hold focus", timeoutMs = 10_000L) {
+                APP_FOCUS.containsMatchIn(describeFocus()) ||
+                    clearSystemAnrDialogs(attempts = 1).let { false }
+            }
+        } catch (timeout: AssertionError) {
+            android.util.Log.w("ATLAS_SORT_BACK", "no ATLAS focus after 10 s: ${timeout.message}")
+        }
+    }
+
+    private fun MediaSortKey.tag() = "atlas-media-sort-${name.lowercase()}"
+}
+
+/** Changes the emulator theme before launching MainActivity and restores it. */
+private class PhotosSortNightModeRule(private val dark: Boolean) : TestRule {
+    override fun apply(base: Statement, description: Description): Statement =
+        object : Statement() {
+            override fun evaluate() {
+                val before = shell("cmd uimode night").substringAfter(":").trim()
+                shell("cmd uimode night " + if (dark) "yes" else "no")
+                try {
+                    base.evaluate()
+                } finally {
+                    if (before in setOf("yes", "no", "auto")) shell("cmd uimode night $before")
+                }
+            }
+        }
+
+    private fun shell(command: String): String {
+        val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(pfd)
+            .use { it.readBytes().decodeToString() }
+    }
+}
+
+/** `dumpsys window` focus line naming an ATLAS window (see [describeFocus]). */
+private val APP_FOCUS = Regex("""mCurrentFocus=Window\{\S+ u\d+ nl\.atlas\.gallery/""")

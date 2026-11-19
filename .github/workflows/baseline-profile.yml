@@ -1,0 +1,70 @@
+name: ATLAS Android - Baseline Profile (release candidate)
+# PERF-8 (#129): capture the ART Baseline Profile on an API35 emulator from synthetic
+# MediaStore images only (baselineprofile/ inserts and deletes its own JPEGs). Runs once
+# per release candidate by manual dispatch, never per push. The result is uploaded as an
+# artifact; a Dev seat commits app/src/release/generated/baselineProfiles/ in a PR.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: atlas-baseline-profile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Android SDK
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      # No signing secrets: the profiled nonMinifiedRelease variant uses the runner-local debug key.
+      - name: Build the profiled app and generator before booting the emulator
+        run: gradle :app:assembleNonMinifiedRelease :baselineprofile:assembleNonMinifiedRelease --no-daemon --stacktrace
+      - name: Enable KVM hardware acceleration (fail fast if unavailable)
+        shell: bash
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Generate the Baseline Profile on an API35 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: gradle :app:generateBaselineProfile --no-daemon --stacktrace
+      - name: Show the generated profile (size, digest, and a log copy for seats without artifact access)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(find app/src -path '*generated/baselineProfiles*' -type f | sort)"
+          [[ -n "$files" ]] || { echo 'No generated profile'; exit 0; }
+          wc -l $files
+          sha256sum $files
+          # Deterministic tar.gz, base64 between markers: decode with
+          #   sed -n '/^BEGIN-PROFILE-TGZ$/,/^END-PROFILE-TGZ$/p' | sed '1d;$d' | base64 -d | tar xz
+          echo BEGIN-PROFILE-TGZ
+          tar --sort=name --mtime='2000-01-01 00:00Z' --owner=0 --group=0 --numeric-owner -cf - $files | gzip -n -9 | base64 -w 120
+          echo END-PROFILE-TGZ
+      - name: Upload generated profile and generator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-baseline-profile
+          path: |
+            app/src/*/generated/baselineProfiles/**
+            baselineprofile/build/outputs/**
+          if-no-files-found: warn

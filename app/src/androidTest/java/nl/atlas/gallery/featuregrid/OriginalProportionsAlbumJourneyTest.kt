@@ -210,6 +210,9 @@ class OriginalProportionsUnknownMetadataTest {
         // decoded aspect ratio after beginning as an unknown square.
         val seen = mutableSetOf<Int>()
         for (step in ALBUM_SIZES.indices.map { it + 1 }) {
+            // Decoded ratios re-plan the rows asynchronously, temporarily
+            // remounting the LazyColumn. Wait for its semantics before scrolling.
+            compose.waitForNode(hasTestTag("atlas-ratio-gallery"))
             compose.onNodeWithTag("atlas-ratio-gallery").performScrollToNode(
                 hasContentDescription("IMG_HEADER_FIXTURE_$step.", substring = true))
             compose.waitUntil(60_000L) {
@@ -226,6 +229,7 @@ class OriginalProportionsUnknownMetadataTest {
             seen.add(step)
         }
         assertEquals(ALBUM_SIZES.size, seen.size)
+        compose.waitForNode(hasTestTag("atlas-ratio-gallery"))
         compose.onNodeWithTag("atlas-ratio-gallery").performScrollToNode(
             hasContentDescription("IMG_HEADER_FIXTURE_1.", substring = true))
         compose.waitForIdle()
