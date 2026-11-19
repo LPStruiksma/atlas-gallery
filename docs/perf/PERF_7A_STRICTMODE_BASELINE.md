@@ -55,3 +55,5 @@ The baseline at #421 head b2fdc57 found eight main-thread openings on the first 
 - `StartupPreferenceWarmup` opens the album order, Pictures sort, grid density, People opt-in and V4 link preference files on IO in `AtlasApplication.onCreate`. The grid opens them through `applicationContext`, so its synchronous reads find the file already loaded and never wait on disk.
 
 Row 1 (`MicroThumbnails.install`) is left to PERF-1 PR #146, which owns that start-up path.
+
+Result at #562 head 6a20bcd (run 44535386732, emulator shard 1): rows 2 to 8 are gone. The cold-start logcat has 18 violations over 6 launches, every one in `MicroThumbnails.install` (lines 68 and 71, row 1). The first-open flows report 6 sites, all at `process-start`: three are harness frames and three are `MicroThumbnails.install`. No site is reported for the grid, viewer, People or Search first opens, or for any re-entry. Debug StrictMode is clean apart from row 1, which goes with #146.
