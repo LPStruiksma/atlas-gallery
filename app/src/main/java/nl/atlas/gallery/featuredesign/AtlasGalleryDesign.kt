@@ -414,6 +414,17 @@ val AtlasPillColor: Color
 val AtlasPillEdge = AtlasTokens.Spacing.PillEdge
 val AtlasTabPillHeight = AtlasTokens.Spacing.TabHeight
 
+/**
+ * #413: factor that caps a tab label's effective font scale at 130%, so the
+ * 60dp Samsung-style pill stays compact and its labels never collide.
+ */
+internal fun navigationLabelCap(fontScale: Float) =
+    fontScale.coerceAtLeast(1f).coerceAtMost(1.3f) / fontScale.coerceAtLeast(0.01f)
+
+/** Keep the 60dp Samsung-style pill compact while preventing large-font tab collisions. */
+internal fun navigationLabelSize(fontScale: Float) =
+    AtlasTokens.Type.NavigationLabel * navigationLabelCap(fontScale)
+
 @Composable
 private fun AtlasTabItem(
     destination: AtlasDestination,
@@ -422,6 +433,14 @@ private fun AtlasTabItem(
     modifier: Modifier = Modifier
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
+    val fontScale = LocalDensity.current.fontScale
+    val labelSize = navigationLabelSize(LocalDensity.current.fontScale)
+    // #413: the inherited line height is in sp too; cap it with the size, or at
+    // 200% its taller line box pushes the label onto the pill's bottom edge.
+    val inheritedLineHeight = LocalTextStyle.current.lineHeight
+    // An em line height already follows the capped size; only sp needs the cap.
+    val labelLineHeight = if (inheritedLineHeight.isSp)
+        inheritedLineHeight * navigationLabelCap(fontScale) else inheritedLineHeight
     // 11sp labels still meet text contrast over a white tile behind the dark pill.
     val tint = if (selected) ink else ink.copy(alpha = 0.78f)
     Column(
@@ -440,7 +459,9 @@ private fun AtlasTabItem(
         Text(
             destination.title,
             color = tint,
-            fontSize = AtlasTokens.Type.NavigationLabel,
+            fontSize = labelSize,
+            lineHeight = labelLineHeight,
+            modifier = Modifier.testTag("atlas-nav-label-" + destination.name.lowercase()),
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
