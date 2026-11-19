@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.hideKeyboard
 import nl.atlas.gallery.testkit.tap
@@ -82,7 +84,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SearchOneFieldEvidenceTest {
     private val compose = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(compose)
 
     private val people = listOf(SearchPerson("p1", "Susanne de Vries"),
         SearchPerson("p2", "Sam"), SearchPerson("p3", "Daan"))

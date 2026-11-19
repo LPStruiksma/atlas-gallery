@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.hideKeyboard
 import nl.atlas.gallery.testkit.tap
@@ -47,7 +49,8 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class AiEditUiEvidenceTest {
     private val compose = createAndroidComposeRule<ComponentActivity>()
-    @get:Rule val rules = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val rules = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(compose)
     private val candidate = AiEditWorkingCandidate(
         id = "synthetic", fileName = "synthetic.png", parentId = null,
         prompt = "Brighten the sky", providerId = "atlas-synthetic-mock",

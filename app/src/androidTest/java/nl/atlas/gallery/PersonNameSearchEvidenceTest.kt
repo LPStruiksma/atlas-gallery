@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -65,7 +66,8 @@ class PersonNameSearchEvidenceTest {
     private val compose = createComposeRule()
 
     // #645: evidence at the owner's S24+ size.
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
+        .around(S24DisplayRule()).around(compose)
 
     private val people = listOf(
         SearchPerson("p1", "Susanne de Vries"), SearchPerson("p2", "Sam"),

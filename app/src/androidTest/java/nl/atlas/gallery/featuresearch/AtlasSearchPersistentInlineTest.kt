@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featuresearch
 
+import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -25,7 +26,9 @@ import org.junit.runner.RunWith
 /** FIND-0: the existing library Search field must never collapse into an icon. */
 @RunWith(AndroidJUnit4::class)
 class AtlasSearchPersistentInlineTest {
-    @get:Rule val compose = createComposeRule()
+    // Outermost: the test keyboard is chosen before the Activity starts.
+    @get:Rule(order = 0) val keyboard = KeyboardRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun globalSearchKeepsItsExistingFieldWithoutScopeChips() {
         compose.setContent {

@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -72,7 +73,8 @@ class PeopleSearchAppEvidenceTest {
     private val compose = createAndroidComposeRule<MainActivity>()
 
     // #584: phone-size renders (Galaxy S24+, 1080×2340).
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
+        .around(S24DisplayRule())
         .around(fixtures).around(compose)
 
     @Test fun peopleIsPlainAndSearchIsOneField() {
@@ -178,7 +180,8 @@ class PeopleSearchStateEvidenceTest {
     private val compose = createComposeRule()
 
     // #645: evidence at the owner's S24+ size (1080x2340).
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
+        .around(S24DisplayRule()).around(compose)
 
     private val names = listOf("Ada", "Ben", "Chloé", "Daan", "Eva", "Femke", "Gijs", "")
 

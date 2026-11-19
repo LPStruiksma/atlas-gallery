@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -23,7 +24,9 @@ import org.junit.runner.RunWith
 /** Synthetic, source-free picker states; never touches MediaStore or transfer consent. */
 @RunWith(AndroidJUnit4::class)
 class AlbumPickerDesign10bTest {
-    @get:Rule val rule = createComposeRule()
+    // Outermost: the test keyboard is chosen before the Activity starts.
+    @get:Rule(order = 0) val keyboard = KeyboardRule()
+    @get:Rule(order = 1) val rule = createComposeRule()
 
     @Test fun emptyCopyPickerKeepsCreateFirstAndCancelPreservesSelection() {
         val events = mutableListOf<String>()

@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -37,7 +38,8 @@ class AlbumsGridEvidenceTest {
     private val compose = createAndroidComposeRule<MainActivity>()
 
     // #645: evidence at the owner's S24+ size (1080x2340).
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
+        .around(S24DisplayRule())
         .around(fixture).around(compose)
 
     @Test fun threeColumnsAndPinnedAlbumsScreenshot() {

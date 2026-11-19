@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.awaitKeyboardShown
 import nl.atlas.gallery.testkit.hideKeyboard
@@ -36,7 +38,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AlbumPickerDesign10bEvidenceTest {
     private val compose = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(compose)
 
     private fun album(i: Int, title: String, location: String? = null) = AlbumSummary(
         "Fixture/$i/", title, 3 + i % 40, 3 + i % 40, 0, null, false, 1_700_000_000_000L - i,

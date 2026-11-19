@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.hideKeyboard
 import nl.atlas.gallery.testkit.tap
@@ -54,7 +56,8 @@ class SelectionMoreJourneyTest {
     private val compose = createAndroidComposeRule<MainActivity>()
 
     @get:Rule val chain: RuleChain =
-        RuleChain.outerRule(S24DisplayRule()).around(fixtures).around(compose)
+        RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+            .around(S24DisplayRule()).around(fixtures).around(compose)
 
     @Test fun copyToAlbumMoveToNewAlbumThenHideAndUnhideTheAlbum() {
         val ids = fixtures.ids
