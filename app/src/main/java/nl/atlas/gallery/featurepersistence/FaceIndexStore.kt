@@ -1413,7 +1413,7 @@ class FaceIndexStore(
                 FROM faces f JOIN embeddings e ON e.face_uid=f.face_uid
                 WHERE f.media_key=? AND f.quality_score IS NULL
                 AND e.source_revision=? AND e.model_version=?
-                ORDER BY f.ordinal LIMIT 33""",
+                ORDER BY f.ordinal LIMIT 32""",
                 arrayOf(header.first, header.second, embedderVersion)).use { cursor ->
                 buildList {
                     while (cursor.moveToNext()) add(FaceQualityBackfillFace(
