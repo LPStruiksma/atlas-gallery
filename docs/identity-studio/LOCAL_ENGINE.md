@@ -59,13 +59,13 @@ SHA-256 `5adf9f48574afc366fa08a2223297b31e10142f879ae8f74efe1b5a0023cbac2`.
 
 ### Emulator timings (stub network, API 35 CI emulator)
 
-Logged under tag `IDS9_TIMING` by the emulator test; filled in from the first green review run. These measure the pipeline around the network, not a real network: the stub costs almost nothing. S24+ timings come from Lukas's phone at the first canary.
+Logged under tag `IDS9_TIMING` by the emulator test. These values come from the first green review run ([run 44419277477](https://github.com/LPStruiksma/atlas-gallery/actions/runs/44419277477), head `ec85cf0`, logcat in the `ATLAS-android-UI-evidence-shard-0` artifact). These measure the pipeline around the network, not a real network: the stub costs almost nothing. S24+ timings come from Lukas's phone at the first canary.
 
 | Case | Time |
 | --- | --- |
-| First candidate (cold load included), 1024 x 768 | pending first run |
-| Warm candidate, 1024 x 768 | pending first run |
-| 50 MP source | pending first run |
+| First candidate (cold load included), 1024 x 768 | 1005 ms |
+| Warm candidate, 1024 x 768 | 509 ms |
+| 50 MP source (8000 x 6250) | 2142 ms, processed at full size (`Success`, not refused) |
 
 ## Open points
 
