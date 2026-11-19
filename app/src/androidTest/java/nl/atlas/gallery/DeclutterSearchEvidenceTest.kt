@@ -2,12 +2,6 @@ package nl.atlas.gallery
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.UiAutomation
-import android.hardware.display.DisplayManager
-import android.view.Display
-import android.view.Surface
-import org.junit.rules.TestRule
-import org.junit.runner.Description
-import org.junit.runners.model.Statement
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -26,6 +20,10 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.isRoot
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -170,22 +168,37 @@ class DeclutterSearchEvidenceTest {
  */
 @RunWith(AndroidJUnit4::class)
 class DeclutterSearchLandscapeEvidenceTest {
-    private val rule = createComposeRule()
+    private val rule = createAndroidComposeRule<ComponentActivity>()
 
     // 184 dp at density 450: the landscape keyboard height the frames assume.
     @get:Rule val chain: RuleChain = RuleChain
         .outerRule(KeyboardRule(TestKeyboard.Fixed, fixedHeightPx = 518))
-        .around(S24DisplayRule()).around(LandscapeRule()).around(rule)
+        .around(S24DisplayRule()).around(rule)
 
     @Test fun landscapeKeyboardKeepsEveryControlAboveTheIme() =
         syntheticDeck("Pictures/ATLAS-Declutter-341L/") { deck ->
             var dark by mutableStateOf(false)
             var left = 0
-            rule.setContent {
-                AtlasGalleryTheme(dark = dark) {
-                    DeclutterScreen("Pictures/ATLAS-Declutter-341L/", deck,
-                        onExit = {}, onSearchWholeLibrary = { left++ }, onTrashRequest = {})
+            // Rotate, then recreate explicitly so the Activity starts in landscape,
+            // as PersonPageJourneyTest does (an earlier wm-size swap broke a later
+            // album test in the same shard). Restored to portrait in finally.
+            val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+            automation.setRotation(UiAutomation.ROTATION_FREEZE_90)
+            try {
+            rule.activityRule.scenario.recreate()
+            rule.activityRule.scenario.onActivity { activity ->
+                activity.setContent {
+                    AtlasGalleryTheme(dark = dark) {
+                        DeclutterScreen("Pictures/ATLAS-Declutter-341L/", deck,
+                            onExit = {}, onSearchWholeLibrary = { left++ }, onTrashRequest = {})
+                    }
                 }
+            }
+            rule.awaitThat("Declutter laid out in landscape") {
+                val bounds = rule.onAllNodes(isRoot()).fetchSemanticsNodes()
+                    .maxByOrNull { it.boundsInRoot.width * it.boundsInRoot.height }?.boundsInRoot
+                bounds != null && bounds.width > bounds.height &&
+                    rule.exists(hasTestTag("atlas-declutter-discard"))
             }
             repeat(3) { rule.onNodeWithTag("atlas-declutter-discard").performClick() }
             rule.onNodeWithTag("atlas-declutter-review").performClick()
@@ -217,38 +230,9 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
             }
             rule.runOnIdle { assertEquals(0, left) }
-        }
-}
-
-/**
- * Rotates the S24+ display to landscape before the Activity starts, and puts
- * it back to portrait (then unfrozen) afterwards, as PersonPageJourneyTest
- * does. An earlier version swapped the wm size instead; that left the device
- * in a state that broke a later album test in the same shard.
- */
-internal class LandscapeRule : TestRule {
-    override fun apply(base: Statement, description: Description): Statement =
-        object : Statement() {
-            override fun evaluate() {
-                val instrumentation = InstrumentationRegistry.getInstrumentation()
-                val automation = instrumentation.uiAutomation
-                automation.setRotation(UiAutomation.ROTATION_FREEZE_90)
-                try {
-                    val display = instrumentation.targetContext
-                        .getSystemService(DisplayManager::class.java)
-                        .getDisplay(Display.DEFAULT_DISPLAY)
-                    val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
-                    while (display.rotation != Surface.ROTATION_90) {
-                        check(android.os.SystemClock.uptimeMillis() < deadline) {
-                            "display did not rotate to landscape (rotation ${display.rotation})"
-                        }
-                        runCatching { automation.waitForIdle(100L, 1_000L) }
-                    }
-                    base.evaluate()
-                } finally {
-                    automation.setRotation(UiAutomation.ROTATION_FREEZE_0)
-                    automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
-                }
+            } finally {
+                automation.setRotation(UiAutomation.ROTATION_FREEZE_0)
+                automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             }
         }
 }
