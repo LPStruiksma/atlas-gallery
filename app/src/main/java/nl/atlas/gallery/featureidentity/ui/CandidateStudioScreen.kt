@@ -335,7 +335,10 @@ private fun VersionStrip(state: SwapPersonUiState, source: EditImage, machine: S
         item(key = "original") {
             StripTile(state, null, source, target?.box, Modifier.testTag("swap-tile-original"),
                 onTap = { machine.select(null) }, onLong = { machine.split(null) }) {
-                Text("Original", fontSize = 11.sp, lineHeight = 12.sp, color = Color.White, maxLines = 1,
+                // The caption grows with the font up to 1.3× so it still fits the 72 dp tile; TalkBack reads "Original".
+                val fontScale = LocalDensity.current.fontScale
+                val captionScale = minOf(fontScale, 1.3f) / fontScale
+                Text("Original", fontSize = (11 * captionScale).sp, lineHeight = (12 * captionScale).sp, color = Color.White, maxLines = 1,
                     overflow = TextOverflow.Clip, textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().background(SwapColors.Scrim).padding(vertical = 2.dp))
             }
@@ -405,9 +408,10 @@ private fun TileShimmer() {
 @Composable
 private fun BottomBand(state: SwapPersonUiState, machine: SwapPersonMachine) {
     Box(Modifier.fillMaxWidth().heightIn(min = 56.dp).navigationBarsPadding(), contentAlignment = Alignment.CenterStart) {
-        val firstRunning = state.generating && state.ready.isEmpty()
-        if (firstRunning || (state.generating && state.selectedVersion == null)) {
-            Text(if (firstRunning) "Making ${state.versions.size} versions…" else "Making ${state.pending} more…",
+        // The brief keeps "Making 4 versions…" for the whole first batch, even after its first tiles fill in.
+        val first = state.firstBatchRunning
+        if (first != null || (state.generating && state.selectedVersion == null)) {
+            Text(if (first != null) "Making ${first.size} versions…" else "Making ${state.pending} more…",
                 fontSize = 14.sp, color = SwapColors.OnCanvasMuted,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).testTag("swap-making"))
         } else RefineRow(state, machine)

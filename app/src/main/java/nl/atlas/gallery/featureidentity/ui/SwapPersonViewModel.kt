@@ -214,6 +214,12 @@ data class SwapPersonUiState(
     val ready: List<SwapVersion> get() = versions.filter { it.status == VersionStatus.READY }
     val pending: Int get() = versions.count { it.status == VersionStatus.PENDING }
     val generating: Boolean get() = pending > 0
+    /** The opening versions of the newest batch (4, or fewer after a restore), while any is still being made. */
+    val firstBatchRunning: List<SwapVersion>? get() {
+        val newest = versions.lastOrNull()?.batch ?: return null
+        val first = versions.filter { it.batch == newest }.take(4)
+        return first.takeIf { list -> list.any { it.status == VersionStatus.PENDING } }
+    }
     val selectedVersion: SwapVersion? get() = versions.firstOrNull { it.key == selected }
     /** People as S1 lists them: recents first, then named People by photo count; never unnamed groups. */
     val listedPeople: List<SwapPersonChoice> get() {

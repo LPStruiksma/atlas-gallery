@@ -233,6 +233,9 @@ class SwapPersonEvidenceTest {
 
     private fun shot(name: String) {
         compose.waitForIdle()
+        // Let the new frame reach the screen: run 2 caught the S1 skeleton after the people had loaded.
+        Thread.sleep(250)
+        compose.waitForIdle()
         saveUiEvidence("ids8-$name-${if (dark) "dark" else "light"}-${(fontScale * 100).toInt()}.png")
     }
 
@@ -317,6 +320,8 @@ class SwapPersonEvidenceTest {
         shot("s3-generating-0")
         act { current!!.drain(2) }
         assertEquals(2, current!!.state.ready.size)
+        // The first batch keeps its "Making 4 versions…" line until all four are done.
+        compose.onNodeWithTag("swap-making").assertExists()
         shot("s3-generating-2")
 
         // S4 studio: mixed first batch (face, hair, face, hair), look chip "Glasses".
