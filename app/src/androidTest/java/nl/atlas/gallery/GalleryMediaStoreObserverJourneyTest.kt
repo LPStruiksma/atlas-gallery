@@ -21,7 +21,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -39,6 +38,7 @@ import java.util.concurrent.TimeUnit
 import java.util.Collections
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import kotlin.math.abs
 
 /**
@@ -106,11 +106,11 @@ class GalleryMediaStoreObserverJourneyTest {
             // sheet closes after each choice, so pick key and direction apart.
             for (choice in listOf("atlas-media-sort-date_created",
                     "atlas-media-sort-direction-descending")) {
-                compose.onNodeWithTag("atlas-photos-sort").performClick()
+                compose.tap(hasTestTag("atlas-photos-sort"))
                 compose.awaitThat("sort option $choice in the sheet", timeoutMs = 10_000L) {
                     compose.exists(hasTestTag(choice))
                 }
-                compose.onNodeWithTag(choice).performClick()
+                compose.tap(hasTestTag(choice))
                 compose.awaitThat("sort sheet closed after $choice", timeoutMs = 10_000L) {
                     !compose.exists(hasTestTag("atlas-photos-sort-sheet"))
                 }

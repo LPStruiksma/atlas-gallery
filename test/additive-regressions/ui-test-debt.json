@@ -30,7 +30,7 @@
   },
   "CompactHeaderJourneyTest.kt": {
     "sleep": 2,
-    "rawClick": 19,
+    "rawClick": 7,
     "privateWait": 2
   },
   "CompactHeaderTest.kt": {
@@ -72,9 +72,6 @@
   "GalleryColdStartCacheTest.kt": {
     "sleep": 1,
     "privateWait": 1
-  },
-  "GalleryMediaStoreObserverJourneyTest.kt": {
-    "rawClick": 2
   },
   "GalleryViewerSharedTransitionJourneyTest.kt": {
     "rawClick": 7,
@@ -181,12 +178,10 @@
     "privateWait": 1
   },
   "PhotosSortSheetJourneyTest.kt": {
-    "sleep": 1,
-    "rawClick": 3,
     "deviceStateWrite": 2
   },
   "RandomViewerScrubJourneyTest.kt": {
-    "rawClick": 15,
+    "rawClick": 11,
     "privateWait": 1
   },
   "SearchDateFacetJourneyTest.kt": {
@@ -206,7 +201,6 @@
     "rawClick": 1
   },
   "SelectionModeJourneyTest.kt": {
-    "rawClick": 4,
     "privateWait": 2
   },
   "SelectionMoreJourneyTest.kt": {
@@ -220,17 +214,16 @@
     "deviceStateWrite": 2
   },
   "SelectionResultSnackbarJourneyTest.kt": {
-    "sleep": 4,
-    "rawClick": 5,
+    "sleep": 2,
     "deviceStateWrite": 5,
     "privateWait": 2
   },
   "SettingsBackNavigationJourneyTest.kt": {
-    "rawClick": 7,
+    "rawClick": 4,
     "privateWait": 1
   },
   "StoriesHostRouteTest.kt": {
-    "rawClick": 22
+    "rawClick": 7
   },
   "StoriesJourneyTest.kt": {
     "rawClick": 8,
@@ -240,8 +233,7 @@
     "rawClick": 14
   },
   "SystemThemeJourneyTest.kt": {
-    "sleep": 2,
-    "rawClick": 21,
+    "rawClick": 12,
     "rawCapture": 1,
     "deviceStateWrite": 2,
     "privateWait": 2
