@@ -13,6 +13,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -81,14 +86,18 @@ class StoriesHostRouteTest {
                 planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
             AtlasGalleryTheme(dark = dark) {
-                AtlasStoriesScreen(
-                    deck = deck,
-                    currentGrantEpoch = tokens?.grantEpoch,
-                    currentCatalogRevision = tokens?.catalogRevision,
-                    onBack = {},
-                    onOpenMedia = {},
-                    playback = playback
-                )
+                // Like MainActivity's host, which pads the Stories route by the
+                // system bars: the title must clear the status bar (#570 review).
+                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    AtlasStoriesScreen(
+                        deck = deck,
+                        currentGrantEpoch = tokens?.grantEpoch,
+                        currentCatalogRevision = tokens?.catalogRevision,
+                        onBack = {},
+                        onOpenMedia = {},
+                        playback = playback
+                    )
+                }
             }
         }
         rule.onNodeWithTag("atlas-stories-empty").assertExists()

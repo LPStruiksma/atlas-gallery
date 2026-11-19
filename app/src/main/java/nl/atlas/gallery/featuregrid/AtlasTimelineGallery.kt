@@ -207,7 +207,10 @@ fun AtlasTimelineGallery(
     mediaSort: nl.atlas.gallery.MediaSort? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE) }
+    // #435: application context reuses the file StartupPreferenceWarmup loaded off Main.
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE)
+    }
     var density by rememberSaveable(viewKey) {
         mutableStateOf(entryDensity ?: GridDensity.fromColumns(
             prefs.getInt(viewKey, GridDensity.MEDIUM.columns)
