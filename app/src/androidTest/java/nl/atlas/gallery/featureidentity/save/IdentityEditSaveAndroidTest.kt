@@ -62,6 +62,23 @@ class IdentityEditSaveAndroidTest {
         return uri
     }
 
+    /** Publishes [png] as a MediaStore row: the saver accepts only content:// candidates. */
+    private fun pngRow(name: String, png: ByteArray): Uri {
+        val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH, folder)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }))
+        created += uri
+        resolver.openOutputStream(uri)!!.use { it.write(png) }
+        assertEquals(1, resolver.update(uri, ContentValues().apply {
+            put(MediaStore.Images.Media.IS_PENDING, 0)
+        }, null, null))
+        return uri
+    }
+
     private fun bytes(uri: Uri) = resolver.openInputStream(uri)!!.use { it.readBytes() }
 
     private fun decodedPixels(uri: Uri): Triple<Int, Int, IntArray> {
@@ -103,11 +120,13 @@ class IdentityEditSaveAndroidTest {
                 engine.id, engine.version, engine.capabilities().route, request.mode
             )
             val enginePixels = result.image.pixels.toIntArray()
+            // The engine's own PNG bytes, unchanged, behind a content URI (AiEditCandidate requires one).
+            val candidateUri = pngRow("fictional-candidate.png", candidateFile.readBytes())
             // The edit region really differs from the source, so a pixel match below is meaningful.
             assertTrue(enginePixels.any { it != Color.RED })
 
             val saved = IdentityEditSave(context).save(IdentityEditSave.Request(
-                source, Uri.fromFile(candidateFile), "synthetic-r1", candidate,
+                source, candidateUri, "synthetic-r1", candidate,
                 "0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"
             ))
             created += saved.uri
