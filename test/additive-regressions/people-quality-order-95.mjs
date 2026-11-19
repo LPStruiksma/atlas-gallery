@@ -80,7 +80,7 @@ function crop({ exposure = constants.exposureMidpoint, contrast = 70, blurred = 
   });
 }
 
-function score({ pixels = crop(), shortEdge = 160 } = {}) {
+function score({ pixels = crop(), shortEdge = constants.sizeFloor } = {}) {
   const mean = pixels.reduce((sum, value) => sum + value, 0) / pixelCount;
   const variance = pixels.reduce((sum, value) => sum + (value - mean) ** 2, 0) / pixelCount;
   const clipped = pixels.filter((value) => value <= constants.clipLow || value >= constants.clipHigh).length;
