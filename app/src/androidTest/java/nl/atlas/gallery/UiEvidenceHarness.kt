@@ -26,15 +26,20 @@ import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
  * [edgeToEdge] = false keeps content clear of the status bar, cutout and
  * navigation bar, as the app's Scaffold routes do. Full-screen routes that
  * handle insets themselves (the viewer) pass true, like MainActivity does.
+ *
+ * #366: [dark] = false gives the light theme with light system bars, so a
+ * direct-mount route (e.g. Stories) renders in both themes with the same
+ * status-bar insets the app's Scaffold content Column applies.
  */
 @Composable
 internal fun AtlasEvidenceHarness(
     edgeToEdge: Boolean = false,
+    dark: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
-    SideEffect { view.context.findActivity()?.let { applyAtlasSystemBars(it.window) } }
-    AtlasGalleryTheme(dark = true) {
+    SideEffect { view.context.findActivity()?.let { applyAtlasSystemBars(it.window, dark) } }
+    AtlasGalleryTheme(dark = dark) {
         Surface(Modifier.fillMaxSize(), color = DeepBg,
             contentColor = MaterialTheme.colorScheme.onBackground) {
             if (edgeToEdge) content()

@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.MaterialTheme
-import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -80,7 +79,9 @@ class StoriesHostRouteTest {
             val deck = if (empty || revision !in releasedRevisions) null else
                 planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
-            AtlasGalleryTheme(dark = dark) {
+            // #366: the app pads this route below the status bar (Scaffold
+            // content Column); a bare setContent drew the header under it.
+            AtlasEvidenceHarness(dark = dark) {
                 AtlasStoriesScreen(
                     deck = deck,
                     currentGrantEpoch = tokens?.grantEpoch,
