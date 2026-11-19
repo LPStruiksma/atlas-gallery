@@ -95,8 +95,23 @@ fun LocalSearchControls(
      */
     hasResults: Boolean = false,
     /** #644: Search has no title bar, so its one ⋮ also opens Library status. */
-    onOpenLibraryStatus: (() -> Unit)? = null
+    onOpenLibraryStatus: (() -> Unit)? = null,
+    /**
+     * FIND-3a (#182): persistent recents for this scope, already filtered for
+     * the current grant and named people. Non-null replaces [history]'s terms
+     * with removable pills; null keeps the older in-memory pills.
+     */
+    recentSearches: List<SearchHistoryEntry>? = null,
+    /** FIND-3a: the pill's ✕ (the caller offers Undo). */
+    onRemoveRecent: (SearchHistoryEntry) -> Unit = {},
+    /** FIND-3a: a submitted search as words plus picked people, for history. */
+    onSubmittedSearch: ((SearchHistoryEntry) -> Unit)? = null
 ) {
+    val submitted: (LocalSearchFacets) -> Unit = { next ->
+        onSubmittedQuery(personSearchLabel(namedPeople, next))
+        onSubmittedSearch?.invoke(
+            SearchHistoryEntry(next.text.trim(), next.nativePersonKeys.toList()))
+    }
     // This private, transient picker input must not survive either a photo
     // regrant OR a reviewed People-catalog replacement. The identity wrapper
     // makes the key O(1), never List.equals over a large publication.
@@ -139,7 +154,7 @@ fun LocalSearchControls(
                     val next = if (exact != null) filters.copy(text = exact.remainder,
                         nativePersonKeys = filters.nativePersonKeys + exact.person.key) else filters
                     if (exact != null) onFiltersChange(next)
-                    onSubmittedQuery(personSearchLabel(namedPeople, next))
+                    submitted(next)
                 }),
                 modifier = Modifier.weight(1f).heightIn(min = 56.dp).testTag("atlas-search-field"),
                 colors = TextFieldDefaults.colors(
@@ -211,7 +226,7 @@ fun LocalSearchControls(
                                 val next = filters.copy(text = match.remainder,
                                     nativePersonKeys = filters.nativePersonKeys + match.person.key)
                                 onFiltersChange(next)
-                                onSubmittedQuery(personSearchLabel(namedPeople, next))
+                                submitted(next)
                             }
                             // #134: 56 dp row (not 56 + padding), 16 dp screen inset.
                             .heightIn(min = 56.dp).padding(horizontal = 16.dp)
@@ -228,7 +243,23 @@ fun LocalSearchControls(
                 }
             }
         }
-        if (filters.text.isBlank() && pickedPeople.isEmpty() && currentRecents.terms.isNotEmpty()) {
+        if (recentSearches != null) {
+            if (filters.text.isBlank() && pickedPeople.isEmpty()) RecentSearchPills(
+                entries = recentSearches,
+                labelOf = { entry ->
+                    personSearchLabel(namedPeople, LocalSearchFacets(text = entry.text,
+                        nativePersonKeys = entry.personKeys.toSet()))
+                },
+                onPick = { entry ->
+                    val next = filters.copy(text = entry.text,
+                        nativePersonKeys = entry.personKeys.toSet())
+                    onFiltersChange(next)
+                    submitted(next)
+                },
+                onRemove = onRemoveRecent,
+                onClear = onClearHistory
+            )
+        } else if (filters.text.isBlank() && pickedPeople.isEmpty() && currentRecents.terms.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().padding(end = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {

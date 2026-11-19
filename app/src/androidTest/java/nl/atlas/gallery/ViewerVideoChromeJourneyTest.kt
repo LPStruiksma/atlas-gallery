@@ -159,9 +159,20 @@ class ViewerVideoChromeJourneyTest {
         }
     }
 
+    private fun cutoutInsets(window: Window) = ViewCompat.getRootWindowInsets(window.decorView)
+        ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.displayCutout())
+
     private fun assertVideoControlsClearLandscapeCutout(window: Window) {
-        val insets = ViewCompat.getRootWindowInsets(window.decorView)
-            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.displayCutout())
+        // The window turns landscape before the rotated insets are dispatched: a single
+        // read right after width > height saw Insets{0,0,0,0} (run 44287993296). Wait
+        // for the side cutout, then for Compose to lay out with it.
+        runCatching {
+            compose.waitUntil(10_000L) {
+                cutoutInsets(window)?.let { it.left > 0 || it.right > 0 } == true
+            }
+        }
+        compose.waitForIdle()
+        val insets = cutoutInsets(window)
             ?: error("Landscape display-cutout insets unavailable")
         assertTrue("Pixel emulator profile must expose a landscape cutout: $insets",
             insets.left > 0 || insets.right > 0)

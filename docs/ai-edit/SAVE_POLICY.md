@@ -37,6 +37,14 @@ The ordinary Samsung/system Edit handoff is not changed.
   the final-name rename. Published rows remain with lineage. Legacy journals
   with only a non-unique final name and no URI fail closed: recovery drops the
   unbound intent rather than risking deletion of unrelated media.
+- Identity Studio uses the same saver, pending-row journal and publish
+  transaction. Its additive, nullable schema-version-1 lineage block stores
+  only `face`/`head`, engine id/version, execution route, opaque profile and
+  variant ids, candidate index/seed and an optional refinement parent. Older
+  rows read with a null identity block. Deleting a profile does not rewrite
+  saved lineage; clients resolve a missing opaque id as **deleted profile**.
+  Profile display names, reference photos, face geometry/templates,
+  embeddings and credentials are never accepted by this block.
 - `onRefresh` and `onFocus(newUri)` run on the main dispatcher after
   publishing. The `saveForGallery` adapter calls existing
   `GalleryViewModel.refresh()`, and clears viewer metadata cache. AI Edit
@@ -55,7 +63,7 @@ or a provider candidate's hidden metadata. On the saved copy:
 | Orientation | Set to normal (orientation is applied to pixels) |
 | GPS latitude/longitude/altitude and references | **Discarded by default**; opt-in `keepGps=true` copies only these from the original |
 | Software | `ATLAS AI Edit` |
-| ImageDescription | Bounded `provider/model` identifiers |
+| ImageDescription | Bounded `provider/model` identifiers; identity output uses `ATLAS AI identity edit` |
 | Camera serials, MakerNote, UserComment, other personal EXIF | Not copied |
 | Prompt/settings/source lineage | Private SQLite only, not embedded or uploaded |
 | Authentication tokens | Never accepted by this API, never written |

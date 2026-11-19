@@ -61,6 +61,7 @@ import nl.atlas.gallery.peopleStatusLine
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNameMatches
 import nl.atlas.gallery.featureface.NativeFaceObservationId
@@ -227,6 +228,7 @@ fun PeopleHomeScreen(
                     Icon(Icons.Filled.Sort, contentDescription = "Sort people")
                 }
                 AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    historyScope = SearchHistoryScope.PEOPLE,
                     onScopeChange = { scope ->
                         if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
                     })

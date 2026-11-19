@@ -1,0 +1,164 @@
+<!doctype html>
+<!--
+  atlas-gallery #341 · FIND-5 design frames (pre-build). Synthetic only.
+  CSS px = Android dp. Rendered by render.mjs at deviceScaleFactor 2.8125,
+  so a 384 × 832 dp viewport becomes the S24+ 1080 × 2340 px frame.
+  Colours are copied from AtlasTokens.kt / AtlasGalleryDesign.kt on main;
+  sizes from DeclutterScreen.kt, AtlasSearch.kt and Material 3 defaults.
+  Inter stands in for Roboto (not installed in the render container).
+-->
+<html><head><meta charset="utf-8">
+<style>
+:root{
+  --page:#FFFFFF; --bg:#F5F7F4; --on-bg:#11171B; --surface:#FFFFFF; --on-surface:#11171B;
+  --low:#F8FAF8; --cont:#F1F4F2; --high:#FBFCFB; --variant:#50625F; --primary:#176D61; --on-primary:#FFFFFF;
+  --outline:#70807D; --outline-var:#C9D3D0; --sec-cont:#DDE7E4; --on-sec-cont:#11171B; --scrim:rgba(0,0,0,.32);
+  --kbd:#DDE2E0; --key:#FFFFFF; --key-ink:#11171B; --pill:#FFFFFFE6; --track:#E3EBE8;
+}
+body.dark{
+  --page:#0B0D10; --bg:#11171B; --on-bg:#F7FAF8; --surface:#1D272C; --on-surface:#F7FAF8;
+  --low:#161D21; --cont:#1D272C; --high:#243035; --variant:#D0DDDA; --primary:#9DE1D2; --on-primary:#11171B;
+  --outline:#7F8F8C; --outline-var:#3A4649; --sec-cont:#2E3B3E; --on-sec-cont:#DCE6E3; --scrim:rgba(0,0,0,.5);
+  --kbd:#1E2326; --key:#3A4146; --key-ink:#F2F5F4; --pill:#262B30E6; --track:#2A3539;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--page);color:var(--on-bg);font-family:Inter,Roboto,sans-serif;font-size:14px;letter-spacing:.1px;position:relative}
+.abs{position:absolute}
+.status{left:0;right:0;top:0;height:var(--st);display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;color:var(--on-bg)}
+.navbar{left:0;right:0;bottom:0;height:var(--nb);display:flex;align-items:center;justify-content:center}
+.navbar i{display:block;width:108px;height:4px;border-radius:2px;background:var(--on-bg);opacity:.55}
+.col{position:absolute;left:12px;right:12px;display:flex;flex-direction:column;gap:8px}
+.header{height:56px;display:flex;align-items:center;padding:0 4px 0 4px;flex:none}
+.ib{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;flex:none}
+.ib svg{width:24px;height:24px;fill:currentColor}
+.title{font-size:22px;line-height:28px;margin-left:4px;flex:1}
+.meta{color:var(--variant);font-size:14px;line-height:20px}
+.card{flex:1;border-radius:12px;background:var(--surface);overflow:hidden;position:relative}
+.row2{display:flex;gap:10px}
+.btn{height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:1;letter-spacing:.1px}
+.btn.filled{background:var(--primary);color:var(--on-primary)}
+.btn.outlined{border:1px solid var(--outline);color:var(--primary)}
+.btn.dis{opacity:.38}
+.tbtn{height:40px;padding:0 12px;display:flex;align-items:center;color:var(--primary);font-weight:600;font-size:14px;border-radius:20px}
+.between{display:flex;justify-content:space-between}
+h2{font-size:22px;line-height:28px;font-weight:400;flex:none}
+.list{flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;min-height:0}
+.item{display:flex;align-items:center;padding:6px;border-radius:8px;background:var(--low);flex:none}
+.thumb{width:64px;height:64px;border-radius:8px;flex:none;overflow:hidden}
+.item .txt{flex:1;margin-left:8px;min-width:0}
+.item .nm{color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;line-height:20px}
+.item .sz{color:var(--variant);font-size:14px;line-height:20px}
+mark{background:transparent;color:inherit;font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px}
+.menu{position:absolute;background:var(--cont);border-radius:4px;padding:8px 0;box-shadow:0 3px 6px rgba(0,0,0,.18),0 6px 16px rgba(0,0,0,.14);z-index:20}
+body.dark .menu{box-shadow:0 3px 8px rgba(0,0,0,.6);outline:1px solid #ffffff10}
+.menu .mc{display:flex;flex-direction:column;gap:6px;padding:0}
+.field{width:280px;height:56px;border:1px solid var(--outline);border-radius:4px;display:flex;align-items:center;padding:0 12px;gap:12px;color:var(--variant);font-size:16px;position:relative;margin-left:0}
+.field.focus{border:2px solid var(--primary);padding:0 11px}
+.field .val{color:var(--on-surface)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--primary);vertical-align:middle;margin-left:1px}
+.field svg{width:24px;height:24px;fill:currentColor;flex:none}
+.chips{display:flex;gap:8px;height:48px;align-items:center;padding-left:0}
+.chip{height:32px;border-radius:8px;border:1px solid var(--outline);display:flex;align-items:center;padding:0 16px;font-size:14px;font-weight:600;color:var(--variant);gap:8px}
+.chip.on{background:var(--sec-cont);border-color:transparent;color:var(--on-sec-cont);padding-left:8px}
+.chip.on svg{width:18px;height:18px;fill:currentColor}
+.note{font-size:13px;line-height:18px;color:var(--variant);padding:0 16px}
+.prog{height:4px;border-radius:2px;background:var(--track);overflow:hidden;flex:none;position:relative}
+.prog i{position:absolute;left:12%;width:38%;top:0;bottom:0;background:var(--primary);border-radius:2px}
+.kbd{position:absolute;left:0;right:0;bottom:0;background:var(--kbd);z-index:30;display:flex;flex-direction:column;padding:8px 4px 0;gap:9px}
+.kbd .sug{height:36px;display:flex;align-items:center;justify-content:space-around;color:var(--key-ink);opacity:.8;font-size:15px}
+.kbd .kr{display:flex;justify-content:center;gap:5px}
+.kbd .k{height:44px;flex:0 0 32px;background:var(--key);border-radius:6px;color:var(--key-ink);display:flex;align-items:center;justify-content:center;font-size:18px}
+.kbd .k.w{flex:0 0 52px;font-size:13px}.kbd .k.sp{flex:0 0 170px}.kbd .k.go{background:var(--primary);color:var(--on-primary);flex:0 0 62px}
+.dialog-scrim{position:absolute;inset:0;background:var(--scrim);z-index:40}
+.dialog{position:absolute;left:24px;right:24px;background:var(--high);border-radius:28px;padding:24px;z-index:41}
+.dialog h3{font-size:24px;line-height:32px;font-weight:400;margin-bottom:16px;color:var(--on-surface)}
+.dialog p{color:var(--variant);font-size:14px;line-height:20px}
+.dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}
+.toast{position:absolute;left:28px;right:28px;z-index:35;background:#2A3236;color:#EFF3F1;border-radius:22px;padding:12px 18px;font-size:14px;line-height:20px;text-align:center}
+.tabpill{position:absolute;left:24px;right:24px;height:60px;border-radius:30px;background:var(--pill);box-shadow:0 2px 10px rgba(0,0,0,.15);display:flex;justify-content:space-around;align-items:center;z-index:5}
+.tabpill div{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--variant);gap:2px}
+.tabpill div.on{color:var(--primary);font-weight:700}
+.tabpill svg{width:24px;height:24px;fill:currentColor}
+.empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;text-align:center}
+/* annotations */
+.ann{position:absolute;z-index:100;pointer-events:none}
+.badge{width:26px;height:26px;border-radius:13px;background:#E8590C;color:#fff;font:700 14px/26px Inter,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
+.tgt{border:1.5px dashed #E8590C;border-radius:6px}
+.inset{background:repeating-linear-gradient(135deg,rgba(232,89,12,.16) 0 6px,transparent 6px 12px);border:1px solid rgba(232,89,12,.55);color:#B3440A;font:600 9px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:center}
+body.qf{--page:#F6F7F9;--bg:#F6F7F9;--on-bg:#111318;--surface:#FFFFFF;--on-surface:#111318;--low:#FFFFFF;--cont:#FFFFFF;--high:#FFFFFF;--variant:#4A4F59;--primary:#2F6BE0;--on-primary:#FFFFFF;--outline:#5F6470;--outline-var:#ECEEF2;--sec-cont:#2F6BE0;--on-sec-cont:#FFFFFF;--kbd:#ECEEF2;--key:#FFFFFF;--key-ink:#111318;--track:#ECEEF2;font-family:'Inter Tight',Inter,sans-serif}
+body.qf.dark{--page:#0B0C0F;--bg:#0B0C0F;--on-bg:#ECEDF0;--surface:#17191F;--on-surface:#ECEDF0;--low:#17191F;--cont:#17191F;--high:#23262E;--variant:#B4B8C1;--primary:#7FA8FF;--on-primary:#0B0C0F;--outline:#9A9EA8;--outline-var:#23262E;--sec-cont:#7FA8FF;--on-sec-cont:#0B0C0F;--kbd:#17191F;--key:#23262E;--key-ink:#ECEDF0;--track:#23262E}
+body.qf .chip{border-radius:999px}body.qf .item{border-radius:20px;padding:8px}body.qf .thumb{border-radius:4px}body.qf .menu{border-radius:20px}body.qf .field{border-radius:999px}
+.menu.inline .mc{flex-direction:row;align-items:center;gap:8px;padding:0 8px}.menu.inline .field{width:240px}
+.clear{background:rgba(46,160,67,.18);border-top:1.5px dashed #2EA043;border-bottom:1.5px dashed #2EA043;color:#1A7F37;font:700 10px/1 Inter,sans-serif;display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 6px 0 0}
+body.dark .clear{color:#7EE787}
+body.land .kbd .k{height:34px}body.land .kbd{gap:6px}
+body.dark .inset{color:#FFB38A}
+.tag{position:absolute;z-index:101;left:8px;bottom:calc(var(--nb) + 6px);font:700 11px/1.3 Inter,sans-serif;background:#E8590C;color:#fff;border-radius:6px;padding:4px 7px;max-width:250px}
+.risk{border:2px solid #D7263D;background:rgba(215,38,61,.12)}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+const I = {
+  back:'<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+  image:'<svg viewBox="0 0 24 24"><path d="M19 5v14H5V5h14m0-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/></svg>',
+  grid:'<svg viewBox="0 0 24 24"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>',
+  people:'<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+};
+// Synthetic artwork: deterministic abstract "photos" from the AtlasTokens.SyntheticArt palettes.
+const PAL=[["#46686D","#B6C4B4","#40675E"],["#99856D","#E2BFA1","#595A4B"],["#4E657F","#D5BDB0","#596786"],["#6E736B","#C5C2AF","#454E48"]];
+function art(i,w,h){i=Math.abs(i);const p=PAL[i%4];const s=(i*37)%100;return `<svg width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"><rect width="100" height="100" fill="${p[1]}"/><circle cx="${20+s*0.6}" cy="${22+(s%30)}" r="${9+(i%5)}" fill="#FFF0D0" opacity=".85"/><path d="M0 ${62+(i%4)*4} Q 30 ${44+(s%20)} 55 ${64-(i%3)*5} T 100 ${58+(i%6)*3} V100 H0Z" fill="${p[0]}"/><path d="M0 ${80+(i%3)*3} Q 40 ${70+(s%9)} 100 ${84-(i%4)*2} V100 H0Z" fill="${p[2]}"/></svg>`}
+const FILES=[["IMG_20240612_093114.jpg","8.4 MB"],["VID_20240614_181502.mp4","212 MB"],["IMG_20240615_071245.jpg","7.9 MB"],["Screenshot_20240616_220130.png","3.1 MB"],["IMG_20240618_143308.jpg","7.2 MB"],["VID_20240620_120044.mp4","148 MB"],["IMG_20240621_084510.jpg","6.8 MB"],["IMG_20240623_190021.jpg","6.5 MB"],["Screenshot_20240624_101533.png","2.9 MB"],["IMG_20240625_064700.jpg","6.1 MB"],["IMG_20240627_175910.jpg","5.8 MB"],["VID_20240628_210305.mp4","96 MB"]];
+const P=new URLSearchParams(location.search);
+const F=P.get('f'), ANN=P.get('ann')!=='0', LAND=P.get('land')==='1';
+if(LAND)document.body.classList.add('land');
+if(P.get('qf')==='1')document.body.classList.add('qf');
+if(P.get('theme')==='dark') document.body.classList.add('dark');
+const W=LAND?832:384, H=LAND?384:832, ST=LAND?24:29, NB=LAND?0:16, IME=LAND?184:324;
+document.body.style.setProperty('--st',ST+'px');document.body.style.setProperty('--nb',NB+'px');
+const R=document.getElementById('root');
+let anns=[]; // {n,x,y} badges, {t:[x,y,w,h]} targets, {inset:[x,y,w,h,label]}, {risk:[...]}
+const badge=(n,x,y)=>anns.push({n,x,y}); const tgt=(x,y,w,h)=>anns.push({t:[x,y,w,h]});
+function status(){return `<div class="abs status"><span>12:30</span><span>▾ ◢ 87%</span></div>`}
+function nav(){return NB?`<div class="abs navbar"><i></i></div>`:''}
+function header(opts={}){return `<div class="header"><div class="ib">${I.back}</div><div class="title">Declutter</div><div class="ib" style="${opts.active?'background:var(--sec-cont)':''}">${I.search}</div></div>`}
+function hl(name,q){if(!q)return name;const i=name.toLowerCase().indexOf(q.toLowerCase());return i<0?name:name.slice(0,i)+'<mark>'+name.slice(i,i+q.length)+'</mark>'+name.slice(i+q.length)}
+function rows(list,q,verifying){return list.map(([n,s],k)=>`<div class="item"><div class="thumb">${art(k+FILES.findIndex(f=>f[0]===n),64,64)}</div><div class="txt"><div class="nm">${hl(n,q)}</div><div class="sz">${s}</div></div><div class="tbtn" style="${verifying?'opacity:.38':''}">Keep</div></div>`).join('')}
+function swipe(staged){return `${header()}<div class="meta">IMG_20240612_093114.jpg · 8.4 MB</div><div class="card">${art(0,360,520)}</div><div class="row2"><div class="btn outlined">← Stage Trash</div><div class="btn filled">Keep →</div></div><div class="between"><div class="tbtn">Undo</div><div class="tbtn">Review staged (${staged})</div></div>`}
+function review(list,q,o={}){const n=o.count??list.length;return `${header({active:o.active})}${o.verifying?'<div class="prog"><i></i></div>':''}<h2>Review staged files</h2><div class="list">${o.listHtml??rows(list,q,o.verifying)}</div><div class="tbtn" style="align-self:flex-start">Return to swiping</div><div class="btn filled ${o.disabled?'dis':''}" style="flex:none">Move ${n} to Android Trash…</div>${o.after??''}`}
+function menu(o){const top=ST+4+4+48, w=328, left=12+(W-24)-4-w; const chips=`<div class="chips"><div class="chip ${o.lib?'':'on'}">${o.lib?'':I.check}This screen</div><div class="chip ${o.lib?'on':''}">${o.lib?I.check:''}Whole library</div></div>`;
+  const field=`<div style="display:flex;align-items:center"><div class="field ${o.focus?'focus':''}">${I.search}${o.q?`<span class="val">${o.q}${o.focus?'<span class="caret"></span>':''}</span>`:(o.focus?'<span class="caret" style="margin-left:-6px"></span><span style="margin-left:-6px">Search</span>':'Search')}</div><div class="ib" style="color:var(--variant)">${I.close}</div></div>`;
+  if(o.inline){const fld=field.replace('<div style="display:flex;align-items:center">','').replace(/<div class="ib" style="color:var\(--variant\)">.*<\/div><\/div>$/,'');const cls=`<div class="ib" style="color:var(--variant)">${I.close}</div>`;return {top,right:16,html:`<div class="menu inline" style="top:${top}px;right:16px"><div class="mc">${fld}${chips.replace('class="chips"','class="chips" style="height:48px"')}${cls}</div></div>`}}
+  return {top,left,w,html:`<div class="menu" style="top:${top}px;left:${left}px;width:${w}px"><div class="mc">${field}${chips}${o.extra??''}</div></div>`}}
+function kbd(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="kbd" style="height:${IME+NB}px">${LAND?'':'<div class="sug"><span>img</span><span>image</span><span>vid</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
+function colStyle(imeOpen){const b=imeOpen?IME+NB:NB;return `top:${ST+4}px;bottom:${b+4}px`}
+function insets(imeOpen){anns.push({inset:[0,0,W,ST,`status bar ${ST} dp (assumed)`]});if(NB)anns.push({inset:[0,H-NB,W,NB,`gesture nav ${NB} dp (assumed)`],right:1});if(imeOpen)anns.push({inset:[0,H-IME-NB,W,3,`IME top · ${IME} dp`]})}
+const qMatch=(q)=>FILES.filter(f=>f[0].toLowerCase().includes(q.toLowerCase()));
+let body='', extra='', tagText='';
+const hdrIcon=()=>[12+(W-24)-4-48, ST+8];
+switch(F){
+case 'A-swipe-collapsed': { body=swipe(12); const [x,y]=hdrIcon(); badge(1,x-14,y-6); tgt(x,y,48,48); tgt(16,ST+8,48,48); badge(2,8,ST+2); badge(3,W-40,H-NB-150); tagText='A · Swiping, search collapsed'; insets(false); break;}
+case 'A-review-collapsed': { body=review(FILES.slice(0,7),''); const [x,y]=hdrIcon(); badge(1,x-14,y-6); tgt(x,y,48,48); badge(4,W-44,ST+120); tagText='A · Review staged, search collapsed'; insets(false); break;}
+case 'B-expanded': { body=review(FILES.slice(0,7),'',{active:true}); const m=menu({}); extra=m.html; badge(5,m.left-14,m.top+18); badge(6,m.left+120,m.top+8+56+6+4); tgt(m.left+280,m.top+8+4,48,48); badge(7,m.left+300,m.top-8); tagText='B · Expanded, keyboard hidden (no auto-focus in source)'; insets(false); break;}
+case 'C-keyboard': { const q='VID'; body=review(qMatch(q),q,{active:true,count:12}); const m=menu({q,focus:true}); extra=m.html+kbd(); badge(8,m.left-14,m.top+18); badge(9,W-40,H-IME-NB-90); tagText='C · Typing "VID": staged list filtered, actions above IME'; insets(true); break;}
+case 'D-confirm-leave': { body=review(FILES.slice(0,7),'',{active:true}); const m=menu({lib:true}); extra=m.html+`<div class="dialog-scrim"></div><div class="dialog" style="top:${H/2-130}px"><h3>Search whole library?</h3><p>This leaves Declutter. Your 12 staged choices will be cleared. Nothing is moved to Trash.</p><div class="acts"><div class="tbtn">Stay</div><div class="tbtn">Search library</div></div></div>`; badge(10,40,H/2-140); tgt(W-24-24-130,H/2-130+24+32+16+60+24-4,130,48); tgt(W-24-24-130-84,H/2-130+24+32+16+60+24-4,72,48); tagText='D1 · Whole library with staged choices: explicit confirm'; insets(false); break;}
+case 'D-search-tab': { body=`<div style="height:12px"></div><div class="field" style="width:auto;margin:0 6px">${I.search}Search</div><div class="note" style="padding:8px 6px">Existing Search tab (FIND-0): library facets, recent searches and suggestions render here unchanged. Query starts empty.</div><div style="flex:1;border:1px dashed var(--outline-var);border-radius:12px;margin:0 6px 84px;display:flex;align-items:center;justify-content:center;color:var(--variant);font-size:13px">existing Search content (schematic)</div>`; extra=`<div class="tabpill" style="bottom:${NB+12}px"><div>${I.image}Photos</div><div>${I.grid}Albums</div><div>${I.people}People</div><div class="on">${I.search}Search</div></div>`; badge(11,W-60,H-NB-90); badge(12,14,ST+16); tagText='D2 · Landed on global Search tab (tab = 3)'; insets(false); break;}
+case 'E-swipe-expanded': { body=swipe(12); const m=menu({extra:`<div class="note">Searches your 12 staged files.</div><div class="tbtn" style="margin-left:4px">Show staged files</div>`}); extra=m.html; badge(13,m.left-14,m.top+8+56+6+48+6); tgt(m.left+4,m.top+8+56+6+48+6+18+6,150,48); tagText='E · Search while swiping: deck untouched'; insets(false); break;}
+case 'S1-empty': { body=review([], '', {active:true,count:0,disabled:true,listHtml:`<div class="empty"><div style="font-size:16px;color:var(--on-bg)">No staged files yet</div><div class="meta">Swipe left on a photo to stage it.</div></div>`}); const m=menu({}); extra=m.html; badge(14,W/2-13,H/2+30); tagText='S1 · Empty staged set: search still open, Whole library available'; insets(false); break;}
+case 'S2-no-match': { const q='beach'; body=review([], q, {active:true,count:12,listHtml:`<div class="empty"><div style="font-size:16px;color:var(--on-bg)">No matching staged files</div><div class="meta">Clear the search to see all 12.</div></div>`}); const m=menu({q}); extra=m.html; badge(15,W/2-13,H/2+30); badge(16,W-60,H-NB-56); tagText='S2 · Query with no matches: Trash count still the full 12'; insets(false); break;}
+case 'S3-verifying': { body=review(FILES.slice(0,7),'',{verifying:true,disabled:true}); badge(17,W-40,ST+4+56+8-6); tagText='S3 · Verifying before Android Trash: search cannot enable actions'; insets(false); break;}
+case 'S4-error': { body=review(FILES.slice(0,7),''); extra=`<div class="toast" style="bottom:${NB+120}px">Couldn't verify selected files. Nothing was trashed.</div>`; badge(18,22,H-NB-170); tagText='S4 · Existing host error (Toast from MainActivity); retry = press Move again'; insets(false); break;}
+case 'S5-long': { const many=[]; for(let i=0;i<14;i++) many.push([FILES[i%12][0].replace('.', `_${String(i).padStart(3,'0')}.`),FILES[i%12][1]]); body=review(many,'',{count:214,disabled:true,after:`<div class="meta" style="flex:none">Review at most 200 files per Trash request. Unstage others or split into another session.</div>`}); badge(19,W-40,H-NB-120); tagText='S5 · 214 staged: lazy list, max-200 guard unchanged by filter'; insets(false); break;}
+case 'L-landscape-keyboard': { const q='IMG'; body=review(qMatch(q),q,{active:true,count:12}); const m=menu({q,focus:true,inline:true}); extra=m.html+kbd(); const pb=m.top+8+56+8; anns.push({clear:[0,pb,W,H-IME-pb,`${H-IME-pb} dp clear above IME`]}); tgt(16,ST+8,48,48); badge(20,W-16-8-26,m.top-14); badge(21,6,ST+2); tgt(W-16-8-48,m.top+8+4,48,48); badge(22,W-150,pb-13); tagText='L'; insets(true); break;}
+default: body='unknown frame '+F;
+}
+const imeOpen=F==='C-keyboard'||F==='L-landscape-keyboard';
+R.innerHTML=status()+`<div class="col" style="${colStyle(imeOpen)}">${body}</div>`+extra+(imeOpen?'':nav());
+if(ANN){let a='';for(const x of anns){if(x.n)a+=`<div class="ann badge" style="left:${x.x}px;top:${x.y}px">${x.n}</div>`;else if(x.t)a+=`<div class="ann tgt" style="left:${x.t[0]}px;top:${x.t[1]}px;width:${x.t[2]}px;height:${x.t[3]}px"></div>`;else if(x.inset)a+=`<div class="ann inset" style="${x.right?'justify-content:flex-end;padding-right:6px;':''}left:${x.inset[0]}px;top:${x.inset[1]}px;width:${x.inset[2]}px;height:${x.inset[3]}px">${x.inset[3]>8?x.inset[4]:''}</div>`;else if(x.clear)a+=`<div class="ann clear" style="left:${x.clear[0]}px;top:${x.clear[1]}px;width:${x.clear[2]}px;height:${x.clear[3]}px">${x.clear[4]}</div>`;else if(x.risk)a+=`<div class="ann risk" style="left:${x.risk[0]}px;top:${x.risk[1]}px;width:${x.risk[2]}px;height:${Math.max(4,x.risk[3])}px"></div>`}
+  R.insertAdjacentHTML('beforeend',a)}
+document.title='ready';
+</script></body></html>
