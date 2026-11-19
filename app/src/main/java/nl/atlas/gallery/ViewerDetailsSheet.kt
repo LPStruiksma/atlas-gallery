@@ -71,6 +71,33 @@ internal val LocalViewerDimensionsReader =
     staticCompositionLocalOf { MediaStoreViewerDimensionsReader }
 
 /**
+ * #458: reads whether this URI is a saved AI edit, from app-private lineage
+ * and the current MediaStore grant. Tests swap it through
+ * [LocalAiEditDetailsReader] to hold the loading state or fail like a revoked
+ * grant; the sheet treats any failure as "no marker".
+ */
+internal fun interface AiEditDetailsReader {
+    suspend fun read(context: Context, uri: String): AiEditDetails?
+}
+
+internal val LineageAiEditDetailsReader = AiEditDetailsReader { context, uri ->
+    withContext(Dispatchers.IO) {
+        val store = AiEditLineageStore(context.applicationContext)
+        // Only show media still readable under the current grant.
+        fun visible(candidate: String): Boolean = try {
+            context.contentResolver.query(
+                Uri.parse(candidate), arrayOf(MediaStore.MediaColumns._ID),
+                null, null, null
+            )?.use { it.moveToFirst() } == true
+        } catch (_: RuntimeException) { false }
+        aiEditDetailsFor(uri, store.get(uri), store::all, ::visible)
+    }
+}
+
+internal val LocalAiEditDetailsReader =
+    staticCompositionLocalOf { LineageAiEditDetailsReader }
+
+/**
  * Samsung-like ordering: capture date, file name/path, physical file facts,
  * then photo/video camera facts. Only this fully opened sheet reads metadata;
  * the drag preview below stays entirely free of content-provider IO.
@@ -91,21 +118,16 @@ internal fun ViewerDetailsSheet(
     val facts = remember(media) { viewerDetailsFacts(media) }
     // #458: ordinary Details render at once; the AI marker is added in place
     // once app-private lineage confirms it. Any failure means no marker.
+    val aiEditReader = LocalAiEditDetailsReader.current
     var aiEdit by remember(media.uri) { mutableStateOf<AiEditDetails?>(null) }
-    LaunchedEffect(media.uri) {
-        aiEdit = withContext(Dispatchers.IO) {
-            runCatching {
-                val store = AiEditLineageStore(context.applicationContext)
-                // Only show media still readable under the current grant.
-                fun visible(uri: String): Boolean = try {
-                    context.contentResolver.query(
-                        android.net.Uri.parse(uri),
-                        arrayOf(android.provider.MediaStore.MediaColumns._ID),
-                        null, null, null
-                    )?.use { it.moveToFirst() } == true
-                } catch (_: RuntimeException) { false }
-                aiEditDetailsFor(media.uri, store.get(media.uri), store::all, ::visible)
-            }.getOrNull()
+    LaunchedEffect(media.uri, aiEditReader) {
+        aiEdit = null
+        aiEdit = try {
+            aiEditReader.read(context, media.uri)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
         }
     }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {

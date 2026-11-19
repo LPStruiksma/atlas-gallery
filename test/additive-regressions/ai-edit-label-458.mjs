@@ -53,3 +53,13 @@ test('policy records the decision and claims no C2PA conformance', () => {
   assert.match(policy, /ATLAS claims no C2PA conformance/);
   for (const where of ['APP1', 'iTXt', 'VP8X']) assert.ok(policy.includes(where), where);
 });
+
+test('lineage loading and failure fall back to no marker and are evidenced', () => {
+  assert.match(details, /internal val LocalAiEditDetailsReader =/);
+  assert.match(details, /catch \(_: Exception\) \{\n\s+null\n\s+\}/);
+  const evidence = read('app/src/androidTest/java/nl/atlas/gallery/AiEditMarkerEvidenceTest.kt');
+  assert.match(evidence, /aie-26-edit-details-loading\.png/);
+  assert.match(evidence, /aie-26-edit-details-lineage-error\.png/);
+  assert.match(evidence, /fun assertReadingOrder\(/);
+  assert.match(evidence, /KeyEvent\.KEYCODE_BACK/);
+});

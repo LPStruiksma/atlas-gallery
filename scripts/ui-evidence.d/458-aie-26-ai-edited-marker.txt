@@ -7,3 +7,6 @@ aie-26-edit-details-dark-large-text
 aie-26-original-details-dark-large-text
 aie-26-photo-dna-dark
 aie-26-edit-details-missing-original
+# Fallbacks: lineage still loading, and lineage read failing (revoked grant).
+aie-26-edit-details-loading
+aie-26-edit-details-lineage-error

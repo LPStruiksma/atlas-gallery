@@ -10,8 +10,18 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import android.view.KeyEvent
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import kotlinx.coroutines.CompletableDeferred
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.featurecuration.hashCurationBytes
 import nl.atlas.gallery.testkit.tap
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -39,36 +49,13 @@ class AiEditMarkerEvidenceTest {
     private var fontScale by mutableStateOf(1f)
     private var opened by mutableStateOf<String?>(null)
     private var shown by mutableStateOf<List<MediaRecord>>(emptyList())
+    private var reader by mutableStateOf(LineageAiEditDetailsReader)
 
     @Test fun markerStatesAcrossThemesTextSizesAndMissingOriginal() {
         val records = fixtures.records
         val (original, editOne, editTwo, plain) = records
         shown = records
-        val grant = GalleryMediaGrant(images = true, videos = false, selected = false)
-        val tokens = requireNotNull(photoDnaTokensOrNull(grant, 458L, true, records))
-        val result = planPhotoDna(records, tokens, hash = { record ->
-            hashCurationBytes(record.sizeBytes,
-                openAuthorized = { fixtures.bytes[record.uri]?.let(::ByteArrayInputStream) },
-                stillAuthorized = { true })
-        })
-        compose.setContent {
-            val base = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
-                // Every state change restarts the screen so no sheet state leaks between shots.
-                key(dark, fontScale, opened, shown) {
-                    AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
-                        val photo = opened
-                        if (photo == null) {
-                            PhotoDnaRoute(result = result, verifying = false, onBack = {},
-                                onOpenPhoto = { opened = it }, onReviewRequested = {},
-                                accessible = true)
-                        } else {
-                            GalleryViewer(shown, photo, onBack = { opened = null })
-                        }
-                    }
-                }
-            }
-        }
+        showGallery(records)
 
         // C, light: the original tile is "Original"; each saved edit reads "Edited with AI".
         photoDnaFamily()
@@ -83,6 +70,7 @@ class AiEditMarkerEvidenceTest {
         openDetails(editOne.uri)
         compose.waitForNode(hasTestTag("atlas-details-ai-edited"))
         assertMarkerOrder(AiEditProvenanceMediaFixtures.EDIT_ONE, expectEditedFrom = true)
+        assertReadingOrder(AiEditProvenanceMediaFixtures.EDIT_ONE)
         saveUiEvidence("aie-26-edit-details-light.png")
 
         // A, dark, 1.3x text: still visible in the partially opened sheet, same order.
@@ -90,6 +78,7 @@ class AiEditMarkerEvidenceTest {
         openDetails(editOne.uri)
         compose.waitForNode(hasTestTag("atlas-details-ai-edited"))
         assertMarkerOrder(AiEditProvenanceMediaFixtures.EDIT_ONE, expectEditedFrom = true)
+        assertReadingOrder(AiEditProvenanceMediaFixtures.EDIT_ONE)
         saveUiEvidence("aie-26-edit-details-dark-large-text.png")
 
         // B, dark, 1.3x text: the original lists its versions and is never marked.
@@ -123,6 +112,91 @@ class AiEditMarkerEvidenceTest {
         saveUiEvidence("aie-26-edit-details-missing-original.png")
     }
 
+    /**
+     * Brief fallback states: while lineage is still loading, and when reading it
+     * fails (a revoked grant or a broken store), Details are ordinary, carry no
+     * marker and still close with Back. When loading finishes the marker is
+     * added in place without moving the Name row.
+     */
+    @Test fun loadingAndFailedLineageShowOrdinaryDetailsAndStillClose() {
+        val records = fixtures.records
+        val editOne = records[1]
+        shown = records
+        val gate = CompletableDeferred<Unit>()
+        reader = AiEditDetailsReader { context, uri ->
+            gate.await()
+            LineageAiEditDetailsReader.read(context, uri)
+        }
+        showGallery(records)
+
+        // Loading: ordinary Details at once, no marker, no placeholder.
+        openDetails(editOne.uri)
+        compose.waitForNode(hasText("Resolution"))
+        val nameRow = hasText(AiEditProvenanceMediaFixtures.EDIT_ONE) and
+            hasAnyAncestor(hasTestTag("atlas-viewer-details"))
+        compose.waitForNode(nameRow)
+        compose.onNodeWithTag("atlas-details-ai-edited").assertDoesNotExist()
+        compose.onNodeWithText(AI_EDITED_LABEL).assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("aie-26-edit-details-loading.png")
+        val nameTop = compose.onNode(nameRow).fetchSemanticsNode().boundsInRoot.top
+
+        // Loaded: the marker appears in place; the Name row does not move.
+        gate.complete(Unit)
+        compose.waitForNode(hasTestTag("atlas-details-ai-edited"))
+        compose.waitForIdle()
+        assertEquals(nameTop, compose.onNode(nameRow).fetchSemanticsNode().boundsInRoot.top)
+        assertReadingOrder(AiEditProvenanceMediaFixtures.EDIT_ONE)
+
+        // Failure (what a revoked MediaStore grant or a broken store throws).
+        compose.runOnIdle {
+            reader = AiEditDetailsReader { _, _ -> throw SecurityException("synthetic revoked grant") }
+        }
+        openDetails(editOne.uri)
+        compose.waitForNode(hasText("Resolution"))
+        compose.waitForNode(nameRow)
+        compose.onNodeWithTag("atlas-details-ai-edited").assertDoesNotExist()
+        compose.onNodeWithText("Edited from…").assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("aie-26-edit-details-lineage-error.png")
+
+        // Close stays usable: system Back dismisses the sheet, the viewer remains.
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.awaitThat("Details closed by Back") {
+            !compose.exists(hasTestTag("atlas-viewer-details"))
+        }
+        compose.onNodeWithTag("atlas-viewer-details-open").assertExists()
+    }
+
+    private fun showGallery(records: List<MediaRecord>) {
+        val grant = GalleryMediaGrant(images = true, videos = false, selected = false)
+        val tokens = requireNotNull(photoDnaTokensOrNull(grant, 458L, true, records))
+        val result = planPhotoDna(records, tokens, hash = { record ->
+            hashCurationBytes(record.sizeBytes,
+                openAuthorized = { fixtures.bytes[record.uri]?.let(::ByteArrayInputStream) },
+                stillAuthorized = { true })
+        })
+        compose.setContent {
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale),
+                LocalAiEditDetailsReader provides reader) {
+                // Every state change restarts the screen so no sheet state leaks between shots.
+                key(dark, fontScale, opened, shown, reader) {
+                    AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
+                        val photo = opened
+                        if (photo == null) {
+                            PhotoDnaRoute(result = result, verifying = false, onBack = {},
+                                onOpenPhoto = { opened = it }, onReviewRequested = {},
+                                accessible = true)
+                        } else {
+                            GalleryViewer(shown, photo, onBack = { opened = null })
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun photoDnaFamily() {
         val family = hasTestTag("photo-dna-provenance-group") and
             hasAnyDescendant(hasText("Original + AI versions (2)"))
@@ -154,5 +228,26 @@ class AiEditMarkerEvidenceTest {
                 .fetchSemanticsNode().boundsInRoot.top
             assertTrue("marker above Edited from…", marker.bottom <= editedFrom)
         }
+    }
+
+    /**
+     * TalkBack follows the sheet's semantics tree order: Name, the file name,
+     * then the marker read as the whole phrase (not a button), then Edited from….
+     */
+    private fun assertReadingOrder(name: String) {
+        val root = compose.onNode(hasTestTag("atlas-viewer-details"), useUnmergedTree = true)
+            .fetchSemanticsNode()
+        val texts = mutableListOf<String>()
+        fun walk(node: SemanticsNode) {
+            node.config.getOrNull(SemanticsProperties.Text)?.forEach { texts += it.text }
+            node.children.forEach(::walk)
+        }
+        walk(root)
+        val order = listOf("Name", name, AI_EDITED_LABEL, "Edited from…").map(texts::indexOf)
+        assertTrue("reading order $order in $texts", order.all { it >= 0 } &&
+            order.zipWithNext().all { (a, b) -> a < b })
+        compose.onNodeWithTag("atlas-details-ai-edited")
+            .assert(hasText(AI_EDITED_LABEL))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
     }
 }
