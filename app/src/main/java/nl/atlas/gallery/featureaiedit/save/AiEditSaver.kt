@@ -131,7 +131,8 @@ internal class AiEditSaver(
             outputExif.setAttribute(ExifInterface.TAG_SOFTWARE, "ATLAS AI Edit")
             // Provider/model are already bounded by AiEditCandidate validation.
             outputExif.setAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION,
-                candidate.provider + "/" + candidate.model)
+                if (candidate.identity == null) candidate.provider + "/" + candidate.model
+                else "ATLAS AI identity edit")
             outputExif.saveAttributes()
         } ?: error("Cannot write new image metadata")
     }
@@ -183,7 +184,8 @@ internal class AiEditSaver(
                 prompt = candidate.prompt,
                 settingsJson = candidate.settingsJson,
                 createdAtMillis = candidate.createdAtMillis,
-                candidateParentUri = candidate.candidateParentUri?.toString()
+                candidateParentUri = candidate.candidateParentUri?.toString(),
+                identity = candidate.identity
             )
             // Persist lineage before publishing; a crash while still pending
             // rolls this back during recovery.

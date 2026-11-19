@@ -62,6 +62,7 @@ import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuredesign.AtlasSpace
 import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNamedMatches
 import java.text.NumberFormat
@@ -310,6 +311,7 @@ fun AtlasAlbumsScreen(
             },
             actions = {
                 AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                    historyScope = SearchHistoryScope.ALBUMS,
                     onScopeChange = { scope ->
                         if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
                     })

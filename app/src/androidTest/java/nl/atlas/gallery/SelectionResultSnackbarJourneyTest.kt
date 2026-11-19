@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -41,6 +42,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -54,6 +56,8 @@ import nl.atlas.gallery.featureorganization.SelectionResultDuration
 import nl.atlas.gallery.featureorganization.SelectionResultMessages
 import nl.atlas.gallery.featureorganization.SelectionResultSnackbarHost
 import nl.atlas.gallery.featureorganization.albumTransferMessage
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -96,14 +100,14 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
-        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
         compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.onAllNodes(hasTestTag("atlas-selection-result")).assertCountEquals(0)
 
         // 1. Before: Android's own Trash consent over the selection. No ATLAS result yet.
-        compose.onNodeWithTag("atlas-selection-trash").performClick()
+        compose.tap(hasTestTag("atlas-selection-trash"))
         val consent = waitForTrashConsent()
-        Thread.sleep(600L) // let the system dialog finish its enter animation
+        awaitScreenStill("the Trash consent dialog's enter animation")
         saveUiEvidence("selection-result-365-$theme-trash-prompt.png")
 
         // 2. Cancel: the photos stay, the selection stays, one honest result above its pill.
@@ -119,7 +123,7 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
         // 3. Accept: Android trashes the two items, selection ends, the new
         //    result replaces the old one and anchors to the nav pill.
-        compose.onNodeWithTag("atlas-selection-trash").performClick()
+        compose.tap(hasTestTag("atlas-selection-trash"))
         waitForTrashConsent().allow()
         waitForResumed()
         compose.waitForNode(resultWithText("Moved selected items to Android Trash"))
@@ -161,9 +165,9 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
 
             compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
             compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
-            compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+            compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
             compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
-            compose.onNodeWithTag("atlas-selection-trash").performClick()
+            compose.tap(hasTestTag("atlas-selection-trash"))
             waitForTrashConsent().cancel()
             waitForResumed()
             compose.waitForNode(resultWithText(text))
@@ -178,6 +182,8 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
             assertNotOverVisiblePill()
             saveUiEvidence("selection-result-376-$theme-rotation-landscape.png")
             val hold = LANDSCAPE_HOLD_MS - (android.os.SystemClock.uptimeMillis() - shownAt)
+            // Deliberately real time, not an outcome: the result's deadline counts
+            // real monotonic ms, and this hold is what makes a restarted timer visible.
             if (hold > 0) Thread.sleep(hold)
             compose.waitForIdle()
             assertOneResult(text)
@@ -212,6 +218,96 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
             } else {
                 shellCommand("settings put secure $A11Y_TIMEOUT_KEY $timeoutBefore")
             }
+        }
+    }
+
+    /** #404: the selected keys and contextual pill survive Activity recreation. */
+    @Test fun rotationRetainsTheSelectedPhotosAndContextualPill() {
+        val theme = if (dark) "dark" else "light"
+        val ids = fixtures.ids
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-${theme}-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-portrait-after.png")
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    /** #404: an album selection cannot silently turn into a Photos selection on rotation. */
+    @Test fun rotationRetainsAlbumSelectionAndItsScope() {
+        val theme = if (dark) "dark" else "light"
+        val folder = "ATLAS-Result-Fixture-${if (dark) "Dark" else "Light"}"
+        val ids = fixtures.ids
+
+        compose.waitForNode(hasTestTag("atlas-nav-albums"))
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitForNode(hasTestTag("atlas-album-grid"))
+        val fixtureAlbum = hasTestTag("atlas-album-card") and hasText(folder, substring = true)
+        compose.waitForNode(fixtureAlbum)
+        compose.onNode(fixtureAlbum).performClick()
+        compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+        }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-${theme}-album-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-portrait-after.png")
+            // Back exits selection first, then returns to the same fixture album.
+            compose.activityRule.scenario.onActivity {
+                it.onBackPressedDispatcher.onBackPressed()
+            }
+            compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+            compose.onNodeWithTag("atlas-selection-pill").assertDoesNotExist()
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    private fun assertSelectedPair(ids: List<Long>) {
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+        compose.onNodeWithTag("atlas-selection-pill").assertExists()
+        compose.onNodeWithTag("atlas-selection-top-bar").assertExists()
+        compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
+        // The restored mode keeps the same actionable Share/Delete/Copy/More
+        // surface, not merely the checked thumbnails and count.
+        listOf("atlas-selection-share", "atlas-selection-trash",
+            "atlas-selection-transfer", "atlas-selection-more").forEach { action ->
+            compose.onNodeWithTag(action).assertExists()
+        }
+        ids.take(2).forEach { id ->
+            val tag = "atlas-timeline-media-${id}"
+            compose.onNodeWithTag("atlas-timeline-grid")
+                .performScrollToNode(hasTestTag(tag))
+            compose.onNodeWithTag(tag).assertIsSelected()
         }
     }
 
@@ -307,6 +403,40 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
                 it.equals("Allow", true) || it.startsWith("Allow ", true)
             }) { "MediaProvider Trash consent has no Allow button; texts=${texts(root)}" }
             check(allow.performAction(AccessibilityNodeInfo.ACTION_CLICK)) { "Allow click refused" }
+        }
+    }
+
+    /**
+     * A system dialog is not a Compose window, so awaitWindowSettled() cannot
+     * see it (and it holds focus, which that wait requires for ATLAS). Instead
+     * wait until two screenshots in a row are identical: the dialog's enter
+     * animation has ended. Evidence only, so a screen that never stops changing
+     * is logged rather than failed; saveUiEvidence still checks the frame.
+     */
+    private fun awaitScreenStill(what: String) {
+        var last: IntArray? = null
+        try {
+            compose.awaitThat("the screen to stop changing after $what", timeoutMs = 5_000L) {
+                val now = screenSample()
+                (now != null && now.contentEquals(last)).also { last = now }
+            }
+        } catch (timeout: AssertionError) {
+            android.util.Log.w("AtlasSelectionResult", "screen still changing: ${timeout.message}")
+        }
+    }
+
+    /** A coarse grid of screen pixels, enough to tell a moving dialog from a still one. */
+    private fun screenSample(): IntArray? {
+        val shot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            ?: return null
+        try {
+            val step = 24
+            return IntArray((shot.width / step) * (shot.height / step)) { i ->
+                val columns = shot.width / step
+                shot.getPixel((i % columns) * step, (i / columns) * step)
+            }
+        } finally {
+            shot.recycle()
         }
     }
 
@@ -476,12 +606,15 @@ private fun assertAboveAnchor(compose: ComposeTestRule, anchorTag: String) {
     // wm size/density change the window insets can still be moving, and one
     // run measured 11.0 dp while the same head's other run passed. A layout
     // that stays outside the brief still fails, with the last measurement.
-    val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
-    while (true) {
-        compose.waitForIdle()
-        val problem = anchorProblem(compose, anchorTag) ?: return
-        if (android.os.SystemClock.uptimeMillis() >= deadline) throw AssertionError(problem)
-        Thread.sleep(250L)
+    compose.waitForIdle()
+    var problem: String? = null
+    try {
+        compose.awaitThat("the result to sit in its brief above $anchorTag", timeoutMs = 10_000L) {
+            problem = anchorProblem(compose, anchorTag)
+            problem == null
+        }
+    } catch (timeout: AssertionError) {
+        throw AssertionError(problem ?: timeout.message, timeout)
     }
 }
 
