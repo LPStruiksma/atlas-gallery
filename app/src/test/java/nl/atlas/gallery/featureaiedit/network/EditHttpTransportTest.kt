@@ -5,7 +5,13 @@ import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URL
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -179,6 +185,36 @@ class EditHttpTransportTest {
     }
 
 
+    @Test fun workerStopDisconnectsARequestBlockedOnTheServerReply() {
+        val requestArrived = CountDownLatch(1)
+        withServer({ requestArrived.countDown(); FakeResponse(200, delayMs = 4_000) }) { server ->
+            val slow = EditHttpConfig("https://editor.example/v1/", setOf("editor.example"),
+                connectTimeoutMs = 500, readTimeoutMs = 8_000, overallTimeoutMs = 10_000)
+            var result: EditHttpResult? = null
+            var elapsedMs = 0L
+            runBlocking {
+                val worker = launch(Dispatchers.IO) {
+                    withContext(Dispatchers.IO) {
+                        val cancellation = EditRequestCancellation()
+                        val watcher = WorkerStopWatcher(this) { cancellation.cancel() }
+                        try {
+                            val start = System.nanoTime()
+                            result = transport(server).execute(slow,
+                                EditHttpRequest(EditHttpMethod.GET, "edits/abc"), cancellation = cancellation)
+                            elapsedMs = (System.nanoTime() - start) / 1_000_000L
+                        } finally { watcher.release() }
+                    }
+                }
+                assertTrue(requestArrived.await(5, TimeUnit.SECONDS))
+                worker.cancel()
+                worker.join()
+            }
+            // The read is blocked for 4 s on the server; the stop must disconnect it well before that.
+            assertEquals(EditHttpResult.Cancelled, result)
+            assertTrue("stop took ${elapsedMs} ms", elapsedMs < 2_000)
+        }
+    }
+
     @Test fun authenticationAndInvalidRequestsMapToFixedCodes() = withServer({ request ->
             val status = when (request.path) {
                 "/v1/auth" -> 401
@@ -225,6 +261,19 @@ class EditHttpTransportTest {
             assertArrayEquals(byteArrayOf(1, 2, 3, 4, 5), target.readBytes())
         } finally {
             target.delete()
+        }
+    }
+
+
+    @Test fun oversizedJsonIsRejectedWithoutRetry() {
+        val attempts = AtomicInteger()
+        withServer({
+            attempts.incrementAndGet()
+            FakeResponse(200, body = ByteArray(1_000_001) { 'x'.code.toByte() })
+        }) { server ->
+            val result = transport(server).execute(config(), EditHttpRequest(EditHttpMethod.GET, "capabilities"))
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
+            assertEquals(1, attempts.get())
         }
     }
 
@@ -308,7 +357,7 @@ class EditHttpTransportTest {
         }) { server ->
             val result = transport(server).execute(config().copy(readTimeoutMs = 5_000, overallTimeoutMs = 20_000),
                 EditHttpRequest(EditHttpMethod.GET, "status"), maxReplyBytes = 1_500_000)
-            assertEquals(EditHttpResult.Failed(FailureCode.SERVER, false), result)
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
             assertEquals("GET over the cap is not retried", 1, attempts.get())
         }
     }
@@ -348,7 +397,7 @@ class EditHttpTransportTest {
             }, sleeper = { })
             val result = transport.execute(config().copy(readTimeoutMs = 5_000, overallTimeoutMs = 20_000),
                 EditHttpRequest(EditHttpMethod.GET, "status"), maxReplyBytes = 1_000_000)
-            assertEquals(EditHttpResult.Failed(FailureCode.SERVER, false), result)
+            assertEquals(EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false), result)
             assertEquals(1, served.get())
         } finally {
             socket.close(); thread.join(1_000)
