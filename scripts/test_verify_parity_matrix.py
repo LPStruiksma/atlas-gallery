@@ -61,8 +61,8 @@ class ParityMatrixContractTest(unittest.TestCase):
     def test_real_matrix_rows_match_20_surfaces_and_both_themes(self):
         rows = matrix.read_contract()
         self.assertEqual(40, len(rows))
-        self.assertEqual(34, sum(bool(r["source_png"]) for r in rows))
-        self.assertEqual(6, sum(not r["source_png"] for r in rows))
+        self.assertEqual(40, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(0, sum(not r["source_png"] for r in rows))
 
     def test_missing_row_or_duplicate_pair_is_refused(self):
         rows = self.rows()
@@ -84,8 +84,8 @@ class ParityMatrixContractTest(unittest.TestCase):
         with (dest / "manifest.tsv").open(newline="", encoding="utf-8") as f:
             manifest = list(csv.DictReader(f, delimiter="\t"))
         self.assertEqual(40, len(manifest))
-        self.assertEqual(34, sum(r["status"] == "CAPTURED" for r in manifest))
-        self.assertEqual(6, sum(r["status"] == "NOT_CAPTURED" for r in manifest))
+        self.assertEqual(40, sum(r["status"] == "CAPTURED" for r in manifest))
+        self.assertEqual(0, sum(r["status"] == "NOT_CAPTURED" for r in manifest))
         self.assertEqual("a" * 40, manifest[0]["commit_sha"])
         for row in manifest:
             self.assertEqual("1080", row["width"])
@@ -108,7 +108,10 @@ class ParityMatrixContractTest(unittest.TestCase):
 
     def test_required_unsourced_row_refused(self):
         rows = self.rows()
-        row = next(r for r in rows if not r["source_png"])
+        # #24: every row is captured now; drop one source to prove a
+        # mandatory row without a screenshot is still refused.
+        row = rows[0]
+        row["source_png"] = ""
         row["required"] = "yes"
         self.save_rows(rows)
         with self.assertRaisesRegex(ValueError, "Mandatory surface"):
