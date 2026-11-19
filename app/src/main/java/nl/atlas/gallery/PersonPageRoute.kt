@@ -118,7 +118,10 @@ internal fun NativePersonAlbumRoute(
     sorted: List<MediaRecord>,
     gridState: LazyGridState,
     catalogueEpoch: Long,
-    selectionRotationState: androidx.compose.runtime.MutableState<PersonSelectionRotationSnapshot?>,
+    // App supplies the retained ViewModel holder; standalone Compose test routes
+    // use an ephemeral composition-local holder rather than Android saved state.
+    selectionRotationState: androidx.compose.runtime.MutableState<PersonSelectionRotationSnapshot?> =
+        remember { mutableStateOf(null) },
     onBack: () -> Unit,
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
