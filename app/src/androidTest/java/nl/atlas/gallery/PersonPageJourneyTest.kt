@@ -357,7 +357,7 @@ class PersonPageJourneyTest {
             // and below the pinned person header in every landscape capture.
             val selectedTile = compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
                 .assertIsDisplayed().getUnclippedBoundsInRoot()
-            if (root.width > root.height) {
+            if (root.right - root.left > root.bottom - root.top) {
                 val pinnedHeader = compose.onNodeWithTag("atlas-scrolling-header")
                     .getUnclippedBoundsInRoot()
                 val visibleTop = maxOf(selectedTile.top, pinnedHeader.bottom, root.top)
