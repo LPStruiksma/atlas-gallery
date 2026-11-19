@@ -1768,11 +1768,14 @@ internal class PeopleDiscoveryHost(
             // Move the quality cursor only after attempting a single source.
             // No immediate retry of an unreadable/unmatched source: the kept
             // charging re-arm starts again from the beginning later.
-            val attempted = lastQualityBackfill?.attemptedMediaKey
-            val qualityNext = attempted != null && !lastQualityBackfill!!.held &&
+            // Consume this batch's result so a later scan-only batch cannot
+            // reuse a stale attempted key to advance the cursor or schedule work.
+            val qualityResult = lastQualityBackfill.also { lastQualityBackfill = null }
+            val attempted = qualityResult?.attemptedMediaKey
+            val qualityNext = attempted != null && qualityResult.held == false &&
                 try { store.pendingQualitySource(owned.epoch, attempted) != null }
                 catch (_: SQLException) { false }
-            if (attempted != null || lastQualityBackfill?.held == false) synchronized(lock) {
+            if (attempted != null || qualityResult?.held == false) synchronized(lock) {
                 qualityCursor = if (qualityNext) owned.epoch to attempted!! else null
             }
             // A drained (or absent) visual queue frees the ~100 MB embedder; the
