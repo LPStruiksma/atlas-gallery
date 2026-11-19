@@ -408,6 +408,9 @@ class PeopleDiscoveryHostTest {
         granted = false
         grant = null
         waitFor("scheduler cancel on revoke") { scheduler.cancels.get() >= 1 }
+        // revoke() cancels the scheduler before it invalidates the store, on
+        // the publication's IO thread: wait for that step too, then assert.
+        waitFor("store hides the epoch on revoke") { store.progress(epoch) == null }
         assertNull(batch())
         assertNull(store.progress(epoch))
         assertNull(store.clusterState(epoch))
