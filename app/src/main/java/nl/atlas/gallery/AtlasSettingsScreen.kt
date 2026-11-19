@@ -29,9 +29,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
 import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
@@ -212,18 +214,75 @@ private fun SettingsActionRow(
     onClick: (() -> Unit)? = null,
     value: String? = null
 ) {
-    Row(
+    SettingsRowLayout(
         Modifier.fillMaxWidth().heightIn(min = 52.dp)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(tag),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        if (value != null) {
-            Spacer(Modifier.width(12.dp))
-            Text(value, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        label = { Text(label, Modifier.testTag("$tag-label"), style = MaterialTheme.typography.bodyLarge) },
+        value = value?.let { text ->
+            {
+                Text(text, Modifier.testTag("$tag-value"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    )
+}
+
+/**
+ * Settings row: label left, value right on one line when both fit at full width;
+ * otherwise the value moves under the label. The label is never squeezed, so a long
+ * status (e.g. "Waiting for charging · use Scan now while unplugged") cannot push the
+ * title into a one-letter column.
+ */
+@Composable
+internal fun SettingsRowLayout(
+    modifier: Modifier,
+    label: @Composable () -> Unit,
+    value: (@Composable () -> Unit)?
+) {
+    val gap = 12.dp
+    val stackedGap = 2.dp
+    val vertical = 8.dp
+    Layout(
+        content = { label(); value?.invoke() },
+        modifier = modifier
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val pad = vertical.roundToPx()
+        val labelM = measurables[0]
+        val valueM = measurables.getOrNull(1)
+        val gapPx = gap.roundToPx()
+        val loose = Constraints(maxWidth = width)
+        val stack = valueM != null && settingsRowStacks(
+            labelM.maxIntrinsicWidth(Constraints.Infinity), gapPx,
+            valueM.maxIntrinsicWidth(Constraints.Infinity), width)
+        val labelP = labelM.measure(loose)
+        if (valueM == null) {
+            val h = maxOf(constraints.minHeight, labelP.height + 2 * pad)
+            return@Layout layout(width, h) { labelP.place(0, (h - labelP.height) / 2) }
+        }
+        if (stack) {
+            val valueP = valueM.measure(loose)
+            val inner = labelP.height + stackedGap.roundToPx() + valueP.height
+            val h = maxOf(constraints.minHeight, inner + 2 * pad)
+            val top = (h - inner) / 2
+            layout(width, h) {
+                labelP.place(0, top)
+                valueP.place(0, top + labelP.height + stackedGap.roundToPx())
+            }
+        } else {
+            val valueP = valueM.measure(Constraints(maxWidth = maxOf(0, width - labelP.width - gapPx)))
+            val h = maxOf(constraints.minHeight, maxOf(labelP.height, valueP.height) + 2 * pad)
+            layout(width, h) {
+                labelP.place(0, (h - labelP.height) / 2)
+                valueP.place(width - valueP.width, (h - valueP.height) / 2)
+            }
         }
     }
 }
+
+/** True when label and value do not fit side by side at their natural one-line widths. */
+internal fun settingsRowStacks(labelWidth: Int, gap: Int, valueWidth: Int, available: Int): Boolean =
+    labelWidth + gap + valueWidth > available
