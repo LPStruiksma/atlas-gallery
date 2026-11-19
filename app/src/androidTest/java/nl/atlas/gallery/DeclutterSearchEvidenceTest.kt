@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -148,12 +149,10 @@ class DeclutterSearchEvidenceTest {
 
     private fun capture(name: String) {
         rule.waitForIdle()
-        Thread.sleep(500)
-        rule.waitForIdle()
         saveUiEvidence(name)
     }
 
-    private fun assertAboveIme(labels: List<String>) = assertLabelsAboveIme(labels)
+    private fun assertAboveIme(labels: List<String>) = rule.assertLabelsAboveIme(labels)
 
     private companion object { const val STAGED = 4 }
 }
@@ -192,10 +191,8 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.awaitThat("single-row panel above the keyboard") {
                     rule.exists(hasTestTag("atlas-search-single-row"))
                 }
-                assertLabelsAboveIme(listOf("This screen", "Whole library", "Close search",
+                rule.assertLabelsAboveIme(listOf("This screen", "Whole library", "Close search",
                     "Back to Gallery"))
-                rule.waitForIdle()
-                Thread.sleep(500)
                 rule.waitForIdle()
                 saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
 
@@ -265,18 +262,17 @@ internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
  * coordinates. Accessibility bounds cover popups too (the search panel is a
  * DropdownMenu window), which Compose window-relative bounds do not.
  */
-internal fun assertLabelsAboveIme(labels: List<String>) {
+internal fun ComposeTestRule.assertLabelsAboveIme(labels: List<String>) {
     val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
     automation.serviceInfo = automation.serviceInfo.apply {
         flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
     }
     var imeTop = -1
-    val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
-    while (imeTop < 0 && android.os.SystemClock.uptimeMillis() < deadline) {
+    awaitThat("the keyboard window in the accessibility tree", 5_000L) {
         automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
             ?.let { window -> Rect().also { window.getBoundsInScreen(it) } }
             ?.takeIf { it.height() > 0 }?.let { imeTop = it.top }
-        if (imeTop < 0) Thread.sleep(100)
+        imeTop > 0
     }
     assertTrue("keyboard window must be up", imeTop > 0)
     for (label in labels) {
