@@ -43,10 +43,9 @@ test('Gemini adapter is honest: no mask claim, refusals separate from failures, 
   assert.match(gemini, /"thought"\]\.bool\(\) != true/);
 });
 
-test('PROVIDERS.md records the implemented Gemini adapter with dated sources and the reply-size gap', () => {
-  const doc = readFileSync(join(root, 'docs/ai-edit/PROVIDERS.md'), 'utf8');
-  assert.match(doc, /## Implemented adapters/);
-  assert.match(doc, /### Google Gemini \(#192\), 2026-11-18/);
+test('the Gemini adapter document records dated sources and the reply-size gap', () => {
+  const doc = readFileSync(join(root, 'docs/ai-edit/adapters/gemini.md'), 'utf8');
+  assert.match(doc, /# Google Gemini \(#192\), 2026-11-18/);
   assert.match(doc, /googleapis\/python-genai/);
   assert.match(doc, /Large replies \(#441\)/);
 });
