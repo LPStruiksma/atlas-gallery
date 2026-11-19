@@ -3731,6 +3731,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 sorted = sorted,
                                 gridState = nativePersonGridState,
                                 catalogueEpoch = publishedGallery.epoch,
+                                selectionRotationState = vm.pendingPersonSelectionRotationState,
                                 onBack = { nativePersonAlbum = null },
                                 onOpen = { items, record -> openViewer(items, record.uri) },
                                 facetPeople = people,

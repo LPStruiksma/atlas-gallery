@@ -78,6 +78,15 @@ internal data class NativePersonAlbumRequest(
 private val personPageOpenings = java.util.concurrent.atomic.AtomicLong()
 private fun nextPersonPageOpening(): Long = personPageOpenings.incrementAndGet()
 
+/** A bounded pending person selection owned by an Activity-retained ViewModel.
+ * The opening key prevents an abandoned page selection from entering another page.
+ * The ViewModel is not a SavedStateHandle: process death drops this tuple.
+ */
+internal data class PersonSelectionRotationSnapshot(val opening: Long, val encoded: List<String>) {
+    fun forOpening(currentOpening: Long): List<String> =
+        encoded.takeIf { opening == currentOpening }.orEmpty()
+}
+
 /** A changed permission, People generation or person identity hides controls now,
  * rather than waiting for the coroutine that discards stale selection state. */
 internal fun validatedPersonSelection(
@@ -109,6 +118,7 @@ internal fun NativePersonAlbumRoute(
     sorted: List<MediaRecord>,
     gridState: LazyGridState,
     catalogueEpoch: Long,
+    selectionRotationState: androidx.compose.runtime.MutableState<PersonSelectionRotationSnapshot?>,
     onBack: () -> Unit,
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
@@ -143,13 +153,11 @@ internal fun NativePersonAlbumRoute(
     var dialog by remember(request) { mutableStateOf<PersonPageDialog?>(null) }
     // Save only a bounded tuple. A restored snapshot is never actionable
     // until the current grant, People scope and source have been validated.
-    var pendingSelection by androidx.compose.runtime.saveable.rememberSaveable(
-        request.opening, saver = androidx.compose.runtime.saveable.Saver<
-            androidx.compose.runtime.MutableState<List<String>>, ArrayList<String>>(
-            save = { ArrayList(it.value) },
-            restore = { mutableStateOf(it.toList()) }
-        )
-    ) { mutableStateOf<List<String>>(emptyList()) }
+    // Configuration changes keep the pending keys in the ViewModel; process
+    // death must not deserialize a stale person selection from a Bundle.
+    var pendingSelection by remember(request.opening, selectionRotationState) {
+        mutableStateOf(selectionRotationState.value?.forOpening(request.opening).orEmpty())
+    }
     var selected by remember(request) { mutableStateOf<Set<String>?>(null) }
     var choosingCover by remember(request) { mutableStateOf(false) }
     val chosenCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
@@ -235,6 +243,8 @@ internal fun NativePersonAlbumRoute(
             val encoded = selectionFence + live.sorted()
             if (pendingSelection != encoded) pendingSelection = encoded
         }
+        val snapshot = PersonSelectionRotationSnapshot(request.opening, pendingSelection)
+        if (selectionRotationState.value != snapshot) selectionRotationState.value = snapshot
     }
     LaunchedEffect(request.opening, currentGrant, epoch, personIdentity,
         CatalogSourceKey(visibleMedia ?: emptyList<MediaRecord>()), pendingSelection) {

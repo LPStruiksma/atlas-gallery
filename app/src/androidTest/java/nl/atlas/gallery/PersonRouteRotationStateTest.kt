@@ -22,11 +22,13 @@ class PersonRouteRotationStateTest {
         val request = NativePersonAlbumRequest(PersonKey("synthetic-rotation-person"), "Synthetic")
         val before = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         val selectionHolder = before.pendingSelectionRotationState
+        val personSelectionHolder = before.pendingPersonSelectionRotationState
         compose.runOnUiThread { before.nativePersonAlbumState.value = request }
         compose.activityRule.scenario.recreate()
         val after = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         assertSame(before, after)
         assertSame(selectionHolder, after.pendingSelectionRotationState)
+        assertSame(personSelectionHolder, after.pendingPersonSelectionRotationState)
         assertEquals(request, after.nativePersonAlbumState.value)
         compose.runOnUiThread { after.nativePersonAlbumState.value = null }
     }

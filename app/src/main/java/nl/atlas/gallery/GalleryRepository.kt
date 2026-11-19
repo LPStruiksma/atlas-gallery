@@ -343,6 +343,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     internal val nativePersonAlbumState = mutableStateOf<NativePersonAlbumRequest?>(null)
     // Pending photo/album selection only survives configuration changes; never Bundle saves.
     internal val pendingSelectionRotationState = mutableStateOf<SelectionRotationState?>(null)
+    // Person selections share that configuration-only lifetime, never Android saved state.
+    internal val pendingPersonSelectionRotationState = mutableStateOf<PersonSelectionRotationSnapshot?>(null)
     private val repo = GalleryRepository(application)
     private val peopleRepo = PeopleRepository(application)
     private val v4LinkPrefs = application.getSharedPreferences("atlas_v4_live_sync",Context.MODE_PRIVATE)

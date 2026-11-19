@@ -24,6 +24,13 @@ class PersonSelectionFenceTest {
         assertNull(validatedPersonSelection(keys, null, fence))
     }
 
+    @Test fun configurationSnapshotIsScopedToTheSamePersonPageOpening() {
+        val encoded = fence + keys.sorted()
+        val snapshot = PersonSelectionRotationSnapshot(opening = 17L, encoded = encoded)
+        assertEquals(encoded, snapshot.forOpening(17L))
+        assertEquals(emptyList<String>(), snapshot.forOpening(18L))
+    }
+
     @Test fun restoredPersonKeysKeepOnlyVisibleMembersOfTheSameIdentity() {
         assertEquals(keys, eligiblePersonSelection(keys, keys))
         assertEquals(setOf("content://synthetic/photo-a"),
