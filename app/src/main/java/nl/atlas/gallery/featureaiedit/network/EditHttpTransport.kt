@@ -72,7 +72,23 @@ enum class FailureCode { INVALID_REQUEST, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER 
 
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
-    data class Failed(val code: FailureCode, val retryable: Boolean) : EditHttpResult
+    /**
+     * A transport failure. [errorBody] is available only so an adapter can recognize a
+     * provider's documented, structured refusal. It is always bounded by
+     * [EditHttpTransport.MAX_ERROR_REPLY] and deliberately omitted from [toString].
+     */
+    class Failed(
+        val code: FailureCode,
+        val retryable: Boolean,
+        val status: Int? = null,
+        val errorBody: ByteArray = byteArrayOf()
+    ) : EditHttpResult {
+        // Preserve the pre-body value semantics used by callers and tests; the body is diagnostic
+        // input to an adapter, not part of the public failure identity.
+        override fun equals(other: Any?): Boolean = other is Failed && code == other.code && retryable == other.retryable
+        override fun hashCode(): Int = 31 * code.hashCode() + retryable.hashCode()
+        override fun toString(): String = "Failed(code=$code, retryable=$retryable, status=$status, errorBody=[REDACTED])"
+    }
     data object Cancelled : EditHttpResult
 }
 
@@ -282,14 +298,17 @@ class EditHttpTransport(
             }
             val status = connection.responseCode
             if (status !in 200..299) {
-                return when (status) {
-                    401, 403 -> EditHttpResult.Failed(FailureCode.AUTH, false)
-                    408 -> EditHttpResult.Failed(FailureCode.TIMEOUT, true)
-                    429 -> EditHttpResult.Failed(FailureCode.QUOTA, false)
-                    400, 404, 405, 411, 413, 415, 422 -> EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
-                    in 500..599 -> EditHttpResult.Failed(FailureCode.SERVER, true)
-                    else -> EditHttpResult.Failed(FailureCode.SERVER, false) // includes ALL redirects
+                val body = if (status in 400..599) readErrorBody(connection, deadline, cancel)
+                    else byteArrayOf()
+                val mapped = when (status) {
+                    401, 403 -> FailureCode.AUTH to false
+                    408 -> FailureCode.TIMEOUT to true
+                    429 -> FailureCode.QUOTA to false
+                    400, 404, 405, 411, 413, 415, 422 -> FailureCode.INVALID_REQUEST to false
+                    in 500..599 -> FailureCode.SERVER to true
+                    else -> FailureCode.SERVER to false // includes ALL redirects
                 }
+                return EditHttpResult.Failed(mapped.first, mapped.second, status, body)
             }
             val stream = connection.inputStream
             if (replyCap != null && connection.contentLengthLong > replyCap) throw ReplyLimitExceeded()
@@ -341,6 +360,29 @@ class EditHttpTransport(
         }
     }
 
+    private fun readErrorBody(
+        connection: HttpURLConnection,
+        deadline: Long,
+        cancel: EditRequestCancellation
+    ): ByteArray {
+        if (connection.contentLengthLong > MAX_ERROR_REPLY) return byteArrayOf()
+        val input = connection.errorStream ?: return byteArrayOf()
+        val output = ByteArrayOutputStream(minOf(connection.contentLength.coerceAtLeast(0), MAX_ERROR_REPLY))
+        val block = ByteArray(8192)
+        return try {
+            input.use {
+                while (output.size() < MAX_ERROR_REPLY) {
+                    if (cancel.isCancelled || clockMs() >= deadline) return byteArrayOf()
+                    val count = it.read(block, 0, minOf(block.size, MAX_ERROR_REPLY - output.size()))
+                    if (count < 0) return output.toByteArray()
+                    output.write(block, 0, count)
+                }
+                // Exactly 64 KiB is allowed. One additional byte means the body is not retained.
+                if (it.read() < 0) output.toByteArray() else byteArrayOf()
+            }
+        } catch (_: IOException) { byteArrayOf() }
+    }
+
     private fun copyBounded(
         input: java.io.InputStream,
         output: java.io.OutputStream,
@@ -377,6 +419,7 @@ class EditHttpTransport(
     private class ReplyLimitExceeded : RuntimeException()
 
     companion object {
+        const val MAX_ERROR_REPLY = 64 * 1024
         /**
          * Largest reply a caller may allow for one request. The largest documented hosted output
          * is a 4096 x 4096 image (Gemini `imageSize` 4K): about 25 MB as a photographic PNG, about
