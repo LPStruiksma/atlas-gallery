@@ -1,0 +1,21 @@
+# DESIGN-8M #609 test-only generated S24-size screenshot evidence.
+# Measured JSON accompanies PNGs in the individual emulator shard artifacts.
+viewer-609-photo-bright-dark-portrait-shown
+viewer-609-photo-bright-dark-portrait-hidden
+viewer-609-photo-bright-dark-landscape-shown
+viewer-609-photo-dark-dark-portrait-shown
+viewer-609-photo-dark-dark-portrait-hidden
+viewer-609-photo-dark-dark-landscape-shown
+viewer-609-photo-bright-light-portrait-shown
+viewer-609-photo-bright-light-portrait-hidden
+viewer-609-photo-bright-light-landscape-shown
+viewer-609-photo-dark-light-portrait-shown
+viewer-609-photo-dark-light-portrait-hidden
+viewer-609-photo-dark-light-landscape-shown
+viewer-609-photo-unavailable-light-portrait-shown
+viewer-609-video-dark-portrait-hidden
+viewer-609-video-dark-seek-start
+viewer-609-video-dark-seek-end
+viewer-609-video-light-portrait-hidden
+viewer-609-video-light-seek-start
+viewer-609-video-light-seek-end

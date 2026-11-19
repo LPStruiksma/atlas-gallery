@@ -62,6 +62,18 @@ class FaceIndexStoreTest {
         store.commitSnapshot(epoch,model)
     }
 
+    @Test fun diagnosticsGenerationIsReadOnlyAndFencedToActiveEpoch() = withStore { db ->
+        assertNull(db.clusterGenerationDiagnostics("epoch-A"))
+        stage(db, rows = listOf(a))
+        val first = requireNotNull(db.clusterGenerationDiagnostics("epoch-A"))
+        assertTrue(first.second >= 0)
+        assertEquals(first, db.clusterGenerationDiagnostics("epoch-A"))
+        assertNull(db.clusterGenerationDiagnostics("epoch-B"))
+        stage(db, epoch = "epoch-B", rows = listOf(b))
+        assertNull(db.clusterGenerationDiagnostics("epoch-A"))
+        assertNotNull(db.clusterGenerationDiagnostics("epoch-B"))
+    }
+
     @Test fun hiddenUntilAtomicCatalogCommitAndEpochMatchedReads() = withStore { db ->
         db.beginSnapshot("epoch-A")
         db.stageBatch("epoch-A",listOf(a))

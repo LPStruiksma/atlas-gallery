@@ -134,6 +134,9 @@ class FalImageEditProviderTest {
             assertEquals(FalImageEditProvider.QUEUE_HOST, submit.host)
             assertEquals("/fal-ai/qwen-image-edit-2511", submit.path)
             assertEquals("Key $FAKE_KEY", submit.headers["authorization"])
+            // #464: every submit asks fal to expire its public result objects after one hour.
+            assertEquals("""{"expiration_duration_seconds":3600}""",
+                submit.headers["x-fal-object-lifecycle-preference"])
             val input = HostedJson.parse(submit.text).obj()!!
             assertEquals("Remove the synthetic lamp post", input["prompt"].str())
             val uri = input["image_urls"].arr()!!.single().str()!!
@@ -148,6 +151,7 @@ class FalImageEditProviderTest {
             gets.filter { it.host == FalImageEditProvider.QUEUE_HOST }.forEach {
                 assertEquals("Key $FAKE_KEY", it.headers["authorization"])
             }
+            assertTrue(gets.none { it.headers.containsKey("x-fal-object-lifecycle-preference") })
             val download = gets.single { it.path == "/files/synthetic/out.png" }
             assertEquals("v3b.fal.media", download.host)
             assertNull("key never sent to the media host", download.headers["authorization"])
@@ -252,7 +256,13 @@ class FalImageEditProviderTest {
             "https://v3b.fal.media:8443/files/synthetic/out.png",
             "https://v3b.fal.media/files/synthetic/out.png?token=x",
             "data:image/png;base64,AAAA",
-            "https://fal.run/files/synthetic/out.png"
+            "https://fal.run/files/synthetic/out.png",
+            // #464: official examples for other fal models use this public bucket; it is not
+            // allowlisted, so a result there fails closed instead of widening the hosts.
+            "https://storage.googleapis.com/falserverless/files/synthetic/out.png",
+            "https://falserverless.storage.googleapis.com/files/synthetic/out.png",
+            "https://fal.ai/files/synthetic/out.png",
+            "https://cdn.fal.ai/files/synthetic/out.png"
         )
         for (url in urls) {
             FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"), result = {
@@ -261,12 +271,15 @@ class FalImageEditProviderTest {
                 val result = h.provider().submit(request()).await(maxPolls = 200) as EditOutcome.Failed
                 assertEquals(url, "RESULT_HOST_REJECTED", result.message)
                 assertTrue(h.calls("GET").none { it.path.startsWith("/files/") })
+                assertTrue(url, h.output.listFiles().orEmpty().isEmpty())
             }
         }
         assertTrue(FalImageEditProvider.isFalMediaHost("fal.media"))
         assertTrue(FalImageEditProvider.isFalMediaHost("v3.fal.media"))
         assertFalse(FalImageEditProvider.isFalMediaHost("evilfal.media"))
         assertFalse(FalImageEditProvider.isFalMediaHost("x.fal.media.example"))
+        assertFalse(FalImageEditProvider.isFalMediaHost("storage.googleapis.com"))
+        assertFalse(FalImageEditProvider.isFalMediaHost("fal.ai"))
     }
 
     @Test fun oversizedOrFakeResultImagesAreNeverStored() {

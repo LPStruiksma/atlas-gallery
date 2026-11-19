@@ -58,6 +58,9 @@ internal fun galleryItemHintOrNull(uri: Uri): GalleryItemHint? {
 }
 
 class GalleryRepository(private val context: Context) {
+    /** Aggregate count from the most recent completed scan, not media identity. */
+    @Volatile var lastReusedCount: Int? = null
+        private set
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
     fun load(
         cancellationSignal: CancellationSignal? = null,
@@ -76,6 +79,7 @@ class GalleryRepository(private val context: Context) {
         previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
     ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
+        lastReusedCount = null
         loadInventory(cancellationSignal, previous, checkActive)
     }
 
@@ -115,6 +119,7 @@ class GalleryRepository(private val context: Context) {
         if (!sameMediaProviderScanSnapshot(
                 versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd))
             throw GalleryProviderSnapshotChanged()
+        lastReusedCount = reuse.reused
         // Counts only: how much of the previous inventory this scan shared.
         android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
             "reused=${reuse.reused} ${heapUseLogFields()}")
@@ -337,6 +342,9 @@ class GalleryRepository(private val context: Context) {
         if (index < 0 || isNull(index)) fallback else getString(index)
 }
 
+private const val V4_NOT_LINKED = "No V4 live export linked"
+private const val V4_LINKED = "V4 live export linked"
+
 class GalleryViewModel(application: Application): AndroidViewModel(application) {
     // Configuration-change only: neither the person key nor name is copied to
     // saved instance state, preferences or process-death restoration.
@@ -347,13 +355,21 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     internal val pendingPersonSelectionRotationState = mutableStateOf<PersonSelectionRotationSnapshot?>(null)
     private val repo = GalleryRepository(application)
     private val peopleRepo = PeopleRepository(application)
-    private val v4LinkPrefs = application.getSharedPreferences("atlas_v4_live_sync",Context.MODE_PRIVATE)
+    // #435: opened and read on IO only; the first Photos grid never waits on its load.
+    private val v4LinkPrefs by lazy {
+        application.getSharedPreferences("atlas_v4_live_sync", Context.MODE_PRIVATE)
+    }
     private val peopleCsvGate = PeopleCsvSyncCoordinator()
     private var v4SyncRunning = false
-    private val _v4SyncState = MutableStateFlow(
-        if (v4LinkPrefs.contains("uri")) "V4 live export linked" else "No V4 live export linked"
-    )
+    private val _v4SyncState = MutableStateFlow(V4_NOT_LINKED)
     val v4SyncState = _v4SyncState.asStateFlow()
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Only the untouched initial text is replaced: a link or import
+            // that already finished has published the newer state itself.
+            if (v4LinkPrefs.contains("uri")) _v4SyncState.compareAndSet(V4_NOT_LINKED, V4_LINKED)
+        }
+    }
     private val _people = MutableStateFlow<List<PersonEntry>>(emptyList())
     val people = _people.asStateFlow()
     private val _busy = MutableStateFlow(false)
@@ -371,8 +387,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     private val _failedInventoryEpoch = MutableStateFlow(0L)
     val failedInventoryEpoch = _failedInventoryEpoch.asStateFlow()
     // #505: cold start opens straight into the last catalogue from disk.
-    private val inventoryCache = GalleryInventoryCacheFile(
-        java.io.File(application.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))
+    private val inventoryCache = GalleryInventoryCacheFile {
+        java.io.File(application.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE)
+    }
     private var inventoryCacheWrite: Job? = null
     @Volatile private var inventoryDirty = true
     private val mediaChangeVersion = AtomicLong(0L)
@@ -631,7 +648,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = false
-        inventoryCache.restore(readGalleryMediaGrant(getApplication<Application>()))
+        // #435: decide on Main, delete on IO; reads and writes settle it first.
+        inventoryCache.beginRestore(readGalleryMediaGrant(getApplication<Application>()))
+        viewModelScope.launch(Dispatchers.IO) { inventoryCache.settle() }
         val ticket = refreshQueue.request()
         // Unlike ordinary refresh, a new grant invalidates the old scan.
         // Cancel both its provider IPC and its IO coroutine immediately.
@@ -659,6 +678,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         val scanStartedNanos = System.nanoTime()
         fun scanElapsedMilliseconds(): Long =
             ((System.nanoTime() - scanStartedNanos) / 1_000_000L).coerceAtLeast(0L)
+        var diagnosticOutcome = "SUPERSEDED"
+        var diagnosticRows: Int? = null
+        var diagnosticReused: Int? = null
         // The scope belongs to the scan, not whichever Activity grant happens
         // to be visible when an asynchronous MediaStore cursor finishes.
         val observedGrantAtStart = readGalleryMediaGrant(getApplication<Application>())
@@ -713,6 +735,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
+                        diagnosticRows = inventory.size
+                        diagnosticReused = repo.lastReusedCount
+                        diagnosticOutcome = "SUCCESS"
                         // A prior failed scan followed by this exact authorized
                         // publication is now observable without logging media.
                         android.util.Log.i("ATLAS_SCAN",
@@ -735,8 +760,14 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             } catch (cancelled: CancellationException) {
                 // ViewModel disposal is not an inventory error. Never publish
                 // a misleading retry banner or spin up another canceled scan.
+                diagnosticOutcome = "CANCELLED"
                 throw cancelled
+            } catch (oom: OutOfMemoryError) {
+                diagnosticOutcome = "OUT_OF_MEMORY"
+                throw oom
             } catch (e: Exception) {
+                diagnosticOutcome = if (refreshQueue.mayPublish(ticket))
+                    atlasScanFailureOutcome(e) else "SUPERSEDED"
                 inventoryDirty = true
                 // Ignore errors from a request superseded by a newer access
                 // scope: its result is no longer authoritative either.
@@ -779,6 +810,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     }
                 }
             } finally {
+                AtlasDiagnosticsRing.scan(scanElapsedMilliseconds(), diagnosticRows,
+                    diagnosticOutcome, reused = diagnosticReused)
                 // A notification during IO marks the inventory dirty. Explicit
                 // new requests (not arbitrary continuous observer churn) get
                 // coalesced into a guaranteed follow-up read.
@@ -911,11 +944,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     /** Read-only SAF polling on resume, with checksum-sealed and transactional import. */
     fun refreshLinkedV4Csv() {
-        if (v4LinkPrefs.getString("uri", null) == null || v4SyncRunning) return
+        if (v4SyncRunning) return
         v4SyncRunning = true
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
+                    // #435: the "is anything linked" check reads prefs, so it runs here.
+                    if (v4LinkPrefs.getString("uri", null) == null) return@withContext null
                     runCatching {
                         peopleCsvGate.exclusive {
                             // IMPORTANT: Re-read the active link *after* obtaining
@@ -934,7 +969,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                             }
                         }
                     }
-                }
+                } ?: return@launch
                 result.onSuccess { changed ->
                     if (changed == true) refreshPeople()
                     _v4SyncState.value = when (changed) {

@@ -23,7 +23,9 @@ class FalCall(
     val path: String,
     val json: ByteArray? = null,
     val withKey: Boolean,
-    val downloadTo: File? = null
+    val downloadTo: File? = null,
+    /** Non-secret fal request headers, such as the object-lifecycle preference (#464). */
+    val headers: Map<String, String> = emptyMap()
 ) {
     override fun toString(): String = "FalCall(${method.name}, ${config.allowedHosts}, withKey=$withKey)"
 }
@@ -47,7 +49,7 @@ class TransportFalExchange(private val transport: EditHttpTransport = EditHttpTr
         }
         return transport.execute(
             call.config,
-            EditHttpRequest(method, call.path, call.json?.let { EditHttpBody.Json(it) }),
+            EditHttpRequest(method, call.path, call.json?.let { EditHttpBody.Json(it) }, call.headers),
             if (call.withKey) EditHttpAuth.Scheme(AUTH_SCHEME, key) else EditHttpAuth.None,
             cancellation,
             call.downloadTo
