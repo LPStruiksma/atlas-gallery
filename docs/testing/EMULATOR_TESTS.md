@@ -108,6 +108,24 @@ One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a t
 
 Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
 
+## Reading a red shard
+
+Each shard runs three things in order, and each leaves its own lines in the job log.
+
+1. **Keyboard health check**, before any test. `KeyboardHealthTest` focuses a field with the emulator's own keyboard (no `KeyboardRule`), waits for it to open (`awaitKeyboardShown`) and closes it. On a pass the log says `PASS: keyboard health check: …` with the keyboard height. On a fail the shard stops before the suite with one line, `::error::IME unavailable on this emulator: <reason> | <describeDevice()>`, instead of every typing test going red on its own. That is the device, not ATLAS: no test ran. Whether it earns the one re-run of an infrastructure failure is ATLAS Strategy's call; until it says so, treat it as an ordinary red.
+2. **The suite**, with `AtlasRunListener` registered by the script (runner argument `listener=nl.atlas.gallery.testkit.AtlasRunListener`, no Gradle change). At the start of the run it records the baseline: keyboard hidden, display size and density, animator scale, night mode and the app on top. Before each test it compares the device with it. Anything still different after 1.5 s is one line and is put back:
+
+   ```
+   ATLAS_BASELINE drift keyboard 912px, top app nl.atlas.gallery (baseline com.google.android.apps.nexuslauncher) left by nl.atlas.gallery.SomeTest#someMethod
+   ```
+
+   The keyboard goes first (Back), then Back for a non-ATLAS app on top, then animator scale, night mode and display size and density are restored. `restore incomplete: …` names what could not be put back (a rotation, for one). At the end, `summary <class> left drift <n> time(s)` lists the classes that broke rule 7. Fix the test named after `left by`, not the one that failed next.
+3. **Failure state.** Every failing test gets one `ATLAS_DIAG <Class#method> <describeDevice()>` line: keyboard, display, animator scale, night mode, focused window and top activity at the moment of failure, without a diagnostic branch.
+
+After the suite the script prints the `ATLAS_BASELINE` and `ATLAS_DIAG` lines in one group, next to `ATLAS_PERF10`. So for a red shard: read the failing test's own message, then its `ATLAS_DIAG` line, then any drift line just before it.
+
+`AtlasRunListenerSelfTest` proves the listener on a device. It is skipped unless the runner argument `atlas_listener_selftest=true` is set, which only the opt-in stress run passes: list `1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest` in `scripts/ci-opt-in/stress-classes` on a throwaway branch. Its first test leaves the keyboard up, its second must start at inset 0 after one drift line naming the first, and its third fails on purpose to print an `ATLAS_DIAG` line (so that stress run is red by design).
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.

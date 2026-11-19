@@ -268,6 +268,37 @@ if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !
   exit 0
 fi
 
+# #440: every test starts from the run's baseline device state.
+# AtlasRunListener logs "ATLAS_BASELINE drift <what> left by <test>" and puts
+# it back, and one "ATLAS_DIAG <test> <device>" line per failing test
+# (docs/testing/EMULATOR_TESTS.md, "Reading a red shard").
+LISTENER=nl.atlas.gallery.testkit.AtlasRunListener
+
+# #440 keyboard health check, once per shard before any suite: the emulator's
+# own keyboard must open for a focused field and close again. A dead keyboard
+# would otherwise turn every typing test red one by one; stop with one named
+# failure instead. Whether this counts as an infrastructure failure for the
+# one-re-run rule is ATLAS Strategy's call; until then it is an ordinary red.
+if [[ "$SHARD_INDEX" != "0" ]]; then
+  gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+fi
+adb install -r "$NEW"
+adb install -r "$TEST"
+adb logcat -c || true
+health_out=/tmp/atlas-keyboard-health.txt
+adb shell am instrument -w -r -e atlas_keyboard_health true -e listener "$LISTENER" \
+  -e class nl.atlas.gallery.testkit.KeyboardHealthTest "$RUNNER" > "$health_out" 2>&1 < /dev/null || true
+health_log="$(timeout 30 adb logcat -d -v brief -s ATLAS_KEYBOARD_HEALTH:V ATLAS_DIAG:V || true)"
+if grep -Fq 'OK (1 test)' "$health_out" && grep -Fq 'PASS keyboard opened' <<< "$health_log"; then
+  echo "PASS: keyboard health check: $(grep -F 'PASS keyboard opened' <<< "$health_log" | head -1 | sed 's/^[^:]*: //')"
+else
+  cat "$health_out"
+  echo "$health_log"
+  device_line="$(grep -E 'ATLAS_KEYBOARD_HEALTH.*FAIL' <<< "$health_log" | head -1 | sed 's/^[^:]*: //' | cut -c1-1500 || true)"
+  echo "::error::IME unavailable on this emulator: ${device_line:-no device line (see the instrumentation output above)}"
+  exit 1
+fi
+
 # Opt-in stress run (docs/testing/EMULATOR_TESTS.md, "Stress a test"). A
 # head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
 # lists, each as its own instrumentation run, on every shard: each shard is
@@ -275,11 +306,6 @@ fi
 # instead of one sample per full suite. One "<count> <Class or Class#method>"
 # per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
-  if [[ "$SHARD_INDEX" != "0" ]]; then
-    gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
-  fi
-  adb install -r "$NEW"
-  adb install -r "$TEST"
   adb logcat -G 16M || true
   stress_fail=0
   stress_out=/tmp/atlas-stress.txt
@@ -293,8 +319,9 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
     for ((stress_run = 1; stress_run <= stress_count; stress_run++)); do
       adb logcat -c || true
       # </dev/null: adb shell would otherwise read the rest of the list.
-      adb shell am instrument -w -r -e class "$stress_target" "$RUNNER" \
-        > "$stress_out" 2>&1 < /dev/null || true
+      # atlas_listener_selftest turns on AtlasRunListenerSelfTest; no other test reads it.
+      adb shell am instrument -w -r -e listener "$LISTENER" -e atlas_listener_selftest true \
+        -e class "$stress_target" "$RUNNER" > "$stress_out" 2>&1 < /dev/null || true
       if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
       else
@@ -305,7 +332,8 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
       timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V \
-        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
+        ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I \
+        ATLAS_BASELINE:V ATLAS_DIAG:V || true
       echo "::endgroup::"
     done
   done < scripts/ci-opt-in/stress-classes
@@ -326,7 +354,12 @@ if [[ "$SHARD_COUNT" -gt 1 ]]; then
   shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi
-gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+gradle :app:connectedDebugAndroidTest "${shard_args[@]}" \
+  -Pandroid.testInstrumentationRunnerArguments.listener="$LISTENER" \
+  --no-daemon --stacktrace || connected_status=$?
+echo "::group::ATLAS_BASELINE drift and ATLAS_DIAG failure state (#440)"
+timeout 30 adb logcat -d -v brief -s ATLAS_BASELINE:V ATLAS_DIAG:V || echo "ATLAS_BASELINE logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
 echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
 # Keep the bounded query even on a failed test so review can read the p50.
