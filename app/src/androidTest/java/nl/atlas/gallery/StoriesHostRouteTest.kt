@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.MaterialTheme
-import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -86,31 +85,28 @@ class StoriesHostRouteTest {
             val deck = if (empty || revision !in releasedRevisions) null else
                 planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
-            // Like MainActivity's host: its system-bar colour and icon ink for
-            // the theme, the page colour behind the bars, and the route padded
-            // by them so the title clears the status bar (#570 review).
-            Design6SystemBars(dark)
-            AtlasGalleryTheme(dark = dark) {
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)) {
-                    AtlasStoriesScreen(
-                        deck = deck,
-                        currentGrantEpoch = tokens?.grantEpoch,
-                        currentCatalogRevision = tokens?.catalogRevision,
-                        onBack = {},
-                        onOpenMedia = {},
-                        playback = playback
-                    )
-                }
+            // #366: the app pads this route below the status bar (Scaffold
+            // content Column); a bare setContent drew the header under it.
+            AtlasEvidenceHarness(dark = dark) {
+                AtlasStoriesScreen(
+                    deck = deck,
+                    currentGrantEpoch = tokens?.grantEpoch,
+                    currentCatalogRevision = tokens?.catalogRevision,
+                    onBack = {},
+                    onOpenMedia = {},
+                    playback = playback
+                )
             }
         }
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
         rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
         rule.waitForIdle()
+        rule.awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-empty-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        rule.awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-empty-dark.png")
 
         // This is an actual saved playback position, not a forced planning tag.
@@ -133,10 +129,12 @@ class StoriesHostRouteTest {
         rule.waitUntil(5_000L) {
             rule.onAllNodesWithTag("atlas-quiet-loading-line").fetchSemanticsNodes().isNotEmpty()
         }
+        rule.awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-planning-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        rule.awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-planning-dark.png")
     }
 

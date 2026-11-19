@@ -221,6 +221,21 @@ class PeopleDiscoveryHostTest {
         assertEquals(startsAfter, scheduler.starts.get())
     }
 
+    @Test fun aggregateDiagnosticsAreOptedInAndGrantFenced() {
+        val h = host()
+        assertEquals(false, h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").dirty)
+        h.start("scope", inventory)
+        val observed = h.aggregateDiagnostics("scope")
+        assertEquals(true, observed.optedIn)
+        assertNotNull(observed.dirty)
+        assertNotNull(observed.pending)
+        assertNull(h.aggregateDiagnostics("another-scope").dirty)
+        granted = false
+        assertNull(h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").pending)
+    }
+
     // The Compose rule must dispose its content before the SQLite fixture closes.
     // JUnit @After runs *before* rule teardown; closing there races the review
     // screen's outstanding database reads on API35.
