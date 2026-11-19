@@ -9,6 +9,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
@@ -51,7 +52,7 @@ class AtlasRunListenerSelfTest {
         // takes focus a moment after setContentView (rule on two clocks).
         var asked = 0L
         val until = SystemClock.uptimeMillis() + 20_000L
-        while (DeviceBaseline.keyboardInsetPx() == 0 && SystemClock.uptimeMillis() < until) {
+        while (!DeviceBaseline.keyboardShown() && SystemClock.uptimeMillis() < until) {
             if (SystemClock.uptimeMillis() - asked >= 1_000L) {
                 asked = SystemClock.uptimeMillis()
                 scenario.onActivity { activity ->
@@ -65,14 +66,15 @@ class AtlasRunListenerSelfTest {
             SystemClock.sleep(100L)
         }
         assertTrue("the keyboard never came up: ${describeDevice()}",
-            DeviceBaseline.keyboardInsetPx() > 0)
+            DeviceBaseline.keyboardShown())
         // Ends here on purpose: Activity open, keyboard up.
     }
 
     @Test fun b_startsWithTheKeyboardHidden() {
         try {
-            assertEquals("the listener should have hidden the leaked keyboard",
-                0, DeviceBaseline.keyboardInsetPx())
+            assertFalse("the listener should have hidden the leaked keyboard: ${describeDevice()}",
+                DeviceBaseline.keyboardShown())
+            assertEquals(0, DeviceBaseline.keyboardWindowPx())
         } finally {
             leaked?.close()
             leaked = null

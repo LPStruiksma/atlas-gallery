@@ -48,6 +48,8 @@ class AtlasRunListener : RunListener() {
     private var baseline: DeviceBaseline? = null
     private var previousTest = "(run start)"
     private val driftByClass = linkedMapOf<String, Int>()
+    private var checkedTests = 0
+    private var checkMillis = 0L
 
     override fun testRunStarted(description: Description?) = guarded("testRunStarted") {
         baseline = DeviceBaseline.baseline()
@@ -55,6 +57,16 @@ class AtlasRunListener : RunListener() {
     }
 
     override fun testStarted(description: Description) = guarded("testStarted") {
+        val started = SystemClock.uptimeMillis()
+        try {
+            checkBaseline()
+        } finally {
+            checkedTests++
+            checkMillis += SystemClock.uptimeMillis() - started
+        }
+    }
+
+    private fun checkBaseline() {
         val base = baseline ?: DeviceBaseline.baseline().also { baseline = it }
         val drift = settleAndCompare(base)
         if (drift.isNotEmpty()) {
@@ -75,6 +87,7 @@ class AtlasRunListener : RunListener() {
     }
 
     override fun testRunFinished(result: Result?) = guarded("testRunFinished") {
+        Log.i(BASELINE_LOG_TAG, "checked $checkedTests test(s) in $checkMillis ms")
         if (driftByClass.isEmpty()) {
             Log.i(BASELINE_LOG_TAG, "summary no drift")
         } else {
@@ -105,9 +118,9 @@ class AtlasRunListener : RunListener() {
         // leave LatinIME unavailable for the rest of the shard (#437).
         if (DriftKind.Keyboard in kinds) {
             back()
-            if (!waitFor { DeviceBaseline.keyboardInsetPx() == 0 }) {
+            if (!waitFor { !DeviceBaseline.keyboardShown() }) {
                 Log.w(BASELINE_LOG_TAG, "restore keyboard still up after Back " +
-                    "(${DeviceBaseline.keyboardInsetPx()} px)")
+                    "(${DeviceBaseline.keyboardWindowPx()} px)")
             }
         }
         if (DriftKind.TopApp in kinds) {
@@ -188,6 +201,7 @@ internal data class DisplayState(val width: Int, val height: Int, val densityDpi
  * for the one-time `wm size`/`wm density` overrides at the start of the run.
  */
 internal data class DeviceBaseline(
+    val keyboardShown: Boolean,
     val keyboardPx: Int,
     val display: DisplayState?,
     val sizeOverride: String?,
@@ -196,13 +210,16 @@ internal data class DeviceBaseline(
     val nightMode: Int,
     val topPackage: String?
 ) {
-    fun describe() = "keyboard ${keyboardPx}px, display $display " +
+    fun describe() = "keyboard ${if (keyboardShown) "shown" else "hidden"}, display $display " +
         "(override size ${sizeOverride ?: "none"}, density ${densityOverride ?: "none"}), " +
         "animator scale ${animatorScale ?: "default"}, night ${nightMode}, top ${topPackage ?: "?"}"
 
     /** What [now] has that differs from this baseline. The keyboard baseline is always hidden. */
     fun compare(now: DeviceBaseline): List<Drift> = buildList {
-        if (now.keyboardPx > 0) add(Drift(DriftKind.Keyboard, "keyboard ${now.keyboardPx}px"))
+        if (now.keyboardShown) {
+            add(Drift(DriftKind.Keyboard, "keyboard " +
+                if (now.keyboardPx > 0) "${now.keyboardPx}px" else "shown"))
+        }
         if (display != null && now.display != null && now.display != display) {
             add(Drift(DriftKind.Display, "display ${now.display} (baseline $display)"))
         }
@@ -226,10 +243,11 @@ internal data class DeviceBaseline(
         fun now(): DeviceBaseline = read(withOverrides = false)
 
         /** The baseline for a run: the state now, the keyboard counted as hidden. */
-        fun baseline(): DeviceBaseline = read(withOverrides = true).copy(keyboardPx = 0)
+        fun baseline(): DeviceBaseline = read(withOverrides = true).copy(keyboardShown = false, keyboardPx = 0)
 
         private fun read(withOverrides: Boolean) = DeviceBaseline(
-            keyboardPx = keyboardInsetPx(),
+            keyboardShown = keyboardShown(),
+            keyboardPx = keyboardWindowPx(),
             display = display(),
             sizeOverride = if (withOverrides) override("wm size", "Override size: ") else null,
             densityOverride = if (withOverrides) override("wm density", "Override density: ") else null,
@@ -239,8 +257,20 @@ internal data class DeviceBaseline(
             topPackage = topPackage()
         )
 
-        /** Height of the on-screen input method window in px, 0 when none is shown. */
-        fun keyboardInsetPx(): Int = runCatching {
+        /**
+         * Whether the system shows a keyboard now. The input method service's
+         * own flag: in the first proof run (#440, run 44478342596) the
+         * accessibility window list said no keyboard while `mInputShown=true`
+         * and the keyboard was still on screen, so the window list alone
+         * misses a leak. Either signal counts.
+         */
+        fun keyboardShown(): Boolean = keyboardWindowPx() > 0 || runCatching {
+            testShell("dumpsys input_method").lineSequence()
+                .any { it.trim().startsWith("mInputShown=true") }
+        }.getOrDefault(false)
+
+        /** Height of the input method window in the accessibility window list, 0 when absent. */
+        fun keyboardWindowPx(): Int = runCatching {
             interactiveUiAutomation().windows
                 .filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 .maxOfOrNull { window -> Rect().also { window.getBoundsInScreen(it) }.height() } ?: 0
