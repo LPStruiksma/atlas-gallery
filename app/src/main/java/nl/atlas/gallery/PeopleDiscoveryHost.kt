@@ -1772,7 +1772,7 @@ internal class PeopleDiscoveryHost(
             // reuse a stale attempted key to advance the cursor or schedule work.
             val qualityResult = lastQualityBackfill.also { lastQualityBackfill = null }
             val attempted = qualityResult?.attemptedMediaKey
-            val qualityNext = attempted != null && qualityResult.held == false &&
+            val qualityNext = attempted != null && qualityResult?.held == false &&
                 try { store.pendingQualitySource(owned.epoch, attempted) != null }
                 catch (_: SQLException) { false }
             if (attempted != null || qualityResult?.held == false) synchronized(lock) {
