@@ -49,6 +49,7 @@ class NavigationFontScaleEvidenceTest {
         }
 
         for (themeDark in listOf(false, true)) {
+            val labelHeights = mutableMapOf<String, Float>()
             for ((scale, suffix) in listOf(
                 1f to "100", 1.3f to "130", 2f to "200"
             )) {
@@ -67,12 +68,18 @@ class NavigationFontScaleEvidenceTest {
                     assertContained("label $name inside tab at $suffix%", tab, label)
                     label
                 }
+                // The cap covers the whole line box, not only the glyphs: an
+                // uncapped sp line height pushes the label onto the pill edge.
+                labelHeights[suffix] = labels.maxOf { it.height }
                 for (i in 0 until labels.lastIndex) {
                     assertTrue("adjacent labels overlap at $suffix%: ${labels[i]}, ${labels[i + 1]}",
                         labels[i].right <= labels[i + 1].left + 1f)
                 }
                 saveUiEvidence("nav-413-font$suffix-${if (themeDark) "dark" else "light"}.png")
             }
+            assertTrue("200% label line box ${labelHeights["200"]} grows past 130% " +
+                "${labelHeights["130"]} (${if (themeDark) "dark" else "light"})",
+                labelHeights.getValue("200") <= labelHeights.getValue("130") + 1f)
         }
     }
 
