@@ -42,8 +42,8 @@ class SettingsLongValueRowAndroidTest {
         val value = compose.onNodeWithTag("atlas-settings-face-scanning-value", useUnmergedTree = true)
             .getUnclippedBoundsInRoot()
         // One line of bodyLarge is ~24 dp; the broken layout was ~13 letters tall.
-        assertTrue("title wrapped: ${label.height}", label.height < 40.dp)
-        assertTrue("title squeezed: ${label.width}", label.width > 80.dp)
+        assertTrue("title wrapped: ${(label.bottom - label.top)}", (label.bottom - label.top) < 40.dp)
+        assertTrue("title squeezed: ${(label.right - label.left)}", (label.right - label.left) > 80.dp)
         assertTrue("status not under title: $value vs $label", value.top >= label.bottom)
 
         val themeLabel = compose.onNodeWithTag("atlas-settings-theme-label", useUnmergedTree = true)
