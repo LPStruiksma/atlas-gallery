@@ -196,6 +196,9 @@ class AiEditUiEvidenceTest {
         // Focus the text input to exercise the IME-inset path on devices that
         // show a software keyboard for instrumentation text entry.
         compose.runOnIdle {
+            // Verify the IME path in the real full-screen geometry; the compact
+            // 320 × 420 dp host above checks the no-keyboard scrolling case.
+            compact = false
             state = AiEditUiState(phase = AiEditPhase.Composing, prompt = "Brighten")
         }
         compose.waitForIdle()
