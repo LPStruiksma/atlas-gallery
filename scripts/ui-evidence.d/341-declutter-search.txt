@@ -9,5 +9,3 @@ declutter-341-C-keyboard-dark
 declutter-341-D1-confirm-dark
 declutter-341-S2-no-match-dark
 declutter-341-E-swipe-search-dark
-declutter-341-L-landscape-keyboard-light
-declutter-341-L-landscape-keyboard-dark
