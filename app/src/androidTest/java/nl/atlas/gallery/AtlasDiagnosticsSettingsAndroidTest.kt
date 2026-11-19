@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -39,6 +40,10 @@ class AtlasDiagnosticsSettingsAndroidTest {
         compose.onNodeWithTag("atlas-settings-export-diagnostics").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("atlas-settings-export-diagnostics-text").assertExists()
+        // The capture must show the prepared preview and its actions, not just the row.
+        compose.onNodeWithTag("atlas-settings-export-diagnostics-share").performScrollTo()
+        compose.onNodeWithTag("atlas-settings-export-diagnostics-text").assertIsDisplayed()
+        compose.waitForIdle()
         saveUiEvidence("settings-45-export-diagnostics.png")
         compose.onNodeWithTag("atlas-settings-export-diagnostics-copy").performScrollTo().performClick()
         compose.onNodeWithTag("atlas-settings-export-diagnostics-share").performScrollTo().performClick()
