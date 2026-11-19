@@ -250,7 +250,8 @@ private fun AtlasAlbumSortMenu(
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.testTag("atlas-album-sort-sheet")
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
+                .testTag("atlas-album-sort-sheet-content")) {
                 Text("Sort by", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(12.dp))
                 AlbumSort.entries.forEach { choice ->

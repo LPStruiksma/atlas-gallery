@@ -114,11 +114,18 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
                 !layout.hasVisualOverflow)
         }
         rule.onNodeWithTag(AlbumSort.COUNT.tag()).assertIsSelected()
-        val sheet = rule.onNodeWithTag("atlas-album-sort-sheet").fetchSemanticsNode().boundsInRoot
+        // The sheet Surface's own tag sits before M3's slide offset in the modifier
+        // chain, so its bounds stay at the top; measure the content column instead.
+        val content = rule.onNodeWithTag("atlas-album-sort-sheet-content")
+            .fetchSemanticsNode().boundsInRoot
+        val screen = rule.onAllNodes(isRoot()).fetchSemanticsNodes()
+            .maxOf { it.boundsInRoot.bottom }
         val lastRow = rule.onNodeWithTag(AlbumSort.CUSTOM.tag()).fetchSemanticsNode().boundsInRoot
         val firstRow = rule.onNodeWithTag(AlbumSort.RECENT.tag()).fetchSemanticsNode().boundsInRoot
-        assertTrue("all four choices sit inside the sheet",
-            firstRow.top >= sheet.top && lastRow.bottom <= sheet.bottom)
+        val where = "content=$content first=$firstRow last=$lastRow screen=$screen"
+        assertTrue("all four choices sit inside the sheet content ($where)",
+            firstRow.top >= content.top - 1f && lastRow.bottom <= content.bottom + 1f)
+        assertTrue("sheet content ends on screen ($where)", content.bottom <= screen + 1f)
         rule.waitForIdle()
         saveUiEvidence("albums-12-font200-$mode.png")
         back()
