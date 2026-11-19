@@ -255,8 +255,13 @@ private fun CanvasPage(
                             zoom.offset = wanted
                             if (zoom.scale <= 1.01f) zoom.reset() else zoom.clamp(w, h)
                             val past = wanted.x - zoom.offset.x
-                            overscroll = if (multi || zoom.scale <= 1f || past == 0f || (overscroll != 0f && past * overscroll < 0f)) 0f
-                                else overscroll + past
+                            // A still event (the finger lifting) keeps what has built up; panning back inside resets it.
+                            overscroll = when {
+                                multi || zoom.scale <= 1f -> 0f
+                                past == 0f -> if (pan.x == 0f) overscroll else 0f
+                                overscroll != 0f && past * overscroll < 0f -> 0f
+                                else -> overscroll + past
+                            }
                             event.changes.forEach { if (it.positionChanged()) it.consume() }
                         }
                     } while (event.changes.any { it.pressed })
