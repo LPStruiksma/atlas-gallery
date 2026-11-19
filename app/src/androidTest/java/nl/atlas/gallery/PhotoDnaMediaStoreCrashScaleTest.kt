@@ -12,6 +12,8 @@ import android.util.Log
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -52,8 +54,17 @@ class PhotoDnaMediaStoreCrashScaleTest {
         val started = SystemClock.elapsedRealtime()
         waitFor("Albums nav") { exists("atlas-nav-albums") }
         compose.onNodeWithTag("atlas-nav-albums").performClick()
-        waitFor("Albums menu") { exists("atlas-header-more") }
+        logAlbumsUiState("albums-selected")
+        // A header also exists during the initial loading state. Opening its
+        // menu there races the transition to the loaded grid and can lose the
+        // popup. Wait for the actual grid before interacting with overflow.
+        waitFor("loaded Albums grid") {
+            exists("atlas-album-grid") && exists("atlas-header-more")
+        }
+        logAlbumsUiState("albums-grid-ready")
+        logAlbumsUiState("before-overflow")
         compose.onNodeWithTag("atlas-header-more").performClick()
+        logAlbumsUiState("after-overflow")
         waitFor("Photo DNA menu") { exists("atlas-albums-menu-photo-dna") }
         compose.onNodeWithTag("atlas-albums-menu-photo-dna").performClick()
         waitFor("Photo DNA route") { exists("atlas-photo-dna") }
@@ -119,9 +130,45 @@ class PhotoDnaMediaStoreCrashScaleTest {
         try {
             compose.waitUntil(timeout) { done() }
         } catch (e: Throwable) {
+            logAlbumsUiState("failed-step")
+            // The step label comes from this test; never include the UI's
+            // text, descriptions, media labels or raw semantics in CI logs.
             throw AssertionError("Crash-scale step failed: $step; " +
                 "elapsed_ms=${SystemClock.elapsedRealtime() - fixtures.startedAt}", e)
         }
+    }
+
+    /**
+     * Bounded, tag-only snapshot for the emulator fixture. This intentionally
+     * records no text, screenshot, URI, album name or raw semantics tree.
+     * MainActivity exposes busy || albumsPending as one loading surface; the
+     * two private booleans cannot be distinguished by this test, so neither
+     * is guessed. Album card count is *visible* lazy-grid cards, not total.
+     */
+    private fun logAlbumsUiState(phase: String) {
+        val summary = runCatching {
+            val selectedTab = listOf("photos", "albums", "people", "search")
+                .firstOrNull { tab ->
+                    compose.onAllNodes(hasTestTag("atlas-nav-$tab"), useUnmergedTree = true)
+                        .fetchSemanticsNodes().any {
+                            it.config.getOrNull(SemanticsProperties.Selected) == true
+                        }
+                } ?: "unknown"
+            val loading = compose.onAllNodesWithText(
+                "Gathering albums on this device", substring = true,
+                useUnmergedTree = true
+            ).fetchSemanticsNodes().isNotEmpty()
+            val visibleAlbumCards = compose.onAllNodes(
+                hasTestTag("atlas-album-card"), useUnmergedTree = true
+            ).fetchSemanticsNodes().size
+            "tab=$selectedTab busy=unobservable albumsPending=unobservable " +
+                "loading_combined=$loading visible_album_cards=$visibleAlbumCards " +
+                "grid=${exists("atlas-album-grid")} " +
+                "header_more=${exists("atlas-header-more")} " +
+                "photo_dna_menu=${exists("atlas-albums-menu-photo-dna")} " +
+                "photo_dna_route=${exists("atlas-photo-dna")}"
+        }.getOrElse { "state_unavailable=${it.javaClass.simpleName}" }
+        Log.i("ATLAS_SCALE", "crash33 ui_phase=$phase $summary")
     }
 
     private fun scaleLog(phase: String, started: Long) {
