@@ -19,7 +19,16 @@ object FaceDecodeBudget {
     const val DEFAULT_LONG_EDGE = FaceDiscoveryContract.DEFAULT_DECODE_LONG_EDGE_PX
     const val DEFAULT_BITMAP_BUDGET_BYTES = 8L * 1024 * 1024
 
-    /** A long-edge ratio survives EXIF rotation (which may swap width/height).\n     * Never upscale a bounded image to infer nonexistent source detail.\n     */\n    fun sourceScale(sourceWidth: Int, sourceHeight: Int, decodedWidth: Int, decodedHeight: Int): Float {\n        require(sourceWidth > 0 && sourceHeight > 0 && decodedWidth > 0 && decodedHeight > 0)\n        return (maxOf(sourceWidth, sourceHeight).toFloat() / maxOf(decodedWidth, decodedHeight))\n            .coerceAtLeast(1f)\n    }\n\n    /** Original dimensions from decoded image HEADER, before allocating pixels.
+    /** A long-edge ratio survives EXIF rotation (which may swap width/height).
+     * Never upscale a bounded image to infer nonexistent source detail.
+     */
+    fun sourceScale(sourceWidth: Int, sourceHeight: Int, decodedWidth: Int, decodedHeight: Int): Float {
+        require(sourceWidth > 0 && sourceHeight > 0 && decodedWidth > 0 && decodedHeight > 0)
+        return (maxOf(sourceWidth, sourceHeight).toFloat() / maxOf(decodedWidth, decodedHeight))
+            .coerceAtLeast(1f)
+    }
+
+    /** Original dimensions from decoded image HEADER, before allocating pixels.
      * 64-bit arithmetic and Double ratio avoid overflow on forged 2-billion-pixel headers.
      * Do not upscale tiny images; they may legitimately contain no discoverable faces.
      */
