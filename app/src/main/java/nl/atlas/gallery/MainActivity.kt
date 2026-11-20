@@ -1902,6 +1902,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         hasProjection = albumCards != null,
         projectionFailed = albumFailed.value
     )
+    // #676: a background scan keeps the cards on screen; only no catalogue spins.
+    val albumsLoading = albumsShowLoading(busy, media.size, albumsPending)
     val searchChoicesEnabled = tab == 3 && personFilter == null &&
         searchFacets.text.isNotBlank()
     val searchableAlbumCards = rememberAsyncAlbumCards(
@@ -3684,7 +3686,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     }
                     tab == 1 && hideAlbumsOpen -> {
                         HideAlbumsScreen(
-                            albums = if (busy || albumsPending) null else allAlbums,
+                            albums = if (albumsLoading) null else allAlbums,
                             hidden = hiddenAlbums,
                             onToggle = ::toggleHiddenAlbum,
                             onClose = { hideAlbumsOpen = false },
@@ -3782,7 +3784,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // while MediaPreview adds M's revision/permission cache key.
                                 MediaPreview(record, modifier, ContentScale.Crop, 512)
                             },
-                            isLoading = busy || albumsPending,
+                            isLoading = albumsLoading,
                             onOpenLibraryStatus = { settingsOpen = true },
                             loadIssue = if (albumFailed.value && !busy)
                                 AlbumLoadIssue.READ_FAILED else null,

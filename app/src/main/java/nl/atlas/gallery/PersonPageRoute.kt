@@ -169,6 +169,27 @@ internal fun NativePersonAlbumRoute(
                 byUri)
         }
     }
+    // PERF (#119): a named person's photos straight from the per-person index
+    // (one indexed read, each photo resolved through the live grant, no
+    // People snapshot), shown until the full page above is ready. The full
+    // snapshot can take long to load on a large library or while a scan is
+    // publishing; selection actions still wait for it.
+    val quickPerson = request.person
+    val quick by produceState<List<MediaRecord>?>(null, CatalogSourceKey(sorted),
+        galleryGrant, request) {
+        value = null
+        if (quickPerson == null) return@produceState
+        val uris = withContext(Dispatchers.IO) { host.personAlbumUris(galleryGrant, quickPerson) }
+            ?: return@produceState
+        value = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            selectPersonPageMedia(sorted, uris) { worker.ensureActive() }
+        }
+    }
+    // The portrait People shows for this person, known before the snapshot loads.
+    val summaryCover = quickPerson?.let { people?.people?.get(it)?.coverFaceUid }
+        ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
+    val cropEpoch = epoch ?: people?.permissionEpoch
     var dialog by remember(request) { mutableStateOf<PersonPageDialog?>(null) }
     // Save only a bounded tuple. A restored snapshot is never actionable
     // until the current grant, People scope and source have been validated.
@@ -231,7 +252,7 @@ internal fun NativePersonAlbumRoute(
         }
     }
     val visibleMedia = when {
-        media == null -> null
+        media == null -> quick?.takeIf { searchText.isBlank() }
         searchText.isBlank() -> media.items
         else -> currentScopedMediaSearchOrNull(searchSnapshot, media.items, media.items,
             facetPeople, galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN)
@@ -316,14 +337,14 @@ internal fun NativePersonAlbumRoute(
             }
         })
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
-        PersonFaceImage(host, epoch, face)
+        PersonFaceImage(host, cropEpoch, face)
     }
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
             // Keep the timeline/header composition stable while the worker
             // narrows this person's already-authorized list.
-            items = if (media == null) null else visibleMedia.orEmpty(),
+            items = if (media == null) visibleMedia else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
             mayHide = request.target is PersonPageTarget.Named
         ),
@@ -333,6 +354,7 @@ internal fun NativePersonAlbumRoute(
         opening = request.opening,
         portrait = { portrait(
             chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+                ?: summaryCover?.takeIf { faces == null || it in faces }
                 ?: facts?.coverFace) },
         onBack = onBack,
         onOpen = { record ->

@@ -8,6 +8,9 @@ read = lambda path: (root / path).read_text()
 app = read('app/build.gradle.kts')
 manifest = read('app/src/main/AndroidManifest.xml')
 viewer = read('app/src/main/java/nl/atlas/gallery/GalleryViewer.kt')
+# #682: the viewer's swipe-up details surface lives in its own file.
+_details = root / 'app/src/main/java/nl/atlas/gallery/ViewerDetailsSheet.kt'
+viewerDetails = _details.read_text() if _details.exists() else ''
 activity = read('app/src/main/java/nl/atlas/gallery/MainActivity.kt')
 workflow = read('.github/workflows/build-apk.yml')
 tests = read('app/src/androidTest/java/nl/atlas/gallery/ViewerInteractionTest.kt')
@@ -30,7 +33,7 @@ checks = {
     # outside the Scaffold and must inset its own chrome.
     'viewer chrome clears system bars': (
         'WindowInsets.safeDrawing.only(' in viewer and
-        'WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)' in viewer),
+        'WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)' in viewer + viewerDetails),
     'back restores folder context': re.search(
         r'tab == 0 && album != null -> \{\s*album = null\s*albumVolume = null\s*'
         r'if \(albumReturnToAlbums\) tab = 1\s*albumReturnToAlbums = false\s*\}',

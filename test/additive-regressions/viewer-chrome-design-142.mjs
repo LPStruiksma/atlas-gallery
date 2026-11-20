@@ -22,6 +22,7 @@ test('tap-to-hide also toggles system bars, leaving video controls inside safe a
   assert.match(viewer, /ViewerSystemBars\(visible = chromeVisible\)/);
   assert.match(viewer, /if \(visible\) controller\.show\(WindowInsetsCompat\.Type\.systemBars\(\)\)/);
   assert.match(viewer, /else controller\.hide\(WindowInsetsCompat\.Type\.systemBars\(\)\)/);
-  assert.match(viewer, /onToggleChrome = \{ chromeVisible = !chromeVisible \}/);
+  // A tap toggles the chrome; while swipe-up Details is shown the same tap closes Details first.
+  assert.match(viewer, /onToggleChrome = \{\s*if \(detailsShownMedia != null\) settleDetails\(false\)\s*else chromeVisible = !chromeVisible\s*\}/);
   assert.match(viewer, /AnimatedVisibility\(chromeVisible,[\s\S]*?WindowInsets\.safeDrawing\.only\(\s*WindowInsetsSides\.Bottom \+ WindowInsetsSides\.Horizontal\)/);
 });
