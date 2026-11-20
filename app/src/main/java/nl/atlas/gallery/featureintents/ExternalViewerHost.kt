@@ -45,8 +45,11 @@ internal const val EXTERNAL_CANT_OPEN = "Can't open this item"
  *   grant must open. Anything else is the plain "Can't open this item" state.
  * - It reuses [GalleryViewer] with [ViewerAccess.EXTERNAL] or [ViewerAccess.SECURE]:
  *   same black ground, zoom and video controls, but no favourite, share, trash,
- *   edit, filmstrip or People. Secure review also loses Details.
- * - Nothing here reads the catalogue, starts a scan or asks for a permission;
+ *   edit or People. Secure review also loses Details.
+ * - Ordinary view/review of a MediaStore row that ATLAS can read with its own
+ *   grant swipes through that row's folder ([ExternalNeighbours]); a filmstrip
+ *   appears only then. Secure review always stays on the one capture.
+ * - Nothing here reads the catalogue, starts a full scan or asks for a permission;
  *   the caller's URI is never persisted. [onClose] finishes the Activity, so Back
  *   (button, gesture or swipe-down) returns straight to the caller or camera.
  */
@@ -78,9 +81,17 @@ private fun ProbedExternalViewer(entry: ExternalEntry.Viewer, onClose: () -> Uni
     val context = LocalContext.current
     val resolver = remember(context) { context.applicationContext.contentResolver }
     val state by produceState<ExternalViewerState>(ExternalViewerState.Probing, entry) {
-        value = when (val probe = withContext(Dispatchers.IO) { ExternalItemProbe.probe(resolver, entry) }) {
-            is ExternalItemProbeResult.Readable -> ExternalViewerState.Ready(listOf(externalRecord(probe)))
-            ExternalItemProbeResult.Unreadable -> ExternalViewerState.Failed
+        value = withContext(Dispatchers.IO) {
+            when (val probe = ExternalItemProbe.probe(resolver, entry)) {
+                is ExternalItemProbeResult.Readable -> {
+                    val opened = externalRecord(probe)
+                    // A2: ordinary view/review of a MediaStore row ATLAS can read
+                    // itself gets its folder as neighbours; secure review never.
+                    ExternalViewerState.Ready(
+                        ExternalNeighbours.load(context.applicationContext, entry, opened) ?: listOf(opened))
+                }
+                ExternalItemProbeResult.Unreadable -> ExternalViewerState.Failed
+            }
         }
     }
     when (val current = state) {
