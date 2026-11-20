@@ -57,7 +57,7 @@ test("Funnel faces are bundled and used in Compose typography", () => {
     assert.ok(bytes.length > 20000, name + " must be an actual TTF");
     assert.ok(bytes.subarray(0, 4).equals(Buffer.from([0, 1, 0, 0])) ||
       bytes.subarray(0, 4).toString("ascii") === "OTTO");
-    assert.ok(readFileSync("app/src/main/res/font/OFL-" + name + ".txt", "utf8")
+    assert.ok(readFileSync("app/src/main/res/raw/" + name + "_ofl.txt", "utf8")
       .includes("SIL OPEN FONT LICENSE"));
   }
   assert.match(design, /Font\(R\.font\.funnel_display/);
