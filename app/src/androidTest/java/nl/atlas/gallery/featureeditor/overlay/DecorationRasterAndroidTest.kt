@@ -84,6 +84,24 @@ class DecorationRasterAndroidTest {
         assertEquals(Color.TRANSPARENT, bitmap.getPixel(10, 10))
     }
 
+    @Test fun cutoutIsEncodedAsHashedVerifiablePng() {
+        val cutout = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.RED)
+        }
+        val encoded = StickerAssets.fromBitmap(cutout)
+        assertEquals(64, encoded.sha256.length)
+        val reopened = StickerAssets.decodeVerified(encoded.pngBytes, encoded.sha256)
+        assertEquals(Color.RED, reopened.getPixel(1, 1))
+        assertEquals(encoded.sha256, StickerAssets.fromBitmap(cutout).sha256)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun modifiedStickerBytesAreRejectedByHash() {
+        val encoded = StickerAssets.fromBitmap(Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888))
+        val corrupted = encoded.pngBytes.copyOf().apply { this[lastIndex] = (last().toInt() xor 1).toByte() }
+        StickerAssets.decodeVerified(corrupted, encoded.sha256)
+    }
+
     @Test(expected = IllegalStateException::class)
     fun missingStickerFailsExportRatherThanOmittingIt() {
         val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
