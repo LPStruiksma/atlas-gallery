@@ -55,7 +55,23 @@ class PerfA1CachedFirstFrameBenchmarkTest {
     private fun settledLoad(): List<MediaRecord> {
         repeat(4) {
             try { return GalleryRepository(target).load() }
-            catch (e: GalleryProviderSnapshotChanged) { Thread.sleep(500) }
+            catch (e: GalleryProviderSnapshotChanged) {
+                // Wait for a provider change when possible; rescan after a
+                // bounded timeout if publication raced observer registration.
+                val changed = java.util.concurrent.CountDownLatch(1)
+                val observer = object : android.database.ContentObserver(
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                ) {
+                    override fun onChange(selfChange: Boolean) { changed.countDown() }
+                }
+                target.contentResolver.registerContentObserver(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer)
+                try {
+                    changed.await(500L, java.util.concurrent.TimeUnit.MILLISECONDS)
+                } finally {
+                    target.contentResolver.unregisterContentObserver(observer)
+                }
+            }
         }
         return GalleryRepository(target).load()
     }

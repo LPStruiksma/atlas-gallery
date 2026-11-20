@@ -21,6 +21,8 @@ import nl.atlas.gallery.featurepeople.identity.TapCount
 import nl.atlas.gallery.featurepeopleui.reviewTally
 import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepeopleui.reviewPeopleCluster
+import nl.atlas.gallery.featurepeopleui.needsSplitting
+import nl.atlas.gallery.featurepeopleui.samePersonQueue
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
@@ -390,6 +392,84 @@ class FaceIndexStoreIdentityReviewTest {
         // Importing the same backup again adds no duplicate row.
         store.importNativeNamesSnapshot("epoch-A", snapshot)
         assertEquals(1, count(store, "people_mixed_group"))
+    }
+
+    /**
+     * HUB-1B (#211): "Not one person" through the review reducer is one
+     * commit; it survives a restart, a stale commit writes nothing, and a
+     * commit that fails half way leaves no fact and no other row behind.
+     */
+    @Test fun mixedGroupMarkIsOneAtomicCommitAndSurvivesRestart() = withFile { file ->
+        FaceIndexStore(contextFor(file)).use { store ->
+            val stored = scannedLibrary(store)
+            val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+            val ui = uiState("epoch-A", stored)
+            val marked = requireNotNull(reviewPeopleCluster(ui,
+                PeopleReviewAction.MarkMixedGroups(setOf(group.id))))
+            assertEquals(stored.clusters.unknownClusters, marked.clusters.unknownClusters)
+
+            // A failure inside the transaction rolls back every row of it.
+            val stranger = stored.clusters.unknownClusters.single { it.members.size == 1 }
+            val both = requireNotNull(reviewPeopleCluster(marked,
+                PeopleReviewAction.NameCluster(stranger.id, ana, "Ana")))
+            val db = store.writableDatabase
+            db.execSQL("""CREATE TEMP TRIGGER hub1b_fail BEFORE INSERT ON people_mixed_group
+                BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END""")
+            try {
+                store.commitPeopleReview("epoch-A", stored.generation, both.clusters, both.names)
+                fail("The failing commit was accepted")
+            } catch (_: android.database.SQLException) { }
+            db.execSQL("DROP TRIGGER hub1b_fail")
+            assertEquals(0, count(store, "people_mixed_group"))
+            assertEquals(0, count(store, "people_confirmed"))
+            assertEquals(stored.generation, requireNotNull(store.peopleReview("epoch-A")).generation)
+
+            // The plain mark commits; the same mark from a stale snapshot is refused.
+            assertNotNull(commit(store, "epoch-A", stored.generation, marked))
+            assertNull(commit(store, "epoch-A", stored.generation, marked))
+            assertEquals(1, count(store, "people_mixed_group"))
+            assertEquals(4, count(store, "cluster_members")) // nothing regrouped
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            grant(store, "epoch-B", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-B"))
+            val restored = requireNotNull(store.peopleReview("epoch-B"))
+            val ui = uiState("epoch-B", restored)
+            assertEquals(listOf(3), needsSplitting(ui).map { it.faces })
+            assertEquals(0, samePersonQueue(ui).open)
+        }
+    }
+
+    /**
+     * HUB-1B (#211): a publication carries the mark when the group barely
+     * changes (one face joins three: Jaccard 0.75) and clears it after a
+     * substantial change (two more join four: Jaccard 0.67), in the same
+     * transaction as the membership.
+     */
+    @Test fun publicationCarriesOrClearsTheMixedMarkByJaccard() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        val marked = requireNotNull(reviewPeopleCluster(uiState("epoch-A", stored),
+            PeopleReviewAction.MarkMixedGroups(setOf(group.id))))
+        assertNotNull(commit(store, "epoch-A", stored.generation, marked))
+        val axisOf: (String) -> Int = { if (it.endsWith("/4#photo")) 5 else 0 }
+
+        grant(store, "epoch-B", (1..5).map { media(it) })
+        scanAll(store, "epoch-B", axisOf = axisOf)
+        assertTrue(store.materializeClusters("epoch-B"))
+        val grown = requireNotNull(store.peopleReview("epoch-B"))
+        val four = grown.clusters.unknownClusters.single { it.members.size == 4 }
+        assertEquals(setOf(MixedGroup.of(four.members)), grown.clusters.reviews.mixedGroups)
+        assertEquals(listOf(four.id), needsSplitting(uiState("epoch-B", grown)).map { it.cluster })
+        assertEquals(1, count(store, "people_mixed_group"))
+
+        grant(store, "epoch-C", (1..7).map { media(it) })
+        scanAll(store, "epoch-C", axisOf = axisOf)
+        assertTrue(store.materializeClusters("epoch-C"))
+        val big = requireNotNull(store.peopleReview("epoch-C"))
+        assertEquals(6, big.clusters.unknownClusters.maxOf { it.members.size })
+        assertTrue(big.clusters.reviews.mixedGroups.isEmpty())
+        assertEquals(0, count(store, "people_mixed_group"))
     }
 
     /** #434 part 2: the host's cheap generation read and the person album keys. */

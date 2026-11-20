@@ -8,9 +8,12 @@ import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FacePair
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
+import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.RejectedPerson
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
+import nl.atlas.gallery.featurepeople.cluster.withOnlyMixedGroupsChanged
 
 /**
  * Human-authored identity decisions only. FaceClusterer supplies UNKNOWN groups
@@ -186,6 +189,17 @@ sealed interface PeopleReviewAction {
     /** Give a confirmed person another name (Samsung "Edit name"). */
     data class RenamePerson(val person: PersonKey, val name: String) : PeopleReviewAction
 
+    /**
+     * HUB-1B (#211) "Not one person": each of [groups] (one or both sides of
+     * a Same person? question) is an unnamed group that mixes several
+     * people. One review intent, one atomic commit. Nothing is joined, split
+     * or rejected: the groups only stop being asked about in Same person?
+     * and are listed by [needsSplitting] until their membership changes
+     * substantially ([MixedGroupMarks]). Marking a marked group again changes
+     * nothing. Refused for a group of one face, which cannot mix two people.
+     */
+    data class MarkMixedGroups(val groups: Set<FaceClusterId>) : PeopleReviewAction
+
     /** Hide a named person from People, or show them again (#551). */
     data class SetPersonHidden(val person: PersonKey, val hidden: Boolean) : PeopleReviewAction
 
@@ -253,6 +267,7 @@ fun reviewPeopleCluster(
     val cannotLink = prior.cannotLink.toMutableSet()
     val rejected = prior.rejectedPeople.toMutableSet()
     val same = prior.sameUnknown.toMutableSet()
+    val mixed = prior.mixedGroups.toMutableSet()
     val names = state.names.toMutableMap()
     val hidden = state.hidden.toMutableSet()
 
@@ -367,6 +382,16 @@ fun reviewPeopleCluster(
             if (action.person !in names) return null
             for (f in cluster.members) rejected.add(RejectedPerson(f, action.person))
         }
+        is PeopleReviewAction.MarkMixedGroups -> {
+            if (action.groups.size !in 1..2) return null
+            for (id in action.groups) {
+                val cluster = state.unknown(id) ?: return null
+                if (cluster.members.size !in MixedGroup.MIN_MEMBERS..MixedGroup.MAX_MEMBERS)
+                    return null
+                mixed.add(MixedGroup.of(cluster.members))
+            }
+            if (mixed.size > ClusterReviewFacts.MAX_FACTS) return null
+        }
         is PeopleReviewAction.RenamePerson -> {
             val name = action.name.trim()
             if (action.person !in names || !validReviewedName(name) ||
@@ -385,15 +410,21 @@ fun reviewPeopleCluster(
     val newFacts = ClusterReviewFacts(
         confirmed = confirmed.toMap(), cannotLink = cannotLink.toSet(),
         rejectedPeople = rejected.toSet(), sameUnknown = same.toSet(),
-        // HUB-1A (#210): no action here writes them yet; carry them unchanged.
-        mixedGroups = prior.mixedGroups
+        mixedGroups = mixed.toSet()
     )
     if (newFacts == prior && names == state.names && hidden == state.hidden) return null
-    // Names and visibility alone never re-cluster (and keep the same object).
-    val updated = if (newFacts == prior) state.clusters
-    // This re-clusters only unknowns; confirmed faces are explicitly excluded
-    // by FaceClusterer and may never be silently relabelled.
-    else FaceClusterer.update(state.clusters, reviews = newFacts)
+    val updated = when {
+        // Names and visibility alone never re-cluster (and keep the same object).
+        newFacts == prior -> state.clusters
+        // HUB-1B (#211): a "not one person" answer moves no face either.
+        newFacts.copy(mixedGroups = prior.mixedGroups) == prior ->
+            state.clusters.withOnlyMixedGroupsChanged(newFacts)
+        // This re-clusters only unknowns; confirmed faces are explicitly excluded
+        // by FaceClusterer and may never be silently relabelled. Marked groups
+        // keep their mark through it unless they changed substantially.
+        else -> MixedGroupMarks.carry(state.clusters,
+            FaceClusterer.update(state.clusters, reviews = newFacts))
+    }
     return state.copy(clusters = updated, names = names.toMap(), hidden = hidden.toSet(),
         undoHistory = state.undoHistory +
             PeopleReviewCheckpoint(state.clusters, state.names, state.hidden,

@@ -53,6 +53,8 @@ fun reviewTally(state: PeopleClusterReviewState, action: PeopleReviewAction): Re
         PeopleReviewAction.Undo -> state.undoHistory.lastOrNull()?.let {
             ReviewTally(ReviewTap.UNDONE, 0, undoes = it.tally?.copy(undoes = null))
         }
+        // HUB-1B (#211): a "not one person" mark moves and judges no face yet.
+        is PeopleReviewAction.MarkMixedGroups,
         is PeopleReviewAction.RenamePerson, is PeopleReviewAction.SetPersonHidden -> null
     }
 }

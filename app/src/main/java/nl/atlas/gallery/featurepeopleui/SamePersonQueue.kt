@@ -2,6 +2,7 @@ package nl.atlas.gallery.featurepeopleui
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
+import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
 import nl.atlas.gallery.featurepeople.identity.PersonHypothesis
@@ -41,6 +42,10 @@ data class SamePersonQueue(val items: List<SamePersonQueueItem>, val open: Int)
  * nothing. Order: the answer that would move the most faces first, then the
  * engine's own strength, so the largest loose pieces go first. [skipped]
  * questions ([SamePersonQueueItem.key]) are left out of [SamePersonQueue.items].
+ * HUB-1B (#211): a question one of whose sides is marked "not one person"
+ * ([MixedGroupMarks.marked]) is no question at all: it is left out of both
+ * the items and the [SamePersonQueue.open] count, and every other question
+ * stays as it was.
  *
  * Reads every unnamed group's vectors; call it off the main thread. The
  * screen reads the same list through [SamePersonQueueCursor], which stops
@@ -90,6 +95,8 @@ class SamePersonQueueCursor(
 
     private val clusters = state.clusters
     private val groups = clusters.unknownClusters
+    /** HUB-1B (#211): groups marked "not one person" are asked about by no question. */
+    private val mixed: Set<FaceClusterId> = MixedGroupMarks.marked(clusters)
     private var ready = false
     private var pairs: SamePersonHypotheses.PairIndex? = null
     private var people: SamePersonHypotheses.PeopleIndex? = null
@@ -143,6 +150,7 @@ class SamePersonQueueCursor(
         while (at < groups.size && groups[at].members.size == size) {
             checkpoint()
             val group = groups[at]
+            if (group.id in mixed) { at++; continue }
             people?.let { index ->
                 named.clear()
                 index.forGroup(group, named)
@@ -158,6 +166,7 @@ class SamePersonQueueCursor(
                     unnamed.clear()
                     index.pairsWithSecond(at, unnamed)
                     for (q in unnamed) {
+                        if (q.first in mixed) continue
                         val first = byId[q.first] ?: continue
                         bucket += Scored(SamePersonQueueItem(PersonPageTarget.Unnamed(q.first),
                             null, first.members.size, sample(first.members),
@@ -196,6 +205,21 @@ class SamePersonQueueCursor(
                 ?: entry.named?.let { keepNamed == null || it in keepNamed } ?: true
         }
     }
+}
+
+/**
+ * HUB-1B (#211): "Not one person" for the [subject] side, the [other] side
+ * or both sides of [item], as one review action. Null when no unnamed side
+ * is chosen: a named person is never marked mixed.
+ */
+fun samePersonQueueMixed(
+    item: SamePersonQueueItem, subject: Boolean, other: Boolean
+): PeopleReviewAction.MarkMixedGroups? {
+    val groups = LinkedHashSet<FaceClusterId>()
+    val subjectSide = item.subject
+    if (subject && subjectSide is PersonPageTarget.Unnamed) groups += subjectSide.cluster
+    if (other) groups += item.other
+    return if (groups.isEmpty()) null else PeopleReviewAction.MarkMixedGroups(groups)
 }
 
 /** The owner's answer to [item]: the same action its person page would send. */

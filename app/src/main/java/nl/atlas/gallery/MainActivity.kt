@@ -2886,6 +2886,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
                 onExit = ::closeDeclutter,
+                onSearchWholeLibrary = {
+                    // Leave the transient review route without submitting Trash.
+                    // The global Search destination starts with its own query.
+                    closeDeclutter()
+                    overviewQuery = ""
+                    overviewScope = AtlasSearchScope.LIBRARY
+                    tab = 3
+                },
                 onTrashRequest = { selected ->
                     // A left swipe NEVER deletes. Only after ATLAS's review
                     // and explicit confirm does Android show its own approval.
