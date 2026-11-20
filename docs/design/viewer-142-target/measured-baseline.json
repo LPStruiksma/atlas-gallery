@@ -1,0 +1,3635 @@
+{
+ "source_reports": [
+  {
+   "file": "viewer-609-photo.json",
+   "issue": 609,
+   "run": "44627923073",
+   "artifact": "ATLAS-android-UI-evidence-shard-0",
+   "pr": 616,
+   "host": "GitHub API35 x86_64 pixel_6 with S24DisplayRule override; NOT a physical S24+",
+   "not_captured": [
+    "Media decode error vs loading: renderer exposes no distinct semantics",
+    "System TalkBack speech/focus traversal: Compose descriptions only, NOT_CAPTURED",
+    "Physical S24+ panel, density, gesture hit testing: emulator only",
+    "Emulated cutout support must be read from each frame's cutout_supported value"
+   ]
+  },
+  {
+   "file": "viewer-609-video.json",
+   "issue": 609,
+   "run": "44627923073",
+   "artifact": "ATLAS-android-UI-evidence-shard-0",
+   "pr": 616,
+   "host": "GitHub API35 x86_64 pixel_6 with S24DisplayRule override; NOT a physical S24+",
+   "not_captured": [
+    "Long-duration video not produced by this four-second H.264 fixture: NOT_CAPTURED",
+    "Codec unavailable/error video UI: NOT_CAPTURED (requires an independent codec fixture)",
+    "Media3 AndroidView gesture hit rectangles: not exposed by Compose semantics",
+    "System TalkBack spoken focus order: NOT_CAPTURED; descriptions are measured"
+   ]
+  }
+ ],
+ "frames": {
+  "photo/bright/dark/portrait/shown": {
+   "capture": "ui-evidence/viewer-609-photo-bright-dark-portrait-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 716.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 663.07,
+     "right": 210.67,
+     "bottom": 713.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 668.09,
+     "right": 238.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": {
+     "left": 70.04,
+     "top": 729.96,
+     "right": 110.22,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 137.96,
+     "top": 729.96,
+     "right": 178.13,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 205.87,
+     "top": 729.96,
+     "right": 246.04,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 273.78,
+     "top": 729.96,
+     "right": 313.96,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/bright/dark/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-photo-bright-dark-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/dark/portrait/shown": {
+   "capture": "ui-evidence/viewer-609-photo-dark-dark-portrait-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 716.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 145.07,
+     "top": 668.09,
+     "right": 174.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-thumbnail-1": {
+     "left": 173.33,
+     "top": 663.07,
+     "right": 210.67,
+     "bottom": 713.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-viewer-favourite": {
+     "left": 70.04,
+     "top": 729.96,
+     "right": 110.22,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 137.96,
+     "top": 729.96,
+     "right": 178.13,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 205.87,
+     "top": 729.96,
+     "right": 246.04,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 273.78,
+     "top": 729.96,
+     "right": 313.96,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/dark/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-photo-dark-dark-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/bright/dark/landscape/shown": {
+   "capture": "ui-evidence/viewer-609-photo-bright-dark-landscape-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 316.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 395.56,
+     "top": 263.07,
+     "right": 432.89,
+     "bottom": 313.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 431.29,
+     "top": 268.09,
+     "right": 461.16,
+     "bottom": 308.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": {
+     "left": 292.27,
+     "top": 329.96,
+     "right": 332.44,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 360.18,
+     "top": 329.96,
+     "right": 400.36,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 428.09,
+     "top": 329.96,
+     "right": 468.27,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 496,
+     "top": 329.96,
+     "right": 536.18,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/dark/landscape/shown": {
+   "capture": "ui-evidence/viewer-609-photo-dark-dark-landscape-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 316.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 367.29,
+     "top": 268.09,
+     "right": 397.16,
+     "bottom": 308.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-thumbnail-1": {
+     "left": 395.56,
+     "top": 263.07,
+     "right": 432.89,
+     "bottom": 313.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-viewer-favourite": {
+     "left": 292.27,
+     "top": 329.96,
+     "right": 332.44,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 360.18,
+     "top": 329.96,
+     "right": 400.36,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 428.09,
+     "top": 329.96,
+     "right": 468.27,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 496,
+     "top": 329.96,
+     "right": 536.18,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/bright/light/portrait/shown": {
+   "capture": "ui-evidence/viewer-609-photo-bright-light-portrait-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 716.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 663.07,
+     "right": 210.67,
+     "bottom": 713.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 668.09,
+     "right": 238.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": {
+     "left": 70.04,
+     "top": 729.96,
+     "right": 110.22,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 137.96,
+     "top": 729.96,
+     "right": 178.13,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 205.87,
+     "top": 729.96,
+     "right": 246.04,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 273.78,
+     "top": 729.96,
+     "right": 313.96,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/bright/light/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-photo-bright-light-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/light/portrait/shown": {
+   "capture": "ui-evidence/viewer-609-photo-dark-light-portrait-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 716.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 145.07,
+     "top": 668.09,
+     "right": 174.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-thumbnail-1": {
+     "left": 173.33,
+     "top": 663.07,
+     "right": 210.67,
+     "bottom": 713.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-viewer-favourite": {
+     "left": 70.04,
+     "top": 729.96,
+     "right": 110.22,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 137.96,
+     "top": 729.96,
+     "right": 178.13,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 205.87,
+     "top": 729.96,
+     "right": 246.04,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 273.78,
+     "top": 729.96,
+     "right": 313.96,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/light/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-photo-dark-light-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/bright/light/landscape/shown": {
+   "capture": "ui-evidence/viewer-609-photo-bright-light-landscape-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 316.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 395.56,
+     "top": 263.07,
+     "right": 432.89,
+     "bottom": 313.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 431.29,
+     "top": 268.09,
+     "right": 461.16,
+     "bottom": 308.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": {
+     "left": 292.27,
+     "top": 329.96,
+     "right": 332.44,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 360.18,
+     "top": 329.96,
+     "right": 400.36,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 428.09,
+     "top": 329.96,
+     "right": 468.27,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 496,
+     "top": 329.96,
+     "right": 536.18,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/dark/light/landscape/shown": {
+   "capture": "ui-evidence/viewer-609-photo-dark-light-landscape-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 259.91,
+     "right": 784,
+     "bottom": 316.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 367.29,
+     "top": 268.09,
+     "right": 397.16,
+     "bottom": 308.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-thumbnail-1": {
+     "left": 395.56,
+     "top": 263.07,
+     "right": 432.89,
+     "bottom": 313.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-viewer-favourite": {
+     "left": 292.27,
+     "top": 329.96,
+     "right": 332.44,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 360.18,
+     "top": 329.96,
+     "right": 400.36,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 428.09,
+     "top": 329.96,
+     "right": 468.27,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 496,
+     "top": 329.96,
+     "right": 536.18,
+     "bottom": 370.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "photo/unavailable/light/portrait/shown": {
+   "capture": "ui-evidence/viewer-609-photo-unavailable-light-portrait-shown.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 124.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 659.91,
+     "right": 384,
+     "bottom": 716.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 113.07,
+     "top": 668.09,
+     "right": 142.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-thumbnail-1": {
+     "left": 145.07,
+     "top": 668.09,
+     "right": 174.93,
+     "bottom": 708.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": {
+     "left": 70.04,
+     "top": 729.96,
+     "right": 110.22,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-edit-photo": {
+     "left": 137.96,
+     "top": 729.96,
+     "right": 178.13,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-share-media": {
+     "left": 205.87,
+     "top": 729.96,
+     "right": 246.04,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-trash": {
+     "left": 273.78,
+     "top": 729.96,
+     "right": 313.96,
+     "bottom": 770.13,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "video/short/dark/portrait/still": {
+   "capture": "ui-evidence/viewer-video-dark-still.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-video-dark-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "video/short/dark/landscape/shown": {
+   "capture": "ui-evidence/viewer-142-video-landscape-cutout-dark.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 307.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 307.91,
+     "right": 784,
+     "bottom": 364.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 395.56,
+     "top": 311.07,
+     "right": 432.89,
+     "bottom": 361.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 431.29,
+     "top": 316.09,
+     "right": 461.16,
+     "bottom": 356.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 58.31,
+     "top": 166.04,
+     "right": 770.13,
+     "bottom": 220.09,
+     "width": 711.82,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 66.13,
+     "top": 173.16,
+     "right": 106.31,
+     "bottom": 213.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 125.51,
+     "top": 171.38,
+     "right": 742.76,
+     "bottom": 215.47,
+     "width": 617.24,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/playing": {
+   "capture": "ui-evidence/viewer-video-dark-playing.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/paused": {
+   "capture": "ui-evidence/viewer-video-dark-paused.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/seek-preview": {
+   "capture": "ui-evidence/viewer-video-dark-seek.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/seek-start": {
+   "capture": "ui-evidence/viewer-609-video-dark-seek-start.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/dark/portrait/seek-end": {
+   "capture": "ui-evidence/viewer-609-video-dark-seek-end.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/still": {
+   "capture": "ui-evidence/viewer-video-light-still.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/hidden": {
+   "capture": "ui-evidence/viewer-609-video-light-portrait-hidden.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": "NOT_RENDERED",
+    "atlas-back": "NOT_RENDERED",
+    "atlas-viewer-details-open": "NOT_RENDERED",
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+    "atlas-filmstrip": "NOT_RENDERED",
+    "atlas-thumbnail-0": "NOT_RENDERED",
+    "atlas-thumbnail-1": "NOT_RENDERED",
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": "NOT_RENDERED",
+    "atlas-video-play-pause": "NOT_RENDERED",
+    "atlas-video-seek": "NOT_RENDERED"
+   }
+  },
+  "video/short/light/landscape/shown": {
+   "capture": "ui-evidence/viewer-142-video-landscape-cutout-light.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 1,
+   "window_px": {
+    "width": 2340,
+    "height": 1080
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     44.44,
+     24.18,
+     48,
+     0
+    ],
+    "compose_statusBars": [
+     0,
+     24.18,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     48,
+     0
+    ],
+    "compose_displayCutout": [
+     44.44,
+     0,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 0,
+     "top": 485,
+     "right": 125,
+     "bottom": 600,
+     "width": 125,
+     "height": 115
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 56.53,
+     "top": 32.36,
+     "right": 771.91,
+     "bottom": 80.36,
+     "width": 715.38,
+     "height": 48.0
+    },
+    "atlas-back": {
+     "left": 64.36,
+     "top": 36.27,
+     "right": 104.53,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 723.91,
+     "top": 36.27,
+     "right": 764.09,
+     "bottom": 76.44,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 44.44,
+     "top": 307.91,
+     "right": 784,
+     "bottom": 384,
+     "width": 739.56,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 44.44,
+     "top": 307.91,
+     "right": 784,
+     "bottom": 364.09,
+     "width": 739.56,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 395.56,
+     "top": 311.07,
+     "right": 432.89,
+     "bottom": 361.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 431.29,
+     "top": 316.09,
+     "right": 461.16,
+     "bottom": 356.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 58.31,
+     "top": 166.04,
+     "right": 770.13,
+     "bottom": 220.09,
+     "width": 711.82,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 66.13,
+     "top": 173.16,
+     "right": 106.31,
+     "bottom": 213.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 125.51,
+     "top": 171.38,
+     "right": 742.76,
+     "bottom": 215.47,
+     "width": 617.24,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/playing": {
+   "capture": "ui-evidence/viewer-video-light-playing.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/paused": {
+   "capture": "ui-evidence/viewer-video-light-paused.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/seek-preview": {
+   "capture": "ui-evidence/viewer-video-light-seek.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/seek-start": {
+   "capture": "ui-evidence/viewer-609-video-light-seek-start.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  },
+  "video/short/light/portrait/seek-end": {
+   "capture": "ui-evidence/viewer-609-video-light-seek-end.png",
+   "capture_status": "CAPTURED_BY_TEST",
+   "navigation_mode": "0",
+   "rotation": 0,
+   "window_px": {
+    "width": 1080,
+    "height": 2340
+   },
+   "pixels_per_dp": 2.8125,
+   "insets_dp": {
+    "compose_safeDrawing": [
+     0,
+     44.44,
+     0,
+     48
+    ],
+    "compose_statusBars": [
+     0,
+     44.44,
+     0,
+     0
+    ],
+    "compose_navigationBars": [
+     0,
+     0,
+     0,
+     48
+    ],
+    "compose_displayCutout": [
+     0,
+     44.44,
+     0,
+     0
+    ]
+   },
+   "cutout_rectangles_px": [
+    {
+     "left": 480,
+     "top": 0,
+     "right": 595,
+     "bottom": 125,
+     "width": 115,
+     "height": 125
+    }
+   ],
+   "regions_dp": {
+    "atlas-viewer-top-chrome": {
+     "left": 12.09,
+     "top": 52.62,
+     "right": 371.91,
+     "bottom": 100.62,
+     "width": 359.82,
+     "height": 48
+    },
+    "atlas-back": {
+     "left": 19.91,
+     "top": 56.53,
+     "right": 60.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-details-open": {
+     "left": 323.91,
+     "top": 56.53,
+     "right": 364.09,
+     "bottom": 96.71,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-viewer-find-person": "NOT_RENDERED",
+    "atlas-viewer-find-similar": "NOT_RENDERED",
+    "atlas-viewer-more": "NOT_RENDERED",
+    "atlas-viewer-bottom-chrome": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 784,
+     "width": 384,
+     "height": 76.09
+    },
+    "atlas-filmstrip": {
+     "left": 0,
+     "top": 707.91,
+     "right": 384,
+     "bottom": 764.09,
+     "width": 384,
+     "height": 56.18
+    },
+    "atlas-thumbnail-0": {
+     "left": 173.33,
+     "top": 711.07,
+     "right": 210.67,
+     "bottom": 761.29,
+     "width": 37.33,
+     "height": 50.22
+    },
+    "atlas-thumbnail-1": {
+     "left": 209.07,
+     "top": 716.09,
+     "right": 238.93,
+     "bottom": 756.27,
+     "width": 29.87,
+     "height": 40.18
+    },
+    "atlas-viewer-favourite": "NOT_RENDERED",
+    "atlas-edit-photo": "NOT_RENDERED",
+    "atlas-share-media": "NOT_RENDERED",
+    "atlas-viewer-trash": "NOT_RENDERED",
+    "atlas-video-controls": {
+     "left": 13.87,
+     "top": 566.04,
+     "right": 370.13,
+     "bottom": 620.09,
+     "width": 356.27,
+     "height": 54.04
+    },
+    "atlas-video-play-pause": {
+     "left": 21.69,
+     "top": 573.16,
+     "right": 61.87,
+     "bottom": 613.33,
+     "width": 40.18,
+     "height": 40.18
+    },
+    "atlas-video-seek": {
+     "left": 81.07,
+     "top": 571.38,
+     "right": 342.76,
+     "bottom": 615.47,
+     "width": 261.69,
+     "height": 44.09
+    }
+   },
+   "video_controls_to_filmstrip_gap_dp": 87.82
+  }
+ }
+}
