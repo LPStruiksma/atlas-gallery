@@ -31,9 +31,11 @@ import org.junit.runner.RunWith
  * DESIGN-8T #627: the *current* viewer measured under gesture navigation
  * (`navigation_mode=2`), which #609 never captured (all its frames were
  * three-button). Evidence only; no production code or proposed target is
- * rendered. The emulator's own gestural overlay is switched on for this test
- * and three-button navigation is restored in `finally`, so later tests see the
- * mode they always had. Only an invented PNG and absent synthetic URIs are used.
+ * rendered. The emulator's own gestural overlay is switched on for this test.
+ * `finally` restores the exact navbar overlay set found before (not merely "a"
+ * three-button overlay: enabling one that was off changes system resources and
+ * broke a later grid test on run 44650698832), then waits for the original mode
+ * and lets SystemUI settle, so later tests see the device they always had. Only an invented PNG and absent synthetic URIs are used.
  */
 @RunWith(AndroidJUnit4::class)
 class Viewer627GestureNavTest {
@@ -60,11 +62,21 @@ class Viewer627GestureNavTest {
         }
     }
 
+    /** Navbar overlay package -> enabled, from `cmd overlay list`. */
+    private fun navbarOverlays(): Map<String, Boolean> =
+        shell("cmd overlay list android").lines().mapNotNull { line ->
+            val m = Regex("""^\s*\[([ x])]\s+(com\.android\.internal\.systemui\.navbar\.\S+)""")
+                .find(line) ?: return@mapNotNull null
+            m.groupValues[2] to (m.groupValues[1] == "x")
+        }.toMap()
+
     @Test fun measureCurrentViewerUnderGestureNavigation() {
         val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
         var inserted: android.net.Uri? = null
+        val originalMode = navigationMode()
+        val originalOverlays = navbarOverlays()
         try {
-            shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural")
+            shell("cmd overlay enable-exclusive --category $GESTURAL")
             waitForMode("2")
             val uri = requireNotNull(resolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues().apply {
@@ -163,8 +175,18 @@ class Viewer627GestureNavTest {
         } finally {
             inserted?.let { resolver.delete(it, null, null) }
             restoreViewerEvidencePortrait()
-            shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton")
-            waitForMode("0")
+            // Disable first, then re-enable exactly what was on before.
+            navbarOverlays().filterValues { it }.keys.forEach { shell("cmd overlay disable $it") }
+            originalOverlays.filterValues { it }.keys.forEach { shell("cmd overlay enable $it") }
+            waitForMode(originalMode)
+            check(navbarOverlays() == originalOverlays) {
+                "navbar overlays not restored: ${navbarOverlays()} != $originalOverlays"
+            }
+            Thread.sleep(3_000L)  // SystemUI re-inflates the bar after an overlay change
         }
+    }
+
+    private companion object {
+        const val GESTURAL = "com.android.internal.systemui.navbar.gestural"
     }
 }
