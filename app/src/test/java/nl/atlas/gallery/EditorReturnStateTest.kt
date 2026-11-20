@@ -73,4 +73,20 @@ class EditorReturnStateTest {
         assertEquals(2L, secondReturn.revision)
         assertNull(secondReturn.pendingUri)
     }
+
+    /** EDIT-3 (#633): an in-app Save/Revert refreshes only that URI, through a new revision key. */
+    @Test fun inAppSaveRefreshesOnlyTheSavedUriWithANewMemoryKey() {
+        val target = "content://media/external/images/media/8"
+        val neighbor = "content://media/external/images/media/9"
+        val saved = EditorReturnState().savedInPlace(target)
+        assertTrue(saved.mustReload(target))
+        assertFalse(saved.mustReload(neighbor))
+        assertEquals(1L, saved.revision)
+        val again = saved.savedInPlace(target)
+        assertEquals(2L, again.revision)
+        assertNotEquals(editedPhotoMemoryKey(target, saved.revision, 1080),
+            editedPhotoMemoryKey(target, again.revision, 1080))
+        val ignored = EditorReturnState()
+        assertSame(ignored, ignored.savedInPlace("file:///sdcard/x.jpg"))
+    }
 }

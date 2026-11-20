@@ -4,6 +4,11 @@
 new permissions, or edits to the source. Called only after a user chooses Accept.
 The ordinary Samsung/system Edit handoff is not changed.
 
+> **Shared editor save path (EDIT-3, #633):** Save, Save as copy and Revert for the in-app editor
+> live in `featureeditor/save` and are described in [`docs/editor/SAVE.md`](../editor/SAVE.md).
+> EDIT-5 moves AI Edit and Identity Studio onto that path; until then the standalone saver below
+> is unchanged.
+
 ## Contract
 
 - `AiEditSaver.save(candidate, onRefresh, onFocus)` takes a selected
