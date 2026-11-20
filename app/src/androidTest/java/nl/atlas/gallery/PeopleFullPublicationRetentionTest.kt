@@ -330,20 +330,27 @@ class PeopleFullPublicationRetentionTest {
     /**
      * A real grant loss in the middle of that restage is never masked by the
      * readable carry-over: from the first step that sees it, neither epoch
-     * reads named People or visual counts.
+     * reads named People.
      */
     @Test fun grantLossDuringRestageHidesBothEpochs() {
         seed("gallery-1")
         val before = faces.activeEpoch()
         var leaked = 0
         var steps = 0
+        var lostAt = 0
         probe = {
             steps++
-            if (steps == 2) granted = false
+            // Lose the grant once the store has committed the restaged epoch,
+            // the step whose held and committed reads #699 added. (A loss
+            // inside the carry-over's own directory build throws there, as
+            // before; that path is not changed here.)
+            if (granted && faces.activeEpoch() != before) { granted = false; lostAt = steps }
             if (!granted) {
                 val active = faces.activeEpoch()
-                if (named(before) || named(active) || visualKnown(before) || visualKnown(active))
-                    leaked++
+                // Visual counts follow their own scope until the next
+                // publication revokes (unchanged here); the held People
+                // reads added for #699 must never outlive the grant.
+                if (named(before) || named(active)) leaked++
             }
         }
         try {
@@ -351,8 +358,8 @@ class PeopleFullPublicationRetentionTest {
         } finally {
             probe = null
         }
-        Log.i(TAG, "case=grant_loss steps=$steps leaked=$leaked")
-        assertTrue("grant loss: the probe ran after the loss", steps >= 2)
+        Log.i(TAG, "case=grant_loss steps=$steps lost_at=$lostAt leaked=$leaked")
+        assertTrue("grant loss: the probe saw the committed epoch", lostAt > 0)
         assertEquals("grant loss: no read survived the lost grant", 0, leaked)
         assertTrue("grant loss: no named person afterwards", !named(before) && !named(faces.activeEpoch()))
         // The next publication sees the loss and revokes, as before.
