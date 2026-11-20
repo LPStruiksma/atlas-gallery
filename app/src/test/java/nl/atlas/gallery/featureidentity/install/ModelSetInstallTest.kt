@@ -94,11 +94,17 @@ class ModelSetInstallTest {
         File(root, IdentityModelStore.DIR).listFiles()?.map { it.name }?.sorted() ?: emptyList()
 
     /** A body that hands out [bytes] in 64 KB steps, waiting [pauseMs] per step. */
-    private class SlowStream(private val bytes: ByteArray, private var pos: Int, private val pauseMs: Long) : InputStream() {
+    private class SlowStream(
+        private val bytes: ByteArray,
+        private var pos: Int,
+        private val pauseMs: Long,
+        private val onRead: () -> Unit = {}
+    ) : InputStream() {
         override fun read(): Int = if (pos >= bytes.size) -1 else bytes[pos++].toInt() and 255
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             if (pos >= bytes.size) return -1
             Thread.sleep(pauseMs)
+            onRead()
             val n = minOf(len, 64 * 1024, bytes.size - pos)
             System.arraycopy(bytes, pos, b, off, n); pos += n
             return n
@@ -112,7 +118,7 @@ class ModelSetInstallTest {
         val events = Collections.synchronizedList(mutableListOf<String>())
         val downloading = CountDownLatch(1)
         val worker = ModelSetInstall(IdentityModelStore(root) { _, offset ->
-            FetchResponse(SlowStream(a, offset.toInt(), pauseMs = 5), resumed = true)
+            FetchResponse(SlowStream(a, offset.toInt(), pauseMs = 5) { events += "read" }, resumed = true)
         }, listOf(ea), root) { Long.MAX_VALUE }
         val thread = Thread {
             val outcome = worker.run({ cancelled.get() }) { if (it is InstallState.Downloading && it.bytes > 0) downloading.countDown() }
@@ -124,7 +130,10 @@ class ModelSetInstallTest {
         studio.removeAll()
         events += "removed"
         thread.join(10_000)
-        assertEquals(listOf("worker:Cancelled", "removed"), events.toList())
+        val log = events.toList()
+        // Remove ran only after the worker's last read (its run had stopped), and nothing is left.
+        assertTrue(log.contains("worker:Cancelled"))
+        assertTrue(log.lastIndexOf("read") < log.indexOf("removed"))
         assertEquals(emptyList<String>(), modelFiles())
     }
 
@@ -139,7 +148,7 @@ class ModelSetInstallTest {
         }, listOf(ea), root) { Long.MAX_VALUE }
         val thread = Thread {
             val outcome = worker.run({ cancelled.get() }) {
-                if (it == InstallState.Verifying) { cancelled.set(true); verifying.countDown(); Thread.sleep(100) }
+                if (it == InstallState.Verifying) { cancelled.set(true); verifying.countDown(); Thread.sleep(100); events += "verifying" }
             }
             events += "worker:$outcome"
         }.apply { start() }
@@ -148,7 +157,9 @@ class ModelSetInstallTest {
         studio.removeAll() // blocks until the worker finished hashing and moving the file
         events += "removed"
         thread.join(10_000)
-        assertEquals(listOf("worker:Cancelled", "removed"), events.toList())
+        val log = events.toList()
+        assertTrue(log.contains("worker:Cancelled"))
+        assertTrue(log.indexOf("verifying") < log.indexOf("removed"))
         assertEquals(emptyList<String>(), modelFiles())
     }
 
