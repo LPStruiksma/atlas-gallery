@@ -11,15 +11,16 @@ internal object ExternalIntentReader {
         if (intent == null) return ExternalIntentFacts(null, null, null)
         // A hostile or buggy caller can send a Parcelable that fails to unparcel:
         // read each field on its own and treat a failure as absent.
-        val clip = runCatching {
-            val data = intent.clipData ?: return@runCatching emptyList<String>()
-            (0 until data.itemCount).mapNotNull { data.getItemAt(it)?.uri?.toString() }
-        }.getOrDefault(emptyList())
+        // Only item 0: a text-only or null-URI first item must stay a refusal,
+        // never be skipped so that a later item takes its place.
+        val firstClip = runCatching {
+            intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri?.toString()
+        }.getOrNull()
         return ExternalIntentFacts(
             action = intent.action,
             dataUri = runCatching { intent.data?.toString() }.getOrNull(),
             type = runCatching { intent.type }.getOrNull(),
-            clipUris = clip,
+            firstClipUri = firstClip,
             allowMultiple = runCatching {
                 intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
             }.getOrDefault(false),

@@ -13,7 +13,7 @@ class ExternalIntentContractTest {
 
     private fun parse(
         action: String?, data: String? = null, type: String? = null,
-        clip: List<String> = emptyList(), multiple: Boolean = false, mimes: List<String>? = null
+        clip: String? = null, multiple: Boolean = false, mimes: List<String>? = null
     ) = ExternalIntentParser.parse(ExternalIntentFacts(action, data, type, clip, multiple, mimes))
 
     @Test fun actionNamesAreTheStandardPlatformConstants() {
@@ -48,14 +48,21 @@ class ExternalIntentContractTest {
     @Test fun dataWinsOverClipDataAndExtraClipItemsAreIgnored() {
         val other = "content://media/external_primary/images/media/42"
         val entry = parse(ExternalIntentParser.ACTION_REVIEW_SECURE, photo, "image/jpeg",
-            clip = listOf(other, "content://media/external_primary/images/media/43"))
+            clip = other)
         assertEquals(photo, (entry as ExternalEntry.Viewer).uri)
     }
 
     @Test fun clipDataIsUsedOnlyWhenDataIsAbsentAndOnlyItsFirstItem() {
-        val other = "content://media/external_primary/images/media/42"
-        val entry = parse(ExternalIntentParser.ACTION_REVIEW, null, "image/jpeg", clip = listOf(photo, other))
+        val entry = parse(ExternalIntentParser.ACTION_REVIEW, null, "image/jpeg", clip = photo)
         assertEquals(photo, (entry as ExternalEntry.Viewer).uri)
+    }
+
+    @Test fun aClipWhoseFirstItemHasNoUriIsRefusedEvenForSecureReview() {
+        // The reader passes null when item 0 is text-only; a later item never stands in.
+        assertEquals(ExternalEntry.Rejected(ExternalRejectReason.MISSING_URI, secure = true),
+            parse(ExternalIntentParser.ACTION_REVIEW_SECURE, null, "image/jpeg", clip = null))
+        assertEquals(ExternalEntry.Rejected(ExternalRejectReason.MISSING_URI, secure = false),
+            parse(ExternalIntentParser.ACTION_VIEW, null, "image/jpeg", clip = " "))
     }
 
     @Test fun missingUriIsRejectedAndKeepsTheSecureFlag() {
@@ -74,7 +81,7 @@ class ExternalIntentContractTest {
         }
         // A file:// clip item is not used to rescue a missing data URI either.
         assertEquals(ExternalEntry.Rejected(ExternalRejectReason.NOT_CONTENT_URI, secure = false),
-            parse(ExternalIntentParser.ACTION_VIEW, null, "image/jpeg", clip = listOf("file:///a.jpg")))
+            parse(ExternalIntentParser.ACTION_VIEW, null, "image/jpeg", clip = "file:///a.jpg"))
     }
 
     @Test fun nonMediaDeclaredTypesAreRejected() {

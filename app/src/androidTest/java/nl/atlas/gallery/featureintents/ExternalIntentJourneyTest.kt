@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featureintents
 
+import android.content.ClipData
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
@@ -109,6 +110,24 @@ class ExternalIntentJourneyTest {
             val scenario = fixture.launch(action, uri, type)
             compose.awaitTag(ExternalViewerTags.ERROR)
             compose.onNodeWithText(EXTERNAL_CANT_OPEN).assertIsDisplayed()
+            compose.tap(hasTestTag(ExternalViewerTags.ERROR_BACK))
+            compose.awaitDestroyed(scenario)
+        }
+    }
+
+    /**
+     * Review on #707: ClipData item 0 is text only and item 1 is a readable item.
+     * ATLAS must refuse rather than promote item 1, above all for secure review.
+     */
+    @Test fun aTextOnlyFirstClipItemIsRefusedAndNeverPromotesTheNext() {
+        for (action in listOf(ExternalIntentParser.ACTION_REVIEW_SECURE, ExternalIntentParser.ACTION_VIEW)) {
+            val clip = ClipData("capture", arrayOf("image/png"), ClipData.Item("not a uri"))
+                .apply { addItem(ClipData.Item(Uri.parse(fixture.media))) }
+            val scenario = ActivityScenario.launch<MainActivity>(
+                fixture.intent(action, null, "image/png").apply { clipData = clip })
+            compose.awaitTag(ExternalViewerTags.ERROR)
+            compose.onNodeWithText(EXTERNAL_CANT_OPEN).assertIsDisplayed()
+            assertFalse(compose.exists(hasTestTag("atlas-viewer-top-chrome")))
             compose.tap(hasTestTag(ExternalViewerTags.ERROR_BACK))
             compose.awaitDestroyed(scenario)
         }

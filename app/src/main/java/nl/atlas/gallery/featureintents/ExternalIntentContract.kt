@@ -13,8 +13,9 @@ import android.provider.MediaStore
  * The rules come from the platform contracts, not from another gallery app:
  * - `ACTION_VIEW`, `MediaStore.ACTION_REVIEW` and `MediaStore.ACTION_REVIEW_SECURE`
  *   open ONE caller-granted `content://` item. `Intent.data` wins; only when it is
- *   absent is the first `ClipData` item used, and extra clip items are ignored,
- *   so a caller can never widen what ATLAS shows.
+ *   absent is `ClipData` item 0 used; if item 0 has no URI the intent is refused,
+ *   and later clip items are never read, so a caller can never widen or swap
+ *   what ATLAS shows.
  * - `ACTION_GET_CONTENT` / `ACTION_PICK` ask for a pick; the requested MIME types
  *   and `EXTRA_ALLOW_MULTIPLE` decide what may be returned.
  * - `file://` and every non-`content` scheme are refused, never followed.
@@ -25,7 +26,12 @@ internal class ExternalIntentFacts(
     val action: String?,
     val dataUri: String?,
     val type: String?,
-    val clipUris: List<String> = emptyList(),
+    /**
+     * The URI of `ClipData` item 0 only, null when there is no clip, item 0 is
+     * text-only, or its URI is null. Later items are never read, so a bad first
+     * item can't be skipped over to promote another URI.
+     */
+    val firstClipUri: String? = null,
     val allowMultiple: Boolean = false,
     val extraMimeTypes: List<String>? = null
 )
@@ -192,7 +198,7 @@ internal object ExternalIntentParser {
 
     private fun viewer(facts: ExternalIntentFacts, kind: ExternalViewKind): ExternalEntry {
         val uri = facts.dataUri?.takeIf { it.isNotBlank() }
-            ?: facts.clipUris.firstOrNull()?.takeIf { it.isNotBlank() }
+            ?: facts.firstClipUri?.takeIf { it.isNotBlank() }
             ?: return ExternalEntry.Rejected(ExternalRejectReason.MISSING_URI, kind.secure)
         if (!isContentUri(uri)) {
             return ExternalEntry.Rejected(ExternalRejectReason.NOT_CONTENT_URI, kind.secure)
