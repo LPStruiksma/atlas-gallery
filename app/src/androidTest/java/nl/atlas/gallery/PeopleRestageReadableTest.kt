@@ -209,9 +209,11 @@ class PeopleRestageReadableTest {
         var namedMissing = 0
         var emptyShown = 0
         var visualTotalUnknown = 0
+        /** Counts, phases and booleans of each gap sample, for the failure message. */
+        val notes = ArrayList<String>()
         override fun toString() = "samples=$samples after_commit=$afterCommit " +
             "named_missing=$namedMissing empty_shown=$emptyShown " +
-            "visual_total_unknown=$visualTotalUnknown"
+            "visual_total_unknown=$visualTotalUnknown ${notes.take(8)}"
     }
 
     private fun named(status: PeopleDiscoveryStatus?) =
@@ -231,12 +233,24 @@ class PeopleRestageReadableTest {
         val gaps = Gaps()
         probe = {
             val active = faces.activeEpoch()
-            held = shownPeopleStatus(host, held, host.status(newGrant))
+            val read = host.status(newGrant)
+            // The screen's first read before a publication is taken only
+            // while the host serves the new gallery grant (rememberPeopleDiscoveryOf);
+            // before the carry-over it keeps what it showed.
+            val taken = host.serves(newGrant)
+            if (taken) held = shownPeopleStatus(host, held, read)
             gaps.samples++
             if (active != before) gaps.afterCommit++
+            val visualKnown = active == null || host.visualStatus(active)?.total != null
+            if (!named(held) || !visualKnown) gaps.notes += "s${gaps.samples}:" +
+                "taken=$taken commit=${active != before} phase=${read.ui.phase} " +
+                "read_people=${read.people != null} pending=${read.peoplePending} " +
+                "display=${when (read.displayEpoch) { before -> "old"; active -> "new"
+                    else -> "other" }} gap=${host.restageReadGap(read.displayEpoch)} " +
+                "visual_known=$visualKnown"
             if (!named(held)) gaps.namedMissing++
             if (!named(held) && !peopleHomeRestoring(true, true, held)) gaps.emptyShown++
-            if (active != null && host.visualStatus(active)?.total == null) gaps.visualTotalUnknown++
+            if (!visualKnown) gaps.visualTotalUnknown++
         }
         try {
             host.onGalleryPublication(newGrant) { inventory }
