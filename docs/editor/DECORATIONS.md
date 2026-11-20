@@ -28,12 +28,13 @@ unsupported or malformed properties. The existing `RecipeJson` serializes the
 props and layer transforms losslessly; save/reopen is a JSON decode followed
 by `DecorationCodec.decode`, **not** a bitmap flatten. The asset store keeps
 SHA-256 sticker hashes via `EditRecipe.referencedContentHashes()`.
-The supplied \`StickerAssets.fromBitmap(cutoutOrUserBitmap)\` produces a deterministic PNG
+The supplied `StickerAssets.fromBitmap(cutoutOrUserBitmap)` produces a deterministic PNG
 payload plus lowercase SHA-256; persist the bytes in the app's existing asset
-store under the hash and set \`StickerLayer.contentHash\` to that hash.
-\`StickerAssets.decodeVerified\` checks the bytes before decoding, so
-corrupted or replaced assets cannot silently render. \`DecorationBitmapResolver\` resolves content hashes; a missing
-asset fails export explicitly instead of silently dropping stickers.
+store under the hash and set `StickerLayer.contentHash` to that hash.
+`StickerAssets.decodeVerified` checks the bytes before decoding, so
+corrupted or replaced assets cannot silently render.
+`DecorationBitmapResolver` resolves content hashes; a missing asset fails export
+explicitly instead of silently dropping stickers.
 
 ### Typed layers
 
@@ -107,7 +108,7 @@ Atlas's own sticker catalogue can feed the hash-based bitmap resolver.
 - `app/src/androidTest/java/nl/atlas/gallery/featureeditor/overlay/DecorationRasterAndroidTest.kt`
   checks synthetic Canvas pixels: photo-preserving stroke eraser, translucent
   highlighter, shape fill, text background, content-hashed sticker, and
-  explicit missing-sticker error.
+  explicit missing-sticker error, PNG encoding and tamper rejection.
 
 No editor panel or export integration is claimed here; EDIT-2/EDIT-10 invoke
 these APIs in their own units. Instrumented pixel tests require an emulator;
