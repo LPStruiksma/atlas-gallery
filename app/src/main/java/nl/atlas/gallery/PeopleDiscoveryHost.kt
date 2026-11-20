@@ -67,6 +67,8 @@ import nl.atlas.gallery.featureface.FaceBatchStop
 import nl.atlas.gallery.featureface.FaceCatalogPublisher
 import nl.atlas.gallery.featureface.FaceCatalogPublication
 import nl.atlas.gallery.featureface.FaceFrameReader
+import nl.atlas.gallery.featureface.FaceQualityBackfillRunner
+import nl.atlas.gallery.featureface.FaceQualityBackfillResult
 import nl.atlas.gallery.featureface.FaceMediaKey
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
@@ -99,6 +101,7 @@ import nl.atlas.gallery.featureface.work.PeopleScanSession
 import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
 import nl.atlas.gallery.featureface.work.PeopleVisualScanStep
+import nl.atlas.gallery.featureface.work.PeopleQualityBackfillStep
 import nl.atlas.gallery.featurevisual.ImageEmbedder
 import nl.atlas.gallery.featurevisual.VisualEmbedOutcome
 import nl.atlas.gallery.featurevisual.VisualKeyframe
@@ -180,8 +183,44 @@ internal data class PeopleDiscoveryStatus(
     /** The separate "Visual search index" opt-in (VS-S1c); null when unavailable. */
     val visual: VisualIndexStatus? = null,
     /** Non-identifying diagnostics for the active face catalogue. */
-    val provenance: FaceCatalogPublication? = null
+    val provenance: FaceCatalogPublication? = null,
+    /**
+     * #75: served, with published face groups, but [people] is not readable
+     * yet (a regroup or the #580 refill runs). Not an empty result: People
+     * must keep what it showed, or its restoring screen, never "No people".
+     */
+    val peoplePending: Boolean = false
 )
+
+/** The scope-gated, identity-free fields allowed in diagnostic export. */
+internal data class PeopleAggregateDiagnostics(
+    val optedIn: Boolean?,
+    val dirty: Boolean? = null,
+    val pending: Int? = null,
+    val lastPublicationMs: Long? = null,
+    val publicationDurationMs: Long? = null
+)
+
+/**
+ * #75: People shows its blank restoring screen, not "No people", while an
+ * opted-in catalogue is not served yet or its people are pending.
+ */
+internal fun peopleHomeRestoring(
+    access: Boolean, optedIn: Boolean, status: PeopleDiscoveryStatus?
+): Boolean = access && optedIn && (status == null || status.peoplePending)
+
+/**
+ * #75: while [next]'s people are pending, keep the summary [previous] showed
+ * for the same epoch instead of dropping to nothing.
+ */
+internal fun holdPendingPeople(
+    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+): PeopleDiscoveryStatus? {
+    if (next == null || !next.peoplePending || next.people != null) return next
+    val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
+        ?: return next
+    return next.copy(people = held, peoplePending = false)
+}
 
 /**
  * The visual search index panel's facts. It rides on the face discovery run
@@ -551,7 +590,13 @@ internal class PeopleDiscoveryHost(
      * (also after a process restart) while the next one stages. Null (the
      * default) keeps the strict behaviour: every publication restages blind.
      */
-    private val photoGrantToken: () -> String? = { null }
+    private val photoGrantToken: () -> String? = { null },
+    /**
+     * #75 test seam: runs right after a publication made a carried catalogue
+     * served and before its people are regrouped, so a test can read status
+     * in exactly that window. The app passes nothing.
+     */
+    private val onCarried: () -> Unit = {}
 ) {
     companion object {
         /**
@@ -687,6 +732,11 @@ internal class PeopleDiscoveryHost(
     private data class Snapshot(
         val optedIn: Boolean, val paused: Boolean, val scope: Scope?, val failure: String?
     )
+
+    private data class PeoplePublicationObservation(
+        val epoch: String, val timestampMs: Long, val durationMs: Long
+    )
+    @Volatile private var lastPublicationObservation: PeoplePublicationObservation? = null
 
     /** Failed publications in a row after a drained queue (#508 review). */
     private val publicationFailures = java.util.concurrent.atomic.AtomicInteger()
@@ -1214,6 +1264,7 @@ internal class PeopleDiscoveryHost(
             when (carry) {
                 Carry.UNCHANGED -> {
                     mode = "carried"
+                    onCarried()
                     // The catalogue is exactly what this inventory would stage.
                     val epoch = synchronized(lock) { scope }!!.epoch
                     if (synchronized(lock) { visualOptedIn } && visualScope?.faceEpoch != epoch) {
@@ -1226,6 +1277,7 @@ internal class PeopleDiscoveryHost(
                 }
                 Carry.STAGE_BEHIND -> {
                     mode = "staged-behind"
+                    onCarried()
                     // The previous visual catalogue may remain readable only
                     // behind this still-authorized face inventory; worker holds.
                     if (token != null && synchronized(lock) { visualOptedIn }) {
@@ -1567,18 +1619,47 @@ internal class PeopleDiscoveryHost(
         }
     }
 
+    /** Keyset cursor is only in memory: restart/re-arm retries skipped NULL rows. */
+    private var qualityCursor: Pair<String, String>? = null
+
     private inner class Session(
         private val owned: Scope, locator: OnDeviceFaceLocator
     ) : PeopleScanSession {
         override val epoch: String get() = owned.epoch
+        private val scanReader = readerFor(owned.directory)
         override val engine = FaceScanEngine(
             scopeEpoch = { if (stagingEpoch == null) liveEpoch else null },
             currentConditions = { conditions(owned.epoch) },
             sourceRevisionCurrent = owned.directory::sourceRevisionCurrent,
             index = PersistedFaceEmbeddingIndexPort(store),
-            reader = readerFor(owned.directory),
+            reader = scanReader,
             locator = locator
         )
+
+        private var lastQualityBackfill: FaceQualityBackfillResult? = null
+        override val qualityBackfill: PeopleQualityBackfillStep? =
+            (locator as? FaceEmbeddingPipeline)?.takeIf { it.supportsQualityOnly }?.let { pipeline ->
+                PeopleQualityBackfillStep { guard ->
+                    val after = synchronized(lock) {
+                        qualityCursor?.takeIf { it.first == owned.epoch }?.second
+                    }
+                    FaceQualityBackfillRunner(
+                        epoch = owned.epoch,
+                        next = { key -> store.pendingQualitySource(owned.epoch, key)
+                            ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
+                                it.embedderVersion == pipeline.embedderVersion } },
+                        store = { source, scores ->
+                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                        reader = scanReader,
+                        scoreOnly = pipeline::scoreWithoutEmbeddings,
+                        canContinue = guard
+                    ).run(after)
+                }
+            }
+
+        override fun afterQualityBackfill(result: FaceQualityBackfillResult) {
+            lastQualityBackfill = result
+        }
 
         override fun currentConditions(): FaceScanConditions = conditions(owned.epoch)
         override fun scopeCurrent(): Boolean = stagingEpoch == null && scopeCurrent(owned.epoch)
@@ -1680,7 +1761,13 @@ internal class PeopleDiscoveryHost(
                 // in finally even when publication is cancelled or fails.
                 groupingEpoch = owned.epoch
                 changed()
-                publishClusters(owned.epoch, drained)
+                val publicationStarted = clockElapsedMs()
+                val didPublish = publishClusters(owned.epoch, drained)
+                if (didPublish && scopeCurrent()) {
+                    lastPublicationObservation = PeoplePublicationObservation(owned.epoch,
+                        System.currentTimeMillis().coerceAtLeast(0L),
+                        (clockElapsedMs() - publicationStarted).coerceAtLeast(0L))
+                }
                 publicationContinues = drained && store.clusterPublicationContinues(owned.epoch)
                 publicationFailures.set(0)
             } catch (e: CancellationException) {
@@ -1698,6 +1785,19 @@ internal class PeopleDiscoveryHost(
             val retryPublication = publicationFailed && drained &&
                 publicationFailures.incrementAndGet() <= MAX_PUBLICATION_RETRIES
             val visualNext = nextVisualBatchAfter(visual, stillQueued = visualStillQueued())
+            // Move the quality cursor only after attempting a single source.
+            // No immediate retry of an unreadable/unmatched source: the kept
+            // charging re-arm starts again from the beginning later.
+            // Consume this batch's result so a later scan-only batch cannot
+            // reuse a stale attempted key to advance the cursor or schedule work.
+            val qualityResult = lastQualityBackfill.also { lastQualityBackfill = null }
+            val attempted = qualityResult?.attemptedMediaKey
+            val qualityNext = attempted != null && qualityResult?.held == false &&
+                try { store.pendingQualitySource(owned.epoch, attempted) != null }
+                catch (_: SQLException) { false }
+            if (attempted != null || qualityResult?.held == false) synchronized(lock) {
+                qualityCursor = if (qualityNext) owned.epoch to attempted!! else null
+            }
             // A drained (or absent) visual queue frees the ~100 MB embedder; the
             // next run that has visual work opens it again.
             if (visualNext == NextBatch.NONE) closeEmbedder()
@@ -1706,6 +1806,7 @@ internal class PeopleDiscoveryHost(
                 combineNextBatch(when {
                     publicationContinues -> NextBatch.NOW
                     retryPublication -> NextBatch.LATER
+                    drained && qualityNext -> NextBatch.NOW
                     else -> nextBatchAfter(result.stop)
                 }, visualNext)) {
                 NextBatch.NOW -> scheduler.next()
@@ -1729,6 +1830,28 @@ internal class PeopleDiscoveryHost(
             if (scanBatchEpoch == owned.epoch) scanBatchEpoch = null
             changed()
         }
+    }
+
+    /**
+     * Read-only aggregate snapshot. The current epoch and Android grant fence
+     * both the SQLite generation read and the in-process timing observation.
+     * This method never publishes, scans or exposes epoch/identity strings.
+     */
+    fun aggregateDiagnostics(galleryGrant: String?): PeopleAggregateDiagnostics {
+        if (galleryGrant == null || !photoGrantCurrent())
+            return PeopleAggregateDiagnostics(null)
+        val (active, epoch) = synchronized(lock) {
+            optedIn to scope?.takeIf { optedIn && it.galleryGrant == galleryGrant }?.epoch
+        }
+        val current = epoch?.takeIf { scopeCurrent(it) }
+        val generation = current?.let {
+            runCatching { store.clusterGenerationDiagnostics(it) }.getOrNull()
+        }
+        val observation = lastPublicationObservation?.takeIf {
+            current != null && it.epoch == current && generation != null
+        }
+        return PeopleAggregateDiagnostics(active, generation?.first,
+            generation?.second, observation?.timestampMs, observation?.durationMs)
     }
 
     /** One consistent read for the People panel. Blocking; IO only. */
@@ -1824,11 +1947,14 @@ internal class PeopleDiscoveryHost(
             counts.awaitingReview, nativeDetectorInstalled = true, realStartActionAvailable = true
         ), scoped.epoch).copy(statusNote = note)
         val people = currentHome(scoped.epoch)
+        // #75: null people with published groups is "not readable yet", not empty.
+        val peoplePending = people == null && try { store.hasPublishedMembership(scoped.epoch) }
+            catch (_: android.database.SQLException) { false }
         return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
             mayResumeScan = ui.phase == FaceDiscoveryPhase.PAUSED,
             mayOpenReview = counts.awaitingReview > 0
-        ), people, visualStatus(scoped.epoch), scoped.provenance)
+        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = peoplePending)
     }
 
     /**
@@ -2349,11 +2475,12 @@ internal fun <T> rememberPeopleDiscoveryOf(
         // value (or "Restoring…") instead of flashing a not-started state.
         withContext(Dispatchers.IO) {
             host.status(galleryGrant).takeIf { host.serves(galleryGrant) || !host.discoveryOptedIn() }
-        }?.let { value = it }
-        value = withContext(Dispatchers.IO) {
+        }?.let { value = holdPendingPeople(value, it) }
+        val published = withContext(Dispatchers.IO) {
             host.onGalleryPublication(galleryGrant) { project(inventory) }
             host.status(galleryGrant)
         }
+        value = holdPendingPeople(value, published)
     }
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current

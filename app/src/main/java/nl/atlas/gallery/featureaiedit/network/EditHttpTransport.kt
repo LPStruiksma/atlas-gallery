@@ -62,13 +62,21 @@ sealed interface EditHttpBody {
     data class Multipart(val parts: List<EditMultipartPart>) : EditHttpBody
 }
 
+/**
+ * [headers] are extra, non-secret request headers a provider documents (for example fal's
+ * `X-Fal-Object-Lifecycle-Preference`, #464). The transport refuses a name it owns or that
+ * carries credentials or cookies, a value with control characters, and more than
+ * [EditHttpTransport.MAX_EXTRA_HEADERS] of them, before connecting. Never put a secret here:
+ * credentials go through [EditHttpAuth] only.
+ */
 data class EditHttpRequest(
     val method: EditHttpMethod,
     val path: String,
-    val body: EditHttpBody? = null
+    val body: EditHttpBody? = null,
+    val headers: Map<String, String> = emptyMap()
 )
 
-enum class FailureCode { INVALID_REQUEST, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER }
+enum class FailureCode { INVALID_REQUEST, RESPONSE_TOO_LARGE, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER }
 
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
@@ -110,6 +118,8 @@ class EditRequestCancellation {
     }
 }
 
+private class ResponseTooLargeException : IOException()
+
 class EditHttpTransport(
     private val connectionFactory: (URL) -> HttpURLConnection = {
         it.openConnection() as HttpsURLConnection
@@ -125,7 +135,7 @@ class EditHttpTransport(
      *
      * Reply size: by default a JSON reply is held in memory up to 1 MB and a [downloadTo] file up
      * to 32 MB. [maxReplyBytes] raises (or lowers) that bound for this one request, up to
-     * [MAX_REPLY_CEILING]; a reply above it fails with `SERVER`, never retried. With [downloadTo]
+     * [MAX_REPLY_CEILING]; a reply above any cap fails with `RESPONSE_TOO_LARGE`, never retried. With [downloadTo]
      * the reply (of any method but DELETE) is spooled to that app-private file through an 8 KB
      * buffer, so even a 40 MB reply costs about 8 KB of heap. Without it the reply is buffered in
      * memory (peak about 3x its size while growing and copying), so an in-memory cap may not
@@ -161,6 +171,10 @@ class EditHttpTransport(
                 "Authorization" to (auth.scheme + " " + auth.secret)
             }
         }
+        if (request.headers.size > MAX_EXTRA_HEADERS || request.headers.any { (name, value) ->
+                !safeHeader(name) || name.lowercase(Locale.ROOT) in TRANSPORT_HEADERS ||
+                    name.equals(header?.first, ignoreCase = true) || !safeHeaderValue(value) })
+            return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
         val bodyAllowed = request.method == EditHttpMethod.POST || request.method == EditHttpMethod.PUT
         if ((request.method == EditHttpMethod.POST && request.body == null) ||
             (!bodyAllowed && request.body != null) ||
@@ -178,7 +192,7 @@ class EditHttpTransport(
             if (cancellation.isCancelled) return EditHttpResult.Cancelled
             if (clockMs() >= deadline) return EditHttpResult.Failed(FailureCode.TIMEOUT, true)
             attempt++
-            val result = once(url, request.method, payload, header, config,
+            val result = once(url, request.method, payload, header, request.headers, config,
                 deadline, cancellation, downloadTo, maxReplyBytes)
             if (cancellation.isCancelled) return EditHttpResult.Cancelled
             if (result !is EditHttpResult.Failed || !result.retryable ||
@@ -222,6 +236,10 @@ class EditHttpTransport(
             setOf("host", "cookie", "set-cookie", "content-type", "content-length", "authorization",
                 "connection", "transfer-encoding", "proxy-authorization")
     }
+
+    /** Printable ASCII only, bounded: no CR/LF, NUL or other control characters. */
+    private fun safeHeaderValue(value: String): Boolean =
+        value.isNotEmpty() && value.length <= 1024 && value.all { it in ' '..'~' }
 
     private data class Payload(val bytes: ByteArray, val type: String)
     private fun buildBody(body: EditHttpBody): Payload? {
@@ -270,7 +288,7 @@ class EditHttpTransport(
 
     private fun once(
         url: URL, method: EditHttpMethod, payload: Payload?,
-        header: Pair<String, String>?, config: EditHttpConfig, deadline: Long,
+        header: Pair<String, String>?, extraHeaders: Map<String, String>, config: EditHttpConfig, deadline: Long,
         cancel: EditRequestCancellation, destination: File?,
         replyCap: Int? = null
     ): EditHttpResult {
@@ -290,6 +308,7 @@ class EditHttpTransport(
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Cache-Control", "no-store")
             if (header != null) connection.setRequestProperty(header.first, header.second)
+            for ((name, value) in extraHeaders) connection.setRequestProperty(name, value)
             if (payload != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", payload.type)
@@ -335,6 +354,9 @@ class EditHttpTransport(
             }
             if (cancel.isCancelled) return EditHttpResult.Cancelled
             return EditHttpResult.Success(status, buffer.toByteArray())
+        } catch (_: ResponseTooLargeException) {
+            return if (cancel.isCancelled) EditHttpResult.Cancelled
+                else EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false)
         } catch (_: SocketTimeoutException) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.TIMEOUT, true)
@@ -345,9 +367,9 @@ class EditHttpTransport(
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.NETWORK, true)
         } catch (_: ReplyLimitExceeded) {
-            // Over a caller-chosen cap: the same request would get the same reply, so no retry.
+            // Over a caller-chosen cap: same code as the default caps, and the same request would get the same reply, so no retry.
             return if (cancel.isCancelled) EditHttpResult.Cancelled
-                else EditHttpResult.Failed(FailureCode.SERVER, false)
+                else EditHttpResult.Failed(FailureCode.RESPONSE_TOO_LARGE, false)
         } catch (_: Exception) {
             return if (cancel.isCancelled) EditHttpResult.Cancelled
                 else EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
@@ -398,7 +420,7 @@ class EditHttpTransport(
             val count = input.read(block)
             if (count < 0) return
             total += count
-            if (total > max) throw IOException("response too large")
+            if (total > max) throw ResponseTooLargeException()
             output.write(block, 0, count)
         }
     }
@@ -430,6 +452,10 @@ class EditHttpTransport(
         const val MAX_IN_MEMORY_REPLY = 8_000_000
         private const val BLOCK = 8192
         private val SCHEME = Regex("[A-Za-z]{1,16}")
+        const val MAX_EXTRA_HEADERS = 4
+        /** Headers the transport sets itself; an extra header may not replace them. */
+        private val TRANSPORT_HEADERS = setOf("accept", "cache-control", "user-agent", "proxy-connection",
+            "te", "upgrade", "expect", "x-api-key", "x-goog-api-key", "api-key")
         private const val MAX_UPLOAD = 20_000_000
         private const val MAX_JSON = 1_000_000
         private const val MAX_DOWNLOAD = 32_000_000

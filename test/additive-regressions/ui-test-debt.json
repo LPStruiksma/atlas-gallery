@@ -9,23 +9,16 @@
     "privateWait": 1
   },
   "AiEditUiEvidenceTest.kt": {
-    "rawClick": 4,
-    "typingWithoutKeyboardRule": 1
+    "rawClick": 3
   },
   "AlbumBatchJourneyTest.kt": {
     "rawClick": 13
   },
-  "AlbumPickerDesign10bEvidenceTest.kt": {
-    "rawClick": 2,
-    "typingWithoutKeyboardRule": 1
-  },
   "AlbumPickerDesign10bTest.kt": {
-    "rawClick": 5,
-    "typingWithoutKeyboardRule": 2
+    "rawClick": 4
   },
   "AlbumsGridEvidenceTest.kt": {
-    "rawClick": 5,
-    "typingWithoutKeyboardRule": 1,
+    "rawClick": 4,
     "privateWait": 1
   },
   "CompactHeaderJourneyTest.kt": {
@@ -96,11 +89,6 @@
   "PeopleCsvApprovalDialogTest.kt": {
     "rawClick": 2
   },
-  "PeopleDiscoveryHostTest.kt": {
-    "rawClick": 10,
-    "typingWithoutKeyboardRule": 1,
-    "privateWait": 3
-  },
   "PeopleFaceCropsAndroidTest.kt": {
     "privateWait": 1
   },
@@ -112,18 +100,11 @@
   "PeopleNamesBackupSettingsEvidenceTest.kt": {
     "rawClick": 2
   },
-  "PeoplePrototypeJourneyTest.kt": {
-    "sleep": 4,
-    "rawClick": 11,
-    "typingWithoutKeyboardRule": 2,
-    "privateWait": 4
-  },
   "PeopleScanProcessKillTest.kt": {
     "sleep": 1
   },
   "PeopleSearchEvidenceTest.kt": {
-    "rawClick": 17,
-    "typingWithoutKeyboardRule": 3,
+    "rawClick": 15,
     "privateWait": 1
   },
   "PeopleSortJourneyTest.kt": {
@@ -134,15 +115,7 @@
     "rawClick": 2
   },
   "PersonNameSearchEvidenceTest.kt": {
-    "rawClick": 2,
-    "typingWithoutKeyboardRule": 2,
     "privateWait": 1
-  },
-  "PersonPageJourneyTest.kt": {
-    "sleep": 2,
-    "rawClick": 21,
-    "typingWithoutKeyboardRule": 2,
-    "privateWait": 4
   },
   "PhotoDnaJourneyTest.kt": {
     "rawClick": 5,
@@ -171,12 +144,6 @@
   "PhotoEditorHandoffTest.kt": {
     "rawClick": 4
   },
-  "PhotoPeopleDetailsTest.kt": {
-    "sleep": 1,
-    "rawClick": 4,
-    "typingWithoutKeyboardRule": 1,
-    "privateWait": 1
-  },
   "PhotosSortSheetJourneyTest.kt": {
     "deviceStateWrite": 2
   },
@@ -192,9 +159,8 @@
     "privateWait": 2
   },
   "SearchOneFieldEvidenceTest.kt": {
-    "rawClick": 6,
+    "rawClick": 4,
     "rawCapture": 1,
-    "typingWithoutKeyboardRule": 4,
     "privateWait": 1
   },
   "SearchPeopleNavigationTest.kt": {
@@ -206,7 +172,6 @@
   "SelectionMoreJourneyTest.kt": {
     "sleep": 1,
     "rawClick": 17,
-    "typingWithoutKeyboardRule": 1,
     "privateWait": 1
   },
   "SelectionPillJourneyTest.kt": {
@@ -243,10 +208,6 @@
   },
   "UnifiedPeopleJourneyTest.kt": {
     "rawClick": 5
-  },
-  "UnknownGroupDesignEvidenceTest.kt": {
-    "sleep": 1,
-    "typingWithoutKeyboardRule": 1
   },
   "VideoFaceCropAndroidTest.kt": {
     "privateWait": 1
@@ -319,22 +280,11 @@
     "rawCapture": 1,
     "privateWait": 1
   },
-  "featurepeopleui/PeopleDestinationSelectorUiTest.kt": {
-    "typingWithoutKeyboardRule": 6
-  },
   "featurepeopleui/UnknownFacesReviewScreenStateTest.kt": {
     "rawClick": 1
   },
-  "featurepeopleui/UnknownPersonImeTouchTest.kt": {
-    "typingWithoutKeyboardRule": 2,
-    "deviceStateWrite": 3
-  },
   "featurepeopleui/UnknownSplitGridCapTest.kt": {
     "rawClick": 2
-  },
-  "featuresearch/AtlasSearchPersistentInlineTest.kt": {
-    "rawClick": 1,
-    "typingWithoutKeyboardRule": 2
   },
   "featuresearch/FaceSearchJourneyTest.kt": {
     "sleep": 1,

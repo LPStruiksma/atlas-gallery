@@ -22,11 +22,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +66,9 @@ internal fun AtlasSettingsScreen(
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
+    onReadDiagnostics: suspend () -> String = { "ATLAS diagnostics unavailable" },
+    onCopyDiagnostics: (String) -> Unit = {},
+    onShareDiagnostics: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
     onScanNow: (() -> Unit)? = null,
@@ -70,10 +76,38 @@ internal fun AtlasSettingsScreen(
     /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
-    onClearSearchHistory: () -> Unit = {}
+    onClearSearchHistory: () -> Unit = {},
+    performance: PerformanceAggregates = PerformanceSession.aggregate
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
+    var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    // Aggregate is not Compose state; refresh the read-only report once its
+    // latest preview and heap samples have been forwarded.
+    var performanceReadVersion by remember { mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
+        if (performanceExpanded) {
+            PerformanceSession.updateViewer()
+            PerformanceSession.sampleHeap()
+            performanceReadVersion++
+        }
+    }
+    var exportExpanded by rememberSaveable { mutableStateOf(false) }
+    var exported by remember { mutableStateOf<String?>(null) }
+    var exportFailed by remember { mutableStateOf(false) }
+    if (exportExpanded) {
+        LaunchedEffect(exportExpanded) {
+            exported = null
+            exportFailed = false
+            try {
+                exported = onReadDiagnostics()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                exportFailed = true
+            }
+        }
+    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -129,6 +163,25 @@ internal fun AtlasSettingsScreen(
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
                 }
+                SettingsActionRow("Performance", "atlas-settings-performance",
+                    onClick = { performanceExpanded = !performanceExpanded },
+                    value = if (performanceExpanded) "Hide" else "Show")
+                if (performanceExpanded) {
+                    // Explicit read, not a hot polling loop or a MediaStore query.
+                    // #121 brief rev 2: six headline rows first, action details below.
+                    val overview = remember(performanceReadVersion) {
+                        PerformanceReport.overview(performance)
+                    }
+                    val actions = remember(performanceReadVersion) {
+                        PerformanceReport.actions(performance)
+                    }
+                    overview.forEach { SettingsMetricRow(it) }
+                    Text("Action details",
+                        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)
+                            .testTag("atlas-perf-actions-heading"),
+                        style = MaterialTheme.typography.titleSmall)
+                    actions.forEach { SettingsMetricRow(it) }
+                }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
                     onClick = { crashExpanded = !crashExpanded },
@@ -150,6 +203,34 @@ internal fun AtlasSettingsScreen(
                             TextButton(onClick = { onShareLastCrash(last) },
                                 modifier = Modifier.testTag("atlas-settings-last-crash-share")) {
                                 Text("Share")
+                            }
+                        }
+                    }
+                }
+                SettingsActionRow("Export diagnostics", "atlas-settings-export-diagnostics",
+                    onClick = { exportExpanded = !exportExpanded },
+                    value = if (exportExpanded) "Hide" else "Show")
+                if (exportExpanded) {
+                    // Explicit user action only. No identifier or media leaves the device
+                    // without the user's separate Copy or Share tap.
+                    val report = exported
+                    Text(when {
+                        exportFailed -> "Could not prepare diagnostics"
+                        report == null -> "Preparing aggregate diagnostics…"
+                        else -> report
+                    }, modifier = Modifier.fillMaxWidth().padding(12.dp)
+                        .testTag("atlas-settings-export-diagnostics-text"),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 18, overflow = TextOverflow.Ellipsis)
+                    if (report != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onCopyDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-copy")) {
+                                Text("Copy")
+                            }
+                            TextButton(onClick = { onShareDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-share")) {
+                                Text("Share text file")
                             }
                         }
                     }
@@ -225,5 +306,16 @@ private fun SettingsActionRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun SettingsMetricRow(row: PerformanceReport.Row) {
+    // Label above, value below: a long value wraps under the label and never
+    // squeezes it (#610), also at 200% font. Read-only, no click target.
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(row.tag)) {
+        Text(row.label, style = MaterialTheme.typography.bodyLarge)
+        Text(row.value, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

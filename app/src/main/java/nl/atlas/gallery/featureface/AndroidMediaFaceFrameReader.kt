@@ -19,7 +19,10 @@ import nl.atlas.gallery.featuremedia.video.VideoSkipReason
  * log its contents, share it with a network client or expose it to People IDs.
  * ML Kit must finish consuming the bitmap BEFORE the caller closes the frame.
  */
-class AndroidBitmapFaceFrame internal constructor(private val decoded: Bitmap) : BoundedFaceFrame {
+class AndroidBitmapFaceFrame internal constructor(
+    private val decoded: Bitmap, val sourceScale: Float = 1f
+) : BoundedFaceFrame {
+    init { require(sourceScale.isFinite() && sourceScale >= 1f) }
     private val lock = Any()
     private var closed = false
     private var outstandingDetectors = 0
@@ -142,7 +145,10 @@ class AndroidMediaFaceFrameReader(
             }
             // Each frame now owns its bitmap; closing the set recycles them all.
             return FaceSourceFrames(batch.frames.map {
-                TimedFaceFrame(it.frameMs, AndroidBitmapFaceFrame(it.bitmap))
+                TimedFaceFrame(it.frameMs, AndroidBitmapFaceFrame(it.bitmap,
+                    if (row.widthPixels > 0 && row.heightPixels > 0)
+                        FaceDecodeBudget.sourceScale(row.widthPixels, row.heightPixels,
+                            it.bitmap.width, it.bitmap.height) else 1f))
             })
         } catch (failure: Throwable) {
             batch.close()
@@ -165,7 +171,11 @@ class AndroidMediaFaceFrameReader(
     private fun decodePhoto(uri: Uri, maxLongEdgePixels: Int): BoundedFaceFrame {
         // No file:// fallback, no opening originals by absolute path.
         val source = ImageDecoder.createSource(contentResolver, uri)
+        var originalWidth = 0
+        var originalHeight = 0
         val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+            originalWidth = info.size.width
+            originalHeight = info.size.height
             val plan = FaceDecodeBudget.plan(
                 info.size.width, info.size.height,
                 maxLongEdge = maxLongEdgePixels,
@@ -184,7 +194,8 @@ class AndroidMediaFaceFrameReader(
             bitmap.recycle()
             throw IOException("Decoded face frame exceeds the local budget")
         }
-        return AndroidBitmapFaceFrame(bitmap)
+        return AndroidBitmapFaceFrame(bitmap,
+            FaceDecodeBudget.sourceScale(originalWidth, originalHeight, bitmap.width, bitmap.height))
     }
 
     companion object {
