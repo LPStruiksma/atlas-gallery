@@ -246,7 +246,7 @@ class PeopleRestageReadableTest {
                 "taken=$taken commit=${active != before} phase=${read.ui.phase} " +
                 "read_people=${read.people != null} pending=${read.peoplePending} " +
                 "display=${when (read.displayEpoch) { before -> "old"; active -> "new"
-                    else -> "other" }} gap=${host.restageReadGap(read.displayEpoch)} " +
+                    else -> "other" }} " +
                 "visual_known=$visualKnown"
             if (!named(held)) gaps.namedMissing++
             if (!named(held) && !peopleHomeRestoring(true, true, held)) gaps.emptyShown++
