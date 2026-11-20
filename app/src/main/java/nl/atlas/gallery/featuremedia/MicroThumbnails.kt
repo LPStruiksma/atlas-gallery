@@ -9,7 +9,6 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.os.CancellationSignal
 import android.os.OperationCanceledException
-import android.os.StatFs
 import android.util.Size as AndroidSize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +20,9 @@ import nl.atlas.gallery.clearViewerMetadataCache
 import nl.atlas.gallery.presentationCacheKeyOrNull
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.max
@@ -65,11 +67,21 @@ internal object MicroThumbnails {
     fun install(context: Context) {
         if (store != null) return
         resolver = context.applicationContext.contentResolver
-        val total = runCatching { StatFs(context.filesDir.absolutePath).totalBytes }.getOrDefault(0L)
-        // Survive Android cache eviction between launches. The existing byte budget
-        // still caps this app-private tier, and applyGrant clears it on revoke.
-        store = MicroThumbnailStore(File(context.noBackupFilesDir, "atlas-micro-v1"),
-            microThumbnailDiskBudgetBytes(total))
+        // Publish the same disk-backed cache before the first grid. Disk capacity
+        // accounting can wait on IO; 64 MiB is a conservative temporary budget,
+        // and existing micro thumbnails stay readable while it is refined.
+        val microStore = MicroThumbnailStore(
+            File(context.noBackupFilesDir, "atlas-micro-v1"),
+            microThumbnailDiskBudgetBytes(0L)
+        )
+        store = microStore
+        val filesPath = context.filesDir.absolutePath
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            val total = runCatching {
+                android.os.StatFs(filesPath).totalBytes
+            }.getOrDefault(0L)
+            microStore.updateBudget(microThumbnailDiskBudgetBytes(total))
+        }
     }
 
     /**

@@ -24,7 +24,14 @@ import java.util.concurrent.atomic.AtomicLong
  * inventory, and the whole folder is deleted when full access ends
  * ([MicroThumbnails.applyGrant]).
  */
-internal class MicroThumbnailStore(val root: File, val budgetBytes: Long) {
+internal class MicroThumbnailStore(val root: File, budgetBytes: Long) {
+    @Volatile var budgetBytes: Long = budgetBytes
+        private set
+
+    fun updateBudget(newBudgetBytes: Long) {
+        require(newBudgetBytes > 0L)
+        budgetBytes = newBudgetBytes
+    }
     private val used = AtomicLong(-1L)
 
     /** Folder size in bytes, or -1 until [scan] has run. */
