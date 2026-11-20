@@ -76,6 +76,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -628,70 +632,122 @@ private fun AtlasHeaderOverflow(items: List<AtlasHeaderMenuItem>) {
 }
 
 /**
- * Truthful empty/permission/error surface. Never simulates a scanner,
- * imported faces, cached photos or destructive actions. No fake button.
+ * DESIGN-6 #136, Quiet Frame: the one shared quiet state for empty,
+ * permission and error surfaces. Centred in the content area (above the
+ * floating nav pill, so the bars never move), an optional 22 dp ink-muted
+ * outline icon, a short title, an optional one-line body and at most one
+ * accent text action that does the real recovery. No illustration, banner or
+ * filled button. Never simulates a scanner, imported faces, cached photos or
+ * destructive actions.
  */
 @Composable
 fun AtlasEmptyState(
     title: String,
-    explanation: String,
+    explanation: String = "",
     modifier: Modifier = Modifier,
-    icon: ImageVector = Icons.Filled.PhotoLibrary,
+    icon: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
-    visual: (@Composable () -> Unit)? = null
+    /** The floating nav pill's height where content draws under it; 0 on overlays. */
+    bottomInset: Dp = LocalAtlasBottomChrome.current,
+    /** Screen-specific test tags on the title and body text nodes. */
+    titleTag: String = "atlas-quiet-title",
+    bodyTag: String = "atlas-quiet-body"
 ) {
     Column(
-        modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 44.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier.fillMaxSize()
+            .padding(bottom = bottomInset)
+            .padding(horizontal = AtlasQuietState.SideMargin),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        if (visual != null) {
-            Box(Modifier.size(148.dp), contentAlignment = Alignment.Center) { visual() }
-        } else {
-            Box(
-                Modifier.size(98.dp).background(
-                    MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(AtlasTokens.Radii.EmptyVisual)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
+        if (icon != null) {
+            Icon(
+                icon, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(AtlasQuietState.IconSize).testTag("atlas-quiet-icon")
+            )
+            Spacer(Modifier.height(12.dp))
         }
-        Spacer(Modifier.height(24.dp))
         Text(
-            title, modifier = Modifier.semantics { heading() },
-            style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center
+            title,
+            modifier = Modifier.semantics { heading() }.testTag(titleTag),
+            style = AtlasQuietState.titleStyle(),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            explanation, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center
-        )
+        if (explanation.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                explanation, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                modifier = Modifier.testTag(bodyTag)
+            )
+        }
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(22.dp))
-            Button(
+            Spacer(Modifier.height(8.dp))
+            TextButton(
                 onClick = onAction,
                 modifier = Modifier.heightIn(min = AtlasSpace.MinimumTarget)
-                    .testTag("atlas-empty-action")
-            ) { Text(actionLabel) }
+                    .testTag("atlas-empty-action"),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary)
+            ) { Text(actionLabel, style = MaterialTheme.typography.labelLarge) }
         }
     }
 }
 
+/** Quiet Frame measures for [AtlasEmptyState] and [AtlasGalleryLoading]. */
+object AtlasQuietState {
+    /** QUIET_FRAME.md icons: 22 dp outline. The brief's 48 dp is only a ceiling. */
+    val IconSize = 22.dp
+    val SideMargin = 32.dp
+    /** Brief state 7: show nothing at all for loads that finish sooner. */
+    const val LoadingQuietMillis = 300L
+
+    /** QUIET_FRAME.md section title: 20 / 26 sp, weight 500. */
+    @Composable
+    fun titleStyle(): TextStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Medium)
+}
+
+/**
+ * DESIGN-6 #136 state 7: a load shows nothing for its first 300 ms, then one
+ * small indicator and a short line at the same centre as [AtlasEmptyState],
+ * so neither a fast load nor the empty result that follows makes it jump.
+ * Never a full-screen spinner wall.
+ */
 @Composable
 fun AtlasGalleryLoading(
-    message: String = "Finding your photos on this device…",
-    modifier: Modifier = Modifier
+    message: String = "Loading photos…",
+    modifier: Modifier = Modifier,
+    bottomInset: Dp = LocalAtlasBottomChrome.current
 ) {
-    Row(
-        modifier.fillMaxWidth().padding(AtlasSpace.Section),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(AtlasQuietState.LoadingQuietMillis)
+        visible = true
+    }
+    Column(
+        modifier.fillMaxSize()
+            .padding(bottom = bottomInset)
+            .padding(horizontal = AtlasQuietState.SideMargin)
+            .semantics { stateDescription = message }
+            .testTag("atlas-quiet-loading"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(26.dp), strokeWidth = 2.dp)
-        Text(message, style = MaterialTheme.typography.bodyMedium)
+        if (visible) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(AtlasQuietState.IconSize),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(message, style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.testTag("atlas-quiet-loading-line"))
+        }
     }
 }
