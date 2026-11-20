@@ -12,22 +12,16 @@ import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
-import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -45,6 +39,16 @@ import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.runPeopleScanBatch
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
@@ -117,8 +121,27 @@ class PeoplePrototypeJourneyTest {
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
-    @get:Rule val chain: RuleChain =
-        RuleChain.outerRule(S24DisplayRule()).around(setup).around(compose)
+    /**
+     * #411: a failed run used to end with the keyboard open, and on the CI
+     * emulator the next tests then never got a keyboard (diagnostic
+     * 44326214186, shard 1). Close it while the activity is still alive.
+     */
+    private val closeKeyboard = object : TestRule {
+        override fun apply(base: Statement, description: Description) = object : Statement() {
+            override fun evaluate() {
+                try {
+                    base.evaluate()
+                } finally {
+                    runCatching { compose.hideKeyboard() }
+                }
+            }
+        }
+    }
+
+    // #424: a person names the group on the keyboard, so the name step runs
+    // with the fixed test keyboard up (docs/testing/EMULATOR_TESTS.md).
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(setup).around(compose).around(closeKeyboard)
 
     private fun insertFaces() {
         val now = System.currentTimeMillis()
@@ -207,31 +230,37 @@ class PeoplePrototypeJourneyTest {
             1, home.unnamed.size)
         assertTrue("the group holds every photo (${home.unnamed[0].faceCount})",
             home.unnamed[0].faceCount >= PHOTOS)
-        waitForTag("atlas-people-unnamed")
+        compose.waitForNode(hasTestTag("atlas-people-unnamed"), WAIT_MS, useUnmergedTree = true)
         compose.waitForIdle()
         assertEquals("People shows one tile for the one identity", 1,
             compose.onAllNodesWithTag("atlas-people-unnamed").fetchSemanticsNodes().size)
-        settle()
+        compose.awaitScreenStill("prototype-people-unnamed")
         saveUiEvidence("prototype-people-unnamed.png")
 
         // 3. Name the group in the app's review.
-        compose.onAllNodesWithTag("atlas-people-unnamed").onFirst().performClick()
-        waitForText("New person's name")
-        compose.onAllNodesWithText("New person's name").onFirst().performTextInput(NAME)
-        compose.onAllNodesWithText("Name this group").onFirst().performClick()
-        waitFor("the name is stored") { store.peopleReview(epoch1)?.names?.containsValue(NAME) == true }
+        compose.tap(hasTestTag("atlas-people-unnamed"))
+        // #424: a person types the name on the keyboard, so Create is tapped
+        // once the keyboard is up and still and the screen has brought the
+        // name form above it. tap() refuses a Create that is cut off or under
+        // the keyboard instead of losing the touch (#411).
+        compose.typeText(hasTestTag("atlas-group-name"), NAME, KeyboardAfter.Shown)
+        compose.tap(hasTestTag("atlas-group-create-person") and isEnabled())
+        compose.awaitThat("the name is stored", WAIT_MS) {
+            store.peopleReview(epoch1)?.names?.containsValue(NAME) == true
+        }
+        compose.hideKeyboard()
         val person: PersonKey = store.peopleReview(epoch1)!!.names.entries.single { it.value == NAME }.key
         assertEquals("every photo of the identity belongs to the named person",
             specs.size, store.personMedia(epoch1, person).size)
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasText("Back to People"))
-        compose.onAllNodesWithText("Back to People").onFirst().performClick()
-        waitForTag("atlas-native-person-album")
+        compose.tap(hasText("Back to People"))
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
         assertEquals("one named tile", 1,
             compose.onAllNodesWithTag("atlas-native-person-album").fetchSemanticsNodes().size)
         assertTrue("no unnamed tile left over",
             compose.onAllNodesWithTag("atlas-people-unnamed").fetchSemanticsNodes().isEmpty())
-        settle()
+        compose.awaitScreenStill("prototype-people-named")
         saveUiEvidence("prototype-people-named.png")
 
         // 3b. #39: a scan adds a face. Until the next publication the cluster
@@ -242,32 +271,32 @@ class PeoplePrototypeJourneyTest {
             "UPDATE cluster_generation SET dirty=1, pending=pending+1 WHERE singleton=1")
         assertNotNull("People home is served while new faces wait", store.peopleHome(epoch1))
         compose.activityRule.scenario.recreate()
+        compose.awaitWindowSettled()
         openPeople()
-        waitForTag("atlas-native-person-album")
-        waitForText(NAME)
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
         assertEquals("the named person stays during the scan", 1,
             compose.onAllNodesWithTag("atlas-native-person-album").fetchSemanticsNodes().size)
-        settle()
+        compose.awaitScreenStill("people-39-during-scan")
         saveUiEvidence("people-39-during-scan.png")
 
         // 4. The person page shows all of the identity's photos.
-        compose.onNodeWithTag("atlas-native-person-album").performClick()
-        waitForText(NAME)
-        waitFor("person page shows all $PHOTOS photos") { fixtureTilesShown() == specs.keys }
-        settle()
+        compose.tap(hasTestTag("atlas-native-person-album"))
+        compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
+        compose.awaitThat("person page shows all $PHOTOS photos", WAIT_MS) { fixtureTilesShown() == specs.keys }
+        compose.awaitScreenStill("prototype-person-page")
         saveUiEvidence("prototype-person-page.png")
-        compose.onNodeWithTag("atlas-header-back").performClick()
-        waitForTag("atlas-native-person-album")
+        compose.tap(hasTestTag("atlas-header-back"))
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
 
         // 5. Search by the name finds exactly those photos.
-        compose.onNodeWithTag("atlas-nav-search").performClick()
-        waitForTag("atlas-search-field")
-        compose.onNodeWithTag("atlas-search-field").performTextInput(NAME.take(4))
-        waitForTag("atlas-search-person-suggestion")
-        compose.onAllNodesWithTag("atlas-search-person-suggestion").onFirst().performClick()
-        waitForTag("atlas-search-person-chip")
-        waitFor("Search by name shows the person's photos") { fixtureTilesShown() == specs.keys }
-        settle()
+        compose.tap(hasTestTag("atlas-nav-search"))
+        compose.typeText(hasTestTag("atlas-search-field"), NAME.take(4))
+        compose.waitForNode(hasTestTag("atlas-search-person-suggestion"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(firstOf(hasTestTag("atlas-search-person-suggestion")))
+        compose.waitForNode(hasTestTag("atlas-search-person-chip"), WAIT_MS, useUnmergedTree = true)
+        compose.awaitThat("Search by name shows the person's photos", WAIT_MS) { fixtureTilesShown() == specs.keys }
+        compose.awaitScreenStill("prototype-search-named")
         saveUiEvidence("prototype-search-named.png")
 
         // 6. Restart: a new host object over the same database, a recreated Activity.
@@ -277,23 +306,24 @@ class PeoplePrototypeJourneyTest {
         installHost()
         assertNotEquals(before, host)
         compose.activityRule.scenario.recreate()
+        compose.awaitWindowSettled()
         oldStore.close()
         openPeople()
         val epoch2 = drainUntilKept(person)
         assertNotEquals("a restart serves a new epoch", epoch1, epoch2)
         assertEquals("the person keeps all $PHOTOS photos after restart",
             PHOTOS, store.personMedia(epoch2, person).size)
-        waitForTag("atlas-native-person-album")
-        waitForText(NAME)
+        compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
         assertEquals("still one person after restart", 1,
             compose.onAllNodesWithTag("atlas-native-person-album").fetchSemanticsNodes().size)
-        settle()
+        compose.awaitScreenStill("prototype-people-restarted")
         saveUiEvidence("prototype-people-restarted.png")
 
         // 7. Photo access lost: the next gallery publication revokes and People hides everyone.
         granted = false
         runBlocking(kotlinx.coroutines.Dispatchers.IO) { host.onGalleryPublication("revoked") { emptyList() } }
-        waitFor("People hidden after revoke") {
+        compose.awaitThat("People hidden after revoke", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-native-person-album").fetchSemanticsNodes().isEmpty() &&
                 compose.onAllNodesWithTag("atlas-people-unnamed").fetchSemanticsNodes().isEmpty()
         }
@@ -304,61 +334,36 @@ class PeoplePrototypeJourneyTest {
     /**
      * #643: "Discover faces" is the empty page's one button; when the grid
      * already shows people (e.g. imported profiles left by another test) it
-     * sits in People ⋮ instead.
+     * sits in People ⋮ instead. One tap, no retry: the tap must show the scan
+     * running. A tap that People drops while it recomposes is a product
+     * finding (#442), not something to retry.
      */
     private fun startDiscovery() {
-        waitForTag("atlas-people-home")
-        // A tap that lands while People recomposes (tiles loading, menu
-        // animating) can be dropped, and the scan then never starts. Retry
-        // until the screen shows the scan running.
-        repeat(3) { attempt ->
-            if (attempt > 0 && scanShown()) return
-            clickStart()
-            val deadline = System.currentTimeMillis() + 15_000
-            while (System.currentTimeMillis() < deadline) {
-                compose.waitForIdle()
-                if (scanShown()) return
-                Thread.sleep(200)
-            }
-        }
-    }
-
-    /** One tap on "Discover faces", from the empty page or from People ⋮. */
-    private fun clickStart() {
-        val emptyButton = compose.onAllNodesWithText("Discover faces", useUnmergedTree = true)
-            .fetchSemanticsNodes()
-        if (compose.onAllNodes(hasTestTag("atlas-people-empty"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty() && emptyButton.isNotEmpty()
-        ) {
-            compose.onAllNodesWithText("Discover faces").onFirst().performClick()
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
+        val emptyPage = compose.exists(hasTestTag("atlas-people-empty"), useUnmergedTree = true) &&
+            compose.exists(hasText("Discover faces"), useUnmergedTree = true)
+        if (emptyPage) {
+            compose.tap(firstOf(hasText("Discover faces")), timeoutMs = WAIT_MS) { scanShown() }
             return
         }
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        compose.waitForIdle()
-        if (compose.onAllNodes(hasTestTag("atlas-people-start"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        ) {
-            compose.onNodeWithTag("atlas-people-start").performClick()
-        } else {
-            // Start is gone, so the scan is no longer idle: close the menu.
-            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.tap(hasTestTag("atlas-header-more"))
+        // The menu is a popup window: wait for its first item (rule 5).
+        compose.awaitThat("People ⋮ menu with Discover faces") {
+            compose.exists(hasTestTag("atlas-people-start"), useUnmergedTree = true)
         }
+        compose.tap(hasTestTag("atlas-people-start"), timeoutMs = WAIT_MS) { scanShown() }
     }
 
     /** The scan has left idle: its progress line shows, or "Discover faces" is gone from the empty page. */
     private fun scanShown(): Boolean {
-        if (compose.onAllNodes(hasTestTag("atlas-people-progress-line"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()) return true
-        val empty = compose.onAllNodes(hasTestTag("atlas-people-empty"), useUnmergedTree = true)
-            .fetchSemanticsNodes().isNotEmpty()
-        return empty && compose.onAllNodesWithText("Discover faces", useUnmergedTree = true)
-            .fetchSemanticsNodes().isEmpty()
+        if (compose.exists(hasTestTag("atlas-people-progress-line"), useUnmergedTree = true)) return true
+        val empty = compose.exists(hasTestTag("atlas-people-empty"), useUnmergedTree = true)
+        return empty && !compose.exists(hasText("Discover faces"), useUnmergedTree = true)
     }
 
     private fun openPeople() {
-        waitForTag("atlas-nav-people")
-        compose.onNodeWithTag("atlas-nav-people").performClick()
-        waitForTag("atlas-people-home")
+        compose.tap(hasTestTag("atlas-nav-people"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
     }
 
     /**
@@ -383,10 +388,11 @@ class PeoplePrototypeJourneyTest {
             val result = before?.let { runBlocking { runPeopleScanBatch(target) { false } } }
             if (result == null) {
                 // The host is still publishing the gallery to its new epoch.
-                check(SystemClock.elapsedRealtime() < deadline) {
-                    "no scan session within 60 s (epoch moved $moves times)"
+                val left = deadline - SystemClock.elapsedRealtime()
+                check(left > 0) { "no scan session within 60 s (epoch moved $moves times)" }
+                compose.awaitThat("a scan session within 60 s (epoch moved $moves times)", left) {
+                    liveScanEpoch() != null
                 }
-                Thread.sleep(100)
                 continue
             }
             if (result.stop == FaceBatchStop.NO_PENDING) {
@@ -405,26 +411,29 @@ class PeoplePrototypeJourneyTest {
         }
     }
 
-    /** The epoch a worker would scan right now, or null while the host is publishing. */
     /**
      * #658: after a restart the Activity publishes the gallery more than once
      * (first without, then with the evidence screenshots saved earlier), so
      * the epoch one [drainScan] returns can be replaced a moment later and
      * its rows dropped. Drains again until the drained live epoch still
      * serves [person]'s photos. A person really lost across the restart
-     * still fails: the live epoch then stays put with fewer photos.
+     * still fails: no new epoch arrives, or the live epoch stays put with
+     * fewer photos.
      */
     private fun drainUntilKept(person: PersonKey): String {
         var epoch = drainScan()
         repeat(5) {
             if (store.personMedia(epoch, person).size == PHOTOS) return epoch
-            if (liveScanEpoch() == epoch) Thread.sleep(500)
             Log.i("ATLAS_TEST", "drainUntilKept: epoch $epoch lacks the person, draining again")
+            val lacking = epoch
+            compose.awaitThat("a new gallery publication after epoch $lacking, which lacks " +
+                "the person's photos", WAIT_MS) { liveScanEpoch() != lacking }
             epoch = drainScan()
         }
         return epoch
     }
 
+    /** The epoch a worker would scan right now, or null while the host is publishing. */
     private fun liveScanEpoch(): String? = PeopleScanWorkRuntime.acquire(target)?.use { it.epoch }
 
     /** MediaStore ids of the fixture photos currently laid out as grid tiles. */
@@ -442,34 +451,18 @@ class PeoplePrototypeJourneyTest {
         else -> null
     }
 
-    private fun waitFor(label: String, condition: () -> Boolean) {
-        try {
-            compose.waitUntil(60_000, condition)
-        } catch (e: Throwable) {
-            val tree = runCatching { compose.onRoot(useUnmergedTree = true).printToString() }.getOrDefault("?")
-            throw AssertionError("Timed out waiting for $label. Screen:\n$tree", e)
-        }
-    }
-
-    private fun waitForTag(tag: String) = waitFor("tag $tag") {
-        compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
-    }
-
-    private fun waitForText(text: String) = waitFor("text '$text'") {
-        compose.onAllNodesWithText(text, substring = true, useUnmergedTree = true)
-            .fetchSemanticsNodes().isNotEmpty()
-    }
-
-    /** Let thumbnails and face crops decode before a screenshot. */
-    private fun settle() {
-        compose.waitForIdle()
-        Thread.sleep(1_200)
-        compose.waitForIdle()
+    /** Matches only the first node [matcher] finds now, for a tap on one of several. */
+    private fun firstOf(matcher: SemanticsMatcher): SemanticsMatcher {
+        compose.awaitThat("${matcher.description} to exist") { compose.exists(matcher) }
+        val id = compose.onAllNodes(matcher).fetchSemanticsNodes().first().id
+        return SemanticsMatcher("first of ${matcher.description}") { it.id == id }
     }
 
     private companion object {
         const val PHOTOS = 6
         const val NAME = "Synthetic Ada"
         const val FOLDER = "ATLAS-People-Prototype"
+        /** Scans, decodes and MediaStore work run on real time on a slow emulator. */
+        const val WAIT_MS = 60_000L
     }
 }

@@ -44,6 +44,12 @@ import nl.atlas.gallery.featurepeopleui.removeAction
 import nl.atlas.gallery.featurepeopleui.samePersonAnswer
 import nl.atlas.gallery.featurepeopleui.samePersonQuestion
 import nl.atlas.gallery.featurepeopleui.targetAfter
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 
 /**
  * An opened person page: a named person or an unknown group (#551), and the
@@ -73,6 +79,42 @@ internal data class NativePersonAlbumRequest(
 private val personPageOpenings = java.util.concurrent.atomic.AtomicLong()
 private fun nextPersonPageOpening(): Long = personPageOpenings.incrementAndGet()
 
+/** A bounded pending person selection owned by an Activity-retained ViewModel.
+ * The opening key prevents an abandoned page selection from entering another page.
+ * The ViewModel is not a SavedStateHandle: process death drops this tuple.
+ */
+internal data class PersonSelectionRotationSnapshot(val opening: Long, val encoded: List<String>) {
+    fun forOpening(currentOpening: Long): List<String> =
+        encoded.takeIf { opening == currentOpening }.orEmpty()
+}
+
+/** A changed permission, People generation or person identity hides controls now,
+ * rather than waiting for the coroutine that discards stale selection state. */
+internal fun validatedPersonSelection(
+    selected: Set<String>?,
+    activeFence: List<String>?,
+    currentFence: List<String>?
+): Set<String>? = selected?.takeIf { currentFence != null && activeFence == currentFence }
+
+/** Re-admit only visible person-scope keys after the matching identity was validated. */
+internal fun eligiblePersonSelection(requested: Set<String>, visible: Set<String>): Set<String>? =
+    requested.intersect(visible).takeIf { it.isNotEmpty() }
+
+/**
+ * Never keep a previous smaller snapshot when the live selection is too large
+ * to encode, malformed, or fenced to another person/grant. In particular a
+ * select-all of 501+ keys must not restore the earlier 2-3 keys on rotation.
+ */
+internal fun encodePersonSelectionForRotation(
+    live: Set<String>,
+    selectionFence: List<String>?,
+    activeSelectionFence: List<String>?
+): List<String> = if (live.isNotEmpty() && live.size <= 500 &&
+    live.none { it.isBlank() } && selectionFence != null &&
+    activeSelectionFence == selectionFence) {
+    selectionFence + live.sorted()
+} else emptyList()
+
 /**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
@@ -92,8 +134,14 @@ internal fun NativePersonAlbumRoute(
     sorted: List<MediaRecord>,
     gridState: LazyGridState,
     catalogueEpoch: Long,
+    // App supplies the retained ViewModel holder; standalone Compose test routes
+    // use an ephemeral composition-local holder rather than Android saved state.
+    selectionRotationState: androidx.compose.runtime.MutableState<PersonSelectionRotationSnapshot?> =
+        remember { mutableStateOf(null) },
     onBack: () -> Unit,
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null,
     onRetarget: (NativePersonAlbumRequest) -> Unit = {}
 ) {
     val version by host.changes.collectAsState()
@@ -121,8 +169,42 @@ internal fun NativePersonAlbumRoute(
                 byUri)
         }
     }
+    // PERF (#119): a named person's photos straight from the per-person index
+    // (one indexed read, each photo resolved through the live grant, no
+    // People snapshot), shown until the full page above is ready. The full
+    // snapshot can take long to load on a large library or while a scan is
+    // publishing; selection actions still wait for it.
+    val quickPerson = request.person
+    val quick by produceState<List<MediaRecord>?>(null, CatalogSourceKey(sorted),
+        galleryGrant, request) {
+        value = null
+        if (quickPerson == null) return@produceState
+        val uris = withContext(Dispatchers.IO) { host.personAlbumUris(galleryGrant, quickPerson) }
+            ?: return@produceState
+        value = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            selectPersonPageMedia(sorted, uris) { worker.ensureActive() }
+        }
+    }
+    // The portrait People shows for this person, known before the snapshot loads.
+    val summaryCover = quickPerson?.let { people?.people?.get(it)?.coverFaceUid }
+        ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
+    val cropEpoch = epoch ?: people?.permissionEpoch
     var dialog by remember(request) { mutableStateOf<PersonPageDialog?>(null) }
+    // Save only a bounded tuple. A restored snapshot is never actionable
+    // until the current grant, People scope and source have been validated.
+    // Configuration changes keep the pending keys in the ViewModel; process
+    // death must not deserialize a stale person selection from a Bundle.
+    var pendingSelection by remember(request.opening, selectionRotationState) {
+        mutableStateOf(selectionRotationState.value?.forOpening(request.opening).orEmpty())
+    }
     var selected by remember(request) { mutableStateOf<Set<String>?>(null) }
+    var choosingCover by remember(request) { mutableStateOf(false) }
+    val chosenCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
+        value = request.person?.let { person ->
+            withContext(Dispatchers.IO) { host.currentPersonCover(galleryGrant, person) }
+        }
+    }
     val scope = rememberCoroutineScope()
 
     /** Build the action from the live snapshot now; commit it on IO. */
@@ -151,6 +233,95 @@ internal fun NativePersonAlbumRoute(
         value = withContext(Dispatchers.Default) { samePersonQuestion(state, request.target) }
     }
     val media = resolved
+    // Search only this grant-resolved person's ordered media, never the full catalogue.
+    // Discard worker results from a changed grant, source identity or query.
+    var searchText by remember(request.opening, galleryGrant) { mutableStateOf("") }
+    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
+        null, media, searchText, facetPeople, galleryGrant, catalogueEpoch
+    ) {
+        value = null
+        val source = media?.items
+        if (source != null && searchText.isNotBlank() && !galleryGrant.isNullOrBlank()) {
+            val worker = currentCoroutineContext()
+            val matches = withContext(Dispatchers.Default) {
+                scopedMediaMatches(source, source, facetPeople, searchText,
+                    cancellationCheckpoint = { worker.ensureActive() })
+            }
+            value = ScopedMediaSearchSnapshot(source, source, facetPeople,
+                galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN, matches)
+        }
+    }
+    val visibleMedia = when {
+        media == null -> quick?.takeIf { searchText.isBlank() }
+        searchText.isBlank() -> media.items
+        else -> currentScopedMediaSearchOrNull(searchSnapshot, media.items, media.items,
+            facetPeople, galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN)
+    }
+    val currentGrant = galleryGrant?.takeIf { it == catalogueEpoch.toString() }
+    val personIdentity = request.target.toString()
+    // An in-memory selection is no safer than a restored one: it must not
+    // remain actionable after the grant, People epoch or person identity moves.
+    // Capture the fence when selection begins and clear it on any mismatch.
+    var activeSelectionFence by remember(request.opening) {
+        mutableStateOf<List<String>?>(null)
+    }
+    val selectionFence = if (currentGrant != null && epoch != null)
+        listOf(currentGrant, epoch, personIdentity) else null
+    LaunchedEffect(selectionFence, selected) {
+        if (selected != null && (selectionFence == null ||
+                activeSelectionFence != selectionFence)) {
+            selected = null
+            pendingSelection = emptyList()
+            activeSelectionFence = null
+        }
+    }
+    androidx.compose.runtime.SideEffect {
+        val live = selected
+        val encoded = if (live != null) {
+            encodePersonSelectionForRotation(live, selectionFence, activeSelectionFence)
+        } else pendingSelection
+        // An over-limit or invalid live selection invalidates the old snapshot,
+        // rather than restoring a stale subset after Activity recreation.
+        if (pendingSelection != encoded) pendingSelection = encoded
+        val snapshot = PersonSelectionRotationSnapshot(request.opening, encoded)
+        if (selectionRotationState.value != snapshot) selectionRotationState.value = snapshot
+    }
+    LaunchedEffect(request.opening, currentGrant, epoch, personIdentity,
+        CatalogSourceKey(visibleMedia ?: emptyList<MediaRecord>()), pendingSelection) {
+        if (selected != null) return@LaunchedEffect
+        val saved = pendingSelection
+        if (saved.isEmpty()) return@LaunchedEffect
+        val visible = visibleMedia ?: return@LaunchedEffect
+        if (state == null || facts == null || currentGrant == null ||
+            saved.size < 3 || saved.size > 503 || saved[0] != currentGrant ||
+            saved[1] != epoch || saved[2] != personIdentity ||
+            saved.drop(3).any { it.isBlank() }) {
+            pendingSelection = emptyList()
+            return@LaunchedEffect
+        }
+        val keys = saved.drop(3).toSet()
+        if (keys.size != saved.size - 3) {
+            pendingSelection = emptyList()
+            return@LaunchedEffect
+        }
+        val matching = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            visible.mapIndexedNotNull { index, record ->
+                if ((index and 511) == 0) worker.ensureActive()
+                record.uri.takeIf { it in keys }
+            }.toSet()
+        }
+        if (pendingSelection == saved && selected == null) {
+            pendingSelection = emptyList()
+            val eligible = eligiblePersonSelection(keys, matching)
+            if (eligible != null) {
+                activeSelectionFence = selectionFence
+                selected = eligible
+            }
+        }
+    }
+    val actionableSelected = validatedPersonSelection(selected,
+        activeSelectionFence, selectionFence)
     val asked = question
     val samePersonCard: (@Composable () -> Unit)? =
         if (asked == null) null
@@ -166,21 +337,30 @@ internal fun NativePersonAlbumRoute(
             }
         })
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
-        PersonFaceImage(host, epoch, face)
+        PersonFaceImage(host, cropEpoch, face)
     }
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
-            items = media?.items,
+            // Keep the timeline/header composition stable while the worker
+            // narrows this person's already-authorized list.
+            items = if (media == null) visibleMedia else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
             mayHide = request.target is PersonPageTarget.Named
         ),
         gridState = gridState,
         catalogueEpoch = catalogueEpoch,
+        searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
-        portrait = { portrait(facts?.coverFace) },
+        portrait = { portrait(
+            chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+                ?: summaryCover?.takeIf { faces == null || it in faces }
+                ?: facts?.coverFace) },
         onBack = onBack,
-        onOpen = { record -> media?.let { onOpen(it.items, record) } },
+        onOpen = { record ->
+            visibleMedia?.takeIf { shown -> shown.any { it.uri == record.uri } }
+                ?.let { onOpen(it, record) }
+        },
         dialog = dialog,
         onDialog = { dialog = it },
         nameDialog = {
@@ -224,11 +404,24 @@ internal fun NativePersonAlbumRoute(
                 if (hide) close()
             }
         },
-        selectedUris = selected,
-        onSelectionChange = { selected = it },
+        selectedUris = actionableSelected,
+        onSelectionChange = {
+            selected = it
+            activeSelectionFence = if (it != null) selectionFence else null
+            if (it == null) pendingSelection = emptyList()
+        },
         samePerson = samePersonCard,
+        onChangePortrait = if (request.person != null && !facts?.faces.isNullOrEmpty())
+            ({ choosingCover = true }) else null,
+        searchAction = {
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                historyScope = SearchHistoryScope.PERSON,
+                onScopeChange = { next ->
+                    if (next == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
+                })
+        },
         onRemoveSelected = run {
-            val chosen = selected
+            val chosen = actionableSelected
             val current = facts
             if (chosen == null || current == null || media == null ||
                 removeAction(current, media.facesByUri, chosen) == null) null
@@ -237,10 +430,38 @@ internal fun NativePersonAlbumRoute(
                     personPageFacts(live, request.target)?.let {
                         removeAction(it, media.facesByUri, chosen)
                     }
-                }) { selected = null }
+                }) {
+                    selected = null
+                    pendingSelection = emptyList()
+                }
             })
         }
     )
+    val coverPerson = request.person
+    if (choosingCover && coverPerson != null && facts != null && epoch != null) {
+        PersonFaceCoverChooser(
+            faces = facts.faces,
+            selectedUid = chosenCover,
+            portrait = { portrait(it) },
+            onChoose = { face ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        host.choosePersonCover(galleryGrant, coverPerson, face.localHex)
+                    }
+                    if (saved) choosingCover = false
+                }
+            },
+            onAutomatic = if (chosenCover != null) ({
+                scope.launch {
+                    val cleared = withContext(Dispatchers.IO) {
+                        host.choosePersonCover(galleryGrant, coverPerson, null)
+                    }
+                    if (cleared) choosingCover = false
+                }
+            }) else null,
+            onDismiss = { choosingCover = false }
+        )
+    }
 }
 
 /** One resolved person page: its records and the faces each one holds. */
@@ -273,7 +494,8 @@ internal fun HiddenPeopleRoute(
     host: PeopleDiscoveryHost,
     people: PeopleHomeSummary?,
     onBack: () -> Unit,
-    onOpen: (NativePersonAlbumRequest) -> Unit
+    onOpen: (NativePersonAlbumRequest) -> Unit,
+    onSearchWholeLibrary: (() -> Unit)? = null
 ) {
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
@@ -285,6 +507,7 @@ internal fun HiddenPeopleRoute(
         people = hidden,
         portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
         onBack = onBack,
+        onSearchWholeLibrary = onSearchWholeLibrary,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
     )
 }

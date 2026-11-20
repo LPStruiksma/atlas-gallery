@@ -19,6 +19,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -61,34 +64,40 @@ class CompactHeaderJourneyTest {
         assertSlimHeader()
 
         // Sort is one icon; its menu marks the current order and offers Reshuffle for Random.
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-newest").assertIsSelected()
-        compose.onNodeWithTag("atlas-photos-sort-random").performClick()
+        openPopup("atlas-photos-sort", "atlas-media-sort-date_created")
+        compose.onNodeWithTag("atlas-media-sort-date_created").assertIsSelected()
+        compose.tap(hasTestTag("atlas-media-sort-random"))
+        awaitClosed("atlas-photos-sort-sheet")
         // A new order is computed off Main and republishes the Photos header
         // when it lands; a menu opened before that is closed with it. Wait for
         // "Ordering library…" to settle, as a user would see it (#530).
         waitForSortSettled()
-        compose.onNodeWithTag("atlas-photos-sort").performClick()
-        compose.onNodeWithTag("atlas-photos-sort-random").assertIsSelected()
+        openPopup("atlas-photos-sort", "atlas-media-sort-random")
+        compose.onNodeWithTag("atlas-media-sort-random").assertIsSelected()
         compose.onNodeWithTag("atlas-photos-reshuffle").assertExists()
-        compose.onNodeWithTag("atlas-photos-sort-newest").performClick()
+        compose.tap(hasTestTag("atlas-media-sort-date_created"))
+        awaitClosed("atlas-photos-sort-sheet")
         waitForSortSettled()
 
         // Former chip row + settings gear now live in the overflow menu.
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsSelected()
         // #494: no "Original proportions" entry; pinching reaches that view.
         compose.onNodeWithTag("atlas-original-proportions").assertDoesNotExist()
         compose.onNodeWithTag("atlas-library-status").assertExists()
         compose.waitForIdle()
         saveUiEvidence("header-photos-menu.png")
-        compose.onNodeWithTag("atlas-timeline-toggle").performClick()
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        // Each menu item closes the menu; wait for that before opening it again,
+        // so the next lookup cannot find the closing menu's item.
+        compose.tap(hasTestTag("atlas-timeline-toggle"))
+        awaitClosed("atlas-timeline-toggle")
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsNotSelected()
-        compose.onNodeWithTag("atlas-timeline-toggle").performClick()
-        compose.onNodeWithTag("atlas-header-more").performClick()
+        compose.tap(hasTestTag("atlas-timeline-toggle"))
+        awaitClosed("atlas-timeline-toggle")
+        openPopup("atlas-header-more", "atlas-timeline-toggle")
         compose.onNodeWithTag("atlas-timeline-toggle").assertIsSelected()
-        compose.onNodeWithTag("atlas-library-status").performClick()
+        compose.tap(hasTestTag("atlas-library-status"))
 
         // Settings gets a Back arrow in the same slim bar.
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
@@ -112,9 +121,8 @@ class CompactHeaderJourneyTest {
         compose.onNodeWithTag("atlas-nav-search").performClick()
         waitFor(hasTestTag("atlas-search-field"))
         compose.onNodeWithTag("atlas-header").assertDoesNotExist()
-        compose.onNodeWithTag("atlas-search-overflow").performClick()
-        waitFor(hasTestTag("atlas-library-status"))
-        compose.onNodeWithTag("atlas-library-status").performClick()
+        openPopup("atlas-search-overflow", "atlas-library-status")
+        compose.tap(hasTestTag("atlas-library-status"))
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-search-field"))
@@ -125,6 +133,17 @@ class CompactHeaderJourneyTest {
         val height = compose.onNodeWithTag("atlas-header").getUnclippedBoundsInRoot().height
         assertTrue("Header is $height tall; #492 wants at most 64dp", height <= 64.dp)
     }
+
+    /** Taps [opener] and waits until [firstItem] of the window it opens exists (rule 5). */
+    private fun openPopup(opener: String, firstItem: String) {
+        compose.tap(hasTestTag(opener))
+        compose.awaitThat("$firstItem in the window opened by $opener") {
+            compose.exists(hasTestTag(firstItem))
+        }
+    }
+
+    private fun awaitClosed(tag: String) =
+        compose.awaitThat("$tag gone (its window closed)") { !compose.exists(hasTestTag(tag)) }
 
     private fun waitForSortSettled() =
         waitFor(hasText("photos & videos", substring = true))
@@ -179,8 +198,13 @@ internal fun saveUiEvidence(filename: String) {
         val problem = uiEvidenceProblem(bitmap) ?: break
         bitmap.recycle()
         check(android.os.SystemClock.uptimeMillis() < deadline) {
-            "UI evidence $filename $problem"
+            "UI evidence $filename $problem; ${describeFocus()}"
         }
+        // #570: an idle app posts no new frame, so a buffer the loaded
+        // emulator's GPU lost ("Failed to find ColorBuffer") stays on screen
+        // as a flat window ground however long we wait, while the composition
+        // behind it is complete. Ask the resumed window to draw again.
+        redrawResumedWindows()
         Thread.sleep(250L)
     }
     val png = try {
@@ -191,6 +215,22 @@ internal fun saveUiEvidence(filename: String) {
         bitmap.recycle()
     }
     writeUiEvidenceFile(uiEvidenceDisplayName(filename), png)
+}
+
+/** Invalidates every resumed activity's window so the next screenshot sees a fresh frame. */
+private fun redrawResumedWindows() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync {
+        androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+            .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+            .forEach { activity -> invalidateTree(activity.window.decorView) }
+    }
+}
+
+private fun invalidateTree(view: android.view.View) {
+    view.invalidate()
+    if (view is android.view.ViewGroup) {
+        for (i in 0 until view.childCount) invalidateTree(view.getChildAt(i))
+    }
 }
 
 /**

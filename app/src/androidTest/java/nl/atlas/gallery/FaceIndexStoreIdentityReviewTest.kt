@@ -10,6 +10,8 @@ import java.io.File
 import java.util.UUID
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.onnx.SFaceModel
+import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeople.identity.PeopleNumbers
@@ -22,6 +24,7 @@ import nl.atlas.gallery.featurepeopleui.reviewPeopleCluster
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
+import nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec
 import nl.atlas.gallery.featurepersistence.PeopleReviewRecords
 import nl.atlas.gallery.featurepersistence.StoredPeopleReview
 import nl.atlas.gallery.featurepersistence.StoredPersonSummary
@@ -97,7 +100,7 @@ class FaceIndexStoreIdentityReviewTest {
     private fun count(store: FaceIndexStore, table: String): Int {
         require(table in listOf("people_names", "people_confirmed", "people_cannot_link",
             "people_rejected", "people_same_unknown", "cluster_members", "embeddings",
-            "people_matched"))
+            "people_matched", "people_mixed_group"))
         return store.readableDatabase.rawQuery("SELECT COUNT(*) FROM $table", null).use {
             check(it.moveToFirst()); it.getInt(0)
         }
@@ -264,6 +267,129 @@ class FaceIndexStoreIdentityReviewTest {
             assertTrue(apart.clusters.unknownClusters.none { it.members.size == 4 })
             assertEquals(3, count(store, "people_cannot_link"))
         }
+    }
+
+    /** HUB-1A (#210): [stored] plus a "not one person" fact for its 3-face group. */
+    private fun withMixedFact(stored: StoredPeopleReview): Pair<MixedGroup, PeopleClusterReviewState> {
+        val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        val fact = MixedGroup.of(group.members)
+        val clusters = FaceClusterer.update(stored.clusters,
+            reviews = stored.clusters.reviews.copy(mixedGroups = setOf(fact)))
+        assertEquals(stored.clusters.unknownClusters, clusters.unknownClusters)
+        return fact to PeopleClusterReviewState("epoch-A", stored.generation, clusters, stored.names)
+    }
+
+    /**
+     * HUB-1A (#210): a mixed-group fact is written with the review commit,
+     * read back, survives a restart and fresh grant, and later answers carry
+     * it. A file from before the table gets it on open with no other row lost.
+     */
+    @Test fun mixedGroupFactIsStoredAndSurvivesRestartAndOlderFiles() = withFile { file ->
+        var fact: MixedGroup? = null
+        FaceIndexStore(contextFor(file)).use { store ->
+            val stored = scannedLibrary(store)
+            val (mixed, next) = withMixedFact(stored)
+            fact = mixed
+            val generation = requireNotNull(commit(store, "epoch-A", stored.generation, next))
+            assertNotEquals(stored.generation, generation)
+            val reread = requireNotNull(store.peopleReview("epoch-A"))
+            assertEquals(setOf(mixed), reread.clusters.reviews.mixedGroups)
+            assertEquals(next.clusters.reviews, reread.clusters.reviews)
+            assertEquals(stored.clusters.unknownClusters, reread.clusters.unknownClusters)
+            assertEquals(1, count(store, "people_mixed_group"))
+            assertEquals(4, count(store, "cluster_members")) // nothing regrouped
+            // Naming another group commits through the reducer and keeps the fact.
+            val stranger = reread.clusters.unknownClusters.single { it.members.size == 1 }
+            val named = requireNotNull(reviewPeopleCluster(uiState("epoch-A", reread),
+                PeopleReviewAction.NameCluster(stranger.id, ana, "Ana")))
+            assertNotNull(commit(store, "epoch-A", reread.generation, named))
+            assertEquals(1, count(store, "people_mixed_group"))
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            grant(store, "epoch-B", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-B"))
+            val restored = requireNotNull(store.peopleReview("epoch-B"))
+            assertEquals(setOf(fact), restored.clusters.reviews.mixedGroups)
+            assertTrue(fact!!.matches(restored.clusters.unknownClusters.single().members))
+            assertEquals(mapOf(ana to "Ana"), restored.names)
+            // Simulate a file written before HUB-1A: no people_mixed_group table.
+            store.writableDatabase.execSQL("DROP TABLE people_mixed_group")
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            assertEquals(FaceIndexStore.SCHEMA_VERSION, store.readableDatabase.version)
+            grant(store, "epoch-C", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-C"))
+            val older = requireNotNull(store.peopleReview("epoch-C"))
+            assertTrue(older.clusters.reviews.mixedGroups.isEmpty())
+            assertEquals(0, count(store, "people_mixed_group"))
+            assertEquals(mapOf(ana to "Ana"), older.names) // no other fact lost
+            assertEquals(1, count(store, "people_confirmed"))
+            assertEquals(3, count(store, "cluster_members"))
+            // The re-created table accepts the fact again.
+            val (again, next) = withMixedFact(older)
+            assertNotNull(store.commitPeopleReview("epoch-C", older.generation,
+                next.clusters, next.names))
+            assertEquals(setOf(again), requireNotNull(store.peopleReview("epoch-C"))
+                .clusters.reviews.mixedGroups)
+        }
+    }
+
+    /** HUB-1A (#210): the table refuses malformed fingerprints and follows its anchor face. */
+    @Test fun mixedGroupRowsAreStrictAndCascadeWithTheAnchorFace() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val (fact, next) = withMixedFact(stored)
+        assertNotNull(commit(store, "epoch-A", stored.generation, next))
+        val db = store.writableDatabase
+        for (bad in listOf(fact.fingerprint.uppercase(), fact.fingerprint.dropLast(1),
+            fact.fingerprint.dropLast(1) + "g")) {
+            try {
+                db.execSQL("INSERT INTO people_mixed_group(anchor_uid,fingerprint) VALUES(?,?)",
+                    arrayOf(fact.anchor.localHex, bad))
+                fail("A malformed fingerprint was stored: $bad")
+            } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        }
+        try {
+            db.execSQL("INSERT INTO people_mixed_group(anchor_uid,fingerprint) VALUES(?,?)",
+                arrayOf("f".repeat(32), fact.fingerprint))
+            fail("A fact for an unknown face was stored")
+        } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        assertEquals(1, count(store, "people_mixed_group"))
+        // A rescan drops the anchor's embedding, and the fact goes with it.
+        db.execSQL("DELETE FROM embeddings WHERE face_uid=?", arrayOf(fact.anchor.localHex))
+        assertEquals(0, count(store, "people_mixed_group"))
+    }
+
+    /**
+     * HUB-1A (#210): People backup carries mixed-group facts. Export writes
+     * version 3 only when there are some; import restores a fact whose anchor
+     * is a current face, skips one whose anchor is unknown, and a fact-free
+     * backup stays version 2.
+     */
+    @Test fun peopleBackupExportsAndImportsMixedGroupFacts() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val plain = NativePeopleNamesBackupCodec.encode(
+            requireNotNull(store.exportNativeNamesSnapshot("epoch-A")))
+        assertEquals(2, java.nio.ByteBuffer.wrap(plain, 26, 4).int)
+        val (fact, next) = withMixedFact(stored)
+        assertNotNull(commit(store, "epoch-A", stored.generation, next))
+        val bytes = NativePeopleNamesBackupCodec.encode(
+            requireNotNull(store.exportNativeNamesSnapshot("epoch-A")))
+        assertEquals(3, java.nio.ByteBuffer.wrap(bytes, 26, 4).int)
+        val snapshot = NativePeopleNamesBackupCodec.decode(bytes)
+        assertEquals(setOf(fact.anchor.localHex to fact.fingerprint), snapshot.mixedGroups)
+        store.writableDatabase.execSQL("DELETE FROM people_mixed_group")
+        assertTrue(requireNotNull(store.peopleReview("epoch-A")).clusters.reviews.mixedGroups.isEmpty())
+        val unknownAnchor = "f".repeat(32) to fact.fingerprint
+        val result = store.importNativeNamesSnapshot("epoch-A",
+            snapshot.copy(mixedGroups = snapshot.mixedGroups + unknownAnchor))
+        assertEquals(1, result.applied)
+        assertEquals(1, result.skipped)
+        val restored = requireNotNull(store.peopleReview("epoch-A"))
+        assertEquals(setOf(fact), restored.clusters.reviews.mixedGroups)
+        assertEquals(stored.clusters.unknownClusters, restored.clusters.unknownClusters)
+        // Importing the same backup again adds no duplicate row.
+        store.importNativeNamesSnapshot("epoch-A", snapshot)
+        assertEquals(1, count(store, "people_mixed_group"))
     }
 
     /** #434 part 2: the host's cheap generation read and the person album keys. */
@@ -456,10 +582,215 @@ class FaceIndexStoreIdentityReviewTest {
         NativeFaceObservationId(store.embeddingRecords(epoch, media(n).key).single().nativeFaceUid)
 
     /**
+     * #178: real grant-scoped SQLite, not prefilled sort statistics. Two faces
+     * of one video count once even across confirmed and matched identity rows;
+     * dates, source revisions, and permission epochs constrain the result.
+     */
+    @Test fun peopleSortReadsDistinctCurrentMediaAndAppearanceDates() = withStore { store ->
+        val rows = (1..6).map { n ->
+            if (n == 2) IndexedMedia("content://synthetic/primary/video/2#video",
+                "generation:1") else media(n)
+        }
+        val dates = longArrayOf(100L, 900L, 0L, 300L, 400L, 0L)
+        store.beginSnapshot("sort-A")
+        store.stageBatch("sort-A", rows, dates)
+        store.commitSnapshot("sort-A", "detector-1", model)
+        var now = 1_000L
+        while (true) {
+            val lease = store.claim("sort-A", now++) ?: break
+            val n = photo(lease.media.key)
+            val boxes = if (n == 2) listOf(box,
+                IndexedFaceBox(0.55f, 0.2f, 0.9f, 0.8f)) else listOf(box)
+            // The video has one confirmed-looking face (axis 0) and a
+            // separate unknown face (axis 9), in different keyframes.
+            val axes = when (n) {
+                2 -> listOf(0, 9)
+                1, 3 -> listOf(0)
+                4, 5 -> listOf(5)
+                else -> listOf(12)
+            }
+            assertTrue(store.completeEmbeddings(lease, boxes,
+                axes.map(::vector), model,
+                if (n == 2) listOf(100L, 200L) else emptyList()))
+        }
+        assertTrue(store.materializeClusters("sort-A"))
+        val first = requireNotNull(store.peopleReview("sort-A"))
+        val ada = PersonKey("sort-ada")
+        val ben = PersonKey("sort-ben")
+        val adaCluster = first.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 1) in it.members
+        }
+        val namedAda = requireNotNull(reviewPeopleCluster(uiState("sort-A", first),
+            PeopleReviewAction.NameCluster(adaCluster.id, ada, "Ada")))
+        assertNotNull(commit(store, "sort-A", first.generation, namedAda))
+        val next = requireNotNull(store.peopleReview("sort-A"))
+        val benCluster = next.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 4) in it.members
+        }
+        val namedBen = requireNotNull(reviewPeopleCluster(uiState("sort-A", next),
+            PeopleReviewAction.NameCluster(benCluster.id, ben, "Ben")))
+        assertNotNull(commit(store, "sort-A", next.generation, namedBen))
+
+        // Synthetic confirmed+matched overlap: Ada owns frame 0 of video 2;
+        // the other frame is still an unknown cluster member. Assign that
+        // member as a match to Ada. UNION must count the video only once.
+        val db = store.writableDatabase
+        val secondVideoFace = db.rawQuery(
+            "SELECT face_uid FROM faces WHERE media_key=? AND ordinal=1",
+            arrayOf(rows[1].key)
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            cursor.getString(0)
+        }
+        assertEquals(1, db.rawQuery(
+            "SELECT COUNT(*) FROM cluster_members WHERE face_uid=?",
+            arrayOf(secondVideoFace)
+        ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
+        db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
+            arrayOf(secondVideoFace, ada.value))
+        // A matched-only photo must add one media item. Without this row an
+        // aggregate that ignores people_matched would falsely pass the video
+        // overlap assertion above.
+        val matchedOnlyPhoto = faceOf(store, "sort-A", 6).localHex
+        assertEquals(1, db.rawQuery(
+            "SELECT COUNT(*) FROM cluster_members WHERE face_uid=?",
+            arrayOf(matchedOnlyPhoto)
+        ).use { cursor -> check(cursor.moveToFirst()); cursor.getInt(0) })
+        db.execSQL("INSERT OR REPLACE INTO people_matched(face_uid,person_key) VALUES(?,?)",
+            arrayOf(matchedOnlyPhoto, ada.value))
+        assertTrue(count(store, "people_matched") >= 2)
+        val home = requireNotNull(store.peopleHome("sort-A"))
+        assertEquals(setOf(ada, ben), home.people.keys)
+        assertEquals(4, home.people.getValue(ada).mediaCount)
+        assertEquals(3, home.people.getValue(ada).photoCount)
+        assertEquals(1, home.people.getValue(ada).videoCount)
+        assertEquals(2, home.people.getValue(ben).mediaCount)
+        assertEquals(2, home.people.getValue(ben).photoCount)
+        assertEquals(0, home.people.getValue(ben).videoCount)
+        for (summary in home.people.values) {
+            assertEquals(summary.mediaCount, summary.photoCount + summary.videoCount)
+        }
+        assertEquals(100L, home.people.getValue(ada).firstAppearanceMs)
+        assertEquals(900L, home.people.getValue(ada).mostRecentAppearanceMs)
+        assertEquals(300L, home.people.getValue(ben).firstAppearanceMs)
+        assertEquals(400L, home.people.getValue(ben).mostRecentAppearanceMs)
+        assertTrue(home.people.getValue(ada).faceCount >= 3)
+
+        fun order(key: nl.atlas.gallery.featurepeopleui.PeopleSortKey,
+                  descending: Boolean): List<PersonKey> {
+            val byIndex = home.people.keys.toList()
+            val keyed = home.people.entries.mapIndexed { index, (_, summary) ->
+                nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
+                    nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
+                        summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
+            }
+            return nl.atlas.gallery.featurepeopleui.orderPeopleEntries(keyed,
+                nl.atlas.gallery.featurepeopleui.PeopleSortChoice(key, descending))
+                .map { byIndex[it.id] }
+        }
+        val mediaCount = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MEDIA_COUNT
+        val name = nl.atlas.gallery.featurepeopleui.PeopleSortKey.NAME
+        val recent = nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT
+        val firstDate = nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE
+        val random = nl.atlas.gallery.featurepeopleui.PeopleSortKey.RANDOM
+        assertEquals(listOf(ada, ben), order(mediaCount, true))
+        assertEquals(listOf(ben, ada), order(mediaCount, false))
+        assertEquals(listOf(ada, ben), order(name, false))
+        assertEquals(listOf(ben, ada), order(name, true))
+        assertEquals(listOf(ada, ben), order(recent, true))
+        assertEquals(listOf(ben, ada), order(recent, false))
+        assertEquals(listOf(ben, ada), order(firstDate, true))
+        assertEquals(listOf(ada, ben), order(firstDate, false))
+        assertEquals(order(random, false).reversed(), order(random, true))
+
+        // An entirely undated identity has no invented zero-epoch date.
+        val unreviewed = requireNotNull(store.peopleReview("sort-A"))
+        val cid = PersonKey("sort-cid")
+        val cidCluster = unreviewed.clusters.unknownClusters.first {
+            faceOf(store, "sort-A", 6) in it.members
+        }
+        val namedCid = requireNotNull(reviewPeopleCluster(uiState("sort-A", unreviewed),
+            PeopleReviewAction.NameCluster(cidCluster.id, cid, "Cid")))
+        assertNotNull(commit(store, "sort-A", unreviewed.generation, namedCid))
+        val datedAndUndated = requireNotNull(store.peopleHome("sort-A"))
+        assertEquals(1, datedAndUndated.people.getValue(cid).mediaCount)
+        assertNull(datedAndUndated.people.getValue(cid).firstAppearanceMs)
+        assertNull(datedAndUndated.people.getValue(cid).mostRecentAppearanceMs)
+        val orderedPeople = datedAndUndated.people.entries.mapIndexed { index, (_, summary) ->
+            nl.atlas.gallery.featurepeopleui.PeopleSortEntry(index, summary.name,
+                nl.atlas.gallery.featurepeopleui.PeopleSortStats(summary.mediaCount,
+                    summary.firstAppearanceMs, summary.mostRecentAppearanceMs))
+        }
+        val peopleKeys = datedAndUndated.people.keys.toList()
+        for (sortKey in listOf(nl.atlas.gallery.featurepeopleui.PeopleSortKey.FIRST_APPEARANCE,
+                nl.atlas.gallery.featurepeopleui.PeopleSortKey.MOST_RECENT)) {
+            for (descending in listOf(false, true)) {
+                val ordered = nl.atlas.gallery.featurepeopleui.orderPeopleEntries(
+                    orderedPeople, nl.atlas.gallery.featurepeopleui.PeopleSortChoice(
+                        sortKey, descending))
+                assertEquals(cid, peopleKeys[ordered.last().id])
+            }
+        }
+
+        // The previous epoch is not a permission to read. An edited source
+        // removes its old observation while a fresh grant keeps others.
+        store.beginSnapshot("sort-B")
+        store.stageBatch("sort-B", rows.map {
+            if (it.key == rows[1].key) it.copy(revision = "generation:2") else it
+        }, dates)
+        store.commitSnapshot("sort-B", "detector-1", model)
+        assertNull(store.peopleHome("sort-A"))
+        val refreshed = requireNotNull(store.peopleHome("sort-B"))
+        assertEquals(2, refreshed.people.getValue(ada).mediaCount)
+        assertEquals(2, refreshed.people.getValue(ada).photoCount)
+        assertEquals(0, refreshed.people.getValue(ada).videoCount)
+        store.invalidatePermissionScope()
+        assertNull(store.peopleHome("sort-B"))
+    }
+
+    /**
+     * #178 PERF: pre-seeded synthetic People-home rows isolate the 500-person
+     * indexed statistics read path. Other tests exercise real identity commits.
+     * No real-person data is present, and no UI/main-thread call occurs here.
+     */
+    @Test fun peopleHome500PersonStatisticsReadRemainsBounded() = withStore { store ->
+        val epoch = "sort-perf"
+        val first = scannedLibrary(store, epoch)
+        val named = nameBiggest(epoch, first, PersonKey("perf-000"), "Perf 000")
+        assertNotNull(commit(store, epoch, first.generation, named))
+        val db = store.writableDatabase
+        db.beginTransaction()
+        try {
+            for (i in 1 until 500) {
+                val key = "perf-" + i.toString().padStart(3, '0')
+                db.execSQL("""INSERT INTO people_home(person_key,name,face_count,cover_uid)
+                    VALUES(?,?,1,?)""", arrayOf(key, "Perf $i", "synthetic-cover"))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        // Both person-key lookup arms are indexed, so 500 independent people
+        // must not force a full-catalog scan. Time cap is deliberately generous
+        // for GitHub-hosted Android emulators (not a production benchmark).
+        val indexes = db.rawQuery("""SELECT name FROM sqlite_master WHERE
+            type='index' AND name IN ('people_confirmed_person','people_matched_person')""",
+            null).use { cursor ->
+            buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) }
+        }
+        assertEquals(setOf("people_confirmed_person", "people_matched_person"), indexes)
+        val started = android.os.SystemClock.elapsedRealtime()
+        val home = requireNotNull(store.peopleHome(epoch))
+        val elapsed = android.os.SystemClock.elapsedRealtime() - started
+        assertEquals(500, home.people.size)
+        assertEquals(0, home.people.getValue(PersonKey("perf-499")).mediaCount)
+        assertTrue("500 indexed People queries took ${elapsed}ms", elapsed < 45_000L)
+    }
+
+    /**
      * #39: while a scan adds faces (the generation is dirty until the next
      * publication), People keeps serving the last published people and
-     * groups, and a review commits against that snapshot. The next
-     * publication places the new face and keeps the review.
+     * groups, and a review commits against that snapshot.
      */
     @Test fun lastPublishedPeopleStayServedAndReviewableWhileNewFacesWait() = withStore { store ->
         // Photos 1..3: one person, named Ana; photos 4..6: an unnamed group of three.
@@ -484,7 +815,8 @@ class FaceIndexStoreIdentityReviewTest {
         assertEquals(published, store.peopleReviewGeneration("epoch-B"))
         val home = requireNotNull(store.peopleHome("epoch-B")) { "People home is served during a scan" }
         assertEquals(published, home.generation)
-        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid),
+        assertEquals(StoredPersonSummary("Ana", 3, home.people.getValue(ana).coverFaceUid,
+            mediaCount = 3, firstAppearanceMs = null, mostRecentAppearanceMs = null),
             home.people.getValue(ana))
         assertEquals(listOf(group), home.unnamed)
         val review = requireNotNull(store.peopleReview("epoch-B")) {

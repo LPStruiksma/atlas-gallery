@@ -1,0 +1,95 @@
+{
+  "_note": "NLS-1A (#216). Written by tools/visual_search_bench/nls1_ship_text_assets.py; see SOURCE.md.",
+  "file": "siglip2_b16_224_text_int8.onnx",
+  "bytes": 290153185,
+  "sha256": "6fd97706a61981eb1a8d2444777209f0768162d3172c74a73134fbc1f78c0da6",
+  "parts": [
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part0",
+      "bytes": 48000000,
+      "sha256": "ef9509fbe1722c01a3e7aef4e837cfa3ca02e591a6af8f4c826a7656aed5fa4f"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part1",
+      "bytes": 48000000,
+      "sha256": "549f64a949ea1ee4b3acf9177f504100a89028ffdd0e45cc1e70a9dfaf3dfc0c"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part2",
+      "bytes": 48000000,
+      "sha256": "132b3978c41226002abe413a33ba05d25ce551d74d7e7f947593bd27b892a72a"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part3",
+      "bytes": 48000000,
+      "sha256": "3701502fbfc98555170f0f31651ae2d8749b187115da49a78dc1342905342ed2"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part4",
+      "bytes": 48000000,
+      "sha256": "dd53c8b19b88290be1ac35364fc1e5914dedbf0f7156e928ddfe6eea58fe198f"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part5",
+      "bytes": 48000000,
+      "sha256": "bc20098961ba5f63b201e1543cb19bdc6b5efbfcb74fbe3cad575f254c0f3a82"
+    },
+    {
+      "name": "siglip2_b16_224_text_int8.onnx.part6",
+      "bytes": 2153185,
+      "sha256": "a5530a5c7eb67c4ebccf8b32677ad27197e8e6acbe1885787e234d7b7619428e"
+    }
+  ],
+  "checkpoint": {
+    "url": "https://storage.googleapis.com/big_vision/siglip2/siglip2_b16_224.npz",
+    "sha256": "74abfd2488a01f78c1cce5a38861dc929ea42aeabe8f622eaaa60ddfffeaad4e"
+  },
+  "tokenizer": {
+    "url": "https://storage.googleapis.com/big_vision/gemma_tokenizer.model",
+    "sha256": "6969e64047744a44bb3abfb5c50f8de0f7ed8b571d5444426ef931f651d1a0ef",
+    "bundled": false
+  },
+  "fp32_sha256": "c486ffadaac89dc7d556e6714e7815599458549204ba6b3dfa895c7ffdd8768d",
+  "quantization": {
+    "variant": "int8_gather",
+    "op_types": [
+      "MatMul",
+      "Gemm",
+      "Gather"
+    ],
+    "weight_type": "QInt8 per-tensor dynamic (onnxruntime.quantization.quantize_dynamic)",
+    "keep_fp32": [
+      "/blocks.0/fc2/MatMul"
+    ]
+  },
+  "io": {
+    "input": {
+      "name": "tokens",
+      "dtype": "int64",
+      "shape": [
+        "n",
+        64
+      ]
+    },
+    "output": {
+      "name": "embedding",
+      "dtype": "float32",
+      "shape": [
+        "n",
+        768
+      ],
+      "l2_normalised": true
+    },
+    "opset": 17
+  },
+  "tokenization": "ascii-lowercase; Gemma SentencePiece ids; no BOS; EOS id 1 appended and kept when truncated (sticky); pad id 0 to length 64",
+  "logit": {
+    "t": 4.724453449249268,
+    "b": -16.771724700927734,
+    "scale_exp_t": 112.66890226978421
+  },
+  "parity": {
+    "cos_to_fp32_min": 0.9933124780654907,
+    "cos_to_fp32_mean": 0.9964399337768555
+  }
+}

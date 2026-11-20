@@ -19,7 +19,14 @@ data class NativePeopleNamesSnapshot(
     val cannotLink: Set<Pair<String, String>>,
     val rejected: Set<Pair<String, String>>,
     val sameUnknown: Set<Pair<String, String>>,
-    val faceDecisions: Map<String, String>
+    val faceDecisions: Map<String, String>,
+    /** One explicit person → opaque selected face UID, never a file location or picture. */
+    val coverOverrides: Map<String, String> = emptyMap(),
+    /**
+     * HUB-1A (#210): "not one person" groups as (anchor face UID, membership
+     * fingerprint). The fingerprint is a SHA-256 of opaque face UIDs only.
+     */
+    val mixedGroups: Set<Pair<String, String>> = emptySet()
 )
 
 data class NativePeopleNamesPreview(
@@ -31,10 +38,19 @@ data class NativePeopleNamesImportResult(val applied: Int, val skipped: Int)
 object NativePeopleNamesBackupCodec {
     const val MAX_BYTES = 32 * 1024 * 1024
     private const val MAX_ENTRIES = 250_000
-    private const val VERSION = 1
+    /**
+     * Versions: 1 has seven sections; 2 adds cover overrides; 3 (HUB-1A,
+     * #210) adds mixed groups. [encode] writes the lowest version that holds
+     * the snapshot, so a backup without mixed groups stays version 2, byte
+     * for byte as before, and a build without them still imports it. A
+     * version newer than [VERSION] is refused whole, never half-imported.
+     */
+    private const val VERSION = 3
+    private const val VERSION_COVERS = 2
     private const val DIGEST = 32
     private val magic = "ATLAS-NATIVE-PEOPLE-NAMES\n".toByteArray(Charsets.US_ASCII)
     private val face = Regex("[0-9a-f]{32}")
+    private val fingerprint = Regex("[0-9a-f]{64}")
     // Native person IDs are local, non-path tokens. Never serialize arbitrary
     // DB strings that might accidentally be a URI or a file identifier.
     private val person = Regex("[a-zA-Z0-9_-]{1,128}")
@@ -51,14 +67,16 @@ object NativePeopleNamesBackupCodec {
 
     fun decisionCount(s: NativePeopleNamesSnapshot): Int =
         s.confirmed.size + s.cannotLink.size + s.rejected.size +
-            s.sameUnknown.size + s.faceDecisions.size
+            s.sameUnknown.size + s.faceDecisions.size + s.coverOverrides.size +
+            s.mixedGroups.size
 
     fun encode(snapshot: NativePeopleNamesSnapshot): ByteArray {
         validate(snapshot)
         val output = ByteArrayOutputStream()
         DataOutputStream(output).use { writer ->
+            val version = if (snapshot.mixedGroups.isEmpty()) VERSION_COVERS else VERSION
             writer.write(magic)
-            writer.writeInt(VERSION)
+            writer.writeInt(version)
             fun map(rows: Map<String, String>) {
                 writer.writeInt(rows.size)
                 rows.toSortedMap().forEach { (key, value) ->
@@ -83,6 +101,8 @@ object NativePeopleNamesBackupCodec {
             pairs(snapshot.rejected)
             pairs(snapshot.sameUnknown)
             map(snapshot.faceDecisions)
+            map(snapshot.coverOverrides)
+            if (version >= 3) pairs(snapshot.mixedGroups)
         }
         val body = output.toByteArray()
         require(body.size <= MAX_BYTES - DIGEST) { "Names backup is too large" }
@@ -104,7 +124,8 @@ object NativePeopleNamesBackupCodec {
                 val header = ByteArray(magic.size)
                 reader.readFully(header)
                 require(header.contentEquals(magic)) { "Not an ATLAS native names backup" }
-                require(reader.readInt() == VERSION) {
+                val version = reader.readInt()
+                require(version in 1..VERSION) {
                     "Unsupported names backup version; nothing was imported"
                 }
                 var total = 0
@@ -136,7 +157,8 @@ object NativePeopleNamesBackupCodec {
                     }
                 }
                 NativePeopleNamesSnapshot(map(), set(), map(), pairs(), pairs(),
-                    pairs(), map()).also {
+                    pairs(), map(), if (version >= 2) map() else emptyMap(),
+                    if (version >= 3) pairs() else emptySet()).also {
                     require(reader.available() == 0) { "Trailing names backup payload" }
                 }
             }
@@ -172,6 +194,12 @@ object NativePeopleNamesBackupCodec {
         s.sameUnknown.forEach { (a, b) ->
             faceId(a); faceId(b)
             require(a < b) { "Unordered same-person pair" }
+        }
+        s.coverOverrides.forEach { (person, face) -> personKey(person); faceId(face) }
+        require(s.coverOverrides.keys.all { it in s.names }) { "Cover person has no name" }
+        s.mixedGroups.forEach { (anchor, print) ->
+            faceId(anchor)
+            require(fingerprint.matches(print)) { "Invalid mixed-group fingerprint" }
         }
         s.faceDecisions.forEach { (face, decision) ->
             faceId(face)

@@ -11,21 +11,33 @@ import nl.atlas.gallery.featuremedia.ThumbnailPipeline
 import nl.atlas.gallery.featuremedia.runningUnderInstrumentation
 import nl.atlas.gallery.featuremedia.thumbnailMemoryCacheBytes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import nl.atlas.gallery.featureaiedit.save.AiEditSaver
 
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // PERF-1: bound the synchronous startup lane; off-thread tasks stay asynchronous.
         Trace.beginSection("atlas.startup.critical")
         try {
-            // Only the first-grid-critical dependencies run here; the JVM admission
-            // test protects the declared lane while the trace measures its cost.
+            // #435: load the preference files the first Photos grid reads, off Main.
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }
+            }
             // Persist one privacy-redacted trace before Android's original crash handler runs.
             LastCrashRecorder.install(this)
+            // Finish interrupted AI-copy cleanup after process death. No gallery
+            // scanning or upload is triggered; pending writes remain unpublished.
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                runCatching { AiEditSaver(this@AtlasApplication).recoverOnStartup() }
+                    .onFailure { android.util.Log.w("ATLAS_AI_SAVE", "Pending edit recovery deferred") }
+            }
             // #555: ATLAS's micro-thumbnail store; only used under full media access.
             MicroThumbnails.install(this)
             ThumbnailPipeline.autoWarm = !runningUnderInstrumentation()
             readGalleryMediaGrant(this).let { MicroThumbnails.applyGrant(it.images, it.videos, it.selected) }
-            // This registers a lazy factory; the expensive ImageLoader is built only on demand.
             SingletonImageLoader.setSafe { context ->
                 ImageLoader.Builder(context)
                     .components {
@@ -48,7 +60,6 @@ class AtlasApplication : Application() {
                     .interceptorCoroutineContext(Dispatchers.Main.immediate)
                     .build()
             }
-
         } finally {
             Trace.endSection()
         }

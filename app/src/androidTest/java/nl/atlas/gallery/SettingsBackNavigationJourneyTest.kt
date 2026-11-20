@@ -10,6 +10,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -82,15 +85,14 @@ class SettingsBackNavigationJourneyTest {
     }
 
     private fun openSettings(tab: String) {
-        if (tab == "search") {
-            waitFor(hasTestTag("atlas-search-overflow"))
-            compose.onNodeWithTag("atlas-search-overflow").performClick()
-        } else {
-            waitFor(hasTestTag("atlas-header-more"))
-            compose.onNodeWithTag("atlas-header-more").performClick()
+        val opener = if (tab == "search") "atlas-search-overflow" else "atlas-header-more"
+        waitFor(hasTestTag(opener))
+        compose.tap(hasTestTag(opener))
+        // The overflow menu is a separate window (rule 5).
+        compose.awaitThat("the $tab overflow menu open") {
+            compose.exists(hasTestTag("atlas-library-status"))
         }
-        waitFor(hasTestTag("atlas-library-status"))
-        compose.onNodeWithTag("atlas-library-status").performClick()
+        compose.tap(hasTestTag("atlas-library-status"))
         waitFor(hasTestTag("atlas-settings-screen"))
         compose.onNodeWithTag("atlas-header-back").assertIsDisplayed()
     }

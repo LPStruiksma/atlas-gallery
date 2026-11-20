@@ -18,6 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -25,9 +29,16 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.PersonEntry
+import nl.atlas.gallery.featuresearch.AtlasSearchScope
+import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
+import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
+import nl.atlas.gallery.featuresearch.scopedMediaMatches
 import nl.atlas.gallery.featuresearch.face.FaceReferenceChooser
 import nl.atlas.gallery.featurevisual.search.VisualSearchResultsScreen
 
@@ -58,9 +69,12 @@ fun FindSimilarRoute(
     onOpen: (List<MediaRecord>, MediaRecord, Map<String, Long>) -> Unit,
     onOpenSettings: () -> Unit,
     onClose: () -> Unit,
+    facetPeople: List<PersonEntry> = emptyList(),
+    onSearchWholeLibrary: (() -> Unit)? = null,
     thumbnail: suspend (MediaRecord) -> ImageBitmap?
 ) {
     val scope = rememberCoroutineScope()
+    var resultQuery by remember(step) { mutableStateOf("") }
     val close by rememberUpdatedState(onClose)
     LaunchedEffect(session, portVersion) {
         withContext(Dispatchers.IO) { session.revalidate() }
@@ -88,6 +102,33 @@ fun FindSimilarRoute(
                     Problem(state, onOpenSettings, onClose)
                 } else {
                     val results = state as? FindSimilarState.Results
+                    val source = results?.records
+                    val searchSnapshot by produceState<ScopedMediaSearchSnapshot?>(
+                        null, results, resultQuery, facetPeople
+                    ) {
+                        value = null
+                        if (results != null && source != null && resultQuery.isNotBlank()) {
+                            val worker = currentCoroutineContext()
+                            val matches = withContext(Dispatchers.Default) {
+                                scopedMediaMatches(source, source, facetPeople, resultQuery,
+                                    cancellationCheckpoint = { worker.ensureActive() })
+                            }
+                            value = ScopedMediaSearchSnapshot(source, source, facetPeople,
+                                results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN, matches)
+                        }
+                    }
+                    val filteredRecords = when {
+                        results == null -> null
+                        resultQuery.isBlank() -> source
+                        source == null -> null
+                        else -> currentScopedMediaSearchOrNull(searchSnapshot, source, source,
+                            facetPeople, results.scope, resultQuery, AtlasSearchScope.THIS_SCREEN)
+                    }
+                    val visibleMedia = filteredRecords?.let { records ->
+                        val allowed = records.mapTo(HashSet()) { it.uri }
+                        results?.hits?.filter { it.record.uri in allowed }
+                            ?.mapTo(HashSet()) { it.hit.media }
+                    }
                     VisualSearchResultsScreen(
                         state = ui,
                         poseEnabled = results?.poseEnabled == true,
@@ -95,13 +136,23 @@ fun FindSimilarRoute(
                         onOpen = { media ->
                             val shown = session.state.value as? FindSimilarState.Results
                             val hit = shown?.hitFor(media) ?: return@VisualSearchResultsScreen
+                            val currentList = if (resultQuery.isBlank()) shown.records
+                                else filteredRecords?.takeIf { results === shown }
                             scope.launch {
-                                // Re-check the grant at tap time, not only the last frame.
-                                if (withContext(Dispatchers.IO) { session.revalidate() })
-                                    onOpen(shown.records, hit.record, shown.startPositions)
+                                // Revalidate the grant AND identity of the ranked result.
+                                if (withContext(Dispatchers.IO) { session.revalidate() } &&
+                                    session.state.value === shown && currentList != null &&
+                                    currentList.any { it.uri == hit.record.uri }) {
+                                    onOpen(currentList, hit.record, shown.startPositions)
+                                }
                             }
                         },
                         onBack = onClose,
+                        searchQuery = resultQuery,
+                        onSearchQueryChange = { resultQuery = it },
+                        onSearchWholeLibrary = onSearchWholeLibrary,
+                        visibleMedia = visibleMedia,
+                        filtering = resultQuery.isNotBlank() && filteredRecords == null,
                         thumbnail = { media ->
                             (session.state.value as? FindSimilarState.Results)
                                 ?.hitFor(media)?.record?.let { thumbnail(it) }

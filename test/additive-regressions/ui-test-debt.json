@@ -1,0 +1,313 @@
+{
+  "AiEditProvenanceJourneyTest.kt": {
+    "rawClick": 4,
+    "privateWait": 1
+  },
+  "AiEditSettingsEvidenceTest.kt": {
+    "rawClick": 18,
+    "typingWithoutKeyboardRule": 6,
+    "privateWait": 1
+  },
+  "AiEditUiEvidenceTest.kt": {
+    "rawClick": 3
+  },
+  "AlbumBatchJourneyTest.kt": {
+    "rawClick": 13
+  },
+  "AlbumPickerDesign10bTest.kt": {
+    "rawClick": 4
+  },
+  "AlbumsGridEvidenceTest.kt": {
+    "rawClick": 4,
+    "privateWait": 1
+  },
+  "CompactHeaderJourneyTest.kt": {
+    "sleep": 2,
+    "rawClick": 7,
+    "privateWait": 2
+  },
+  "CompactHeaderTest.kt": {
+    "rawClick": 7
+  },
+  "CrashCaptureAndroidTest.kt": {
+    "sleep": 1
+  },
+  "DeclutterInsetsTest.kt": {
+    "rawClick": 2
+  },
+  "DeclutterProgressivePreviewTest.kt": {
+    "rawClick": 1
+  },
+  "DeclutterScreenTest.kt": {
+    "rawClick": 14
+  },
+  "DeclutterThemeEvidenceTest.kt": {
+    "sleep": 1,
+    "rawClick": 3,
+    "rawCapture": 2
+  },
+  "DialogThemeEvidenceTest.kt": {
+    "rawClick": 3,
+    "rawCapture": 1
+  },
+  "FindSimilarAppJourneyTest.kt": {
+    "rawClick": 13,
+    "privateWait": 1
+  },
+  "FloatingTabBackdropJourneyTest.kt": {
+    "rawClick": 2,
+    "deviceStateWrite": 2
+  },
+  "FloatingTabBarJourneyTest.kt": {
+    "rawClick": 3,
+    "privateWait": 2
+  },
+  "GalleryColdStartCacheTest.kt": {
+    "sleep": 1,
+    "privateWait": 1
+  },
+  "GalleryViewerSharedTransitionJourneyTest.kt": {
+    "rawClick": 7,
+    "deviceStateWrite": 9
+  },
+  "HeaderScrollAwayJourneyTest.kt": {
+    "rawClick": 1,
+    "privateWait": 1
+  },
+  "LargeListIdentityKeyTest.kt": {
+    "rawClick": 1
+  },
+  "LastCrashSettingsAndroidTest.kt": {
+    "rawClick": 4
+  },
+  "ParityAdditionalThemeJourneyTest.kt": {
+    "deviceStateWrite": 2
+  },
+  "ParityRemainingSurfaceJourneyTest.kt": {
+    "deviceStateWrite": 2
+  },
+  "PeopleCsvApprovalDialogTest.kt": {
+    "rawClick": 2
+  },
+  "PeopleFaceCropsAndroidTest.kt": {
+    "privateWait": 1
+  },
+  "PeopleForceStopRelaunchTest.kt": {
+    "sleep": 1,
+    "rawClick": 12,
+    "privateWait": 1
+  },
+  "PeopleNamesBackupSettingsEvidenceTest.kt": {
+    "rawClick": 2
+  },
+  "PeopleScanProcessKillTest.kt": {
+    "sleep": 1
+  },
+  "PeopleSearchEvidenceTest.kt": {
+    "rawClick": 15,
+    "privateWait": 1
+  },
+  "PeopleSortJourneyTest.kt": {
+    "rawClick": 5,
+    "rawCapture": 1
+  },
+  "PeopleStatusEvidenceTest.kt": {
+    "rawClick": 2
+  },
+  "PersonNameSearchEvidenceTest.kt": {
+    "privateWait": 1
+  },
+  "PhotoDnaJourneyTest.kt": {
+    "rawClick": 5,
+    "privateWait": 1
+  },
+  "PhotoDnaKeepJourneyTest.kt": {
+    "rawClick": 7,
+    "privateWait": 1
+  },
+  "PhotoDnaPlanningFailureRouteTest.kt": {
+    "sleep": 1,
+    "rawClick": 1
+  },
+  "PhotoDnaRouteAccessTest.kt": {
+    "rawClick": 1,
+    "privateWait": 1
+  },
+  "PhotoDnaVisualJourneyTest.kt": {
+    "rawClick": 3,
+    "privateWait": 1
+  },
+  "PhotoDnaVisualRouteTest.kt": {
+    "rawClick": 6,
+    "privateWait": 1
+  },
+  "PhotoEditorHandoffTest.kt": {
+    "rawClick": 4
+  },
+  "PhotosSortSheetJourneyTest.kt": {
+    "deviceStateWrite": 2
+  },
+  "RandomViewerScrubJourneyTest.kt": {
+    "rawClick": 11,
+    "privateWait": 1
+  },
+  "SearchDateFacetJourneyTest.kt": {
+    "rawClick": 6
+  },
+  "SearchHistoryEvidenceTest.kt": {
+    "rawClick": 6,
+    "privateWait": 2
+  },
+  "SearchOneFieldEvidenceTest.kt": {
+    "rawClick": 4,
+    "rawCapture": 1,
+    "privateWait": 1
+  },
+  "SearchPeopleNavigationTest.kt": {
+    "rawClick": 1
+  },
+  "SelectionModeJourneyTest.kt": {
+    "privateWait": 2
+  },
+  "SelectionMoreJourneyTest.kt": {
+    "sleep": 1,
+    "rawClick": 17,
+    "privateWait": 1
+  },
+  "SelectionPillJourneyTest.kt": {
+    "rawClick": 8,
+    "deviceStateWrite": 2
+  },
+  "SelectionResultSnackbarJourneyTest.kt": {
+    "sleep": 2,
+    "deviceStateWrite": 5,
+    "privateWait": 2
+  },
+  "SettingsBackNavigationJourneyTest.kt": {
+    "rawClick": 4,
+    "privateWait": 1
+  },
+  "StoriesHostRouteTest.kt": {
+    "rawClick": 7
+  },
+  "StoriesJourneyTest.kt": {
+    "rawClick": 8,
+    "privateWait": 1
+  },
+  "StoriesVideoJourneyTest.kt": {
+    "rawClick": 14
+  },
+  "SystemThemeJourneyTest.kt": {
+    "rawClick": 12,
+    "rawCapture": 1,
+    "deviceStateWrite": 2,
+    "privateWait": 2
+  },
+  "TelephotoPrototypeTest.kt": {
+    "rawClick": 2
+  },
+  "UnifiedPeopleJourneyTest.kt": {
+    "rawClick": 5
+  },
+  "VideoFaceCropAndroidTest.kt": {
+    "privateWait": 1
+  },
+  "ViewerAccessibilityTest.kt": {
+    "rawClick": 1
+  },
+  "ViewerAlbumGenerationTest.kt": {
+    "rawClick": 4
+  },
+  "ViewerDetailsSheetTest.kt": {
+    "rawClick": 3
+  },
+  "ViewerFingerFollowTest.kt": {
+    "sleep": 1
+  },
+  "ViewerFullResZoomTest.kt": {
+    "sleep": 3,
+    "rawCapture": 1
+  },
+  "ViewerInteractionTest.kt": {
+    "sleep": 1,
+    "rawClick": 7,
+    "rawCapture": 1
+  },
+  "ViewerLightSystemBarsTest.kt": {
+    "sleep": 1,
+    "rawClick": 1
+  },
+  "ViewerOpenLatencyTest.kt": {
+    "rawCapture": 1
+  },
+  "ViewerReturnAnchorTest.kt": {
+    "rawClick": 2
+  },
+  "ViewerSwipeSharpnessTest.kt": {
+    "sleep": 1
+  },
+  "ViewerVideoChromeJourneyTest.kt": {
+    "rawClick": 4
+  },
+  "ViewerVideoSettleTest.kt": {
+    "rawClick": 2
+  },
+  "VisualScanWorkAndroidTest.kt": {
+    "rawClick": 3,
+    "privateWait": 1
+  },
+  "benchmark/FaceScanThroughputBenchmarkTest.kt": {
+    "sleep": 1
+  },
+  "featurealbums/AlbumQuickFindScreenTest.kt": {
+    "rawClick": 1
+  },
+  "featurealbums/AlbumReorderScreenTest.kt": {
+    "rawClick": 4
+  },
+  "featuregrid/GridMotionFrameTimeTest.kt": {
+    "sleep": 1
+  },
+  "featuregrid/GridThumbnailFlingBenchmarkTest.kt": {
+    "sleep": 6
+  },
+  "featuregrid/OriginalProportionsAlbumJourneyTest.kt": {
+    "rawClick": 4,
+    "rawCapture": 1,
+    "privateWait": 1
+  },
+  "featuregrid/PinchRealRatioJourneyTest.kt": {
+    "rawCapture": 1,
+    "privateWait": 1
+  },
+  "featurepeopleui/UnknownFacesReviewScreenStateTest.kt": {
+    "rawClick": 1
+  },
+  "featurepeopleui/UnknownSplitGridCapTest.kt": {
+    "rawClick": 2
+  },
+  "featuresearch/FaceSearchJourneyTest.kt": {
+    "sleep": 1,
+    "rawClick": 8,
+    "privateWait": 3
+  },
+  "featuresearch/FindSimilarJourneyTest.kt": {
+    "rawClick": 5,
+    "privateWait": 1
+  },
+  "featuresearch/QueryFacePickerTest.kt": {
+    "rawClick": 6
+  },
+  "featuresearch/face/FaceSearchUnavailableScreenTest.kt": {
+    "rawClick": 1
+  },
+  "featurevisual/VisualSearchResultsScreenTest.kt": {
+    "rawClick": 3
+  },
+  "featurevisual/VisualVideoMomentsAndroidTest.kt": {
+    "rawClick": 1
+  },
+  "splitpreview/SplitPreviewScreenTest.kt": {
+    "rawClick": 9
+  }
+}

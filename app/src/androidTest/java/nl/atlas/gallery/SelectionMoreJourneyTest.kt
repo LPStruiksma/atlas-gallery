@@ -1,5 +1,11 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
@@ -11,8 +17,6 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -52,7 +56,8 @@ class SelectionMoreJourneyTest {
     private val compose = createAndroidComposeRule<MainActivity>()
 
     @get:Rule val chain: RuleChain =
-        RuleChain.outerRule(S24DisplayRule()).around(fixtures).around(compose)
+        RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+            .around(S24DisplayRule()).around(fixtures).around(compose)
 
     @Test fun copyToAlbumMoveToNewAlbumThenHideAndUnhideTheAlbum() {
         val ids = fixtures.ids
@@ -103,16 +108,14 @@ class SelectionMoreJourneyTest {
         waitFor(hasTestTag("atlas-album-picker-create"))
         compose.onNodeWithTag("atlas-album-picker-create").performClick()
         waitFor(hasTestTag("atlas-create-album-name"))
-        compose.onNodeWithTag("atlas-create-album-name").performTextInput(NEW_ALBUM)
+        compose.typeText(hasTestTag("atlas-create-album-name"), NEW_ALBUM, KeyboardAfter.Shown)
         compose.waitForIdle()
         saveUiEvidence("more-568-create-album.png")
         logMoveBoundary("before-confirm")
-        // The emulator IME can consume a coordinate tap while it is open.
-        // Activate the enabled Create button via its accessibility click action,
-        // then require the dialog to close and the real MediaStore move to finish.
-        compose.onNodeWithTag("atlas-create-album-confirm")
-            .assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        // The shared tap checks that Create is visible above the shown keyboard
+        // and performs one pointer tap; no accessibility-action shortcut or retry.
+        compose.onNodeWithTag("atlas-create-album-confirm").assertIsEnabled()
+        compose.tap(hasTestTag("atlas-create-album-confirm"))
         logMoveBoundary("after-confirm")
         // MediaProvider's genuine permission Activity can now own the foreground.
         // Handle its Allow action and the completed MediaStore move before
@@ -168,6 +171,7 @@ class SelectionMoreJourneyTest {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithTag("atlas-nav-photos").performClick()
         waitFor(hasTestTag("atlas-timeline-media-${ids[3]}"))
+        compose.hideKeyboard()
     }
 
     /**

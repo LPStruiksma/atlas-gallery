@@ -73,8 +73,8 @@ class ThumbnailPrefetchPlanTest {
 
     @Test fun memoryBudgetFollowsDeviceClass() {
         val mb = 1024L * 1024L
-        // 12 GB phone, 256 MB heap class: RAM/48 capped at 256 MB.
-        assertEquals(256 * mb, thumbnailMemoryCacheBytes(12L * 1024 * mb, 256, lowRam = false))
+        // 12 GB phone, 256 MB heap class: cache capped at half the app heap.
+        assertEquals(128 * mb, thumbnailMemoryCacheBytes(12L * 1024 * mb, 256, lowRam = false))
         // 6 GB phone: 128 MB, above Coil's 20%-of-heap default (≈51 MB).
         assertEquals(6L * 1024 * mb / 48, thumbnailMemoryCacheBytes(6L * 1024 * mb, 256, lowRam = false))
         // Low-RAM devices keep Coil's default.

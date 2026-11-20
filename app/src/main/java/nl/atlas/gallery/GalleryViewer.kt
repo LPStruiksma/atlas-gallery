@@ -31,6 +31,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Favorite
@@ -59,7 +60,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -97,6 +100,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.memory.MemoryCache
 import coil3.request.ImageRequest
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import coil3.request.crossfade
@@ -130,6 +135,7 @@ fun GalleryViewer(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe? = null,
     onEdit: ((MediaRecord) -> Boolean)? = null,
+    onAiEdit: ((MediaRecord) -> Unit)? = null,
     // Optional immutable catalogue-scoped return anchor. Keep onBack LAST
     // so all existing GalleryViewer(items, uri) { ... } callers retain meaning.
     onExitSettledUri: ((String) -> Unit)? = null,
@@ -155,7 +161,7 @@ fun GalleryViewer(
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
-        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onExitSettledUri,
+        GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
             favouriteOverrides, photoPeople, onBack)
     }
@@ -167,6 +173,7 @@ private fun GalleryViewerSnapshot(
     items: List<MediaRecord>, startUri: String,
     timingProbe: ViewerTimingProbe?,
     onEdit: ((MediaRecord) -> Boolean)?,
+    onAiEdit: ((MediaRecord) -> Unit)?,
     onExitSettledUri: ((String) -> Unit)?,
     faceSearch: ViewerFaceSearch?,
     faceHighlights: Map<String, List<IndexedFaceBox>>,
@@ -255,9 +262,14 @@ private fun GalleryViewerSnapshot(
     var lastPrefetchFocus by remember(CatalogSourceKey(items)) { mutableIntStateOf(start) }
     // A single tap on a photo hides all chrome (and the system bars), without
     // changing the selected item, pager, zoom or the caller's Back stack.
+    // BENCH-1 (#572): which photo revisions' 2400 px base decoded with an
+    // Ultra HDR gain map (viewerHdrFactKey), as reported by their own page.
+    // An editor return is a new revision, so an old fact never carries over.
+    val gainmapFacts = remember { mutableStateMapOf<String, Boolean>() }
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
+    var aiEditMenuOpen by remember { mutableStateOf(false) }
     // Pending consent requests survive activity recreation while Android's dialog is open.
     var pendingFavouriteUri by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingFavouriteValue by rememberSaveable { mutableStateOf(false) }
@@ -398,8 +410,11 @@ private fun GalleryViewerSnapshot(
         }
     }
 
+    // PERF-3 (#124): true until the pager first leaves the page it opened on.
+    var onEntryPage by remember(CatalogSourceKey(items)) { mutableStateOf(true) }
     LaunchedEffect(pagerState.currentPage) {
-        timingProbe?.pagerSelected(pagerState.currentPage)
+        if (pagerState.currentPage != start) onEntryPage = false
+        timingProbe?.pageEntered(pagerState.currentPage)
         currentZoom = 1f
         // Do NOT recenter the strip here: a finished thumbnail fling commits
         // its own centred item; a pager swipe is reconciled above.
@@ -432,36 +447,37 @@ private fun GalleryViewerSnapshot(
         }
     }
 
-    // Prewarm a small number of screen-sized neighbors only after navigation
-    // settles. The effect is cancelled as soon as scrubbing resumes, avoiding
-    // a backlog of expensive image decodes and unbounded memory growth.
-    LaunchedEffect(CatalogSourceKey(items), editorReturn, pagerState.currentPage, stripState.isScrollInProgress, pagerState.isScrollInProgress) {
+    // PERF-9 (#138): once navigation settles, warm the neighbours the next
+    // swipe will land on, with the keys their pages read: the 2400 px base one
+    // step away on each side, the 800 px preview two steps away, direction of
+    // travel first. A swipe or scrub cancels this effect and every request
+    // still running, so fast swipes never build a decode backlog.
+    val prefetchEpoch = LocalGalleryPublicationEpoch.current
+    val baseBudget = LocalViewerNeighbourBaseBudget.current
+    LaunchedEffect(CatalogSourceKey(items), editorReturn, prefetchEpoch, pagerState.currentPage, stripState.isScrollInProgress, pagerState.isScrollInProgress) {
         if (!stripState.isScrollInProgress && !pagerState.isScrollInProgress) {
             delay(120)
             val loader = SingletonImageLoader.get(context)
             val focus = pagerState.currentPage
-            val neighbors = nearbyPreviewIndicesForMotion(
-                focus, lastPrefetchFocus, items.size
-            )
+            val previous = lastPrefetchFocus
             lastPrefetchFocus = focus
-            // One stale/corrupt neighboring URI must not prevent the other
-            // bounded posters from warming; navigation cancels the coroutine.
-            prewarmDeclutterPreviewIndices(neighbors) { index ->
-                val media = items[index]
-                if (!media.isVideo) {
-                    val refreshThis = editorReturn.mustReload(media.uri)
-                    loader.execute(ImageRequest.Builder(context)
-                        .data(media.uri)
-                        .apply {
-                            if (refreshThis) {
-                                memoryCacheKey(editedPhotoMemoryKey(
-                                    media.uri, editorReturn.revision, 800))
-                                diskCachePolicy(CachePolicy.DISABLED)
-                            }
-                        }
-                        .size(800, 800)
-                        .crossfade(false)
-                        .build())
+            val bases = baseBudget(loader.memoryCache?.maxSize ?: 0L)
+            val plan = viewerSwipePrefetchPlan(focus, previous, items.size, bases) {
+                items[it].isVideo
+            }
+            // One stale/corrupt neighbouring URI must not prevent the others
+            // from warming; navigation cancels the coroutine.
+            prewarmDeclutterPreviewIndices(plan.indices.toList()) { step ->
+                val media = items[plan[step].index]
+                val fresh = editorReturn.mustReload(media.uri)
+                val revision = if (fresh) editorReturn.revision else 0L
+                if (plan[step].base) {
+                    // A photo without a known revision has no shared base key.
+                    viewerBaseRequestOrNull(context, media, prefetchEpoch, fresh, revision,
+                        requireKey = true)?.let { loader.execute(it) }
+                } else {
+                    loader.execute(mediaPreviewRequest(context, media,
+                        ViewerInstantPreview.VIEWER_PREVIEW_PIXELS, prefetchEpoch, fresh, revision))
                 }
             }
         }
@@ -478,6 +494,20 @@ private fun GalleryViewerSnapshot(
     }
     // Samsung hides the status and navigation bars together with its chrome.
     ViewerSystemBars(visible = chromeVisible)
+    // BENCH-1 (#572): window HDR only while the focused photo's current
+    // revision proved a gain map and no filmstrip scrub preview covers it.
+    // Read inside the HDR effect's own scope (a lambda), never here, so a
+    // scrub frame does not recompose the whole viewer.
+    ViewerHdrWindowMode(focusedHasGainmap = {
+        val focusedForHdr = items.getOrNull(pagerState.currentPage)
+        viewerFocusedHasGainmap(
+            uri = focusedForHdr?.uri, isVideo = focusedForHdr?.isVideo ?: true,
+            revision = focusedForHdr?.let {
+                viewerHdrRevision(editorReturn.mustReload(it.uri), editorReturn.revision)
+            } ?: 0L,
+            scrubPreviewShown = scrubOverlayState.value != null,
+            facts = gainmapFacts)
+    })
 
     // Live drag transforms are animated back on cancellation and read only by
     // their owning layers, not by the full viewer on each pointer frame.
@@ -660,7 +690,11 @@ private fun GalleryViewerSnapshot(
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
                         { timingProbe.firstPreviewReady(page) }
-                    } else null)
+                    } else null,
+                    openingPage = onEntryPage && page == start,
+                    onGainmapDecoded = { revision, hasGainmap ->
+                        gainmapFacts[viewerHdrFactKey(media.uri, revision)] = hasGainmap
+                    })
             }
         }
         }
@@ -677,9 +711,11 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.TopCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(AtlasTokens.Colors.Viewer.ChromeScrimTop, Color.Transparent)))
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .testTag("atlas-viewer-top-chrome"),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ViewerPill {
@@ -721,6 +757,21 @@ private fun GalleryViewerSnapshot(
                 ) {
                     Icon(Icons.Outlined.ImageSearch, "Find similar", tint = Color.White)
                 }
+                // AI Edit is inside the viewer overflow, never another permanent pencil.
+                if (onAiEdit != null && !current.isVideo &&
+                    PhotoEditorHandoff.eligible(current)) Box {
+                    IconButton(onClick = { aiEditMenuOpen = true },
+                        modifier = Modifier.testTag("atlas-viewer-more")) {
+                        Icon(Icons.Filled.MoreVert, "More photo actions", tint = Color.White)
+                    }
+                    DropdownMenu(expanded = aiEditMenuOpen,
+                        onDismissRequest = { aiEditMenuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("AI Edit") },
+                            modifier = Modifier.testTag("atlas-viewer-ai-edit"),
+                            onClick = { aiEditMenuOpen = false; onAiEdit(current) })
+                    }
+                }
                 IconButton(
                     onClick = {
                         detailsMedia = items[viewerVisibleActionIndex(scrubOverlayState.value,
@@ -735,7 +786,10 @@ private fun GalleryViewerSnapshot(
         AnimatedVisibility(chromeVisible, Modifier.align(Alignment.BottomCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, AtlasTokens.Colors.Viewer.ChromeScrimBottom)))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                .testTag("atlas-viewer-bottom-chrome"),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BoxWithConstraints(Modifier.fillMaxWidth().height(STRIP_HEIGHT)) {
@@ -763,7 +817,7 @@ private fun GalleryViewerSnapshot(
                                 scaleX = grow; scaleY = grow
                             }
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0xFF2A2A2A))
+                            .background(AtlasTokens.Colors.Viewer.FilmstripTrack)
                             .semantics(mergeDescendants = true) {
                                 this.selected = selected
                                 contentDescription = "${if (media.isVideo) "Video" else "Photo"} " +
@@ -820,7 +874,7 @@ private fun GalleryViewerSnapshot(
                     ) {
                         Icon(if (favourite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             if (favourite) "Remove from favourites" else "Add to favourites",
-                            tint = if (favourite) Color(0xFFFF4D5E) else Color.White)
+                            tint = if (favourite) AtlasTokens.Colors.Viewer.Favourite else Color.White)
                     }
                 }
                 if (showEdit) IconButton(
@@ -883,7 +937,7 @@ private fun GalleryViewerSnapshot(
                 translationY = 240.dp.toPx() + offset.coerceAtLeast(-240.dp.toPx())
                 alpha = if (offset < 0f) 0.6f + 0.4f *
                     (-offset / 240.dp.toPx()).coerceIn(0f, 1f) else 0f
-            }.background(Color(0xFF171A20))
+            }.background(AtlasTokens.Colors.Viewer.Backdrop)
             .testTag("atlas-details-drag-preview")) {
             // Resolved here, not in the viewer scope, so scrub frames don't
             // recompose the whole viewer.
@@ -1022,7 +1076,7 @@ private const val SCRUB_SHARPEN_DELAY_MS = 60L
 
 @Composable
 private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
-    Row(modifier.clip(RoundedCornerShape(percent = 50)).background(Color(0xB3202124))
+    Row(modifier.clip(RoundedCornerShape(percent = 50)).background(AtlasTokens.Colors.Viewer.ActionPill)
         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically,
         content = content)
 }
@@ -1085,7 +1139,7 @@ private fun ViewerSystemBars(visible: Boolean) {
     }
 }
 
-private tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
+internal tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
     when (this) {
         is android.app.Activity -> this
         is android.content.ContextWrapper -> baseContext.viewerHostActivity()
@@ -1095,6 +1149,22 @@ private tailrec fun android.content.Context.viewerHostActivity(): android.app.Ac
 internal fun shouldStartViewerVideoPlayer(
     focused: Boolean, rapidlyChanging: Boolean, settled: Boolean
 ): Boolean = focused && !rapidlyChanging && settled
+
+/** What one viewer video page draws (PERF-29, #330). */
+internal data class ViewerVideoLayers(val player: Boolean, val poster: Boolean)
+
+/**
+ * At most the focused, settled page mounts (and prepares) a player. The
+ * poster frame stays drawn until Media3 reports its first rendered frame,
+ * so a starting player never shows a black surface in between.
+ */
+internal fun viewerVideoLayers(
+    focused: Boolean, rapidlyChanging: Boolean, settled: Boolean,
+    firstFrameRendered: Boolean
+): ViewerVideoLayers {
+    val player = shouldStartViewerVideoPlayer(focused, rapidlyChanging, settled)
+    return ViewerVideoLayers(player = player, poster = !player || !firstFrameRendered)
+}
 
 /**
  * Video poster while scrubbing, player only after the selected frame is
@@ -1134,10 +1204,16 @@ private fun ViewerVideoPage(
                 }
             }
         }) {
-        if (shouldStartViewerVideoPlayer(focused, rapidlyChanging, videoSettled)) {
+        if (viewerVideoLayers(focused, rapidlyChanging, videoSettled,
+                firstFrameRendered = false).player) {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-player")) {
                 VideoPage(media.uri, resumePositionMs, onSavePosition, onLivePosition,
-                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome)
+                    chromeVisible = chromeVisible, onToggleChrome = onToggleChrome,
+                    // Same 700px request as the poster below: a memory-cache hit.
+                    poster = {
+                        MediaPreview(media, Modifier.fillMaxSize().clearAndSetSemantics {},
+                            ContentScale.Fit, 700)
+                    })
             }
         } else {
             Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-poster"),
@@ -1155,6 +1231,29 @@ internal fun shouldRenderLargePhoto(
     focused: Boolean, fullResolution: Boolean, settled: Boolean
 ): Boolean = focused && fullResolution && settled
 
+/**
+ * PERF-9 (#138): the page's 2400 px base, built the same way by the page and
+ * by the swipe prefetch so both use one memory-cache key. Null only when
+ * [requireKey] is set and the photo has no shared key (no known revision):
+ * the page then keeps Coil's own key, as before, and the prefetch skips it.
+ */
+internal fun viewerBaseRequestOrNull(
+    context: android.content.Context, media: MediaRecord, publicationEpoch: Long,
+    forceFresh: Boolean, imageRevision: Long, requireKey: Boolean
+): ImageRequest? {
+    val key = viewerBaseMemoryKey(media.uri, forceFresh, imageRevision) { px ->
+        media.presentationCacheKeyOrNull(px, publicationEpoch)
+    }
+    if (key == null && requireKey) return null
+    return ImageRequest.Builder(context).data(media.uri)
+        .size(ViewerSwipePrefetch.BASE_PIXELS, ViewerSwipePrefetch.BASE_PIXELS)
+        .apply {
+            if (key != null) memoryCacheKey(key)
+            if (forceFresh) diskCachePolicy(CachePolicy.DISABLED)
+        }
+        .crossfade(true).build()
+}
+
 @Composable
 private fun PhotoPage(
     media: MediaRecord, pageIndex: Int, itemCount: Int,
@@ -1165,7 +1264,9 @@ private fun PhotoPage(
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     onEdgePageRequested: (Int) -> Unit,
-    onPreviewReady: (() -> Unit)?
+    onPreviewReady: (() -> Unit)?,
+    openingPage: Boolean = false,
+    onGainmapDecoded: (revision: Long, hasGainmap: Boolean) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
@@ -1187,9 +1288,23 @@ private fun PhotoPage(
     var decodedSize by remember(media.uri, focused, imageRevision) {
         mutableStateOf(IntSize.Zero)
     }
-    LaunchedEffect(viewport, decodedSize) {
+    // PERF-32 (#334): the oriented full size of a photo whose region
+    // decoders opened. Only then may a pinch go past today's 5x limit.
+    var tiledSize by remember(media.uri, focused, imageRevision) {
+        mutableStateOf<IntSize?>(null)
+    }
+    fun maxZoom(): Float = tiledSize?.let {
+        viewerMaxZoom(viewport.width, viewport.height, it.width, it.height)
+    } ?: ViewerTileZoom.BASE_MAX_ZOOM
+    // Region decoders open on the first zoom, not on every settled page.
+    val zoomedIn by remember(media.uri, focused, imageRevision) {
+        derivedStateOf { zoomPose.scale > 1.01f }
+    }
+    var zoomedOnce by remember(media.uri, focused, imageRevision) { mutableStateOf(false) }
+    LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
+    LaunchedEffect(viewport, decodedSize, tiledSize) {
         zoomPose = viewerReboundZoom(zoomPose, viewport.width, viewport.height,
-            decodedSize.width, decodedSize.height)
+            decodedSize.width, decodedSize.height, maxZoom())
         onZoomChanged(zoomPose.scale)
     }
     // The pager retains neighboring pages. Readiness belongs to the
@@ -1199,12 +1314,29 @@ private fun PhotoPage(
     var readyForLarge by remember(media.uri, imageRevision, fullResolution) {
         mutableStateOf(false)
     }
+    // PERF-3 (#124): the page the viewer opened on starts its base decode
+    // at once; every later page keeps the 110 ms settle (scrub, swipes).
+    val instantOpen = openingPage && LocalViewerInstantOpen.current
+    // PERF-9 (#138): a base the swipe prefetch already decoded shows at once.
+    val epoch = LocalGalleryPublicationEpoch.current
+    var settledAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
     LaunchedEffect(media.uri, imageRevision, fullResolution) {
         if (fullResolution) {
-            delay(110)
+            settledAt = System.nanoTime()
+            val baseKey = viewerBaseMemoryKey(media.uri, forceFresh, imageRevision) { px ->
+                media.presentationCacheKeyOrNull(px, epoch)
+            }
+            val baseCached = baseKey != null &&
+                SingletonImageLoader.get(context).memoryCache?.get(MemoryCache.Key(baseKey)) != null
+            val largeDelayMs = viewerBaseDelayMs(instantOpen, baseCached)
+            if (largeDelayMs > 0L) delay(largeDelayMs)
             readyForLarge = true
         }
     }
+    // PERF-3 timing, published to semantics for the emulator proof only:
+    // when the first image (borrowed or decoded) and the sharp base landed.
+    var firstFrameAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
+    var sharpAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
     // Zoom transforms are intentionally applied only to the photo. Clip its
     // outer viewport so magnified pixels never bleed into the Back toolbar,
     // filmstrip or other adjacent gallery controls.
@@ -1269,7 +1401,7 @@ private fun PhotoPage(
                                 val next = viewerZoomGesture(
                                     previous, gestureZoom, pan.x, pan.y,
                                     centroid.x, centroid.y, viewport.width, viewport.height,
-                                    decodedSize.width, decodedSize.height)
+                                    decodedSize.width, decodedSize.height, maxZoom())
                                 if (next != previous) {
                                     zoomPose = next
                                     latestZoomChanged(next.scale)
@@ -1309,6 +1441,9 @@ private fun PhotoPage(
                     if (focused) {
                         contentDescription = "Photo viewer: ${media.name}"
                         this[ViewerPhotoDecodedKey] = decodedSize != IntSize.Zero
+                        this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
+                        this[ViewerPhotoSharpAtKey] = sharpAt
+                        this[ViewerPhotoSettledAtKey] = settledAt
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
                         onClick(label = if (chromeVisible) "Hide gallery controls"
@@ -1324,29 +1459,52 @@ private fun PhotoPage(
                     translationX = zoomPose.translationX
                     translationY = zoomPose.translationY
                 }) {
-                MediaPreview(media,
-                    Modifier.fillMaxSize().clearAndSetSemantics {}, ContentScale.Fit, 800,
-                    onLoaded = onPreviewReady, observeLoaded = observePreviewLoads,
+                var previewFailed by remember(media.uri, imageRevision) { mutableStateOf(false) }
+                ViewerPhotoPreview(media,
+                    Modifier.fillMaxSize().clearAndSetSemantics {},
+                    onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    onFirstFrame = {
+                        previewFailed = false
+                        if (firstFrameAt == 0L) firstFrameAt = System.nanoTime()
+                    },
+                    onDecodeError = { previewFailed = true },
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
-                    val request = remember(media.uri, imageRevision) {
-                        ImageRequest.Builder(context).data(media.uri).size(2400, 2400)
-                            .apply {
-                                if (forceFresh) {
-                                    memoryCacheKey(editedPhotoMemoryKey(
-                                        media.uri, imageRevision, 2400))
-                                    diskCachePolicy(CachePolicy.DISABLED)
-                                }
-                            }
-                            .crossfade(true).build()
+                    val request = remember(media, epoch, imageRevision) {
+                        viewerBaseRequestOrNull(context, media, epoch, forceFresh, imageRevision,
+                            requireKey = false)!!
                     }
                     AsyncImage(model = request, contentDescription = media.name,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize().testTag("atlas-photo-hires")
                             .clearAndSetSemantics {},
                         onSuccess = { result ->
+                            previewFailed = false
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
-                        })
+                            if (sharpAt == 0L) sharpAt = System.nanoTime()
+                            onGainmapDecoded(imageRevision, viewerImageHasGainmap(result.result.image))
+                        },
+                        // A failed decode is ordinary SDR, never a kept older fact.
+                        onError = { onGainmapDecoded(imageRevision, false) })
+                    // PERF-32 (#334): full-resolution tiles over this base
+                    // once the photo is magnified past what 2400 px can show.
+                    ViewerRegionTileLayer(
+                        uri = media.uri, contentRevision = imageRevision,
+                        mediaStoreDegrees = media.orientationDegrees,
+                        active = zoomedOnce && decodedSize != IntSize.Zero,
+                        pose = { zoomPose }, viewport = viewport, baseSize = decodedSize,
+                        onTiledSize = { tiledSize = it })
+                }
+                // A corrupt preview must not look like a black, unfinished page.
+                // Keep the pager and its neighbour swipes mounted.
+                if (previewFailed && decodedSize == IntSize.Zero && focused) {
+                    Box(Modifier.fillMaxSize().testTag("atlas-viewer-decode-error"),
+                        contentAlignment = Alignment.Center) {
+                        // DESIGN-6 #136: one quiet line in Quiet Frame's dark ink-muted;
+                        // the viewer ground is black in both themes.
+                        Text("Can’t open photo", style = MaterialTheme.typography.bodyMedium,
+                            color = AtlasTokens.Colors.Dark.OnSurfaceVariant)
+                    }
                 }
                 // Inside the zoom layer, so the box follows pinch and pan.
                 if (faceBoxes.isNotEmpty()) FaceHighlightOverlay(faceBoxes,
@@ -1355,6 +1513,84 @@ private fun PhotoPage(
         }
     }
 }
+
+/**
+ * PERF-3 (#124): the viewer page's 800 px preview, showing the sharpest
+ * smaller copy already in memory (usually the tapped grid tile) as its
+ * placeholder, so the first frame needs no decode. [onFirstFrame] fires once
+ * an image is on the page (borrowed or decoded); [onLoaded] keeps the timing
+ * probe's meaning (the 800 px preview itself delivered).
+ */
+@Composable
+private fun ViewerPhotoPreview(
+    media: MediaRecord, modifier: Modifier,
+    onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
+    onDecodeError: () -> Unit,
+    forceFresh: Boolean, refreshRevision: Long
+) {
+    val context = LocalContext.current
+    val epoch = LocalGalleryPublicationEpoch.current
+    // An editor return must show its new pixels, never an older copy.
+    val instant = LocalViewerInstantOpen.current && !forceFresh
+    val request = remember(media, epoch, forceFresh, refreshRevision, instant) {
+        val preview = mediaPreviewRequest(context, media, ViewerInstantPreview.VIEWER_PREVIEW_PIXELS,
+            epoch, forceFresh, refreshRevision)
+        val cache = if (instant) SingletonImageLoader.get(context).memoryCache else null
+        val placeholder = cache?.let { memory ->
+            viewerPlaceholderKey(
+                keyFor = { px -> media.presentationCacheKeyOrNull(px, epoch) },
+                isCached = { key -> memory[MemoryCache.Key(key)] != null })
+        }
+        if (placeholder == null) preview
+        else preview.newBuilder().placeholderMemoryCacheKey(placeholder).build()
+    }
+    var previewLoaded by remember(request) { mutableStateOf(false) }
+    val currentOnLoaded by rememberUpdatedState(onLoaded)
+    val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
+    val currentOnDecodeError by rememberUpdatedState(onDecodeError)
+    // A neighbouring page may finish while still offscreen; the probe counts
+    // it when the page gets focus, without a second decode.
+    LaunchedEffect(previewLoaded, onLoaded != null) {
+        if (previewLoaded) currentOnLoaded?.invoke()
+    }
+    AsyncImage(model = request, contentDescription = media.name,
+        contentScale = ContentScale.Fit, modifier = modifier,
+        onState = { state ->
+            when (state) {
+                is AsyncImagePainter.State.Loading ->
+                    if (state.painter != null) currentOnFirstFrame()
+                is AsyncImagePainter.State.Success -> {
+                    currentOnFirstFrame()
+                    previewLoaded = true
+                }
+                is AsyncImagePainter.State.Error -> {
+                    previewLoaded = false
+                    currentOnDecodeError()
+                }
+                else -> Unit
+            }
+        })
+}
+
+/** PERF-3 proof switch: false shows the page without a borrowed first frame. */
+internal val LocalViewerInstantOpen = staticCompositionLocalOf { true }
+
+/**
+ * PERF-9 (#138): how many neighbour bases may be prefetched for a memory
+ * cache of the given size. The before/after emulator test replaces it, since
+ * the emulator's small cache stays below the real budget.
+ */
+internal val LocalViewerNeighbourBaseBudget =
+    staticCompositionLocalOf<(Long) -> Int> { ::viewerNeighbourBaseBudget }
+
+/** When the focused page settled (its base became due), nanoTime; 0 before. Emulator proof only. */
+internal val ViewerPhotoSettledAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoSettledAt")
+
+/** System.nanoTime() when the focused page first showed an image, or 0. */
+internal val ViewerPhotoFirstFrameAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoFirstFrameAt")
+
+/** System.nanoTime() when the focused page's 2400 px base landed, or 0. */
+internal val ViewerPhotoSharpAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhotoSharpAt")
 
 /**
  * True on the focused photo surface once its full-resolution decode has set
@@ -1395,7 +1631,9 @@ internal fun VideoPage(
     /** Gets a main-thread reader of the playing position while mounted, then null. */
     onLivePosition: ((() -> Long)?) -> Unit = {},
     chromeVisible: Boolean = true,
-    onToggleChrome: () -> Unit = {}
+    onToggleChrome: () -> Unit = {},
+    /** Drawn over the video surface until Media3 renders its first frame. */
+    poster: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
@@ -1447,6 +1685,15 @@ internal fun VideoPage(
             player.release()
         }
     }
+    // Declared after the release effect, so it is disposed first.
+    var firstFrameRendered by remember(player) { mutableStateOf(false) }
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onRenderedFirstFrame() { firstFrameRendered = true }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
 
     var seeking by remember(player) { mutableStateOf(false) }
     var seekFraction by remember(player) { mutableFloatStateOf(0f) }
@@ -1485,6 +1732,12 @@ internal fun VideoPage(
             this.player = player
             useController = false
         } }, modifier = Modifier.fillMaxSize())
+        if (poster != null && viewerVideoLayers(focused = true, rapidlyChanging = false,
+                settled = true, firstFrameRendered = firstFrameRendered).poster) {
+            Box(Modifier.fillMaxSize().testTag("atlas-viewer-video-first-frame-poster")) {
+                poster()
+            }
+        }
         // The Android video surface has no tap action. This transparent
         // Compose layer gives touch users the same chrome toggle as TalkBack
         // without stealing horizontal pager drags.
@@ -1493,7 +1746,8 @@ internal fun VideoPage(
         })
         AnimatedVisibility(chromeVisible,
             modifier = Modifier.align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .padding(start = 14.dp, end = 14.dp, bottom = 164.dp),
             enter = CHROME_ENTER, exit = CHROME_EXIT
         ) {
@@ -1501,7 +1755,7 @@ internal fun VideoPage(
                 if (seeking) {
                     Box(Modifier.size(176.dp, 110.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF292929))
+                        .background(AtlasTokens.Colors.Viewer.MediaTrack)
                         .testTag("atlas-video-seek-preview"),
                         contentAlignment = Alignment.Center) {
                         seekPreview?.let { frame ->
@@ -1513,7 +1767,7 @@ internal fun VideoPage(
                         Text(viewerVideoTimecode(targetMs ?: 0L),
                             color = Color.White, fontSize = 12.sp,
                             modifier = Modifier.align(Alignment.BottomCenter)
-                                .background(Color(0xA0000000))
+                                .background(AtlasTokens.Colors.Viewer.Scrim)
                                 .padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                     Spacer(Modifier.height(8.dp))
@@ -1559,7 +1813,7 @@ internal fun VideoPage(
                         colors = SliderDefaults.colors(
                             thumbColor = Color.White,
                             activeTrackColor = Color.White,
-                            inactiveTrackColor = Color(0xFF888888)),
+                            inactiveTrackColor = AtlasTokens.Colors.Viewer.SeekInactive),
                         modifier = Modifier.weight(1f)
                             .testTag("atlas-video-seek")
                             .semantics { contentDescription = "Seek video" }
@@ -1620,7 +1874,7 @@ private fun FaceHighlightOverlay(boxes: List<IndexedFaceBox>, image: IntSize) {
         val stroke = 3.dp.toPx()
         for (box in boxes) {
             val r = fitFaceRect(box, size.width, size.height, image.width, image.height) ?: continue
-            drawRoundRect(Color(0xFFB5E7DA), topLeft = r.topLeft, size = r.size,
+            drawRoundRect(AtlasTokens.Colors.Viewer.SelectionAccent, topLeft = r.topLeft, size = r.size,
                 cornerRadius = CornerRadius(stroke * 2), style = Stroke(width = stroke))
         }
     }

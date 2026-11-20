@@ -1,0 +1,14 @@
+# DESIGN-6 #136: Photos empty/denied, the Photos no-layout-jump pair and the
+# viewer decode error. Production composables, invented records, S24+ 1080x2340.
+photos-136-empty-light
+photos-136-empty-dark
+photos-136-denied-light
+photos-136-denied-dark
+photos-136-partial-access-light
+photos-136-partial-access-dark
+photos-136-jump-before-light
+photos-136-jump-before-dark
+photos-136-jump-after-light
+photos-136-jump-after-dark
+viewer-136-decode-error-light
+viewer-136-decode-error-dark

@@ -52,8 +52,16 @@ class GalleryBatchSelection private constructor(
      * the whole set. Unlike [toggled], an empty set keeps selection mode open
      * ("Select items"); only Back or the scope changing ends it.
      */
-    fun replaced(next: Set<String>): GalleryBatchSelection =
-        if (next == uris) this else GalleryBatchSelection(source, epoch, next.filterTo(HashSet()) { it.isNotBlank() })
+    fun replaced(next: Set<String>): GalleryBatchSelection = when {
+        next === uris -> this
+        // PERF-31 (#332): drag and select-all results are immutable and
+        // blank-free by construction. Adopt them as they are: no O(selection)
+        // equals or copy on every drag step.
+        next is SelectionOverlay || next is PositionKeySet ->
+            GalleryBatchSelection(source, epoch, next)
+        next == uris -> this
+        else -> GalleryBatchSelection(source, epoch, next.filterTo(HashSet()) { it.isNotBlank() })
+    }
 
     /**
      * Samsung GRID:S4: after a library reload of the same view, keep only the
@@ -81,6 +89,10 @@ class GalleryBatchSelection private constructor(
     }
 
     companion object {
+        /** Explicit empty-mode restoration after a previously verified save. */
+        internal fun empty(source: List<MediaRecord>, epoch: Long): GalleryBatchSelection? =
+            if (epoch < 0L) null else GalleryBatchSelection(source, epoch, emptySet())
+
         /** Starts from a full set (a long-press drag). Empty or blank-only sets do not start. */
         fun of(source: List<MediaRecord>, epoch: Long, selected: Set<String>): GalleryBatchSelection? {
             val clean = selected.filterTo(HashSet()) { it.isNotBlank() }

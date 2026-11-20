@@ -30,6 +30,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
+import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Close
@@ -71,6 +74,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
+import nl.atlas.gallery.featuresearch.AtlasSearch
+import nl.atlas.gallery.featuresearch.SearchHistoryScope
+import nl.atlas.gallery.featuresearch.scopedNamedMatches
 
 /**
  * Where an open slideshow is: which story, which moment, paused or playing.
@@ -243,14 +249,20 @@ fun AtlasStoriesScreen(
     /** Optional observer invoked after Media3 release (useful for lifecycle diagnostics). */
     onVideoPlayerReleased: () -> Unit = {}
 ) {
-    val cards = currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+    var searchText by remember(currentGrantEpoch, currentCatalogRevision) { mutableStateOf("") }
+    val cards = scopedNamedMatches(
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision), searchText
+    ) { it.title + " " + it.caption }
     // A position restored after a recreate (#451) settles once a live deck arrives.
     LaunchedEffect(playback, playback.restored, deck, currentGrantEpoch, currentCatalogRevision) {
         playback.settleRestored(deck, currentGrantEpoch, currentCatalogRevision)
     }
     // An expired permission or catalogue publication closes the player, not just its image.
     val position = playback.resolvedOrNull(deck, currentGrantEpoch, currentCatalogRevision)
-    val opened = position?.let { p -> cards.firstOrNull { it.key == p.storyKey } }
+    val opened = position?.let { p ->
+        currentStoryCardsOrEmpty(deck, currentGrantEpoch, currentCatalogRevision)
+            .firstOrNull { it.key == p.storyKey }
+    }
     if (position != null && opened != null) {
         StoryPlayback(
             story = opened,
@@ -273,7 +285,12 @@ fun AtlasStoriesScreen(
         onBack()
     }
     BackHandler(onBack = close)
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+      Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
@@ -283,33 +300,20 @@ fun AtlasStoriesScreen(
             }
             Text("Stories", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 8.dp))
+                modifier = Modifier.weight(1f).padding(start = 8.dp))
+            AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                historyScope = SearchHistoryScope.STORIES)
         }
         if (cards.isEmpty() &&
             playback.awaitingDeck(deck, currentGrantEpoch, currentCatalogRevision)) {
             // #457: a restored slideshow waits for the re-planned deck.
             StoriesPlanningPlaceholder()
         } else if (cards.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(32.dp).testTag("atlas-stories-empty"),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Your stories will appear here", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "When enough accessible photos share a date or a month, ATLAS can create a private recap. Nothing is uploaded.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            // DESIGN-6 #136: the shared quiet state.
+            AtlasEmptyState(title = "Your stories will appear here",
+                icon = Icons.Outlined.AutoStories,
+                modifier = Modifier.testTag("atlas-stories-empty"))
         } else {
-            Text(
-                "Moments from your library",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, bottom = 12.dp)
-            )
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize().testTag("atlas-stories-grid"),
@@ -327,28 +331,18 @@ fun AtlasStoriesScreen(
                 }
             }
         }
+      }
     }
 }
 
-/** Shown while a restored slideshow waits for its re-planned deck (#457). */
+/**
+ * Shown while a restored slideshow waits for its re-planned deck (#457). A
+ * load like any other (DESIGN-6 #136 state 7): quiet for 300 ms, then one line.
+ */
 @Composable
 private fun StoriesPlanningPlaceholder() {
-    Column(
-        Modifier.fillMaxSize().padding(32.dp).testTag("atlas-stories-planning"),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Filled.AutoStories, contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-        Spacer(Modifier.height(14.dp))
-        Text("Getting your stories ready…", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "ATLAS is looking through your library again so you can continue where you left off.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    AtlasGalleryLoading("Getting your stories ready…",
+        modifier = Modifier.testTag("atlas-stories-planning"))
 }
 
 @Composable

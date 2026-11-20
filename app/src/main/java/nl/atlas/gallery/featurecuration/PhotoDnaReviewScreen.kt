@@ -18,6 +18,8 @@ import androidx.compose.ui.semantics.Role
 import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.AI_EDITED_LABEL
 
 /** A request for more verification, NOT authorization for a MediaStore operation. */
 data class CurationReviewRequest(
@@ -37,7 +39,7 @@ data class CurationReviewRequest(
  * separate Android system Trash consent. This composable does NONE of that.
  */
 @Composable
-fun PhotoDnaReviewScreen(
+internal fun PhotoDnaReviewScreen(
     plan: CurationReviewPlan,
     thumbnail: @Composable (CurationAsset, Modifier) -> Unit,
     onReviewRequested: (CurationReviewRequest) -> Unit,
@@ -49,10 +51,49 @@ fun PhotoDnaReviewScreen(
      * Per group key, bumped by the host when a Keep tap was refused or
      * ignored: the Keep badge goes back to the group's stored or suggested keeper.
      */
-    keeperResets: Map<String, Int> = emptyMap()
+    keeperResets: Map<String, Int> = emptyMap(),
+    /** Provenance is display-only and never enters duplicate/Trash review. */
+    provenance: List<AiEditProvenanceGroup> = emptyList(),
+    provenanceThumbnail: @Composable (String, Modifier) -> Unit = { _, _ -> },
+    onOpenProvenancePhoto: (String) -> Unit = {}
 ) {
     LazyColumn(modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("photo-dna-list"),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("AI edits (${provenance.size})", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag("photo-dna-provenance-heading"))
+        }
+        items(provenance, key = { "ai:" + it.originalUri }) { family ->
+            Card(Modifier.fillMaxWidth().testTag("photo-dna-provenance-group")) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Original + AI versions (${family.editedUris.size})",
+                        style = MaterialTheme.typography.titleSmall)
+                    LazyRow(modifier = Modifier.testTag("photo-dna-provenance-tiles"),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(listOf(family.originalUri) + family.editedUris) { uri ->
+                            // #458: saved edits read "Edited with AI", the original never does.
+                            val tileLabel = if (uri == family.originalUri) "Original" else AI_EDITED_LABEL
+                            Column(Modifier.width(144.dp)) {
+                                Box(Modifier.fillMaxWidth().height(112.dp)
+                                    .clickable { onOpenProvenancePhoto(uri) }
+                                    .semantics { contentDescription = tileLabel }
+                                    .testTag(if (uri == family.originalUri) {
+                                        "photo-dna-provenance-original"
+                                    } else {
+                                        "photo-dna-provenance-edit-${uri.substringAfterLast('/')}"
+                                    })) {
+                                    provenanceThumbnail(uri, Modifier.fillMaxSize())
+                                }
+                                Text(tileLabel,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    Text("Saved edit history · not a visual similarity match",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
         item {
             Text(PhotoDnaCopy.duplicatesHeader(plan.exactGroups.size),
                 style = MaterialTheme.typography.titleMedium)

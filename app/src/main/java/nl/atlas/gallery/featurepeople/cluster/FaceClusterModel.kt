@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featurepeople.cluster
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
+import java.security.MessageDigest
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -121,6 +122,62 @@ class FacePair private constructor(
 data class RejectedPerson(val observation: NativeFaceObservationId, val person: PersonKey)
 
 /**
+ * HUB-1A (#210): a human said this unnamed group is "not one person" (it
+ * mixes several people). Kept as the group's [anchor] (its smallest member,
+ * the id People already shows it by) plus a [fingerprint] of its exact
+ * membership, so the fact speaks only about that membership: once the group
+ * gains or loses a face its fingerprint differs and the fact no longer
+ * matches it. Only opaque face ids enter the fingerprint, never a vector,
+ * media key or picture. Stage 2 (#211) decides what a matching fact does;
+ * clustering ignores it.
+ */
+data class MixedGroup(val anchor: NativeFaceObservationId, val fingerprint: String) {
+    init {
+        require(FINGERPRINT.matches(fingerprint)) { "Invalid mixed-group fingerprint" }
+    }
+
+    /** True when this fact is about exactly [members] (any order). */
+    fun matches(members: Collection<NativeFaceObservationId>): Boolean =
+        members.size in MIN_MEMBERS..MAX_MEMBERS &&
+            members.toSet().size == members.size && of(members) == this
+
+    companion object {
+        /** Lowercase hex SHA-256: fixed size, whatever the group size. */
+        val FINGERPRINT = Regex("[0-9a-f]{64}")
+        /** A group of one face cannot mix two people. */
+        const val MIN_MEMBERS = 2
+        const val MAX_MEMBERS = ClusterReviewFacts.MAX_FACTS
+        private const val DOMAIN = "atlas-mixed-group/v1\n"
+
+        /** The fact for exactly [members]; order does not matter, duplicates are refused. */
+        fun of(members: Collection<NativeFaceObservationId>): MixedGroup {
+            val sorted = sortedMembers(members)
+            return MixedGroup(NativeFaceObservationId(sorted.first()), digest(sorted))
+        }
+
+        /** Stable, order-independent fingerprint of [members]. */
+        fun fingerprint(members: Collection<NativeFaceObservationId>): String =
+            digest(sortedMembers(members))
+
+        private fun sortedMembers(members: Collection<NativeFaceObservationId>): List<String> {
+            require(members.size in MIN_MEMBERS..MAX_MEMBERS) { "Mixed group size out of range" }
+            val sorted = members.map { it.localHex }.sorted()
+            for (i in 1 until sorted.size) {
+                require(sorted[i] != sorted[i - 1]) { "Duplicate mixed-group member" }
+            }
+            return sorted
+        }
+
+        private fun digest(sorted: List<String>): String {
+            val sha = MessageDigest.getInstance("SHA-256")
+            sha.update(DOMAIN.toByteArray(Charsets.US_ASCII))
+            for (hex in sorted) sha.update((hex + "\n").toByteArray(Charsets.US_ASCII))
+            return sha.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        }
+    }
+}
+
+/**
  * Human review facts, the only authority over identities. Clustering reads
  * them and never writes them:
  * - [confirmed] faces are owned by their person and never enter an unknown
@@ -135,16 +192,20 @@ data class RejectedPerson(val observation: NativeFaceObservationId, val person: 
  *   groups) keep the clusters of both faces together, whatever their score.
  *   A [cannotLink] fact between any two faces of those clusters wins: "not
  *   the same person" is never overridden, also not by another human answer.
+ * - [mixedGroups] (HUB-1A, #210): "not one person" answers for exact unnamed
+ *   group memberships. Stored and backed up only; clustering ignores them.
  */
 data class ClusterReviewFacts(
     val confirmed: Map<NativeFaceObservationId, PersonKey> = emptyMap(),
     val cannotLink: Set<FacePair> = emptySet(),
     val rejectedPeople: Set<RejectedPerson> = emptySet(),
-    val sameUnknown: Set<FacePair> = emptySet()
+    val sameUnknown: Set<FacePair> = emptySet(),
+    val mixedGroups: Set<MixedGroup> = emptySet()
 ) {
     init {
         require(confirmed.size <= MAX_FACTS && cannotLink.size <= MAX_FACTS &&
-            rejectedPeople.size <= MAX_FACTS && sameUnknown.size <= MAX_FACTS) {
+            rejectedPeople.size <= MAX_FACTS && sameUnknown.size <= MAX_FACTS &&
+            mixedGroups.size <= MAX_FACTS) {
             "Review fact limit exceeded"
         }
     }

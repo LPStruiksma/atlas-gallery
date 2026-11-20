@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featuregrid
 
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.featuredesign.scrolledFromTop
 import nl.atlas.gallery.featuredesign.LocalAtlasHeaderCollapsed
@@ -112,7 +113,8 @@ private class TimelinePlan(
     val sort: TimelineSort,
     val density: GridDensity,
     val bounds: GridViewportGeometry,
-    val geometry: TimelineGridGeometry
+    val geometry: TimelineGridGeometry,
+    val incrementalScrollTarget: TimelineScrollTarget? = null
 )
 
 /**
@@ -127,6 +129,12 @@ internal fun zoomHandoffShiftPx(focusX: Float, fractionX: Float, newLeftPx: Floa
 
 /** The photo under the fingers at commit, for the sideways handoff. */
 private class ZoomHandoff(val mediaIndex: Int, val fractionX: Float)
+
+private data class IncrementalScrollFocus(
+    val mediaKey: String,
+    val fractionY: Float,
+    val focusYPx: Float
+)
 
 private data class PendingTimelineFocus(
     val sourceEpoch: GridCatalogIdentity,
@@ -159,6 +167,8 @@ fun AtlasTimelineGallery(
     busy: Boolean = false,
     /** Pass permission/publication epoch to prevent stale grouped rows or scrubs. */
     catalogueEpoch: Long = 0L,
+    /** Only for a same-grant observer publication; never for a regrant. */
+    preserveScrollOnIncremental: Boolean = false,
     /** #642: consecutive part-row days in one month share a header (person page). */
     mergeSparseDays: Boolean = false,
     /**
@@ -193,10 +203,14 @@ fun AtlasTimelineGallery(
      */
     header: (@Composable () -> Unit)? = null,
     /** Tests and screenshots: keep the fast-scroll handle shown and grabbable. */
-    fastScrollAlwaysShown: Boolean = false
+    fastScrollAlwaysShown: Boolean = false,
+    mediaSort: nl.atlas.gallery.MediaSort? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE) }
+    // #435: application context reuses the file StartupPreferenceWarmup loaded off Main.
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE)
+    }
     var density by rememberSaveable(viewKey) {
         mutableStateOf(entryDensity ?: GridDensity.fromColumns(
             prefs.getInt(viewKey, GridDensity.MEDIUM.columns)
@@ -209,7 +223,10 @@ fun AtlasTimelineGallery(
     }
     LaunchedEffect(viewKey, density) { prefs.edit().putInt(viewKey, density.columns).apply() }
     val sourceKey = GridCatalogIdentity(items, catalogueEpoch)
-    val locale = Locale.getDefault()
+    // Capture the actual visible photo, not a raw LazyGrid index: inserting
+    // headers or rows above it otherwise jumps the viewport. The prior plan
+    // is retained only as a non-rendered anchor while the new plan computes.
+     val locale = Locale.getDefault()
     val zone = ZoneId.systemDefault()
     val localDensity = LocalDensity.current
     val gapPx = with(localDensity) { 3.dp.roundToPx() }
@@ -230,6 +247,37 @@ fun AtlasTimelineGallery(
     // Tracks the layout actually selected for the grid, including an immediate
     // cache hit before the asynchronous latestPlan pointer is updated.
     var displayedPlan by remember { mutableStateOf<TimelinePlan?>(null, androidx.compose.runtime.referentialEqualityPolicy()) }
+    // Async sorting briefly supplies an empty list before a new publication's
+    // sorted/hidden-photo projection lands. Carry the captured anchor over
+    // that transient state without ever rendering an obsolete media plan.
+    val retainedIncrementalFocus = remember { arrayOfNulls<IncrementalScrollFocus>(1) }
+    val incrementalFocus = remember(sourceKey) {
+        if (!preserveScrollOnIncremental) {
+            retainedIncrementalFocus[0] = null
+            null
+        } else retainedIncrementalFocus[0] ?: run {
+            val former = displayedPlan
+            val layout = gridState.layoutInfo
+            if (former == null || former.source === items ||
+                former.density != density || former.sort != sort ||
+                !gridState.canScrollBackward ||
+                former.geometry.timeline.slots.size != layout.totalItemsCount ||
+                !former.bounds.matchesMeasuredViewport(
+                    layout.viewportSize.width, layout.viewportSize.height)) null
+            else layout.visibleItemsInfo.firstNotNullOfOrNull { visible ->
+                val mediaSlot = former.geometry.timeline.slots.getOrNull(visible.index)
+                    as? TimelineSlot.Media ?: return@firstNotNullOfOrNull null
+                val oldItem = former.source.getOrNull(mediaSlot.mediaIndex)
+                    ?: return@firstNotNullOfOrNull null
+                IncrementalScrollFocus(
+                    oldItem.uri, .5f, visible.offset.y + visible.size.height / 2f
+                ).also { retainedIncrementalFocus[0] = it }
+            }
+        }
+    }
+    var lastReanchoredPublication by remember {
+        mutableStateOf<GridCatalogIdentity?>(null)
+    }
     var pending by remember { mutableStateOf<PendingTimelineFocus?>(null) }
     // #507 continuous zoom: while a pinch runs and while it settles, the grid
     // is drawn scaled around the fingers. zoomScale is relative to the tile
@@ -338,10 +386,10 @@ fun AtlasTimelineGallery(
             // Reuse only completed plans for this exact authorized inventory,
             // viewport, sort, locale and time zone. Remember invalidates the
             // entire bounded cache on a new catalogue/grant or layout geometry.
-            val recentPlans = remember(sourceKey, sort, bounds, headerHeightPx, locale, zone) {
+            val recentPlans = remember(sourceKey, sort, mediaSort, bounds, headerHeightPx, locale, zone) {
                 RecentGridDensityPlans<TimelinePlan>(capacity = 2)
             }
-            LaunchedEffect(sourceKey, sort, density, bounds, headerHeightPx, locale, zone) {
+            LaunchedEffect(sourceKey, sort, mediaSort, density, bounds, headerHeightPx, locale, zone) {
                 draggingFraction = null
                 val cached = recentPlans.get(density)
                 if (cached != null) {
@@ -351,18 +399,36 @@ fun AtlasTimelineGallery(
                 latestPlan = null // no stale plan while 150k rows are replanned
                 val parent = coroutineContext
                 val computed = withContext(Dispatchers.Default) {
-                    val projection = ArrayList<TimelineMedia>(items.size)
-                    items.forEachIndexed { i, media ->
+                    // PERF-6 (#127): no TimelineMedia projection and no URI
+                    // string per row. Slots read keys from `items` on demand.
+                    val anchorKey = incrementalFocus?.mediaKey
+                    val anchorHash = anchorKey?.hashCode() ?: 0
+                    var incrementalAnchorIndex = -1
+                    if (anchorKey != null) for (i in items.indices) {
                         if ((i and 511) == 0) parent.ensureActive()
-                        projection.add(TimelineMedia(media.uri, media.takenAtMillis))
+                        val media = items[i]
+                        if (media.uriHashCodeWithoutAllocation() == anchorHash && media.uri == anchorKey) {
+                            incrementalAnchorIndex = i
+                        }
                     }
-                    val index = buildGridTimelineIndex(projection, sort, density, zone, locale,
+                    val byModified = mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED
+                    val index = buildGridTimelineIndex(items.size, { i ->
+                            val media = items[i]
+                            if (byModified && media.modifiedAtSeconds > 0L &&
+                                media.modifiedAtSeconds <= Long.MAX_VALUE / 1000L
+                            ) media.modifiedAtSeconds * 1000L else media.takenAtMillis
+                        },
+                        { items[it].uri }, sort, density, zone, locale,
                         mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
                         parent.ensureActive()
                     }
                     val geometry = planTimelineVisualRows(index, density.columns, bounds,
                         headerHeightPx) { parent.ensureActive() }
-                    TimelinePlan(items, sourceKey, sort, density, bounds, geometry)
+                    val scrollTarget = if (incrementalAnchorIndex >= 0)
+                        geometry.targetMedia(incrementalAnchorIndex,
+                            incrementalFocus!!.fractionY, incrementalFocus.focusYPx)
+                    else null
+                    TimelinePlan(items, sourceKey, sort, density, bounds, geometry, scrollTarget)
                 }
                 recentPlans.putCompleted(density, computed)
                 latestPlan = computed
@@ -379,7 +445,11 @@ fun AtlasTimelineGallery(
             val ready = currentOrCachedGridPlan(
                 latestPlan, recentPlans.peek(density), ::matchingPlan
             ) ?: displayedPlan?.takeIf {
-                it.source === items && it.publication == sourceKey && it.sort == sort &&
+                // During a density handoff, keep only the preceding mounted
+                // plan. An unrelated state recomposition must not resurrect
+                // an old density once its gesture has settled.
+                zoomSettleTo != null &&
+                    it.source === items && it.publication == sourceKey && it.sort == sort &&
                     it.bounds == bounds && it.density != density
             }
             // #507: arriving from original rows, start at their drawn photo size.
@@ -424,7 +494,21 @@ fun AtlasTimelineGallery(
             // Toolbar and slider must use what the grid actually displays, not
             // a prior-density latestPlan while a completed cache hit is shown.
             // SideEffect only publishes after a successful composition.
-            SideEffect { displayedPlan = ready }
+            SideEffect {
+                // Keep the previous plan available only for capturing a new
+                // source's anchor. It is NEVER rendered after source change.
+                if (ready != null) displayedPlan = ready
+                if (ready != null && ready.source.isNotEmpty())
+                    retainedIncrementalFocus[0] = null
+                val target = ready?.incrementalScrollTarget
+                if (target != null && ready.publication == sourceKey &&
+                    lastReanchoredPublication != sourceKey) {
+                    lastReanchoredPublication = sourceKey
+                    gridState.requestScrollToItem(
+                        target.firstSlotIndex, target.firstSlotScrollOffsetPx
+                    )
+                }
+            }
             // Lane I hook: publish exactly the displayed slots once per ready
             // instance (null while replanning), never once per frame.
             LaunchedEffect(ready) {
@@ -450,9 +534,16 @@ fun AtlasTimelineGallery(
                 }
                 if (pendingScrub === command) pendingScrub = null
             }
-            if (ready == null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (items.isEmpty() && !busy) "No photos here yet" else "Arranging timeline…")
+            // DESIGN-6 #136: an empty library plans an empty grid too; show the
+            // quiet line there, centred in the same box, instead of nothing.
+            if (ready == null || items.isEmpty()) {
+                // The shared quiet state centres itself above the nav pill;
+                // while busy the box stays empty (state 7: no spinner wall).
+                Box(Modifier.fillMaxSize()) {
+                    if (items.isEmpty() && !busy) {
+                        AtlasEmptyState(title = "No photos yet",
+                            titleTag = "atlas-timeline-empty")
+                    }
                 }
             } else {
                 // #507: a pinch commit swaps in a new grid that would first be
@@ -736,6 +827,7 @@ fun AtlasTimelineGallery(
             TimelineFastScrollLayer(
                 items = items,
                 sort = sort,
+                mediaSort = mediaSort,
                 gridState = gridState,
                 sourceKey = sourceKey,
                 timelineFor = { info ->
@@ -765,6 +857,7 @@ fun AtlasTimelineGallery(
 private fun TimelineFastScrollLayer(
     items: List<MediaRecord>,
     sort: TimelineSort,
+    mediaSort: nl.atlas.gallery.MediaSort?,
     gridState: LazyGridState,
     sourceKey: GridCatalogIdentity,
     timelineFor: (LazyGridLayoutInfo) -> GridTimelineIndex?,
@@ -792,8 +885,11 @@ private fun TimelineFastScrollLayer(
     val destination = tl?.scrubTarget(shownFraction)
     // The bubble follows the ACTIVE sort: dates, size buckets or position.
     val label = destination?.let { target ->
-        fastScrollBubbleLabel(sort, target.dateLabel,
-            items.getOrNull(target.mediaIndex)?.sizeBytes ?: 0L, target.mediaIndex, items.size)
+        val media = items.getOrNull(target.mediaIndex)
+        if (mediaSort != null) fastScrollBubbleLabel(mediaSort, target.dateLabel,
+            media?.sizeBytes ?: 0L, media?.name.orEmpty(), target.mediaIndex, items.size)
+        else fastScrollBubbleLabel(sort, target.dateLabel,
+            media?.sizeBytes ?: 0L, target.mediaIndex, items.size)
     }
     TimelineFastScroller(
         fraction = shownFraction,

@@ -22,6 +22,7 @@ import nl.atlas.gallery.featuredesign.darkGalleryColors
 import nl.atlas.gallery.featuredesign.lightGalleryColors
 import kotlin.math.abs
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
@@ -36,6 +37,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import nl.atlas.gallery.featuredesign.AtlasDestination
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -64,6 +69,29 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
 
     private val mode = if (dark) "dark" else "light"
 
+    /**
+     * DESIGN-12: check the actual Activity window, not a Compose-only theme
+     * override. The same journey saves full-device light/dark captures on the
+     * Photos and Search tabs, which include Android's system bars.
+     */
+    @Test fun mainScreenSystemBarIconsMatchSystemTheme() {
+        waitFor(hasTestTag("atlas-nav-photos"))
+        listOf("photos", "search").forEach { tab ->
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            settle()
+            compose.activityRule.scenario.onActivity { activity ->
+                val controller = WindowCompat.getInsetsController(
+                    activity.window, activity.window.decorView
+                )
+                assertEquals("$mode $tab status bar icons", !dark,
+                    controller.isAppearanceLightStatusBars)
+                assertEquals("$mode $tab navigation bar icons", !dark,
+                    controller.isAppearanceLightNavigationBars)
+            }
+            saveUiEvidence("design-12-$tab-$mode.png")
+        }
+    }
+
     @Test fun mainTabsAndPhotoDnaFollowTheSystemSetting() {
         waitFor(hasTestTag("atlas-nav-photos"))
         compose.activityRule.scenario.onActivity {
@@ -83,10 +111,11 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 saveUiEvidence("nav-685-$tab-$mode.png")
             }
         }
-        compose.onNodeWithTag("atlas-nav-albums").performClick()
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor(hasTestTag("atlas-albums-menu-photo-dna"))
-        compose.onNodeWithTag("atlas-albums-menu-photo-dna").performClick()
+        compose.tap(hasTestTag("atlas-nav-albums"))
+        compose.awaitThat("the Albums tab selected") {
+            compose.exists(hasTestTag("atlas-nav-albums") and isSelected())
+        }
+        openMenuItem("atlas-header-more", "atlas-albums-menu-photo-dna")
         waitFor(hasTestTag("photo-dna-exact-group"))
         settle()
         compose.onNodeWithTag("atlas-photo-dna-title").assertTextEquals("Photo DNA")
@@ -127,13 +156,15 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
             hasText("ATLAS-Theme-Fixture", substring = true))
         settle()
         saveUiEvidence("parity-24-albums-detail-$mode.png")
+        // On entry, the detail title, Back and sort remain visible in both themes.
+        compose.onNodeWithTag("atlas-photos-sort").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-header-back").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-header-title").assertIsDisplayed()
         compose.onNodeWithTag("atlas-header-back").performClick()
         waitFor(hasTestTag("atlas-nav-people"))
         compose.onNodeWithTag("atlas-nav-people").performClick()
         waitFor(hasTestTag("atlas-people-home"))
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor(hasTestTag("atlas-people-hidden-open"))
-        compose.onNodeWithTag("atlas-people-hidden-open").performClick()
+        openMenuItem("atlas-header-more", "atlas-people-hidden-open")
         waitFor(hasTestTag("atlas-people-hidden"))
         settle()
         saveUiEvidence("parity-24-people-hidden-$mode.png")
@@ -147,11 +178,12 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         // Compose idle does not mean SurfaceFlinger composited the viewer: one
         // CI shot still showed the light route below (#82, mean 0.789). Poll up
         // to 5 s; the threshold is unchanged.
-        val deadline = android.os.SystemClock.uptimeMillis() + 5_000L
         var mean = bottomStripMean()
-        while (mean >= 0.35 && android.os.SystemClock.uptimeMillis() < deadline) {
-            Thread.sleep(250L)
-            mean = bottomStripMean()
+        runCatching {
+            compose.awaitThat("a dark navigation bar strip under $what", timeoutMs = 5_000L) {
+                mean = bottomStripMean()
+                mean < 0.35
+            }
         }
         assertTrue("$what: navigation bar strip is light (mean luminance $mean)",
             mean < 0.35)
@@ -185,7 +217,11 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
      * colour; the photo-overlay circles are covered by existing selection tests.
      */
     @Test fun uncheckedSelectionPageRingsContrastWithBackground() {
+        // A previous sort journey may have persisted non-date ordering. Force
+        // the dated view before looking for a date header's selection circle.
         waitFor(hasTestTag("atlas-nav-photos"))
+        openMenuItem("atlas-photos-sort", "atlas-media-sort-date_created")
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         // MediaStore inventory loads off the Compose frame clock. Wait for the
         // fixture's actual tile rather than sampling immediately after nav appears.
         val visibleTile = SemanticsMatcher("visible timeline tile") { node ->
@@ -237,13 +273,16 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 // The Photos sort icon remains available on the Photos route.
                 compose.onNodeWithTag("atlas-photos-sort").assertExists()
             }
-            compose.onNodeWithTag("atlas-header-more").performClick()
-            waitFor(hasTestTag("atlas-library-status"))
+            compose.tap(hasTestTag("atlas-header-more"))
+            compose.awaitThat("the $tab overflow menu open") {
+                compose.exists(hasTestTag("atlas-library-status"))
+            }
             settle()
             saveUiEvidence("settings-664-menu-$tab-$mode.png")
-            // Assert the Settings menu entry is still visible before clicking,
+            // Assert the Settings menu entry is still visible before tapping,
             // then observe the destination header before inspecting its content.
-            compose.onNodeWithTag("atlas-library-status").assertIsDisplayed().performClick()
+            compose.onNodeWithTag("atlas-library-status").assertIsDisplayed()
+            compose.tap(hasTestTag("atlas-library-status"))
             waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
             waitFor(hasTestTag("atlas-settings-screen"))
             if (tab == "photos") {
@@ -293,10 +332,23 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         assertNotEquals("Albums selected state must be filled", albums.icon, albums.selectedIcon)
     }
 
+    /**
+     * Before a screenshot or a window check: Compose idle (its animations run
+     * on the test clock) and the window settled (rule 6), instead of the old
+     * fixed 1 s pause.
+     */
     private fun settle() {
         compose.waitForIdle()
-        Thread.sleep(1_000)
-        compose.waitForIdle()
+        compose.awaitWindowSettled()
+    }
+
+    /** Taps [opener], waits for [item] in the window it opens (rule 5), then taps [item]. */
+    private fun openMenuItem(opener: String, item: String) {
+        compose.tap(hasTestTag(opener))
+        compose.awaitThat("$item in the window opened by $opener") {
+            compose.exists(hasTestTag(item))
+        }
+        compose.tap(hasTestTag(item))
     }
 
     private fun waitFor(matcher: SemanticsMatcher) = compose.waitForNode(matcher)

@@ -15,21 +15,30 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
+import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
+import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 
 /**
  * #664: one Samsung-style Settings destination for the gallery's existing
@@ -57,13 +66,48 @@ internal fun AtlasSettingsScreen(
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
+    onReadDiagnostics: suspend () -> String = { "ATLAS diagnostics unavailable" },
+    onCopyDiagnostics: (String) -> Unit = {},
+    onShareDiagnostics: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
     onScanNow: (() -> Unit)? = null,
-    scanStatusNote: String? = null
+    scanStatusNote: String? = null,
+    /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
+    searchHistoryOn: Boolean? = null,
+    onSearchHistoryOn: (Boolean) -> Unit = {},
+    onClearSearchHistory: () -> Unit = {},
+    performance: PerformanceAggregates = PerformanceSession.aggregate
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
+    var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    // Aggregate is not Compose state; refresh the read-only report once its
+    // latest preview and heap samples have been forwarded.
+    var performanceReadVersion by remember { mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
+        if (performanceExpanded) {
+            PerformanceSession.updateViewer()
+            PerformanceSession.sampleHeap()
+            performanceReadVersion++
+        }
+    }
+    var exportExpanded by rememberSaveable { mutableStateOf(false) }
+    var exported by remember { mutableStateOf<String?>(null) }
+    var exportFailed by remember { mutableStateOf(false) }
+    if (exportExpanded) {
+        LaunchedEffect(exportExpanded) {
+            exported = null
+            exportFailed = false
+            try {
+                exported = onReadDiagnostics()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                exportFailed = true
+            }
+        }
+    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -96,6 +140,18 @@ internal fun AtlasSettingsScreen(
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
         }
+        SettingsGroup("Editing", "atlas-settings-ai-edit") {
+            // #430: the row opens the "AI Edit" sub-screen; its label matches that title and
+            // its value is the status (the default service), not a description.
+            var aiEditOpen by rememberSaveable { mutableStateOf(false) }
+            val context = LocalContext.current
+            val defaultService = remember(context, aiEditOpen) {
+                ProviderSettingsStore(context).defaultProvider()?.name
+            }
+            SettingsActionRow("AI Edit", "atlas-settings-ai-edit-open",
+                onClick = { aiEditOpen = true }, value = defaultService ?: "Not set up")
+            if (aiEditOpen) AiEditSettingsDialog(onClose = { aiEditOpen = false })
+        }
         SettingsGroup("Advanced", "atlas-settings-advanced-group") {
             SettingsActionRow("Advanced options", "atlas-settings-advanced",
                 onClick = { advanced = !advanced }, value = if (advanced) "Hide" else "Show")
@@ -106,6 +162,25 @@ internal fun AtlasSettingsScreen(
                     "atlas-people-link-v4", onLinkV4)
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
+                }
+                SettingsActionRow("Performance", "atlas-settings-performance",
+                    onClick = { performanceExpanded = !performanceExpanded },
+                    value = if (performanceExpanded) "Hide" else "Show")
+                if (performanceExpanded) {
+                    // Explicit read, not a hot polling loop or a MediaStore query.
+                    // #121 brief rev 2: six headline rows first, action details below.
+                    val overview = remember(performanceReadVersion) {
+                        PerformanceReport.overview(performance)
+                    }
+                    val actions = remember(performanceReadVersion) {
+                        PerformanceReport.actions(performance)
+                    }
+                    overview.forEach { SettingsMetricRow(it) }
+                    Text("Action details",
+                        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)
+                            .testTag("atlas-perf-actions-heading"),
+                        style = MaterialTheme.typography.titleSmall)
+                    actions.forEach { SettingsMetricRow(it) }
                 }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
@@ -132,7 +207,57 @@ internal fun AtlasSettingsScreen(
                         }
                     }
                 }
+                SettingsActionRow("Export diagnostics", "atlas-settings-export-diagnostics",
+                    onClick = { exportExpanded = !exportExpanded },
+                    value = if (exportExpanded) "Hide" else "Show")
+                if (exportExpanded) {
+                    // Explicit user action only. No identifier or media leaves the device
+                    // without the user's separate Copy or Share tap.
+                    val report = exported
+                    Text(when {
+                        exportFailed -> "Could not prepare diagnostics"
+                        report == null -> "Preparing aggregate diagnostics…"
+                        else -> report
+                    }, modifier = Modifier.fillMaxWidth().padding(12.dp)
+                        .testTag("atlas-settings-export-diagnostics-text"),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 18, overflow = TextOverflow.Ellipsis)
+                    if (report != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onCopyDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-copy")) {
+                                Text("Copy")
+                            }
+                            TextButton(onClick = { onShareDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-share")) {
+                                Text("Share text file")
+                            }
+                        }
+                    }
+                }
             }
+        }
+        // #427 review: below Advanced, so the existing groups keep their place on screen.
+        if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
+            // Off stops saving and clears every scope (Undo on the snackbar).
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .toggleable(value = searchHistoryOn, role = Role.Switch,
+                        onValueChange = onSearchHistoryOn)
+                    .testTag("atlas-settings-search-history"),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    Text("Save search history", style = MaterialTheme.typography.bodyLarge)
+                    Text("Recent searches stay on this phone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = searchHistoryOn, onCheckedChange = null)
+            }
+            SettingsActionRow("Clear search history", "atlas-settings-search-history-clear",
+                onClearSearchHistory)
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
@@ -181,5 +306,16 @@ private fun SettingsActionRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+@Composable
+private fun SettingsMetricRow(row: PerformanceReport.Row) {
+    // Label above, value below: a long value wraps under the label and never
+    // squeezes it (#610), also at 200% font. Read-only, no click target.
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(row.tag)) {
+        Text(row.label, style = MaterialTheme.typography.bodyLarge)
+        Text(row.value, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

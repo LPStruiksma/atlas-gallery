@@ -12,8 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
@@ -23,12 +22,22 @@ import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** API35 Compose tests use synthetic vectors and a neutral host preview only. */
 class PeopleDestinationSelectorUiTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+
+    // No keyboard slides up: these tests are about which person a choice
+    // assigns, not about layout above the keyboard (docs/testing/EMULATOR_TESTS.md).
+    @get:Rule val chain: RuleChain =
+        RuleChain.outerRule(KeyboardRule(TestKeyboard.None)).around(compose)
 
     private val first = PersonKey("ui-synthetic-first")
     private val second = PersonKey("ui-synthetic-second")
@@ -80,11 +89,17 @@ class PeopleDestinationSelectorUiTest {
             }
         }
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
+        compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
+        compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-2"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().performClick()
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle {
             assertEquals(1, commands.size)
             val action = commands.single().action as PeopleReviewAction.AssignCluster
@@ -92,10 +107,9 @@ class PeopleDestinationSelectorUiTest {
         }
         // Same rendered callback after revoke must not dispatch a second action.
         compose.runOnIdle { live = null }
-        compose.onNodeWithTag("atlas-group-1-destination-option-1")
-            .performScrollTo().performClick()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().performClick()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-1"))
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle { assertEquals(1, commands.size) }
     }
 
@@ -116,22 +130,21 @@ class PeopleDestinationSelectorUiTest {
             }
         }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
-        // Alphabetical catalogue: the two "Same Name" choices precede "Source".
+        // Search returns matching identities by stable catalogue position.
+        screen.performScrollToNode(hasTestTag("atlas-album-3-destination-search"))
+        compose.typeText(hasTestTag("atlas-album-3-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-1"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-1").performClick()
-        compose.onNodeWithTag("atlas-album-3-destination-merge")
-            .performScrollTo().performClick()
+        compose.tap(hasTestTag("atlas-album-3-destination-option-1"))
+        compose.tap(hasTestTag("atlas-album-3-destination-merge"))
         compose.runOnIdle {
             val merge = commands.single().action as PeopleReviewAction.MergePeople
             assertEquals(source, merge.source)
             assertEquals(first, merge.target)
         }
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-2"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-2").performClick()
-        compose.onNodeWithTag("atlas-album-3-destination-face-1")
-            .performScrollTo().performClick()
-        compose.onNodeWithTag("atlas-album-3-destination-reassign")
-            .performScrollTo().performClick()
+        compose.tap(hasTestTag("atlas-album-3-destination-option-2"))
+        compose.tap(hasTestTag("atlas-album-3-destination-face-1"))
+        compose.tap(hasTestTag("atlas-album-3-destination-reassign"))
         compose.runOnIdle {
             assertEquals(2, commands.size)
             val reassign = commands.last().action as PeopleReviewAction.ReassignFace
@@ -160,8 +173,12 @@ class PeopleDestinationSelectorUiTest {
             }
         }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-1").performClick()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-1"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         val oldScope = compose.onNodeWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNode().config[ReviewRowDiagnosticKey]
@@ -171,7 +188,11 @@ class PeopleDestinationSelectorUiTest {
             assertTrue("Copy must be a different review snapshot", copied !== initial)
             visible = copied!!
         }
-        // Force the lazy row to compose before asserting: an offscreen row is not a reset.
+        // A new committed reference resets the on-demand search and the selected target.
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         val newScope = compose.onNodeWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNode().config[ReviewRowDiagnosticKey]
@@ -191,6 +212,10 @@ class PeopleDestinationSelectorUiTest {
             visible = initial.copy(permissionEpoch = "new-grant",
                 sourceGeneration = "new-scan")
         }
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         assertEquals("Regrant retained pre-revocation selection", 0,
             compose.onAllNodesWithTag("atlas-group-1-destination-selected").fetchSemanticsNodes().size)
@@ -198,10 +223,13 @@ class PeopleDestinationSelectorUiTest {
         compose.runOnIdle { assertTrue(commands.isEmpty()) }
         // A fresh explicit choice after regrant must still work, and dispatch
         // against the new committed object rather than the old selection.
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").performClick()
+        // Scroll first: below the sticky faces header option 2 can sit just off screen,
+        // where a click lands outside the viewport and selects nothing.
+        screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
+        compose.tap(hasTestTag("atlas-group-1-destination-option-2"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().performClick()
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle {
             assertEquals(1, commands.size)
             assertTrue("Command must bind the new regranted review",
@@ -210,4 +238,32 @@ class PeopleDestinationSelectorUiTest {
                 (commands.single().action as PeopleReviewAction.AssignCluster).person)
         }
     }
+    @Test fun seventyHomonymsDoNotAppearUntilQueryAndCanExpandWithoutPages() {
+        val scope = ReviewReferenceKey(Any())
+        val catalog = (1..70).map { n ->
+            NativePersonAlbum(PersonKey("synthetic-many-$n"), "Morgan",
+                listOf(face(n)), emptyList())
+        }
+        compose.setContent {
+            MaterialTheme {
+                PeopleDestinationSelector(
+                    selectionScope = scope, candidates = catalog,
+                    selectedPosition = null, onSelect = {}, enabled = true,
+                    tagPrefix = "atlas-search70",
+                    preview = { Text("Synthetic face") }
+                )
+            }
+        }
+        compose.onNodeWithTag("atlas-search70-option-1").assertDoesNotExist()
+        compose.typeText(hasTestTag("atlas-search70-search"), "Morgan")
+        compose.onNodeWithTag("atlas-search70-option-1").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-5").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-6").assertDoesNotExist()
+        compose.tap(hasText("Show more matches"))
+        compose.onNodeWithTag("atlas-search70-option-6").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-10").assertExists()
+        compose.onNodeWithTag("atlas-search70-option-11").assertDoesNotExist()
+        compose.onNodeWithText("Choice page", substring = true).assertDoesNotExist()
+    }
+
 }

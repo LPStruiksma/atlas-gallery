@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.PowerManager
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.FaceScanEngine
+import nl.atlas.gallery.featureface.FaceQualityBackfillResult
 import nl.atlas.gallery.featurevisual.VisualScanResult
 
 /**
@@ -35,6 +36,10 @@ interface PeopleScanSession : AutoCloseable {
      * batch under the same guards; null while the user has not opted in.
      */
     val visualStage: PeopleVisualScanStep? get() = null
+
+    /** Optional maintenance within the SAME charging-constrained worker, never a second work chain. */
+    val qualityBackfill: PeopleQualityBackfillStep? get() = null
+    fun afterQualityBackfill(result: FaceQualityBackfillResult) {}
     /**
      * As [afterBatch], with what the visual stage did in this batch (null when
      * it did not run). Faces and visual vectors progress independently.
@@ -51,6 +56,11 @@ interface PeopleScanSession : AutoCloseable {
  * VisualScanBudget). [canContinue] is the worker's own guard (thermal, power,
  * grant, stop), checked before every item. Null result: nothing to do.
  */
+/** One source maximum per call, guarded between frames and before writing any score. */
+fun interface PeopleQualityBackfillStep {
+    fun run(canContinue: () -> Boolean): FaceQualityBackfillResult
+}
+
 fun interface PeopleVisualScanStep {
     fun run(canContinue: () -> Boolean): VisualScanResult?
 }

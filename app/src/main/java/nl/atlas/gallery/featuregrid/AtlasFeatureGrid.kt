@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featuregrid
 
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +49,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.layout.ContentScale
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
@@ -122,10 +125,14 @@ fun AtlasFeatureGrid(
      */
     showViewAs: Boolean = true,
     /** Shown when [items] is empty and not [busy] (#654: Search says "No results"). */
-    emptyText: String = "No photos here yet"
+    emptyText: String = "No photos yet",
+    /** #134: one short neutral line under [emptyText] (Search: no results). */
+    emptyDetail: String? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE) }
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE)
+    }
     // Ungrouped Search/People/fallback screens have no chronological overview.
     // They must not inherit a 12/28-column Photos preference without the headers.
     fun classic(value: GridDensity): GridDensity =
@@ -235,10 +242,12 @@ fun AtlasFeatureGrid(
     Column(modifier) {
         if (showViewAs) GridViewAsControl(density, onChoose = ::chooseAtCentre)
         if (items.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (busy) "Loading photos…" else emptyText,
-                    Modifier.testTag("atlas-feature-grid-empty"))
-            }
+            // DESIGN-6 #136: the shared quiet state; nothing while busy.
+            if (!busy) AtlasEmptyState(
+                title = emptyText,
+                explanation = emptyDetail.orEmpty(),
+                titleTag = "atlas-feature-grid-empty",
+                bodyTag = "atlas-feature-grid-empty-detail")
             return@Column
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -255,8 +264,8 @@ fun AtlasFeatureGrid(
             state = state,
             contentPadding = PaddingValues(start = 3.dp, end = 3.dp,
                 bottom = LocalAtlasBottomChrome.current),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
+            verticalArrangement = Arrangement.spacedBy(AtlasTokens.Spacing.GridGap),
             modifier = Modifier.fillMaxSize().galleryPinchLadder(sourceEpoch, density, state, newTracker = { slop ->
                 GalleryPinchTracker(GalleryZoomStop.forDensity(density), slop,
                     allowOriginal = originalCurrent != null, allowOverview = false)
@@ -290,7 +299,7 @@ fun AtlasFeatureGrid(
                 // Keep coordinates outside Compose state: scroll frames must not
                 // recompose every visible tile merely to track its rectangle.
                 val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
-                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
+                Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(AtlasTokens.Radii.GridTile))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
                     .clickable(onClickLabel = "Open ${media.name}") {
