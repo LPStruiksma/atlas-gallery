@@ -3,6 +3,7 @@ package nl.atlas.gallery.featurepersistence
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
+import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 
 /**
  * Pure (no SQLite) half of D2-5p cluster publication (#419), shared by
@@ -31,11 +32,15 @@ object ClusterPublication {
     /**
      * One publication: the published seed plus every pending face in one
      * update, then #579's consolidation pass (weak faces join the person they
-     * resemble, fragments of one person are unioned).
+     * resemble, fragments of one person are unioned). HUB-1B (#211): groups
+     * marked "not one person" keep their mark unless the publication changed
+     * them substantially ([MixedGroupMarks.carry]); the store writes the
+     * carried facts in the same transaction as the membership.
      */
     fun publish(seed: FaceClusterState, pending: Collection<FaceEmbedding>): FaceClusterState =
         if (pending.isEmpty()) seed
-        else FaceClusterer.consolidate(FaceClusterer.update(seed, add = pending))
+        else MixedGroupMarks.carry(seed,
+            FaceClusterer.consolidate(FaceClusterer.update(seed, add = pending)))
 
     /**
      * Rows of `cluster_members` (face uid to anchor uid) that [state] implies.
