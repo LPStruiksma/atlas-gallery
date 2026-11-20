@@ -107,6 +107,9 @@ internal object FaceCropGeometry {
         if (((rotationDegrees % 360) + 360) % 180 == 90) height to width else width to height
 }
 
+/** Face crops the People host keeps in memory (#119: was 32, thrashed on People). */
+internal const val FACE_CROP_CACHE_ENTRIES = 96
+
 /** A cached crop belongs to one epoch, one observation and one source revision. */
 internal data class FaceCropKey(
     val epoch: String, val faceUid: String, val mediaKey: String, val revision: String
