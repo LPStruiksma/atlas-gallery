@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>loading</title>
+<!-- BRAND-2 (#638) pre-build target frames for #644. Proposed targets, not device renders.
+     Query: ?f=<frame>&theme=light|dark&fs=1|2&ann=0|1  (fs = Android font scale) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=block">
+<style>
+  :root {
+    /* Meridian tokens, docs/design/QUIET_FRAME.md (v2). Theme set on <html data-theme>. */
+    --viewer: #000000; --on-accent: #1A1206; --accent-fill: #FFB547;
+    --ann: #D6249F; /* annotation colour: deliberately outside the Meridian palette */
+  }
+  html[data-theme="dark"] {
+    --ground: #0D1117; --surface: #161B23; --raised: #212833; --line: #3A4350; --tick: #6B7480;
+    --ink: #EEF1F5; --ink-muted: #A9B1BD; --ink-faint: #8B94A1; --accent: #FFB547;
+    --pill: rgba(33, 40, 51, 0.80); --scrim: rgba(0, 0, 0, 0.52); --kbd: #1B2029; --key: #2C333F;
+  }
+  html[data-theme="light"] {
+    --ground: #F5F3EE; --surface: #FFFFFF; --raised: #ECE8DF; --line: #CFC9BC; --tick: #9A958A;
+    --ink: #12161C; --ink-muted: #4A515C; --ink-faint: #5E6672; --accent: #9A5B00;
+    --pill: rgba(255, 255, 255, 0.90); --scrim: rgba(18, 22, 28, 0.40); --kbd: #E3DFD6; --key: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 384px; height: 832px; overflow: hidden; background: var(--ground); color: var(--ink);
+         font-family: 'Instrument Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  .screen { position: absolute; inset: 0; overflow: hidden; background: var(--ground); }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .row { display: flex; align-items: center; }
+  .icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex: none;
+          color: inherit; background: none; border: 0; padding: 0; }
+  svg { display: block; }
+  .tile { background: var(--raised); border-radius: 3px; overflow: hidden; }
+  .grid { display: grid; gap: 2px; }
+  .face { border-radius: 50%; flex: none; }
+  .card { background: var(--surface); }
+  .btn-text { color: var(--accent); font-weight: 600; min-height: 48px; padding: 0 12px; display: flex;
+              align-items: center; justify-content: center; background: none; border: 0; font-family: inherit; }
+  .ann-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+  .hatch { position: absolute; left: 0; right: 0;
+           background: repeating-linear-gradient(135deg, rgba(214, 36, 159, 0.28) 0 3px, transparent 3px 8px); }
+  .hatch span, .note { position: absolute; font: 500 8px/10px 'IBM Plex Mono', monospace; color: #fff;
+           background: var(--ann); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
+  .target { position: absolute; border: 1.25px dashed var(--ann); border-radius: 4px; }
+  .badge { position: absolute; width: 17px; height: 17px; border-radius: 50%; background: var(--ann); color: #fff;
+           font: 600 10px/17px 'IBM Plex Mono', monospace; text-align: center;
+           box-shadow: 0 0 0 1.5px #fff; }
+  .tag { position: absolute; top: 2px; left: 6px; z-index: 60;
+         font: 600 8px/12px 'IBM Plex Mono', monospace; letter-spacing: 0.04em; color: #fff;
+         background: var(--ann); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .kbd { position: absolute; left: 0; right: 0; bottom: 0; background: var(--kbd); padding: 8px 4px 22px;
+         display: flex; flex-direction: column; gap: 9px; }
+  .kbd .krow { display: flex; gap: 5px; justify-content: center; }
+  .kbd .k { background: var(--key); border-radius: 6px; height: 50px; flex: 1; max-width: 33px; display: flex;
+            align-items: center; justify-content: center; color: var(--ink); font-size: 18px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const F = Q.get('f') || 'T1-photos';
+const THEME = Q.get('theme') === 'light' ? 'light' : 'dark';
+const FS = Number(Q.get('fs') || 1);
+const ANN = Q.get('ann') !== '0';
+document.documentElement.dataset.theme = THEME;
+
+// ---- Insets (dp). Same assumptions as docs/design/declutter-search-341: to measure on the S24+.
+const STATUS = 29, GESTURE = 16, IME = 324;
+
+// ---- Font scale. Android 14+ scales sp non-linearly above 1.3x (AOSP FontScaleConverterFactory).
+// Lookup for scale 2.0: from sp -> to sp. Below 8 sp it is linear (x2). Every sp value
+// (size and line height) goes through the converter, as Compose does.
+const FROM = [8, 10, 12, 14, 18, 20, 24, 30, 100], TO = [16, 20, 24, 26, 30, 32, 36, 40, 100];
+function sp(v) {
+  if (FS === 1) return v;
+  if (v <= FROM[0]) return v * 2;
+  for (let i = 1; i < FROM.length; i++) {
+    if (v <= FROM[i]) { const t = (v - FROM[i - 1]) / (FROM[i] - FROM[i - 1]); return TO[i - 1] + t * (TO[i] - TO[i - 1]); }
+  }
+  return v;
+}
+// Meridian type roles (QUIET_FRAME.md "Type"). Returns an inline style string.
+const T = {
+  screen: () => `font:600 ${sp(34)}px/${sp(40)}px 'Instrument Sans';letter-spacing:-0.02em`,
+  section: () => `font:600 ${sp(20)}px/${sp(26)}px 'Instrument Sans'`,
+  date: () => `font:600 ${sp(15)}px/${sp(20)}px 'Instrument Sans'`,
+  body: () => `font:400 ${sp(15)}px/${sp(22)}px 'Instrument Sans'`,
+  title: () => `font:600 ${sp(16)}px/${sp(22)}px 'Instrument Sans'`,
+  label: () => `font:600 ${sp(12)}px/${sp(16)}px 'Instrument Sans'`,
+  button: () => `font:600 ${sp(14)}px/${sp(20)}px 'Instrument Sans'`,
+  meta: () => `font:400 ${sp(11)}px/${sp(16)}px 'IBM Plex Mono';letter-spacing:0.06em`,
+  name: () => `font:600 ${sp(28)}px/${sp(34)}px 'Instrument Sans';letter-spacing:-0.01em`,
+};
+// Existing fallback on main (#413): nav labels are capped at 1.3x of their size.
+const navLabelPx = () => (FS > 1.3 ? sp(12 * 1.3 / FS) : sp(12));
+
+// ---- Synthetic art: deterministic abstract shapes. No photographs, no faces.
+let seed = 644;
+const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+function art() {
+  const h1 = Math.floor(rnd() * 360), h2 = (h1 + 40 + Math.floor(rnd() * 120)) % 360, hz = 40 + Math.floor(rnd() * 25);
+  if (rnd() < 0.25) return `radial-gradient(circle at ${30 + rnd() * 40}% ${30 + rnd() * 30}%, hsl(${h1} 45% 72%) 0 14%, hsl(${h2} 30% 34%) 15% 100%)`;
+  return `linear-gradient(180deg, hsl(${h1} 40% ${60 + Math.floor(rnd() * 15)}%) 0%, hsl(${h1} 32% 50%) ${hz}%, hsl(${h2} 26% 32%) ${hz}%, hsl(${h2} 22% 18%) 100%)`;
+}
+function portrait() {
+  const h = Math.floor(rnd() * 360);
+  return `radial-gradient(circle at 50% 50%, hsl(${h} 30% 62%) 0 22%, hsl(${(h + 60) % 360} 22% 40%) 23% 44%, hsl(${(h + 150) % 360} 18% 28%) 45%)`;
+}
+
+// ---- Icons: schematic 24 dp Material-style glyphs (BRAND-2 does not change icon glyphs).
+const P = {
+  photos: 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4',
+  albums: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  people: 'M9 11a3 3 0 1 0 0-6a3 3 0 0 0 0 6zM3 19c0-3 3-5 6-5s6 2 6 5M16 11a2.5 2.5 0 1 0 0-5M17 14c2.5.3 4 2.2 4 5',
+  search: 'M16.5 10.5a6 6 0 1 1-12 0a6 6 0 0 1 12 0zM15 15l5 5',
+  back: 'M15 5l-7 7 7 7',
+  backArrow: 'M20 12H5M11 6l-6 6 6 6',
+  face: 'M12 21a9 9 0 1 0 0-18a9 9 0 0 0 0 18zM9 10v1M15 10v1M8.5 15c2 1.6 5 1.6 7 0',
+  similar: 'M4 6h10v10H4zM10 14l3-3 3 3M17 12.5a3 3 0 1 1-.01 0M19.2 16.7l2 2',
+  info: 'M12 21a9 9 0 1 0 0-18a9 9 0 0 0 0 18zM12 11v6M12 7.5v.5',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4z',
+  share: 'M18 8a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5zM6 14.5a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5zM18 21a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5zM8.2 10.8l7.6-4.3M8.2 13.2l7.6 4.3',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  sort: 'M4 7h16M7 12h10M10 17h4',
+};
+const svg = (d, { size = 24, color = 'currentColor', fill = false, sw = 1.8, label } = {}) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}
+     fill="${fill ? color : 'none'}" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+const dots = (color = 'currentColor') =>
+  `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="${color}"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>`;
+
+// ---- Shared pieces
+function header({ title, subtitle, back, actions = ['search', 'more'] }) {
+  const acts = actions.map(a => a === 'more'
+    ? `<button class="icon" aria-label="More options" data-t="more">${dots()}</button>`
+    : a === 'sort' ? `<button class="icon" aria-label="Sort" data-t="sort">${svg(P.sort)}</button>`
+    : `<button class="icon" aria-label="Search" data-t="search">${svg(P.search)}</button>`).join('');
+  return `<div class="row" data-t="header" style="min-height:56px;padding:0 4px 0 ${back ? 4 : 16}px">
+    ${back ? `<button class="icon" aria-label="Back" data-t="back">${svg(P.backArrow)}</button><div style="width:4px"></div>` : ''}
+    <div style="flex:1;min-width:0">
+      ${title ? `<div data-t="title" style="${T.screen()};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div>` : ''}
+      ${subtitle ? `<div data-t="subtitle" class="mono" style="${T.meta()};color:var(--ink-faint);${FS >= 1.5 ? '' : 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'}">${subtitle}</div>` : ''}
+    </div>${acts}</div>`;
+}
+function dateHeader(text) {
+  return `<div data-t="date" style="padding:12px 16px 8px;${T.date()}">${text}</div>`;
+}
+function tiles(n, cols = 4) {
+  let h = `<div class="grid" style="grid-template-columns:repeat(${cols},1fr)">`;
+  for (let i = 0; i < n; i++) h += `<div class="tile" style="aspect-ratio:1;background:${art()}"></div>`;
+  return h + '</div>';
+}
+function nav(active) {
+  const tabs = [['Photos', P.photos], ['Albums', P.albums], ['People', P.people], ['Search', P.search]];
+  const items = tabs.map(([label, d]) => {
+    const on = label === active;
+    return `<div data-t="tab-${label}" role="tab" aria-selected="${on}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:${on ? 'var(--ink)' : 'var(--ink-muted)'}">
+      ${svg(d, { fill: false, sw: on ? 2.4 : 1.8 })}
+      <span style="font:${on ? 600 : 500} ${navLabelPx()}px/${navLabelPx() * 1.25}px 'Instrument Sans';white-space:nowrap">${label}</span></div>`;
+  }).join('');
+  return `<div data-t="nav" role="tablist" style="position:absolute;left:12px;right:12px;bottom:${GESTURE + 8}px;height:60px;border-radius:999px;
+    background:var(--pill);backdrop-filter:blur(14px);${THEME === 'light' ? 'box-shadow:0 3px 12px rgba(18,22,28,0.14);' : ''}
+    display:flex;padding:0 6px;z-index:20">${items}</div>`;
+}
+function keyboard() {
+  const rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  return `<div class="kbd" data-t="ime" style="height:${IME}px" aria-hidden="true">
+    <div style="font:400 11px 'IBM Plex Mono';color:var(--ink-faint);text-align:center;height:22px;line-height:22px">keyboard · ${IME} dp (CI test IME)</div>
+    ${rows.map(r => `<div class="krow">${[...r].map(c => `<div class="k">${c}</div>`).join('')}</div>`).join('')}
+    <div class="krow"><div class="k" style="max-width:60px;font-size:13px">?123</div><div class="k" style="max-width:190px"></div><div class="k" style="max-width:60px">${svg(P.search, { size: 20 })}</div></div>
+  </div>`;
+}
+const statusSpace = () => `<div data-t="status" style="height:${STATUS}px"></div>`;
+
+// ---- Frames
+const NAMES = ['Mira', 'Joost', 'Esmee', 'Tobias', 'Fenna', 'Ravi', 'Ilse', 'Bram', 'Odile'];
+const COUNTS = ['3,412', '1,208', '964', '702', '515', '488', '301', '240', '199'];
+const FRAMES = {
+  'T1-photos'() {
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'Photos', subtitle: '12,305 photos &amp; videos' })}
+      ${dateHeader('19 Nov')}${tiles(8)}
+      ${dateHeader('16 Nov')}${tiles(16)}
+      ${dateHeader('12 Nov')}${tiles(12)}
+      ${nav('Photos')}</div>`;
+  },
+  'T2-viewer'() {
+    // The viewer is black in both themes (token: viewer ground). Its chrome follows the dark tokens.
+    return `<div class="screen" style="background:var(--viewer);color:#EEF1F5">
+      <div data-t="photo" style="position:absolute;left:0;right:0;top:272px;height:288px;background:linear-gradient(180deg,#F0B98A 0%,#D98A6A 34%,#8A5A6E 55%,#2F3A4E 55.5%,#1C2533 100%)"></div>
+      <div data-t="topchrome" style="position:absolute;left:0;right:0;top:0;padding:${STATUS + 8}px 12px 8px;display:flex;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,0.72),transparent)">
+        <div data-t="backpill" style="background:rgba(22,27,35,0.85);border-radius:999px;padding:0 4px;display:flex">
+          <button class="icon" aria-label="Back to gallery" style="color:#EEF1F5">${svg(P.back)}</button></div>
+        <div style="flex:1"></div>
+        <div data-t="actionpill" style="background:rgba(22,27,35,0.85);border-radius:999px;padding:0 4px;display:flex;color:#EEF1F5">
+          <button class="icon" aria-label="Find this person">${svg(P.face)}</button>
+          <button class="icon" aria-label="Find similar">${svg(P.similar)}</button>
+          <button class="icon" aria-label="More photo actions">${dots('#EEF1F5')}</button>
+          <button class="icon" aria-label="Photo or video details">${svg(P.info)}</button></div>
+      </div>
+      <div data-t="bottomchrome" style="position:absolute;left:0;right:0;bottom:0;padding-bottom:${GESTURE}px;display:flex;flex-direction:column;align-items:center;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.80))">
+        <div data-t="strip" style="height:56px;display:flex;align-items:center;gap:2px">
+          ${Array.from({ length: 11 }, (_, i) => `<div style="width:30px;height:40px;border-radius:2px;background:${i === 5 ? 'linear-gradient(180deg,#F0B98A,#D98A6A 34%,#8A5A6E 55%,#2F3A4E 55.5%,#1C2533)' : art()};${i === 5 ? 'transform:scale(1.25);z-index:1;box-shadow:0 0 0 1px #3A4350' : ''}"></div>`).join('')}
+        </div>
+        <div style="height:10px"></div>
+        <div data-t="bottompill" style="background:rgba(22,27,35,0.85);border-radius:999px;padding:0 4px;display:flex;margin-bottom:10px;color:#EEF1F5">
+          <button class="icon" aria-label="Favourite" style="margin:0 10px;color:#FFB547">${svg(P.heart, { fill: true, color: '#FFB547' })}</button>
+          <button class="icon" aria-label="Edit in Samsung Gallery" style="margin:0 10px">${svg(P.edit)}</button>
+          <button class="icon" aria-label="Share selected photo or video" style="margin:0 10px">${svg(P.share)}</button>
+          <button class="icon" aria-label="Move to Trash" style="margin:0 10px">${svg(P.trash)}</button></div>
+      </div></div>`;
+  },
+  'T3-same-person'() {
+    const stacked = FS >= 1.5; // explicit 200% fallback: the card stacks its answer buttons
+    const card = `<div data-t="samecard" class="card" style="margin:0 16px 16px;border-radius:20px;padding:12px 8px 12px 16px;display:flex;${stacked ? 'flex-direction:column;align-items:stretch' : 'align-items:center'}">
+      <div class="row" style="flex:1;min-width:0">
+        <div class="face" style="width:56px;height:56px;background:${portrait()}" role="img" aria-label="Unnamed group"></div>
+        <div style="flex:1;min-width:0;padding:0 12px">
+          <div data-t="sametitle" style="${T.title()}">Same person?</div>
+          <div data-t="samecount" class="mono" style="${T.meta()};color:var(--ink-faint)">38 more faces</div>
+        </div></div>
+      <div class="row" style="${stacked ? 'justify-content:flex-end;margin-top:4px' : ''}">
+        <button class="btn-text" data-t="no" style="${T.button()}">No</button>
+        <button class="btn-text" data-t="yes" style="${T.button()}">Yes</button></div></div>`;
+    return `<div class="screen">${statusSpace()}
+      ${header({ back: true, actions: ['search', 'more'] })}
+      <div style="display:flex;flex-direction:column;align-items:center;padding:8px 20px 20px">
+        <div data-t="portrait" class="face" style="width:132px;height:132px;background:${portrait()}" role="img" aria-label="Mira"></div>
+        <div style="height:16px"></div>
+        <div data-t="name" style="${T.name()};text-align:center">Mira</div>
+        <div data-t="count" class="mono" style="${T.meta()};color:var(--ink-faint);margin-top:2px">412 photos</div>
+      </div>
+      ${card}
+      ${dateHeader('19 Nov')}${tiles(8)}${dateHeader('2 Nov')}${tiles(12)}
+      ${nav('People')}</div>`;
+  },
+  'S1-settings'() {
+    const group = (title, rows) => `<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="${T.section()};padding:0 4px">${title}</div>
+      <div class="card" style="border-radius:20px;overflow:hidden">${rows.map(([t, v], i) => `
+        <div class="row" style="min-height:56px;padding:10px 16px;gap:12px;${i ? 'border-top:1px solid var(--line)' : ''}">
+          <div style="flex:1;${T.body()}">${t}</div>${v ? `<div style="${T.body()};color:var(--ink-muted);text-align:right">${v}</div>` : ''}</div>`).join('')}</div></div>`;
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'Settings', back: true, actions: [] })}
+      <div data-t="groups" style="padding:12px 16px;display:flex;flex-direction:column;gap:18px">
+        ${group('People', [['Face scanning', ''], ['Scan now', 'Foreground · works on battery'], ['People numbers', ''], ['Export names', ''], ['Import names', '']])}
+        ${group('Display', [['Theme', 'Follows system']])}
+        ${group('Editing', [['AI Edit', 'Not set up']])}
+        ${group('Advanced', [['Advanced options', 'Show']])}
+      </div></div>`;
+  },
+  'S2-dialog'() {
+    return FRAMES['T3-same-person']() +
+      `<div data-t="scrim" style="position:absolute;inset:0;background:var(--scrim);z-index:30"></div>
+      <div data-t="dialog" role="dialog" aria-label="Add name" style="position:absolute;left:24px;right:24px;bottom:${IME + 24}px;z-index:31;background:var(--surface);border-radius:28px;padding:24px 24px 12px">
+        <div style="font:400 ${sp(24)}px/${sp(32)}px 'Instrument Sans';margin-bottom:16px">Add name</div>
+        <label style="display:block">
+          <span style="position:absolute;width:1px;height:1px;overflow:hidden">Name</span>
+          <div data-t="field" style="border:2px solid var(--accent);border-radius:8px;height:56px;padding:0 14px;display:flex;align-items:center;${T.body()}">Mi<span style="width:2px;height:22px;background:var(--accent);margin-left:1px"></span></div></label>
+        <div class="row" style="justify-content:flex-end;margin-top:16px;gap:4px">
+          <button class="btn-text" data-t="cancel" style="${T.button()}">Cancel</button>
+          <button class="btn-text" data-t="save" style="${T.button()}">Save</button></div>
+      </div>${keyboard().replace('style="height', 'style="z-index:32;height')}`;
+  },
+  'S3-empty-album'() {
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'Trips', subtitle: '0 items', back: true, actions: ['more'] })}
+      <div data-t="empty" style="position:absolute;left:28px;right:28px;top:300px;text-align:center;display:flex;flex-direction:column;gap:6px">
+        <div style="${T.body()};color:var(--ink-muted)">No photos here yet</div></div>
+      ${nav('Albums')}</div>`;
+  },
+  'S4-loading'() {
+    seed = 99;
+    const faces = NAMES.map((n, i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">
+      <div class="face" style="width:100%;aspect-ratio:1;background:${portrait()}" role="img" aria-label="${n}"></div>
+      <div style="${T.label()};font-size:${sp(14)}px">${n}</div>
+      <div class="mono" style="${T.meta()};color:var(--ink-faint)">${COUNTS[i]}</div></div>`).join('');
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'People', actions: ['sort', 'search', 'more'] })}
+      <div data-t="progress" role="progressbar" aria-valuenow="58" aria-label="Finding people">
+        <div class="mono" style="${T.meta()};color:var(--ink-muted);padding:4px 16px">Finding people · 7,140 of 12,305</div>
+        <div style="height:2px;background:var(--line);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:58%;background:var(--accent-fill)"></div></div></div>
+      <div style="padding:8px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);column-gap:16px;row-gap:20px">${faces}</div>
+      ${nav('People')}</div>`;
+  },
+  'S5-large'() {
+    seed = 7;
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'Photos', subtitle: '148,212 photos &amp; videos' })}
+      ${dateHeader('March 2019')}${tiles(28, 7)}${dateHeader('February 2019')}${tiles(35, 7)}${dateHeader('January 2019')}${tiles(21, 7)}
+      <div data-t="scrollbar" style="position:absolute;right:4px;top:120px;bottom:${GESTURE + 80}px;width:3px;border-radius:2px;background:var(--line)"></div>
+      <div data-t="thumb" style="position:absolute;right:3px;top:300px;width:5px;height:44px;border-radius:3px;background:var(--accent-fill)"></div>
+      <div data-t="bubble" style="position:absolute;right:20px;top:304px;padding:6px 12px;border-radius:999px;background:var(--surface);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,0.25);${T.meta()};font-weight:500">March 2019</div>
+      ${nav('Photos')}</div>`;
+  },
+  'S6-search-keyboard'() {
+    const recent = ['beach', 'Mira', '2019', 'snow'];
+    return `<div class="screen">${statusSpace()}
+      ${header({ title: 'Search', actions: ['more'] })}
+      <div style="padding:8px 16px">
+        <label data-t="field" style="display:flex;align-items:center;gap:8px;height:56px;border-radius:999px;background:var(--raised);padding:0 16px;box-shadow:inset 0 0 0 2px var(--accent)">
+          <span style="color:var(--ink-muted)">${svg(P.search)}</span>
+          <span style="${T.body()};color:var(--ink)">sn</span><span style="width:2px;height:22px;background:var(--accent);margin-left:-6px"></span>
+          <span style="position:absolute;width:1px;height:1px;overflow:hidden">Search</span></label></div>
+      <div class="row" style="padding:8px 16px 0 20px"><div style="flex:1;${T.label()};color:var(--ink-muted)">Recent searches</div>
+        <button class="btn-text" data-t="clear" style="${T.button()}">Clear</button></div>
+      ${recent.map(r => `<div class="row" style="min-height:48px;padding:0 20px;gap:14px;${T.body()}"><span style="color:var(--ink-faint)">${svg(P.search, { size: 20 })}</span>${r}</div>`).join('')}
+      ${keyboard()}</div>`;
+  },
+  'S7-error'() {
+    return `<div class="screen">${statusSpace()}
+      <div data-t="error" style="position:absolute;left:28px;right:28px;top:330px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
+        <div style="${T.body()};color:var(--ink)">Couldn't load your photos.</div>
+        <button class="btn-text" data-t="retry" style="${T.button()}">Retry</button></div></div>`;
+  },
+};
+
+// ---- Annotations: [frame] -> list of {badge:[n,x,y]} / {box:[x,y,w,h]} placed against measured elements.
+function rectOf(sel) { const e = document.querySelector(`[data-t="${sel}"]`); return e && e.getBoundingClientRect(); }
+function annotate() {
+  const L = document.createElement('div'); L.className = 'ann-layer'; document.body.appendChild(L);
+  const add = (html) => L.insertAdjacentHTML('beforeend', html);
+  const tag = F.startsWith('T') ? `PROPOSED PRE-BUILD TARGET · NOT A DEVICE RENDER · ${THEME.toUpperCase()} · FONT ${FS * 100}%`
+                                : `PROPOSED STATE TARGET · NOT A DEVICE RENDER · ${THEME.toUpperCase()} · FONT 100%`;
+  add(`<div class="tag">${tag}</div>`);
+  add(`<div class="hatch" style="top:0;height:${STATUS}px"><span style="right:6px;top:${STATUS - 13}px">status ${STATUS} dp (assumed)</span></div>`);
+  const imeUp = F === 'S2-dialog' || F === 'S6-search-keyboard';
+  if (!imeUp) add(`<div class="hatch" style="bottom:0;height:${GESTURE}px"><span style="left:6px;top:3px">gesture nav ${GESTURE} dp (assumed)</span></div>`);
+  const box = (sel, pad = 0) => { const r = rectOf(sel); if (r) add(`<div class="target" style="left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + 2 * pad}px;height:${r.height + 2 * pad}px"></div>`); };
+  const badge = (n, sel, dx = 0, dy = 0, corner = 'tl') => {
+    const r = rectOf(sel); if (!r) return;
+    const x = corner.includes('r') ? r.right - 9 : r.left - 8, y = corner.includes('b') ? r.bottom - 9 : r.top - 8;
+    add(`<div class="badge" style="left:${x + dx}px;top:${y + dy}px">${n}</div>`);
+  };
+  const per = {
+    'T1-photos'() { box('search'); box('more'); badge(1, 'title', 0, 2); badge(2, 'subtitle', 70, 0); badge(3, 'date', 8, 4);
+      const g = document.querySelector('.grid'); if (g) { const r = g.getBoundingClientRect(); add(`<div class="badge" style="left:${r.left + 40}px;top:${r.top + 30}px">4</div>`); }
+      box('nav'); badge(5, 'nav', 6, -4); },
+    'T2-viewer'() { box('backpill'); box('actionpill'); box('bottompill'); badge(1, 'backpill'); badge(2, 'actionpill', 0, 0, 'tr'); badge(3, 'photo', 12, 18);
+      badge(4, 'strip', 150, -6); badge(5, 'bottompill'); },
+    'T3-same-person'() { box('back'); box('more'); badge(1, 'name', -14, 6); badge(2, 'count', -14, 2); box('samecard'); badge(3, 'samecard');
+      box('no'); box('yes'); badge(4, 'yes', 0, 0, 'tr'); box('nav'); badge(5, 'nav', 6, -4); },
+    'S1-settings'() { box('back'); badge(1, 'title', 0, 2); badge(2, 'groups', 4, 8); },
+    'S2-dialog'() { box('dialog'); badge(1, 'dialog'); box('cancel'); box('save'); badge(2, 'save', 0, 0, 'tr'); badge(3, 'ime', 8, 8); },
+    'S3-empty-album'() { box('back'); badge(1, 'empty', 0, -10); badge(2, 'subtitle', 30, 0); },
+    'S4-loading'() { box('progress'); badge(1, 'progress', 4, -6); },
+    'S5-large'() { badge(1, 'subtitle', 100, 0); box('thumb', 2); badge(2, 'bubble', -6, -6); },
+    'S6-search-keyboard'() { box('field'); badge(1, 'field'); box('clear'); badge(2, 'clear', 0, 0, 'tr'); badge(3, 'ime', 8, 8); },
+    'S7-error'() { box('retry'); badge(1, 'error', -6, -6); },
+  };
+  (per[F] || (() => {}))();
+}
+
+document.getElementById('app').innerHTML = (FRAMES[F] || (() => `<p>unknown frame ${F}</p>`))();
+const want = ['600 20px "Instrument Sans"', '400 20px "Instrument Sans"', '400 20px "IBM Plex Mono"', '500 20px "IBM Plex Mono"'];
+document.fonts.ready.then(async () => {
+  await Promise.all(want.map(f => document.fonts.load(f)));
+  const ok = want.every(f => document.fonts.check(f));
+  if (ANN) annotate();
+  document.title = ok ? 'ready' : 'fonts-missing';
+});
+</script>
+</body>
+</html>
