@@ -69,8 +69,7 @@ pull_discovered() {
   # geometry; the aggregated parity job continues to validate PNGs only.
   # Fixed allowlist prevents exporting arbitrary files from a device.
   local report
-  # #627 adds the gesture-navigation viewer report on the same allowlist.
-  for report in viewer-609-photo.json viewer-609-video.json viewer-627-gesture.json; do
+  for report in viewer-609-photo.json viewer-609-video.json; do
     if adb shell test -f "$remote_dir/$report"; then
       adb exec-out cat "$remote_dir/$report" > "ui-evidence/$report"
       python3 -m json.tool "ui-evidence/$report" >/dev/null

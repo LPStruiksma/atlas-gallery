@@ -1,5 +1,0 @@
-# DESIGN-8T #627: current viewer under gesture navigation (navigation_mode=2),
-# S24-size emulator. Geometry in viewer-627-gesture.json (shard artifact).
-viewer-627-gesture-photo-dark-portrait-shown
-viewer-627-gesture-photo-dark-portrait-hidden
-viewer-627-gesture-photo-dark-landscape-shown

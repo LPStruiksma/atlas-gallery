@@ -4,8 +4,8 @@
 ([#142](https://github.com/LPStruiksma/atlas-gallery/issues/142)), anchored to the
 **measured current implementation** from DESIGN-8M
 ([#609](https://github.com/LPStruiksma/atlas-gallery/issues/609), merged
-[#616](https://github.com/LPStruiksma/atlas-gallery/pull/616)) plus a new
-gesture-navigation measurement added by this unit. It exists so the independent
+[#616](https://github.com/LPStruiksma/atlas-gallery/pull/616)). Gesture
+navigation stays **UNKNOWN / preflight-gated** ([GESTURE_NAV.md](GESTURE_NAV.md)). It exists so the independent
 issue design preflight on #142 can judge geometry and states before anyone builds.
 
 **What this is not:** a viewer implementation, a runtime capture of the target, a
@@ -19,7 +19,7 @@ code (`app/src/main/**`) changes in this unit.
 | Kind | Where | Used for |
 |---|---|---|
 | MEASURED, three-button | [run 44627923073](https://github.com/LPStruiksma/atlas-gallery/actions/runs/44627923073), artifact `ATLAS-android-UI-evidence-shard-0`, `ui-evidence/viewer-609-photo.json` (13 frames) and `viewer-609-video.json` (16 frames); PNGs in `ATLAS-android-UI-evidence` | Window, density, insets, cutout and current semantic bounds |
-| MEASURED, gesture navigation | `ui-evidence/viewer-627-gesture.json` and `viewer-627-gesture-photo-dark-*.png` from `Viewer627GestureNavTest` on this PR (run and artifact linked in [GESTURE_NAV.md](GESTURE_NAV.md)) | Gesture insets, back-gesture side zones, mandatory home zone |
+| NOT MEASURED, gesture navigation | Attempted test-only capture failed to stay isolated (see [GESTURE_NAV.md](GESTURE_NAV.md)) | Gesture rules below are computed and **UNKNOWN / preflight-gated** |
 | COPIED extract | [`measured-baseline.json`](measured-baseline.json), written by [`extract_baseline.py`](extract_baseline.py) from the reports above | The only measured input of the generator |
 | PROPOSED | [`generate_target.py`](generate_target.py) → [`target-geometry.json`](target-geometry.json), [`tables.md`](tables.md), [`svg/`](svg/) | Every target rectangle, check and diagram |
 | Rules | [Quiet Frame](../QUIET_FRAME.md) (look), [Samsung parity §0/§1/§6](../../product/SAMSUNG_PARITY_SPEC.md) (order and behaviour), [OWNER_INTENT](../../OWNER_INTENT.md) | Constants below |
@@ -31,7 +31,7 @@ each frame). Not Lukas's phone.
 Regenerate everything (Python 3, no dependencies):
 
 ```bash
-python3 docs/design/viewer-142-target/extract_baseline.py <dir with viewer-609-*.json> [viewer-627-gesture.json]
+python3 docs/design/viewer-142-target/extract_baseline.py <dir with viewer-609-*.json> [gesture report.json <run id> <head sha>]
 python3 docs/design/viewer-142-target/generate_target.py
 ```
 
@@ -51,7 +51,7 @@ Full numbers per frame: [`measured-baseline.json`](measured-baseline.json); per 
 | Current video controls → filmstrip | 87.8 dp (one 4 s clip, 100% font, portrait) | not measured as a gap |
 | Hidden chrome | safeDrawing 0 / 44.4 / 0 / 0 dp (cutout only; bars hidden) | not captured |
 
-Gesture navigation: see [GESTURE_NAV.md](GESTURE_NAV.md) (new capture in this unit).
+Gesture navigation: **not captured** ([GESTURE_NAV.md](GESTURE_NAV.md)). Every #616 frame is three-button.
 
 ## Proposed target model
 
@@ -108,7 +108,6 @@ where the status bar inset already separates them from the screen edge.
 | [`svg/landscape-narrow-computed--*.svg`](svg/) | Narrow 640×360 landscape stress case (computed) |
 | [`svg/*--states.svg`](svg/) | 16-state target matrix per viewport |
 | [`svg/*--interaction.svg`](svg/) | Gesture priority bands, exclusion rects and TalkBack order |
-| `svg/portrait-gesture--*`, `svg/landscape-gesture--*` | Same, on the measured gesture-navigation insets ([GESTURE_NAV.md](GESTURE_NAV.md)) |
 
 Legend in every layout SVG: teal dashed = measured safeDrawing; blue = measured
 bars; red = measured cutout; pink dashed = proposed semantic hit; orange dashed =
@@ -132,14 +131,14 @@ proposed strip band; yellow = proposed text box (width is an estimate).
 | Empty catalogue | Immediate safe exit, viewer never shown | measured assertion (`emptyCatalogueUsesSafeExitWithoutShowingViewer`) | measured (current) |
 | One-handed reach | Actions, play, seek, strip in the bottom third; back/top group in the top third (mitigation: swipe-down close, system back) | states.svg 16, T5 | proposed; **C4** |
 | TalkBack / action order | interaction.svg order 1–13 | interaction.svg | proposed; spoken output **NOT_CAPTURED** |
-| Gesture navigation | Side zones vs drags (exclusion rects), mandatory home zone vs action pill | [GESTURE_NAV.md](GESTURE_NAV.md), interaction SVGs | measured insets; target computed |
+| Gesture navigation | Layout follows safeDrawing (which includes the gesture bar); drags in strip/seek bands request exclusion; no hit in the mandatory home zone | [GESTURE_NAV.md](GESTURE_NAV.md), interaction SVGs | **UNKNOWN / preflight-gated**: insets not captured |
 | Rotation 270 (cutout right) | Mirror of rotation 1: insets swap sides; model is inset-driven, centring on safe width | not drawn | **UNKNOWN**, not captured |
 
 ## Gesture priority and TalkBack order
 
-See [`svg/portrait-3button--interaction.svg`](svg/portrait-3button--interaction.svg) and the gesture-navigation variant.
+See [`svg/portrait-3button--interaction.svg`](svg/portrait-3button--interaction.svg) (its red side bands are a 24 dp placeholder, not a measurement).
 
-1. **System edge zones** (measured `systemGestures`) stay system-owned, except the
+1. **System edge zones** (`systemGestures`, not yet measured) stay system-owned, except the
    strip band and the seek band, which request `setSystemGestureExclusionRects` while
    chrome is shown: 56 + 48 = 104 dp per edge, inside Android's 200 dp cap. The
    bottom mandatory home zone is never excluded and no hit rect enters it.
