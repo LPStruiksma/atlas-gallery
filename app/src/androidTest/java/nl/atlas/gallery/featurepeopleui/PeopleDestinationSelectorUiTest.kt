@@ -12,13 +12,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
@@ -27,12 +22,22 @@ import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** API35 Compose tests use synthetic vectors and a neutral host preview only. */
 class PeopleDestinationSelectorUiTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+
+    // No keyboard slides up: these tests are about which person a choice
+    // assigns, not about layout above the keyboard (docs/testing/EMULATOR_TESTS.md).
+    @get:Rule val chain: RuleChain =
+        RuleChain.outerRule(KeyboardRule(TestKeyboard.None)).around(compose)
 
     private val first = PersonKey("ui-synthetic-first")
     private val second = PersonKey("ui-synthetic-second")
@@ -85,19 +90,16 @@ class PeopleDestinationSelectorUiTest {
         }
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-toggle-search").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-search")
-            .performTextInput("Same Name")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-2"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().tapBySemantics()
-        compose.onNodeWithTag("atlas-group-1-destination-confirm").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle {
             assertEquals(1, commands.size)
             val action = commands.single().action as PeopleReviewAction.AssignCluster
@@ -105,11 +107,9 @@ class PeopleDestinationSelectorUiTest {
         }
         // Same rendered callback after revoke must not dispatch a second action.
         compose.runOnIdle { live = null }
-        compose.onNodeWithTag("atlas-group-1-destination-option-1")
-            .performScrollTo().tapBySemantics()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().tapBySemantics()
-        compose.onNodeWithTag("atlas-group-1-destination-confirm").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-1"))
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle { assertEquals(1, commands.size) }
     }
 
@@ -132,24 +132,19 @@ class PeopleDestinationSelectorUiTest {
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         // Search returns matching identities by stable catalogue position.
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-search"))
-        compose.onNodeWithTag("atlas-album-3-destination-search")
-            .performTextInput("Same Name")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-album-3-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-1"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-1").tapBySemantics()
-        compose.onNodeWithTag("atlas-album-3-destination-merge")
-            .performScrollTo().tapBySemantics()
+        compose.tap(hasTestTag("atlas-album-3-destination-option-1"))
+        compose.tap(hasTestTag("atlas-album-3-destination-merge"))
         compose.runOnIdle {
             val merge = commands.single().action as PeopleReviewAction.MergePeople
             assertEquals(source, merge.source)
             assertEquals(first, merge.target)
         }
         screen.performScrollToNode(hasTestTag("atlas-album-3-destination-option-2"))
-        compose.onNodeWithTag("atlas-album-3-destination-option-2").tapBySemantics()
-        compose.onNodeWithTag("atlas-album-3-destination-face-1")
-            .performScrollTo().tapBySemantics()
-        compose.onNodeWithTag("atlas-album-3-destination-reassign")
-            .performScrollTo().tapBySemantics()
+        compose.tap(hasTestTag("atlas-album-3-destination-option-2"))
+        compose.tap(hasTestTag("atlas-album-3-destination-face-1"))
+        compose.tap(hasTestTag("atlas-album-3-destination-reassign"))
         compose.runOnIdle {
             assertEquals(2, commands.size)
             val reassign = commands.last().action as PeopleReviewAction.ReassignFace
@@ -179,13 +174,11 @@ class PeopleDestinationSelectorUiTest {
         }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-toggle-search").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-search")
-            .performTextInput("Same Name")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-1").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-1"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         val oldScope = compose.onNodeWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNode().config[ReviewRowDiagnosticKey]
@@ -197,10 +190,9 @@ class PeopleDestinationSelectorUiTest {
         }
         // A new committed reference resets the on-demand search and the selected target.
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-toggle-search").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Same Name")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         val newScope = compose.onNodeWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNode().config[ReviewRowDiagnosticKey]
@@ -221,10 +213,9 @@ class PeopleDestinationSelectorUiTest {
                 sourceGeneration = "new-scan")
         }
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-toggle-search").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Same Name")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Same Name")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         assertEquals("Regrant retained pre-revocation selection", 0,
             compose.onAllNodesWithTag("atlas-group-1-destination-selected").fetchSemanticsNodes().size)
@@ -235,11 +226,10 @@ class PeopleDestinationSelectorUiTest {
         // Scroll first: below the sticky faces header option 2 can sit just off screen,
         // where a click lands outside the viewport and selects nothing.
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-2"))
-        compose.onNodeWithTag("atlas-group-1-destination-option-2").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-option-2"))
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
-        compose.onNodeWithTag("atlas-group-1-destination-assign")
-            .performScrollTo().tapBySemantics()
-        compose.onNodeWithTag("atlas-group-1-destination-confirm").tapBySemantics()
+        compose.tap(hasTestTag("atlas-group-1-destination-assign"))
+        compose.tap(hasTestTag("atlas-group-1-destination-confirm"))
         compose.runOnIdle {
             assertEquals(1, commands.size)
             assertTrue("Command must bind the new regranted review",
@@ -265,30 +255,15 @@ class PeopleDestinationSelectorUiTest {
             }
         }
         compose.onNodeWithTag("atlas-search70-option-1").assertDoesNotExist()
-        compose.onNodeWithTag("atlas-search70-search").performTextInput("Morgan")
-        compose.waitForIdle()
+        compose.typeText(hasTestTag("atlas-search70-search"), "Morgan")
         compose.onNodeWithTag("atlas-search70-option-1").assertExists()
         compose.onNodeWithTag("atlas-search70-option-5").assertExists()
         compose.onNodeWithTag("atlas-search70-option-6").assertDoesNotExist()
-        compose.onNodeWithText("Show more matches").tapBySemantics()
+        compose.tap(hasText("Show more matches"))
         compose.onNodeWithTag("atlas-search70-option-6").assertExists()
         compose.onNodeWithTag("atlas-search70-option-10").assertExists()
         compose.onNodeWithTag("atlas-search70-option-11").assertDoesNotExist()
         compose.onNodeWithText("Choice page", substring = true).assertDoesNotExist()
     }
 
-}
-
-/**
- * #367: these tests check destination-selection logic, not where a touch lands. After
- * performTextInput the IME inset animation resizes the list, and a coordinate tap could
- * land on a moving row (a different method failed on each emulator run). Invoking the
- * node's own OnClick action is deterministic. Like a real tap, it does nothing on a
- * disabled control, and it still fails when the node or its click action is missing.
- * #356 (atlas-gallery#360) hit the same class of miss on a radio option under the sticky
- * faces header, and main fixed those option taps the same way; this helper covers them too.
- */
-private fun SemanticsNodeInteraction.tapBySemantics(): SemanticsNodeInteraction {
-    val disabled = SemanticsProperties.Disabled in fetchSemanticsNode().config
-    return if (disabled) this else performSemanticsAction(SemanticsActions.OnClick)
 }

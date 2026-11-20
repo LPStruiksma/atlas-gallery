@@ -42,6 +42,16 @@ class ViewerTimingProbe(
         current = Pending(index, nowNanos())
     }
 
+    /**
+     * A first displayed page or pager swipe is an implicit selection. Keep
+     * the earlier start timestamp for explicit filmstrip requests.
+     */
+    @Synchronized fun pageEntered(index: Int) {
+        if (index < 0) return
+        if (current?.index != index) selectionRequested(index)
+        pagerSelected(index)
+    }
+
     @Synchronized fun pagerSelected(index: Int) {
         current?.takeIf { it.index == index }?.let {
             if (it.pagerAt == null) it.pagerAt = nowNanos()
