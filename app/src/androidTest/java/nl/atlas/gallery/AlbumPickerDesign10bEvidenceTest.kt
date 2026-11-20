@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import nl.atlas.gallery.testkit.awaitWindowSettled
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.KeyboardAfter
@@ -119,6 +120,9 @@ class AlbumPickerDesign10bEvidenceTest {
                 )
             }
         }
+        // The first frame can still move by a few px as the window's insets land
+        // (seen on #707's run: 3 px while the pointer was down). Rule 6: settle first.
+        compose.awaitWindowSettled()
         compose.tap(hasTestTag("atlas-album-picker-create"))
         compose.typeText(hasTestTag("atlas-create-album-name"), "Fixture trip", KeyboardAfter.Shown)
         for (next in listOf(false, true)) {
