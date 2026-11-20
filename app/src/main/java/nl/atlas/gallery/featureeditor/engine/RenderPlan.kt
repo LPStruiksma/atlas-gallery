@@ -14,8 +14,9 @@ import kotlin.math.roundToInt
  * 2. [RenderStage.RasterPatches] source-space patches in history order;
  * 3. [RenderStage.Geometry] one projective warp + crop + scale to the output size;
  * 4. [RenderStage.ColourAdjust] all non-zero controls, in [AdjustParam] order;
- * 5. [RenderStage.Lut] the filter at its strength;
- * 6. [RenderStage.Overlays] decoration layers, placed through the same geometry matrix.
+ * 5. [RenderStage.ShapeCrop] display-canvas mask, then [RenderStage.Resize] target metadata;
+ * 6. [RenderStage.Curves], [RenderStage.ColorMix], [RenderStage.SpotColor] after colour adjust;
+ * 7. [RenderStage.Lut] and [RenderStage.Overlays] finish the image without editing layers.
  *
  * Output-space patches ([PatchSpace.OUTPUT], what AI Edit and Face Swap return) split the
  * recipe at the last such patch: [RenderStage.Base] renders every earlier step as its own plan,
@@ -94,22 +95,42 @@ data class RenderPlan(
         /** One segment without output-space patches: Decode, patches, geometry, colour, LUT, overlays. */
         private fun buildSegment(recipe: EditRecipe, maxLongEdge: Int?): RenderPlan {
             val geometry = GeometryState.of(recipe)
+            val folded = FoldedRecipe.of(recipe)
             var outW = geometry.outputWidth
             var outH = geometry.outputHeight
+            val requested = folded.resize
+            if (requested != null) {
+                val scale = requested.longEdge?.let { it.toDouble() / max(outW, outH) }
+                    ?: (requested.percentage!! / 100.0)
+                outW = max(1, (outW * scale).roundToInt())
+                outH = max(1, (outH * scale).roundToInt())
+            }
             if (maxLongEdge != null && max(outW, outH) > maxLongEdge) {
                 val s = maxLongEdge.toDouble() / max(outW, outH)
                 outW = max(1, (outW * s).roundToInt())
                 outH = max(1, (outH * s).roundToInt())
             }
-            val folded = FoldedRecipe.of(recipe)
             val matrix = geometry.sourceToOutput(outW, outH)
             val stages = buildList {
                 add(RenderStage.Decode(recipe.sourceWidth, recipe.sourceHeight))
                 if (folded.patches.isNotEmpty()) add(RenderStage.RasterPatches(folded.patches))
                 val needsWarp = !geometry.isIdentity || outW != recipe.sourceWidth || outH != recipe.sourceHeight
                 if (needsWarp) add(RenderStage.Geometry(matrix, outW, outH, geometry.validRegion))
+                folded.shapeCrop?.let { shape ->
+                    val c = geometry.effectiveCrop
+                    val canvasToOutput = Matrix3.scale(1.0 / c.width, 1.0 / c.height) *
+                        Matrix3.translate(-c.left, -c.top)
+                    add(RenderStage.ShapeCrop(shape, canvasToOutput))
+                }
+                if (requested != null && (outW != geometry.outputWidth || outH != geometry.outputHeight)) {
+                    // Metadata only: Geometry above already allocates the resized output target.
+                    add(RenderStage.Resize(outW, outH, requested))
+                }
                 val adjust = AdjustParam.entries.mapNotNull { p -> folded.adjustments[p]?.takeIf { it != 0.0 }?.let { p to it } }
                 if (adjust.isNotEmpty()) add(RenderStage.ColourAdjust(adjust))
+                folded.curves?.takeUnless { it.isNeutral() }?.let { add(RenderStage.Curves(it)) }
+                folded.colorMix?.takeUnless { it.isNeutral() }?.let { add(RenderStage.ColorMix(it)) }
+                folded.spotColor?.takeUnless { it.isNeutral() }?.let { add(RenderStage.SpotColor(it)) }
                 folded.filter?.let { f ->
                     if (f.lutId != null && f.strength > 0.0) add(RenderStage.Lut(f.lutId, f.lutHash, f.strength))
                 }
@@ -166,6 +187,34 @@ sealed class RenderStage {
         override fun describe() = "adjust " + values.joinToString(" ") { "${it.first.key}=${it.second.fmt()}" }
     }
 
+    /** Display-canvas mask. [canvasToOutput] maps normalized canvas knots to normalized output. */
+    data class ShapeCrop(
+        val operation: EditOperation.ShapeCrop,
+        val canvasToOutput: Matrix3,
+    ) : RenderStage() {
+        override fun describe() = "shape-crop " +
+            (operation.preset?.key ?: "lasso:${operation.polygon?.size}") +
+            " outside=${operation.outside.key}"
+    }
+
+    /** Target-size annotation; Geometry's target already includes this resize. */
+    data class Resize(val width: Int, val height: Int, val operation: EditOperation.Resize) : RenderStage() {
+        override fun describe() = "resize ${width}x$height"
+    }
+
+    data class Curves(val operation: EditOperation.Curves) : RenderStage() {
+        override fun describe() = "curves rgb=${operation.rgb.size} r=${operation.red.size} g=${operation.green.size} b=${operation.blue.size}"
+    }
+
+    data class ColorMix(val operation: EditOperation.ColorMix) : RenderStage() {
+        override fun describe() = "color-mix presets=${operation.presets.size} samples=${operation.custom.size}"
+    }
+
+    data class SpotColor(val operation: EditOperation.SpotColor) : RenderStage() {
+        override fun describe() = "spot-color keep=${operation.keep.size} remove=${operation.remove.size}" +
+            if (operation.brushMaskHash != null) " brush-mask" else ""
+    }
+
     data class Lut(val lutId: String, val lutHash: String?, val strength: Double) : RenderStage() {
         override fun describe() = "lut $lutId strength=${strength.fmt()}"
     }
@@ -181,6 +230,11 @@ internal data class FoldedRecipe(
     val filter: EditOperation.Filter?,
     val overlays: List<OverlayLayer>,
     val patches: List<EditOperation.RasterPatch>,
+    val curves: EditOperation.Curves?,
+    val colorMix: EditOperation.ColorMix?,
+    val spotColor: EditOperation.SpotColor?,
+    val shapeCrop: EditOperation.ShapeCrop?,
+    val resize: EditOperation.Resize?,
 ) {
     companion object {
         fun of(recipe: EditRecipe): FoldedRecipe {
@@ -188,9 +242,22 @@ internal data class FoldedRecipe(
             var filter: EditOperation.Filter? = null
             val overlays = LinkedHashMap<String, OverlayLayer>()
             val patches = mutableListOf<EditOperation.RasterPatch>()
+            var curves: EditOperation.Curves? = null
+            var colorMix: EditOperation.ColorMix? = null
+            var spotColor: EditOperation.SpotColor? = null
+            var shapeCrop: EditOperation.ShapeCrop? = null
+            var resize: EditOperation.Resize? = null
             for (op in recipe.operations) when (op) {
                 is EditOperation.Adjust -> adjust[op.param] = op.value
-                is EditOperation.ResetAdjustments -> adjust.clear()
+                is EditOperation.ResetAdjustments -> {
+                    adjust.clear(); curves = null; colorMix = null; spotColor = null
+                }
+                is EditOperation.Curves -> curves = op
+                is EditOperation.ColorMix -> colorMix = op
+                is EditOperation.SpotColor -> spotColor = op
+                is EditOperation.ShapeCrop -> shapeCrop = op
+                is EditOperation.Resize -> resize = op
+                is EditOperation.ResetGeometry -> { shapeCrop = null; resize = null }
                 is EditOperation.Filter -> filter = op
                 is EditOperation.OverlayAdd -> overlays[op.layer.layerId] = op.layer
                 is EditOperation.OverlayUpdate -> if (op.layer.layerId in overlays) overlays[op.layer.layerId] = op.layer
@@ -198,7 +265,8 @@ internal data class FoldedRecipe(
                 is EditOperation.RasterPatch -> patches += op
                 else -> Unit
             }
-            return FoldedRecipe(adjust, filter, overlays.values.toList(), patches)
+            return FoldedRecipe(adjust, filter, overlays.values.toList(), patches,
+                curves, colorMix, spotColor, shapeCrop, resize)
         }
     }
 }
