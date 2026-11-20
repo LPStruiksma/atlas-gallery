@@ -55,6 +55,8 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 | type | `typeText(matcher, text)` | `performTextInput` and hope |
 | screenshot or assert with the keyboard up | `typeText(…, KeyboardAfter.Shown)`, `assertAboveKeyboard(matcher)` | a check on `boundsInWindow` |
 | read pixels of a node | `node.captureWhole()` | `captureToImage()` |
+| screenshot real content (thumbnails, face crops) | `awaitScreenStill(label)` before `saveUiEvidence` | sleeping a second |
+| change the animator scale | `withAnimatorScale(scale) { … }` | a private `settings put` |
 | let a product timer pass | `advanceVirtualTime(ms)` | sleeping |
 | choose the keyboard | `KeyboardRule()` (none), `KeyboardRule(TestKeyboard.Fixed)` | the emulator's own |
 | describe the device in a failure | `describeDevice()` | a private `shell("dumpsys …")` |

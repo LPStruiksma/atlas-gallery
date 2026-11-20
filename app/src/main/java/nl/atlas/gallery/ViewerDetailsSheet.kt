@@ -11,13 +11,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
-import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.featureaiedit.save.AiEditDetails
+import nl.atlas.gallery.featureaiedit.save.aiEditDetailsFor
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -70,6 +72,33 @@ internal val LocalViewerDimensionsReader =
     staticCompositionLocalOf { MediaStoreViewerDimensionsReader }
 
 /**
+ * #458: reads whether this URI is a saved AI edit, from app-private lineage
+ * and the current MediaStore grant. Tests swap it through
+ * [LocalAiEditDetailsReader] to hold the loading state or fail like a revoked
+ * grant; the sheet treats any failure as "no marker".
+ */
+internal fun interface AiEditDetailsReader {
+    suspend fun read(context: Context, uri: String): AiEditDetails?
+}
+
+internal val LineageAiEditDetailsReader = AiEditDetailsReader { context, uri ->
+    withContext(Dispatchers.IO) {
+        val store = AiEditLineageStore(context.applicationContext)
+        // Only show media still readable under the current grant.
+        fun visible(candidate: String): Boolean = try {
+            context.contentResolver.query(
+                Uri.parse(candidate), arrayOf(MediaStore.MediaColumns._ID),
+                null, null, null
+            )?.use { it.moveToFirst() } == true
+        } catch (_: RuntimeException) { false }
+        aiEditDetailsFor(uri, store.get(uri), store::all, ::visible)
+    }
+}
+
+internal val LocalAiEditDetailsReader =
+    staticCompositionLocalOf { LineageAiEditDetailsReader }
+
+/**
  * Samsung-like ordering: capture date, file name/path, physical file facts,
  * then photo/video camera facts. Only this fully opened sheet reads metadata;
  * the drag preview below stays entirely free of content-provider IO.
@@ -88,30 +117,18 @@ internal fun ViewerDetailsSheet(
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
-    var provenance by remember(media.uri) { mutableStateOf<AiEditProvenanceGroup?>(null) }
-    LaunchedEffect(media.uri) {
-        provenance = withContext(Dispatchers.IO) {
-            runCatching {
-                val store = AiEditLineageStore(context.applicationContext)
-                // Only show media still readable under the current grant.
-                fun visible(uri: String): Boolean = try {
-                    context.contentResolver.query(
-                        android.net.Uri.parse(uri),
-                        arrayOf(android.provider.MediaStore.MediaColumns._ID),
-                        null, null, null
-                    )?.use { it.moveToFirst() } == true
-                } catch (_: RuntimeException) { false }
-                val parent = store.get(media.uri)
-                if (parent != null && parent.originalUri != media.uri &&
-                    visible(parent.originalUri))
-                    AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
-                else {
-                    val children = store.all().asSequence()
-                        .filter { it.originalUri == media.uri && it.editedUri != media.uri }
-                        .map { it.editedUri }.distinct().filter(::visible).sorted().toList()
-                    if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
-                }
-            }.getOrNull()
+    // #458: ordinary Details render at once; the AI marker is added in place
+    // once app-private lineage confirms it. Any failure means no marker.
+    val aiEditReader = LocalAiEditDetailsReader.current
+    var aiEdit by remember(media.uri) { mutableStateOf<AiEditDetails?>(null) }
+    LaunchedEffect(media.uri, aiEditReader) {
+        aiEdit = null
+        aiEdit = try {
+            aiEditReader.read(context, media.uri)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
         }
     }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {
@@ -171,7 +188,8 @@ internal fun ViewerDetailsSheet(
                 Spacer(Modifier.height(16.dp))
             }
             ViewerDetailRow("Name", facts.filename)
-            provenance?.let { group ->
+            if (aiEdit?.editedWithAi == true) ViewerAiEditedRow()
+            aiEdit?.group?.let { group ->
                 if (group.originalUri == media.uri) {
                     ViewerDetailRow("AI versions (${group.editedUris.size})", "Saved AI edits")
                 } else {
@@ -228,6 +246,25 @@ private fun ViewerDetailRow(label: String, value: String) {
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
+
+/**
+ * #458: one plain-text row, read by TalkBack as the whole phrase. Not a
+ * button and not colour-coded; it sits between Name and "Edited from…".
+ */
+@Composable
+private fun ViewerAiEditedRow() {
+    // One TalkBack stop that reads the whole phrase.
+    Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)
+        .semantics(mergeDescendants = true) {}
+        .testTag("atlas-details-ai-edited")) {
+        Text(AI_EDITED_LABEL, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+/** #458: the one user-facing phrase for a saved AI edit (Details and Photo DNA). */
+internal const val AI_EDITED_LABEL = "Edited with AI"
 
 /**
  * The same presentation facts as the full details sheet, without a provider
