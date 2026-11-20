@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -100,6 +101,8 @@ internal class ExternalPickViewModel : ViewModel() {
     var chosen by mutableStateOf(emptyList<String>())
     var albumRoute by mutableStateOf<AlbumRoute?>(null)
     var albumsTab by mutableStateOf(false)
+    /** "Some items can't be used": kept across rotation like the choice it explains. */
+    var error by mutableStateOf<String?>(null)
 }
 
 /**
@@ -116,12 +119,16 @@ internal class ExternalPickViewModel : ViewModel() {
 @Composable
 internal fun ExternalPickerHost(
     request: ExternalEntry.Pick,
+    /** The Activity's pick session: a new pick intent starts a new one, rotation keeps it. */
+    session: Int,
     vm: GalleryViewModel,
     /** Null cancels. Called at most once by the Activity's guard. */
     onFinish: (PickResultPlan?) -> Unit
 ) {
     val context = LocalContext.current
-    val pick: ExternalPickViewModel = viewModel(key = "external-pick-$request")
+    // Keyed by session, not only by the (value-equal) request: a second caller's
+    // identical GET_CONTENT must not inherit the first caller's choice.
+    val pick: ExternalPickViewModel = viewModel(key = "external-pick-$session-$request")
     val inventory by vm.publishedInventory.collectAsIdentityState()
     val busy by vm.busy.collectAsIdentityState()
     var grants by remember { mutableStateOf(readGalleryMediaGrant(context)) }
@@ -169,9 +176,8 @@ internal fun ExternalPickerHost(
 
     val scope = rememberCoroutineScope()
     var resolving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     fun toggle(record: MediaRecord) {
-        error = null
+        pick.error = null
         pick.chosen = PickSelection.toggle(pick.chosen, record.uri, request.allowMultiple)
     }
     fun done() {
@@ -185,7 +191,7 @@ internal fun ExternalPickerHost(
             if (usable.size != chosen.size) {
                 // Keep the picker open with what still works; never return a partial set.
                 pick.chosen = usable
-                error = PickCopy.SOME_UNAVAILABLE
+                pick.error = PickCopy.SOME_UNAVAILABLE
                 return@launch
             }
             PickResultPlanner.plan(request, usable)?.let(onFinish)
@@ -199,52 +205,80 @@ internal fun ExternalPickerHost(
         }
     }
 
+    ExternalPickerFrame(
+        request = request,
+        hasAccess = grants.hasAny,
+        albumsTab = pick.albumsTab,
+        error = pick.error,
+        chosenCount = pick.chosen.size,
+        resolving = resolving,
+        onAllowAccess = { permission.launch(necessaryPermissions()) },
+        onAlbumsTab = {
+            pick.albumsTab = it
+            pick.albumRoute = null
+        },
+        onCancel = { onFinish(null) },
+        onDone = ::done
+    ) {
+        val items = offered
+        when {
+            items == null || (items.isEmpty() && (busy || inventory.fromCache)) ->
+                AtlasGalleryLoading(bottomInset = 0.dp)
+            items.isEmpty() -> PickerEmpty(filter)
+            pick.albumsTab && pick.albumRoute == null -> PickerAlbums(items) { pick.albumRoute = it }
+            else -> {
+                val route = pick.albumRoute
+                PickerGrid(
+                    items = items,
+                    route = route,
+                    epoch = inventory.epoch,
+                    chosen = pick.chosen,
+                    allowMultiple = request.allowMultiple,
+                    onToggle = ::toggle,
+                    onReplace = { newSet, shown ->
+                        pick.error = null
+                        pick.chosen = PickSelection.replaced(pick.chosen, newSet, shown, request.allowMultiple)
+                    },
+                    onAlbumBack = { pick.albumRoute = null }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The picker's chrome around [body]: title and Cancel, the access prompt or the
+ * Pictures/Albums tabs, the unusable-items message and Cancel/Done. Stateless,
+ * so every state can also be rendered from synthetic values.
+ */
+@Composable
+internal fun ExternalPickerFrame(
+    request: ExternalEntry.Pick,
+    hasAccess: Boolean,
+    albumsTab: Boolean,
+    error: String?,
+    chosenCount: Int,
+    resolving: Boolean,
+    onAllowAccess: () -> Unit,
+    onAlbumsTab: (Boolean) -> Unit,
+    onCancel: () -> Unit,
+    onDone: () -> Unit,
+    body: @Composable BoxScope.() -> Unit
+) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).testTag(ExternalPickerTags.ROOT)) {
-        PickerTopBar(request, onCancel = { onFinish(null) })
-        if (!grants.hasAny) {
+        PickerTopBar(request, onCancel = onCancel)
+        if (!hasAccess) {
             AtlasEmptyState(
                 title = "Photos need access",
                 explanation = "Atlas shows your own photos and videos here so you can choose some.",
                 actionLabel = "Allow access",
-                onAction = { permission.launch(necessaryPermissions()) },
+                onAction = onAllowAccess,
                 bottomInset = 0.dp,
                 modifier = Modifier.weight(1f).testTag(ExternalPickerTags.PERMISSION)
             )
         } else {
-            PickerTabs(albums = pick.albumsTab, onAlbums = {
-                pick.albumsTab = it
-                pick.albumRoute = null
-            })
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                val items = offered
-                when {
-                    items == null || (items.isEmpty() && (busy || inventory.fromCache)) ->
-                        AtlasGalleryLoading(bottomInset = 0.dp)
-                    items.isEmpty() -> AtlasEmptyState(
-                        title = PickCopy.empty(filter),
-                        bottomInset = 0.dp,
-                        modifier = Modifier.testTag(ExternalPickerTags.EMPTY),
-                        titleTag = "atlas-picker-empty-title"
-                    )
-                    pick.albumsTab && pick.albumRoute == null -> PickerAlbums(items) { pick.albumRoute = it }
-                    else -> {
-                        val route = pick.albumRoute
-                        PickerGrid(
-                            items = items,
-                            route = route,
-                            epoch = inventory.epoch,
-                            chosen = pick.chosen,
-                            allowMultiple = request.allowMultiple,
-                            onToggle = ::toggle,
-                            onReplace = { newSet, shown ->
-                                error = null
-                                pick.chosen = PickSelection.replaced(pick.chosen, newSet, shown, request.allowMultiple)
-                            },
-                            onAlbumBack = { pick.albumRoute = null }
-                        )
-                    }
-                }
-            }
+            PickerTabs(albums = albumsTab, onAlbums = onAlbumsTab)
+            Box(Modifier.weight(1f).fillMaxWidth(), content = body)
         }
         error?.let { message ->
             Text(message, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)
@@ -252,12 +286,23 @@ internal fun ExternalPickerHost(
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
         PickerActions(
-            doneLabel = PickCopy.done(request, pick.chosen.size),
-            doneEnabled = grants.hasAny && !resolving && PickResultPlanner.doneEnabled(request, pick.chosen.size),
-            onCancel = { onFinish(null) },
-            onDone = ::done
+            doneLabel = PickCopy.done(request, chosenCount),
+            doneEnabled = hasAccess && !resolving && PickResultPlanner.doneEnabled(request, chosenCount),
+            onCancel = onCancel,
+            onDone = onDone
         )
     }
+}
+
+/** Nothing of the requested kind on the phone (or within ATLAS's access). */
+@Composable
+internal fun PickerEmpty(filter: PickMediaFilter) {
+    AtlasEmptyState(
+        title = PickCopy.empty(filter),
+        bottomInset = 0.dp,
+        modifier = Modifier.testTag(ExternalPickerTags.EMPTY),
+        titleTag = "atlas-picker-empty-title"
+    )
 }
 
 /** The provider's own type must satisfy the caller's request, and the item must still open. */

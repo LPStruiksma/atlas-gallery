@@ -13,6 +13,9 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -21,6 +24,8 @@ import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import nl.atlas.gallery.MainActivity
 import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.testkit.DisplayPrefsRule
@@ -29,6 +34,7 @@ import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -128,6 +134,82 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
         assertNull(backed.result.resultData)
     }
 
+    @Test fun aNewPickIntentStartsWithNothingChosen() {
+        // The first caller chooses an item but never presses Done.
+        val scenario = ActivityScenario.launch<MainActivity>(media.intent(Intent.ACTION_GET_CONTENT, "image/*", multiple = false))
+        compose.awaitPicker("Choose a photo")
+        var first: MainActivity? = null
+        scenario.onActivity { first = it }
+        compose.tapTile(media.first)
+        compose.onNodeWithTag(ExternalPickerTags.DONE).assertIsEnabled()
+        compose.onNodeWithTag(media.tileTag(media.first)).assertIsSelected()
+        // A second caller sends the identical request to the same Activity (single top).
+        media.deliverNewIntent(Intent.ACTION_GET_CONTENT, "image/*", multiple = false)
+        compose.awaitThat("the new request to reach the same Activity") {
+            var same = false
+            scenario.onActivity { same = it === first && it.intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0 }
+            same
+        }
+        compose.awaitPicker("Choose a photo")
+        compose.awaitThat("the old choice to be gone") {
+            !compose.exists(hasTestTag(media.tileTag(media.first)) and isSelected())
+        }
+        // Nothing of the first caller's choice can be returned: Done is off until a new tap.
+        compose.onNodeWithTag(ExternalPickerTags.DONE).assertIsNotEnabled()
+        compose.onNodeWithTag(media.tileTag(media.first)).assertIsNotSelected()
+        compose.tapTile(media.second)
+        compose.onNodeWithTag(media.tileTag(media.second)).assertIsSelected()
+        compose.onNodeWithTag(media.tileTag(media.first)).assertIsNotSelected()
+        // ActivityScenario does not track the onNewIntent pause/resume, so finish
+        // through the lifecycle monitor (as ExternalIntentJourneyTest does).
+        media.finishMainActivities()
+        compose.awaitThat("every MainActivity to be destroyed") { !media.anyMainActivityAlive() }
+    }
+
+    @Test fun anItemTheProviderRefusesIsDroppedAndAnotherCanBeChosen() {
+        // The caller asks for JPEG only; the folder holds two PNGs and one JPEG.
+        val jpeg = media.jpeg()
+        val scenario = media.launch(Intent.ACTION_GET_CONTENT, "image/jpeg", multiple = false)
+        compose.awaitPicker("Choose a photo")
+        compose.tapTile(media.second) // a PNG: the provider's own type is image/png
+        compose.tap(hasTestTag(ExternalPickerTags.DONE))
+        compose.awaitThat("the unusable-item message") { compose.exists(hasTestTag(ExternalPickerTags.ERROR)) }
+        compose.onNodeWithTag(ExternalPickerTags.ERROR).assertTextEquals(PickCopy.SOME_UNAVAILABLE)
+        compose.onNodeWithTag(ExternalPickerTags.DONE).assertIsNotEnabled()
+        compose.onNodeWithTag(media.tileTag(media.second)).assertIsNotSelected()
+        compose.capture("picker-573-unusable-$theme")
+        // Recovery: choosing the JPEG clears the message and returns it.
+        compose.tapTile(jpeg)
+        assertFalse(compose.exists(hasTestTag(ExternalPickerTags.ERROR)))
+        compose.tap(hasTestTag(ExternalPickerTags.DONE))
+        assertEquals(Activity.RESULT_OK, scenario.result.resultCode)
+        val data = requireNotNull(scenario.result.resultData)
+        assertSameItem(jpeg, data.data)
+        assertEquals(1, data.clipData!!.itemCount)
+    }
+
+    @Test fun recreationKeepsTheChoice() {
+        val scenario = media.launch(Intent.ACTION_GET_CONTENT, "image/*", multiple = true)
+        compose.awaitPicker("Choose photos")
+        compose.tapTile(media.second)
+        compose.tapTile(media.first)
+        compose.onNodeWithTag(ExternalPickerTags.DONE).assertTextEquals("Done (2)")
+        // A configuration change (rotation, theme, font) recreates the Activity.
+        scenario.recreate()
+        compose.awaitPicker("Choose photos")
+        compose.awaitThat("the choice to survive recreation") {
+            compose.exists(hasTestTag(ExternalPickerTags.DONE) and hasText("Done (2)"))
+        }
+        compose.onNodeWithTag(media.tileTag(media.second)).assertIsSelected()
+        compose.capture("picker-573-recreated-$theme")
+        compose.tap(hasTestTag(ExternalPickerTags.DONE))
+        assertEquals(Activity.RESULT_OK, scenario.result.resultCode)
+        val clip = requireNotNull(scenario.result.resultData).clipData!!
+        assertEquals(2, clip.itemCount)
+        assertSameItem(media.second, clip.getItemAt(0).uri)
+        assertSameItem(media.first, clip.getItemAt(1).uri)
+    }
+
     @Test fun aPickForSomethingThatIsNotMediaIsCancelledAtOnce() {
         val scenario = media.launch(Intent.ACTION_GET_CONTENT, "text/plain", multiple = false)
         assertEquals(Activity.RESULT_CANCELED, scenario.result.resultCode)
@@ -138,25 +220,25 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
  * The same MediaStore row: ATLAS returns the volume-specific item URI
  * (`external_primary`), while the test inserted through the `external` union.
  */
-private fun assertSameItem(expected: Uri, actual: Uri?) {
+internal fun assertSameItem(expected: Uri, actual: Uri?) {
     requireNotNull(actual) { "no URI returned" }
     assertEquals("content", actual.scheme)
     assertEquals("media", actual.authority)
     assertEquals(expected.pathSegments.drop(1), actual.pathSegments.drop(1))
 }
 
-private fun androidx.compose.ui.test.junit4.ComposeTestRule.awaitPicker(title: String) {
+internal fun androidx.compose.ui.test.junit4.ComposeTestRule.awaitPicker(title: String) {
     awaitThat("the picker titled $title") { exists(hasTestTag(ExternalPickerTags.TITLE) and hasText(title)) }
 }
 
-private fun androidx.compose.ui.test.junit4.ComposeTestRule.tapTile(uri: Uri) {
+internal fun androidx.compose.ui.test.junit4.ComposeTestRule.tapTile(uri: Uri) {
     val tag = "atlas-timeline-media-${ContentUris.parseId(uri)}"
     awaitThat("grid tile $tag", timeoutMs = 30_000L) { exists(hasTestTag(tag)) }
     tap(hasTestTag(tag))
 }
 
 /** Two generated PNGs in their own folder; the second is the newer. */
-private class PickerMedia {
+internal class PickerMedia {
     companion object {
         const val ALBUM = "ATLAS-573-Picker"
     }
@@ -182,23 +264,61 @@ private class PickerMedia {
         created.clear()
     }
 
+    fun tileTag(uri: Uri) = "atlas-timeline-media-${ContentUris.parseId(uri)}"
+
+    fun intent(action: String, type: String?, multiple: Boolean, data: Uri? = null): Intent = Intent(action).apply {
+        component = ComponentName(context, MainActivity::class.java)
+        when {
+            data != null && type != null -> setDataAndType(data, type)
+            data != null -> this.data = data
+            type != null -> this.type = type
+        }
+        if (multiple) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+    }
+
     fun launch(action: String, type: String?, multiple: Boolean, data: Uri? = null): ActivityScenario<MainActivity> =
-        ActivityScenario.launchActivityForResult(Intent(action).apply {
-            component = ComponentName(context, MainActivity::class.java)
-            when {
-                data != null && type != null -> setDataAndType(data, type)
-                data != null -> this.data = data
-                type != null -> this.type = type
+        ActivityScenario.launchActivityForResult(intent(action, type, multiple, data))
+
+    /** Delivers a request to the running MainActivity through onNewIntent (single top). */
+    fun deliverNewIntent(action: String, type: String?, multiple: Boolean) {
+        context.startActivity(intent(action, type, multiple)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+    }
+
+    fun anyMainActivityAlive(): Boolean {
+        var alive = false
+        instrumentation.runOnMainSync {
+            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+            alive = Stage.values().filter { it != Stage.DESTROYED }
+                .any { stage -> monitor.getActivitiesInStage(stage).any { it is MainActivity } }
+        }
+        return alive
+    }
+
+    fun finishMainActivities() {
+        instrumentation.runOnMainSync {
+            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+            Stage.values().filter { it != Stage.DESTROYED }.forEach { stage ->
+                monitor.getActivitiesInStage(stage).filterIsInstance<MainActivity>()
+                    .forEach { if (!it.isFinishing) it.finish() }
             }
-            if (multiple) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-        })
+        }
+    }
+
+    /** A third item, a JPEG, between the two PNGs in time. */
+    fun jpeg(): Uri = image("ATLAS_573_PICK_3.jpg", AndroidColor.rgb(64, 140, 92),
+        System.currentTimeMillis() - 30_000L, Bitmap.CompressFormat.JPEG, "image/jpeg")
 
     private fun png(name: String, colour: Int, takenAt: Long) {
+        image(name, colour, takenAt, Bitmap.CompressFormat.PNG, "image/png")
+    }
+
+    private fun image(name: String, colour: Int, takenAt: Long, format: Bitmap.CompressFormat, mime: String): Uri {
         val resolver = context.contentResolver
         val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, name)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.MIME_TYPE, mime)
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/$ALBUM/")
                 put(MediaStore.Images.Media.DATE_TAKEN, takenAt)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
@@ -211,11 +331,12 @@ private class PickerMedia {
                 val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
                 paint.color = AndroidColor.WHITE
                 canvas.drawCircle(480f, 360f, 140f, paint)
-                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out))
+                check(bitmap.compress(format, 95, out))
             } finally {
                 bitmap.recycle()
             }
         }
         resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+        return uri
     }
 }

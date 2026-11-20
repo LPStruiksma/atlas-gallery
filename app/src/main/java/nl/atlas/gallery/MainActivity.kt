@@ -384,8 +384,16 @@ class MainActivity : ComponentActivity() {
     @Volatile internal var showWhenLockedApplied: Boolean = false
         private set
 
+    /**
+     * Which pick request is current. A new GET_CONTENT / PICK delivered to this
+     * Activity (onNewIntent) starts a new session, so nothing chosen for the
+     * previous caller carries over; recreation (rotation) keeps the session.
+     */
+    private var pickSession by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
         if (!acceptExternalIntent(intent)) return
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
@@ -412,7 +420,10 @@ class MainActivity : ComponentActivity() {
                         if (entry is ExternalEntry.Pick) {
                             // GET_CONTENT / PICK: the grid in pick mode, nothing else
                             // of the library; the result is answered exactly once.
-                            ExternalPickerHost(entry, galleryVm, onFinish = ::answerPick)
+                            val session = pickSession
+                            key(session) {
+                                ExternalPickerHost(entry, session, galleryVm, onFinish = ::answerPick)
+                            }
                         } else {
                             AtlasApp(galleryVm)
                         }
@@ -428,7 +439,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        acceptExternalIntent(intent)
+        acceptExternalIntent(intent, newRequest = true)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(PICK_SESSION_KEY, pickSession)
     }
 
     /**
@@ -438,7 +454,7 @@ class MainActivity : ComponentActivity() {
      * A pick for something that is not a photo or video is answered at once
      * with RESULT_CANCELED. Returns false when the Activity is finishing.
      */
-    private fun acceptExternalIntent(intent: Intent?): Boolean {
+    private fun acceptExternalIntent(intent: Intent?, newRequest: Boolean = false): Boolean {
         val entry = ExternalIntentReader.entry(intent)
         showWhenLockedApplied = ExternalIntentParser.showWhenLocked(entry)
         setShowWhenLocked(showWhenLockedApplied)
@@ -449,9 +465,16 @@ class MainActivity : ComponentActivity() {
         }
         // A new pick request starts unanswered; RESULT_CANCELED stays the default
         // until Done, so a caller killed or backed out of gets nothing.
-        if (entry is ExternalEntry.Pick) pickAnswered = false
+        if (entry is ExternalEntry.Pick) {
+            pickAnswered = false
+            if (newRequest) pickSession++
+        }
         externalEntry = entry
         return true
+    }
+
+    private companion object {
+        const val PICK_SESSION_KEY = "atlas.external.pickSession"
     }
 
     /** True once a pick was answered; a second Done or Cancel is ignored. */
