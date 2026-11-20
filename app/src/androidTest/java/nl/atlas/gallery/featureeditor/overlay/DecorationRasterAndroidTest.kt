@@ -66,7 +66,7 @@ class DecorationRasterAndroidTest {
         render(bitmap, stage(rectangle, text))
         assertEquals(Color.RED, bitmap.getPixel(50, 100))
         // Bottom of the text box is background-only, away from the glyph baseline.
-        assertEquals(Color.GREEN, bitmap.getPixel(150, 108))
+        assertEquals(Color.GREEN, bitmap.getPixel(150, 110))
     }
 
     @Test fun contentHashedStickerRendersAtSourceAttachedPosition() {
