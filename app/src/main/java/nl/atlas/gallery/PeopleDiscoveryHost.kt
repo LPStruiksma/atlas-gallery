@@ -777,7 +777,9 @@ internal class PeopleDiscoveryHost(
     @Volatile private var visualScope: VisualScope? = null
     private val embedderLock = Any()
     private var visualEmbedder: ImageEmbedder? = null
-    private val faceCrops = FaceCropCache<Bitmap>()
+    // PERF (#119): room for a People screen of portraits plus the Same person?
+    // pair on screen and the next one (crops are at most 192 px, ~150 KB).
+    private val faceCrops = FaceCropCache<Bitmap>(FACE_CROP_CACHE_ENTRIES)
 
     /**
      * The identity-review snapshot last handed out, with the store generation
