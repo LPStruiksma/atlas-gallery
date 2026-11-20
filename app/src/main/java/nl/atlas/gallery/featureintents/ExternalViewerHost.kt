@@ -72,7 +72,8 @@ internal fun ExternalViewerHost(
 
 private sealed interface ExternalViewerState {
     data object Probing : ExternalViewerState
-    class Ready(val items: List<MediaRecord>) : ExternalViewerState
+    /** [startUri] is the caller's item; with neighbours it is not the first in [items]. */
+    class Ready(val items: List<MediaRecord>, val startUri: String) : ExternalViewerState
     data object Failed : ExternalViewerState
 }
 
@@ -88,7 +89,8 @@ private fun ProbedExternalViewer(entry: ExternalEntry.Viewer, onClose: () -> Uni
                     // A2: ordinary view/review of a MediaStore row ATLAS can read
                     // itself gets its folder as neighbours; secure review never.
                     ExternalViewerState.Ready(
-                        ExternalNeighbours.load(context.applicationContext, entry, opened) ?: listOf(opened))
+                        ExternalNeighbours.load(context.applicationContext, entry, opened) ?: listOf(opened),
+                        startUri = opened.uri)
                 }
                 ExternalItemProbeResult.Unreadable -> ExternalViewerState.Failed
             }
@@ -103,7 +105,7 @@ private fun ProbedExternalViewer(entry: ExternalEntry.Viewer, onClose: () -> Uni
         }
         is ExternalViewerState.Ready -> GalleryViewer(
             items = current.items,
-            startUri = current.items.first().uri,
+            startUri = current.startUri,
             access = if (entry.kind.secure) ViewerAccess.SECURE else ViewerAccess.EXTERNAL,
             onBack = onClose
         )
