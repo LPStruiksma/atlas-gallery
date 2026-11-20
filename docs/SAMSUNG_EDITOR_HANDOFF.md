@@ -1,8 +1,6 @@
-# ATLAS → Samsung Gallery editing (public Android handoff)
+# ATLAS → Samsung Gallery editing (More-menu fallback)
 
-**Intent:** Keep ATLAS as the fast, local photo browser while retaining the
-actual Samsung Gallery editor's extensive tools, including the Galaxy AI
-features that are available on the user's current phone/software version.
+**Intent (legacy and fallback):** This document records the existing public-Android handoff to Samsung Gallery. Under [Goal #629](https://github.com/LPStruiksma/atlas-gallery/issues/629), the viewer pencil will instead open ATLAS's central editor. The Samsung path remains available from **More → Open in Samsung editor** for proprietary features and other unsupported cases. See [EDIT-0 parity ledger](editor/PARITY.md) and [performance budgets](editor/BUDGETS.md) for the new in-app editor contract.
 This is **not an embedded Samsung SDK**: Samsung's editor is proprietary and
 an externally exposed activity is not guaranteed. Android's public
 `ACTION_EDIT` intent does not promise a result URI or specific save behavior.
@@ -67,9 +65,4 @@ one-photo `ClipData`, absence of forced original-overwrite
 image selection, and hiding editor actions for video. It never starts
 Samsung Gallery during CI or opens personal data.
 
-**Future built-in editor:** add reversible, non-destructive basics
-(crop/rotate/straighten, brightness/contrast/exposure, curves/filters) as
-a separate engine only where benchmarking shows a meaningful advantage.
-Do not clone private Samsung code/assets or promise an exact Galaxy AI
-replica. Prefer delegating specialized capabilities to Samsung while
-keeping ATLAS's browser/People/declutter workflow distinct.
+**New direction — central in-app editor:** This older handoff-only preference is superseded by [Goal #629](https://github.com/LPStruiksma/atlas-gallery/issues/629). The central editor hosts photo, video, AI Edit and Face Swap; its reversible recipe and safe Save/Save as copy/Revert path are specified in [EDIT-0](editor/PARITY.md). The external Samsung action is a **More-menu fallback**, not the default pencil and not proof of Samsung-tool parity. Keep this document as a description of the existing implementation until the replacement lands. Do not clone Samsung private code/assets or imply Samsung Galaxy AI is available to Atlas.
