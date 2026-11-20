@@ -121,7 +121,11 @@ fun AtlasSearch(
     } else {
         LocalConfiguration.current.screenHeightDp
     }
-    val singleRow = showQueryField && showScopeChips &&
+    // The IME-limited single-row layout belongs to the anchored overview popup.
+    // Persistent inline global Search must retain its normal flexible row even
+    // when its host is temporarily resized for the keyboard: fixed-width chips
+    // could otherwise consume all width and leave Close with no tappable bounds.
+    val singleRow = !persistentInline && showQueryField && showScopeChips &&
         atlasSearchSingleRow(windowHeightDp, imeBottomDp)
     val queryField: @Composable (Modifier) -> Unit = { fieldModifier ->
         OutlinedTextField(
