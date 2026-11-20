@@ -1,0 +1,26 @@
+# BRAND-L2 #655. Synthetic pre/post captures on installed APKs,
+# actual Android light/dark and 100/200% system font, S24+ 1080x2340.
+brand-l2-before-photos-light-100
+brand-l2-before-people-light-100
+brand-l2-before-viewer-light-100
+brand-l2-before-photos-light-200
+brand-l2-before-people-light-200
+brand-l2-before-viewer-light-200
+brand-l2-before-photos-dark-100
+brand-l2-before-people-dark-100
+brand-l2-before-viewer-dark-100
+brand-l2-before-photos-dark-200
+brand-l2-before-people-dark-200
+brand-l2-before-viewer-dark-200
+brand-l2-after-photos-light-100
+brand-l2-after-people-light-100
+brand-l2-after-viewer-light-100
+brand-l2-after-photos-light-200
+brand-l2-after-people-light-200
+brand-l2-after-viewer-light-200
+brand-l2-after-photos-dark-100
+brand-l2-after-people-dark-100
+brand-l2-after-viewer-dark-100
+brand-l2-after-photos-dark-200
+brand-l2-after-people-dark-200
+brand-l2-after-viewer-dark-200
