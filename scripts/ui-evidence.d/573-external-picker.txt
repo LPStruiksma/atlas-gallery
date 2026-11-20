@@ -7,3 +7,16 @@ picker-573-multiple-light
 picker-573-multiple-dark
 picker-573-albums-light
 picker-573-albums-dark
+# Receipt follow-up: a refused (wrong-type) item with its message, the choice kept
+# across recreation, nothing of the requested kind, no media access, and font scale 2.
+picker-573-unusable-light
+picker-573-unusable-dark
+picker-573-recreated-light
+picker-573-recreated-dark
+picker-573-empty-light
+picker-573-empty-dark
+picker-573-empty-largetext
+picker-573-noaccess-light
+picker-573-noaccess-dark
+picker-573-noaccess-largetext
+picker-573-largetext-multiple
