@@ -130,10 +130,13 @@ internal fun ViewerDetailsContent(
     // #458: ordinary Details render at once; the AI marker is added in place
     // once app-private lineage confirms it. Any failure means no marker.
     val aiEditReader = LocalAiEditDetailsReader.current
-    var aiEdit by remember(media.uri) { mutableStateOf<AiEditDetails?>(null) }
+    // Read once per photo and reader. A surface grabbed while closing drops
+    // loadMetadata and regains it on reopen; the known answer is kept rather
+    // than cleared and re-read, so the marker row never blinks out (#682).
+    var aiEdit by remember(media.uri, aiEditReader) { mutableStateOf<AiEditDetails?>(null) }
+    var aiEditRead by remember(media.uri, aiEditReader) { mutableStateOf(false) }
     LaunchedEffect(media.uri, aiEditReader, loadMetadata) {
-        if (!loadMetadata) return@LaunchedEffect
-        aiEdit = null
+        if (!loadMetadata || aiEditRead) return@LaunchedEffect
         aiEdit = try {
             aiEditReader.read(context, media.uri)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -141,6 +144,7 @@ internal fun ViewerDetailsContent(
         } catch (_: Exception) {
             null
         }
+        aiEditRead = true
     }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {
         mutableStateOf<ViewerDimensions?>(null)
