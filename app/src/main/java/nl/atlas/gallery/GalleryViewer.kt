@@ -160,9 +160,6 @@ fun GalleryViewer(
     // Favourite results outlive a remount (a Trash rebuilds the list), keyed by URI,
     // until the next library refresh brings fresh isFavorite values.
     val favouriteOverrides = remember { mutableStateMapOf<String, Boolean>() }
-    // BENCH-1 (#572): which photos' 2400 px base decoded with an Ultra HDR
-    // gain map, as reported by their own page. Only the focused one counts.
-    val gainmapByUri = remember { mutableStateMapOf<String, Boolean>() }
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
@@ -265,6 +262,9 @@ private fun GalleryViewerSnapshot(
     var lastPrefetchFocus by remember(CatalogSourceKey(items)) { mutableIntStateOf(start) }
     // A single tap on a photo hides all chrome (and the system bars), without
     // changing the selected item, pager, zoom or the caller's Back stack.
+    // BENCH-1 (#572): which photos' 2400 px base decoded with an Ultra HDR
+    // gain map, as reported by their own page. Only the focused one counts.
+    val gainmapByUri = remember { mutableStateMapOf<String, Boolean>() }
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
