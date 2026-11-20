@@ -377,7 +377,7 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
  * completion into elapsedRealtime at callback time for the process origin.
  * No media identifiers or filenames are observed or logged.
  */
-private class PerfA1FrameProbe(private val window: android.view.Window) {
+internal class PerfA1FrameProbe(private val window: android.view.Window) {
     private var mode = "cold"
     private var reported = false
     private var stopped = false
@@ -390,7 +390,7 @@ private class PerfA1FrameProbe(private val window: android.view.Window) {
         if (!reported && pendingVsyncNs > 0L &&
             frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP) == pendingVsyncNs) {
             val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
-            val completedNs = pendingVsyncNs + totalNs
+            val completedNs = frame.getMetric(android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP) + totalNs
             val nowNs = System.nanoTime()
             val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
             val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
@@ -460,7 +460,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Opt-in marker is created only by the synthetic hosted benchmark.
         // Release builds and normal debug sessions never install a listener.
-        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 &&
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
             (android.os.Build.HARDWARE in setOf("ranchu", "goldfish") ||
                 android.os.Build.FINGERPRINT.contains("emulator")) &&
             File(noBackupFilesDir, "atlas-perf-a1-enabled").isFile) {
@@ -3701,15 +3701,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         }
                         // Observe the *drawn* Photos subtree, not its Compose
                         // publication. FrameMetrics must later match this vsync.
-                        Box(Modifier.fillMaxSize().drawWithContent {
-                            drawContent()
-                            if (perfA1Probe != null && albumRoute == null &&
-                                visible.isNotEmpty() && publishedGallery.epoch >= 0L &&
-                                publishedGallery.showable(grants) &&
-                                (publishedGallery.fromCache || perfA1Probe.isWarm)) {
-                                perfA1Probe.noteDraw(publishedGallery.fromCache)
-                            }
-                        }) {
+                        val perfA1PhotosContent: @Composable () -> Unit = {
                         val photosSelecting = batchSelection != null && !originalProportions &&
                             timelineEnabled
                         if (originalProportions) {
@@ -3879,7 +3871,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 )
                             }
                         }
-                        } // PERF-A1A outer draw witness
+                        } // Photos subtree
+                        if (perfA1Probe != null) {
+                            Box(Modifier.fillMaxSize().drawWithContent {
+                                drawContent()
+                                if (albumRoute == null && visible.isNotEmpty() &&
+                                    publishedGallery.epoch >= 0L &&
+                                    publishedGallery.showable(grants) &&
+                                    (publishedGallery.fromCache || perfA1Probe.isWarm)) {
+                                    perfA1Probe.noteDraw(publishedGallery.fromCache)
+                                }
+                            }) { perfA1PhotosContent() }
+                        } else {
+                            perfA1PhotosContent() // no extra layout in normal/release builds
+                        }
                     }
                     tab == 1 && hideAlbumsOpen -> {
                         HideAlbumsScreen(
