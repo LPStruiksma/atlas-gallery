@@ -2,8 +2,14 @@ name: Public text guard
 # atlas-gallery#533: this repository is public. Flag personal data (e-mail,
 # phone, street address, personal folder paths, EXIF/GPS, content:// ids, chat
 # links) in PR diffs and commit messages (check `diff and commits`), and in new
-# or edited issue and PR text (comment + `leak-check` label). Findings name the
-# kind and line only, never the matched text. Script: scripts/public_text_guard.py
+# or edited issue and PR text. Findings name the kind and line only, never the
+# matched text. Script: scripts/public_text_guard.py
+#
+# Trust boundary: PR-family events run this file from the PR merge commit, so
+# every job they can start is read-only (no write token). Only `issues` and
+# `issue_comment` events, which always run the default-branch definition, get
+# the job that comments and adds the `leak-check` label. A hit in a PR body,
+# review or review comment fails the read-only `posted PR text` check instead.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -53,9 +59,14 @@ jobs:
         run: |
           if [ -f trusted/scripts/public_text_guard.py ]; then
             echo "GUARD=trusted/scripts/public_text_guard.py" >> "$GITHUB_ENV"
-          else
-            echo '::notice::Base has no guard yet (bootstrap PR); using the candidate guard once.'
+          elif git diff --name-only --diff-filter=A "$BASE...$HEAD" | grep -qx scripts/public_text_guard.py; then
+            # Only the PR that first installs the guard gets here. Its detector is
+            # the code under review, so this run is not independent proof.
+            echo '::warning::Initial install: base has no guard, so the candidate guard scans itself. Not independent; the install PR needs the independent verification in its PR body.'
             echo "GUARD=scripts/public_text_guard.py" >> "$GITHUB_ENV"
+          else
+            echo '::error::Base has no guard and this PR does not install it; failing closed.'
+            exit 1
           fi
       - name: Scan added lines of the PR diff
         run: git diff --no-color "$BASE...$HEAD" | python "$GUARD" --diff -
@@ -63,9 +74,39 @@ jobs:
         if: ${{ !cancelled() }}
         run: python "$GUARD" --commits "$BASE..$HEAD"
 
+  posted-pr:
+    name: posted PR text
+    if: >-
+      (github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'edited'))
+      || github.event_name == 'pull_request_review' || github.event_name == 'pull_request_review_comment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/public_text_guard.py
+          sparse-checkout-cone-mode: false
+      - name: Scan the posted text (read-only; fails on a hit)
+        run: |
+          if [ ! -f scripts/public_text_guard.py ]; then
+            echo '::notice::No guard on the default branch yet; nothing to run.'
+            exit 0
+          fi
+          python3 scripts/public_text_guard.py --event "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/out.txt" && exit 0
+          code=$?
+          cat "$RUNNER_TEMP/out.txt"
+          if [ "$code" -eq 1 ]; then
+            echo '::error::Possible personal data in posted PR text (kind and line above). Edit the text, or add guard: allow-public to a synthetic line.'
+          fi
+          exit "$code"
+
   posted:
     name: posted text
-    if: github.event_name != 'pull_request' || github.event.action == 'opened' || github.event.action == 'edited'
+    if: github.event_name == 'issues' || github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
