@@ -224,6 +224,26 @@ class PeoplePendingAfterRelaunchTest {
         assertNull(holdPendingPeople(shown, empty)?.people)
     }
 
+    /**
+     * #676: a cold start (an app update always is one) reads People before
+     * the gallery has published anything. A kept catalogue is restoring, not
+     * empty, both before the cached gallery publishes (null grant) and for a
+     * grant this new process has not carried over yet.
+     */
+    @Test fun aKeptCatalogueBeforeTheFirstGalleryPublicationIsRestoring() {
+        namedLibrary()
+        val host = relaunch()
+        for (grant in listOf(null, "gallery-2")) {
+            val early = host.status(grant)
+            assertNull(early.people)
+            assertTrue("kept catalogue for grant $grant is pending", early.peoplePending)
+            assertTrue("People shows its restoring page, never \"No people\"",
+                peopleHomeRestoring(access = true, optedIn = true, status = early))
+        }
+        host.onGalleryPublication("gallery-2") { inventory }
+        assertEquals("Ana", host.status("gallery-2").people?.people?.get(ana)?.name)
+    }
+
     @Test fun theFirstScanBeforeAnyPublicationIsNotPending() {
         val host = relaunch()
         host.start("gallery-1", inventory)

@@ -30,6 +30,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
+import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Close
@@ -306,13 +309,10 @@ fun AtlasStoriesScreen(
             // #457: a restored slideshow waits for the re-planned deck.
             StoriesPlanningPlaceholder()
         } else if (cards.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(32.dp).testTag("atlas-stories-empty"),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Your stories will appear here", style = MaterialTheme.typography.titleLarge)
-            }
+            // DESIGN-6 #136: the shared quiet state.
+            AtlasEmptyState(title = "Your stories will appear here",
+                icon = Icons.Outlined.AutoStories,
+                modifier = Modifier.testTag("atlas-stories-empty"))
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -335,19 +335,14 @@ fun AtlasStoriesScreen(
     }
 }
 
-/** Shown while a restored slideshow waits for its re-planned deck (#457). */
+/**
+ * Shown while a restored slideshow waits for its re-planned deck (#457). A
+ * load like any other (DESIGN-6 #136 state 7): quiet for 300 ms, then one line.
+ */
 @Composable
 private fun StoriesPlanningPlaceholder() {
-    Column(
-        Modifier.fillMaxSize().padding(32.dp).testTag("atlas-stories-planning"),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Filled.AutoStories, contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-        Spacer(Modifier.height(14.dp))
-        Text("Getting your stories ready…", style = MaterialTheme.typography.titleLarge)
-    }
+    AtlasGalleryLoading("Getting your stories ready…",
+        modifier = Modifier.testTag("atlas-stories-planning"))
 }
 
 @Composable
