@@ -16,12 +16,18 @@ internal fun mayPublishCompletedGalleryScan(
     grantAtScanStart: GalleryMediaGrant,
     grantAtPublication: GalleryMediaGrant,
     changeVersionAtScanStart: Long,
-    changeVersionAtPublication: Long
+    changeVersionAtPublication: Long,
+    /**
+     * #676: the caller runs the generation delta right after publishing, so a
+     * MediaStore change observed during the scan follows as that delta
+     * instead of discarding the whole (possibly minute-long) scan.
+     */
+    changesFollowAsDelta: Boolean = false
 ): Boolean =
     latestRequest && !accessExplicitlyRevoked &&
         grantAtScanStart.hasAny && grantAtPublication.hasAny &&
         grantAtScanStart == grantAtPublication &&
-        changeVersionAtScanStart == changeVersionAtPublication
+        (changeVersionAtScanStart == changeVersionAtPublication || changesFollowAsDelta)
 
 /**
  * One fresh follow-up may be queued for an in-flight MediaStore change.

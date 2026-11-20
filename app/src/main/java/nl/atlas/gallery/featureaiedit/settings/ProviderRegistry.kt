@@ -2,6 +2,7 @@ package nl.atlas.gallery.featureaiedit.settings
 
 import nl.atlas.gallery.featureaiedit.network.FailureCode
 import nl.atlas.gallery.featureaiedit.provider.ImageEditProvider
+import nl.atlas.gallery.featureaiedit.provider.hosted.fal.FalImageEditProvider
 
 /**
  * AIE-19 (#430): the kinds of service a stored profile can point at. A profile stored by a
@@ -94,15 +95,16 @@ class ProviderRegistry(private val runtimes: Map<ProviderKind, ProviderRuntime>)
          * *admin* key while its prose says any valid key; an ordinary key could be refused
          * there. `/v1/models` accepts no key at all, so it proves nothing. Until #429/#432
          * verify one with a real key, fal has no check: "Saved. Checked on your first edit."
-         * fal's `Authorization: Key …` scheme is supplied by its adapter (#429).
+         * Auth is fal's documented `Authorization: Key …` and the base is the queue host, the
+         * same scheme and host its adapter (#429) uses (#462).
          */
         val FAL_PRESET = ProviderPreset(
             kind = ProviderKind.FAL,
             title = "fal.ai",
             summary = "Several models, including open ones. Needs a key.",
             icon = PresetIcon.HOSTED,
-            baseUrl = "https://fal.run/",
-            authType = ProviderAuthType.BEARER,
+            baseUrl = FalImageEditProvider.QUEUE_BASE,
+            authType = ProviderAuthType.KEY_SCHEME,
             headerName = "Authorization",
             keyCheck = null,
             getKeyUrl = "https://fal.ai/dashboard/keys"
