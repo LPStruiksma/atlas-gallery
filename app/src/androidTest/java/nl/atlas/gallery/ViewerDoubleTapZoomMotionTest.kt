@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
-import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
@@ -19,10 +18,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.junit.rules.TestRule
-import org.junit.runner.Description
 import org.junit.runner.RunWith
-import org.junit.runners.model.Statement
+import nl.atlas.gallery.testkit.withAnimatorScale
 import java.io.File
 import kotlin.math.abs
 
@@ -40,12 +37,13 @@ import kotlin.math.abs
 @RunWith(AndroidJUnit4::class)
 class ViewerDoubleTapZoomMotionTest {
     private val rule = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
-        .around(Flow4AnimatorScaleRule("1")).around(rule)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(rule)
 
     private val hasPose = SemanticsMatcher.keyIsDefined(ViewerZoomPoseKey)
 
-    @Test fun doubleTapZoomsInAndOutOver160msAroundTheTap() {
+    // The CI emulator runs with animations off; these tests turn them on
+    // for their own duration (testkit rule 7).
+    @Test fun doubleTapZoomsInAndOutOver160msAroundTheTap() = withAnimatorScale("1") {
         open()
         val tap = tapPoint()
         val zoomIn = doubleTapFrames(tap)
@@ -59,7 +57,7 @@ class ViewerDoubleTapZoomMotionTest {
         assertEquals(ViewerZoomPosition(), zoomOut.last())
     }
 
-    @Test fun newTouchStopsTheZoomWhereItIsWithoutSnapBack() {
+    @Test fun newTouchStopsTheZoomWhereItIsWithoutSnapBack() = withAnimatorScale("1") {
         open()
         val tap = tapPoint()
         rule.mainClock.autoAdvance = false
@@ -85,19 +83,13 @@ class ViewerDoubleTapZoomMotionTest {
         }
     }
 
-    @Test fun removeAnimationsCutsStraightToTheEndPose() {
-        val before = flow4Shell("settings get global animator_duration_scale").trim()
-        flow4Shell("settings put global animator_duration_scale 0")
-        try {
-            open()
-            val tap = tapPoint()
-            val frames = doubleTapFrames(tap)
-            report("reduced", frames, tap)
-            assertEquals(2.5f, frames.first().scale, .001f)
-            assertTrue(frames.all { it == frames.first() })
-        } finally {
-            flow4Restore("animator_duration_scale", before)
-        }
+    @Test fun removeAnimationsCutsStraightToTheEndPose() = withAnimatorScale("0") {
+        open()
+        val tap = tapPoint()
+        val frames = doubleTapFrames(tap)
+        report("reduced", frames, tap)
+        assertEquals(2.5f, frames.first().scale, .001f)
+        assertTrue(frames.all { it == frames.first() })
     }
 
     private fun open() {
@@ -183,30 +175,4 @@ class ViewerDoubleTapZoomMotionTest {
         return MediaRecord(1L, Uri.fromFile(file).toString(), "Synthetic FLOW-4 photo",
             "DCIM/SYNTHETIC/", file.length(), 1L, false)
     }
-}
-
-/**
- * The CI emulator starts with animations disabled. Set the animator scale
- * for this class only and restore the exact previous value afterwards.
- */
-private class Flow4AnimatorScaleRule(private val scale: String) : TestRule {
-    override fun apply(base: Statement, description: Description): Statement =
-        object : Statement() {
-            override fun evaluate() {
-                val before = flow4Shell("settings get global animator_duration_scale").trim()
-                flow4Shell("settings put global animator_duration_scale $scale")
-                try { base.evaluate() } finally { flow4Restore("animator_duration_scale", before) }
-            }
-        }
-}
-
-private fun flow4Restore(key: String, oldValue: String) {
-    if (oldValue == "null" || oldValue.isBlank()) flow4Shell("settings delete global $key")
-    else flow4Shell("settings put global $key $oldValue")
-}
-
-private fun flow4Shell(command: String): String {
-    val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation
-        .executeShellCommand(command)
-    return ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes().decodeToString() }
 }
