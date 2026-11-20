@@ -16,7 +16,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.benchmark.BenchmarkReport
@@ -123,42 +122,59 @@ class ViewerDetailsMotionFrameTimeTest {
             }
             compose.waitForIdle()
             val pager = compose.onNodeWithTag("atlas-main-pager")
+            // The Compose clock is stepped one 16 ms frame per input event or
+            // settle step, so every animation frame is laid out and drawn and
+            // reaches FrameMetrics (with the clock free-running, a whole phase
+            // collapsed into one or two drawn frames).
+            compose.mainClock.autoAdvance = false
+            fun frame() {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+            }
 
-            // 1) Finger-tracked drag: 3 x 8 steps of 1.5 % of the height, held
-            //    after each third for a frame of evidence (about 1/4, 1/2, 3/4).
+            // 1) Finger-tracked drag: 3 x 8 steps of 1.5 % of the height, one
+            //    frame per step, held after each third for a frame of evidence
+            //    (about 1/4, 1/2, 3/4 open).
             val dragFrames = ArrayList<Double>()
             var midSurface: Int? = null
             pager.performTouchInput { down(center.copy(y = height * .8f)) }
+            frame()
             for (third in 1..3) {
                 recorder.start()
-                pager.performTouchInput {
-                    repeat(8) { moveBy(Offset(0f, -height * .015f), delayMillis = 8L) }
+                repeat(8) {
+                    pager.performTouchInput { moveBy(Offset(0f, -height * .015f), delayMillis = 16L) }
+                    frame()
                 }
-                compose.waitForIdle()
                 dragFrames += recorder.stop().toList()
                 if (third == 2) midSurface = idOf("atlas-details-drag-preview")
                 saveUiEvidence("details-motion-drag-$third.png")
             }
             val drag = dragFrames.toDoubleArray()
 
-            // 2) Release (a quick swipe) and let the surface settle open.
+            // 2) Release (a quick swipe) and let the spring settle, 45 frames.
             recorder.start()
             pager.performTouchInput { up() }
-            compose.awaitThat("Details settled open") { idOf("atlas-viewer-details") != null }
-            compose.waitForIdle()
+            repeat(45) { frame() }
             val settle = recorder.stop()
             val settledSurface = idOf("atlas-viewer-details")
             saveUiEvidence("details-motion-open.png")
 
-            // 3) Swipe down on the open surface to close it.
+            // 3) Drag the open surface down (rows at the top) and let it close.
             recorder.start()
-            compose.onNodeWithTag("atlas-viewer-details")
-                .performTouchInput { swipeDown(durationMillis = 300L) }
+            val surface = compose.onNodeWithTag("atlas-viewer-details")
+            surface.performTouchInput { down(center.copy(y = height * .2f)) }
+            frame()
+            repeat(12) {
+                surface.performTouchInput { moveBy(Offset(0f, height * .06f), delayMillis = 16L) }
+                frame()
+            }
+            surface.performTouchInput { up() }
+            repeat(45) { frame() }
+            val close = recorder.stop()
+            compose.mainClock.autoAdvance = true
             compose.awaitThat("Details closed") {
                 idOf("atlas-viewer-details") == null && idOf("atlas-details-drag-preview") == null
             }
-            compose.waitForIdle()
-            val close = recorder.stop()
 
             val sameSurface = midSurface != null && midSurface == settledSurface
             val report = JSONObject()
