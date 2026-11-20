@@ -142,6 +142,8 @@ import nl.atlas.gallery.featurepeopleui.applyCurrentPeopleReviewCommand
 import nl.atlas.gallery.featurepeopleui.presentNativeFaceScan
 import nl.atlas.gallery.featurepeopleui.reviewTally
 import nl.atlas.gallery.featurepeople.identity.PeopleNumbers
+import nl.atlas.gallery.featureidentity.profile.FaceIndexStorePeopleReads
+import nl.atlas.gallery.featureidentity.profile.PeopleFaceReads
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedFacePageCursor
@@ -2416,6 +2418,40 @@ internal class PeopleDiscoveryHost(
             ?.also { faceCrops.put(key, it) } ?: return null
         // A revoke may have raced the decode; never hand out a crop past it.
         return crop.takeIf { scopeCurrent(epoch) }
+    }
+
+    /**
+     * IDS-11 (#478): People's face facts for Swap person references, through
+     * FaceIndexStore's existing read APIs only (no new People query, no write).
+     * Null unless People serves [galleryGrant] now; the returned reads answer
+     * no epoch once that scope is revoked or replaced. Blocking; IO only.
+     */
+    internal fun identityPeopleReads(galleryGrant: String?): PeopleFaceReads? {
+        val s = synchronized(lock) { scope?.takeIf { optedIn && it.galleryGrant == galleryGrant } }
+            ?: return null
+        if (!scopeCurrent(s.epoch)) return null
+        val base = FaceIndexStorePeopleReads(store)
+        return object : PeopleFaceReads by base {
+            override fun activeEpoch(): String? =
+                base.activeEpoch()?.takeIf { it == s.epoch && scopeCurrent(it) }
+        }
+    }
+
+    /**
+     * IDS-11 (#478): the authorized photo URI and box of one People face, with
+     * the same scope and directory checks as [faceCrop]; null for a video face,
+     * a stale epoch or a source outside the grant. Blocking; IO only.
+     */
+    internal fun identityFaceSource(epoch: String?, nativeFaceUid: String): Pair<String, IndexedFaceBox>? {
+        if (epoch == null) return null
+        val s = synchronized(lock) { scope?.takeIf { optedIn && it.epoch == epoch } } ?: return null
+        if (!scopeCurrent(epoch)) return null
+        val location = try { store.faceLocation(epoch, nativeFaceUid) }
+            catch (_: SQLException) { null } ?: return null
+        if (location.frameMs != null) return null
+        val uri = try { s.directory.authorizedUri(FaceMediaKey(location.media.key, location.media.revision)) }
+            catch (_: SecurityException) { return null }
+        return (uri to location.box).takeIf { scopeCurrent(epoch) }
     }
 
     // VS-V1c: a video face is cropped from its keyframe at frame_ms.
