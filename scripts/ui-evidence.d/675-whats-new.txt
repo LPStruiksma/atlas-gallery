@@ -1,0 +1,12 @@
+# Issue #675 · Settings › About › What's new (in-app changelog), synthetic changelog.
+# Galaxy S24+ 1080x2340; each state in each app theme.
+whatsnew-row-light
+whatsnew-list-light
+whatsnew-older-light
+whatsnew-empty-light
+whatsnew-font200-light
+whatsnew-row-dark
+whatsnew-list-dark
+whatsnew-older-dark
+whatsnew-empty-dark
+whatsnew-font200-dark
