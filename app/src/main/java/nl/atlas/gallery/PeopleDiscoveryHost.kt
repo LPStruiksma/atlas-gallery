@@ -223,6 +223,14 @@ internal fun holdPendingPeople(
 }
 
 /**
+ * What People shows after [previous] when the host reports [next]: the one
+ * hold rule [rememberPeopleDiscoveryOf] applies to every status read.
+ */
+internal fun shownPeopleStatus(
+    host: PeopleDiscoveryHost, previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+): PeopleDiscoveryStatus? = holdPendingPeople(previous, next)
+
+/**
  * The visual search index panel's facts. It rides on the face discovery run
  * (same worker, guards and grant), so [mayEnable] needs a started run.
  */
@@ -2477,12 +2485,12 @@ internal fun <T> rememberPeopleDiscoveryOf(
         // value (or "Restoring…") instead of flashing a not-started state.
         withContext(Dispatchers.IO) {
             host.status(galleryGrant).takeIf { host.serves(galleryGrant) || !host.discoveryOptedIn() }
-        }?.let { value = holdPendingPeople(value, it) }
+        }?.let { value = shownPeopleStatus(host, value, it) }
         val published = withContext(Dispatchers.IO) {
             host.onGalleryPublication(galleryGrant) { project(inventory) }
             host.status(galleryGrant)
         }
-        value = holdPendingPeople(value, published)
+        value = shownPeopleStatus(host, value, published)
     }
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
