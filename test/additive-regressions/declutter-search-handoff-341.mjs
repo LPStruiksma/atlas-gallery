@@ -28,8 +28,8 @@ const reviewLayout = declutter.slice(
   declutter.indexOf('if (reviewing) {', declutter.indexOf('AtlasGalleryHeader(')),
   declutter.indexOf('} else if (current == null)')
 );
-assert.match(reviewLayout, /Box\(Modifier\.weight\(1f\)\.fillMaxWidth\(\)/,
-  'review area must have a bounded weighted viewport');
+assert.match(reviewLayout, /Box\\(Modifier\\.weight\\(1f\\)\\.fillMaxWidth\\(\\)\\.padding\\(bottom = 24\\.dp\\)/,
+  'review viewport must reserve 24dp clearance above the popup IME');
 assert.match(reviewLayout,
   /LazyColumn\(\s*Modifier\.fillMaxSize\(\)[\s\S]*?contentPadding = PaddingValues\(bottom = 56\.dp\)/,
   'heading, results and Return need a scrollable body with clearance for the fixed Move action');

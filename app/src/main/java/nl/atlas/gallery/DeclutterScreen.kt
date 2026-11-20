@@ -250,7 +250,11 @@ internal fun DeclutterScreen(
             // than the last child measured after a weighted list/Return button.
             // safeDrawing above already accounts for the keyboard; do not add
             // imePadding here or the inset will be applied twice.
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            // The search popup owns a separate IME window. On S24+ landscape,
+            // its visible top is 57px above the Activity review viewport bottom
+            // even after safeDrawing; reserve a small non-IME clearance for the
+            // anchored action rather than stacking imePadding on safeDrawing.
+            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 24.dp)) {
                 LazyColumn(
                     Modifier.fillMaxSize().testTag("atlas-declutter-review-body"),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
