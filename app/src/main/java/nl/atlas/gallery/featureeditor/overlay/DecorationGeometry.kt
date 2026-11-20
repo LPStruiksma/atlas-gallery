@@ -131,7 +131,7 @@ object DecorationGeometry {
         return when (layer) {
             is StrokeLayer -> {
                 val points = smooth(layer.points).map { it.asPoint() }
-                nearLine(local, points, layer.width * 0.5 * layer.placement.scale.coerceAtLeast(0.01) / layer.placement.scale + tol)
+                nearLine(local, points, layer.width / 2 + tol)
             }
             is ShapeLayer -> {
                 val a = layer.start; val b = layer.end
