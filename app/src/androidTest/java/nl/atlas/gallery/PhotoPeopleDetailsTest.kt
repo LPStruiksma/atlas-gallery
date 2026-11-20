@@ -1,5 +1,9 @@
 package nl.atlas.gallery
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -98,10 +102,11 @@ class PhotoPeopleDetailsTest {
                 true
             })
         val reader = ViewerDimensionsReader { _, _ -> ViewerDimensions(4000, 3000) }
+        var dark by mutableStateOf(true)
         rule.setContent {
             CompositionLocalProvider(LocalViewerDimensionsReader provides reader) {
                 // #645: the app's dark theme and system bars, as in MainActivity.
-                AtlasEvidenceHarness(edgeToEdge = true) {
+                AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
                     GalleryViewer(listOf(photo), photo.uri, photoPeople = port, onBack = {})
                 }
             }
@@ -117,6 +122,13 @@ class PhotoPeopleDetailsTest {
             .assertCountEquals(1)
         assertEquals(listOf(photo.uri), synchronized(loads) { loads.toList() })
         evidence("553-details-people.png")
+        // #655: same synthetic Details/People mapping, both Activity themes.
+        evidence("parity-24-viewer-details-people-dark.png")
+        dark = false
+        rule.waitForIdle()
+        evidence("parity-24-viewer-details-people-light.png")
+        dark = true
+        rule.waitForIdle()
 
         rule.tap(hasTestTag("atlas-details-person-1")) { opened.isNotEmpty() }
         assertEquals(listOf(ada), opened)

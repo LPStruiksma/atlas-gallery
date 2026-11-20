@@ -39,8 +39,8 @@ class ParityCaptureContractTest(unittest.TestCase):
 
     def test_all_required_capture_rows_have_real_instrumented_producers(self):
         rows = matrix.read_contract()
-        self.assertEqual(34, sum(bool(r["source_png"]) for r in rows))
-        self.assertEqual(6, sum(not r["source_png"] for r in rows))
+        self.assertEqual(40, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(0, sum(not r["source_png"] for r in rows))
         remaining = ROOT / "app/src/androidTest/java/nl/atlas/gallery/ParityRemainingSurfaceJourneyTest.kt"
         remaining_source = remaining.read_text(encoding="utf-8")
         for name in (
@@ -70,6 +70,13 @@ class ParityCaptureContractTest(unittest.TestCase):
         self.assertIn('"7 columns"', additional)
         self.assertNotIn('"5 columns"', additional)
         self.assertIn('"atlas-header-subtitle"', additional)
+        for surface, path, token in (
+            ("people-named", "PersonPageJourneyTest.kt", "parity-24-people-named-light.png"),
+            ("viewer-details-people", "PhotoPeopleDetailsTest.kt", "parity-24-viewer-details-people-light.png"),
+            ("search-person", "PersonNameSearchEvidenceTest.kt", "parity-24-search-person-light.png"),
+        ):
+            self.assertIn('saveUiEvidence("' + token + '")',
+                          (ROOT / "app/src/androidTest/java/nl/atlas/gallery" / path).read_text())
 
     def test_matrix_is_verified_and_uploaded_through_existing_ci_artifact(self):
         shell = (ROOT / "scripts/ci_ui_evidence.sh").read_text(encoding="utf-8")

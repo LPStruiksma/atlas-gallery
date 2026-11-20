@@ -8,3 +8,5 @@ person-same-joined
 people-numbers
 person-auto-added
 people-same-queue
+parity-24-people-named-dark
+parity-24-people-named-light
