@@ -46,7 +46,21 @@ class PerfA1CachedFirstFrameBenchmarkTest {
             readGalleryMediaGrant(target).images)
     }
 
-    private fun rows(): List<MediaRecord> = GalleryRepository(target).load()
+    /**
+     * MediaStore may still advance its generation immediately after fixture
+     * writes. Preserve the strict coherent-snapshot check and retry only that
+     * typed race, bounded to five scans outside any timed cold sample.
+     * This follows the existing PeopleScanProcessKillTest settled-load pattern.
+     */
+    private fun settledLoad(): List<MediaRecord> {
+        repeat(4) {
+            try { return GalleryRepository(target).load() }
+            catch (e: GalleryProviderSnapshotChanged) { Thread.sleep(500) }
+        }
+        return GalleryRepository(target).load()
+    }
+
+    private fun rows(): List<MediaRecord> = settledLoad()
         .filter { it.relativePath == "Pictures/$folder/" && it.name.startsWith(prefix) }
 
     /** Six deterministic, made-up PNGs; no personal media or identifiers. */
