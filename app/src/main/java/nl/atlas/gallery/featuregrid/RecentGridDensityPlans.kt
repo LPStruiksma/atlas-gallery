@@ -7,7 +7,8 @@ package nl.atlas.gallery.featuregrid
  * viewport, timezone, locale, header height). This deliberately does not
  * retain layouts across MediaStore permission/republication changes.
  *
- * At most two full 150k-item plans stay resident; a third level evicts the
+ * At most three full 150k-item plans stay resident (FLOW-1: the shown level
+ * and the two a pinch can enter); a fourth level evicts the
  * least recently used. Never cache in-flight or cancelled computations.
  * The read-only [peek] does not mutate cache recency during composition.
  */
