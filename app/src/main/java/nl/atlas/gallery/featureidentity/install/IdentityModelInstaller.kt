@@ -62,7 +62,7 @@ class IdentityModelInstaller private constructor(
         internal fun store(context: Context) = IdentityModelStore(context.noBackupFilesDir, HttpsModelFetcher())
 
         internal fun install(context: Context, entries: List<ModelEntry>) =
-            ModelSetInstall(store(context), entries) { StatFs(context.noBackupFilesDir.path).availableBytes }
+            ModelSetInstall(store(context), entries, context.noBackupFilesDir) { StatFs(context.noBackupFilesDir.path).availableBytes }
     }
 
     private val workName = workName(entries)
@@ -113,10 +113,19 @@ class IdentityModelInstaller private constructor(
         workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, request)
     }
 
-    /** The user's Cancel: stops the work; the worker then deletes the partial files. */
+    /**
+     * The user's Cancel, whether the work is queued (waiting for a connection or a retry), running
+     * or verifying: cancels the work, waits until WorkManager recorded that, then deletes the
+     * unfinished set. The delete takes the folder lock, so it runs only after a running worker
+     * has left its install loop (it checks for cancellation every 64 KB and between files).
+     */
     fun cancel() {
         refused.value = null
-        workManager.cancelUniqueWork(workName)
+        scope.launch(Dispatchers.IO) {
+            workManager.cancelUniqueWork(workName).result.get()
+            install(context, entries).discardUnfinished()
+            diskTick.value++
+        }
     }
 
     /** "Remove": stops any install and deletes every model file, marker and partial download. */
@@ -126,7 +135,9 @@ class IdentityModelInstaller private constructor(
 
     private fun removeNow() {
         refused.value = null
-        workManager.cancelUniqueWork(workName)
+        // Wait for the cancel to be recorded; removeAll() then waits for a running worker to stop
+        // (shared folder lock), so nothing it writes can come back after Remove.
+        workManager.cancelUniqueWork(workName).result.get()
         install(context, entries).removeAll()
         // Forget a finished or failed run so the sheet shows "not installed" again.
         workManager.getWorkInfosForUniqueWork(workName).get().lastOrNull()?.let {

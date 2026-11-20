@@ -1,6 +1,8 @@
 package nl.atlas.gallery.featureidentity.install
 
+import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CancellationException
 import nl.atlas.gallery.featureidentity.local.IdentityModelStore
 import nl.atlas.gallery.featureidentity.local.ModelEntry
@@ -35,6 +37,12 @@ sealed interface InstallState {
 class ModelSetInstall(
     private val store: IdentityModelStore,
     private val entries: List<ModelEntry>,
+    /**
+     * The store's root folder. Every install, cancel clean-up and removal of this folder takes
+     * one process-wide lock keyed by it, so a Cancel or Remove from the studio (its own store
+     * instance) waits until the worker's run has stopped and never races its writes.
+     */
+    root: File,
     /** Free bytes on the volume that holds the store (StatFs on the phone). */
     private val freeBytes: () -> Long
 ) {
@@ -52,7 +60,12 @@ class ModelSetInstall(
         private const val PROGRESS_STEP_BYTES = 512L * 1024
 
         fun downloadBytes(entry: ModelEntry): Long = entry.archive?.rangeBytes ?: entry.sizeBytes
+
+        private val locks = ConcurrentHashMap<String, Any>()
+        private fun lockFor(root: File): Any = locks.getOrPut(root.absoluteFile.normalize().path) { Any() }
     }
+
+    private val lock = lockFor(root)
 
     /** Bytes the whole set downloads (563.0 MB for OD-1). */
     val totalBytes: Long = entries.sumOf { downloadBytes(it) }
@@ -90,12 +103,15 @@ class ModelSetInstall(
      * [onState] gets [InstallState.Downloading] about every 512 KB and [InstallState.Verifying]
      * while an entry's hash is checked. Blocking: run on an IO thread.
      */
-    fun run(isCancelled: () -> Boolean, onState: (InstallState) -> Unit): Outcome {
+    fun run(isCancelled: () -> Boolean, onState: (InstallState) -> Unit): Outcome = synchronized(lock) {
+        // Cancelled before this run got the lock (for example Remove ran first): touch nothing.
+        if (isCancelled()) return Outcome.Cancelled
         if (blocked()) return Outcome.Blocked
         if (installed()) return Outcome.Installed
         if (!enoughSpace()) return Outcome.Failed(InstallFailure.NOT_ENOUGH_SPACE, retryable = false)
         var before = 0L
         for (entry in entries) {
+            if (isCancelled()) return Outcome.Cancelled
             val length = downloadBytes(entry)
             if (store.installedFile(entry) != null) { before += length; continue }
             var lastSent = -PROGRESS_STEP_BYTES
@@ -141,16 +157,21 @@ class ModelSetInstall(
             }
             before += length
         }
+        // A cancel that landed while the last hash was checked still counts as a cancel.
+        if (isCancelled()) return Outcome.Cancelled
         return if (installed()) Outcome.Installed else Outcome.Failed(InstallFailure.FILE_CHECK_FAILED, retryable = false)
     }
 
-    /** After the user's Cancel: drop partial downloads so they do not hold space. Installed files stay. */
-    fun discardPartials() {
-        for (entry in entries) if (store.installedFile(entry) == null) store.remove(entry)
-    }
+    /**
+     * After the user's Cancel, in any state (queued, downloading, verifying): unless the whole set
+     * is installed, delete every file of the set, partial or verified. A half-installed set cannot
+     * be used and the sheet shows it as not installed, so it must not hold hundreds of MB out of
+     * sight. Waits for a running install of the same folder to stop first.
+     */
+    fun discardUnfinished(): Boolean = synchronized(lock) { if (installed()) false else { removeAll(); true } }
 
-    /** "Remove": deletes every model file, marker and partial download of the set. */
-    fun removeAll(): Boolean = entries.map { store.remove(it) }.all { it }
+    /** "Remove": deletes every model file, marker and partial download of the set, after any running install stopped. */
+    fun removeAll(): Boolean = synchronized(lock) { entries.map { store.remove(it) }.all { it } }
 
     private fun partialBytes(entry: ModelEntry): Long =
         (store.state(entry) as? ModelState.Partial)?.bytes?.coerceAtMost(downloadBytes(entry)) ?: 0L

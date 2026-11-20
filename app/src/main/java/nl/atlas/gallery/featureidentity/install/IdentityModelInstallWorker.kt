@@ -69,9 +69,10 @@ class IdentityModelInstallWorker(context: Context, params: WorkerParameters) : C
             ModelSetInstall.Outcome.Installed -> Result.success()
             ModelSetInstall.Outcome.Blocked -> Result.failure()
             ModelSetInstall.Outcome.Cancelled -> {
-                // The user's Cancel frees the space; a stop for lost connection or quota keeps the
-                // partial file so the next run resumes it.
-                if (stopReason == WorkInfo.STOP_REASON_CANCELLED_BY_APP) set.discardPartials()
+                // The user's Cancel frees the space (IdentityModelInstaller.cancel does the same after
+                // the work is gone, which also covers queued work); a stop for lost connection or
+                // quota keeps the partial file so the next run resumes it.
+                if (stopReason == WorkInfo.STOP_REASON_CANCELLED_BY_APP) set.discardUnfinished()
                 Result.retry()
             }
             is ModelSetInstall.Outcome.Failed ->

@@ -1,6 +1,11 @@
 package nl.atlas.gallery.featureidentity.install
 
 import java.io.ByteArrayInputStream
+import java.io.InputStream
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.io.File
 import java.nio.file.Files
 import java.security.MessageDigest
@@ -13,6 +18,7 @@ import nl.atlas.gallery.featureidentity.local.ModelEntry
 import nl.atlas.gallery.featureidentity.local.ModelRole
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -33,12 +39,12 @@ class ModelSetInstallTest {
     )
 
     @Test fun od1PeakSpaceIsAbout738MegabytesFromScratch() {
-        val set = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, IdentityModelManifest.entries) { 0 }
+        val set = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, IdentityModelManifest.entries, root) { 0 }
         // 402.7 MB swap model + 160.3 MB archive range + 174.4 MB extracted encoder beside it.
         assertEquals(737_387_516L, set.peakBytesNeeded())
         assertEquals(563_003_656L, set.totalBytes)
         assertEquals(ModelSetInstall.Outcome.Failed(InstallFailure.NOT_ENOUGH_SPACE, retryable = false), set.run({ false }) { })
-        val justEnough = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, IdentityModelManifest.entries) {
+        val justEnough = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, IdentityModelManifest.entries, root) {
             737_387_516L + ModelSetInstall.SPACE_MARGIN_BYTES - 1
         }
         assertTrue(!justEnough.enoughSpace())
@@ -56,7 +62,7 @@ class ModelSetInstallTest {
             FetchResponse(ByteArrayInputStream(bytes, offset.toInt(), bytes.size - offset.toInt()), resumed = true)
         }
         val states = mutableListOf<InstallState>()
-        val set = ModelSetInstall(store, listOf(ea, eb)) { Long.MAX_VALUE }
+        val set = ModelSetInstall(store, listOf(ea, eb), root) { Long.MAX_VALUE }
         assertEquals(ModelSetInstall.Outcome.Installed, set.run({ false }) { states += it })
         assertEquals(listOf("a.onnx", "b.onnx"), opened)
         val bytes = states.filterIsInstance<InstallState.Downloading>().map { it.bytes }
@@ -76,9 +82,118 @@ class ModelSetInstallTest {
 
     @Test fun aClosedGateBlocksWithoutFetching() {
         val e = entry("c", ByteArray(10), tier = LicenceTier.C) // tier C without an owner decision
-        val set = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("blocked entries are never fetched") }, listOf(e)) { Long.MAX_VALUE }
+        val set = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("blocked entries are never fetched") }, listOf(e), root) { Long.MAX_VALUE }
         assertTrue(set.blocked())
         assertEquals(ModelSetInstall.Outcome.Blocked, set.run({ false }) { })
+    }
+
+    // ---- Lifecycle (review on #621): Cancel and Remove from the studio use their own store
+    // instance, like IdentityModelInstaller does, while the worker's run is busy. ----
+
+    private fun modelFiles(): List<String> =
+        File(root, IdentityModelStore.DIR).listFiles()?.map { it.name }?.sorted() ?: emptyList()
+
+    /** A body that hands out [bytes] in 64 KB steps, waiting [pauseMs] per step. */
+    private class SlowStream(private val bytes: ByteArray, private var pos: Int, private val pauseMs: Long) : InputStream() {
+        override fun read(): Int = if (pos >= bytes.size) -1 else bytes[pos++].toInt() and 255
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            if (pos >= bytes.size) return -1
+            Thread.sleep(pauseMs)
+            val n = minOf(len, 64 * 1024, bytes.size - pos)
+            System.arraycopy(bytes, pos, b, off, n); pos += n
+            return n
+        }
+    }
+
+    @Test fun removeWhileDownloadingWaitsForTheWorkerAndLeavesNothing() {
+        val a = Random(3).nextBytes(3_000_000)
+        val ea = entry("a", a)
+        val cancelled = AtomicBoolean(false)
+        val events = Collections.synchronizedList(mutableListOf<String>())
+        val downloading = CountDownLatch(1)
+        val worker = ModelSetInstall(IdentityModelStore(root) { _, offset ->
+            FetchResponse(SlowStream(a, offset.toInt(), pauseMs = 5), resumed = true)
+        }, listOf(ea), root) { Long.MAX_VALUE }
+        val thread = Thread {
+            val outcome = worker.run({ cancelled.get() }) { if (it is InstallState.Downloading && it.bytes > 0) downloading.countDown() }
+            events += "worker:$outcome"
+        }.apply { start() }
+        assertTrue(downloading.await(10, TimeUnit.SECONDS))
+        cancelled.set(true) // WorkManager's cancel makes isStopped true
+        val studio = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("studio never fetches") }, listOf(ea), root) { Long.MAX_VALUE }
+        studio.removeAll()
+        events += "removed"
+        thread.join(10_000)
+        assertEquals(listOf("worker:Cancelled", "removed"), events.toList())
+        assertEquals(emptyList<String>(), modelFiles())
+    }
+
+    @Test fun removeDuringVerificationNeverResurrectsTheModel() {
+        val a = Random(4).nextBytes(4_000_000)
+        val ea = entry("a", a)
+        val cancelled = AtomicBoolean(false)
+        val verifying = CountDownLatch(1)
+        val events = Collections.synchronizedList(mutableListOf<String>())
+        val worker = ModelSetInstall(IdentityModelStore(root) { _, offset ->
+            FetchResponse(ByteArrayInputStream(a, offset.toInt(), a.size - offset.toInt()), resumed = true)
+        }, listOf(ea), root) { Long.MAX_VALUE }
+        val thread = Thread {
+            val outcome = worker.run({ cancelled.get() }) {
+                if (it == InstallState.Verifying) { cancelled.set(true); verifying.countDown(); Thread.sleep(100) }
+            }
+            events += "worker:$outcome"
+        }.apply { start() }
+        assertTrue(verifying.await(10, TimeUnit.SECONDS))
+        val studio = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("studio never fetches") }, listOf(ea), root) { Long.MAX_VALUE }
+        studio.removeAll() // blocks until the worker finished hashing and moving the file
+        events += "removed"
+        thread.join(10_000)
+        assertEquals(listOf("worker:Cancelled", "removed"), events.toList())
+        assertEquals(emptyList<String>(), modelFiles())
+    }
+
+    @Test fun cancelWhileQueuedDeletesThePartialWithoutAWorker() {
+        val a = Random(5).nextBytes(500_000)
+        val ea = entry("a", a)
+        // A previous run lost its connection: partial on disk, work now waiting in the queue.
+        File(root, IdentityModelStore.DIR).apply { mkdirs() }.let { File(it, "a.onnx.part").writeBytes(a.copyOf(200_000)) }
+        val studio = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, listOf(ea), root) { Long.MAX_VALUE }
+        assertTrue(studio.discardUnfinished())
+        assertEquals(emptyList<String>(), modelFiles())
+    }
+
+    @Test fun cancelAfterTheFirstFileDropsTheHalfInstalledSetButKeepsAFullSet() {
+        val a = Random(6).nextBytes(300_000)
+        val b = Random(7).nextBytes(300_000)
+        val ea = entry("a", a)
+        val eb = entry("b", b)
+        val cancelled = AtomicBoolean(false)
+        val store = IdentityModelStore(root) { url, offset ->
+            if (url.endsWith("b.onnx")) cancelled.set(true) // cancel lands as the second file starts
+            val bytes = if (url.endsWith("a.onnx")) a else b
+            FetchResponse(ByteArrayInputStream(bytes, offset.toInt(), bytes.size - offset.toInt()), resumed = true)
+        }
+        val set = ModelSetInstall(store, listOf(ea, eb), root) { Long.MAX_VALUE }
+        assertEquals(ModelSetInstall.Outcome.Cancelled, set.run({ cancelled.get() }) { })
+        assertTrue(store.installedFile(ea) != null)
+        assertTrue(set.discardUnfinished())
+        assertEquals(emptyList<String>(), modelFiles())
+
+        // A fully installed set is never discarded by a late Cancel.
+        val full = ModelSetInstall(IdentityModelStore(root) { url, offset ->
+            val bytes = if (url.endsWith("a.onnx")) a else b
+            FetchResponse(ByteArrayInputStream(bytes, offset.toInt(), bytes.size - offset.toInt()), resumed = true)
+        }, listOf(ea, eb), root) { Long.MAX_VALUE }
+        assertEquals(ModelSetInstall.Outcome.Installed, full.run({ false }) { })
+        assertFalse(full.discardUnfinished())
+        assertTrue(full.installed())
+    }
+
+    @Test fun aRunCancelledBeforeItStartsTouchesNothing() {
+        val ea = entry("a", ByteArray(1000) { 1 })
+        val set = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("a cancelled run never fetches") }, listOf(ea), root) { Long.MAX_VALUE }
+        assertEquals(ModelSetInstall.Outcome.Cancelled, set.run({ true }) { })
+        assertEquals(emptyList<String>(), modelFiles())
     }
 
     @Test fun stateMappingCoversEverySheetState() {

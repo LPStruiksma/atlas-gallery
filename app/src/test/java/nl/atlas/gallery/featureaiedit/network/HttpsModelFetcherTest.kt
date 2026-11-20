@@ -111,7 +111,7 @@ class HttpsModelFetcherTest {
     )
 
     private fun install(server: FakeServer, e: ModelEntry = entry(), free: Long = Long.MAX_VALUE) =
-        ModelSetInstall(IdentityModelStore(root, fetcher(server)), listOf(e)) { free }
+        ModelSetInstall(IdentityModelStore(root, fetcher(server)), listOf(e), root) { free }
 
     /** Serves [bytes] honouring `Range: bytes=N-` with a 206. */
     private fun ranged(bytes: ByteArray, req: Req, cutAfter: Int? = null): Resp {
@@ -226,7 +226,7 @@ class HttpsModelFetcherTest {
             assertEquals(ModelSetInstall.Outcome.Cancelled, outcome)
             val dir = File(root, IdentityModelStore.DIR)
             assertFalse(File(dir, "model.onnx").exists())
-            set.discardPartials()
+            set.discardUnfinished()
             assertFalse(File(dir, "model.onnx.part").exists())
         }
     }
@@ -264,7 +264,7 @@ class HttpsModelFetcherTest {
         val dead = HttpsModelFetcher(connectionFactory = { u ->
             URL("http://127.0.0.1:1/${u.host}${u.file}").openConnection() as HttpURLConnection
         }, connectTimeoutMs = 500, readTimeoutMs = 500)
-        val outcome = ModelSetInstall(IdentityModelStore(root, dead), listOf(entry())) { Long.MAX_VALUE }.run({ false }) { }
+        val outcome = ModelSetInstall(IdentityModelStore(root, dead), listOf(entry()), root) { Long.MAX_VALUE }.run({ false }) { }
         assertEquals(ModelSetInstall.Outcome.Failed(InstallFailure.NO_NETWORK, retryable = true), outcome)
     }
 }
