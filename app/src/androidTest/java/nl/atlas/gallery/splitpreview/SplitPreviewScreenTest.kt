@@ -99,9 +99,10 @@ class SplitPreviewScreenTest {
             .performScrollToNode(hasTestTag("split-preview-unsure-face-1"))
         compose.onNodeWithTag("split-preview-unsure-face-1").performClick()
         compose.onNodeWithTag("split-preview-move-to-unsure").performScrollTo().performClick()
-        compose.onNodeWithTag("split-preview-adjust").performScrollTo().performClick()
-        compose.onNodeWithTag("split-preview-accept").performScrollTo().performClick()
-        compose.onNodeWithTag("split-preview-cancel").performScrollTo().performClick()
+        // The decision rail is deliberately outside the scrolling review.
+        compose.onNodeWithTag("split-preview-adjust").performClick()
+        compose.onNodeWithTag("split-preview-accept").performClick()
+        compose.onNodeWithTag("split-preview-cancel").performClick()
         compose.runOnIdle {
             assertEquals(listOf("synthetic-1-1", "synthetic-unsure-1"), selections)
             assertEquals(
@@ -133,10 +134,11 @@ class SplitPreviewScreenTest {
         compose.onNodeWithTag("split-preview-unsure").assertExists()
     }
 
-    @Test fun syntheticLightDarkEvidenceCapture() {
-        // Capture only these neutral glyphs. Never inject any real face crop.
-        // setContent may run once per test, so the theme flips through state.
+    @Test fun syntheticLightDarkStateEvidenceCapture() {
+        // Capture only generated illustrations. Never inject any real face crop.
+        // setContent may run once per test, so theme and model both flip through state.
         var dark by mutableStateOf(false)
+        var evidenceModel by mutableStateOf(model(2, 1))
         compose.setContent {
             MaterialTheme(colorScheme = if (dark)
                 androidx.compose.material3.darkColorScheme()
@@ -144,17 +146,26 @@ class SplitPreviewScreenTest {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                         SplitPreviewScreen(
-                            model(2, 1), onAccept = {}, onAdjust = {}, onCancel = {},
+                            evidenceModel, onAccept = {}, onAdjust = {}, onCancel = {},
                             onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> }
                         )
                     }
                 }
             }
         }
-        for (next in listOf(false, true)) {
-            dark = next
+        val states = listOf(
+            Triple("empty", SplitPreviewUiModel(emptyList(), emptyList()), false),
+            Triple("one-group", model(1), false),
+            Triple("review-light", model(2, 1), false),
+            Triple("review-dark", model(2, 1), true),
+            Triple("long-review-light", model(3, 2), false),
+            Triple("long-review-dark", model(3, 2), true)
+        )
+        for ((name, stateModel, isDark) in states) {
+            evidenceModel = stateModel
+            dark = isDark
             compose.waitForIdle()
-            saveUiEvidence(if (next) "split-preview-synthetic-dark.png" else "split-preview-synthetic-light.png")
+            saveUiEvidence("split-preview-synthetic-$name.png")
         }
     }
 }
