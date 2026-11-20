@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import nl.atlas.gallery.featureface.onnx.SFaceModel
+import nl.atlas.gallery.featureface.FaceQuality
 
 /**
  * Only invented opaque media keys and normalized geometry; no photos or real
@@ -1012,6 +1013,49 @@ class FaceIndexStoreTest {
         db.writableDatabase.execSQL("DROP TRIGGER suppress_cluster_member")
         assertTrue(db.materializeClusters("epoch-A"))
         assertEquals(1,tableRows(db,"cluster_members"))
+    }
+
+    @Test fun legacyQualityBackfillIsNullOnlyRevisionFencedAndIdempotent() = withStore { db ->
+        val model = SFaceModel.EMBEDDER_VERSION
+        stage(db, rows = listOf(a, b))
+        val firstLease = requireNotNull(db.claim("epoch-A", 1000))
+        assertTrue(db.completeEmbeddings(firstLease, listOf(box),
+            listOf(syntheticEmbedding()), model))
+        val secondLease = requireNotNull(db.claim("epoch-A", 1001))
+        val scored = FaceQuality(.64f, belowSizeFloor = true)
+        assertTrue(db.completeEmbeddings(secondLease, listOf(box),
+            listOf(syntheticEmbedding()), model, qualityScores = listOf(scored)))
+
+        val pending = requireNotNull(db.pendingQualitySource("epoch-A"))
+        assertEquals(a.key, pending.media.canonicalMediaKey)
+        assertEquals(1, pending.faces.size)
+        val uid = pending.faces.single().uid
+        val quality = FaceQuality(.91f, belowSizeFloor = false)
+        assertEquals(0, db.backfillQualityIfNull("wrong-epoch", pending, mapOf(uid to quality)))
+        assertEquals(1, db.backfillQualityIfNull("epoch-A", pending, mapOf(uid to quality)))
+        assertEquals(0, db.backfillQualityIfNull("epoch-A", pending, mapOf(uid to scored)))
+        assertNull(db.pendingQualitySource("epoch-A"))
+        val actual = db.writableDatabase.rawQuery(
+            "SELECT quality_score,quality_version,quality_below_size_floor FROM faces WHERE face_uid=?",
+            arrayOf(uid)).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            Triple(cursor.getDouble(0), cursor.getInt(1), cursor.getInt(2))
+        }
+        assertEquals(.91, actual.first, 0.0001)
+        assertEquals(quality.qualityVersion, actual.second)
+        assertEquals(0, actual.third)
+        val otherUid = db.embeddingRecords("epoch-A", b.key).single().nativeFaceUid
+        db.writableDatabase.rawQuery(
+            "SELECT quality_score FROM faces WHERE face_uid=?", arrayOf(otherUid)
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(.64, cursor.getDouble(0), 0.0001)
+        }
+        // A version/revision change cannot revive the old NULL-only candidate.
+        db.beginSnapshot("epoch-B")
+        db.stageBatch("epoch-B", listOf(a.copy(revision = "generation:2"), b))
+        db.commitSnapshot("epoch-B", "detector-1", model)
+        assertEquals(0, db.backfillQualityIfNull("epoch-B", pending, mapOf(uid to quality)))
     }
 
 }

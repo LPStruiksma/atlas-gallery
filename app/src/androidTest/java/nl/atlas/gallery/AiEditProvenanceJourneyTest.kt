@@ -96,6 +96,7 @@ class AiEditProvenanceJourneyTest {
         compose.onNodeWithText("Saved AI edits").assertIsDisplayed()
         compose.onNodeWithText(AiEditProvenanceMediaFixtures.ORIGINAL).assertExists()
         compose.onNodeWithText("Edited from…").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-details-ai-edited").assertDoesNotExist()
         compose.waitForIdle()
         saveUiEvidence("aie-10-viewer-original-details.png")
 
@@ -117,6 +118,7 @@ class AiEditProvenanceJourneyTest {
         compose.onNodeWithText("Original photo (AI edit)").assertIsDisplayed()
         compose.onNodeWithText(AiEditProvenanceMediaFixtures.EDIT_TWO).assertExists()
         compose.onNodeWithText("AI versions (2)").assertDoesNotExist()
+        compose.onNodeWithText(AI_EDITED_LABEL).assertIsDisplayed()
         compose.waitForIdle()
         saveUiEvidence("aie-10-viewer-edited-details.png")
     }
@@ -129,12 +131,17 @@ class AiEditProvenanceJourneyTest {
     }
 }
 
-/** Own test fixtures only; remove both MediaStore images and lineage by URI. */
-private class AiEditProvenanceMediaFixtures : TestRule {
+/**
+ * Own test fixtures only; remove every MediaStore image and lineage by URI.
+ * #458 adds a fourth plain photo without lineage (the non-AI state) and a way
+ * to delete the original mid-test (the missing-original state).
+ */
+internal class AiEditProvenanceMediaFixtures : TestRule {
     companion object {
         const val ORIGINAL = "AIE10_SYNTHETIC_ORIGINAL.png"
         const val EDIT_ONE = "AIE10_SYNTHETIC_EDIT_1.png"
         const val EDIT_TWO = "AIE10_SYNTHETIC_EDIT_2.png"
+        const val PLAIN = "AIE26_SYNTHETIC_PLAIN.png"
     }
     private val context: Context
         get() = InstrumentationRegistry.getInstrumentation().targetContext
@@ -155,10 +162,11 @@ private class AiEditProvenanceMediaFixtures : TestRule {
                     records = listOf(
                         insert(ORIGINAL, Color.rgb(24, 98, 196)),
                         insert(EDIT_ONE, Color.rgb(182, 60, 92)),
-                        insert(EDIT_TWO, Color.rgb(61, 174, 107))
+                        insert(EDIT_TWO, Color.rgb(61, 174, 107)),
+                        insert(PLAIN, Color.rgb(201, 158, 38))
                     )
                     val store = AiEditLineageStore(context)
-                    for (edit in records.drop(1)) {
+                    for (edit in records.subList(1, 3)) {
                         store.put(AiEditLineage(
                             editedUri = edit.uri, originalUri = records[0].uri,
                             originalRevision = "fixture-r1", provider = "synthetic",
@@ -190,6 +198,11 @@ private class AiEditProvenanceMediaFixtures : TestRule {
                 }
             }
         }
+
+    /** The missing-original state: the saved edits and their lineage stay. */
+    fun deleteOriginal() {
+        check(context.contentResolver.delete(Uri.parse(records[0].uri), null, null) == 1)
+    }
 
     private fun insert(name: String, color: Int): MediaRecord {
         val bitmap = Bitmap.createBitmap(160, 120, Bitmap.Config.ARGB_8888)
