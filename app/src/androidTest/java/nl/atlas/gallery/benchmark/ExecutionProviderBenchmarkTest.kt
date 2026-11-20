@@ -199,11 +199,12 @@ class ExecutionProviderBenchmarkTest {
                         noise(256 * 256 * 3, seed = 42, lo = 0f, hi = 1f),
                     )),
                 ),
-                // PR #691 run 44679387896 (API 35 x86_64 emulator, ORT 1.23.2): creating the
-                // BlazePose sessions with XNNPACK ended in libc++abi "terminating" (SIGABRT)
-                // inside OrtSession.createSession, after CPU, XNNPACK and NNAPI had run for the
-                // other three models.
-                abortsProcess = setOf(Ep.XNNPACK)),
+                // API 35 x86_64 emulator, ORT 1.23.2: creating the BlazePose sessions ended in
+                // libc++abi "terminating" (SIGABRT) inside OrtSession.createSession with XNNPACK
+                // (PR #691 run 44679387896) and with NNAPI (run 44681678879), while all three other
+                // models ran under every provider. Both aborts happen during graph partitioning,
+                // so NNAPI with CPU disabled is not run either.
+                abortsProcess = setOf(Ep.XNNPACK, Ep.NNAPI, Ep.NNAPI_NO_CPU)),
         )
     }
 
@@ -274,7 +275,7 @@ class ExecutionProviderBenchmarkTest {
             }
             if (ep in model.abortsProcess) {
                 json.put("status", "aborts_process")
-                    .put("note", "ORT aborts the process (std::terminate) while creating this session; not run")
+                    .put("note", "ORT aborted the process (std::terminate) creating these sessions with a non-CPU provider; not run")
                 results.put(json)
                 rows += row(model, json)
                 continue
