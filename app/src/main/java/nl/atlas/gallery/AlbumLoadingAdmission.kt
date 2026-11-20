@@ -18,3 +18,18 @@ internal fun shouldWaitForAlbumProjection(
     return albumsVisible && inventoryCount > 0 &&
         !hasProjection && !projectionFailed
 }
+
+/**
+ * #676: Albums shows "Loading albums…" only while it has nothing to show. A
+ * background gallery scan ([scanBusy]) keeps the current cards, exactly as
+ * Photos keeps its grid (#505): the cold-start rescan after an app update
+ * used to hide every album for its whole duration.
+ */
+internal fun albumsShowLoading(
+    scanBusy: Boolean,
+    inventoryCount: Int,
+    projectionPending: Boolean
+): Boolean {
+    require(inventoryCount >= 0)
+    return projectionPending || (scanBusy && inventoryCount == 0)
+}
