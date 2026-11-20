@@ -1,5 +1,7 @@
 package nl.atlas.gallery.featurepeopleui
 
+import androidx.compose.material.icons.outlined.People
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
@@ -238,13 +240,12 @@ fun PeopleHomeScreen(
         PeopleScanProgress(discovery)
         if (filteredTiles.isEmpty()) {
             if (tiles.isNotEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No matching people")
-                }
+                AtlasEmptyState(title = "No matching people",
+                    titleTag = "atlas-people-no-match")
             } else if (restoring) {
                 Box(Modifier.fillMaxSize().testTag("atlas-people-restoring"))
             } else {
-                PeopleEmptyState(scan.start)
+                PeopleEmptyState(discovery.phase, scan.start)
             }
             return@Column
         }
@@ -360,25 +361,30 @@ private fun UnnamedGroupTile(
     }
 }
 
-/** Samsung's plain empty People page: one icon, one line, and the opt-in when real. */
+/**
+ * Samsung's plain empty People page, as the DESIGN-6 #136 shared quiet state:
+ * one 22 dp icon, one line, and the opt-in only when it is real. While a scan
+ * runs, the progress line above carries the count; the centre just waits.
+ */
 @Composable
-private fun PeopleEmptyState(onStart: (() -> Unit)?) {
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 32.dp).testTag("atlas-people-home"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(Icons.Filled.PeopleOutline, contentDescription = null,
-            modifier = Modifier.size(64.dp).testTag("atlas-people-empty"),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-        Spacer(Modifier.height(16.dp))
-        Text("No people", style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        if (onStart != null) {
-            Spacer(Modifier.height(20.dp))
-            FilledTonalButton(onClick = onStart) { Text("Discover faces") }
-        }
-    }
+private fun PeopleEmptyState(phase: FaceDiscoveryPhase, onStart: (() -> Unit)?) {
+    AtlasEmptyState(
+        title = peopleEmptyTitle(phase),
+        icon = Icons.Outlined.People,
+        actionLabel = if (onStart != null) "Discover faces" else null,
+        onAction = onStart,
+        modifier = Modifier.testTag("atlas-people-home"),
+        titleTag = "atlas-people-empty"
+    )
+}
+
+/** #136 state 3: not started, scanning and no faces found read differently. */
+internal fun peopleEmptyTitle(phase: FaceDiscoveryPhase): String = when (phase) {
+    FaceDiscoveryPhase.QUEUED, FaceDiscoveryPhase.SCANNING, FaceDiscoveryPhase.GROUPING,
+    FaceDiscoveryPhase.PAUSED, FaceDiscoveryPhase.WAITING_FOR_CHARGER,
+    FaceDiscoveryPhase.BATTERY_LOW, FaceDiscoveryPhase.STORAGE_LOW -> "No people yet"
+    FaceDiscoveryPhase.FINISHED, FaceDiscoveryPhase.REVIEW_AVAILABLE -> "No people found"
+    else -> "No people"
 }
 
 /** The scan and review callbacks the current phase and backend really allow. */

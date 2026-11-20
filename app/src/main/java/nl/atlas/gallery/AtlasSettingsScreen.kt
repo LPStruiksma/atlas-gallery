@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
@@ -33,6 +34,12 @@ import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,7 +84,9 @@ internal fun AtlasSettingsScreen(
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
     onClearSearchHistory: () -> Unit = {},
-    performance: PerformanceAggregates = PerformanceSession.aggregate
+    performance: PerformanceAggregates = PerformanceSession.aggregate,
+    /** #675: release notes bundled by the signed release job; null in debug builds. */
+    changelog: AtlasChangelog? = LocalContext.current.let { c -> remember(c) { AtlasChangelog.load(c) } }
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
@@ -261,6 +270,35 @@ internal fun AtlasSettingsScreen(
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
+            var whatsNewOpen by rememberSaveable { mutableStateOf(false) }
+            SettingsActionRow("What's new", "atlas-settings-whats-new",
+                onClick = { whatsNewOpen = true }, value = whatsNewRowValue(changelog))
+            if (whatsNewOpen) AtlasWhatsNewDialog(changelog, versionName) { whatsNewOpen = false }
+        }
+    }
+}
+
+@Composable
+private fun AtlasWhatsNewDialog(changelog: AtlasChangelog?, installedVersion: String,
+                                onClose: () -> Unit) {
+    // Same full-screen sub-screen shape as AI Edit settings (#430).
+    val dark = LocalAtlasDark.current
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false, dismissOnClickOutside = false)
+    ) {
+        val view = LocalView.current
+        LaunchedEffect(view, dark) {
+            val window = (view.parent as? DialogWindowProvider)?.window ?: return@LaunchedEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground) {
+            AtlasWhatsNewScreen(changelog, installedVersion, onBack = onClose)
         }
     }
 }

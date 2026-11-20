@@ -194,7 +194,7 @@ object ImageEditRequestValidator {
     }
 }
 
-enum class FailureKind { NETWORK, TIMEOUT, AUTH, QUOTA, INVALID_REQUEST, SERVER, UNKNOWN }
+enum class FailureKind { NETWORK, TIMEOUT, AUTH, BILLING, QUOTA, INVALID_REQUEST, SERVER, UNKNOWN }
 
 sealed interface EditOutcome {
     data class Success(

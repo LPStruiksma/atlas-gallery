@@ -212,15 +212,34 @@ internal fun peopleHomeRestoring(
 /**
  * #75: while [next]'s people are pending, keep the summary [previous] showed
  * for the same epoch instead of dropping to nothing.
+ * #684: [readGap] means [next] was read for a catalogue a staged-behind
+ * restage keeps readable (or has just replaced), so its missing people are
+ * the store already serving the new epoch, not an empty People: pending
+ * too. Never across a lost photo grant or a failure.
  */
 internal fun holdPendingPeople(
-    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?,
+    readGap: Boolean = false
 ): PeopleDiscoveryStatus? {
-    if (next == null || !next.peoplePending || next.people != null) return next
+    if (next == null || next.people != null) return next
+    if (readGap && !next.peoplePending && next.ui.phase != FaceDiscoveryPhase.PERMISSION_REQUIRED &&
+        next.ui.phase != FaceDiscoveryPhase.FAILED) {
+        return holdPendingPeople(previous, next.copy(peoplePending = true))
+    }
+    if (!next.peoplePending) return next
     val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
         ?: return next
     return next.copy(people = held, peoplePending = false)
 }
+
+/**
+ * What People shows after [previous] when the host reports [next]: the one
+ * hold rule [rememberPeopleDiscoveryOf] applies to every status read.
+ */
+internal fun shownPeopleStatus(
+    host: PeopleDiscoveryHost, previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+): PeopleDiscoveryStatus? =
+    holdPendingPeople(previous, next, next != null && host.restageReadGap(next.displayEpoch))
 
 /**
  * The visual search index panel's facts. It rides on the face discovery run
@@ -761,6 +780,12 @@ internal class PeopleDiscoveryHost(
      * worker holds while it is set; reads keep serving [liveEpoch].
      */
     @Volatile private var stagingEpoch: String? = null
+    /**
+     * #684: the epoch the last staged-behind publication replaced. A status
+     * read that took its scope just before that swap reads this epoch after
+     * the store moved on; see [restageReadGap].
+     */
+    @Volatile private var restagedFrom: String? = null
     /** True only while a scan batch is actually publishing groups for this epoch. */
     @Volatile private var groupingEpoch: String? = null
     /** Real granted worker-session window, never inferred from queued rows. */
@@ -777,7 +802,9 @@ internal class PeopleDiscoveryHost(
     @Volatile private var visualScope: VisualScope? = null
     private val embedderLock = Any()
     private var visualEmbedder: ImageEmbedder? = null
-    private val faceCrops = FaceCropCache<Bitmap>()
+    // PERF (#119): room for a People screen of portraits plus the Same person?
+    // pair on screen and the next one (crops are at most 192 px, ~150 KB).
+    private val faceCrops = FaceCropCache<Bitmap>(FACE_CROP_CACHE_ENTRIES)
 
     /**
      * The identity-review snapshot last handed out, with the store generation
@@ -824,6 +851,20 @@ internal class PeopleDiscoveryHost(
     /** #31: true while a readable catalogue already serves [galleryGrant]. */
     fun serves(galleryGrant: String?): Boolean = galleryGrant != null && synchronized(lock) {
         scope?.let { it.galleryGrant == galleryGrant && liveEpoch == it.epoch } == true
+    }
+
+    /**
+     * #684: true when [displayEpoch] is the catalogue a staged-behind restage
+     * keeps readable, or the one it has just replaced. A People read for it
+     * that finds no people met the store already serving the new epoch (the
+     * commit lands before the host swaps), so the screen keeps what it shows.
+     * Only for an opted-in run with no failure and the photo grant current.
+     */
+    fun restageReadGap(displayEpoch: String?): Boolean {
+        if (displayEpoch == null) return false
+        val live = liveEpoch ?: return false
+        val gap = (stagingEpoch != null && displayEpoch == live) || displayEpoch == restagedFrom
+        return gap && synchronized(lock) { optedIn && failure == null } && photoGrantCurrent()
     }
 
     /** True while [epoch] is the live, granted scope of an opted-in run. */
@@ -971,6 +1012,7 @@ internal class PeopleDiscoveryHost(
             scope = null
             liveEpoch = null
             stagingEpoch = null
+            restagedFrom = null
         }
         // Explicit off or real loss of photo access: the next start is a new opt-in.
         optInMemory.save(null)
@@ -1098,7 +1140,8 @@ internal class PeopleDiscoveryHost(
         return true
     }
 
-    private fun publishVisual(faceEpoch: String, inventory: List<FaceVisibleMedia>): Boolean {
+    private fun publishVisual(faceEpoch: String, inventory: List<FaceVisibleMedia>,
+                              keepReadable: Boolean = false): Boolean {
         val store = visualStore ?: return false
         if (!synchronized(lock) { visualOptedIn }) return false
         val epoch = "atlas-visual-" + UUID.randomUUID()
@@ -1109,7 +1152,7 @@ internal class PeopleDiscoveryHost(
         var begun = false
         var done = false
         try {
-            store.beginSnapshot(epoch)
+            store.beginSnapshot(epoch, keepActiveReadable = keepReadable)
             begun = true
             val batch = ArrayList<VisualMedia>(VisualIndexStore.MAX_BATCH)
             val withVideos = visualVideoFramesFor != null
@@ -1134,8 +1177,10 @@ internal class PeopleDiscoveryHost(
             check(current()) { "Visual catalogue scope changed" }
             if (batch.isNotEmpty()) store.stageBatch(epoch, batch)
             store.commitSnapshot(epoch, visualModelVersion, visualDimension)
-            check(current()) { "Visual catalogue scope changed" }
+            // #684: the committed catalogue is the only readable one now, so
+            // the scope follows it at once (a lost race clears it below).
             visualScope = VisualScope(faceEpoch, epoch, leftOutPhotos)
+            check(current()) { "Visual catalogue scope changed" }
             val token = photoGrantToken()
             optInMemory.savePublishedVisual(
                 if (token != null && current()) PublishedVisualScope(faceEpoch, epoch, token,
@@ -1169,6 +1214,10 @@ internal class PeopleDiscoveryHost(
             if (begun && !done) {
                 try { store.invalidateSnapshotIfCurrent(epoch) } catch (_: SQLException) { }
             }
+            // #684: a failed or superseded staging leaves no stale scope.
+            if (!done && visualScope?.let {
+                    it.faceEpoch == faceEpoch && (it.staging || it.epoch == epoch)
+                } == true) visualScope = null
         }
     }
 
@@ -1265,6 +1314,9 @@ internal class PeopleDiscoveryHost(
                 Carry.UNCHANGED -> {
                     mode = "carried"
                     onCarried()
+                    // #676: the carried people are readable now; show them
+                    // before the visual revive and any regroup below.
+                    changed()
                     // The catalogue is exactly what this inventory would stage.
                     val epoch = synchronized(lock) { scope }!!.epoch
                     if (synchronized(lock) { visualOptedIn } && visualScope?.faceEpoch != epoch) {
@@ -1278,6 +1330,7 @@ internal class PeopleDiscoveryHost(
                 Carry.STAGE_BEHIND -> {
                     mode = "staged-behind"
                     onCarried()
+                    changed() // #676: as above, before the visual and restage work
                     // The previous visual catalogue may remain readable only
                     // behind this still-authorized face inventory; worker holds.
                     if (token != null && synchronized(lock) { visualOptedIn }) {
@@ -1446,6 +1499,7 @@ internal class PeopleDiscoveryHost(
             scope = null
             liveEpoch = null
             stagingEpoch = null
+            restagedFrom = null
         }
         optInMemory.savePublished(null)
         optInMemory.savePublishedVisual(null)
@@ -1501,6 +1555,14 @@ internal class PeopleDiscoveryHost(
             building = false
             val published = synchronized(lock) {
                 if (!owns(epoch) || !optedIn) return@synchronized false
+                restagedFrom = if (keepReadable) liveEpoch else null
+                // #684: staged behind, the previous visual catalogue keeps its
+                // counts readable for the new face scope until its successor
+                // commits (from this swap on, not after the regroup below);
+                // the worker holds on a staging scope meanwhile.
+                if (keepReadable) visualScope = visualScope?.takeIf {
+                    it.faceEpoch == restagedFrom
+                }?.let { VisualScope(epoch, it.epoch, it.leftOutPhotos, staging = true) }
                 liveEpoch = epoch
                 stagingEpoch = null
                 scope = Scope(epoch, galleryGrant, directory, inventory, publication)
@@ -1517,8 +1579,12 @@ internal class PeopleDiscoveryHost(
                 Log.i("ATLAS_FACE", "publication_ready items=${inventory.size} " +
                     "paused=${synchronized(lock) { pausedByUser }}")
                 regroupIfRulesChanged(epoch)
-                visualScope = null
-                if (synchronized(lock) { visualOptedIn }) publishVisual(epoch, inventory)
+                val keptVisual = keepReadable &&
+                    visualScope?.let { it.staging && it.faceEpoch == epoch } == true
+                if (!keptVisual) visualScope = null
+                if (synchronized(lock) { visualOptedIn })
+                    publishVisual(epoch, inventory, keepReadable = keptVisual)
+                else visualScope = null
             }
             published
         } catch (e: IllegalStateException) {
@@ -1854,12 +1920,23 @@ internal class PeopleDiscoveryHost(
             generation?.second, observation?.timestampMs, observation?.durationMs)
     }
 
+    /**
+     * #676: a kept opt-in whose saved catalogue is not served yet (cold start
+     * after an app update, before or during the carry-over). Its people exist;
+     * they are only not readable yet, so People shows its restoring page, never
+     * "No people". A failure, a revoke or a first-ever run is not restoring.
+     */
+    private fun keptCatalogueRestoring(snap: Snapshot): Boolean =
+        snap.optedIn && snap.failure == null && photoGrantCurrent() &&
+            optInMemory.loadPublished() != null
+
     /** One consistent read for the People panel. Blocking; IO only. */
     fun status(galleryGrant: String?): PeopleDiscoveryStatus {
         val display = displayEpoch(galleryGrant)
         val snap = synchronized(lock) { Snapshot(optedIn, pausedByUser, scope, failure) }
         if (galleryGrant == null || display == null) {
-            return PeopleDiscoveryStatus(FaceDiscoveryUiState(), null, PeopleActionAvailability())
+            return PeopleDiscoveryStatus(FaceDiscoveryUiState(), null, PeopleActionAvailability(),
+                peoplePending = keptCatalogueRestoring(snap))
         }
         if (snap.failure != null) {
             return PeopleDiscoveryStatus(
@@ -1879,7 +1956,7 @@ internal class PeopleDiscoveryHost(
             ), display)
             return PeopleDiscoveryStatus(ui, display,
                 PeopleActionAvailability(mayStartScan = ui.phase == FaceDiscoveryPhase.READY),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         // The cluster writer may hold SQLite for a long publication part.
         // Report its actual live stage without waiting for a DB read or
@@ -1902,7 +1979,7 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
@@ -1914,7 +1991,7 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         val hold = conditions(scoped.epoch).holdReason()
         if (hold == FaceScanPhase.PERMISSION_REQUIRED) {
@@ -1983,7 +2060,12 @@ internal class PeopleDiscoveryHost(
             kept = visualDataKept
             running = optedIn && faceEpoch != null && scope?.epoch == faceEpoch
         }
-        val visual = visualScope?.takeIf { enabled && it.faceEpoch == faceEpoch }
+        val visual = visualScope?.takeIf {
+            enabled && faceEpoch != null && (it.faceEpoch == faceEpoch ||
+                // #684: the store committed the staged face epoch; the host
+                // swaps to it next and keeps this visual scope's counts.
+                (faceEpoch == stagingEpoch && it.faceEpoch == liveEpoch))
+        }
         val progress = visual?.let {
             try { store.progress(it.epoch) } catch (_: SQLException) { null }
         }
@@ -2475,12 +2557,12 @@ internal fun <T> rememberPeopleDiscoveryOf(
         // value (or "Restoring…") instead of flashing a not-started state.
         withContext(Dispatchers.IO) {
             host.status(galleryGrant).takeIf { host.serves(galleryGrant) || !host.discoveryOptedIn() }
-        }?.let { value = holdPendingPeople(value, it) }
+        }?.let { value = shownPeopleStatus(host, value, it) }
         val published = withContext(Dispatchers.IO) {
             host.onGalleryPublication(galleryGrant) { project(inventory) }
             host.status(galleryGrant)
         }
-        value = holdPendingPeople(value, published)
+        value = shownPeopleStatus(host, value, published)
     }
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
