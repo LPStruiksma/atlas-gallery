@@ -28,7 +28,7 @@ Status: **Shipped** (on main, tested, in a release) · **Partial** (works but in
 
 | Area | Status | What exists | Gap |
 |---|---|---|---|
-| Samsung grid, timeline, albums, viewer, sort, selection, settings | Shipped / Partial | Zoom ladder, sort sheets, floating pill, details sheet, video chrome, Settings, signed releases via Obtainium | Parity round 3 items (#12, #16, #20, #23, #24) on hold; Settings Back (#79) |
+| Samsung grid, timeline, albums, viewer, sort, selection, settings | Shipped / Partial | Zoom ladder, sort sheets, floating pill, details sheet, video chrome, Ultra HDR photos shown in HDR while focused in the viewer (API 34+, gain map; #572, on-phone look unverified), Settings, signed releases via Obtainium | Parity round 3 items (#12, #16, #20, #23, #24) on hold; Settings Back (#79) |
 | Stability and persistence | Partial | OOM fixes (#44, #74), WAL (#53), restore after relaunch (#60), Photo DNA guards, Last crash | #33, #41, #75 flash, #82 flaky emulator tests |
 | Face detection and grouping | Shipped | YuNet + SFace int8 on-device, charging-only scanner, conservative clustering, auto-add, `people_matched`, names survive model changes (#48), names backup (#62) | Phase 1 gate (top 20 people each one group) not yet met, #51 |
 | People review | Shipped | Name, assign, merge, "Same person?" queue, manual `SplitPerson` / `SplitUnknownCluster` by face selection, cannot-link and rejection facts, Undo | **Assisted split proposals: Missing** (new goal) |
