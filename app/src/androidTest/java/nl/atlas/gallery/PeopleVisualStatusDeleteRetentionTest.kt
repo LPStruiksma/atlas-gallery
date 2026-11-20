@@ -387,6 +387,8 @@ class PeopleVisualStatusDeleteRetentionTest {
     private class Paused(val label: String, val read: () -> VisualIndexStatus?) {
         val inSeam = CountDownLatch(1)
         val finished = CountDownLatch(1)
+        /** Paused at the seam or finished, whichever comes first. */
+        val arrived = CountDownLatch(1)
         @Volatile var result: VisualIndexStatus? = null
         @Volatile var seamReached = false
         @Volatile var error: Throwable? = null
@@ -402,23 +404,20 @@ class PeopleVisualStatusDeleteRetentionTest {
         for (r in readers) {
             val t = Thread {
                 try { r.result = r.read() } catch (e: Throwable) { r.error = e }
-                finally { r.finished.countDown() }
+                finally { r.finished.countDown(); r.arrived.countDown() }
             }
             r.thread = t
             readerThreads += t
             seams[t] = {
                 r.seamReached = true
                 r.inSeam.countDown()
+                r.arrived.countDown()
                 assertTrue("${r.label}: released", release.await(60, TimeUnit.SECONDS))
             }
             t.start()
         }
-        for (r in readers) {
-            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
-            while (r.inSeam.count > 0 && r.finished.count > 0 && System.nanoTime() < deadline) {
-                Thread.sleep(2)
-            }
-        }
+        // Each reader counts [Paused.arrived] down at its seam or when it finishes.
+        for (r in readers) r.arrived.await(20, TimeUnit.SECONDS)
     }
 
     private fun finish(readers: List<Paused>) {
