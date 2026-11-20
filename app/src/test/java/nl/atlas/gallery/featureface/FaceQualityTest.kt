@@ -50,6 +50,22 @@ class FaceQualityTest {
         assertFalse(score().belowSizeFloor)
         assertTrue(score().score > small.score)
     }
+    @Test fun eightyDecodedPixelsAreFourHundredSourcePixels() {
+        val detected = face(shortEdge = 80f)
+        val fromBounded = FaceQualityScorer.score(detected, 320, 320, crop(), sourceScale = 1f)
+        val fromSource = FaceQualityScorer.score(detected, 320, 320, crop(), sourceScale = 5f)
+        assertTrue(fromBounded.belowSizeFloor)
+        assertFalse(fromSource.belowSizeFloor)
+        assertTrue(fromSource.score > fromBounded.score)
+    }
+
+    @Test fun decodeScaleUsesSourceLongEdgeAndNeverUpscales() {
+        assertEquals(5f, FaceDecodeBudget.sourceScale(4000, 3000, 800, 600), 0.0001f)
+        assertEquals(1f, FaceDecodeBudget.sourceScale(640, 480, 640, 480), 0.0001f)
+        // EXIF rotation swaps the oriented width and height, not their long edge.
+        assertEquals(5f, FaceDecodeBudget.sourceScale(3000, 4000, 800, 600), 0.0001f)
+    }
+
     @Test fun scoresAreFiniteAndVersioned() {
         val scored = score()
         assertTrue(scored.score in 0f..1f)

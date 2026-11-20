@@ -29,4 +29,12 @@ class AlbumLoadingAdmissionTest {
     fun impossibleNegativeInventoryMustNotBeSilentlyAdmitted() {
         shouldWaitForAlbumProjection(true, -1, false, false)
     }
+
+    /** #676: the cold-start rescan after an app update kept Albums spinning. */
+    @Test fun albumsKeepTheirCardsDuringABackgroundScan() {
+        assertFalse("cached catalogue, scan running", albumsShowLoading(true, 150_000, false))
+        assertTrue("nothing to show yet", albumsShowLoading(true, 0, false))
+        assertTrue("projection pending", albumsShowLoading(false, 150_000, true))
+        assertFalse(albumsShowLoading(false, 0, false))
+    }
 }

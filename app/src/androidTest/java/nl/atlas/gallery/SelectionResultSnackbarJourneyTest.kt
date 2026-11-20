@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -41,6 +42,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -216,6 +218,96 @@ abstract class SelectionResultActivityJourney(private val dark: Boolean) {
             } else {
                 shellCommand("settings put secure $A11Y_TIMEOUT_KEY $timeoutBefore")
             }
+        }
+    }
+
+    /** #404: the selected keys and contextual pill survive Activity recreation. */
+    @Test fun rotationRetainsTheSelectedPhotosAndContextualPill() {
+        val theme = if (dark) "dark" else "light"
+        val ids = fixtures.ids
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-${theme}-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-portrait-after.png")
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    /** #404: an album selection cannot silently turn into a Photos selection on rotation. */
+    @Test fun rotationRetainsAlbumSelectionAndItsScope() {
+        val theme = if (dark) "dark" else "light"
+        val folder = "ATLAS-Result-Fixture-${if (dark) "Dark" else "Light"}"
+        val ids = fixtures.ids
+
+        compose.waitForNode(hasTestTag("atlas-nav-albums"))
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitForNode(hasTestTag("atlas-album-grid"))
+        val fixtureAlbum = hasTestTag("atlas-album-card") and hasText(folder, substring = true)
+        compose.waitForNode(fixtureAlbum)
+        compose.onNode(fixtureAlbum).performClick()
+        compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+        ids.take(2).forEach { id ->
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${id}"))
+        }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
+        assertSelectedPair(ids)
+        saveUiEvidence("selection-404-${theme}-album-portrait-before.png")
+        try {
+            rotateTo(landscape = true)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-landscape.png")
+            rotateTo(landscape = false)
+            assertSelectedPair(ids)
+            saveUiEvidence("selection-404-${theme}-album-portrait-after.png")
+            // Back exits selection first, then returns to the same fixture album.
+            compose.activityRule.scenario.onActivity {
+                it.onBackPressedDispatcher.onBackPressed()
+            }
+            compose.waitForNode(hasTestTag("atlas-header-title") and hasText(folder))
+            compose.onNodeWithTag("atlas-selection-pill").assertDoesNotExist()
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            InstrumentationRegistry.getInstrumentation().uiAutomation
+                .setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
+    }
+
+    private fun assertSelectedPair(ids: List<Long>) {
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+        compose.onNodeWithTag("atlas-selection-pill").assertExists()
+        compose.onNodeWithTag("atlas-selection-top-bar").assertExists()
+        compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
+        // The restored mode keeps the same actionable Share/Delete/Copy/More
+        // surface, not merely the checked thumbnails and count.
+        listOf("atlas-selection-share", "atlas-selection-trash",
+            "atlas-selection-transfer", "atlas-selection-more").forEach { action ->
+            compose.onNodeWithTag(action).assertExists()
+        }
+        ids.take(2).forEach { id ->
+            val tag = "atlas-timeline-media-${id}"
+            compose.onNodeWithTag("atlas-timeline-grid")
+                .performScrollToNode(hasTestTag(tag))
+            compose.onNodeWithTag(tag).assertIsSelected()
         }
     }
 

@@ -18,6 +18,8 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.mutableStateOf
+import nl.atlas.gallery.featureorganization.SelectionRotationState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineStart
@@ -35,7 +37,12 @@ internal data class GalleryMediaCheckpoint(
     val generations: Map<String, Long?>
 )
 internal data class GalleryMediaScan(
-    val items: List<MediaRecord>, val checkpoint: GalleryMediaCheckpoint
+    val items: List<MediaRecord>, val checkpoint: GalleryMediaCheckpoint,
+    /**
+     * #676: generations moved while the scan read; [checkpoint] is then the
+     * scan's START, and the caller must run the generation delta from it.
+     */
+    val trailingChanges: Boolean = false
 )
 internal class GalleryDeltaUnavailable : RuntimeException("Incremental provider query unavailable")
 
@@ -56,6 +63,9 @@ internal fun galleryItemHintOrNull(uri: Uri): GalleryItemHint? {
 }
 
 class GalleryRepository(private val context: Context) {
+    /** Aggregate count from the most recent completed scan, not media identity. */
+    @Volatile var lastReusedCount: Int? = null
+        private set
     /** Read-only MediaStore inventory. In particular, does not use all-files access. */
     fun load(
         cancellationSignal: CancellationSignal? = null,
@@ -67,19 +77,27 @@ class GalleryRepository(private val context: Context) {
         previous: List<MediaRecord> = emptyList(),
         checkActive: () -> Unit = {}
     ): List<MediaRecord> =
-        loadWithCheckpoint(cancellationSignal, previous, checkActive).items
+        loadWithCheckpoint(cancellationSignal, previous, checkActive = checkActive).items
 
     internal fun loadWithCheckpoint(
         cancellationSignal: CancellationSignal? = null,
         previous: List<MediaRecord> = emptyList(),
+        /**
+         * #676: accept a scan during which generations only moved forward,
+         * checkpointed at its start ([GalleryMediaScan.trailingChanges]).
+         * Only for a caller that runs the generation delta right after.
+         */
+        allowTrailingChanges: Boolean = false,
         checkActive: () -> Unit = {}
     ): GalleryMediaScan = failGalleryScanOnHeapExhaustion {
-        loadInventory(cancellationSignal, previous, checkActive)
+        lastReusedCount = null
+        loadInventory(cancellationSignal, previous, allowTrailingChanges, checkActive)
     }
 
     private fun loadInventory(
         cancellationSignal: CancellationSignal?,
         previous: List<MediaRecord>,
+        allowTrailingChanges: Boolean,
         checkActive: () -> Unit
     ): GalleryMediaScan {
         val result = ArrayList<MediaRecord>(maxOf(4096, previous.size))
@@ -110,13 +128,19 @@ class GalleryRepository(private val context: Context) {
         // the volume key set. No partial results are ever published.
         val versionsAtEnd = mediaProviderVersions()
         val generationsAtEnd = mediaProviderGenerations(versionsAtEnd.keys)
-        if (!sameMediaProviderScanSnapshot(
-                versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd))
-            throw GalleryProviderSnapshotChanged()
+        val coherent = sameMediaProviderScanSnapshot(
+            versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd)
+        val trailing = !coherent && allowTrailingChanges &&
+            mediaProviderOnlyAdvancedDuringScan(
+                versionsAtStart, versionsAtEnd, generationsAtStart, generationsAtEnd)
+        if (!coherent && !trailing) throw GalleryProviderSnapshotChanged()
+        lastReusedCount = reuse.reused
         // Counts only: how much of the previous inventory this scan shared.
         android.util.Log.i("ATLAS_SCAN", "event=scan_rows rows=${result.size} " +
-            "reused=${reuse.reused} ${heapUseLogFields()}")
-        return GalleryMediaScan(result, GalleryMediaCheckpoint(versionsAtEnd, generationsAtEnd))
+            "reused=${reuse.reused} trailing=$trailing ${heapUseLogFields()}")
+        return if (trailing) GalleryMediaScan(result,
+            GalleryMediaCheckpoint(versionsAtStart, generationsAtStart), trailingChanges = true)
+        else GalleryMediaScan(result, GalleryMediaCheckpoint(versionsAtEnd, generationsAtEnd))
     }
 
     /**
@@ -335,16 +359,34 @@ class GalleryRepository(private val context: Context) {
         if (index < 0 || isNull(index)) fallback else getString(index)
 }
 
+private const val V4_NOT_LINKED = "No V4 live export linked"
+private const val V4_LINKED = "V4 live export linked"
+
 class GalleryViewModel(application: Application): AndroidViewModel(application) {
+    // Configuration-change only: neither the person key nor name is copied to
+    // saved instance state, preferences or process-death restoration.
+    internal val nativePersonAlbumState = mutableStateOf<NativePersonAlbumRequest?>(null)
+    // Pending photo/album selection only survives configuration changes; never Bundle saves.
+    internal val pendingSelectionRotationState = mutableStateOf<SelectionRotationState?>(null)
+    // Person selections share that configuration-only lifetime, never Android saved state.
+    internal val pendingPersonSelectionRotationState = mutableStateOf<PersonSelectionRotationSnapshot?>(null)
     private val repo = GalleryRepository(application)
     private val peopleRepo = PeopleRepository(application)
-    private val v4LinkPrefs = application.getSharedPreferences("atlas_v4_live_sync",Context.MODE_PRIVATE)
+    // #435: opened and read on IO only; the first Photos grid never waits on its load.
+    private val v4LinkPrefs by lazy {
+        application.getSharedPreferences("atlas_v4_live_sync", Context.MODE_PRIVATE)
+    }
     private val peopleCsvGate = PeopleCsvSyncCoordinator()
     private var v4SyncRunning = false
-    private val _v4SyncState = MutableStateFlow(
-        if (v4LinkPrefs.contains("uri")) "V4 live export linked" else "No V4 live export linked"
-    )
+    private val _v4SyncState = MutableStateFlow(V4_NOT_LINKED)
     val v4SyncState = _v4SyncState.asStateFlow()
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Only the untouched initial text is replaced: a link or import
+            // that already finished has published the newer state itself.
+            if (v4LinkPrefs.contains("uri")) _v4SyncState.compareAndSet(V4_NOT_LINKED, V4_LINKED)
+        }
+    }
     private val _people = MutableStateFlow<List<PersonEntry>>(emptyList())
     val people = _people.asStateFlow()
     private val _busy = MutableStateFlow(false)
@@ -362,8 +404,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     private val _failedInventoryEpoch = MutableStateFlow(0L)
     val failedInventoryEpoch = _failedInventoryEpoch.asStateFlow()
     // #505: cold start opens straight into the last catalogue from disk.
-    private val inventoryCache = GalleryInventoryCacheFile(
-        java.io.File(application.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE))
+    private val inventoryCache = GalleryInventoryCacheFile {
+        java.io.File(application.noBackupFilesDir, GALLERY_INVENTORY_CACHE_FILE)
+    }
     private var inventoryCacheWrite: Job? = null
     @Volatile private var inventoryDirty = true
     private val mediaChangeVersion = AtomicLong(0L)
@@ -422,11 +465,25 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             }
         }
         if (pendingChangedItems.size > 64) pendingUnknownChange = true
+        launchIncremental(120)
+    }
+
+    /**
+     * #676: true while the running full scan will publish and then run the
+     * generation delta itself (full image+video grant). A MediaStore change
+     * during that scan then waits for it instead of superseding it: a
+     * screenshot taken during the cold-start scan used to restart it.
+     */
+    private var runningScanFollowsUp = false
+
+    private fun launchIncremental(delayMillis: Long) {
         incrementalJob?.cancel()
         incrementalJob = viewModelScope.launch {
-            delay(120)
+            if (delayMillis > 0) delay(delayMillis)
             if (clearing || mediaAccessRevoked) return@launch
             if (_busy.value) {
+                // The running scan follows up with this delta when it ends.
+                if (runningScanFollowsUp) return@launch
                 // Do not discard a callback while a full scan is in flight.
                 // Queue exactly one authoritative follow-up via the existing
                 // refresh gate; its finally block starts the queued scan.
@@ -559,6 +616,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
     }
 
     fun refreshIfChanged() {
+        // #676: a running delta-following scan picks the change up itself.
+        if (_busy.value && runningScanFollowsUp) return
         if (!mediaAccessRevoked && inventoryDirty) refresh()
     }
 
@@ -622,7 +681,9 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         pendingSnapshotRetry?.cancel()
         pendingSnapshotRetry = null
         mediaAccessRevoked = false
-        inventoryCache.restore(readGalleryMediaGrant(getApplication<Application>()))
+        // #435: decide on Main, delete on IO; reads and writes settle it first.
+        inventoryCache.beginRestore(readGalleryMediaGrant(getApplication<Application>()))
+        viewModelScope.launch(Dispatchers.IO) { inventoryCache.settle() }
         val ticket = refreshQueue.request()
         // Unlike ordinary refresh, a new grant invalidates the old scan.
         // Cancel both its provider IPC and its IO coroutine immediately.
@@ -650,9 +711,15 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         val scanStartedNanos = System.nanoTime()
         fun scanElapsedMilliseconds(): Long =
             ((System.nanoTime() - scanStartedNanos) / 1_000_000L).coerceAtLeast(0L)
+        var diagnosticOutcome = "SUPERSEDED"
+        var diagnosticRows: Int? = null
+        var diagnosticReused: Int? = null
         // The scope belongs to the scan, not whichever Activity grant happens
         // to be visible when an asynchronous MediaStore cursor finishes.
         val observedGrantAtStart = readGalleryMediaGrant(getApplication<Application>())
+        // #676: under a full grant a change during this scan follows as a delta.
+        val followsUp = galleryDeltaEligible(observedGrantAtStart)
+        var followUpDelta = false
         inventoryDirty = false
         val providerCancellation = CancellationSignal()
         // Lazy start is essential with Dispatchers.Main.immediate: register
@@ -660,6 +727,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
         // reach its finally cleanup.
         val scanJob: Job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             var settleFailedSnapshot = false
+            runningScanFollowsUp = followsUp
             _busy.value = true
             try {
                 // The inventory on screen once the disk cache has settled;
@@ -671,7 +739,8 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                 }
                 val scan = withContext(Dispatchers.IO) {
                     val scanContext = currentCoroutineContext()
-                    repo.loadWithCheckpoint(providerCancellation, shownAtStart) {
+                    repo.loadWithCheckpoint(providerCancellation, shownAtStart,
+                        allowTrailingChanges = followsUp) {
                         scanContext.ensureActive()
                     }
                 }
@@ -693,17 +762,30 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     if (mayPublishCompletedGalleryScan(
                             latestRequest, mediaAccessRevoked,
                             observedGrantAtStart, grantAtPublication,
-                            versionAtStart, changeVersionAtPublication)) {
+                            versionAtStart, changeVersionAtPublication,
+                            changesFollowAsDelta = followsUp)) {
                         _publishedInventory.value = GalleryPublishedInventory(
                             ticket, inventory, observedGrantAtStart
                         )
                         publishedCheckpoint = scan.checkpoint
-                        pendingChangedItems.clear()
-                        pendingUnknownChange = false
-                        firstBurstObservedNanos = 0L
+                        // #676: a change during the scan (observed, or seen as
+                        // moved generations) follows as the delta from the
+                        // checkpoint; keep its hints for that delta.
+                        followUpDelta = scan.trailingChanges ||
+                            versionAtStart != changeVersionAtPublication
+                        if (followUpDelta) {
+                            inventoryDirty = true
+                        } else {
+                            pendingChangedItems.clear()
+                            pendingUnknownChange = false
+                            firstBurstObservedNanos = 0L
+                        }
                         _error.value = null
                         if (observedGrantAtStart.hasAny)
                             saveInventoryCache(observedGrantAtStart, inventory)
+                        diagnosticRows = inventory.size
+                        diagnosticReused = repo.lastReusedCount
+                        diagnosticOutcome = "SUCCESS"
                         // A prior failed scan followed by this exact authorized
                         // publication is now observable without logging media.
                         android.util.Log.i("ATLAS_SCAN",
@@ -726,8 +808,14 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
             } catch (cancelled: CancellationException) {
                 // ViewModel disposal is not an inventory error. Never publish
                 // a misleading retry banner or spin up another canceled scan.
+                diagnosticOutcome = "CANCELLED"
                 throw cancelled
+            } catch (oom: OutOfMemoryError) {
+                diagnosticOutcome = "OUT_OF_MEMORY"
+                throw oom
             } catch (e: Exception) {
+                diagnosticOutcome = if (refreshQueue.mayPublish(ticket))
+                    atlasScanFailureOutcome(e) else "SUPERSEDED"
                 inventoryDirty = true
                 // Ignore errors from a request superseded by a newer access
                 // scope: its result is no longer authoritative either.
@@ -770,10 +858,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                     }
                 }
             } finally {
+                AtlasDiagnosticsRing.scan(scanElapsedMilliseconds(), diagnosticRows,
+                    diagnosticOutcome, reused = diagnosticReused)
                 // A notification during IO marks the inventory dirty. Explicit
                 // new requests (not arbitrary continuous observer churn) get
                 // coalesced into a guaranteed follow-up read.
                 if (mediaChangeVersion.get() != versionAtStart) inventoryDirty = true
+                runningScanFollowsUp = false
                 _busy.value = false
                 activeScan.finish(ticket)
                 val newerRequestQueued = refreshQueue.finish(ticket)
@@ -828,6 +919,11 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                             }
                         }
                     }
+                } else if (followUpDelta && !clearing && !mediaAccessRevoked &&
+                    viewModelScope.isActive) {
+                    // #676: the change seen during the scan, as one delta from
+                    // its checkpoint (or the authoritative scan if no delta fits).
+                    launchIncremental(0)
                 }
             }
         }
@@ -902,11 +998,13 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
 
     /** Read-only SAF polling on resume, with checksum-sealed and transactional import. */
     fun refreshLinkedV4Csv() {
-        if (v4LinkPrefs.getString("uri", null) == null || v4SyncRunning) return
+        if (v4SyncRunning) return
         v4SyncRunning = true
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
+                    // #435: the "is anything linked" check reads prefs, so it runs here.
+                    if (v4LinkPrefs.getString("uri", null) == null) return@withContext null
                     runCatching {
                         peopleCsvGate.exclusive {
                             // IMPORTANT: Re-read the active link *after* obtaining
@@ -925,7 +1023,7 @@ class GalleryViewModel(application: Application): AndroidViewModel(application) 
                             }
                         }
                     }
-                }
+                } ?: return@launch
                 result.onSuccess { changed ->
                     if (changed == true) refreshPeople()
                     _v4SyncState.value = when (changed) {

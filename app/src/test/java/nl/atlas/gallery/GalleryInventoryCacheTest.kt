@@ -164,6 +164,56 @@ class GalleryInventoryCacheTest {
         }
     }
 
+    /**
+     * #435: building the wrapper and starting a restore touch no file (both run
+     * on Main), and the old bytes are still gone before anything can read or
+     * overwrite them, whichever of settle/read/write/delete runs first.
+     */
+    @Test fun beginRestoreDoesNoIoAndTheNextAccessSettlesIt() {
+        val dir = Files.createTempDirectory("atlas-cache-deferred-").toFile()
+        try {
+            val destination = java.io.File(dir, "inventory.bin")
+            var resolved = 0
+            val cache = GalleryInventoryCacheFile { resolved++; destination }
+            cache.invalidate()
+            cache.beginRestore(selected)
+            assertEquals("the file was resolved on the constructing thread", 0, resolved)
+
+            cache.write(selected, listOf(record(1)))
+            assertEquals(1, resolved)
+            java.io.File(dir, "inventory.bin.tmp").writeText("half-written")
+
+            // A selected scope clears the file: the read sees nothing.
+            cache.beginRestore(selected)
+            assertTrue("beginRestore deleted on the calling thread", destination.isFile)
+            assertNull(cache.read())
+            assertFalse(destination.exists())
+            assertFalse(java.io.File(dir, "inventory.bin.tmp").exists())
+
+            // A write after a pending clear lands, and is not erased by settle.
+            cache.write(full, listOf(record(2)))
+            cache.beginRestore(GalleryMediaGrant(false, false, false))
+            cache.write(full, listOf(record(3)))
+            cache.settle()
+            assertEquals(listOf(record(3)), cache.read()!!.items)
+
+            // Same full grant: the trusted bytes stay, only the temp file goes.
+            java.io.File(dir, "inventory.bin.tmp").writeText("half-written")
+            cache.beginRestore(full)
+            cache.settle()
+            assertEquals(listOf(record(3)), cache.read()!!.items)
+            assertFalse(java.io.File(dir, "inventory.bin.tmp").exists())
+
+            // A full-grant restore never downgrades a pending clear.
+            cache.beginRestore(selected)
+            cache.beginRestore(full)
+            cache.deleteIfRevoked()
+            assertFalse(destination.exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     @Test fun everyFieldSurvivesRoundTrip() {
         val items = (1L..40L).map { record(it, video = it % 7 == 0L) } +
             record(41).copy(uri = "content://odd/uri/without-id")

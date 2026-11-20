@@ -1,0 +1,5 @@
+# BENCH-1 (#572): Ultra HDR viewer, unchanged chrome on the focused HDR photo and its SDR neighbour.
+572-viewer-ultra-hdr-focused-light
+572-viewer-ultra-hdr-focused-dark
+572-viewer-sdr-neighbour-light
+572-viewer-sdr-neighbour-dark
