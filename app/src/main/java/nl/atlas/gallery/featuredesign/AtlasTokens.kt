@@ -134,7 +134,7 @@ object AtlasTokens {
     object Type {
         val BodyLineHeight = 22.sp
         // Existing navigation caps at 200% are preserved pending BRAND-L4.
-        val NavigationLabel = 11.sp
+        val NavigationLabel = 14.sp
         val DisplayTracking = (-0.03f).em
     }
 }

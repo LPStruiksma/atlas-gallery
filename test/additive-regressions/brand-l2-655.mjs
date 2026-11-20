@@ -69,3 +69,8 @@ test("viewer and selection aliases use Lapis tokens, not the old accents", () =>
     assert.ok(!src.includes("0xFF" + old), "legacy UI chrome remains: " + old);
   }
 });
+
+test("navigation role uses 14sp Funnel Sans with the existing 200% cap", () => {
+  assert.match(src, /val NavigationLabel = 14\.sp/);
+  assert.match(design, /navigationLabelCap\(fontScale\)/);
+});

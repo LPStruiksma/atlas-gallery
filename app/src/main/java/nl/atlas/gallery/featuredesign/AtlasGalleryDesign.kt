@@ -479,7 +479,7 @@ private fun AtlasTabItem(
     // An em line height already follows the capped size; only sp needs the cap.
     val labelLineHeight = if (inheritedLineHeight.isSp)
         inheritedLineHeight * navigationLabelCap(fontScale) else inheritedLineHeight
-    // 11sp labels still meet text contrast over a white tile behind the dark pill.
+    // 14sp labels still meet text contrast over a white tile behind the dark pill.
     val tint = if (selected) ink else ink.copy(alpha = 0.78f)
     Column(
         modifier
