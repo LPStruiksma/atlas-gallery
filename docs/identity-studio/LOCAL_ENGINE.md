@@ -31,7 +31,28 @@ Large photos: the header is read first. A source over 64 MP, or one whose full A
 - `install` runs once after the user taps setup, through a `ModelFetcher` the host passes in: resumable (HTTP Range; a host that ignores the range restarts cleanly), size and hash verified, then moved into place with a hash marker. `remove` deletes the file, marker and any partial download. `state` gives `NotInstalled`, `Partial`, `Installed` or `Blocked`, and the engine's `load()` returns `ENGINE_NOT_INSTALLED` without the swap model, which the studio turns into its setup sheet.
 - **App updates:** the folder is the app's no-backup folder with fixed file names and no version-keyed path or wipe, so an installed model survives an in-place update (same signing key) and is used without downloading again; only uninstall or Clear data remove it. A manifest entry whose SHA-256 changes (a new model version) is not mistaken for the old file and reinstalls over it. JVM-tested (`installedModelSurvivesAnAppUpdateWithoutRefetching`).
 - No download happens in `load()` or `generate()`. Nothing is re-hosted, exported, or put in git, APK assets, releases, CI artifacts or caches.
-- `IdentityModelManifest.entries` is **empty** in this unit. The OD-1 entries (HyperSwap 1a 256 from FaceFusion's host, InsightFace `w600k_r50` from InsightFace's release) and their adapters are IDS-17 (#516).
+- **Host allowlist** (`ModelHostPolicy`): a manifest URL must start with an original host's release-download path (FaceFusion's `facefusion-assets` releases, InsightFace's `insightface` releases). Any other URL, a mirror, a query string, `..` or user info gives `ModelGate.HostNotAllowed`, and the store never calls the fetcher. The fetcher may follow GitHub's redirect from those URLs to its release-asset storage.
+- **Archive members** (`ArchiveMember`): InsightFace publishes `w600k_r50` only inside `buffalo_l.zip`. The store fetches one HTTP range of the archive (the member's local header and deflated data), checks that range's SHA-256, inflates it, and checks the member's own size and SHA-256 before moving it into place. The archive's other four models are never downloaded. The range resumes like a whole file; a host that ignores ranges is read from byte 0 and skipped to the member.
+
+## OD-1 models (IDS-17, #516)
+
+`IdentityModelManifest.entries` holds the two entries allowed by owner decision [OD-1](https://github.com/LPStruiksma/atlas-gallery/issues/467#issuecomment-6990241396); URL, size and SHA-256 are in [LICENCES.md](LICENCES.md#downloaded-on-the-phone-under-od-1) with the date they were re-read.
+
+| Model | Role | Downloaded | Stored |
+|---|---|---|---|
+| HyperSwap 1a 256 (FaceFusion's host) | swap network | 402.7 MB | 402.7 MB |
+| InsightFace `w600k_r50` (one range of InsightFace's `buffalo_l.zip`) | identity encoder | 160.3 MB | 174.4 MB |
+| **Total** | | **563.0 MB** (`IdentityModelManifest.downloadBytes`) | **577.1 MB** (`installedBytes`) |
+
+- **Where:** `noBackupFilesDir/identity_models/` (`hyperswap_1a_256.onnx`, `w600k_r50.onnx`, each with a `.sha256` marker). App-private, excluded from backup, kept across app updates.
+- **During setup** the folder briefly also holds the 160.3 MB range and the 174.4 MB extracted file side by side; the range is deleted as soon as the member verifies, so peak use is about 738 MB.
+- **Remove** (`IdentityModelStore.remove` per entry) deletes each file, its marker, any partial download and any half-extracted file, which frees the full 577.1 MB. Uninstall or Clear data do the same.
+- **Adapters.** `HyperSwapNetwork.SPEC` and `ArcFaceEmbedder` plug into this engine through `HyperSwapNetwork.engineConfig(store)`; a missing file gives `ENGINE_NOT_INSTALLED`. Pre- and post-processing are the bench's (`tools/identity_bench/pipeline.py`):
+  - identity: references aligned to the 112 px ArcFace template (`arcface_112_v2`), RGB `x / 127.5 - 1`, raw 512-d `w600k_r50` vectors averaged then L2-normalised (`WeakSwap.meanUnit`) into HyperSwap's `source`;
+  - target crop: **256 px on the `arcface_128` template** (not the 112 px ArcFace template), RGB `(x / 255 - 0.5) / 0.5` into `target`;
+  - output `output` mapped back by `x * 0.5 + 0.5`, rounded and clipped; HyperSwap's own `mask` output is ignored, and the guarded mask, colour match and paste-back above decide the blend, as in the bench.
+  - The tensor maths lives in `SwapTensors` (shared by every spec) and `ArcFacePreprocess`, so the JVM tests check the code the engine runs.
+- **Parity fixture.** `app/src/test/resources/identity/hyperswap_io_fixture.json` is exported by `python3 -m tools.identity_bench.export.hyperswap_fixture` from the bench's own functions for one synthetic face drawn from integer rules (no photo, no weights). `HyperSwapNetworkTest` checks the alignment matrices (1e-4), templates, tensor values at sampled pixels (2e-6), output mapping (float32 and round-half-to-even like NumPy: exact sums, clip counts and samples) and source normalisation. Crop statistics agree within 0.001 (measured; the test allows 0.003) per channel mean and spread, in tensor units where one grey level is 0.0078: the app's warp samples pixel centres while OpenCV's maps pixel corners, a shift of `(1/scale - 1) / 2` source pixels, both bilinear with a replicated edge. The `real` block in the fixture records the real networks' output on the same synthetic face, for information only.
 
 ## CI stub network
 
@@ -72,4 +93,4 @@ Logged under tag `IDS9_TIMING` by the emulator test. These values come from the 
 - **The HTTPS fetcher.** The #191 network fence (`test/additive-regressions/network-scope-191.mjs`) allows network code only under `featureaiedit/`. This unit therefore ships no HTTP code: `IdentityModelStore` takes a `ModelFetcher`, and nothing in production can download a model yet. Before the setup sheet (IDS-8/IDS-17) can install anything, Strategy picks one: a small `ModelFetcher` implementation inside `featureaiedit/network/` (keeps the fence as is), or widening the fence to `featureidentity/local/` (a change to the network scope that #191 set for user-started work only).
 
 - **Segmenter delivery.** The MediaPipe multiclass segmenter (LICENCES.md tier A) is published as `.tflite` only. ORT cannot run it, and a converted ONNX would be a file we produce, not one fetched from the original host. Options for Strategy: bundle a converted copy (tier A allows bundling; it is 16 MB in the APK), or run the `.tflite` on LiteRT (a new dependency, owner-gated). Until then every candidate uses the landmark oval and says `mask=fallback`, and the 0.5 guard is untested on real segmenter output.
-- Identity encoder and swap network entries arrive in IDS-17 (#516).
+- The setup sheet cannot install the OD-1 models until the HTTPS fetcher above exists (Strategy choice). The real-weight canary is Lukas's first "Swap person" on his S24+ after that: download time, cold load and each candidate.

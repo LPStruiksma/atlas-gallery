@@ -29,8 +29,8 @@ env:
   PACKAGE: nl.atlas.gallery
   # Permanent ATLAS key (G3 PASS, #402 comment 6739924115). Any other signer fails.
   EXPECTED_SIGNER_SHA256: 5f15596090e3cfa339c2fd73a2039a23ecca9d02ae4e3506e22dabe976ce170b
-  # Highest versionCode on the S24+ so far (#490 Mac build 0.3.26110913).
-  VERSION_CODE_FLOOR: '26110913'
+  # Highest legacy versionCode released (v0.3.261120028); builds only go up.
+  VERSION_CODE_FLOOR: '261120028'
   BUILD_TOOLS: 36.0.0
 jobs:
   build:
@@ -54,40 +54,27 @@ jobs:
           for key in ATLAS_STABLE_SIGNING_PATH ATLAS_STABLE_SIGNING_STORE_PASSWORD ATLAS_STABLE_SIGNING_KEY_ALIAS ATLAS_STABLE_SIGNING_KEY_PASSWORD ATLAS_RELEASE_KEYSTORE_B64 ATLAS_RELEASE_KEY_PASSWORD; do
             if [[ -n "${!key:-}" ]]; then echo "::error::Build job must not see signing variable $key"; exit 1; fi
           done
-      - name: Pick versionCode and release notes
+      - name: Pick version, build number and release notes
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          # yyMMddHH * 10 + (minute / 6): stays below Android's 2100000000 cap
-          # until 2121 and sorts above every yyMMddHH Mac build. Never below
-          # the newest v0.3.<code> release tag + 1, so it only goes up.
-          stamp="$(date -u +%y%m%d%H)"
-          minute="$(date -u +%M)"
-          code=$(( 10#$stamp * 10 + 10#$minute / 6 ))
-          prev_tag="$(git tag --list 'v0.3.*' | sed -n 's/^v0\.3\.\([0-9]\{1,10\}\)$/\1 &/p' | sort -n | tail -n 1 | cut -d' ' -f2)"
-          if [[ -n "$prev_tag" ]]; then
-            prev_code="${prev_tag#v0.3.}"
-            (( code > prev_code )) || code=$(( prev_code + 1 ))
-          fi
+          # Semantic versionName from changelog.d/ fragments since the newest
+          # vX.Y.Z tag (first one 0.4.0, above every legacy v0.3.<build> tag);
+          # versionCode stays a build number that only goes up. Read-only git,
+          # no network. Rules: changelog.d/README.md, scripts/atlas_release.py.
+          python3 scripts/atlas_release.py plan --out-dir handoff \
+            --min-code "$VERSION_CODE_FLOOR" --signer "$EXPECTED_SIGNER_SHA256"
+          code="$(sed -n 's/^version_code=\([0-9]\{9,10\}\)$/\1/p' handoff/version.env)"
+          name="$(sed -n 's/^version_name=\([0-9]\{1,4\}\.[0-9]\{1,4\}\.[0-9]\{1,5\}\)$/\1/p' handoff/version.env)"
+          [[ -n "$code" && -n "$name" ]] || { echo '::error::release plan gave no version'; exit 1; }
           (( code > VERSION_CODE_FLOOR && code < 2100000000 )) || { echo "::error::versionCode $code out of range"; exit 1; }
-          name="0.3.$code"
+          if git rev-parse -q --verify "refs/tags/v$name" > /dev/null; then
+            echo "::error::tag v$name already exists"; exit 1
+          fi
           echo "version_code=$code" >> "$GITHUB_OUTPUT"
           echo "version_name=$name" >> "$GITHUB_OUTPUT"
-          mkdir -p handoff
-          {
-            echo "ATLAS $name, signed by GitHub from main commit $GITHUB_SHA."
-            echo
-            if [[ -n "$prev_tag" ]]; then
-              echo "Merged since $prev_tag:"
-              git log --first-parent --format='- %s' "$prev_tag..HEAD" | grep -E '^- Merge (PR|pull request) ' | sed -E 's/^- Merge (PR|pull request) /- /' || echo '- (no merged PRs found)'
-            else
-              echo "First GitHub-signed release. Recent merges:"
-              git log --first-parent --format='- %s' -n 15 | grep -E '^- Merge (PR|pull request) ' | sed -E 's/^- Merge (PR|pull request) /- /' || echo '- (no merged PRs found)'
-            fi
-            echo
-            echo "Signer certificate SHA-256: $EXPECTED_SIGNER_SHA256"
-          } > handoff/notes.md
+          rm handoff/version.env
           cat handoff/notes.md
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -127,6 +114,9 @@ jobs:
           text = vn.sub(lambda m: m.group(1) + '"' + name + '"' + m.group(2), text, count=1)
           path.write_text(text)
           PY
+          # In-app "What's new" reads this asset; generated, never committed.
+          mkdir -p app/src/main/assets
+          cp handoff/changelog.json app/src/main/assets/atlas_changelog.json
           echo "versionCode=$VERSION_CODE versionName=$VERSION_NAME"
       # Gradle runs repository build code: it gets no secret, no signing
       # configuration and no write token. It produces an UNSIGNED release APK.
@@ -139,7 +129,7 @@ jobs:
           unsigned=app/build/outputs/apk/release/app-release-unsigned.apk
           [[ -s "$unsigned" ]] || { echo "::error::$unsigned missing"; exit 1; }
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign" -f -p 4 "$unsigned" handoff/aligned-unsigned.apk
-          ( cd handoff && sha256sum aligned-unsigned.apk notes.md > handoff.sha256 )
+          ( cd handoff && sha256sum aligned-unsigned.apk notes.md changelog.json > handoff.sha256 )
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: atlas-unsigned-release
@@ -170,7 +160,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]] || { echo '::error::main push only'; exit 1; }
-          [[ "$VERSION_CODE" =~ ^[0-9]{9,10}$ && "$VERSION_NAME" == "0.3.$VERSION_CODE" ]] || { echo '::error::bad version from build job'; exit 1; }
+          [[ "$VERSION_CODE" =~ ^[0-9]{9,10}$ && "$VERSION_NAME" =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,5}$ ]] || { echo '::error::bad version from build job'; exit 1; }
           ( cd handoff && sha256sum -c handoff.sha256 )
           # Runner image's own Android SDK: no third-party action in the job that holds the key.
           bt="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
@@ -236,6 +226,6 @@ jobs:
           set -euo pipefail
           gh release create "v$VERSION_NAME" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "ATLAS $VERSION_NAME" --notes-file handoff/notes.md \
+            --title "Atlas $VERSION_NAME" --notes-file handoff/notes.md \
             "out/ATLAS-$VERSION_NAME.apk" out/SHA256SUMS
           echo "::notice::Published v$VERSION_NAME"

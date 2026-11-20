@@ -1,6 +1,8 @@
 package nl.atlas.gallery.featureaiedit.settings
 
 import nl.atlas.gallery.featureaiedit.network.EditHttpAuth
+import nl.atlas.gallery.featureaiedit.provider.hosted.fal.FalImageEditProvider
+import nl.atlas.gallery.featureaiedit.provider.hosted.fal.TransportFalExchange
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -58,12 +60,33 @@ class ProviderRegistryTest {
         val gemini = ProviderProfile("g", g.title, g.baseUrl!!, g.authType, g.headerName, ProviderKind.GEMINI)
         assertEquals(EditHttpAuth.CustomHeader("x-goog-api-key", "k"), gemini.authentication("k"))
         val f = ProviderRegistry.FAL_PRESET
-        assertNull(ProviderProfile("f", f.title, f.baseUrl!!, f.authType, f.headerName, ProviderKind.FAL)
-            .authentication("k"))
+        val fal = ProviderProfile("f", f.title, f.baseUrl!!, f.authType, f.headerName, ProviderKind.FAL)
+        // #462: fal's documented scheme is `Authorization: Key …`, the same word its adapter sends.
+        assertEquals(EditHttpAuth.Scheme("Key", "k"), fal.authentication("k"))
+        assertNull(fal.authentication(null))
+        // A fal profile stored with any other scheme fails closed instead of sending Bearer.
+        for (other in listOf(ProviderAuthType.BEARER, ProviderAuthType.CUSTOM_HEADER, ProviderAuthType.NONE)) {
+            assertNull(fal.copy(authType = other).authentication("k"))
+        }
         val none = ProviderProfile("n", "Open", "https://editor.example/v1/", ProviderAuthType.NONE)
         assertEquals(EditHttpAuth.None, none.authentication(null))
         assertNull(none.copy(authType = ProviderAuthType.BEARER).authentication(null))
         assertFalse(gemini.toString().contains("k\""))
+    }
+
+    @Test fun falPresetMatchesItsQueueAdapter() {
+        val f = ProviderRegistry.FAL_PRESET
+        assertEquals(ProviderAuthType.KEY_SCHEME, f.authType)
+        assertEquals("Authorization", f.headerName)
+        assertEquals(TransportFalExchange.AUTH_SCHEME, ProviderAuthType.FAL_KEY_SCHEME)
+        assertEquals(FalImageEditProvider.QUEUE_BASE, f.baseUrl)
+        // The Key scheme belongs to the fal preset only: a custom server cannot pick it,
+        // and a non-fal profile carrying it is not valid.
+        assertFalse(ProviderAuthType.KEY_SCHEME in ProviderAuthType.CUSTOM_SERVER)
+        assertFalse(ProviderSettingsStore.valid(ProviderProfile("x", "Home",
+            "https://editor.example/v1/", ProviderAuthType.KEY_SCHEME)))
+        assertTrue(ProviderSettingsStore.valid(ProviderProfile("f", f.title, f.baseUrl!!,
+            f.authType, f.headerName, ProviderKind.FAL)))
     }
 
     @Test fun defaultServiceIsPinnedFirstOthersKeepTheirOrder() {

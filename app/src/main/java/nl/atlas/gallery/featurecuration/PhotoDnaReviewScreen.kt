@@ -19,6 +19,7 @@ import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.AI_EDITED_LABEL
 
 /** A request for more verification, NOT authorization for a MediaStore operation. */
 data class CurationReviewRequest(
@@ -70,9 +71,12 @@ internal fun PhotoDnaReviewScreen(
                     LazyRow(modifier = Modifier.testTag("photo-dna-provenance-tiles"),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(listOf(family.originalUri) + family.editedUris) { uri ->
+                            // #458: saved edits read "Edited with AI", the original never does.
+                            val tileLabel = if (uri == family.originalUri) "Original" else AI_EDITED_LABEL
                             Column(Modifier.width(144.dp)) {
                                 Box(Modifier.fillMaxWidth().height(112.dp)
                                     .clickable { onOpenProvenancePhoto(uri) }
+                                    .semantics { contentDescription = tileLabel }
                                     .testTag(if (uri == family.originalUri) {
                                         "photo-dna-provenance-original"
                                     } else {
@@ -80,7 +84,7 @@ internal fun PhotoDnaReviewScreen(
                                     })) {
                                     provenanceThumbnail(uri, Modifier.fillMaxSize())
                                 }
-                                Text(if (uri == family.originalUri) "Original" else "AI edit",
+                                Text(tileLabel,
                                     style = MaterialTheme.typography.labelMedium)
                             }
                         }
