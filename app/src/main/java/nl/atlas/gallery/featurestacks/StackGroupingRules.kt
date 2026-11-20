@@ -137,7 +137,7 @@ object StackGroupingRules {
     /** An edited copy found by file name must stay this close to its original. */
     const val EDITED_MAX_DHASH_DISTANCE: Int = 16
 
-    /** Larger near-identical runs are split; a stack stays reviewable. */
+    /** No stack is larger: time runs are split, an oversized RAW group is declined. */
     const val MAX_STACK_SIZE: Int = 200
 
     val RAW_EXTENSIONS: Set<String> =
@@ -189,7 +189,8 @@ object StackGroupingRules {
 
         val stackOfFirst = HashMap<Long, StackTile.Stack>()
         for ((reason, members) in groups) {
-            val override = members.firstNotNullOfOrNull { topPickOverrides[it.id] }?.takeIf { pick -> members.any { it.id == pick } }
+            val memberIds = members.mapTo(HashSet()) { it.id }
+            val override = members.firstNotNullOfOrNull { member -> topPickOverrides[member.id]?.takeIf { it in memberIds } }
             val pick = override ?: topPick(reason, members)
             stackOfFirst[members.first().id] = StackTile.Stack(reason, members.map { it.id }, pick, override != null)
         }
@@ -247,6 +248,7 @@ object StackGroupingRules {
             val times = members.map { it.captureTimeMs }
             when {
                 raws.isEmpty() || companions.isEmpty() -> null
+                members.size > MAX_STACK_SIZE -> null // implausible for one capture: decline
                 times.any { it == null } -> null
                 times.maxOf { it!! } - times.minOf { it!! } > RAW_COMPANION_MAX_SKEW_MS -> null
                 else -> members
@@ -358,9 +360,9 @@ object StackGroupingRules {
         return java.lang.Long.bitCount(ha xor hb) <= maxDistance
     }
 
-    /** Unknown dimensions are allowed; known ones must share orientation and ratio. */
+    /** Both must have known dimensions, the same orientation and the same ratio. */
     private fun sameAspect(a: StackMediaRecord, b: StackMediaRecord): Boolean {
-        if (a.width == 0 || a.height == 0 || b.width == 0 || b.height == 0) return true
+        if (a.width == 0 || a.height == 0 || b.width == 0 || b.height == 0) return false
         if ((a.width >= a.height) != (b.width >= b.height)) return false
         val ra = maxOf(a.width, a.height).toDouble() / minOf(a.width, a.height)
         val rb = maxOf(b.width, b.height).toDouble() / minOf(b.width, b.height)

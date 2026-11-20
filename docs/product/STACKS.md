@@ -17,7 +17,7 @@ Google Photos (stacks with a top pick), Samsung Gallery (group similar images), 
 - **Unknown is no.** A missing capture time, a missing hash or a flat (non-informative) hash never satisfies a rule. Time adjacency alone never stacks anything.
 - **No chains.** Every time-based rule uses complete linkage: a frame joins a stack only if it matches *every* member, so A~B and B~C with A≁C gives {A, B} and C alone.
 - **One stack per item.** Rules run in the order below; an item claimed by an earlier rule is not offered to a later one. No nested stacks.
-- **Bounded.** A stack has at most 200 members; a longer run is split. Work is linear in the library size plus a sort per folder (150k synthetic records group in well under a second on the CI JVM; the test allows 10 s).
+- **Bounded.** A stack has at most 200 members: a longer time run is split, and a same-stem RAW group larger than that is declined (no stack). Work is linear in the library size plus a sort per folder (150k synthetic records group in well under a second on the CI JVM; the test allows 10 s).
 
 ## Rules
 
@@ -28,7 +28,7 @@ Thresholds are constants on `StackGroupingRules`, so a later tuning unit changes
 | 1 | `RAW_COMPANION` | Same folder, same file stem (case-insensitive), at least one RAW (`dng cr2 cr3 nef nrw arw srf sr2 orf rw2 raf pef srw x3f rwl 3fr iiq`) and at least one JPEG/HEIC (`jpg jpeg heic heif`), every capture time known and all within **2 s**. Two JPEGs without a RAW are not a pair. |
 | 2 | `EDITED_ORIGINAL` | Either explicit lineage (`originalId` recorded by an editor, both in the same folder), or the documented `-edited` / `_edited` suffix on an otherwise identical stem with exactly one candidate original, **and** both dHashes informative and at most **16 bits** apart. Generic suffixes (`_copy`, `(1)`) are not edits. |
 | 3 | `BURST` | A specific vendor burst file-name grammar, same folder, same burst key, known capture times, at most **2 s** between neighbouring frames and **30 s** for the whole burst. Grammars: Samsung `yyyyMMdd_HHmmss_NNN`, Google Camera `<n><AAA>_<n>_BURST<17 digits>[_COVER]`. Plain sequential names (`IMG_0001`, `IMG_0002`) are not a burst. |
-| 4 | `NEAR_IDENTICAL` | Same folder, known capture times, at most **3 s** to the previous member and **10 s** across the stack, dHash informative and at most **4 bits** from every member, same orientation and an aspect ratio within **2 %** (a crop or a rotated frame is a different picture). |
+| 4 | `NEAR_IDENTICAL` | Same folder, known capture times, at most **3 s** to the previous member and **10 s** across the stack, dHash informative and at most **4 bits** from every member, both dimensions known, same orientation and an aspect ratio within **2 %** (a crop or a rotated frame is a different picture; unknown dimensions never match). |
 
 **Why these numbers.** The near-identical bound of 4 bits is deliberately tighter than Photo DNA's 5-bit "possible visual match", because Photo DNA shows pairs for review while a stack hides frames without asking. For two unrelated images with independent bits, the chance of a dHash distance of 4 or less is about 3.7 × 10⁻¹⁴; real photos are correlated (sky, walls), so the true rate is higher, which is why the rule also needs the same folder, seconds-level capture times and the same aspect ratio. This is a strong guard, not a mathematical guarantee: a false positive is possible (for example two frames of a blank wall). The cost asymmetry decides every tie: a missed stack costs a little scrolling, a wrong stack hides a distinct shot.
 
@@ -40,7 +40,7 @@ Each stack sits where its first member was in the caller's order; the other memb
 
 ## Top pick (cover)
 
-1. A user override wins when the chosen id is a member of that stack (`topPickOverrides`, keyed by any member id). A stale override (the chosen item is gone) falls back to the rule.
+1. A user override wins when the chosen id is a member of that stack (`topPickOverrides`, keyed by any member id). Stale entries (the chosen item is gone) are skipped, so a valid override on another member still wins; with none valid, the rule decides.
 2. For `RAW_COMPANION` the JPEG/HEIC is preferred (it is what can be shown); for `EDITED_ORIGINAL` the edited copy is preferred (Google Photos shows the edit too).
 3. Then the sharpest frame (compared in 0.01 steps), then the best face quality, then the largest file, then the smallest id, so the result is deterministic.
 4. A missing sharpness or face-quality observation ranks below any measured value; it never wins by default.

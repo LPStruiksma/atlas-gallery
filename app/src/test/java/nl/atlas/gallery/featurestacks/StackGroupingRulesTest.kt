@@ -142,6 +142,16 @@ class StackGroupingRulesTest {
         assertTrue(unknown.stacks.isEmpty())
     }
 
+    @Test fun oversizedSameStemRawGroupIsDeclined() {
+        // One RAW plus 200 companions sharing one stem (case varies): never one oversized stack.
+        val withCompanions = listOf(photo(1, "DSC_0001.NEF", t0)) +
+            (2L..201L).map { id -> photo(id, if (id % 2 == 0L) "dsc_0001.jpg" else "DSC_0001.HEIC", t0) }
+        val p = group(withCompanions)
+        assertTrue(p.stacks.none { it.reason == StackReason.RAW_COMPANION })
+        assertTrue(p.stacks.all { it.memberIds.size <= StackGroupingRules.MAX_STACK_SIZE })
+        assertEquals(withCompanions.map { it.id }, p.unstacked())
+    }
+
     @Test fun twoJpegsWithoutRawAreNotARawPair() {
         val p = group(listOf(photo(1, "IMG_1.jpg", t0), photo(2, "IMG_1.jpeg", t0)))
         assertTrue(p.stacks.none { it.reason == StackReason.RAW_COMPANION })
@@ -279,6 +289,23 @@ class StackGroupingRulesTest {
         assertTrue(folders.stacks.isEmpty())
     }
 
+    @Test fun unknownDimensionsNeverStackAsNearIdentical() {
+        val oneUnknown = group(
+            listOf(
+                photo(1, "a.jpg", t0, hash = sceneA, w = 0, h = 0),
+                photo(2, "b.jpg", t0 + 500, hash = sceneA)
+            )
+        )
+        assertTrue(oneUnknown.stacks.isEmpty())
+        val bothUnknown = group(
+            listOf(
+                photo(1, "a.jpg", t0, hash = sceneA, w = 0, h = 0),
+                photo(2, "b.jpg", t0 + 500, hash = sceneA, w = 0, h = 0)
+            )
+        )
+        assertTrue(bothUnknown.stacks.isEmpty())
+    }
+
     @Test fun portraitAndLandscapeOrCropNeverStack() {
         val rotated = group(
             listOf(
@@ -402,6 +429,14 @@ class StackGroupingRulesTest {
         val stale = onlyStack(group(frames, topPickOverrides = mapOf(2L to 99L)))
         assertEquals(3L, stale.topPickId)
         assertFalse(stale.userPicked)
+
+        // A stale entry on an earlier member must not mask a valid choice on a later one.
+        val mixed = onlyStack(group(frames, topPickOverrides = mapOf(1L to 99L, 2L to 3L)))
+        assertEquals(3L, mixed.topPickId)
+        assertTrue(mixed.userPicked)
+        val mixedOther = onlyStack(group(frames, topPickOverrides = mapOf(1L to 99L, 3L to 2L)))
+        assertEquals(2L, mixedOther.topPickId)
+        assertTrue(mixedOther.userPicked)
     }
 
     // --- aggregate --------------------------------------------------------------
