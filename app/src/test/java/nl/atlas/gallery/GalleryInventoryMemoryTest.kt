@@ -118,7 +118,7 @@ class GalleryInventoryMemoryTest {
         val (expected, beforeBytes) = oldDigestAndBytes()
         val h0 = usedHeap()
         val view = MediaRecordFaceView(records)
-        val sorted = newestFirst(view)
+        val sorted = newestFirst(view) as MediaRecordFaceView
         val h1 = usedHeap()
         assertSame(sorted, newestFirst(sorted)) // no second publication-time sort list
         assertEquals(expected, faceInventoryDigest(sorted))
