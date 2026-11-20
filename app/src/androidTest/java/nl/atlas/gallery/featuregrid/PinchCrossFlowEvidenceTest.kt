@@ -276,7 +276,7 @@ class PinchCrossFlowEvidenceTest {
         saveUiEvidence("flow1-select-settled-7.png")
     }
 
-    @Test fun tinyAndEmptyAlbums() {
+    @Test fun tinyAlbumPinch() {
         clearDensity()
         show(fixtures(5), true, "flow1-tiny")
         awaitColumns(4)
@@ -290,8 +290,11 @@ class PinchCrossFlowEvidenceTest {
         grid.assert(columns(7))
         saveUiEvidence("flow1-tiny-settled-7.png")
         assertTrue("tiny album photo still shown", boundsOf(tag) != null)
+    }
 
-        // An empty album has no grid; a pinch there must do nothing and not crash.
+    /** An empty album has no grid; a pinch there must do nothing and not crash. */
+    @Test fun emptyAlbumPinch() {
+        clearDensity()
         show(emptyList(), true, "flow1-empty")
         compose.waitForIdle()
         compose.onRoot().performTouchInput {
