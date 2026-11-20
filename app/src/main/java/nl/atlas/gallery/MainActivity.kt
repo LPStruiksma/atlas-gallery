@@ -368,9 +368,104 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
     (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
         android.content.res.Configuration.UI_MODE_NIGHT_YES
 
+/**
+ * PERF-A1A debug-only witness. A drawWithContent after drawContent marks a
+ * nonempty, grant-correct Photos grid in the Choreographer frame; Window
+ * FrameMetrics confirms that *same vsync* completed on the renderer. Neither
+ * composition, withFrameNanos nor an Activity launch is treated as a frame.
+ * FrameMetrics vsync and System.nanoTime share a monotonic domain; map its
+ * completion into elapsedRealtime at callback time for the process origin.
+ * No media identifiers or filenames are observed or logged.
+ */
+private class PerfA1FrameProbe(private val window: android.view.Window) {
+    private var mode = "cold"
+    private var reported = false
+    private var stopped = false
+    private var pendingVsyncNs = -1L
+    private var pendingCached = false
+    private var originElapsedNs =
+        android.os.Process.getStartElapsedRealtime() * 1_000_000L
+    private var refreshReported = false
+    private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, _ ->
+        if (!reported && pendingVsyncNs > 0L &&
+            frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP) == pendingVsyncNs) {
+            val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
+            val completedNs = pendingVsyncNs + totalNs
+            val nowNs = System.nanoTime()
+            val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
+            val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
+            if (totalNs > 0L && elapsedNs > 0L && elapsedNs < 15_000_000_000L &&
+                (mode == "warm" || pendingCached)) {
+                reported = true
+                Log.i("ATLAS_PERF_A1",
+                    "mode=$mode pid=${android.os.Process.myPid()} " +
+                    "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
+                    "cached=${if (pendingCached) 1 else 0} draw=grid frame=completed")
+            }
+        }
+    }
+
+    init {
+        window.addOnFrameMetricsAvailableListener(
+            listener, android.os.Handler(android.os.Looper.getMainLooper()))
+    }
+
+    val isWarm: Boolean get() = mode == "warm"
+    fun noteDraw(cached: Boolean) {
+        if (reported || pendingVsyncNs > 0L) return
+        val vsync = android.view.Choreographer.getInstance().frameTimeNanos
+        if (vsync > 0L) {
+            pendingVsyncNs = vsync
+            pendingCached = cached
+        }
+    }
+    fun refreshed() {
+        if (!refreshReported) {
+            refreshReported = true
+            Log.i("ATLAS_PERF_A1", "event=refreshed pid=${android.os.Process.myPid()} grant=1")
+        }
+    }
+    fun onStopped() { stopped = true }
+    fun onStarted() {
+        if (!stopped) return
+        stopped = false
+        mode = "warm"
+        originElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
+        pendingVsyncNs = -1L
+        reported = false
+    }
+    fun close() { window.removeOnFrameMetricsAvailableListener(listener) }
+}
+
 class MainActivity : ComponentActivity() {
+    internal var perfA1Probe: PerfA1FrameProbe? = null
+
+    override fun onStart() {
+        super.onStart()
+        perfA1Probe?.onStarted()
+    }
+
+    override fun onStop() {
+        perfA1Probe?.onStopped()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        perfA1Probe?.close()
+        perfA1Probe = null
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Opt-in marker is created only by the synthetic hosted benchmark.
+        // Release builds and normal debug sessions never install a listener.
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 &&
+            (android.os.Build.HARDWARE in setOf("ranchu", "goldfish") ||
+                android.os.Build.FINGERPRINT.contains("emulator")) &&
+            File(noBackupFilesDir, "atlas-perf-a1-enabled").isFile) {
+            perfA1Probe = PerfA1FrameProbe(window)
+        }
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
         try {
@@ -920,6 +1015,7 @@ private fun rememberAsyncAlbumCoverPage(
 @Composable
 private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val context = LocalContext.current
+    val perfA1Probe = (context as? MainActivity)?.perfA1Probe
     // The source list and successful grant epoch MUST be collected together.
     // Collecting two StateFlows separately can expose an obsolete album for
     // a frame after the grant-completion signal arrives ahead of its list.
@@ -956,6 +1052,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // screen while a background scan refreshes it; only full access loss
     // empties it. Android enforces what can actually be read.
     val media = publishedGallery.displayItems(grants)
+    LaunchedEffect(publishedGallery.epoch, publishedGallery.fromCache, grants) {
+        if (perfA1Probe != null && !publishedGallery.fromCache &&
+            media.isNotEmpty() && publishedGallery.showable(grants)) {
+            perfA1Probe.refreshed()
+        }
+    }
     // #555: ATLAS keeps its own micro thumbnails only under full media access
     // (they are deleted otherwise), and fills them newest-first in the
     // background for the current authorized catalogue, never a cached one.
@@ -3597,6 +3699,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 PerformanceSession.firstGridFrame()
                             }
                         }
+                        // Observe the *drawn* Photos subtree, not its Compose
+                        // publication. FrameMetrics must later match this vsync.
+                        Box(Modifier.fillMaxSize().drawWithContent {
+                            drawContent()
+                            if (perfA1Probe != null && albumRoute == null &&
+                                visible.isNotEmpty() && publishedGallery.epoch >= 0L &&
+                                publishedGallery.showable(grants) &&
+                                (publishedGallery.fromCache || perfA1Probe.isWarm)) {
+                                perfA1Probe.noteDraw(publishedGallery.fromCache)
+                            }
+                        }) {
                         val photosSelecting = batchSelection != null && !originalProportions &&
                             timelineEnabled
                         if (originalProportions) {
@@ -3766,6 +3879,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 )
                             }
                         }
+                        } // PERF-A1A outer draw witness
                     }
                     tab == 1 && hideAlbumsOpen -> {
                         HideAlbumsScreen(
