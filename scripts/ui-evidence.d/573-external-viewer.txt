@@ -1,0 +1,10 @@
+# Issue #573 · BENCH-2 Phase A1: another app opens one item in ATLAS.
+# Galaxy S24+ 1080x2340; generated media only. The viewer keeps its black
+# ground in both phone themes; light/dark shots prove that and the error copy.
+external-573-view-light
+external-573-view-dark
+external-573-provider-light
+external-573-secure-light
+external-573-secure-dark
+external-573-error-light
+external-573-error-dark
