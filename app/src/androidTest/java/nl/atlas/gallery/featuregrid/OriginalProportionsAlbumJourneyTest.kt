@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.captureToImage
+import nl.atlas.gallery.testkit.captureTimeoutViewport
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTouchInput
@@ -288,7 +289,12 @@ private fun checkVisibleTiles(compose: ComposeTestRule, seen: MutableSet<Int>) {
                 tileIsOneColour(pixels)
             }
         } catch (timeout: ComposeTimeoutException) {
-            captureOneColourTimeout(compose, step)
+            try {
+                captureOneColourTimeout(compose, step)
+            } catch (diagnosticError: Throwable) {
+                timeout.addSuppressed(diagnosticError)
+                android.util.Log.e("ATLAS_RATIO_556", "diagnostic capture failed", diagnosticError)
+            }
             throw timeout
         }
         seen += step
@@ -317,12 +323,13 @@ private fun captureOneColourTimeout(compose: ComposeTestRule, step: Int) {
     val axis = gallery.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)
     val before = axis?.value()
 
-    val tileCapture = compose.onNode(stableTile).captureToImage()
-    val galleryCapture = compose.onNodeWithTag("atlas-ratio-gallery").captureToImage()
+    val tileCapture = compose.onNode(stableTile).captureTimeoutViewport()
+    val galleryCapture = compose.onNodeWithTag("atlas-ratio-gallery").captureTimeoutViewport()
     saveCapture("ratio-556-timeout-tile-$step.png", tileCapture.asAndroidBitmap())
     saveCapture("ratio-556-timeout-gallery-$step.png", galleryCapture.asAndroidBitmap())
 
-    Thread.sleep(100L)
+    // Advance one Compose frame to see whether a fling is still changing scroll offset.
+    compose.mainClock.advanceTimeByFrame()
     val afterAxis = compose.onNodeWithTag("atlas-ratio-gallery").fetchSemanticsNode()
         .config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)
     val after = afterAxis?.value()
@@ -333,7 +340,7 @@ private fun captureOneColourTimeout(compose: ComposeTestRule, step: Int) {
         "pillBounds=${pill?.boundsInRoot ?: "absent"} pillTop=${pill?.boundsInRoot?.top ?: "absent"} " +
         "stickyDateHeaderBounds=${sticky?.boundsInRoot ?: "absent"} " +
         "scrollValue=$before scrollMax=${axis?.maxValue()} reverse=${axis?.reverseScrolling} " +
-        "scrollAfter100ms=$after flingProgressing=${before != null && after != null && before != after} " +
+        "scrollAfterOneFrame=$after flingProgressing=${before != null && after != null && before != after} " +
         "pixelMismatch=${mismatch ?: "none found in captured tile"}")
 }
 
