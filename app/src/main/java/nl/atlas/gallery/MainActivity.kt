@@ -127,6 +127,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import nl.atlas.gallery.featuredesign.AtlasDarkRoute
 import nl.atlas.gallery.featuredesign.AtlasPageColor
 import nl.atlas.gallery.featuredesign.AtlasSystemBarIcons
@@ -3354,20 +3355,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     color = Mint, style = MaterialTheme.typography.bodySmall)
             }
             if (!access && !settingsOpen && !statusOpen) {
-                Column(Modifier.fillMaxSize().padding(28.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.PhotoLibrary, null, Modifier.size(58.dp), tint = Mint)
-                    Spacer(Modifier.height(16.dp))
-                    Text("Your photos stay on your phone", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Grant photo and video access to build your private gallery. ATLAS never uploads or edits your originals.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { permissionLauncher.launch(necessaryPermissions()) }) {
-                        Text("Choose photo access")
-                    }
-                }
+                AtlasEmptyState(
+                    title = "Photos need access",
+                    actionLabel = "Allow access",
+                    onAction = { permissionLauncher.launch(necessaryPermissions()) },
+                    modifier = Modifier.testTag("atlas-photos-permission")
+                )
             } else {
                 when {
                     statusOpen -> {
@@ -4182,9 +4175,8 @@ private fun GalleryGrid(
     onOpen: (MediaRecord) -> Unit
 ) {
     if (items.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(if (busy) "Loading media…" else "No photos here yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        // DESIGN-6 #136: shared quiet state; nothing while busy (state 7).
+        if (!busy) AtlasEmptyState(title = "No photos yet")
         return
     }
     LazyVerticalGrid(
