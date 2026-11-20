@@ -585,16 +585,19 @@ class PeopleVisualResumeRetentionTest {
             !readGalleryMediaGrant(target).images)
         // The app itself must notice the revoke on launch: the opt-in and both
         // published scopes go, so a later re-grant cannot silently revive them.
-        compose.awaitThat("the launch under a revoked grant drops the People opt-in " +
-            "and its published scope", timeoutMs = 15_000L) {
+        // revoke() clears the opt-in, the face scope, the visual scope and
+        // the visual opt-in in separate commits on the host's thread; wait for
+        // all of them (run 44650410219 read between the second and the third).
+        compose.awaitThat("the launch under a revoked grant drops the People opt-in, " +
+            "its published face and visual scopes and the visual opt-in", timeoutMs = 15_000L) {
             assertTrue("a revoked grant showed a named person", !has("atlas-native-person-album"))
-            choices.load() == null && choices.loadPublished() == null
+            choices.load() == null && choices.loadPublished() == null &&
+                choices.loadPublishedVisual() == null && !choices.loadVisual()
         }
         compose.waitForIdle()
         assertTrue("a revoked grant showed a named person", !has("atlas-native-person-album"))
         assertTrue("no photo may stay visible after revoke",
             vm.publishedInventory.value.items.none { !it.isVideo })
-        assertNull("the published visual scope is dropped", choices.loadPublishedVisual())
         assertNull("no face catalogue may stay readable", faces?.activeEpoch())
         Log.i(TAG, "event=grant_verify hidden=true")
     }
