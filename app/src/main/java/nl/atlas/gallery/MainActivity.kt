@@ -89,6 +89,9 @@ import androidx.compose.ui.window.Dialog
 import java.time.ZoneId
 import java.util.UUID
 import nl.atlas.gallery.featureaiedit.ui.AiEditScreen
+import nl.atlas.gallery.featureidentity.ui.SwapPersonEntry
+import nl.atlas.gallery.featureidentity.ui.SwapPersonEntryPorts
+import nl.atlas.gallery.featureidentity.ui.SwapPersonMediaCheck
 import nl.atlas.gallery.featurealbums.AlbumBucketKey
 import nl.atlas.gallery.featurealbums.AlbumCoverPageSession
 import nl.atlas.gallery.featurealbums.AlbumCoverPageCursor
@@ -127,6 +130,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import nl.atlas.gallery.featuredesign.AtlasDarkRoute
 import nl.atlas.gallery.featuredesign.AtlasPageColor
 import nl.atlas.gallery.featuredesign.AtlasSystemBarIcons
@@ -1221,7 +1225,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val latestPhotoDnaTokens = rememberUpdatedState(photoDnaTokens)
     val photoDnaGrant = grants
     val photoDnaPlanning = rememberPhotoDna(media, photoDnaTokens,
-        enabled = tab == 1 && photoDnaOpen) { record, check ->
+        enabled = tab == 1 && photoDnaOpen,
+        // #604: an on-disk inventory shown before the first real scan is NOT
+        // authorization to restore hashes, even if its grant bits still match.
+        freshScan = photoDnaPersistentPublicationAllowed(grants, publishedGallery)) { record, check ->
         hashAuthorizedMedia(context.contentResolver, record,
             stillAuthorized = { readGalleryMediaGrant(context) == photoDnaGrant },
             checkCancelled = check)
@@ -1346,6 +1353,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var aiEditSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
     var aiEditSession by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingAiSavedUri by rememberSaveable { mutableStateOf<String?>(null) }
+    // IDS-11 (#478): the same explicit single-photo route for "Swap person".
+    var swapPersonSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var swapPersonSession by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerReturnStartNs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(tab, peopleTabStartNs, searchTabStartNs, settingsOpen, viewerUri) {
         if (!settingsOpen && viewerUri == null) {
@@ -1901,6 +1911,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         hasProjection = albumCards != null,
         projectionFailed = albumFailed.value
     )
+    // #676: a background scan keeps the cards on screen; only no catalogue spins.
+    val albumsLoading = albumsShowLoading(busy, media.size, albumsPending)
     val searchChoicesEnabled = tab == 3 && personFilter == null &&
         searchFacets.text.isNotBlank()
     val searchableAlbumCards = rememberAsyncAlbumCards(
@@ -2159,10 +2171,36 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         aiEditSession = UUID.randomUUID().toString()
         aiEditSourceUri = photo.uri
     }
+    fun openSwapPerson(photo: MediaRecord) {
+        // Same guard as AI Edit: the exact item must still belong to this authorized publication.
+        val actual = readGalleryMediaGrant(context)
+        if (photo.isVideo || Uri.parse(photo.uri).authority != MediaStore.AUTHORITY ||
+            actual != grants || !galleryAccessCurrent() ||
+            media.none { it.uri == photo.uri }) return
+        swapPersonSession = UUID.randomUUID().toString()
+        swapPersonSourceUri = photo.uri
+    }
+    val latestSwapMedia = rememberUpdatedState(media)
+    val swapPersonPorts = remember(discoveryHost) {
+        SwapPersonEntryPorts(
+            discovery = discoveryHost,
+            galleryGrant = { latestSearchGrant.value },
+            media = { latestSwapMedia.value },
+            onRefresh = { vm.refresh() }
+        )
+    }
+    // Stable across recompositions, so the viewer's off-main check runs once per photo.
+    val latestOpenSwap = rememberUpdatedState<(MediaRecord) -> Unit> { photo -> openSwapPerson(photo) }
+    val viewerSwapPerson = remember(context) {
+        ViewerSwapPerson(
+            eligible = { photo -> withContext(Dispatchers.IO) { SwapPersonMediaCheck.eligible(context, photo) } },
+            open = { photo -> latestOpenSwap.value(photo) }
+        )
+    }
     // Focus only once the new MediaStore copy has appeared in the refreshed catalogue.
     LaunchedEffect(pendingAiSavedUri, CatalogSourceKey(media), publishedGallery.epoch) {
         val focus = pendingAiSavedUri
-        if (focus != null && aiEditSourceUri == null && galleryAccessCurrent() &&
+        if (focus != null && aiEditSourceUri == null && swapPersonSourceUri == null && galleryAccessCurrent() &&
             media.any { it.uri == focus }) {
             openViewer(media, focus)
             pendingAiSavedUri = null
@@ -2720,6 +2758,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
                 onExit = ::closeDeclutter,
+                onSearchWholeLibrary = {
+                    // Leave the transient review route without submitting Trash.
+                    // The global Search destination starts with its own query.
+                    closeDeclutter()
+                    overviewQuery = ""
+                    overviewScope = AtlasSearchScope.LIBRARY
+                    tab = 3
+                },
                 onTrashRequest = { selected ->
                     // A left swipe NEVER deletes. Only after ATLAS's review
                     // and explicit confirm does Android show its own approval.
@@ -2811,6 +2857,41 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
+    val selectedForSwap = swapPersonSourceUri
+    if (selectedForSwap != null) {
+        val swapSource = if (galleryAccessCurrent() && readGalleryMediaGrant(context) == grants)
+            media.firstOrNull { it.uri == selectedForSwap && !it.isVideo } else null
+        val session = swapPersonSession
+        if (swapSource != null && session != null) {
+            SwapPersonEntry(
+                source = swapSource,
+                sessionId = session,
+                ports = swapPersonPorts,
+                onClose = {
+                    swapPersonSourceUri = null
+                    swapPersonSession = null
+                },
+                onView = { saved ->
+                    // Existing pending-focus path: the viewer opens the copy once it is listed.
+                    pendingAiSavedUri = saved
+                    swapPersonSourceUri = null
+                    swapPersonSession = null
+                    closeViewer()
+                }
+            )
+        } else {
+            // Same fail-closed screen as AI Edit while a grant or membership is unresolved.
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(24.dp), verticalArrangement = Arrangement.Center) {
+                Text("The selected photo is not currently accessible.")
+                TextButton(onClick = { swapPersonSourceUri = null; swapPersonSession = null }) {
+                    Text("Back to gallery")
+                }
+            }
+        }
+        return
+    }
+
     val contextItems = viewerItems
     // GalleryViewer can retain a decoded image after its original permission
     // publication is replaced. Hide the full-screen route synchronously at
@@ -2855,6 +2936,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 vm.refresh()
             },
             onAiEdit = { photo -> openAiEdit(photo) },
+            swapPerson = viewerSwapPerson,
             onEdit = { photo ->
                 val launchResult = PhotoEditorHandoff.launch(context, photo)
                 when (launchResult) {
@@ -3103,6 +3185,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             if (photosSelection != null) {
                 val live = photosSelection.isCurrentFor(visible, publishedGallery.epoch,
                     galleryAccessCurrent())
+                val singleSelectedPhoto = photosSelection.uris.singleOrNull()
+                    ?.takeIf { live }
+                    ?.let { uri -> visible.firstOrNull { it.uri == uri && !it.isVideo } }
+                // Hidden (never greyed out) until the type check says it is a supported still.
+                val swapPersonSelectable by produceState(false, singleSelectedPhoto?.uri) {
+                    value = false
+                    val photo = singleSelectedPhoto ?: return@produceState
+                    value = withContext(Dispatchers.IO) { SwapPersonMediaCheck.eligible(context, photo) }
+                }
                 SamsungSelectionBottomBar(
                     count = photosSelection.count,
                     enabled = live && !batchOperating,
@@ -3114,16 +3205,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     // AIE-3 is only offered for ONE selected image, inside More. The
                     // Samsung copy/move actions remain unchanged, including on Android 10.
                     moreActions = (
-                        photosSelection.uris.singleOrNull()
-                            ?.takeIf { live }
-                            ?.let { uri -> visible.firstOrNull { it.uri == uri && !it.isVideo } }
-                            ?.let { photo ->
-                                listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
-                                    openAiEdit(photo)
+                        singleSelectedPhoto?.let { photo ->
+                            listOf(SelectionMoreAction("AI Edit", "atlas-selection-ai-edit") {
+                                openAiEdit(photo)
+                                batchSelection = null
+                                pendingSelectionRestore = null
+                            }) + (if (swapPersonSelectable) listOf(
+                                // IDS-11 (#478): directly after AI Edit, one supported still photo only.
+                                SelectionMoreAction("Swap person", "atlas-selection-swap-person") {
+                                    openSwapPerson(photo)
                                     batchSelection = null
                                     pendingSelectionRestore = null
-                                })
-                            } ?: emptyList()
+                                }) else emptyList())
+                        } ?: emptyList()
                     ) + (if (Build.VERSION.SDK_INT >= 30) listOf(
                         SelectionMoreAction("Copy to album", "atlas-selection-copy-to-album") {
                             albumPicker = AlbumTransferMode.COPY
@@ -3354,20 +3448,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     color = Mint, style = MaterialTheme.typography.bodySmall)
             }
             if (!access && !settingsOpen && !statusOpen) {
-                Column(Modifier.fillMaxSize().padding(28.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.PhotoLibrary, null, Modifier.size(58.dp), tint = Mint)
-                    Spacer(Modifier.height(16.dp))
-                    Text("Your photos stay on your phone", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Grant photo and video access to build your private gallery. ATLAS never uploads or edits your originals.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { permissionLauncher.launch(necessaryPermissions()) }) {
-                        Text("Choose photo access")
-                    }
-                }
+                AtlasEmptyState(
+                    title = "Photos need access",
+                    actionLabel = "Allow access",
+                    onAction = { permissionLauncher.launch(necessaryPermissions()) },
+                    modifier = Modifier.testTag("atlas-photos-permission")
+                )
             } else {
                 when {
                     statusOpen -> {
@@ -3691,7 +3777,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     }
                     tab == 1 && hideAlbumsOpen -> {
                         HideAlbumsScreen(
-                            albums = if (busy || albumsPending) null else allAlbums,
+                            albums = if (albumsLoading) null else allAlbums,
                             hidden = hiddenAlbums,
                             onToggle = ::toggleHiddenAlbum,
                             onClose = { hideAlbumsOpen = false },
@@ -3789,7 +3875,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // while MediaPreview adds M's revision/permission cache key.
                                 MediaPreview(record, modifier, ContentScale.Crop, 512)
                             },
-                            isLoading = busy || albumsPending,
+                            isLoading = albumsLoading,
                             onOpenLibraryStatus = { settingsOpen = true },
                             loadIssue = if (albumFailed.value && !busy)
                                 AlbumLoadIssue.READ_FAILED else null,
@@ -4182,9 +4268,8 @@ private fun GalleryGrid(
     onOpen: (MediaRecord) -> Unit
 ) {
     if (items.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(if (busy) "Loading media…" else "No photos here yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        // DESIGN-6 #136: shared quiet state; nothing while busy (state 7).
+        if (!busy) AtlasEmptyState(title = "No photos yet")
         return
     }
     LazyVerticalGrid(

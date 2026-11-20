@@ -1,0 +1,5 @@
+# Swipe-up Details motion: one gesture-driven surface (ViewerDetailsMotionFrameTimeTest, 1080x2340).
+details-motion-drag-1
+details-motion-drag-2
+details-motion-drag-3
+details-motion-open

@@ -17,9 +17,10 @@ assert.match(repo, /target\.add\(reuse\.canonical\(MediaRecord\(/);
 assert.match(repo, /reuse\.shared\(cursor\.stringOr\(idxPath, ""\)\)/);
 // Full scans now return their provider checkpoint along with the reused rows;
 // both the ViewModel and the old load() API still go through the same bounded scan.
-assert.match(repo, /repo\.loadWithCheckpoint\(providerCancellation, shownAtStart\)/);
-assert.match(repo, /loadWithCheckpoint\(cancellationSignal, previous, checkActive\)\.items/);
-assert.match(repo, /loadInventory\(cancellationSignal, previous, checkActive\)/);
+// #676 adds the named allowTrailingChanges argument; the shown rows are still shared.
+assert.match(repo, /repo\.loadWithCheckpoint\(providerCancellation, shownAtStart[,)]/);
+assert.match(repo, /loadWithCheckpoint\(cancellationSignal, previous, checkActive = checkActive\)\.items/);
+assert.match(repo, /loadInventory\(cancellationSignal, previous, allowTrailingChanges, checkActive\)/);
 // Cold start: the scan picks its previous rows only after the cache load settled.
 assert.match(repo, /cachedInventoryLoad = viewModelScope\.launch \{/);
 assert.match(repo, /val shownAtStart = inventoryShownAfterCacheSettles\(cachedInventoryLoad\) \{\s*_publishedInventory\.value\.items/);

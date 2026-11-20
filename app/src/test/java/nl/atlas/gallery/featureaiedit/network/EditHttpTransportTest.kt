@@ -218,7 +218,9 @@ class EditHttpTransportTest {
     @Test fun authenticationAndInvalidRequestsMapToFixedCodes() = withServer({ request ->
             val status = when (request.path) {
                 "/v1/auth" -> 401
+                "/v1/forbidden" -> 403
                 "/v1/quota" -> 429
+                "/v1/bad" -> 400
                 "/v1/invalid" -> 422
                 else -> 500
             }
@@ -227,9 +229,38 @@ class EditHttpTransportTest {
         fun failure(path: String) = transport(server).execute(config(),
             EditHttpRequest(EditHttpMethod.GET, path)) as EditHttpResult.Failed
         assertEquals(FailureCode.AUTH, failure("auth").code)
+        assertEquals(FailureCode.AUTH, failure("forbidden").code)
         assertEquals(FailureCode.QUOTA, failure("quota").code)
+        assertEquals(FailureCode.INVALID_REQUEST, failure("bad").code)
         assertEquals(FailureCode.INVALID_REQUEST, failure("invalid").code)
         assertFalse(failure("invalid").retryable)
+    }
+
+    @Test fun paymentRequiredIsBillingNonretryableAndDoesNotReplayPostsOrLeakBody() {
+        val calls = AtomicInteger()
+        val privateReply = "private-billing-account-and-key"
+        withServer({
+            calls.incrementAndGet()
+            FakeResponse(402, body = privateReply.toByteArray())
+        }) { server ->
+            val http = transport(server)
+            val get = http.execute(config(), EditHttpRequest(EditHttpMethod.GET, "balance")) as EditHttpResult.Failed
+            assertEquals(FailureCode.BILLING, get.code)
+            assertEquals(402, get.status)
+            assertFalse(get.retryable)
+            assertEquals("no GET retry on depleted credits", 1, calls.get())
+            assertTrue("diagnostic input remains bounded", get.errorBody.size <= EditHttpTransport.MAX_ERROR_REPLY)
+            assertFalse(get.toString().contains(privateReply))
+            assertTrue(get.toString().contains("[REDACTED]"))
+
+            val post = http.execute(config(),
+                EditHttpRequest(EditHttpMethod.POST, "edits", EditHttpBody.Json("{}".toByteArray()))) as EditHttpResult.Failed
+            assertEquals(FailureCode.BILLING, post.code)
+            assertFalse(post.retryable)
+            assertEquals("no paid POST replay", 2, calls.get())
+            assertFalse(post.toString().contains(privateReply))
+            assertFalse(post.toString().contains("editor.example"))
+        }
     }
 
     @Test fun errorRepliesAreCappedAndNeverRenderedByToString() {
