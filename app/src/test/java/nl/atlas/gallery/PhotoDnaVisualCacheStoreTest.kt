@@ -196,7 +196,7 @@ class PhotoDnaVisualCacheStoreTest {
 
         checks = 0
         assertEquals(0, store.save(populated(source), grant, source,
-            authorized = { ++checks < 3 }))
+            authorized = { ++checks < 5 }))
         // An interrupted save must not publish its partial temporary file.
         assertTrue(file.exists())
         assertFalse(File(file.parentFile, file.name + ".tmp").exists())
