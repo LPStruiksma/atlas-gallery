@@ -1,0 +1,9 @@
+# Issue #573 · BENCH-2 Phase A2b: another app asks ATLAS for photos (GET_CONTENT / PICK).
+# Galaxy S24+ 1080x2340; generated media only. Light and dark: single pick with
+# one item chosen, multiple pick with two chosen (Done (2)), and the Albums list.
+picker-573-single-light
+picker-573-single-dark
+picker-573-multiple-light
+picker-573-multiple-dark
+picker-573-albums-light
+picker-573-albums-dark
