@@ -78,6 +78,7 @@ import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceUnknownInboxBridge
 import nl.atlas.gallery.featureface.FaceVisibleMedia
+import nl.atlas.gallery.featureface.MediaRecordFaceView
 import nl.atlas.gallery.featureface.OnDeviceFaceLocator
 import nl.atlas.gallery.featureface.AndroidMediaFaceFrameReader
 import nl.atlas.gallery.featureface.AuthorizedVideoFrames
@@ -501,7 +502,8 @@ internal fun publicationStatusPhase(
  * MediaStore id). Stable, so equal rows keep the gallery's order.
  */
 internal fun newestFirst(inventory: List<FaceVisibleMedia>): List<FaceVisibleMedia> =
-    inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
+    if (inventory is MediaRecordFaceView) inventory.newestFirstView()
+    else inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
         .thenByDescending { it.id })
 
 /** Batches that ended on a budget or one failed photo are followed by another. */
@@ -2677,7 +2679,7 @@ internal class PeopleDiscoveryBinding(
 /**
  * Status follows [PeopleDiscoveryHost.changes] and [galleryGrant]; a new
  * gallery publication is handed to the host off main. [inventory] is the same
- * permission-gated list the gallery shows; it is projected only on IO.
+ * permission-gated list the gallery shows; face rows are projected lazily on IO.
  */
 @Composable
 internal fun rememberPeopleDiscovery(
@@ -2685,7 +2687,7 @@ internal fun rememberPeopleDiscovery(
     galleryGrant: String?,
     inventory: List<MediaRecord>
 ): PeopleDiscoveryBinding = rememberPeopleDiscoveryOf(host, galleryGrant, inventory) { list ->
-    list.map { it.toFaceVisibleMedia(editorRevision = 0L) }
+    MediaRecordFaceView(list)
 }
 
 @Composable
