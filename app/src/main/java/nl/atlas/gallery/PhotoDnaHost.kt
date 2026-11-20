@@ -82,6 +82,7 @@ import nl.atlas.gallery.featurepersistence.KeepReceipt
 import nl.atlas.gallery.featurepersistence.KeepReceiptContract
 import nl.atlas.gallery.featurepersistence.VerifiedKeepFamily
 import nl.atlas.gallery.featurepersistence.VerifiedKeepMember
+import java.io.File
 import java.io.IOException
 
 /*
@@ -97,7 +98,9 @@ import java.io.IOException
  *
  * E2e (#450): "possible visual matches" come from a 64-bit dHash of each
  * authorized image's small, orientation-corrected MediaStore thumbnail,
- * computed off main after the byte plan is shown and kept in memory only.
+ * computed off main after the byte plan is shown. Successful dHashes can be
+ * restored on a future opening from a grant-bound no-backup local cache, only
+ * after the current MediaStore inventory has been freshly published.
  * Pairs are found through hash bands, never an all-pairs scan, and each one
  * is evidence stamped with the scope epoch and both revisions. A visual pair
  * only offers "Compare photos"; it never stages anything for Trash.
@@ -395,7 +398,8 @@ internal data class PhotoDnaVisualBudget(
  * Compact, process-only visual dHashes indexed by (MediaStore volume, ID, media kind).
  * Five primitive arrays replace per-URI String/Entry/HashMap allocations. A small,
  * bounded volume dictionary keeps removable volumes distinct without a String per
- * cached photo. No URI, dHash, or failure is written to app storage (#604).
+ * cached photo. Only successful hashes may be persisted in no-backup storage;
+ * failures and URIs remain process-only (#604).
  *
  * Each slot includes a digest of the same four revision fields as
  * [photoDnaRevision]. A cache hit is never evidence for Trash: the final byte
@@ -443,21 +447,25 @@ internal class PhotoDnaVisualCache(private val maxEntries: Int = 250_000) {
         return (volumeIds.size + 1).also { volumeIds[record.volumeName] = it }
     }
 
-    private fun slot(record: MediaRecord, volume: Int): Int {
+    private fun slot(record: MediaRecord, volume: Int): Int =
+        slot(record.id, record.isVideo, volume)
+
+    private fun slot(id: Long, isVideo: Boolean, volume: Int): Int {
         if (states.isEmpty()) return -1
-        val kind = record.isVideo
-        val combined = mix(record.id xor (volume.toLong() shl 32) xor
-            (if (kind) Long.MIN_VALUE else 0L))
+        val combined = mix(id xor (volume.toLong() shl 32) xor
+            (if (isVideo) Long.MIN_VALUE else 0L))
         var at = ((combined and Long.MAX_VALUE) % states.size).toInt()
         repeat(states.size) {
             val state = states[at].toInt()
-            if (state == EMPTY || (ids[at] == record.id && volumes[at] == volume &&
-                    (state > VIDEO_OFFSET) == kind)) return at
+            if (state == EMPTY || (ids[at] == id && volumes[at] == volume &&
+                    (state > VIDEO_OFFSET) == isVideo)) return at
             at++
             if (at == states.size) at = 0
         }
         return -1
     }
+
+    internal fun revisionDigest(record: MediaRecord): Long = revision(record)
 
     private fun isHash(state: Int) = state != EMPTY &&
         state != FAILURE && state != FAILURE + VIDEO_OFFSET
@@ -590,6 +598,27 @@ internal class PhotoDnaVisualCache(private val maxEntries: Int = 250_000) {
         states[at] = (FAILURE + (if (record.isVideo) VIDEO_OFFSET else 0)).toByte()
     }
 
+    /** Raw disk rows enter a temporary cache; fresh MediaRecord revisions must
+     * still match on get() before any value can enter the process cache. */
+    @Synchronized internal fun putPersisted(
+        volumeName: String, id: Long, digest: Long, value: Long, informative: Boolean
+    ) {
+        if (id <= 0L || volumeName.isBlank() || hashesCount >= maxEntries) return
+        val volume = volumeIds[volumeName] ?: run {
+            if (volumeIds.size >= MAX_VOLUMES) return
+            (volumeIds.size + 1).also { volumeIds[volumeName] = it }
+        }
+        ensureSlot(1)
+        val at = slot(id, false, volume)
+        if (at < 0 || states[at].toInt() != EMPTY) return
+        ids[at] = id
+        volumes[at] = volume
+        revisions[at] = digest
+        hashes[at] = value
+        states[at] = (if (informative) HASH_INFORMATIVE else HASH_FLAT).toByte()
+        hashesCount++
+    }
+
     val size: Int @Synchronized get() = hashesCount
     val failedSize: Int @Synchronized get() = failureCount
 
@@ -713,9 +742,15 @@ internal fun photoDnaVisualChainContinues(
 /** 10 x 2,000 decodes per opening; an unfinished library resumes on the next one. */
 internal const val PHOTO_DNA_MAX_PASSES_PER_OPENING = 10
 
-/** Process-wide, memory-only visual hash cache. */
+/** Process-wide compact cache; the disk adapter is opened on IO, never on startup. */
 private object PhotoDnaVisualHashes {
     val cache = PhotoDnaVisualCache()
+    private var persisted: PhotoDnaVisualCacheStore? = null
+
+    @Synchronized fun store(context: Context): PhotoDnaVisualCacheStore =
+        persisted ?: PhotoDnaVisualCacheStore(
+            File(context.noBackupFilesDir, "photo-dna-dhash-v1.bin")
+        ).also { persisted = it }
 }
 
 /** A 9x8 dHash needs little detail, even for extreme panoramas. */
@@ -1064,11 +1099,17 @@ internal fun rememberPhotoDna(
     source: List<MediaRecord>,
     tokens: PhotoDnaTokens?,
     enabled: Boolean,
+    /** True only for a real grant-matched MediaStore publication, not the startup disk inventory. */
+    freshScan: Boolean = false,
     hash: (MediaRecord, () -> Unit) -> CurationByteDigest?
 ): PhotoDnaPlanning {
     val context = LocalContext.current.applicationContext
     val state = remember { PhotoDnaPlanning() }
-    LaunchedEffect(tokens, CatalogSourceKey(source), enabled, state.attempt) {
+    LaunchedEffect(tokens, CatalogSourceKey(source), enabled, freshScan, state.attempt) {
+        // A lightweight grant-header check only; no ordinary startup reads hashes.
+        withContext(Dispatchers.IO) {
+            PhotoDnaVisualHashes.store(context).purgeUnlessGrant(readGalleryMediaGrant(context))
+        }
         if (tokens == null) {
             state.result = null
             state.failed = false
@@ -1083,7 +1124,7 @@ internal fun rememberPhotoDna(
         // ends here: recorded as Last crash, shown as Retry when no plan is
         // on screen, never thrown into the main looper.
         val outcome = photoDnaOutcome {
-            planAndChainVisualPasses(context, source, tokens, current, hash,
+            planAndChainVisualPasses(context, source, tokens, current, hash, freshScan,
                 latest = { state.result }) { state.result = it }
         }
         if (outcome is PhotoDnaOutcome.Failed) {
@@ -1103,6 +1144,7 @@ private suspend fun planAndChainVisualPasses(
     tokens: PhotoDnaTokens,
     current: PhotoDnaResult?,
     hash: (MediaRecord, () -> Unit) -> CurationByteDigest?,
+    freshScan: Boolean,
     latest: () -> PhotoDnaResult?,
     publish: (PhotoDnaResult) -> Unit
 ) {
@@ -1114,6 +1156,18 @@ private suspend fun planAndChainVisualPasses(
     }.also(publish)
     val grant = readGalleryMediaGrant(context)
     if (!grant.images) return
+    val authorized = { readGalleryMediaGrant(context) == grant }
+    val diskAllowed = freshScan && PhotoDnaVisualCacheStore.diskAllowed(grant)
+    if (diskAllowed) withContext(Dispatchers.IO) {
+        val check = { ensureActive() }
+        PhotoDnaVisualHashes.cache.bindGrant(grant)
+        val start = System.nanoTime()
+        val restored = PhotoDnaVisualHashes.store(context).restoreInto(
+            PhotoDnaVisualHashes.cache, grant, source, authorized, check)
+        val elapsed = (System.nanoTime() - start) / 1_000_000
+        android.util.Log.i("ATLAS_PHOTO_DNA",
+            "visual restore entries=$restored restoreMs=$elapsed")
+    }
     var previousDeferred: Int? = null
     var passes = 0
     var totalOversizedSkips = 0
@@ -1122,7 +1176,6 @@ private suspend fun planAndChainVisualPasses(
         val basePlan = planned.plan
         val (pass, oversizedThumbnailSkips) = withContext(Dispatchers.IO) {
             val check = { ensureActive() }
-            val authorized = { readGalleryMediaGrant(context) == grant }
             var skipped = 0
             PhotoDnaVisualHashes.cache.bindGrant(grant)
             val visual = planPhotoDnaVisual(source, tokens, basePlan, PhotoDnaVisualHashes.cache,
@@ -1139,8 +1192,20 @@ private suspend fun planAndChainVisualPasses(
             "hashed=${pass.hashedFiles} oversizedThumbnailSkips=$oversizedThumbnailSkips " +
             "totalOversizedSkips=$totalOversizedSkips deferred=${pass.deferredFiles}")
         planned.addVisualPairs(pass)
-        if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) return
+        if (!photoDnaVisualChainContinues(previousDeferred, pass, passes)) break
         previousDeferred = pass.deferredFiles
+    }
+    // Cache is best-effort: failure leaves the existing in-memory plan intact.
+    // Never publish disk bytes after this plan or grant has been superseded.
+    if (diskAllowed && latest() === planned && authorized()) {
+        withContext(Dispatchers.IO) {
+            val check = { ensureActive() }
+            val store = PhotoDnaVisualHashes.store(context)
+            val written = store.save(PhotoDnaVisualHashes.cache, grant, source,
+                authorized, check)
+            android.util.Log.i("ATLAS_PHOTO_DNA",
+                "visual stored=$written diskBytes=" + store.diskBytes())
+        }
     }
 }
 

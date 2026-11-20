@@ -157,6 +157,8 @@ fun GalleryViewer(
     onTrashed: ((MediaRecord) -> Unit)? = null,
     // #553: the People row in swipe-up Details; null hides it.
     photoPeople: ViewerPhotoPeople? = null,
+    // IDS-11 (#478): "Swap person" under AI Edit in the ⋮ menu; null hides it.
+    swapPerson: ViewerSwapPerson? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -167,7 +169,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, onBack)
+            favouriteOverrides, photoPeople, swapPerson, onBack)
     }
 }
 
@@ -186,6 +188,7 @@ private fun GalleryViewerSnapshot(
     onTrashed: ((MediaRecord) -> Unit)?,
     favouriteOverrides: MutableMap<String, Boolean>,
     photoPeople: ViewerPhotoPeople?,
+    swapPerson: ViewerSwapPerson?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -906,6 +909,17 @@ private fun GalleryViewerSnapshot(
                             text = { Text("AI Edit") },
                             modifier = Modifier.testTag("atlas-viewer-ai-edit"),
                             onClick = { aiEditMenuOpen = false; onAiEdit(current) })
+                        // IDS-11 (#478): directly under AI Edit, only for a supported
+                        // still image (hidden, never greyed out, until that is known).
+                        val swapPort = swapPerson
+                        val swapOk by produceState(false, current.uri, swapPort) {
+                            value = false
+                            value = swapPort?.eligible?.invoke(current) == true
+                        }
+                        if (swapPort != null && swapOk) DropdownMenuItem(
+                            text = { Text("Swap person") },
+                            modifier = Modifier.testTag("atlas-viewer-swap-person"),
+                            onClick = { aiEditMenuOpen = false; swapPort.open(current) })
                     }
                 }
                 IconButton(
@@ -1964,6 +1978,13 @@ internal fun VideoPage(
  * gets the shown item and, for a video, the frame time on screen (ms).
  */
 class ViewerFindSimilar(val onFindSimilar: (MediaRecord, Long?) -> Unit)
+
+/** IDS-11 (#478): the viewer's "Swap person" hook, supplied by the host. */
+class ViewerSwapPerson(
+    /** Off main: true when this photo is a supported still image (SwapPersonEligibility). */
+    val eligible: suspend (MediaRecord) -> Boolean,
+    val open: (MediaRecord) -> Unit
+)
 
 /** VS-F2b (#468): the viewer's "Find this person" hook, supplied by the host. */
 class ViewerFaceSearch(
