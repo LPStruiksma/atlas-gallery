@@ -31,7 +31,7 @@ const reviewLayout = declutter.slice(
 assert.match(reviewLayout, /Box\(Modifier\.weight\(1f\)\.fillMaxWidth\(\)/,
   'review area must have a bounded weighted viewport');
 assert.match(reviewLayout,
-  /LazyColumn\(Modifier\.fillMaxSize\(\)[\s\S]*?contentPadding = PaddingValues\(bottom = 56\.dp\)/,
+  /LazyColumn\(\s*Modifier\.fillMaxSize\(\)[\s\S]*?contentPadding = PaddingValues\(bottom = 56\.dp\)/,
   'heading, results and Return need a scrollable body with clearance for the fixed Move action');
 assert.match(reviewLayout, /item\s*\{\s*Text\("Review staged files"/,
   'review heading belongs in scrollable body');
