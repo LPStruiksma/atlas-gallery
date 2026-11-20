@@ -30,9 +30,9 @@ class RecipeV2Test {
         assertEquals(2, RecipeJson.decode(encoded).schemaVersion)
         assertEquals(r, RecipeJson.decode(encoded))
         assertEquals(encoded, RecipeJson.encode(RecipeJson.decode(encoded)))
-        assertTrue(encoded.contains("\\"type\\":\\"curves\\""))
-        assertTrue(encoded.contains("\\"type\\":\\"shapeCrop\\""))
-        assertTrue(encoded.contains("\\"type\\":\\"spotColor\\""))
+        assertTrue(encoded.contains(""""type":"curves""""))
+        assertTrue(encoded.contains(""""type":"shapeCrop""""))
+        assertTrue(encoded.contains(""""type":"spotColor""""))
     }
 
     @Test fun randomizedMonotoneCurvesRoundTrip() {
