@@ -1177,8 +1177,10 @@ internal class PeopleDiscoveryHost(
             check(current()) { "Visual catalogue scope changed" }
             if (batch.isNotEmpty()) store.stageBatch(epoch, batch)
             store.commitSnapshot(epoch, visualModelVersion, visualDimension)
-            check(current()) { "Visual catalogue scope changed" }
+            // #684: the committed catalogue is the only readable one now, so
+            // the scope follows it at once (a lost race clears it below).
             visualScope = VisualScope(faceEpoch, epoch, leftOutPhotos)
+            check(current()) { "Visual catalogue scope changed" }
             val token = photoGrantToken()
             optInMemory.savePublishedVisual(
                 if (token != null && current()) PublishedVisualScope(faceEpoch, epoch, token,
@@ -1212,9 +1214,10 @@ internal class PeopleDiscoveryHost(
             if (begun && !done) {
                 try { store.invalidateSnapshotIfCurrent(epoch) } catch (_: SQLException) { }
             }
-            // #684: a failed or superseded staging leaves no stale staging scope.
-            if (!done && visualScope?.let { it.staging && it.faceEpoch == faceEpoch } == true)
-                visualScope = null
+            // #684: a failed or superseded staging leaves no stale scope.
+            if (!done && visualScope?.let {
+                    it.faceEpoch == faceEpoch && (it.staging || it.epoch == epoch)
+                } == true) visualScope = null
         }
     }
 
