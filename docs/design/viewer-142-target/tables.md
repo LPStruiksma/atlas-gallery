@@ -18,58 +18,58 @@
 | portrait-3button | action-edit | 138.0,730.0 → 178.1,770.1 (40.2×40.2) | inside action pill | 140.0,720.0 → 188.0,768.0 (48.0×48.0) | ✓ |
 | portrait-3button | action-share | 205.9,730.0 → 246.0,770.1 (40.2×40.2) | inside action pill | 196.0,720.0 → 244.0,768.0 (48.0×48.0) | ✓ |
 | portrait-3button | action-delete | 273.8,730.0 → 314.0,770.1 (40.2×40.2) | inside action pill | 252.0,720.0 → 300.0,768.0 (48.0×48.0) | ✓ |
-| portrait-3button | filmstrip | 0.0,659.9 → 384.0,716.1 (384.0×56.2) | 0.0,652.0 → 384.0,708.0 (384.0×56.0) | band = touch region | band ✓ |
-| portrait-3button | tile-0 | 173.3,663.1 → 210.7,713.3 (37.3×50.2) | 173.2,655.0 → 210.8,705.0 (37.5×50.0) | 172.2,652.0 → 211.8,708.0 (39.5×56.0) | width ✗ (C1) |
+| portrait-3button | filmstrip | 0.0,659.9 → 384.0,716.1 (384.0×56.2) | 0.0,632.0 → 384.0,708.0 (384.0×76.0) | band = touch region | band ✓ |
+| portrait-3button | tile-0 | 173.3,663.1 → 210.7,713.3 (37.3×50.2) | 170.0,648.0 → 214.0,704.0 (44.0×56.0) | 168.0,632.0 → 216.0,708.0 (48.0×76.0) | ✓ |
 | landscape-3button | back | 64.4,36.3 → 104.5,76.4 (40.2×40.2) | 56.4,32.2 → 96.4,72.2 (40.0×40.0) | 52.4,28.2 → 100.4,76.2 (48.0×48.0) | ✓ |
 | landscape-3button | top-details | 723.9,36.3 → 764.1,76.4 (40.2×40.2) | inside top pill | 728.0,28.2 → 776.0,76.2 (48.0×48.0) | ✓ |
 | landscape-3button | action-favourite | 292.3,330.0 → 332.4,370.1 (40.2×40.2) | inside action pill | 306.2,320.0 → 354.2,368.0 (48.0×48.0) | ✓ |
 | landscape-3button | action-edit | 360.2,330.0 → 400.4,370.1 (40.2×40.2) | inside action pill | 362.2,320.0 → 410.2,368.0 (48.0×48.0) | ✓ |
 | landscape-3button | action-share | 428.1,330.0 → 468.3,370.1 (40.2×40.2) | inside action pill | 418.2,320.0 → 466.2,368.0 (48.0×48.0) | ✓ |
 | landscape-3button | action-delete | 496.0,330.0 → 536.2,370.1 (40.2×40.2) | inside action pill | 474.2,320.0 → 522.2,368.0 (48.0×48.0) | ✓ |
-| landscape-3button | filmstrip | 44.4,259.9 → 784.0,316.1 (739.6×56.2) | 44.4,252.0 → 784.0,308.0 (739.6×56.0) | band = touch region | band ✓ |
-| landscape-3button | tile-0 | 395.6,263.1 → 432.9,313.3 (37.3×50.2) | 395.5,255.0 → 433.0,305.0 (37.5×50.0) | 394.5,252.0 → 434.0,308.0 (39.5×56.0) | width ✗ (C1) |
+| landscape-3button | filmstrip | 44.4,259.9 → 784.0,316.1 (739.6×56.2) | 44.4,232.0 → 784.0,308.0 (739.6×76.0) | band = touch region | band ✓ |
+| landscape-3button | tile-0 | 395.6,263.1 → 432.9,313.3 (37.3×50.2) | 392.2,248.0 → 436.2,304.0 (44.0×56.0) | 390.2,232.0 → 438.2,308.0 (48.0×76.0) | ✓ |
 | landscape-narrow-computed | back | — (computed viewport) | 56.4,32.2 → 96.4,72.2 (40.0×40.0) | 52.4,28.2 → 100.4,76.2 (48.0×48.0) | ✓ |
 | landscape-narrow-computed | top-details | — (computed viewport) | inside top pill | 536.0,28.2 → 584.0,76.2 (48.0×48.0) | ✓ |
 | landscape-narrow-computed | action-favourite | — (computed viewport) | inside action pill | 210.2,296.0 → 258.2,344.0 (48.0×48.0) | ✓ |
 | landscape-narrow-computed | action-edit | — (computed viewport) | inside action pill | 266.2,296.0 → 314.2,344.0 (48.0×48.0) | ✓ |
 | landscape-narrow-computed | action-share | — (computed viewport) | inside action pill | 322.2,296.0 → 370.2,344.0 (48.0×48.0) | ✓ |
 | landscape-narrow-computed | action-delete | — (computed viewport) | inside action pill | 378.2,296.0 → 426.2,344.0 (48.0×48.0) | ✓ |
-| landscape-narrow-computed | filmstrip | — (computed viewport) | 44.4,228.0 → 592.0,284.0 (547.6×56.0) | band = touch region | band ✓ |
-| landscape-narrow-computed | tile-0 | — (computed viewport) | 299.5,231.0 → 337.0,281.0 (37.5×50.0) | 298.5,228.0 → 338.0,284.0 (39.5×56.0) | width ✗ (C1) |
+| landscape-narrow-computed | filmstrip | — (computed viewport) | 44.4,208.0 → 592.0,284.0 (547.6×76.0) | band = touch region | band ✓ |
+| landscape-narrow-computed | tile-0 | — (computed viewport) | 296.2,224.0 → 340.2,280.0 (44.0×56.0) | 294.2,208.0 → 342.2,284.0 (48.0×76.0) | ✓ |
 
 ### T3. Per-scenario checks (every viewport × scenario)
 
 | Viewport | Scenario | Metadata mode | Free media band dp | Video gap to strip dp (≥8) | Hit collisions | Outside safe | Over cutout | <44 dp (non-tile) | Over back-gesture zone | In mandatory zone | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| portrait-3button | photo | below-row-1-line | 517.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-font200 | below-row-2-lines | 467.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-font200-longplace | below-row-2-lines | 467.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 473.28 dp) |
-| portrait-3button | photo-no-place | below-row-1-line | 517.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-no-date | none (no date) | 539.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-1-top-action | inline-1-line | 539.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-short | below-row-1-line | 457.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-long | below-row-1-line | 457.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-long-font200 | below-row-2-lines | 371.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | video time labels move above the seek bar (font 2.0, 1:23:45) |
+| portrait-3button | photo | below-row-1-line | 493.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-font200 | below-row-2-lines | 431.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp) |
+| portrait-3button | photo-font200-longplace | below-row-2-lines | 431.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 552.16 dp) |
+| portrait-3button | photo-no-place | below-row-1-line | 493.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-no-date | none (no date) | 519.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-1-top-action | inline-2-lines | 519.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-short | below-row-1-line | 433.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-long | below-row-1-line | 433.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-long-font200 | below-row-2-lines | 327.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp); video time labels move above the seek bar (font 2.0, 1:23:45) |
 | portrait-3button | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
-| landscape-3button | photo | inline-1-line | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-font200 | inline-1-line-ellipsized | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 497.64 dp) |
-| landscape-3button | photo-font200-longplace | inline-1-line-ellipsized | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 904.8 dp) |
-| landscape-3button | photo-no-place | inline-1-line | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-no-date | none (no date) | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-1-top-action | inline-1-line | 159.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-short | inline-1-line | 99.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-long | inline-1-line | 99.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-long-font200 | inline-1-line-ellipsized | 99.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 497.64 dp) |
+| landscape-3button | photo | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-font200 | inline-1-line-ellipsized | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
+| landscape-3button | photo-font200-longplace | inline-1-line-ellipsized | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 1096.2 dp) |
+| landscape-3button | photo-no-place | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-no-date | none (no date) | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-1-top-action | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-short | inline-1-line | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-long | inline-1-line | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-long-font200 | inline-1-line-ellipsized | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
 | landscape-3button | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
-| landscape-narrow-computed | photo | inline-2-lines | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-font200 | inline-1-line-ellipsized | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 497.64 dp) |
-| landscape-narrow-computed | photo-font200-longplace | inline-1-line-ellipsized | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 904.8 dp) |
-| landscape-narrow-computed | photo-no-place | inline-1-line | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-no-date | none (no date) | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-1-top-action | inline-1-line | 135.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-short | inline-2-lines | 75.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-long | inline-2-lines | 75.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-long-font200 | inline-1-line-ellipsized | 75.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 497.64 dp) |
+| landscape-narrow-computed | photo | inline-2-lines | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-font200 | inline-1-line-ellipsized | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
+| landscape-narrow-computed | photo-font200-longplace | inline-1-line-ellipsized | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 1096.2 dp) |
+| landscape-narrow-computed | photo-no-place | inline-1-line | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-no-date | none (no date) | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-1-top-action | inline-1-line | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-short | inline-2-lines | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-long | inline-2-lines | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-long-font200 | inline-1-line-ellipsized | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
 | landscape-narrow-computed | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
 
 ### T5. One-handed reach (video, chrome shown; centre y of each hit)
@@ -78,24 +78,24 @@
 |---|---|---|---|
 | portrait-3button | back | 72.44 | stretch (top third) |
 | portrait-3button | top-details | 72.44 | stretch (top third) |
-| portrait-3button | video-play | 616.0 | easy (bottom third) |
-| portrait-3button | video-seek | 616.0 | easy (bottom third) |
+| portrait-3button | video-play | 596.0 | easy (bottom third) |
+| portrait-3button | video-seek | 596.0 | easy (bottom third) |
 | portrait-3button | action-favourite | 744.0 | easy (bottom third) |
 | portrait-3button | action-edit | 744.0 | easy (bottom third) |
 | portrait-3button | action-share | 744.0 | easy (bottom third) |
 | portrait-3button | action-delete | 744.0 | easy (bottom third) |
 | landscape-3button | back | 52.18 | stretch (top third) |
 | landscape-3button | top-details | 52.18 | stretch (top third) |
-| landscape-3button | video-play | 216.0 | ok (middle) |
-| landscape-3button | video-seek | 216.0 | ok (middle) |
+| landscape-3button | video-play | 196.0 | ok (middle) |
+| landscape-3button | video-seek | 196.0 | ok (middle) |
 | landscape-3button | action-favourite | 344.0 | easy (bottom third) |
 | landscape-3button | action-edit | 344.0 | easy (bottom third) |
 | landscape-3button | action-share | 344.0 | easy (bottom third) |
 | landscape-3button | action-delete | 344.0 | easy (bottom third) |
 | landscape-narrow-computed | back | 52.18 | stretch (top third) |
 | landscape-narrow-computed | top-details | 52.18 | stretch (top third) |
-| landscape-narrow-computed | video-play | 192.0 | ok (middle) |
-| landscape-narrow-computed | video-seek | 192.0 | ok (middle) |
+| landscape-narrow-computed | video-play | 172.0 | ok (middle) |
+| landscape-narrow-computed | video-seek | 172.0 | ok (middle) |
 | landscape-narrow-computed | action-favourite | 320.0 | easy (bottom third) |
 | landscape-narrow-computed | action-edit | 320.0 | easy (bottom third) |
 | landscape-narrow-computed | action-share | 320.0 | easy (bottom third) |
@@ -103,8 +103,8 @@
 
 ### T4. Legibility (WCAG contrast ratios, computed)
 
-| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on pill | Pill vs photo | Accent ring (dark) | Accent ring (light) |
-|---|---|---|---|---|---|---|
-| bright photo (white worst case) | 2.08 | 4.9 | 5.13 | 6.01 | 2.35 | 5.53 |
-| dark photo (black) | 17.94 | 17.94 | 14.7 | 1.22 | 8.95 | 3.8 |
+| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline |
+|---|---|---|---|---|---|---|---|---|
+| bright photo (white worst case) | 2.2 | 5.18 | 8.63 | 6.67 | 6.67 | 2.55 | 1.0 | 21.0 |
+| dark photo (black) | 18.95 | 18.95 | 16.84 | 6.67 | 3.15 | 8.25 | 21.0 | 21.0 |
 

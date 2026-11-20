@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1156.0 630.0" font-family="Inter, Arial, sans-serif" font-size="8">
-<title>PROPOSED Quiet Frame viewer target — landscape-3button — video-long-font200</title>
+<title>PROPOSED Lapis Atlas viewer target — landscape-3button — video-long-font200</title>
 <rect width="1156.0" height="630.0" fill="#FFFFFF"/>
-<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Quiet Frame viewer target — landscape-3button — video-long-font200</text>
+<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Lapis Atlas viewer target — landscape-3button — video-long-font200</text>
 <text x="8" y="30" font-size="8.5" fill="#4A4F59">Target concept, NOT a runtime capture. Insets/cutout copied from the measured frame named below; every other rectangle is proposed.</text>
 <g transform="translate(8,44)">
 <rect width="832.0" height="384.0" fill="#000000"/>
@@ -22,42 +22,38 @@
 <rect x="784.0" y="0" width="48" height="384.0" fill="#6E7BFF" opacity="0.25"/>
 <rect x="0.0" y="172.44" width="44.44" height="40.89" fill="#FF3B30" opacity="0.55"/>
 <rect x="44.44" y="24.18" width="739.56" height="359.82" fill="none" stroke="#00C2A8" stroke-width="1" stroke-dasharray="4 3"/>
-<rect x="56.44" y="32.18" width="40.0" height="40.0" rx="20.0" fill="#23262E" opacity="0.72"/>
+<rect x="56.44" y="32.18" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="65.44" y="41.18" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="52.44" y="28.18" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
-<rect x="636.0" y="32.18" width="136.0" height="40.0" rx="20.0" fill="#23262E" opacity="0.72"/>
+<rect x="636.0" y="32.18" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="645.0" y="41.18" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="632.0" y="28.18" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="693.0" y="41.18" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="680.0" y="28.18" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="741.0" y="41.18" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="728.0" y="28.18" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
-<rect x="208.0" y="34.18" width="416.0" height="36.0" fill="#FFFFFF" opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>
-<text x="416.0" y="45.18" text-anchor="middle" fill="#ECEDF0" font-size="7">date · time · place</text>
-<rect x="44.44" y="252.0" width="739.56" height="56.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="395.47" y="255.0" width="37.5" height="50.0" rx="4" fill="#8E8E93"/>
-<rect x="393.47" y="253.0" width="41.5" height="54.0" rx="5" fill="none" stroke="#7FA8FF" stroke-width="2.0"/>
-<rect x="434.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="466.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="498.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="530.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="562.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="594.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="626.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="658.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="690.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="722.97" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="363.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="331.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="299.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="267.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="235.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="203.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="171.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="139.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="107.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="75.47" y="260.0" width="30.0" height="40.0" rx="4" fill="#8E8E93"/>
-<rect x="302.22" y="316.0" width="224.0" height="56.0" rx="28.0" fill="#23262E" opacity="0.72"/>
+<rect x="208.0" y="30.18" width="416.0" height="44.0" fill="#FFFFFF" opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>
+<text x="416.0" y="41.18" text-anchor="middle" fill="#ECEDF0" font-size="7">date, time, place</text>
+<rect x="44.44" y="232.0" width="739.56" height="76.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
+<rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="389.22" y="245.0" width="50.0" height="62.0" rx="11.0" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="391.22" y="247.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+<rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="302.22" y="316.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="319.22" y="333.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="306.22" y="320.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="375.22" y="333.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
@@ -66,17 +62,17 @@
 <rect x="418.22" y="320.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="487.22" y="333.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="474.22" y="320.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
-<rect x="56.44" y="196.0" width="40.0" height="40.0" rx="20.0" fill="#23262E" opacity="0.72"/>
-<rect x="65.44" y="205.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
-<rect x="52.44" y="192.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
-<rect x="217.88" y="214.0" width="440.68" height="4" rx="2" fill="#ECEDF0" opacity="0.6"/>
-<rect x="217.88" y="214.0" width="176.27" height="4" rx="2" fill="#7FA8FF"/>
-<circle cx="394.15" cy="216.0" r="8" fill="#ECEDF0"/>
-<rect x="209.88" y="192.0" width="456.68" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
-<rect x="104.44" y="200.0" width="97.44" height="32.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
-<rect x="674.56" y="200.0" width="97.44" height="32.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
-<line x1="780.0" y1="240.0" x2="780.0" y2="252.0" stroke="#30D158" stroke-width="1.2"/>
-<text x="777.0" y="249.0" text-anchor="end" fill="#30D158" font-size="7">12.0 dp ≥ 8</text>
+<rect x="56.44" y="176.0" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="65.44" y="185.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="52.44" y="172.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="234.12" y="194.0" width="408.2" height="4" rx="2" fill="#ECEDF0" opacity="0.6"/>
+<rect x="234.12" y="194.0" width="163.28" height="4" rx="2" fill="#8C9BFF"/>
+<circle cx="397.4" cy="196.0" r="8" fill="#ECEDF0"/>
+<rect x="226.12" y="172.0" width="424.2" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="104.44" y="176.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<rect x="658.32" y="176.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<line x1="780.0" y1="220.0" x2="780.0" y2="232.0" stroke="#30D158" stroke-width="1.2"/>
+<text x="777.0" y="229.0" text-anchor="end" fill="#30D158" font-size="7">12.0 dp ≥ 8</text>
 </g>
 <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#FF9F0A" stroke-width="2"/></pattern></defs>
 <g font-size="8" fill="#111318">
@@ -91,20 +87,20 @@
 <text x="856.0" y="159.0">— proposed (dp, window coordinates) —</text>
 <text x="856.0" y="170.5">back: 56.4,32.2 → 96.4,72.2 (40.0×40.0)</text>
 <text x="856.0" y="182.0">top-group: 636.0,32.2 → 772.0,72.2 (136.0×40.0)</text>
-<text x="856.0" y="193.5">metadata [inline-1-line-ellipsized]: 208.0,34.2 → 624.0,70.2 (416.0×36.0)</text>
-<text x="856.0" y="205.0">filmstrip: 44.4,252.0 → 784.0,308.0 (739.6×56.0)</text>
+<text x="856.0" y="193.5">metadata [inline-1-line-ellipsized]: 208.0,30.2 → 624.0,74.2 (416.0×44.0)</text>
+<text x="856.0" y="205.0">filmstrip: 44.4,232.0 → 784.0,308.0 (739.6×76.0)</text>
 <text x="856.0" y="216.5">action-pill: 302.2,316.0 → 526.2,372.0 (224.0×56.0)</text>
-<text x="856.0" y="228.0">video-row [labels-inline]: 44.4,192.0 → 784.0,240.0 (739.6×48.0)</text>
+<text x="856.0" y="228.0">video-row [labels-inline]: 44.4,172.0 → 784.0,220.0 (739.6×48.0)</text>
 <text x="856.0" y="239.5">back hit 52.4,28.2 → 100.4,76.2 (48.0×48.0)</text>
 <text x="856.0" y="251.0">favourite hit 306.2,320.0 → 354.2,368.0 (48.0×48.0)</text>
-<text x="856.0" y="262.5">seek hit 209.9,192.0 → 666.6,240.0 (456.7×48.0)</text>
+<text x="856.0" y="262.5">seek hit 226.1,172.0 → 650.3,220.0 (424.2×48.0)</text>
 <text x="856.0" y="274.0">video row → strip gap 12.0 dp (rule ≥ 8)</text>
-<text x="856.0" y="285.5">free media band between chrome: 99.82 dp</text>
+<text x="856.0" y="285.5">free media band between chrome: 79.82 dp</text>
 <text x="856.0" y="297.0">— checks —</text>
 <text x="856.0" y="308.5">hit collisions: none</text>
 <text x="856.0" y="320.0">hits outside safeDrawing: none</text>
 <text x="856.0" y="331.5">hits over cutout: none</text>
-<text x="856.0" y="343.0">hits &lt; 44 dp: 21 filmstrip tile cells (width = 32 dp pitch, see conflict C1)</text>
+<text x="856.0" y="343.0">hits &lt; 44 dp: none</text>
 <text x="856.0" y="354.5">back clearance to safe edge L12.0 T8.0 R687.56 B311.82</text>
 <text x="856.0" y="366.0">top-group clearance to safe edge L591.56 T8.0 R12.0 B311.82</text>
 <text x="856.0" y="377.5">action-pill clearance to safe edge L257.78 T291.82 R257.78 B12.0</text>

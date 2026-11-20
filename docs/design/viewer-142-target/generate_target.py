@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DESIGN-8T #627: proposed Quiet Frame viewer target geometry.
+"""DESIGN-8T #627: proposed Lapis Atlas (Quiet Frame v3) viewer target geometry.
 
 One geometry model produces every number, table and SVG in this folder, so the
 diagrams cannot drift from the tables. Run from anywhere:
@@ -22,39 +22,48 @@ import pathlib
 HERE = pathlib.Path(__file__).resolve().parent
 SVG_DIR = HERE / "svg"
 
-# ---- Proposed constants (Quiet Frame + parity §1/§6; each one is a target) ----
-EDGE = 12.0          # visible pill edge to safeDrawing edge (parity §0 "12 dp from screen edges")
-HIT = 48.0           # semantic hit size for icon actions (>= 44 dp Quiet Frame touch rule)
+# ---- Proposed constants (Quiet Frame v3 "Lapis Atlas", #654; each one is a target) ----
+# Samsung parity governs WHAT the viewer can do (§1/§6 features), not where or how
+# it looks (#654 OWNER_INTENT rule 1). Values v3 does not name are marked "v3 silent".
+EDGE = 12.0          # visible chrome edge to safeDrawing edge (v3 silent; Atlas choice)
+HIT = 48.0           # semantic hit size for icon actions (v3: touch targets >= 48 dp)
 PAD = 4.0            # hit rectangle extends this far beyond the visible pill
 TOP_PILL = 40.0      # visible top pill height / back pill diameter
-GLYPH = 22.0         # Quiet Frame icon size; 1.6 dp stroke
+GLYPH = 22.0         # icon artwork (v3 silent; v2 value carried until L2 sets icons)
 ACTION_GAP = 8.0     # gap between adjacent bottom-pill hit rectangles
-STRIP_BAND = 56.0    # filmstrip touch band height
-TILE_W, TILE_H, TILE_GAP = 30.0, 40.0, 2.0   # parity §1
-CENTRE_SCALE = 1.25  # parity VIEW:V15, UNVERIFIED
-RING = 2.0           # accent ring stroke around current tile
+TILE_W, TILE_H, TILE_GAP = 44.0, 56.0, 4.0  # Atlas choice: 48 dp pitch = 48 dp touch cells (C1 resolved)
+TILE_R = 8.0         # v3 strip-tile radius
+CENTRE_SCALE = 1.0   # current item is marked by the sphere + ring, not by size
+RING = 2.0           # v3: 2 dp white ring on the current item
+KEYLINE = 1.0        # proposed 1 dp black keyline outside the white ring (C3)
+SPHERE_D, SPHERE_GAP = 8.0, 4.0  # v3: small #8C9BFF sphere above the current item (size: Atlas choice)
+STRIP_BAND = 4.0 + SPHERE_D + SPHERE_GAP + TILE_H + 4.0  # 76 dp touch band
 STRIP_TO_PILL = 8.0  # visible pill top to strip band bottom
 VIDEO_TO_STRIP = 12.0  # video row hit bottom to strip band top (>= 8 dp rule)
 SEEK_MIN = 120.0     # narrowest seek hit before labels reflow
 SCRIM_TAIL = 16.0    # scrim continues this far below the lowest top element
-SCRIM_ALPHA = 0.35   # Quiet Frame
-PILL_FILL = (0x23, 0x26, 0x2E)
-PILL_ALPHA = 0.72
-INK = (0xEC, 0xED, 0xF0)
-ACCENT = {"dark": (0x7F, 0xA8, 0xFF), "light": (0x2A, 0x62, 0xD4)}
-TEXT_EM = 0.58       # conservative mean advance per character for Inter Tight 500, in em
-DATE_SP, DATE_LH = 13.0, 18.0   # Quiet Frame label role
-PLACE_SP, PLACE_LH = 12.0, 16.0  # Quiet Frame meta role
-TIME_SP, TIME_LH = 12.0, 16.0
+SCRIM_ALPHA = 0.35   # v2 top scrim carried (v3 silent); see C2
+SLAB_FILL = (0x34, 0x48, 0xE0)  # v3 viewer slab, lapis brand-fill (dark state), solid field
+SLAB_R = 24.0        # v3 slab radius
+ON_BRAND = (0xFF, 0xFF, 0xFF)
+PILL_FILL = (0x14, 0x15, 0x2A)  # top back/group pills: v3 mist (dark), Atlas choice
+PILL_ALPHA = 0.80
+INK = (0xF2, 0xF3, 0xF8)        # v3 ink (dark)
+SPHERE = (0x8C, 0x9B, 0xFF)     # v3 viewer current-item sphere
+FADE_MS = 200        # v3 motion "Lift", 200 ms
+TEXT_EM = 0.58       # conservative mean advance per character (Funnel Sans), in em; estimate
+DATE_SP, DATE_LH = 15.0, 22.0   # v3 body
+PLACE_SP, PLACE_LH = 14.0, 20.0  # v3 secondary
+TIME_SP, TIME_LH = 14.0, 20.0
 
 SAMPLE = {
-    "date": "Thu 20 Nov 2026 · 14:32",
+    "date": "20 November 2026 at 14:32",   # v3: no middle-dot meta strings
     "place_short": "Utrecht",
     "place_long": "Sint-Michielsgestel, Noord-Brabant",
 }
 
-TOP_ACTIONS = ["find-person", "find-similar", "details"]  # conditional, parity §1 order
-BOTTOM_ACTIONS = ["favourite", "edit", "share", "delete"]   # parity §1 order
+TOP_ACTIONS = ["find-person", "find-similar", "details"]  # conditional; parity features, Atlas placement
+BOTTOM_ACTIONS = ["favourite", "edit", "share", "delete"]   # v3 viewer slab; edit opens the one editor (AI edit inside)
 
 
 def r2(v):
@@ -176,7 +185,7 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
     if date:
         slot_half = min(W / 2 - (back_hit["right"] + 8), (group_left - 8) - W / 2)
         slot_w = max(0.0, 2 * slot_half)
-        one_line = SAMPLE["date"] + ((" · " + SAMPLE[place]) if place else "")
+        one_line = SAMPLE["date"] + ((" in " + SAMPLE[place]) if place else "")
         w1 = text_w(one_line, DATE_SP, font)
         h1 = DATE_LH * font
         wd = text_w(SAMPLE["date"], DATE_SP, font)
@@ -219,13 +228,16 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
         els["action-" + name] = {"hit": rect(x, pill["top"] + PAD, x + HIT, pill["top"] + PAD + HIT)}
     # Filmstrip
     band = rect(sl, pill["top"] - STRIP_TO_PILL - STRIP_BAND, W - sr, pill["top"] - STRIP_TO_PILL)
-    cyb = (band["top"] + band["bottom"]) / 2
+    tile_bottom = band["bottom"] - 4.0
+    cyb = tile_bottom - TILE_H / 2
     pitch = TILE_W + TILE_GAP
     cw, ch = TILE_W * CENTRE_SCALE, TILE_H * CENTRE_SCALE
     ccx = (sl + W - sr) / 2
     tiles = [{"visible": rect(ccx - cw / 2, cyb - ch / 2, ccx + cw / 2, cyb + ch / 2), "current": True,
-              "ring": rect(ccx - cw / 2 - RING, cyb - ch / 2 - RING, ccx + cw / 2 + RING, cyb + ch / 2 + RING)}]
-    # neighbour tiles, 2 dp gaps, until the band edge
+              "ring": rect(ccx - cw / 2 - RING, cyb - ch / 2 - RING, ccx + cw / 2 + RING, cyb + ch / 2 + RING),
+              "sphere": rect(ccx - SPHERE_D / 2, cyb - ch / 2 - SPHERE_GAP - SPHERE_D,
+                             ccx + SPHERE_D / 2, cyb - ch / 2 - SPHERE_GAP)}]
+    # neighbour tiles at TILE_GAP until the band edge
     x_r = ccx + cw / 2 + TILE_GAP
     x_l = ccx - cw / 2 - TILE_GAP
     while x_r + TILE_W <= band["right"]:
@@ -325,7 +337,7 @@ def checks(vp, lay):
     tiles_small = [x for x in res["under_44"] if x.startswith("tile-")]
     res["under_44"] = [x for x in res["under_44"] if not x.startswith("tile-")]
     if tiles_small:
-        res["under_44"].append(f"{len(tiles_small)} filmstrip tile cells (width = 32 dp pitch, see conflict C1)")
+        res["under_44"].append(f"{len(tiles_small)} filmstrip tile cells")
     video_gap = lay["elements"].get("video-gap-to-strip")
     res["video_gap_ok"] = None if video_gap is None else video_gap >= 8
     # safe-edge clearance of visible pills
@@ -345,7 +357,8 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
     sl, st, sr, sb = vp["safe"]
     side = 300
     vw, vh = W + side + 24, max(H, 560) + 70
-    acc = "#%02X%02X%02X" % ACCENT[theme]
+    sphere = "#%02X%02X%02X" % SPHERE
+    slab = "#%02X%02X%02X" % SLAB_FILL
     o = []
     a = o.append
     a(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {r2(vw)} {r2(vh)}" '
@@ -420,7 +433,7 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
         a(f'<rect x="{m["left"]}" y="{m["top"]}" width="{m["width"]}" height="{m["height"]}" fill="#FFFFFF" '
           f'opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>')
         a(f'<text x="{r2((m["left"] + m["right"]) / 2)}" y="{r2(m["top"] + 11)}" text-anchor="middle" '
-          f'fill="#ECEDF0" font-size="7">date · time · place</text>')
+          f'fill="#ECEDF0" font-size="7">date, time, place</text>')
     if "filmstrip" in els:
         fs = els["filmstrip"]
         b = fs["band"]
@@ -428,14 +441,20 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
           f'stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>')
         for t in fs["tiles"]:
             v = t["visible"]
-            a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="4" '
+            a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" '
               f'fill="#8E8E93"/>')
             if t.get("current"):
                 rg = t["ring"]
-                a(f'<rect x="{rg["left"]}" y="{rg["top"]}" width="{rg["width"]}" height="{rg["height"]}" rx="5" '
-                  f'fill="none" stroke="{acc}" stroke-width="{RING}"/>')
+                a(f'<rect x="{rg["left"] - KEYLINE}" y="{rg["top"] - KEYLINE}" width="{rg["width"] + 2 * KEYLINE}" '
+                  f'height="{rg["height"] + 2 * KEYLINE}" rx="{TILE_R + 3}" fill="none" stroke="#000" stroke-width="{KEYLINE}"/>')
+                a(f'<rect x="{rg["left"] + RING / 2}" y="{rg["top"] + RING / 2}" width="{rg["width"] - RING}" '
+                  f'height="{rg["height"] - RING}" rx="{TILE_R + 1}" fill="none" stroke="#FFFFFF" stroke-width="{RING}"/>')
+                sp = t["sphere"]
+                a(f'<circle cx="{r2((sp["left"] + sp["right"]) / 2)}" cy="{r2((sp["top"] + sp["bottom"]) / 2)}" '
+                  f'r="{SPHERE_D / 2}" fill="{sphere}"/>')
     if "action-pill" in els:
-        vis_pill(els["action-pill"]["visible"])
+        v = els["action-pill"]["visible"]
+        a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{SLAB_R}" fill="{slab}"/>')
         for n in BOTTOM_ACTIONS:
             glyph(els["action-" + n]["hit"])
             hit_rect(els["action-" + n]["hit"])
@@ -446,7 +465,7 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
         hit_rect(pv["hit"])
         tr = els["video-seek"]["track"]
         a(f'<rect x="{tr["left"]}" y="{tr["top"]}" width="{tr["width"]}" height="4" rx="2" fill="#ECEDF0" opacity="0.6"/>')
-        a(f'<rect x="{tr["left"]}" y="{tr["top"]}" width="{r2(tr["width"] * 0.4)}" height="4" rx="2" fill="{acc}"/>')
+        a(f'<rect x="{tr["left"]}" y="{tr["top"]}" width="{r2(tr["width"] * 0.4)}" height="4" rx="2" fill="{sphere}"/>')
         a(f'<circle cx="{r2(tr["left"] + tr["width"] * 0.4)}" cy="{r2(tr["top"] + 2)}" r="8" fill="#ECEDF0"/>')
         hit_rect(els["video-seek"]["hit"])
         for k in ("video-elapsed", "video-duration"):
@@ -536,17 +555,18 @@ def legibility():
     rows = []
     white = (255, 255, 255)
     black = (0, 0, 0)
-    pill = PILL_FILL
     for bg_name, bg in (("bright photo (white worst case)", white), ("dark photo (black)", black)):
         scrim = over(black, SCRIM_ALPHA, bg)
-        pill_on = over(pill, PILL_ALPHA, bg)
+        pill_on = over(PILL_FILL, PILL_ALPHA, bg)
         rows.append({"background": bg_name,
                      "metadata_text_on_35pct_scrim": r2(contrast(INK, scrim)),
                      "metadata_text_on_60pct_local_scrim": r2(contrast(INK, over(black, 0.60, bg))),
-                     "icon_on_pill": r2(contrast(INK, pill_on)),
-                     "pill_vs_background": r2(contrast(pill_on, bg)),
-                     "accent_ring_dark_vs_bg": r2(contrast(ACCENT["dark"], bg)),
-                     "accent_ring_light_vs_bg": r2(contrast(ACCENT["light"], bg))})
+                     "icon_on_top_pill": r2(contrast(INK, pill_on)),
+                     "icon_on_lapis_slab": r2(contrast(ON_BRAND, SLAB_FILL)),
+                     "slab_vs_background": r2(contrast(SLAB_FILL, bg)),
+                     "sphere_vs_background": r2(contrast(SPHERE, bg)),
+                     "white_ring_vs_background": r2(contrast(white, bg)),
+                     "ring_with_black_keyline_vs_background": r2(max(contrast(white, bg), contrast(black, bg)))})
     return rows
 
 
@@ -555,7 +575,7 @@ STATES = [
     # label, layout kwargs, photo tone, theme, overlay note
     ("light theme · bright photo", {}, "bright", "light", "viewer ground stays black"),
     ("dark theme · bright photo", {}, "bright", "dark", "default look"),
-    ("dark theme · dark photo", {}, "dark", "dark", "pill edge faint; icons 14.7:1"),
+    ("dark theme · dark photo", {}, "dark", "dark", "lapis slab carries the actions"),
     ("chrome + system bars hidden", {"chrome": False}, "bright", "dark", "tap media again to show"),
     ("no place", {"place": None}, "bright", "dark", "date · time only"),
     ("no date and place", {"date": False}, "bright", "dark", "no metadata row, no placeholder"),
@@ -576,7 +596,8 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
     k = {key: v for key, v in kw.items() if not key.startswith("_")}
     lay = layout(vp, **k)
     W, H = vp["W"], vp["H"]
-    acc = "#%02X%02X%02X" % ACCENT[theme]
+    sph = "#%02X%02X%02X" % SPHERE
+    slab = "#%02X%02X%02X" % SLAB_FILL
     o = [f'<g transform="translate({r2(x0)},{r2(y0)}) scale({scale})">',
          f'<rect width="{W}" height="{H}" fill="#000"/>']
     if tone != "none":
@@ -592,11 +613,14 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
     if "scrim" in els:
         o.append(f'<rect width="{W}" height="{els["scrim"]["box"]["bottom"]}" fill="#000" opacity="0.35"/>')
     pill = "#%02X%02X%02X" % PILL_FILL
-    for name in ("back", "top-group", "action-pill"):
+    for name in ("back", "top-group"):
         if name in els:
             v = els[name]["visible"]
             o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" '
                      f'rx="{r2(v["height"] / 2)}" fill="{pill}" opacity="{PILL_ALPHA}"/>')
+    if "action-pill" in els:
+        v = els["action-pill"]["visible"]
+        o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{SLAB_R}" fill="{slab}"/>')
     if st == "error" and "action-pill" in els:
         for n in ("favourite", "edit", "share"):
             h = els["action-" + n]["hit"]
@@ -607,10 +631,12 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
     if "filmstrip" in els:
         for t in els["filmstrip"]["tiles"]:
             v = t["visible"]
-            o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="4" fill="#8E8E93"/>')
+            o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="#8E8E93"/>')
             if t.get("current"):
                 rg = t["ring"]
-                o.append(f'<rect x="{rg["left"]}" y="{rg["top"]}" width="{rg["width"]}" height="{rg["height"]}" rx="5" fill="none" stroke="{acc}" stroke-width="2"/>')
+                o.append(f'<rect x="{rg["left"]}" y="{rg["top"]}" width="{rg["width"]}" height="{rg["height"]}" rx="{TILE_R + 2}" fill="none" stroke="#FFFFFF" stroke-width="2"/>')
+                sp = t["sphere"]
+                o.append(f'<circle cx="{r2((sp["left"] + sp["right"]) / 2)}" cy="{r2((sp["top"] + sp["bottom"]) / 2)}" r="{SPHERE_D / 2}" fill="{sph}"/>')
         if kw.get("_long"):
             b = els["filmstrip"]["band"]
             o.append(f'<rect x="{b["left"]}" y="{b["top"]}" width="24" height="{b["height"]}" fill="#000" opacity="0.6"/>')
@@ -641,8 +667,8 @@ def states_svg(vp):
     o = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {r2(vw)} {r2(vh)}" font-family="Inter, Arial, sans-serif">',
          f'<title>PROPOSED target state matrix — {vp["name"]}</title>',
          f'<rect width="{r2(vw)}" height="{r2(vh)}" fill="#FFFFFF"/>',
-         f'<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Quiet Frame viewer states — {vp["name"]} (target concept, not captures)</text>',
-         f'<text x="8" y="30" font-size="8.5" fill="#4A4F59">Geometry from generate_target.py; insets from {vp["source"]}. Light/dark differ only in accent ring colour; viewer ground is black in both.</text>']
+         f'<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Lapis Atlas viewer states — {vp["name"]} (target concept, not captures)</text>',
+         f'<text x="8" y="30" font-size="8.5" fill="#4A4F59">Geometry from generate_target.py; insets from {vp["source"]}. Viewer ground is black in both themes; slab, sphere and ring are the same in both.</text>']
     for i, (label, kw, tone, theme, note) in enumerate(STATES):
         x = 8 + (i % cols) * cw
         y = 42 + (i // cols) * chh
@@ -714,7 +740,7 @@ def interaction_svg(vp):
         "3  Strip drag: horizontal slop inside the band scrubs; tap = nearest tile centre.",
         "   Consumed; never toggles chrome.",
         "4  Buttons: 48 dp hit rects; a press that slides off cancels.",
-        "5  Media: single tap toggles chrome + system bars (250 ms fade, waits out",
+        "5  Media: single tap toggles chrome + system bars (200 ms Lift, waits out",
         "   the double-tap timeout); double-tap zoom x2.31; pinch; horizontal = pager;",
         "   swipe up = Details; swipe down = close (unzoomed only).",
         "",
@@ -769,7 +795,7 @@ def main():
             kw = dict(SCENARIOS)[sname]
             lay = layout(vp, **kw)
             chk = checks(vp, lay)
-            title = f'PROPOSED Quiet Frame viewer target — {vp["name"]} — {sname}'
+            title = f'PROPOSED Lapis Atlas viewer target — {vp["name"]} — {sname}'
             sub = ("Target concept, NOT a runtime capture. Insets/cutout copied from the measured frame named "
                    "below; every other rectangle is proposed.")
             svg = svg_layout(vp, lay, title, sub, legend_for(vp, lay, chk),
@@ -825,7 +851,7 @@ def write_tables(base, out):
             elif el == "tile-0":
                 t = els["filmstrip"]["tiles"][0]
                 pv, ph = fmt_r(t["visible"]), fmt_r(t["hit"])
-                ok = "width ✗ (C1)"
+                ok = "✓" if t["hit"]["width"] >= 48 and t["hit"]["height"] >= 48 else "✗"
             else:
                 pv = fmt_r(els[el]["visible"]) if "visible" in els[el] else ("inside top pill" if el.startswith("top-") else "inside action pill")
                 ph = fmt_r(els[el]["hit"])
@@ -862,12 +888,12 @@ def write_tables(base, out):
     a("")
     a("### T4. Legibility (WCAG contrast ratios, computed)")
     a("")
-    a("| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on pill | Pill vs photo | Accent ring (dark) | Accent ring (light) |")
-    a("|---|---|---|---|---|---|---|")
+    a("| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline |")
+    a("|---|---|---|---|---|---|---|---|---|")
     for row in out["legibility"]:
         a(f'| {row["background"]} | {row["metadata_text_on_35pct_scrim"]} | {row["metadata_text_on_60pct_local_scrim"]} | '
-          f'{row["icon_on_pill"]} | {row["pill_vs_background"]} | {row["accent_ring_dark_vs_bg"]} | '
-          f'{row["accent_ring_light_vs_bg"]} |')
+          f'{row["icon_on_top_pill"]} | {row["icon_on_lapis_slab"]} | {row["slab_vs_background"]} | '
+          f'{row["sphere_vs_background"]} | {row["white_ring_vs_background"]} | {row["ring_with_black_keyline_vs_background"]} |')
     a("")
     (HERE / "tables.md").write_text("\n".join(L) + "\n")
 
@@ -896,7 +922,7 @@ def write_gesture_page(base, out):
         a("- Bottom chrome is anchored to `safeDrawing`, which includes the gesture bar, so the action")
         a("  pill stays 12 dp above it whatever its height.")
         a("- No hit rect may enter `mandatorySystemGestures` (bottom).")
-        a("- Strip and seek bands request side exclusion rects (56 + 48 = 104 dp per edge, under 200 dp).")
+        a("- Strip and seek bands request side exclusion rects (76 + 48 = 124 dp per edge, under 200 dp).")
         a("- Taps on back, top actions and play inside a side back-gesture zone still reach the app.")
         (HERE / "GESTURE_NAV.md").write_text("\n".join(L) + "\n")
         return
@@ -952,7 +978,7 @@ def write_gesture_page(base, out):
     a("Reading the side-zone column: a hit rect inside the back-gesture zone still receives **taps** "
       "(the system takes only horizontal swipes from the edge). Drags that must not become Back (strip "
       "scrub, seek) request exclusion rects over their bands while chrome is shown; the per-edge total "
-      "is 56 + 48 = 104 dp, inside Android's 200 dp limit. Back, top actions and play are taps only, so "
+      "is 76 + 48 = 124 dp, inside Android's 200 dp limit. Back, top actions and play are taps only, so "
       "they need no exclusion.")
     a("")
     a("Diagrams: `svg/portrait-gesture--*.svg`, `svg/landscape-gesture--*.svg`.")

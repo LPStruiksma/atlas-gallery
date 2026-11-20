@@ -19,5 +19,5 @@ What the target assumes until then (to verify on that capture):
 - Bottom chrome is anchored to `safeDrawing`, which includes the gesture bar, so the action
   pill stays 12 dp above it whatever its height.
 - No hit rect may enter `mandatorySystemGestures` (bottom).
-- Strip and seek bands request side exclusion rects (56 + 48 = 104 dp per edge, under 200 dp).
+- Strip and seek bands request side exclusion rects (76 + 48 = 124 dp per edge, under 200 dp).
 - Taps on back, top actions and play inside a side back-gesture zone still reach the app.
