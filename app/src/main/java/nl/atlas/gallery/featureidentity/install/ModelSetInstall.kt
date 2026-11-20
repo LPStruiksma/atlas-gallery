@@ -168,7 +168,15 @@ class ModelSetInstall(
      * be used and the sheet shows it as not installed, so it must not hold hundreds of MB out of
      * sight. Waits for a running install of the same folder to stop first.
      */
-    fun discardUnfinished(): Boolean = synchronized(lock) { if (installed()) false else { removeAll(); true } }
+    fun discardUnfinished(): Boolean = discardUnfinished { true }
+
+    /**
+     * As [discardUnfinished], but [stillCancelled] is asked again once the folder lock is held, so
+     * a stale "cancelled" reading never deletes the files of a run the user started afterwards.
+     */
+    fun discardUnfinished(stillCancelled: () -> Boolean): Boolean = synchronized(lock) {
+        if (!stillCancelled() || installed()) false else { removeAll(); true }
+    }
 
     /** "Remove": deletes every model file, marker and partial download of the set, after any running install stopped. */
     fun removeAll(): Boolean = synchronized(lock) { entries.map { store.remove(it) }.all { it } }
@@ -185,6 +193,19 @@ data class InstallWork(
     val failure: InstallFailure? = null
 ) {
     enum class Phase { QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED }
+}
+
+/**
+ * The notification's Cancel is WorkManager's own cancel intent: it runs no app code, and when the
+ * work is only queued (waiting for a connection or a retry) no worker runs to clean up either.
+ * The installer therefore applies this rule to every work update it sees, in any app process,
+ * including the one that intent starts: cancelled unique work means the unfinished set goes.
+ * Only the user cancels this work (the sheet, the notification or Remove); the system stops it
+ * without cancelling, so a stop for lost connection keeps the partial file.
+ */
+object CancelledWorkCleanup {
+    fun apply(work: InstallWork?, set: ModelSetInstall, stillCancelled: () -> Boolean): Boolean =
+        work?.phase == InstallWork.Phase.CANCELLED && set.discardUnfinished(stillCancelled)
 }
 
 /** Pure mapping from work + disk to the sheet's state; the JVM tests cover every branch. */

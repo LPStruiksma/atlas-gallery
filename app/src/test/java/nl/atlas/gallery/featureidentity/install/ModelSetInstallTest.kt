@@ -173,6 +173,63 @@ class ModelSetInstallTest {
         assertEquals(emptyList<String>(), modelFiles())
     }
 
+    @Test fun notificationCancelWhileQueuedDeletesThePartialThroughTheCancelledWorkRule() {
+        // The notification's Cancel is WorkManager's cancel intent: no worker runs and no app code
+        // is called. All the installer later sees is the unique work in the CANCELLED phase.
+        val a = Random(8).nextBytes(500_000)
+        val ea = entry("a", a)
+        File(root, IdentityModelStore.DIR).apply { mkdirs() }.let { File(it, "a.onnx.part").writeBytes(a.copyOf(200_000)) }
+        val studio = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, listOf(ea), root) { Long.MAX_VALUE }
+
+        // Queued or running work is never touched, and neither is a cancel the user has since
+        // overtaken with a new start (re-read under the folder lock).
+        assertFalse(CancelledWorkCleanup.apply(InstallWork(InstallWork.Phase.QUEUED), studio) { true })
+        assertFalse(CancelledWorkCleanup.apply(InstallWork(InstallWork.Phase.RUNNING), studio) { true })
+        assertFalse(CancelledWorkCleanup.apply(null, studio) { true })
+        assertFalse(CancelledWorkCleanup.apply(InstallWork(InstallWork.Phase.CANCELLED), studio) { false })
+        assertEquals(listOf("a.onnx.part"), modelFiles())
+
+        assertTrue(CancelledWorkCleanup.apply(InstallWork(InstallWork.Phase.CANCELLED), studio) { true })
+        assertEquals(emptyList<String>(), modelFiles())
+    }
+
+    @Test fun cancelledWorkRuleWaitsForARunningWorkerAndRechecksUnderTheLock() {
+        // A new run started after the cancel holds the folder lock; the stale cancelled reading
+        // must wait for it and then see that a newer run exists, keeping its files.
+        val a = Random(9).nextBytes(1_000_000)
+        val ea = entry("a", a)
+        val inRead = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val store = IdentityModelStore(root) { _, offset ->
+            FetchResponse(object : InputStream() {
+                val src = ByteArrayInputStream(a, offset.toInt(), a.size - offset.toInt())
+                override fun read(): Int = src.read()
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    inRead.countDown(); release.await(10, TimeUnit.SECONDS); return src.read(b, off, len)
+                }
+            }, resumed = true)
+        }
+        val newer = AtomicBoolean(true)
+        val worker = ModelSetInstall(store, listOf(ea), root) { Long.MAX_VALUE }
+        val thread = Thread { worker.run({ false }) { } }.apply { start() }
+        assertTrue(inRead.await(10, TimeUnit.SECONDS))
+        val studio = ModelSetInstall(IdentityModelStore(root) { _, _ -> error("no fetch") }, listOf(ea), root) { Long.MAX_VALUE }
+        val checkedAt = Collections.synchronizedList(mutableListOf<String>())
+        val cleaner = Thread {
+            CancelledWorkCleanup.apply(InstallWork(InstallWork.Phase.CANCELLED), studio) {
+                checkedAt += if (thread.isAlive && !worker.installed()) "during-run" else "after-run"
+                !newer.get()
+            }
+        }.apply { start() }
+        Thread.sleep(200)
+        assertEquals(emptyList<String>(), checkedAt.toList()) // blocked on the lock, not yet asked
+        release.countDown()
+        thread.join(10_000)
+        cleaner.join(10_000)
+        assertEquals(listOf("after-run"), checkedAt.toList())
+        assertTrue(studio.installed())
+    }
+
     @Test fun cancelAfterTheFirstFileDropsTheHalfInstalledSetButKeepsAFullSet() {
         val a = Random(6).nextBytes(300_000)
         val b = Random(7).nextBytes(300_000)

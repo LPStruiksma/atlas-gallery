@@ -39,3 +39,14 @@ test('the engine never downloads: load/generate code does not reach the installe
   const engine = readFileSync(join(SRC, 'featureidentity/local/LocalFaceSwapEngine.kt'), 'utf8');
   assert.doesNotMatch(engine, /IdentityModelInstaller|HttpsModelFetcher|\.install\(/);
 });
+
+test('notification Cancel frees the space without a running worker (#621 review)', () => {
+  const installer = readFileSync(INSTALLER, 'utf8');
+  assert.match(installer, /CancelledWorkCleanup\.apply\(/);
+  assert.match(installer, /IdentityModelInstallWorker\.clearNotification\(context\)/);
+  const app = readFileSync(join(SRC, 'AtlasApplication.kt'), 'utf8');
+  assert.match(app, /IdentityModelInstaller\.watch\(this@AtlasApplication\)/);
+  assert.match(app, /Dispatchers\.IO\)\.launch \{\s*runCatching \{ IdentityModelInstaller\.watch/);
+  const worker = readFileSync(WORKER, 'utf8');
+  assert.match(worker, /createCancelPendingIntent/);
+});

@@ -43,6 +43,11 @@ class IdentityModelInstallWorker(context: Context, params: WorkerParameters) : C
         /** WorkManager's own foreground service (named, not imported: it is library-internal API). */
         private const val WORK_FOREGROUND_SERVICE = "androidx.work.impl.foreground.SystemForegroundService"
         private const val DATA_SYNC_PERMISSION = "android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+
+        /** Drops the progress notification, also one a killed process left behind. */
+        fun clearNotification(context: Context) {
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
+        }
     }
 
     private val entries = IdentityModelManifest.entries
@@ -64,7 +69,7 @@ class IdentityModelInstallWorker(context: Context, params: WorkerParameters) : C
             )
             notifyProgress(state)
         }
-        clearNotification()
+        clearNotification(applicationContext)
         when (outcome) {
             ModelSetInstall.Outcome.Installed -> Result.success()
             ModelSetInstall.Outcome.Blocked -> Result.failure()
@@ -152,7 +157,4 @@ class IdentityModelInstallWorker(context: Context, params: WorkerParameters) : C
         try { manager.notify(NOTIFICATION_ID, notification(state)) } catch (_: SecurityException) { }
     }
 
-    private fun clearNotification() {
-        manager().cancel(NOTIFICATION_ID)
-    }
 }

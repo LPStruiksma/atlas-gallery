@@ -47,6 +47,12 @@ class IdentityModelInstaller private constructor(
 
         @Volatile private var instance: IdentityModelInstaller? = null
 
+        /**
+         * Called from the app's start (off Main), so a Cancel tapped on a notification left by a
+         * killed process, which starts the process, still frees the space (see [CancelledWorkCleanup]).
+         */
+        fun watch(context: Context) { get(context) }
+
         /** The installer for the OD-1 model set. */
         fun get(context: Context): IdentityModelInstaller = instance ?: synchronized(this) {
             instance ?: IdentityModelInstaller(
@@ -82,7 +88,16 @@ class IdentityModelInstaller private constructor(
         val set = install(context, entries)
         if (refusedReason != null && !set.blocked()) return@combine InstallState.Failed(refusedReason)
         val dismissed = prefs.getString(DISMISSED, null)
-        val work = infos.lastOrNull()?.takeIf { it.id.toString() != dismissed }?.let(::snapshot)
+        val latest = infos.lastOrNull()?.takeIf { it.id.toString() != dismissed }
+        val work = latest?.let(::snapshot)
+        if (latest != null && work?.phase == InstallWork.Phase.CANCELLED) {
+            // The notification's Cancel ran no app code: free the space and drop a notification
+            // left behind by a killed process. Re-read under the folder lock, so a newer start wins.
+            CancelledWorkCleanup.apply(work, set) {
+                latestInfo()?.let { it.id == latest.id && it.state == WorkInfo.State.CANCELLED } == true
+            }
+            IdentityModelInstallWorker.clearNotification(context)
+        }
         InstallStateMapper.map(work, set.blocked(), set.installed(), set.doneBytes(), set.totalBytes)
     }.flowOn(Dispatchers.IO).stateIn(scope, SharingStarted.Eagerly, InstallState.NotInstalled)
 
@@ -145,6 +160,8 @@ class IdentityModelInstaller private constructor(
         }
         diskTick.value++
     }
+
+    private fun latestInfo(): WorkInfo? = workManager.getWorkInfosForUniqueWork(workName).get().lastOrNull()
 
     private fun snapshot(info: WorkInfo): InstallWork {
         val phase = when (info.state) {
