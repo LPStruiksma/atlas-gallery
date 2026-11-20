@@ -1,28 +1,73 @@
-# QUALITY-0 — local photo-quality signal feasibility and pure scorers
+# QUALITY-0 — conservative, local whole-photo signals
 
-Unit: [atlas-gallery#668](https://github.com/LPStruiksma/atlas-gallery/issues/668) · Goal: [Vision E #102](https://github.com/LPStruiksma/atlas-gallery/issues/102)
+Unit: [#668](https://github.com/LPStruiksma/atlas-gallery/issues/668) · Goal: [#102](https://github.com/LPStruiksma/atlas-gallery/issues/102)
 
-**Status: INCOMPLETE — Codex task input, not validated evidence or a shipping feature.** Replace this scaffold with a source-backed report and code. Do not treat unmeasured performance, estimated phone values or synthetic tests as human-preference evidence.
+**Status: PARTIAL.** Pure host-independent scorers and synthetic tests exist, but phone performance and human preference accuracy are **NOT MEASURED**. This is feasibility work, not production wiring or a disposal decision.
 
-## Scope and hard boundaries
+## Contract and algorithms
 
-- **No UI, scanner wiring, persistence, automatic hide/delete, MediaStore mutation, Gradle dependencies, private/owner photos, network inference, remote uploads, or new index.** Only pure-Kotlin signal functions, synthetic JVM tests, documentation and reproducible safe benchmark tooling.
-- Touch only `docs/product/QUALITY_0.md`, `docs/product/STACKS.md` where needed, `tools/quality_bench/**`, and new files under `app/src/main/java/nl/atlas/gallery/featurecuration/quality/` and `app/src/test/java/nl/atlas/gallery/featurecuration/quality/`. Remain within 12 changed paths and a single commit/format-patch for the trusted apply workflow. Do not modify build or workflow files.
-- In host-independent Kotlin, accept pixels or precomputed observation data as primitive arrays and simple values, without Android Bitmap or ML dependencies. Define clear image dimensions, stride, color transfer, grayscale, downscale, alpha/masked-pixel, minimum-valid-sample and invalid-input behavior; keep CPU work and intermediate allocation bounded. Sharpness must not be an unguarded sole winner.
-- Implement deterministic, separately observable *whole-frame blur* (e.g. variance of a 4-neighbour discrete Laplacian on a bounded luminance thumbnail), *exposure* (e.g. clipped-dark, clipped-light fractions and histogram spread), and *face-eye/smile evidence aggregation* that consumes only existing authorised face-landmark observations if present; missing landmarks mean `unknown`, never presumed closed eyes. Research existing `FaceQuality` and COVER-1 #165 rather than adding another face detector or claiming landmark availability.
-- Aesthetics: do not ship head weights, model checkpoints, or dataset images unless primary-source licence/redistribution rights for every training asset and the weights have been verified. Existing SigLIP 2 embeddings may be referenced conceptually, but no fake score or fabricated training. If legally/reproducibly infeasible, report an unimplemented optional head with exact blockers and a model-free fallback.
-- Keeper rule: frame ranking is advisory inside a known stack, with user override and established RAW/edit preference always ahead of signals. Hard negatives include intentional shallow-depth blur, night/low-key scenes, backlit silhouettes, long exposure or motion, monochrome/high-key scenes, faces not looking at camera, no face, crops, and screenshots/text. Missing signals must not penalise by default. Include abstain/tie behavior and never rank a distinct image as disposable.
-- Check alignment with [STACKS.md](STACKS.md) existing top-pick rule (#574), and state clearly that QUALITY-0 does not yet connect to `StackGroupingRules`, Stories or TIDY; implementation would be QUALITY-1.
+`PhotoQualitySignals.analyseArgb8888` accepts an ARGB8888 `IntArray`, positive width/height, and a pixel stride at least width. The last addressed pixel must exist. Invalid shapes return unknown signals. It samples a regular thumbnail with longest edge at most 256 without allocating an image; alpha below 128 is masked. At least 64 valid samples are required. This bounds storage to 65,536 doubles plus a 256-bin histogram and bounds work to O(256²). Sampling is deterministic but can alias periodic detail; a future integration should use an area prefilter.
 
-## Evidence deliverables
+Channels are decoded from sRGB to linear light: `c/12.92` at `c <= 0.04045`, otherwise `((c+0.055)/1.055)^2.4`; luminance is `0.2126R + 0.7152G + 0.0722B`. For each valid non-border pixel whose four neighbours are valid, `L = north + south + east + west - 4*centre`. Blur evidence is population variance `sum((L-mean)^2)/N`, computed with Welford's algorithm. Larger is more local edge energy, not proof of a better or focused photograph. A minimum 64 valid Laplacians is independently required.
 
-1. Write `docs/product/QUALITY_0.md` with formulas and normalisation, domain limitations, signal validity masks, thresholds flagged provisional where not calibrated, combined conservative keeper rule, licence matrix with primary-source URLs and access dates, benchmarking methodology, and follow-up QUALITY-1.
-2. Include synthetic JVM tests for flat images, alternating edges, blurred stripes, all-black/all-white, normally exposed patterns, over/underexposure, incomplete/empty/mismatched arrays, deterministic ties, missing landmarks, and hard negatives/abstentions. Show fail-before/pass-after when runnable; otherwise give exact commands and `NOT RUN` rather than asserting a pass.
-3. Add a small, reproducible `tools/quality_bench/**` harness which uses only generated or independently licensed image fixtures. Report actual host per-image timings only if code was executed, recording CPU/platform, Kotlin/JVM or Python version, image dimensions, sample count, warm-ups, p50/p95 and memory where measured. Separate algorithm timing from image decode and embeddings; do not equate either with S24+ runtime.
-4. Human preference study: pairwise best-shot accuracy must compare predictions against licensed, human-labelled pairs with clear reference and inclusion criteria; record number of pairs, annotator source, split/leakage control, class balance and confidence interval. For synthetic fixtures, explicitly `NOT MEASURED` — passing synthetic signal tests is not pairwise human agreement. Do not assume AVA or LAION-Aesthetics licences permit every image, label or derivative weight; verify components separately.
-5. Estimate S24+ Exynos/Snapdragon cost with a clearly labelled *estimate*, explicit megapixel/thumb dimensions, device clock assumptions, per-image CPU work, 150k-photo batch cost and uncertainty. Unmeasured phone benchmarks and licensed-pair evaluation must remain `NOT MEASURED`.
-6. End the report with a status matrix `MEASURED / ESTIMATED / NOT MEASURED / BLOCKED`, exact verification commands and missing acceptance criteria; never claim QUALITY-0 fully done while required evidence is absent.
+Exposure uses a 256-bin histogram of linear luminance. Dark clipping is bins 0–5, light clipping bins 250–255, each divided by valid sample count; spread is `p95-p05`. Quantiles select the first bin reaching the requested cumulative count. These cutoffs, the keeper 0.25 clip limit, 0.08 spread limit and 0.002 variance margin are **provisional, not calibrated**.
 
-## Output and relay
+Every signal is nullable. Masked borders, small inputs, malformed arrays, or insufficient observations yield unknown, not zero. Face aggregation consumes caller-supplied authorised `leftEyeOpen`, `rightEyeOpen`, and `smile` observations. It performs no detection. Missing eyes or smiles remain unknown; it never infers closed eyes. Existing `featureface/FaceQuality` is a face-crop sharpness/pose input and COVER-1/#165 remains the detector owner; QUALITY-0 does not duplicate either.
 
-Make one self-contained commit on the supplied PR head, then reply with a single parent-bound `git format-patch -1 --stdout` fenced `diff` block. Include `Parent: <expected full 40-character PR-head SHA>` **in the patch mail header** before its `---` separator. No extra fences, deletes, renames, binary files or protected-path edits. Never read, search or print `eval/held-out/**`. Do not push, claim, review, merge or label. The ChatGPT Dev driver verifies the trusted auto-apply receipt and exact-head hosted CI before Review.
+## Conservative keeper policy
+
+The rule applies only inside a stack already established by another subsystem. Existing user preference and established edit/RAW preference is first. Multiple preferred files cause abstention. Then all candidates must have whole-photo blur and exposure observations. Any missing value, hard-negative flag, potentially distinct image, material clipping/low spread, or top-two tie inside the provisional margin causes abstention. Only a clear blur difference among otherwise safe observations produces an advisory suggestion. IDs only make sorting deterministic; they never break a quality tie. User override always wins, and no result authorises hiding, deletion, or treating a distinct image as disposable.
+
+Hard negatives that the caller must conservatively flag include intentional shallow depth of field, night/low-key scenes, backlit silhouettes, long exposure or motion, monochrome/high-key scenes, faces looking away, no face, crops, and screenshots/text. This list is deliberately over-inclusive because sharpness must not be an unguarded sole winner.
+
+QUALITY-0 does not connect to `StackGroupingRules`, Stories, TIDY, scanning, persistence, or UI. QUALITY-1 would require calibrated thresholds, stack-only integration, explanations, user override, telemetry-free validation, and independent safety/review approval.
+
+## Licence and aesthetics decision
+
+Access checked 2026-11-20. No external image, label, model weight, or private photo is included.
+
+| Component | Primary source | Licence/redistribution finding | Decision |
+|---|---|---|---|
+| sRGB transfer and luminance constants | [IEC 61966-2-1 catalogue](https://webstore.iec.ch/en/publication/6169) | Standard is copyrighted; formulas are implemented, no standard text redistributed | allowed implementation reference |
+| Kotlin | [Kotlin licence](https://github.com/JetBrains/kotlin/blob/master/license/LICENSE.txt) | Apache-2.0 toolchain; no new runtime dependency | existing toolchain only |
+| AVA | [authors' project](https://people.csail.mit.edu/xiao/ava/) | Page describes research dataset; this task did not verify redistribution rights for every underlying image/label | **BLOCKED** for inclusion/training |
+| LAION-Aesthetics | [official repository](https://github.com/LAION-AI/aesthetic-predictor) | Repository licensing does not establish rights to every referenced image or derived checkpoint for this product | **BLOCKED** pending legal/asset-chain review |
+| SigLIP 2 | [Google Research paper](https://arxiv.org/abs/2502.14786) | Concept only; checkpoint and training-asset redistribution chain not verified here | no weights/head shipped |
+| Synthetic fixtures | generators in tests and `tools/quality_bench/bench.py` | Original deterministic numeric patterns; no third-party assets | included |
+
+An aesthetic head is therefore unimplemented. No licence approval, model score, checkpoint, or preference result is claimed. The fallback is the model-free, nullable evidence above.
+
+## Evidence and benchmark methodology
+
+JVM tests generate flat fields, alternating edges, blurred stripes, black/white and mid-range patterns, malformed/masked/small inputs, missing landmarks, ties, preferred edits, clipping, and hard-negative abstention. These validate mechanics only.
+
+The Python harness generates luminance through a fixed LCG and times only an analogue of the Laplacian loop after warm-up. Decode, ARGB/sRGB conversion, exposure histogram, face work and embeddings are excluded. It prints host, Python, dimensions, samples, warm-ups, p50/p95 and memory status. A local result may vary and is not an Android/Kotlin result.
+
+**MEASURED locally 2026-11-20:** Linux 6.18.57 x86_64, Python 3.12.13, 256×192, 10 warm-ups and 50 samples produced p50 16.616 ms and p95 18.202 ms. Decode was excluded and memory was **NOT MEASURED**. This is a Python harness measurement only, not a Kotlin or S24+ estimate.
+
+Human best-shot agreement: **NOT MEASURED**. Pair count, annotators, inclusion criteria, split/leakage control, class balance, confidence interval and pairwise accuracy are all **NOT MEASURED** because no verified licensed, human-labelled pair set was available. Synthetic tests must not be interpreted as human agreement.
+
+### S24+ estimate (not measured)
+
+**ESTIMATED**, not benchmarked: a 256×192 thumbnail has 49,152 samples and about 48,260 interior Laplacians. Assuming integration already supplies/downscales pixels and a mobile CPU sustains roughly 20–100 million scalar operations/s, approximately 1–5 ms/image for signal arithmetic is a planning range. Decode/downscale and thermal/background scheduling could dominate. At 150,000 photos, serial arithmetic is roughly 2.5–12.5 minutes; allowing decode, I/O, throttling and scheduler overhead makes total elapsed time uncertain by at least an order of magnitude. Exynos and Snapdragon clocks/cores vary by regional SKU and power state; no clock value is asserted. S24+ runtime, energy and peak memory are **NOT MEASURED**.
+
+## Status and verification
+
+| Item | Status | Evidence / missing acceptance criterion |
+|---|---|---|
+| Pure blur/exposure mechanics | MEASURED | synthetic JVM assertions when the listed Gradle test passes |
+| Determinism/abstention mechanics | MEASURED | synthetic JVM assertions only |
+| Host Python loop timing | MEASURED | only when command output is recorded; not Android/Kotlin |
+| S24+ batch cost | ESTIMATED | broad arithmetic range above; device benchmark missing |
+| S24+ p50/p95, energy, memory | NOT MEASURED | representative-device benchmark missing |
+| Human pairwise accuracy/CI | NOT MEASURED | licensed labelled pairs and protocol missing |
+| Aesthetic model/head | BLOCKED | per-asset/label/weight licence chain and evaluation missing |
+| Production integration | NOT MEASURED | explicitly out of scope; QUALITY-1 review missing |
+
+Verification commands:
+
+- `./gradlew :app:testDebugUnitTest --no-daemon --tests 'nl.atlas.gallery.featurecuration.quality.*'`
+- `python3 tools/quality_bench/bench.py --width 256 --height 192 --warmups 10 --samples 50`
+- `python3 -m py_compile tools/quality_bench/bench.py`
+
+QUALITY-0 is not fully done: licensed preference evidence, calibrated thresholds, representative S24+ measurements, accessibility/product review, and safe QUALITY-1 integration remain acceptance gaps.
