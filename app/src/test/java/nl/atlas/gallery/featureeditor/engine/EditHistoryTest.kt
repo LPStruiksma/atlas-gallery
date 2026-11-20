@@ -92,6 +92,13 @@ class EditHistoryTest {
         assertEquals(ops, h.current.operations)
     }
 
+    @Test fun revertAllDiscardsALiveDragWithNothingCommitted() {
+        val h = EditHistory.start(photo).preview(EditOperation.Adjust("a", AdjustParam.EXPOSURE, 0.4)).revertAll()
+        assertTrue(h.displayed.isEmpty)
+        assertTrue(h.commit().committed.isEmpty)
+        assertFalse(h.isDirty)
+    }
+
     @Test fun aiPatchesShareTheOneHistory() {
         val patch = EditOperation.RasterPatch("p", PatchTool.FACE_SWAP, EngineFixtures.hash('a'), NormRect(0.4, 0.2, 0.6, 0.5), 512, 512)
         var h = EditHistory.start(photo)

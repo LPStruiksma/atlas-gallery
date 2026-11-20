@@ -167,6 +167,7 @@ class GeometryState(
             rect.left.coerceIn(0.0, 1.0), rect.top.coerceIn(0.0, 1.0),
             rect.right.coerceIn(0.0, 1.0), rect.bottom.coerceIn(0.0, 1.0),
         ).takeIf { it.isValid() } ?: NormRect.FULL
+        check(polygonArea(cropRegion) > 0.0) { "The picture does not overlap the canvas" }
         if (contains(clamped)) return clamped
         val centre = centroid(cropRegion)
         val tinyW = clamped.width * 1e-6
@@ -288,11 +289,23 @@ internal fun clipToUnitSquare(poly: List<Point2>): List<Point2> {
     return out
 }
 
+/** Unsigned shoelace area; 0 for fewer than three vertices. */
+internal fun polygonArea(poly: List<Point2>): Double {
+    if (poly.size < 3) return 0.0
+    var twice = 0.0
+    for (i in poly.indices) {
+        val a = poly[i]; val b = poly[(i + 1) % poly.size]
+        twice += a.x * b.y - b.x * a.y
+    }
+    return abs(twice) / 2
+}
+
 internal fun centroid(poly: List<Point2>): Point2 =
     Point2(poly.sumOf { it.x } / poly.size, poly.sumOf { it.y } / poly.size)
 
 /** Point-in-convex-polygon test that accepts either winding; [tolerance] in normalized units. */
 internal fun insideConvex(poly: List<Point2>, p: Point2, tolerance: Double): Boolean {
+    if (poly.size < 3) return false // empty or degenerate region contains nothing
     var sign = 0
     for (i in poly.indices) {
         val a = poly[i]; val b = poly[(i + 1) % poly.size]

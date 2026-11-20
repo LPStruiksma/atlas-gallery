@@ -82,7 +82,8 @@ data class NormRect(val left: Double, val top: Double, val right: Double, val bo
 
 /**
  * Four corners in normalized source space, clockwise from top-left. The perspective step pulls
- * these corners to the corners of the picture (keystone correction).
+ * these corners to the corners of the picture (keystone correction). A valid quad is convex,
+ * keeps the picture on one side of the vanishing line and covers at least 5 % of the picture.
  */
 data class Quad(val topLeft: Point2, val topRight: Point2, val bottomRight: Point2, val bottomLeft: Point2) {
     fun points(): List<Point2> = listOf(topLeft, topRight, bottomRight, bottomLeft)
@@ -107,7 +108,10 @@ data class Quad(val topLeft: Point2, val topRight: Point2, val bottomRight: Poin
         } catch (_: IllegalArgumentException) {
             return false
         }
-        return IDENTITY.points().all { c -> h[2, 0] * c.x + h[2, 1] * c.y + h[2, 2] > MIN_W }
+        if (!IDENTITY.points().all { c -> h[2, 0] * c.x + h[2, 1] * c.y + h[2, 2] > MIN_W }) return false
+        // The canvas shows the part of the picture inside the quad, so the quad must overlap
+        // the picture enough to render something (an off-picture quad would be all blank).
+        return polygonArea(clipToUnitSquare(p)) >= MIN_OVERLAP
     }
 
     companion object {
@@ -147,6 +151,7 @@ data class Quad(val topLeft: Point2, val topRight: Point2, val bottomRight: Poin
 
         private const val MAX_KEYSTONE = 0.25
         private const val MIN_W = 0.05
+        private const val MIN_OVERLAP = 0.05
     }
 }
 

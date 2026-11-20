@@ -69,7 +69,7 @@ data class EditHistory(
     fun setComparing(on: Boolean): EditHistory = if (on == comparing) this else copy(comparing = on)
 
     /** Clears every edit back to the original; redo re-applies them one at a time, oldest first. */
-    fun revertAll(): EditHistory = if (applied.isEmpty()) this else copy(
+    fun revertAll(): EditHistory = if (applied.isEmpty() && pending == null) copy(comparing = false) else copy(
         applied = emptyList(),
         redoStack = redoStack + applied.reversed(),
         pending = null,

@@ -86,6 +86,23 @@ class GeometryTest {
         assertFalse(Quad(Point2(0.0, 0.0), Point2(0.0, 1.0), Point2(1.0, 1.0), Point2(1.0, 0.0)).isValid())
         // Convex but wrapping through the vanishing line: refused.
         assertFalse(Quad(Point2(0.0, 0.0), Point2(1.0, 0.25), Point2(0.75, 0.75), Point2(0.25, 1.0)).isValid())
+        // Convex and non-wrapping but entirely off the picture: nothing to render, refused.
+        val offCanvas = Quad(Point2(1.2, 0.0), Point2(1.8, 0.0), Point2(1.8, 1.0), Point2(1.2, 1.0))
+        assertFalse(offCanvas.isValid())
+        assertTrue(EditOperation.Perspective("p", offCanvas).validate() != null)
+        try {
+            RenderPlan.build(EditRecipe(w, h, listOf(EditOperation.Perspective("p", offCanvas))))
+            throw AssertionError("off-canvas quad must be refused")
+        } catch (_: IllegalArgumentException) {
+        }
+        // A GeometryState built around validation still never reports an empty crop as fine.
+        val unchecked = GeometryState(w, h, perspective = offCanvas)
+        assertFalse(unchecked.contains(NormRect.FULL))
+        try {
+            unchecked.effectiveCrop
+            throw AssertionError("empty crop region must not yield a crop")
+        } catch (_: IllegalStateException) {
+        }
         // Full strength on one axis is kept exactly.
         assertEquals(Point2(0.25, 0.0), Quad.fromKeystone(1.0, 0.0).topLeft)
     }

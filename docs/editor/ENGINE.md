@@ -24,7 +24,7 @@ Every tool goes through the same `EditHistory`: adjust, crop, filters, decoratio
 - `undo()` during a drag cancels only the drag. A new commit clears redo.
 - `setComparing(true)` makes `displayed` the untouched original. It never changes the history, and any edit ends the compare.
 - When the editor reopens a saved Atlas edit, the history starts from that recipe, so its steps can be undone back to the original. `isDirty` compares against the starting recipe.
-- `revertAll()` clears every step. Redo brings them back one at a time.
+- `revertAll()` clears every step and any live drag. Redo brings the committed steps back one at a time.
 
 ## Coordinates and stage order
 
@@ -60,7 +60,7 @@ Earlier crop, colour, filter and overlay steps are therefore applied to the AI r
 
 - **Orientation** is one element of the rectangle's 8-element symmetry group, kept in the canonical form "mirror in source, then turn clockwise". Any sequence of user rotations and flips folds into it. Rotating or flipping moves the crop with the display.
 - **Straighten** is stored as the angle the user sees (`-45..45`, clockwise positive). Flipping negates the visible angle while the source-space rotation stays the same, so the photo content doesn't turn.
-- **Perspective** is a convex, clockwise quad in source space that the homography pulls to the picture corners. `Quad.isValid()` also rejects quads whose homography would push part of the picture through the vanishing line. `Quad.fromKeystone(vertical, horizontal)` maps two sliders onto a quad (full strength moves a corner 25 %). When both sliders together would wrap the picture, it scales them down to the strongest valid value.
+- **Perspective** is a convex, clockwise quad in source space that the homography pulls to the picture corners. `Quad.isValid()` also rejects quads whose homography would push part of the picture through the vanishing line, and quads that cover less than 5 % of the picture (an off-picture quad would render blank). `Quad.fromKeystone(vertical, horizontal)` maps two sliders onto a quad (full strength moves a corner 25 %). When both sliders together would wrap the picture, it scales them down to the strongest valid value.
 - **Crop:** `requestedCrop` is what the user chose. `effectiveCrop` shrinks it, keeping its aspect, until it fits inside `cropRegion` (the warped picture clipped to the canvas), so the output never shows empty corners. Because only the effective crop shrinks, moving straighten back to 0 restores the user's crop. `largestCrop(aspect)` gives the centred auto-crop that Samsung's straighten applies.
 - **Taps:** `GeometryState.outputToSource` and `sourceToOutputNormalized` map points within one segment, and `RenderPlan.outputToSource` maps them across every segment. Property tests check that a round trip stays within 0.5 px.
 - **Ultra HDR:** `RenderPlan.gainmap(w, h)` returns a `Geometry` stage for a gainmap at any resolution. It uses the same normalized transform across every segment, and the output size scales with the gainmap. Gainmaps therefore follow every geometry step. Colour stages apply to the SDR base, and EDIT-2 and EDIT-3 decide how to re-weight the gainmap.
