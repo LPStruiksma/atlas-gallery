@@ -534,6 +534,8 @@ class PeopleVisualResumeRetentionTest {
             gapsB1.peopleUnreadable)
         assertEquals("(b1) the named person must stay readable", 0, gapsB1.namedMissing)
         assertEquals("(b1) the visual opt-in must stay on", 0, gapsB1.visualOptInOff)
+        assertEquals("(b1) the visual status total must stay readable", 0,
+            gapsB1.visualTotalUnknown)
         assertEquals("(b1) Pictures must keep every fixture", 0, gapsB1.libraryEmpty)
         assertEquals("(b1) only the inserted face row is queued, no restage",
             base.faceQueued + 1, b1.faceQueued)
@@ -562,6 +564,8 @@ class PeopleVisualResumeRetentionTest {
             gapsB2.peopleUnreadable)
         assertEquals("(b2) the named person must stay readable", 0, gapsB2.namedMissing)
         assertEquals("(b2) the visual opt-in must stay on", 0, gapsB2.visualOptInOff)
+        assertEquals("(b2) the visual status total must stay readable", 0,
+            gapsB2.visualTotalUnknown)
         assertEquals("(b2) Pictures must keep every fixture", 0, gapsB2.libraryEmpty)
         assertEquals("(b2) a delete queues no face row", afterB1.faceQueued, b2.faceQueued)
         assertEquals("(b2) processed face rows survive", afterB1.faceProcessed, b2.faceProcessed)
