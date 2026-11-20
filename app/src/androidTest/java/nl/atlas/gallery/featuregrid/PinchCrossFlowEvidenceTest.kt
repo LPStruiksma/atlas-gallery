@@ -27,6 +27,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -40,6 +41,9 @@ import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.benchmark.BenchmarkReport
 import nl.atlas.gallery.saveUiEvidence
+import nl.atlas.gallery.testkit.advanceVirtualTime
+import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -114,9 +118,7 @@ class PinchCrossFlowEvidenceTest {
         compose.waitUntil(30_000L) {
             compose.onAllNodes(columns(n)).fetchSemanticsNodes().isNotEmpty()
         }
-        // Neighbouring levels are planned after a short idle pause (off the main thread).
-        Thread.sleep(1_500L)
-        compose.waitForIdle()
+        compose.awaitNeighboursPlanned()
     }
 
     private val grid get() = compose.onNodeWithTag("atlas-timeline-grid")
@@ -176,8 +178,8 @@ class PinchCrossFlowEvidenceTest {
         val settled = checkNotNull(boundsOf(tag)) { "$label: anchor photo $tag not shown after settle" }
         assertTrue("$label: anchor photo $settled not under the fingers at ${focusRoot.y}",
             focusRoot.y in settled.top - 1f..settled.bottom + 1f)
-        Thread.sleep(1_000L)
-        compose.waitForIdle()
+        compose.advanceVirtualTime(1_000L)
+        compose.awaitScreenStill("$label one second after the settle")
         val later = checkNotNull(boundsOf(tag))
         assertEquals("$label: late vertical jump", settled.top, later.top, 1f)
         assertEquals("$label: late sideways jump", settled.left, later.left, 1f)
@@ -226,8 +228,7 @@ class PinchCrossFlowEvidenceTest {
 
         if (!dark) return
         // One pinch through several levels: 7 → month overview → year overview.
-        Thread.sleep(1_500L)
-        compose.waitForIdle()
+        compose.awaitNeighboursPlanned()
         focusPoint(.5f).let { focusRoot = it.first; local = it.second }
         val far = Pinch(local, 300f)
         far.to(.5f, 6); saveUiEvidence("flow1-dark-multi-7-12.png")
@@ -312,8 +313,7 @@ class PinchCrossFlowEvidenceTest {
         clearDensity()
         show(fixtures(150_000, distinctFiles = 64), true, "flow1-huge")
         awaitColumns(4)
-        Thread.sleep(3_000L) // the two neighbouring 150k plans
-        compose.waitForIdle()
+        compose.awaitNeighboursPlanned(60_000L) // the two neighbouring 150k plans
         val samples = Collections.synchronizedList(ArrayList<Double>())
         val thread = HandlerThread("frame-metrics-711").apply { start() }
         val listener = android.view.Window.OnFrameMetricsAvailableListener { _, m, _ ->
@@ -334,7 +334,6 @@ class PinchCrossFlowEvidenceTest {
             back.release()
             grid.assert(columns(4))
             window.removeOnFrameMetricsAvailableListener(listener)
-            Thread.sleep(200L)
         } finally {
             thread.quitSafely()
         }
@@ -388,25 +387,17 @@ class PinchCrossFlowEvidenceTest {
  * Note 3 of the design preflight: the landscape ladder, one mid-pinch and one
  * settled frame on the S24+ turned sideways (2340 × 1080).
  */
+/** Neighbouring levels are planned after a short idle pause, off the main thread. */
+private fun ComposeTestRule.awaitNeighboursPlanned(timeoutMs: Long = 30_000L) = awaitThat(
+    "both neighbouring pinch levels planned", timeoutMs) {
+    onAllNodes(SemanticsMatcher.expectValue(CrossNeighboursPlanned, true)).fetchSemanticsNodes().isNotEmpty()
+}
+
 @RunWith(AndroidJUnit4::class)
 class PinchCrossFlowLandscapeEvidenceTest {
     private val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private class LandscapeRule : org.junit.rules.TestRule {
-        override fun apply(base: org.junit.runners.model.Statement,
-            description: org.junit.runner.Description) = object : org.junit.runners.model.Statement() {
-            override fun evaluate() {
-                shell("wm size 2340x1080"); shell("wm density 450")
-                try { base.evaluate() } finally { shell("wm size reset"); shell("wm density reset") }
-            }
-        }
-        private fun shell(command: String) {
-            val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
-        }
-    }
-
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(LandscapeRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule(landscape = true)).around(compose)
 
     @Test fun landscapePinch() {
         InstrumentationRegistry.getInstrumentation().targetContext
@@ -435,8 +426,7 @@ class PinchCrossFlowLandscapeEvidenceTest {
             compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription,
                 "4 columns")).fetchSemanticsNodes().isNotEmpty()
         }
-        Thread.sleep(1_500L)
-        compose.waitForIdle()
+        compose.awaitNeighboursPlanned()
         val grid = compose.onNodeWithTag("atlas-timeline-grid")
         val g = grid.fetchSemanticsNode().boundsInRoot
         val local = Offset(g.width * .6f, g.height * .5f)

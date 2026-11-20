@@ -530,6 +530,12 @@ fun AtlasTimelineGallery(
                     plansVersion++
                 }
             }
+            // Test hook (FLOW-1 evidence): both neighbouring levels are planned, so a
+            // pinch from here draws the entered level from a real plan.
+            val neighboursPlanned = ready != null && plansVersion >= 0 &&
+                listOf(ready.density.ordinal - 1, ready.density.ordinal + 1)
+                    .filter { it in 0..CROSS_MAX_LEVEL }
+                    .all { recentPlans.peek(GridDensity.entries[it]) != null }
             // Toolbar and slider must use what the grid actually displays, not
             // a prior-density latestPlan while a completed cache hit is shown.
             // SideEffect only publishes after a successful composition.
@@ -878,6 +884,7 @@ fun AtlasTimelineGallery(
                         // (Lukas removed the visible button, #494).
                         .semantics {
                             stateDescription = "${ready.density.columns} columns"
+                            crossNeighboursPlanned = neighboursPlanned
                             customActions = buildList {
                                 if (originalCurrent != null) add(
                                     CustomAccessibilityAction(ORIGINAL_PROPORTIONS_ACTION) {

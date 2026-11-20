@@ -2,6 +2,8 @@ package nl.atlas.gallery.featuregrid
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -230,3 +232,7 @@ internal fun crossSettleMillis(from: Float, to: Float, fullMs: Int, minMs: Int):
     if (!distance.isFinite() || distance == 0f) return 0
     return max(minMs, (fullMs * min(distance, 1f)).toInt())
 }
+
+/** Test hook: the timeline grid's neighbouring pinch levels are planned (FLOW-1 evidence waits on it). */
+internal val CrossNeighboursPlanned = SemanticsPropertyKey<Boolean>("AtlasCrossNeighboursPlanned")
+internal var SemanticsPropertyReceiver.crossNeighboursPlanned by CrossNeighboursPlanned
