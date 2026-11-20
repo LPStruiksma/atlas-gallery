@@ -1225,8 +1225,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         enabled = tab == 1 && photoDnaOpen,
         // #604: an on-disk inventory shown before the first real scan is NOT
         // authorization to restore hashes, even if its grant bits still match.
-        freshScan = publishedGallery.scanBoundGrant == grants &&
-            !publishedGallery.fromCache) { record, check ->
+        freshScan = photoDnaPersistentPublicationAllowed(grants, publishedGallery)) { record, check ->
         hashAuthorizedMedia(context.contentResolver, record,
             stillAuthorized = { readGalleryMediaGrant(context) == photoDnaGrant },
             checkCancelled = check)
