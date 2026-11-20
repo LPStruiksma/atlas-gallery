@@ -212,11 +212,21 @@ internal fun peopleHomeRestoring(
 /**
  * #75: while [next]'s people are pending, keep the summary [previous] showed
  * for the same epoch instead of dropping to nothing.
+ * #684: [readGap] means [next] was read for a catalogue a staged-behind
+ * restage keeps readable (or has just replaced), so its missing people are
+ * the store already serving the new epoch, not an empty People: pending
+ * too. Never across a lost photo grant or a failure.
  */
 internal fun holdPendingPeople(
-    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
+    previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?,
+    readGap: Boolean = false
 ): PeopleDiscoveryStatus? {
-    if (next == null || !next.peoplePending || next.people != null) return next
+    if (next == null || next.people != null) return next
+    if (readGap && !next.peoplePending && next.ui.phase != FaceDiscoveryPhase.PERMISSION_REQUIRED &&
+        next.ui.phase != FaceDiscoveryPhase.FAILED) {
+        return holdPendingPeople(previous, next.copy(peoplePending = true))
+    }
+    if (!next.peoplePending) return next
     val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
         ?: return next
     return next.copy(people = held, peoplePending = false)
@@ -228,7 +238,8 @@ internal fun holdPendingPeople(
  */
 internal fun shownPeopleStatus(
     host: PeopleDiscoveryHost, previous: PeopleDiscoveryStatus?, next: PeopleDiscoveryStatus?
-): PeopleDiscoveryStatus? = holdPendingPeople(previous, next)
+): PeopleDiscoveryStatus? =
+    holdPendingPeople(previous, next, next != null && host.restageReadGap(next.displayEpoch))
 
 /**
  * The visual search index panel's facts. It rides on the face discovery run
@@ -769,6 +780,12 @@ internal class PeopleDiscoveryHost(
      * worker holds while it is set; reads keep serving [liveEpoch].
      */
     @Volatile private var stagingEpoch: String? = null
+    /**
+     * #684: the epoch the last staged-behind publication replaced. A status
+     * read that took its scope just before that swap reads this epoch after
+     * the store moved on; see [restageReadGap].
+     */
+    @Volatile private var restagedFrom: String? = null
     /** True only while a scan batch is actually publishing groups for this epoch. */
     @Volatile private var groupingEpoch: String? = null
     /** Real granted worker-session window, never inferred from queued rows. */
@@ -834,6 +851,20 @@ internal class PeopleDiscoveryHost(
     /** #31: true while a readable catalogue already serves [galleryGrant]. */
     fun serves(galleryGrant: String?): Boolean = galleryGrant != null && synchronized(lock) {
         scope?.let { it.galleryGrant == galleryGrant && liveEpoch == it.epoch } == true
+    }
+
+    /**
+     * #684: true when [displayEpoch] is the catalogue a staged-behind restage
+     * keeps readable, or the one it has just replaced. A People read for it
+     * that finds no people met the store already serving the new epoch (the
+     * commit lands before the host swaps), so the screen keeps what it shows.
+     * Only for an opted-in run with no failure and the photo grant current.
+     */
+    fun restageReadGap(displayEpoch: String?): Boolean {
+        if (displayEpoch == null) return false
+        val live = liveEpoch ?: return false
+        val gap = (stagingEpoch != null && displayEpoch == live) || displayEpoch == restagedFrom
+        return gap && synchronized(lock) { optedIn && failure == null } && photoGrantCurrent()
     }
 
     /** True while [epoch] is the live, granted scope of an opted-in run. */
@@ -981,6 +1012,7 @@ internal class PeopleDiscoveryHost(
             scope = null
             liveEpoch = null
             stagingEpoch = null
+            restagedFrom = null
         }
         // Explicit off or real loss of photo access: the next start is a new opt-in.
         optInMemory.save(null)
@@ -1108,7 +1140,8 @@ internal class PeopleDiscoveryHost(
         return true
     }
 
-    private fun publishVisual(faceEpoch: String, inventory: List<FaceVisibleMedia>): Boolean {
+    private fun publishVisual(faceEpoch: String, inventory: List<FaceVisibleMedia>,
+                              keepReadable: Boolean = false): Boolean {
         val store = visualStore ?: return false
         if (!synchronized(lock) { visualOptedIn }) return false
         val epoch = "atlas-visual-" + UUID.randomUUID()
@@ -1119,7 +1152,7 @@ internal class PeopleDiscoveryHost(
         var begun = false
         var done = false
         try {
-            store.beginSnapshot(epoch)
+            store.beginSnapshot(epoch, keepActiveReadable = keepReadable)
             begun = true
             val batch = ArrayList<VisualMedia>(VisualIndexStore.MAX_BATCH)
             val withVideos = visualVideoFramesFor != null
@@ -1179,6 +1212,9 @@ internal class PeopleDiscoveryHost(
             if (begun && !done) {
                 try { store.invalidateSnapshotIfCurrent(epoch) } catch (_: SQLException) { }
             }
+            // #684: a failed or superseded staging leaves no stale staging scope.
+            if (!done && visualScope?.let { it.staging && it.faceEpoch == faceEpoch } == true)
+                visualScope = null
         }
     }
 
@@ -1456,6 +1492,7 @@ internal class PeopleDiscoveryHost(
             scope = null
             liveEpoch = null
             stagingEpoch = null
+            restagedFrom = null
         }
         optInMemory.savePublished(null)
         optInMemory.savePublishedVisual(null)
@@ -1511,6 +1548,14 @@ internal class PeopleDiscoveryHost(
             building = false
             val published = synchronized(lock) {
                 if (!owns(epoch) || !optedIn) return@synchronized false
+                restagedFrom = if (keepReadable) liveEpoch else null
+                // #684: staged behind, the previous visual catalogue keeps its
+                // counts readable for the new face scope until its successor
+                // commits (from this swap on, not after the regroup below);
+                // the worker holds on a staging scope meanwhile.
+                if (keepReadable) visualScope = visualScope?.takeIf {
+                    it.faceEpoch == restagedFrom
+                }?.let { VisualScope(epoch, it.epoch, it.leftOutPhotos, staging = true) }
                 liveEpoch = epoch
                 stagingEpoch = null
                 scope = Scope(epoch, galleryGrant, directory, inventory, publication)
@@ -1527,8 +1572,12 @@ internal class PeopleDiscoveryHost(
                 Log.i("ATLAS_FACE", "publication_ready items=${inventory.size} " +
                     "paused=${synchronized(lock) { pausedByUser }}")
                 regroupIfRulesChanged(epoch)
-                visualScope = null
-                if (synchronized(lock) { visualOptedIn }) publishVisual(epoch, inventory)
+                val keptVisual = keepReadable &&
+                    visualScope?.let { it.staging && it.faceEpoch == epoch } == true
+                if (!keptVisual) visualScope = null
+                if (synchronized(lock) { visualOptedIn })
+                    publishVisual(epoch, inventory, keepReadable = keptVisual)
+                else visualScope = null
             }
             published
         } catch (e: IllegalStateException) {
@@ -1993,7 +2042,12 @@ internal class PeopleDiscoveryHost(
             kept = visualDataKept
             running = optedIn && faceEpoch != null && scope?.epoch == faceEpoch
         }
-        val visual = visualScope?.takeIf { enabled && it.faceEpoch == faceEpoch }
+        val visual = visualScope?.takeIf {
+            enabled && faceEpoch != null && (it.faceEpoch == faceEpoch ||
+                // #684: the store committed the staged face epoch; the host
+                // swaps to it next and keeps this visual scope's counts.
+                (faceEpoch == stagingEpoch && it.faceEpoch == liveEpoch))
+        }
         val progress = visual?.let {
             try { store.progress(it.epoch) } catch (_: SQLException) { null }
         }
