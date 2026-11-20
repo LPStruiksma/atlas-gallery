@@ -164,6 +164,12 @@ suspend fun runPeopleScanBatch(
             "visual_photos_min", visual.indexed,
             SystemClock.elapsedRealtime() - visualStageStartMs
         )
+        // Maintenance starts only after the normal face queue drains. Foreground
+        // Scan now can run unplugged; legacy-quality backfill must never do so.
+        if (!manualForeground && scan.stop == nl.atlas.gallery.featureface.FaceBatchStop.NO_PENDING) {
+            session.qualityBackfill?.run(guard)?.let(session::afterQualityBackfill)
+        }
+        jobContext.ensureActive()
         // Cluster publication and any next batch are the host's decision,
         // made against the same live session checks.
         session.afterBatch(scan, visual)

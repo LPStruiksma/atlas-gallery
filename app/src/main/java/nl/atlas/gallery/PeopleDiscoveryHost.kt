@@ -67,6 +67,8 @@ import nl.atlas.gallery.featureface.FaceBatchStop
 import nl.atlas.gallery.featureface.FaceCatalogPublisher
 import nl.atlas.gallery.featureface.FaceCatalogPublication
 import nl.atlas.gallery.featureface.FaceFrameReader
+import nl.atlas.gallery.featureface.FaceQualityBackfillRunner
+import nl.atlas.gallery.featureface.FaceQualityBackfillResult
 import nl.atlas.gallery.featureface.FaceMediaKey
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
@@ -99,6 +101,7 @@ import nl.atlas.gallery.featureface.work.PeopleScanSession
 import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.PeopleScanWorkScheduler
 import nl.atlas.gallery.featureface.work.PeopleVisualScanStep
+import nl.atlas.gallery.featureface.work.PeopleQualityBackfillStep
 import nl.atlas.gallery.featurevisual.ImageEmbedder
 import nl.atlas.gallery.featurevisual.VisualEmbedOutcome
 import nl.atlas.gallery.featurevisual.VisualKeyframe
@@ -1616,18 +1619,47 @@ internal class PeopleDiscoveryHost(
         }
     }
 
+    /** Keyset cursor is only in memory: restart/re-arm retries skipped NULL rows. */
+    private var qualityCursor: Pair<String, String>? = null
+
     private inner class Session(
         private val owned: Scope, locator: OnDeviceFaceLocator
     ) : PeopleScanSession {
         override val epoch: String get() = owned.epoch
+        private val scanReader = readerFor(owned.directory)
         override val engine = FaceScanEngine(
             scopeEpoch = { if (stagingEpoch == null) liveEpoch else null },
             currentConditions = { conditions(owned.epoch) },
             sourceRevisionCurrent = owned.directory::sourceRevisionCurrent,
             index = PersistedFaceEmbeddingIndexPort(store),
-            reader = readerFor(owned.directory),
+            reader = scanReader,
             locator = locator
         )
+
+        private var lastQualityBackfill: FaceQualityBackfillResult? = null
+        override val qualityBackfill: PeopleQualityBackfillStep? =
+            (locator as? FaceEmbeddingPipeline)?.takeIf { it.supportsQualityOnly }?.let { pipeline ->
+                PeopleQualityBackfillStep { guard ->
+                    val after = synchronized(lock) {
+                        qualityCursor?.takeIf { it.first == owned.epoch }?.second
+                    }
+                    FaceQualityBackfillRunner(
+                        epoch = owned.epoch,
+                        next = { key -> store.pendingQualitySource(owned.epoch, key)
+                            ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
+                                it.embedderVersion == pipeline.embedderVersion } },
+                        store = { source, scores ->
+                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                        reader = scanReader,
+                        scoreOnly = pipeline::scoreWithoutEmbeddings,
+                        canContinue = guard
+                    ).run(after)
+                }
+            }
+
+        override fun afterQualityBackfill(result: FaceQualityBackfillResult) {
+            lastQualityBackfill = result
+        }
 
         override fun currentConditions(): FaceScanConditions = conditions(owned.epoch)
         override fun scopeCurrent(): Boolean = stagingEpoch == null && scopeCurrent(owned.epoch)
@@ -1753,6 +1785,19 @@ internal class PeopleDiscoveryHost(
             val retryPublication = publicationFailed && drained &&
                 publicationFailures.incrementAndGet() <= MAX_PUBLICATION_RETRIES
             val visualNext = nextVisualBatchAfter(visual, stillQueued = visualStillQueued())
+            // Move the quality cursor only after attempting a single source.
+            // No immediate retry of an unreadable/unmatched source: the kept
+            // charging re-arm starts again from the beginning later.
+            // Consume this batch's result so a later scan-only batch cannot
+            // reuse a stale attempted key to advance the cursor or schedule work.
+            val qualityResult = lastQualityBackfill.also { lastQualityBackfill = null }
+            val attempted = qualityResult?.attemptedMediaKey
+            val qualityNext = attempted != null && qualityResult?.held == false &&
+                try { store.pendingQualitySource(owned.epoch, attempted) != null }
+                catch (_: SQLException) { false }
+            if (attempted != null || qualityResult?.held == false) synchronized(lock) {
+                qualityCursor = if (qualityNext) owned.epoch to attempted!! else null
+            }
             // A drained (or absent) visual queue frees the ~100 MB embedder; the
             // next run that has visual work opens it again.
             if (visualNext == NextBatch.NONE) closeEmbedder()
@@ -1761,6 +1806,7 @@ internal class PeopleDiscoveryHost(
                 combineNextBatch(when {
                     publicationContinues -> NextBatch.NOW
                     retryPublication -> NextBatch.LATER
+                    drained && qualityNext -> NextBatch.NOW
                     else -> nextBatchAfter(result.stop)
                 }, visualNext)) {
                 NextBatch.NOW -> scheduler.next()
