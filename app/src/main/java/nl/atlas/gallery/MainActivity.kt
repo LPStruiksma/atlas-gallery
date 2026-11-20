@@ -383,6 +383,19 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     private var stopped = false
     private var pendingVsyncNs = -1L
     private var pendingCached = false
+    private val choreographer = android.view.Choreographer.getInstance()
+    private var currentFrameVsyncNs = -1L
+    private var closed = false
+    // The callback executes before traversal on each Choreographer frame. The
+    // subsequent Photos draw can thus attest to this specific vsync; only
+    // matching completed Window FrameMetrics may be reported as a sample.
+    private val frameCallback = object : android.view.Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (closed || reported || pendingVsyncNs > 0L) return
+            currentFrameVsyncNs = frameTimeNanos
+            choreographer.postFrameCallback(this)
+        }
+    }
     private var originElapsedNs =
         android.os.Process.getStartElapsedRealtime() * 1_000_000L
     private var refreshReported = false
@@ -406,6 +419,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     }
 
     init {
+        choreographer.postFrameCallback(frameCallback)
         window.addOnFrameMetricsAvailableListener(
             listener, android.os.Handler(android.os.Looper.getMainLooper()))
     }
@@ -413,10 +427,11 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     val isWarm: Boolean get() = mode == "warm"
     fun noteDraw(cached: Boolean) {
         if (reported || pendingVsyncNs > 0L) return
-        val vsync = android.view.Choreographer.getInstance().frameTimeNanos
+        val vsync = currentFrameVsyncNs
         if (vsync > 0L) {
             pendingVsyncNs = vsync
             pendingCached = cached
+            choreographer.removeFrameCallback(frameCallback)
         }
     }
     fun refreshed() {
@@ -425,16 +440,25 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
             Log.i("ATLAS_PERF_A1", "event=refreshed pid=${android.os.Process.myPid()} grant=1")
         }
     }
-    fun onStopped() { stopped = true }
+    fun onStopped() {
+        stopped = true
+        choreographer.removeFrameCallback(frameCallback)
+    }
     fun onStarted() {
         if (!stopped) return
         stopped = false
         mode = "warm"
         originElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
         pendingVsyncNs = -1L
+        currentFrameVsyncNs = -1L
         reported = false
+        choreographer.postFrameCallback(frameCallback)
     }
-    fun close() { window.removeOnFrameMetricsAvailableListener(listener) }
+    fun close() {
+        closed = true
+        choreographer.removeFrameCallback(frameCallback)
+        window.removeOnFrameMetricsAvailableListener(listener)
+    }
 }
 
 class MainActivity : ComponentActivity() {
