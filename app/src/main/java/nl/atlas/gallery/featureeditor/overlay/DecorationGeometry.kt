@@ -129,10 +129,7 @@ object DecorationGeometry {
         val local = space.outputToLocal(p, output)
         val tol = space.localTolerance(p, tolerancePx)
         return when (layer) {
-            is StrokeLayer -> {
-                val points = smooth(layer.points).map { it.asPoint() }
-                nearLine(local, points, layer.width / 2 + tol)
-            }
+            is StrokeLayer -> hitStroke(local, smooth(layer.points), layer.width, tol)
             is ShapeLayer -> {
                 val a = layer.start; val b = layer.end
                 val rect = listOf(Point2(a.x, a.y), Point2(b.x, a.y),
@@ -189,6 +186,25 @@ object DecorationGeometry {
     private fun insideRect(p: Point2, a: Point2, b: Point2, expand: Double): Boolean =
         p.x in (minOf(a.x, b.x) - expand)..(maxOf(a.x, b.x) + expand) &&
             p.y in (minOf(a.y, b.y) - expand)..(maxOf(a.y, b.y) + expand)
+
+    /** Mirror the Canvas's smoothed segment widths and pressure-dependent round caps. */
+    private fun hitStroke(p: Point2, points: List<InkPoint>, width: Double, tolerance: Double): Boolean {
+        if (points.size == 1) {
+            val point = points.single()
+            return hypot(p.x - point.x, p.y - point.y) <=
+                width * (point.pressure ?: 1.0) / 2 + tolerance
+        }
+        if (points.all { it.pressure == null }) {
+            return nearLine(p, points.map { it.asPoint() }, width / 2 + tolerance)
+        }
+        return points.zipWithNext().any { (a, b) ->
+            val segmentRadius = width * ((a.pressure ?: 1.0) + (b.pressure ?: 1.0)) / 4
+            nearLine(p, listOf(a.asPoint(), b.asPoint()), segmentRadius + tolerance)
+        } || points.any { point ->
+            hypot(p.x - point.x, p.y - point.y) <=
+                width * (point.pressure ?: 1.0) / 2 + tolerance
+        }
+    }
 
     private fun nearLine(p: Point2, points: List<Point2>, radius: Double): Boolean {
         if (points.isEmpty()) return false

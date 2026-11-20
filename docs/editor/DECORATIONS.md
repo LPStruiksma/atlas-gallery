@@ -49,7 +49,8 @@ explicitly instead of silently dropping stickers.
 `DecorationGeometry.smooth` samples a uniform Catmull-Rom spline between
 captured pen points (8 segments per pair by default, end-point duplication).
 Point pressure, if present, is interpolated and controls per-segment brush
-width. `snappedEnd` constrains lines/arrows to 45-degree increments and
+width. Stroke hit-testing uses the same smoothed per-segment pressure and
+round endpoint radii as the Canvas rasterizer, including single-point strokes. `snappedEnd` constrains lines/arrows to 45-degree increments and
 rectangles/ellipses to equal sides. The persisted endpoint is the snapped
 point; the snapping flag is UI state, not a second correction during export.
 
@@ -84,8 +85,12 @@ the rasterizer must not apply orientation/crop a second time.
 
 `DecorationRasterizer` renders all layers into one transparent Canvas
 `saveLayer`. Ordinary layers use nested alpha layers for stable per-layer
-opacity; a stroke with `ERASER` uses CLEAR on the shared decorations surface.
-Thus it erases preceding strokes/shapes/text/stickers but never photo pixels
+opacity; a stroke with `ERASER` draws an opaque temporary mask which is
+composited once with destination-out (`DST_OUT`) at the saved layer opacity
+onto the shared decorations surface. Overlapping segments therefore do not
+compound partial erasure. Zero opacity is a no-op; full opacity clears all
+covered decorations; intermediate opacity leaves a proportional amount.
+This erases preceding strokes/shapes/text/stickers but never photo pixels
 or decorations drawn later. It is an **overlay eraser**, not the AI/content-aware
 object remover. The source photo stays unchanged. Highlights use alpha
 compositing, rather than destructive changes to the photo. Sticker bitmap
@@ -106,8 +111,9 @@ Atlas's own sticker catalogue can feed the hash-based bitmap resolver.
   updates, smoothing, snapping, z-order, source-space geometry through
   rotate+flip+crop and input validation.
 - `app/src/androidTest/java/nl/atlas/gallery/featureeditor/overlay/DecorationRasterAndroidTest.kt`
-  checks synthetic Canvas pixels: photo-preserving stroke eraser, translucent
-  highlighter, shape fill, text background, content-hashed sticker, and
+  checks synthetic Canvas pixels: photo-preserving stroke eraser at zero/half/full
+  opacity with overlapping segments, translucent highlighter, shape fill, text
+  background, content-hashed sticker, and
   explicit missing-sticker error, PNG encoding and tamper rejection.
 
 No editor panel or export integration is claimed here; EDIT-2/EDIT-10 invoke

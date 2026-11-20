@@ -106,6 +106,30 @@ class DecorationLayersTest {
         assertEquals("editable", DecorationGeometry.hitTopmost(stage.layers, target, space))
     }
 
+    @Test fun strokeSelectionMatchesHighLowPressureAndEndpointCapPixels() {
+        val placement = p.copy(scale = 1.0, rotationDegrees = 0.0, opacity = 1.0)
+        val high = StrokeLayer(placement, StrokeMode.PEN, 0xff000000.toInt(), 0.02,
+            listOf(InkPoint(-0.3, 0.0, 4.0), InkPoint(0.3, 0.0, 4.0)))
+        val low = high.copy(points = listOf(
+            InkPoint(-0.3, 0.0, 0.1), InkPoint(0.3, 0.0, 0.1)))
+        val stage = RenderPlan.build(EditRecipe(200, 200, listOf(
+            EditOperation.OverlayAdd("ink", DecorationCodec.encode(high)))))
+            .stages.filterIsInstance<RenderStage.Overlays>().single()
+        val space = DecorationSpace(200, 200, stage.sourceToOutput)
+        fun hits(layer: StrokeLayer, x: Double, y: Double) = DecorationGeometry.hitTest(
+            layer, space.localToOutput(placement, Point2(x, y)), space, 0.0)
+
+        assertTrue(hits(high, 0.0, 0.03))
+        assertFalse(hits(high, 0.0, 0.05))
+        assertTrue(hits(low, 0.0, 0.0005))
+        assertFalse(hits(low, 0.0, 0.003))
+        assertTrue(hits(high, 0.33, 0.0))
+        assertFalse(hits(low, 0.33, 0.0))
+        val dot = high.copy(points = listOf(InkPoint(0.0, 0.0, 4.0)))
+        assertTrue(hits(dot, 0.03, 0.0))
+        assertFalse(hits(dot, 0.05, 0.0))
+    }
+
     @Test fun zOrderCanMoveAnExistingLayerToTheFrontUsingRecipeOperations() {
         val a = DecorationCodec.encode(EmojiLayer(p.copy(layerId = "a"), "🎨", 0.2))
         val b = DecorationCodec.encode(EmojiLayer(p.copy(layerId = "b"), "🎨", 0.2))

@@ -23,7 +23,7 @@ fun interface DecorationBitmapResolver {
  *
  * Call this AFTER geometry/adjustment/LUT stages. It draws onto the supplied output Canvas,
  * preserving its existing pixels. All decorations are drawn into one transparent saveLayer;
- * PorterDuff.CLEAR erases earlier decorations in that layer, never the underlying photograph.
+ * A composited DST_OUT eraser mask removes earlier decorations in that layer, never the photo.
  * Missing sticker pixels are an error, not silently omitted from a saved export.
  */
 object DecorationRasterizer {
@@ -44,11 +44,17 @@ object DecorationRasterizer {
             stage.layers.forEach { raw ->
                 val layer = DecorationCodec.decode(raw)
                 val p = layer.placement
-                // The eraser must act on the shared decoration layer, not a nested layer.
+                // Composite the complete eraser mask once using destination-out at the
+                // saved opacity. Partial-alpha segments otherwise compound when caps overlap.
                 val clearing = layer is StrokeLayer && layer.mode == StrokeMode.ERASER
                 val alpha = (p.opacity * 255.0).toInt().coerceIn(0, 255)
                 if (alpha == 0) return@forEach
-                val layerSave = if (clearing) canvas.save() else canvas.saveLayerAlpha(bounds, alpha)
+                val erasePaint = if (clearing) Paint().apply {
+                    this.alpha = alpha
+                    xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+                } else null
+                val layerSave = if (clearing) canvas.saveLayer(bounds, erasePaint)
+                    else canvas.saveLayerAlpha(bounds, alpha)
                 try {
                     val values = space.localToOutputMatrix(p).values()
                     val transform = Matrix().apply {
@@ -83,7 +89,7 @@ object DecorationRasterizer {
     private fun stroke(canvas: Canvas, layer: StrokeLayer) {
         val erasing = layer.mode == StrokeMode.ERASER
         val paint = inkPaint(if (erasing) Color.BLACK else layer.colorArgb, layer.width)
-        if (erasing) paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+        // The eraser uses an opaque mask; its alpha is applied once at restore.
         val points = DecorationGeometry.smooth(layer.points)
         if (points.size == 1) {
             paint.style = Paint.Style.FILL
@@ -92,7 +98,10 @@ object DecorationRasterizer {
             return
         }
         if (points.any { it.pressure != null }) {
-            // Pressure is optional per point. Draw a smooth variable-width ribbon.
+            // Variable-width segments and per-point discs match hit-test radii.
+            paint.style = Paint.Style.FILL
+            canvas.drawCircle(points.first().x.toFloat(), points.first().y.toFloat(),
+                (layer.width * (points.first().pressure ?: 1.0) / 2).toFloat(), paint)
             points.zipWithNext().forEach { (a, b) ->
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = (layer.width * ((a.pressure ?: 1.0) + (b.pressure ?: 1.0)) / 2).toFloat()
@@ -108,7 +117,6 @@ object DecorationRasterizer {
             }
             canvas.drawPath(path, paint)
         }
-        paint.xfermode = null
     }
 
     private fun shape(canvas: Canvas, layer: ShapeLayer) {

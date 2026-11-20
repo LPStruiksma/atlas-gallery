@@ -44,6 +44,29 @@ class DecorationRasterAndroidTest {
         assertEquals(Color.RED, bitmap.getPixel(60, 100))
     }
 
+    @Test fun eraserOpacityZeroHalfFullIsAppliedOnceAndPreservesSourcePixels() {
+        val red = StrokeLayer(p.copy(layerId = "red"), StrokeMode.PEN, Color.RED, 0.10,
+            listOf(InkPoint(-0.35, 0.0), InkPoint(0.35, 0.0)))
+        fun resultFor(opacity: Double): Int {
+            val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+            bitmap.eraseColor(Color.BLUE)
+            val eraser = StrokeLayer(p.copy(layerId = "erase", opacity = opacity),
+                StrokeMode.ERASER, Color.TRANSPARENT, 0.10,
+                listOf(InkPoint(0.0, -0.3), InkPoint(0.0, 0.0), InkPoint(0.0, 0.3)))
+            render(bitmap, stage(red, eraser))
+            assertEquals(Color.BLUE, bitmap.getPixel(100, 145))
+            assertEquals(Color.RED, bitmap.getPixel(60, 100))
+            return bitmap.getPixel(100, 100)
+        }
+
+        assertEquals(Color.RED, resultFor(0.0))
+        val half = resultFor(0.5)
+        assertTrue("Half erasure must not compound at joined segments: $half",
+            Color.red(half) in 125..130 && Color.green(half) == 0 &&
+                Color.blue(half) in 125..130)
+        assertEquals(Color.BLUE, resultFor(1.0))
+    }
+
     @Test fun highlighterOpacityIsCompositedAsOneLayer() {
         val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.TRANSPARENT)

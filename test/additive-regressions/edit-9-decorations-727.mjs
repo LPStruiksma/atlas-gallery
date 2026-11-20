@@ -21,7 +21,7 @@ test('EDIT-9 keeps every decoration editable through typed overlay properties', 
 test('EDIT-9 draws on an isolated overlay so erasing does not destroy source pixels', () => {
   const raster = read(root + 'DecorationRasterizer.kt');
   assert.match(raster, /saveLayer\(/);
-  assert.match(raster, /PorterDuff\.Mode\.CLEAR/);
+  assert.match(raster, /PorterDuff\.Mode\.DST_OUT/);
   assert.match(raster, /sourceToOutput/);
   assert.match(raster, /Bitmap/);
   assert.match(raster, /Canvas/);
