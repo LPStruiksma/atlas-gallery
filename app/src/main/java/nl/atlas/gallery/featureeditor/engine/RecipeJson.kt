@@ -131,6 +131,7 @@ object RecipeJson {
                 pixelWidth = m.int("pixelWidth"),
                 pixelHeight = m.int("pixelHeight"),
                 maskHash = m.optStr("maskHash"),
+                space = PatchSpace.fromKey(m.str("space")) ?: bad("space"),
             )
             else -> throw RecipeFormatException("Unknown operation type (${type.length} chars)")
         }
@@ -225,6 +226,7 @@ object RecipeJson {
                 is EditOperation.RasterPatch -> {
                     str("rasterPatch")
                     key("tool"); str(op.tool.key)
+                    key("space"); str(op.space.key)
                     key("hash"); str(op.contentHash)
                     op.maskHash?.let { key("maskHash"); str(it) }
                     key("rect"); rect(op.rect)

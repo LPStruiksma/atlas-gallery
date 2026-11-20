@@ -11,11 +11,18 @@ import kotlin.math.roundToInt
  * whatever order the user worked in:
  *
  * 1. [RenderStage.Decode] the source;
- * 2. [RenderStage.RasterPatches] in history order (AI Edit, Face Swap, Erase, ...), source space;
+ * 2. [RenderStage.RasterPatches] source-space patches in history order;
  * 3. [RenderStage.Geometry] one projective warp + crop + scale to the output size;
  * 4. [RenderStage.ColourAdjust] all non-zero controls, in [AdjustParam] order;
  * 5. [RenderStage.Lut] the filter at its strength;
  * 6. [RenderStage.Overlays] decoration layers, placed through the same geometry matrix.
+ *
+ * Output-space patches ([PatchSpace.OUTPUT], what AI Edit and Face Swap return) split the
+ * recipe at the last such patch: [RenderStage.Base] renders every earlier step as its own plan,
+ * [RenderStage.OutputPatch] composites the patch over that result, and the steps after it run
+ * stages 2 to 6 on the composite. Earlier steps are therefore never applied to the AI result a
+ * second time, and undoing the patch restores them untouched. The base is static while later
+ * steps change, so a renderer can cache it.
  *
  * Identity stages are left out, so an empty recipe is just Decode. [gainmap] gives the
  * matching geometry for an Ultra HDR gainmap of any resolution, so HDR survives every geometry
@@ -27,7 +34,10 @@ data class RenderPlan(
     val outputWidth: Int,
     val outputHeight: Int,
     val stages: List<RenderStage>,
+    /** Geometry of the steps after the last output-space patch (all steps when there is none). */
     val geometry: GeometryState,
+    /** Normalized original source (`0..1`) to normalized final output, across every step. */
+    val normalizedSourceToOutput: Matrix3 = geometry.normalizedSourceToOutput(),
 ) {
     val isIdentity: Boolean get() = stages.size == 1 && outputWidth == sourceWidth && outputHeight == sourceHeight
 
@@ -41,10 +51,13 @@ data class RenderPlan(
         val outW = max(1, (outputWidth.toDouble() * gainmapWidth / sourceWidth).roundToInt())
         val outH = max(1, (outputHeight.toDouble() * gainmapHeight / sourceHeight).roundToInt())
         val matrix = Matrix3.scale(outW.toDouble(), outH.toDouble()) *
-            geometry.normalizedSourceToOutput() *
+            normalizedSourceToOutput *
             Matrix3.scale(1.0 / gainmapWidth, 1.0 / gainmapHeight)
         return RenderStage.Geometry(matrix, outW, outH, geometry.validRegion)
     }
+
+    /** Maps a tap in normalized output coordinates back to the normalized original source. */
+    fun outputToSource(p: Point2): Point2 = normalizedSourceToOutput.inverse().map(p)
 
     /** Stable text form for golden tests and diagnostics (no user text, no hashes truncated). */
     fun describe(): String = buildString {
@@ -61,6 +74,25 @@ data class RenderPlan(
             val problems = recipe.validate()
             require(problems.isEmpty()) { "Recipe is invalid: ${problems.joinToString()}" }
             require(maxLongEdge == null || maxLongEdge > 0) { "maxLongEdge must be positive" }
+            val ops = recipe.operations
+            val split = ops.indexOfLast { it is EditOperation.RasterPatch && it.space == PatchSpace.OUTPUT }
+            if (split < 0) return buildSegment(recipe, maxLongEdge)
+            // Everything before the patch renders as the base, at full resolution.
+            val base = build(recipe.copy(operations = ops.subList(0, split)))
+            val patch = ops[split] as EditOperation.RasterPatch
+            val rest = buildSegment(
+                EditRecipe(base.outputWidth, base.outputHeight, ops.subList(split + 1, ops.size), recipe.schemaVersion),
+                maxLongEdge,
+            )
+            val stages = listOf(RenderStage.Base(base), RenderStage.OutputPatch(patch)) + rest.stages.drop(1)
+            return RenderPlan(
+                recipe.sourceWidth, recipe.sourceHeight, rest.outputWidth, rest.outputHeight, stages,
+                rest.geometry, rest.normalizedSourceToOutput * base.normalizedSourceToOutput,
+            )
+        }
+
+        /** One segment without output-space patches: Decode, patches, geometry, colour, LUT, overlays. */
+        private fun buildSegment(recipe: EditRecipe, maxLongEdge: Int?): RenderPlan {
             val geometry = GeometryState.of(recipe)
             var outW = geometry.outputWidth
             var outH = geometry.outputHeight
@@ -94,6 +126,19 @@ sealed class RenderStage {
 
     data class Decode(val width: Int, val height: Int) : RenderStage() {
         override fun describe() = "decode ${width}x$height"
+    }
+
+    /** The rendered result of every step before an output-space patch, as its own plan. */
+    data class Base(val plan: RenderPlan) : RenderStage() {
+        override fun describe() =
+            "base {\n" + plan.describe().trimEnd('\n').lines().joinToString("\n") { "  $it" } + "\n}"
+    }
+
+    /** Composite [patch] over the current picture at its output-normalized rect (mask optional). */
+    data class OutputPatch(val patch: EditOperation.RasterPatch) : RenderStage() {
+        override fun describe() =
+            "output-patch ${patch.tool.key} ${patch.contentHash.take(12)} ${patch.rect.fmt()}" +
+                if (patch.maskHash != null) " masked" else ""
     }
 
     data class RasterPatches(val patches: List<EditOperation.RasterPatch>) : RenderStage() {

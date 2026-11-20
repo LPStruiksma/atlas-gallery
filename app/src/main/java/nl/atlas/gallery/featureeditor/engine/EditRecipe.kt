@@ -187,6 +187,25 @@ enum class PatchTool(val key: String) {
     }
 }
 
+/**
+ * Where a raster patch's [EditOperation.RasterPatch.rect] lives and when it is composited.
+ *
+ * - [SOURCE]: on the source picture, before geometry, colour, filter and overlays (for tools
+ *   that work on the unedited photo, such as an on-device erase on the original). Later
+ *   rotate/crop/colour steps then apply to it like to any other source pixel.
+ * - [OUTPUT]: on the fully rendered result of every earlier step (what AI Edit and Face Swap
+ *   receive per `docs/editor/AI_TOOLS.md`). It is composited after those steps and becomes the
+ *   picture that later steps edit, so earlier geometry, colour, filter and overlays are never
+ *   applied to it twice, and undoing it brings the earlier steps back untouched.
+ */
+enum class PatchSpace(val key: String) {
+    SOURCE("source"), OUTPUT("output");
+
+    companion object {
+        fun fromKey(key: String): PatchSpace? = entries.firstOrNull { it.key == key }
+    }
+}
+
 enum class OverlayKind(val key: String) {
     STROKE("stroke"), TEXT("text"), SHAPE("shape"), STICKER("sticker"), EMOJI("emoji");
 
@@ -300,10 +319,11 @@ sealed class EditOperation {
 
     /**
      * Pixels produced by a tool (AI Edit, Face Swap, Erase, ...), stored outside the recipe and
-     * referenced by SHA-256 [contentHash]. They replace [rect] (normalized source space) of the
-     * picture, optionally through an alpha [maskHash]. A full-frame AI result uses
-     * [NormRect.FULL]. [pixelWidth] x [pixelHeight] is the patch's own size, so the renderer
-     * knows its native resolution and can report up- or downscaling.
+     * referenced by SHA-256 [contentHash]. They replace [rect] of the picture, normalized in
+     * [space] (see [PatchSpace]), optionally through an alpha [maskHash]:
+     * `out = a * patch + (1 - a) * before`. A full-frame result uses [NormRect.FULL].
+     * [pixelWidth] x [pixelHeight] is the patch's own size, so the renderer knows its native
+     * resolution and can report up- or downscaling.
      */
     data class RasterPatch(
         override val id: String,
@@ -313,6 +333,7 @@ sealed class EditOperation {
         val pixelWidth: Int,
         val pixelHeight: Int,
         val maskHash: String? = null,
+        val space: PatchSpace = PatchSpace.SOURCE,
     ) : EditOperation() {
         override fun validate() = when {
             !isContentHash(contentHash) -> "patch content hash is malformed"
