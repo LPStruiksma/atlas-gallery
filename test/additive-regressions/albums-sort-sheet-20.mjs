@@ -57,6 +57,9 @@ test("a 200% font capture of the Albums sort sheet is declared and journeyed (#2
     "utf8",
   );
   assert.match(journey, /fontScale = 2f/);
+  // The scale must reach the sheet's own window, not just the screen behind it.
+  assert.match(journey, /applyOverrideConfiguration/);
+  assert.match(journey, /layoutInput\.density\.fontScale >= 1\.99f/);
   assert.match(journey, /lineCount in 1\.\.2/);
   assert.match(journey, /hasVisualOverflow/);
 });

@@ -16,11 +16,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.*
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import android.content.res.Configuration
+import android.view.ContextThemeWrapper
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -108,6 +112,9 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
             val layouts = mutableListOf<TextLayoutResult>()
             label.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
             val layout = layouts.single()
+            assertTrue("${entry.name} sheet label is laid out at 200% font " +
+                "(fontScale=${layout.layoutInput.density.fontScale})",
+                layout.layoutInput.density.fontScale >= 1.99f)
             assertTrue("${entry.name} label is one or two lines at 200%",
                 layout.lineCount in 1..2)
             assertTrue("${entry.name} label is not clipped at 200%",
@@ -140,10 +147,11 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
     ) {
         rule.setContent {
             var sort by remember { mutableStateOf(initial) }
-            val base = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(base.density, fontScale = fontScale)
-            ) {
+            // ModalBottomSheet opens its own window whose Compose owner reads
+            // density from its Context, so a LocalDensity override never reaches
+            // the sheet (review 7027780329). Host the screen in a ComposeView whose
+            // Context carries the font scale, as a device-level setting would.
+            FontScaledHost(fontScale) {
                 AtlasGalleryTheme(dark = dark) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -191,4 +199,28 @@ abstract class AlbumsSortSheetJourneyTest(private val dark: Boolean) {
     }
 
     private fun AlbumSort.tag() = "atlas-album-sort-" + name.lowercase()
+}
+
+/**
+ * Renders [content] in a nested ComposeView whose Context has [fontScale] in its
+ * Configuration. Dialog windows (ModalBottomSheet) created below inherit that
+ * Context, so their text scales too. A scale of 1 renders [content] directly.
+ */
+@Composable
+private fun FontScaledHost(fontScale: Float, content: @Composable () -> Unit) {
+    if (fontScale == 1f) { content(); return }
+    val parent = LocalContext.current
+    val latest by rememberUpdatedState(content)
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = {
+            val scaled = ContextThemeWrapper(parent, parent.theme).apply {
+                applyOverrideConfiguration(
+                    Configuration(parent.resources.configuration).apply {
+                        this.fontScale = fontScale
+                    })
+            }
+            ComposeView(scaled).apply { setContent { latest() } }
+        }
+    )
 }
