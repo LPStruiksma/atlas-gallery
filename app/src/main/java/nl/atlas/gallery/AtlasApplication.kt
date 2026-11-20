@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import nl.atlas.gallery.featureaiedit.save.AiEditSaver
+import nl.atlas.gallery.featureidentity.install.IdentityModelInstaller
 
 class AtlasApplication : Application() {
     override fun onCreate() {
@@ -29,6 +30,11 @@ class AtlasApplication : Application() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching { AiEditSaver(this@AtlasApplication).recoverOnStartup() }
                 .onFailure { android.util.Log.w("ATLAS_AI_SAVE", "Pending edit recovery deferred") }
+        }
+        // #619: a Cancel tapped on the "Swap person" download notification runs no app code; the
+        // installer frees the unfinished download when it sees the cancelled work. No download starts here.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { IdentityModelInstaller.watch(this@AtlasApplication) }
         }
         // #555: ATLAS's micro-thumbnail store; only used under full media access.
         MicroThumbnails.install(this)
