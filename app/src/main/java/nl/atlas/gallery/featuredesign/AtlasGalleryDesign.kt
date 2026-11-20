@@ -605,7 +605,12 @@ fun AtlasGalleryHeader(
             }
             Spacer(Modifier.width(4.dp))
         }
-        Column(Modifier.weight(1f)) {
+        // BRAND-L2: Funnel Display's 38/44 title plus the 14/20 subtitle can
+        // measure about 68dp on Android. Share 5dp of line-box leading to
+        // preserve both approved type roles and the #492 64dp compact header,
+        // without shrinking the neighbouring 48dp action targets.
+        Column(Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy((-5).dp)) {
             Text(
                 title,
                 modifier = Modifier.semantics { heading() }.testTag("atlas-header-title"),
