@@ -32,6 +32,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -195,13 +196,17 @@ private fun WhatsNewRelease(release: AtlasChangelog.Release, installed: Boolean)
                     Text(group.title, Modifier.semantics { heading() },
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary)
+                    // Bullet centred on the first line at any font scale (#675 brief item 7).
+                    val entryStyle = MaterialTheme.typography.bodyLarge
+                    val bulletTop = with(LocalDensity.current) {
+                        ((entryStyle.lineHeight.toDp() - 5.dp) / 2).coerceAtLeast(0.dp)
+                    }
                     group.entries.forEach { entry ->
                         Row {
-                            Box(Modifier.padding(top = 9.dp).size(5.dp).clip(CircleShape)
+                            Box(Modifier.padding(top = bulletTop).size(5.dp).clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.onSurfaceVariant))
                             Spacer(Modifier.width(12.dp))
-                            Text(entry, Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyLarge)
+                            Text(entry, Modifier.weight(1f), style = entryStyle)
                         }
                     }
                 }
