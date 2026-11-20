@@ -93,7 +93,10 @@ class ExternalIntentJourneyTest {
         }
         compose.awaitViewer()
         compose.assertReadOnlyChrome(secure = false)
-        scenario.close()
+        // ActivityScenario does not track the onNewIntent pause/resume (it waits on
+        // "PAUSED" forever in close()), so finish through the lifecycle monitor.
+        fixture.finishMainActivities()
+        compose.awaitThat("every MainActivity to be destroyed") { !fixture.anyMainActivityAlive() }
     }
 
     @Test fun unreadableIntentsShowCantOpenAndNeverCrash() {
@@ -218,6 +221,16 @@ internal class ExternalIntentFixture {
     fun deliverNewIntent(action: String, uri: String?, type: String?) {
         context.startActivity(intent(action, uri, type)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+    }
+
+    fun anyMainActivityAlive(): Boolean {
+        var alive = false
+        instrumentation.runOnMainSync {
+            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+            alive = Stage.values().filter { it != Stage.DESTROYED }
+                .any { stage -> monitor.getActivitiesInStage(stage).any { it is MainActivity } }
+        }
+        return alive
     }
 
     fun finishMainActivities() {
