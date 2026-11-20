@@ -608,10 +608,8 @@ internal class PhotoDnaVisualCache(private val maxEntries: Int = 250_000) {
             if (volumeIds.size >= MAX_VOLUMES) return
             (volumeIds.size + 1).also { volumeIds[volumeName] = it }
         }
-        var at = slot(id, false, volume)
-        if (at < 0 || states[at].toInt() != EMPTY) return
         ensureSlot(1)
-        at = slot(id, false, volume)
+        val at = slot(id, false, volume)
         if (at < 0 || states[at].toInt() != EMPTY) return
         ids[at] = id
         volumes[at] = volume
