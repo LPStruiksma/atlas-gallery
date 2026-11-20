@@ -23,6 +23,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import nl.atlas.gallery.featureintents.ExternalEntry
+import nl.atlas.gallery.featureintents.ExternalIntentParser
+import nl.atlas.gallery.featureintents.ExternalIntentReader
+import nl.atlas.gallery.featureintents.ExternalViewerHost
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.imePadding
@@ -369,12 +373,28 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
         android.content.res.Configuration.UI_MODE_NIGHT_YES
 
 class MainActivity : ComponentActivity() {
+    // BENCH-2 (#573): what the starting (or newest) intent asks for. Re-read from
+    // getIntent() on every recreation; the caller's URI is never saved anywhere.
+    private var externalEntry by mutableStateOf<ExternalEntry>(ExternalEntry.Library)
+
+    /** The last value passed to setShowWhenLocked (the platform has no getter); read by tests. */
+    @Volatile internal var showWhenLockedApplied: Boolean = false
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!acceptExternalIntent(intent)) return
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
         try {
             setContent {
+                val entry = externalEntry
+                if (entry.opensExternalViewer()) {
+                    // Open with / camera review: one item, no catalogue, no scan,
+                    // no permission prompt. Back finishes straight to the caller.
+                    ExternalViewerHost(entry, onClose = ::finish)
+                    return@setContent
+                }
                 val galleryVm: GalleryViewModel = viewModel()
                 val inventory by galleryVm.publishedInventory.collectAsIdentityState()
             CompositionLocalProvider(LocalGalleryPublicationEpoch provides inventory.epoch) {
@@ -395,7 +415,39 @@ class MainActivity : ComponentActivity() {
             android.os.Trace.endSection()
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        acceptExternalIntent(intent)
+    }
+
+    /**
+     * Parses [intent] and applies its window policy. Only
+     * `MediaStore.ACTION_REVIEW_SECURE` may show over the lock screen, and only
+     * for as long as that entry is current: any other intent clears it again.
+     * A pick for something that is not a photo or video is answered at once
+     * with RESULT_CANCELED. Returns false when the Activity is finishing.
+     */
+    private fun acceptExternalIntent(intent: Intent?): Boolean {
+        val entry = ExternalIntentReader.entry(intent)
+        showWhenLockedApplied = ExternalIntentParser.showWhenLocked(entry)
+        setShowWhenLocked(showWhenLockedApplied)
+        if (entry is ExternalEntry.Rejected && entry.pick) {
+            setResult(RESULT_CANCELED)
+            finish()
+            return false
+        }
+        // #573 Phase A1: the picker grid lands in A2; until then a pick opens
+        // the normal library and Back answers RESULT_CANCELED (the default).
+        externalEntry = if (entry is ExternalEntry.Pick) ExternalEntry.Library else entry
+        return true
+    }
 }
+
+/** View/review entries (and their refusals) use the single-item external viewer. */
+internal fun ExternalEntry.opensExternalViewer(): Boolean =
+    this is ExternalEntry.Viewer || (this is ExternalEntry.Rejected && !pick)
 
 private fun necessaryPermissions(): Array<String> = when {
     Build.VERSION.SDK_INT >= 34 -> arrayOf(

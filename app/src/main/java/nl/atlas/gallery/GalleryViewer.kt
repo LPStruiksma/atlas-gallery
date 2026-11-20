@@ -159,6 +159,9 @@ fun GalleryViewer(
     photoPeople: ViewerPhotoPeople? = null,
     // IDS-11 (#478): "Swap person" under AI Edit in the ⋮ menu; null hides it.
     swapPerson: ViewerSwapPerson? = null,
+    // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
+    // library or write action; SECURE also drops Details (lock-screen review).
+    access: ViewerAccess = ViewerAccess.LIBRARY,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -169,7 +172,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, onBack)
     }
 }
 
@@ -189,6 +192,7 @@ private fun GalleryViewerSnapshot(
     favouriteOverrides: MutableMap<String, Boolean>,
     photoPeople: ViewerPhotoPeople?,
     swapPerson: ViewerSwapPerson?,
+    access: ViewerAccess,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -569,6 +573,7 @@ private fun GalleryViewerSnapshot(
         }
     }
     fun openDetails() {
+        if (!access.details) return
         detailsShownMedia = items[viewerVisibleActionIndex(scrubOverlayState.value,
             pagerState.currentPage, items.size)]
         settleDetails(true)
@@ -621,7 +626,7 @@ private fun GalleryViewerSnapshot(
             }
             ViewerVerticalSwipe.DETAILS -> {
                 dragOffset.floatValue = 0f
-                openDetails()
+                if (access.details) openDetails() else cancelViewerDrag()
             }
             ViewerVerticalSwipe.NONE -> cancelViewerDrag()
         }
@@ -859,7 +864,7 @@ private fun GalleryViewerSnapshot(
         ) {
             ViewerPill {
                 IconButton(onClick = ::returnToGallery, modifier = Modifier.testTag("atlas-back")) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBackIos, "Back to gallery",
+                    Icon(Icons.AutoMirrored.Filled.ArrowBackIos, access.backDescription,
                         tint = Color.White, modifier = Modifier.padding(start = 6.dp))
                 }
             }
@@ -922,7 +927,7 @@ private fun GalleryViewerSnapshot(
                             onClick = { aiEditMenuOpen = false; swapPort.open(current) })
                     }
                 }
-                IconButton(
+                if (access.details) IconButton(
                     onClick = ::openDetails,
                     modifier = Modifier.testTag("atlas-viewer-details-open")
                 ) {
@@ -939,6 +944,8 @@ private fun GalleryViewerSnapshot(
                 .testTag("atlas-viewer-bottom-chrome"),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // #573: one caller-granted item has no strip (never a lone filmstrip tile).
+            if (access == ViewerAccess.LIBRARY || items.size > 1)
             BoxWithConstraints(Modifier.fillMaxWidth().height(STRIP_HEIGHT)) {
                 val contentPad = (maxWidth - STRIP_TILE_WIDTH) / 2
                 LazyRow(
@@ -992,8 +999,10 @@ private fun GalleryViewerSnapshot(
             }
             Spacer(Modifier.height(10.dp))
             val showEdit = onEdit != null && PhotoEditorHandoff.eligible(current)
-            val showShare = ViewerShareHandoff.eligible(current)
-            val showFavourite = viewerCanChangeInMediaStore(current.uri, Build.VERSION.SDK_INT)
+            // #573: a caller's grant is read-only and not ours to pass on.
+            val showShare = access == ViewerAccess.LIBRARY && ViewerShareHandoff.eligible(current)
+            val showFavourite = access == ViewerAccess.LIBRARY &&
+                viewerCanChangeInMediaStore(current.uri, Build.VERSION.SDK_INT)
             val showTrash = showFavourite && onTrashed != null
             // Samsung order: favourite · edit · share · delete.
             if (showFavourite || showEdit || showShare || showTrash)
@@ -1112,6 +1121,20 @@ private val CHROME_EXIT = fadeOut(tween(200))
 // Favourite and Trash go through MediaStore consent requests, which exist from
 // API 30 (minSdk is 29) and only accept MediaStore item URIs (not documents,
 // files or test fixtures). Below API 30 both buttons stay hidden.
+/**
+ * BENCH-2 (#573): where the viewer's items came from.
+ * - [LIBRARY]: ATLAS's own catalogue; every action the host wires is shown.
+ * - [EXTERNAL]: an item another app granted (Open with, camera review). Read-only:
+ *   no favourite, share, trash or edit; Details stays (it reads only this item).
+ * - [SECURE]: `MediaStore.ACTION_REVIEW_SECURE` over the lock screen. Only the
+ *   captured item and in-viewer media controls; no Details, no library, no share.
+ */
+enum class ViewerAccess(val details: Boolean, val backDescription: String) {
+    LIBRARY(details = true, backDescription = "Back to gallery"),
+    EXTERNAL(details = true, backDescription = "Back"),
+    SECURE(details = false, backDescription = "Back to camera")
+}
+
 internal fun viewerCanChangeInMediaStore(uri: String, sdkInt: Int): Boolean =
     sdkInt >= 30 && uri.startsWith("content://media/")
 
