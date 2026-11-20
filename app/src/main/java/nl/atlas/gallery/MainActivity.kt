@@ -381,8 +381,9 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     private var mode = "cold"
     private var reported = false
     private var stopped = false
-    private var pendingVsyncNs = -1L
-    private var pendingCached = false
+    // Keep a bounded ledger of eligible Photos draw vsyncs. A dropped frame
+    // cannot permanently consume the one chance to witness a completed grid.
+    private val witnessedFrames = java.util.LinkedHashMap<Long, Boolean>()
     private val choreographer = android.view.Choreographer.getInstance()
     private var currentFrameVsyncNs = -1L
     private var closed = false
@@ -391,7 +392,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     // matching completed Window FrameMetrics may be reported as a sample.
     private val frameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
-            if (closed || reported || pendingVsyncNs > 0L) return
+            if (closed || stopped || reported) return
             currentFrameVsyncNs = frameTimeNanos
             choreographer.postFrameCallback(this)
         }
@@ -400,24 +401,28 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         android.os.Process.getStartElapsedRealtime() * 1_000_000L
     private var refreshReported = false
     private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, _ ->
-        if (!reported && pendingVsyncNs > 0L &&
-            frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP) == pendingVsyncNs) {
+        // A draw only qualifies if this completed frame has the very same vsync.
+        // Other window frames, missed vsyncs and non-cached cold grids are not proof.
+        val cached = witnessedFrames.remove(
+            frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP))
+        if (!reported && !stopped && cached != null) {
             val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
             val completedNs = frame.getMetric(android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP) + totalNs
             val nowNs = System.nanoTime()
             val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
             val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
             if (totalNs > 0L && elapsedNs > 0L && elapsedNs < 15_000_000_000L &&
-                (mode == "warm" || pendingCached)) {
+                (mode == "warm" || cached)) {
                 reported = true
+                witnessedFrames.clear()
+                choreographer.removeFrameCallback(frameCallback)
                 Log.i("ATLAS_PERF_A1",
                     "mode=$mode pid=${android.os.Process.myPid()} " +
                     "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
-                    "cached=${if (pendingCached) 1 else 0} draw=grid frame=completed")
+                    "cached=${if (cached) 1 else 0} draw=grid frame=completed")
             }
         }
     }
-
     init {
         choreographer.postFrameCallback(frameCallback)
         window.addOnFrameMetricsAvailableListener(
@@ -426,12 +431,16 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
 
     val isWarm: Boolean get() = mode == "warm"
     fun noteDraw(cached: Boolean) {
-        if (reported || pendingVsyncNs > 0L) return
+        if (reported || stopped || closed || (mode == "cold" && !cached)) return
         val vsync = currentFrameVsyncNs
-        if (vsync > 0L) {
-            pendingVsyncNs = vsync
-            pendingCached = cached
-            choreographer.removeFrameCallback(frameCallback)
+        if (vsync > 0L && !witnessedFrames.containsKey(vsync)) {
+            // FrameMetrics delivery can lag or a frame can be dropped. Retain
+            // several drawn candidates, but never accept a non-matching one.
+            if (witnessedFrames.size >= 120) {
+                val oldest = witnessedFrames.keys.iterator()
+                if (oldest.hasNext()) { oldest.next(); oldest.remove() }
+            }
+            witnessedFrames[vsync] = cached
         }
     }
     fun refreshed() {
@@ -442,6 +451,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     }
     fun onStopped() {
         stopped = true
+        witnessedFrames.clear()
         choreographer.removeFrameCallback(frameCallback)
     }
     fun onStarted() {
@@ -449,13 +459,14 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         stopped = false
         mode = "warm"
         originElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
-        pendingVsyncNs = -1L
+        witnessedFrames.clear()
         currentFrameVsyncNs = -1L
         reported = false
         choreographer.postFrameCallback(frameCallback)
     }
     fun close() {
         closed = true
+        witnessedFrames.clear()
         choreographer.removeFrameCallback(frameCallback)
         window.removeOnFrameMetricsAvailableListener(listener)
     }
