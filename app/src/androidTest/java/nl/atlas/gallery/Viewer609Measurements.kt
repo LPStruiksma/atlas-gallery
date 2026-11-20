@@ -152,6 +152,14 @@ internal class Viewer609Recorder(
                     androidInsets(WindowInsetsCompat.Type.navigationBars(), true))
                 .put("android_displayCutout",
                     androidInsets(WindowInsetsCompat.Type.displayCutout(), true))
+                // #627: gesture zones decide edge-swipe vs strip/seek drags and where
+                // the home gesture is mandatory; recorded in every mode, never assumed.
+                .put("android_systemGestures",
+                    androidInsets(WindowInsetsCompat.Type.systemGestures(), false))
+                .put("android_mandatorySystemGestures",
+                    androidInsets(WindowInsetsCompat.Type.mandatorySystemGestures(), false))
+                .put("android_tappableElement",
+                    androidInsets(WindowInsetsCompat.Type.tappableElement(), false))
             val boxes = JSONArray()
             view.rootWindowInsets?.displayCutout?.boundingRects?.forEach {
                 boxes.put(rect(it.left.toFloat(), it.top.toFloat(),
@@ -205,10 +213,10 @@ internal class Viewer609Recorder(
         Log.i("ATLAS_VIEWER_609", "Measured $key; regions=${regions.length()}")
     }
 
-    fun publish(filename: String, unobservedStates: List<String>) {
+    fun publish(filename: String, unobservedStates: List<String>, issue: Int = 609) {
         val report = JSONObject()
             .put("schema", "atlas-viewer-design-8m/1")
-            .put("issue", 609)
+            .put("issue", issue)
             .put("host", "GitHub API35 x86_64 pixel_6 with S24DisplayRule override; NOT a physical S24+")
             .put("geometry_caveat", "Semantics node bounds do not prove rendered pill artwork or AndroidView touch zones")
             .put("comparison_only", "Corrected #374 design proposal: videoControlsBottom <= filmstripTop - 8dp; this is NOT a baseline assertion")
