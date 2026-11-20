@@ -115,6 +115,7 @@ class HostedEditJob(
 fun hostedFailure(result: EditHttpResult.Failed, retryableOverride: Boolean? = null): EditOutcome.Failed {
     val (kind, retryable) = when (result.code) {
         FailureCode.AUTH -> FailureKind.AUTH to false
+        FailureCode.BILLING -> FailureKind.BILLING to false
         FailureCode.QUOTA -> FailureKind.QUOTA to false
         FailureCode.TIMEOUT -> FailureKind.TIMEOUT to true
         FailureCode.NETWORK -> FailureKind.NETWORK to result.retryable
