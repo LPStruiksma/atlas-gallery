@@ -225,6 +225,37 @@ internal fun sameMediaProviderScanSnapshot(
                 generationsAtStart.values.all { it != null && it >= 0L }))
 
 /**
+ * #676: the scan ran under one provider version on the same mounted volumes
+ * and only the generations moved forward (a screenshot, a download or an edit
+ * landed while it read). The rows are then not one coherent snapshot, but
+ * every row that changed after [generationsAtStart] is found again by the
+ * generation delta from that point, so the caller may publish the scan if,
+ * and only if, it runs that delta next. A version change, a volume change,
+ * a generation going backwards, or API 29 (no generations) still fails.
+ */
+internal fun mediaProviderOnlyAdvancedDuringScan(
+    versionsAtStart: Map<String, String?>,
+    versionsAtEnd: Map<String, String?>,
+    generationsAtStart: Map<String, Long?>,
+    generationsAtEnd: Map<String, Long?>
+): Boolean =
+    generationsAtStart.isNotEmpty() &&
+        // The start must itself be a valid snapshot point to resume from.
+        sameMediaProviderScanSnapshot(versionsAtStart, versionsAtStart,
+            generationsAtStart, generationsAtStart) &&
+        versionsAtStart == versionsAtEnd &&
+        generationsAtStart.keys == generationsAtEnd.keys &&
+        generationsAtStart != generationsAtEnd &&
+        generationsAtEnd.all { (volume, end) ->
+            val start = generationsAtStart[volume]
+            end != null && start != null && end >= start
+        }
+
+/** #676: only a full image+video grant can follow a scan with the generation delta. */
+internal fun galleryDeltaEligible(grant: GalleryMediaGrant): Boolean =
+    grant.images && grant.videos
+
+/**
  * Old decoded data may be reused only when the exact per-item generation
  * is unchanged, the provider version is unchanged, and the permission
  * scope is known identical. Generation *advance* supports incremental

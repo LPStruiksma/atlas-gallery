@@ -6,6 +6,7 @@ import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.identity.ReviewTally
 import nl.atlas.gallery.featurepeople.identity.ReviewTap
@@ -108,6 +109,32 @@ class SamePersonReviewTest {
         val undone = requireNotNull(reviewPeopleCluster(joined, PeopleReviewAction.Undo))
         assertEquals(listOf(6, 5, 4), undone.sizes())
         assertTrue(undone.clusters.reviews.sameUnknown.isEmpty())
+    }
+
+    /**
+     * HUB-1A (#210): no review action writes a "not one person" fact yet, and
+     * none may drop one: every other answer carries it, and Undo restores it.
+     */
+    @Test fun mixedGroupFactsSurviveOtherAnswersAndUndo() {
+        val plain = state()
+        val fact = MixedGroup.of(plain.clusters.unknownClusters[2].members)
+        val s = plain.copy(clusters = FaceClusterer.update(plain.clusters,
+            reviews = plain.clusters.reviews.copy(mixedGroups = setOf(fact))))
+        assertEquals(listOf(6, 5, 4), s.sizes()) // clustering ignores the fact
+        assertEquals(plain.clusters.unknownClusters, s.clusters.unknownClusters)
+        val page = s.page(0)
+        val q = requireNotNull(samePersonQuestion(s, page))
+        val joined = requireNotNull(reviewPeopleCluster(s, samePersonAnswer(page, q, same = true)))
+        assertEquals(setOf(fact), joined.clusters.reviews.mixedGroups)
+        val named = requireNotNull(reviewPeopleCluster(joined, PeopleReviewAction.NameCluster(
+            joined.clusters.unknownClusters.first { it.members.size == 11 }.id,
+            PersonKey("p1"), "Ada")))
+        assertEquals(setOf(fact), named.clusters.reviews.mixedGroups)
+        assertTrue(fact.matches(named.clusters.unknownClusters.single().members))
+        val undone = requireNotNull(reviewPeopleCluster(named, PeopleReviewAction.Undo))
+        assertEquals(setOf(fact), undone.clusters.reviews.mixedGroups)
+        assertEquals(fact, PeopleReviewRecords.facts(
+            PeopleReviewRecords.rows(named.clusters.reviews)).mixedGroups.single())
     }
 
     @Test fun noKeepsThemApartAndIsNeverAskedAgain() {

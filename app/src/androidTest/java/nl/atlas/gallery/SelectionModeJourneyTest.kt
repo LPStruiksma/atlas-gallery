@@ -21,11 +21,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -72,7 +72,7 @@ class SelectionModeJourneyTest {
         saveUiEvidence("selection-556-single.png")
 
         // Tapping it again leaves Samsung's empty selection mode open.
-        compose.onNodeWithTag("atlas-timeline-media-${ids[2]}").performClick()
+        compose.tap(hasTestTag("atlas-timeline-media-${ids[2]}"))
         waitFor(hasTestTag("atlas-selection-count") and hasText("Select items"))
 
         // 2. Long-press the first tile and, without lifting, drag to the sixth (next row).
@@ -115,13 +115,13 @@ class SelectionModeJourneyTest {
         saveUiEvidence("selection-556-drag-range.png")
 
         // 3. The second day's header circle selects its whole group.
-        compose.onNodeWithTag(dayTwo).performClick()
+        compose.tap(hasTestTag(dayTwo))
         waitFor(hasTestTag("atlas-selection-count") and hasText("12 selected"))
         compose.onNodeWithTag(dayTwo).assertIsSelected()
         compose.waitForIdle()
         saveUiEvidence("selection-556-header-group.png")
         // ...and a second tap clears it again.
-        compose.onNodeWithTag(dayTwo).performClick()
+        compose.tap(hasTestTag(dayTwo))
         waitFor(hasTestTag("atlas-selection-count") and hasText("6 selected"))
 
         // 4. Share hands Android's chooser exactly the six selected items.
@@ -136,7 +136,8 @@ class SelectionModeJourneyTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.addMonitor(monitor)
         try {
-            compose.onNodeWithTag("atlas-selection-share").performClick()
+            // The selection bar replaced the tab bar; tap() waits for it to stand still.
+            compose.tap(hasTestTag("atlas-selection-share"))
             compose.waitUntil(30_000L) { shared != null }
         } finally {
             instrumentation.removeMonitor(monitor)

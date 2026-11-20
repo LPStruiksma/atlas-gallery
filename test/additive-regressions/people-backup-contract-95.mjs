@@ -21,14 +21,18 @@ const syntheticPerson = 'person_test_01';
 assert.match(syntheticFace, /^[0-9a-f]{32}$/);
 assert.match(syntheticPerson, /^[a-zA-Z0-9_-]{1,128}$/);
 
-test('v2 header (COVER-3 #167) and legacy v1 decoder remain explicitly supported', () => {
-  assert.match(codec, /private const val VERSION\s*=\s*2\b/, 'v2 declaration changed: inventory the version migration');
+test('v3 header (HUB-1A #210), v2 (COVER-3 #167) and legacy v1 decoder remain explicitly supported', () => {
+  assert.match(codec, /private const val VERSION\s*=\s*3\b/, 'v3 declaration changed: inventory the version migration');
+  assert.match(codec, /private const val VERSION_COVERS\s*=\s*2\b/, 'v2 (covers) declaration missing');
   assert.match(codec, /ATLAS-NATIVE-PEOPLE-NAMES\\n/, 'magic header changed');
-  assert.match(encode, /writer\.writeInt\(VERSION\)/, 'encoder must write declared version');
-  assert.match(decode, /version == 1 \|\| version == VERSION/, 'v1 and v2 decoder/version rejection missing');
+  assert.match(encode, /val version = if \(snapshot\.mixedGroups\.isEmpty\(\)\) VERSION_COVERS else VERSION/,
+    'a backup without mixed groups must stay v2 so older builds import it');
+  assert.match(encode, /writer\.writeInt\(version\)/, 'encoder must write the chosen version');
+  assert.match(encode, /if \(version >= 3\) pairs\(snapshot\.mixedGroups\)/, 'v3 mixed-group section missing');
+  assert.match(decode, /require\(version in 1\.\.VERSION\)/, 'v1..v3 decoder/version rejection missing');
   assert.match(decode, /Unsupported names backup version/, 'unsupported version needs an actionable error');
-  assert.match(decode, /NativePeopleNamesSnapshot\(map\(\), set\(\), map\(\), pairs\(\), pairs\(\),\s*pairs\(\), map\(\), if \(version >= 2\) map\(\) else emptyMap\(\)\)/,
-    'seven legacy sections must decode in order; the v2 cover section only for v2 documents');
+  assert.match(decode, /NativePeopleNamesSnapshot\(map\(\), set\(\), map\(\), pairs\(\), pairs\(\),\s*pairs\(\), map\(\), if \(version >= 2\) map\(\) else emptyMap\(\),\s*if \(version >= 3\) pairs\(\) else emptySet\(\)\)/,
+    'seven legacy sections must decode in order; the cover section only from v2, mixed groups only from v3');
 });
 
 test('baseline checksum is verified before parsing and import preview exposes it', () => {
@@ -58,14 +62,16 @@ test('baseline rejects duplicate, malformed, identifying and trailing rows', () 
     /person\.matches\(key\)/, /face\.matches\(key\)/,
     /PeopleReviewRecords\.validName\(name\)/, /Hidden person has no name/,
     /Unordered cannot-link pair/, /Unordered same-person pair/,
-    /Invalid native review decision/,
+    /Invalid native review decision/, /fingerprint\.matches\(print\)/,
+    /Invalid mixed-group fingerprint/,
   ]) assert.match(validate, pattern);
   assert.match(codec, /Regex\("\[0-9a-f\]\{32\}"\)/);
+  assert.match(codec, /Regex\("\[0-9a-f\]\{64\}"\)/, 'mixed-group fingerprints must be fixed-size lowercase hex');
   assert.match(codec, /Regex\("\[a-zA-Z0-9_-\]\{1,128\}"\)/);
 });
 
 test('baseline serialized schema is human metadata, not media or biometric payload', () => {
-  for (const field of ['names', 'hidden', 'confirmed', 'cannotLink', 'rejected', 'sameUnknown', 'faceDecisions', 'coverOverrides']) {
+  for (const field of ['names', 'hidden', 'confirmed', 'cannotLink', 'rejected', 'sameUnknown', 'faceDecisions', 'coverOverrides', 'mixedGroups']) {
     assert.match(schema, new RegExp('val ' + field + ':'));
     assert.match(encode, new RegExp('snapshot\\.' + field + '\\b'));
   }
@@ -75,13 +81,16 @@ test('baseline serialized schema is human metadata, not media or biometric paylo
   assert.match(codec, /private val face = Regex/);
 });
 
-test('future HUB-1A MixedGroup/v2 contract is pending #210, not silently claimed shipped', () => {
-  // #210 owns migration and behavior. This test must not pretend to verify it.
-  const mixedGroupV2Shipped = false;
-  assert.equal(mixedGroupV2Shipped, false, 'Do not claim MixedGroup/v2 shipped before #210 verification');
-  // v2 is COVER-3's opaque person -> face UID section (#167), not MixedGroup.
-  assert.match(codec, /private const val VERSION\s*=\s*2\b/,
-    'Codec version changed beyond COVER-3 v2: #210 must supply migration tests and update this pending inventory');
-  assert.doesNotMatch(schema, /\bMixedGroup\b|\bmixedGroup\b/,
-    'MixedGroup appeared in the backup schema: replace pending #210 gate with behavioral proof');
+test('HUB-1A MixedGroup contract (#210) ships as v3 with behavioral proof', () => {
+  // The behavior is proven by JVM NativePeopleNamesBackupTest (legacy v1/v2
+  // fixtures, v3 round trip, malformed/duplicate/newer rejection) and the
+  // Android FaceIndexStoreIdentityReviewTest mixed-group tests.
+  assert.match(schema, /val mixedGroups: Set<Pair<String, String>> = emptySet\(\)/,
+    'mixed groups must be an optional trailing field so old call sites and v1/v2 decode stay valid');
+  assert.match(codec, /s\.mixedGroups\.size/, 'mixed groups must count toward the entry bound');
+  const jvm = readFileSync(new URL('../../app/src/test/java/nl/atlas/gallery/featurepersistence/NativePeopleNamesBackupTest.kt', import.meta.url), 'utf8');
+  for (const name of ['legacyVersion1And2BackupsStillImport', 'mixedGroupsRoundTripAsVersion3',
+    'malformedDuplicateOrNewerMixedGroupBackupsFailClosed']) {
+    assert.match(jvm, new RegExp('fun ' + name + '\\('), `missing proof test ${name}`);
+  }
 });
