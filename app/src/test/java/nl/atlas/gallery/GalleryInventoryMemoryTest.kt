@@ -1,6 +1,9 @@
 package nl.atlas.gallery
 
 import nl.atlas.gallery.featurealbums.buildAlbumSummaries
+import nl.atlas.gallery.featureface.FaceAuthorizedMediaDirectory
+import nl.atlas.gallery.featureface.MediaRecordFaceView
+import nl.atlas.gallery.featureface.toFaceVisibleMedia
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.GridTimelineIndex
 import nl.atlas.gallery.featuregrid.TimelineMedia
@@ -9,6 +12,8 @@ import nl.atlas.gallery.featuregrid.TimelineSort
 import nl.atlas.gallery.featuregrid.buildGridTimelineIndex
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
@@ -89,6 +94,47 @@ class GalleryInventoryMemoryTest {
         assertEquals("media:" + single[0].uri,
             catalogueIndex(single, TimelineSort.NEWEST, GridDensity.MEDIUM).slots[1].stableKey)
         assertEquals(0, catalogueIndex(emptyList(), TimelineSort.NEWEST, GridDensity.MEDIUM).slots.size)
+    }
+
+    /**
+     * PERF-6b (#601): the face digest and stable newest-first order are unchanged,
+     * but a People publication retains the gallery rows, not a copied face row
+     * and URI per item. Use an unsorted view to exercise the packed index.
+     */
+    @Test fun peopleProjectionAt250kRetainsOnlyIndicesAndPreservesDigest() {
+        val n = 250_000
+        val records = catalogue(n).asReversed()
+        // Baseline intentionally materializes the old projection; it is not kept
+        // after the digest is computed.
+        val expected = faceInventoryDigest(newestFirst(
+            records.map { it.toFaceVisibleMedia(editorRevision = 0L) }))
+        val h0 = usedHeap()
+        val view = MediaRecordFaceView(records)
+        val sorted = newestFirst(view)
+        val h1 = usedHeap()
+        assertSame(sorted, newestFirst(sorted)) // no second publication-time sort list
+        assertEquals(expected, faceInventoryDigest(sorted))
+        assertEquals(records.size, sorted.size)
+        assertEquals(records.first().id, sorted.last().id)
+        val directory = FaceAuthorizedMediaDirectory.build(
+            "synthetic-grant", sorted, { it }, { "synthetic-grant" }, { true })
+        val h2 = usedHeap()
+        // The directory must use this immutable view, not freeze 250k projected
+        // FaceVisibleMedia objects or rebuild 250k URI strings.
+        val sourcesField = directory.javaClass.getDeclaredField("sources")
+        sourcesField.isAccessible = true
+        assertSame(sorted, sourcesField.get(directory))
+        val offsetsField = directory.javaClass.getDeclaredField("sourceOffsets")
+        offsetsField.isAccessible = true
+        assertEquals(null, offsetsField.get(directory)) // 20-bit direct source offsets
+        val retainedIndexBytes = sorted.retainedIndexBytes + 8L * directory.mediaCount
+        val bytesPerItem = retainedIndexBytes.toDouble() / n
+        println("PERF-6b People projection at 250k (JVM, bytes/item): " +
+            "view_heap=${(h1 - h0).toDouble() / n} " +
+            "directory_heap=${(h2 - h1).toDouble() / n} " +
+            "retained_indices=$bytesPerItem")
+        assertTrue("People index must retain <= 16 bytes per gallery row: $bytesPerItem",
+            bytesPerItem <= 16.0)
     }
 
     @Test fun retainedHeapPerHolderAt250k() {
