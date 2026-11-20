@@ -3,7 +3,7 @@ name: atlas-emulator-evidence
 description: Use for ATLAS screenshot or rendered-proof requests, UI pull requests, emulator CI evidence, and KVM or screenshot job failures.
 ---
 # ATLAS emulator evidence
-1. Read `scripts/ci_ui_evidence.sh`, `docs/EMULATOR_KVM_GATE.md`, and `autodev/docs/design/rubric.md` before preparing UI proof.
+1. Read `scripts/ci_ui_evidence.sh`, `docs/EMULATOR_KVM_GATE.md`, and [design rubric](https://github.com/LPStruiksma/autodev/blob/main/docs/design/rubric.md) before preparing UI proof.
 2. Capture actual Android instrumentation screenshots using the `saveUiEvidence` / `screenshot` helpers in `app/src/androidTest`; use synthetic media only.
 3. Declare each screenshot in the feature's own `scripts/ui-evidence.d/*.txt` manifest, not a shared list.
 4. For emulator shards run `bash scripts/ci_ui_evidence.sh pull-some`; aggregate with `verify`. An unsharded run uses `pull` then `verify`; verification requires the exact declared PNG set and emits base64 log groups.
