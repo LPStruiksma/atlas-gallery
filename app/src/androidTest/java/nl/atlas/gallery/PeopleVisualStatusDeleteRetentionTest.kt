@@ -127,6 +127,9 @@ class PeopleVisualStatusDeleteRetentionTest {
     private val readerThreads = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<Thread, Boolean>())
 
+    /** ONNX face sessions this test opened (native memory), closed per case. */
+    private val sessions = java.util.concurrent.CopyOnWriteArrayList<java.io.Closeable>()
+
     private fun freshDir() = File(target.cacheDir, "people-visual-703-" + UUID.randomUUID())
 
     private fun photo(id: Long) = FaceVisibleMedia(
@@ -166,9 +169,13 @@ class PeopleVisualStatusDeleteRetentionTest {
             photoGrantCurrent = ::grantCheck,
             photoGrantToken = { if (grantOn) "synthetic-full-grant" else null },
             inferenceFactory = {
-                FaceEmbeddingPipeline.forOnnx(
-                    OnnxFaceDetector.fromAssets(target.assets, scoreThreshold = 0.6f),
-                    OnnxFaceEmbedder.fromAssets(target.assets))
+                // The host keeps its pipeline for the process's life; this test
+                // builds a host per case, so it closes the native sessions itself.
+                val detector = OnnxFaceDetector.fromAssets(target.assets, scoreThreshold = 0.6f)
+                val embedder = OnnxFaceEmbedder.fromAssets(target.assets)
+                sessions += detector
+                sessions += embedder
+                FaceEmbeddingPipeline.forOnnx(detector, embedder)
             },
             readerFor = { directory ->
                 FaceFrameReader { lease, _ ->
@@ -213,6 +220,8 @@ class PeopleVisualStatusDeleteRetentionTest {
         PeopleScanWorkRuntime.clear()
         runCatching { faces.close() }
         runCatching { visual.close() }
+        sessions.forEach { runCatching { it.close() } }
+        sessions.clear()
         dir.deleteRecursively()
     }
 
