@@ -449,6 +449,9 @@ run_perf_a1_cached_frame() (
     # The fixture marker/cache and grant are disposable; never leave them for
     # the following #31 / #43 test lanes, even on a failing benchmark.
     adb shell pm clear "$pkg" >/dev/null || status=1
+    if [[ "$status" == "0" ]]; then
+      echo "PASS: PERF-A1A completed-frame witness, synthetic cached Pictures, five distinct cold PIDs, warm control, refresh and cleanup"
+    fi
     exit "$status"
   }
   trap a1_finish EXIT
@@ -537,9 +540,8 @@ run_perf_a1_cached_frame() (
     } END {
       p50=v[int((NR*50+99)/100)]
       p95=v[int((NR*95+99)/100)]
-      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s\\n", NR, p50, p95, model, api, head
+      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s\n", NR, p50, p95, model, api, head
     }'
-  echo "PASS: PERF-A1A completed-frame witness, synthetic cached Pictures, five distinct cold PIDs, warm control, refresh and cleanup"
 )
 
 if [[ "$SHARD_INDEX" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
