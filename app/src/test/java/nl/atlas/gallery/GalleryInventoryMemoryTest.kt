@@ -4,6 +4,7 @@ import nl.atlas.gallery.featurealbums.buildAlbumSummaries
 import nl.atlas.gallery.featureface.FaceAuthorizedMediaDirectory
 import nl.atlas.gallery.featureface.MediaRecordFaceView
 import nl.atlas.gallery.featureface.toFaceVisibleMedia
+import nl.atlas.gallery.featureface.toDurableFaceKey
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.GridTimelineIndex
 import nl.atlas.gallery.featuregrid.TimelineMedia
@@ -119,6 +120,14 @@ class GalleryInventoryMemoryTest {
         val directory = FaceAuthorizedMediaDirectory.build(
             "synthetic-grant", sorted, { it }, { "synthetic-grant" }, { true })
         val h2 = usedHeap()
+        // Resolve the live URI under exactly this epoch and revision, with
+        // the same full-key check used by the face scanner.
+        val selected = sorted[n / 2 + 1]
+        assertEquals(false, selected.isVideo)
+        val key = selected.toDurableFaceKey()
+        assertEquals(selected.uri, directory.authorizedUri(key))
+        assertEquals(false, directory.sourceRevisionCurrent(
+            key.copy(sourceRevision = "synthetic-stale-revision")))
         // The directory must use this immutable view, not freeze 250k projected
         // FaceVisibleMedia objects or rebuild 250k URI strings.
         val sourcesField = directory.javaClass.getDeclaredField("sources")
