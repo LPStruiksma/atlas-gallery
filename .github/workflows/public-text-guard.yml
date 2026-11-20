@@ -1,0 +1,100 @@
+name: Public text guard
+# atlas-gallery#533: this repository is public. Flag personal data (e-mail,
+# phone, street address, personal folder paths, EXIF/GPS, content:// ids, chat
+# links) in PR diffs and commit messages (check `diff and commits`), and in new
+# or edited issue and PR text (comment + `leak-check` label). Findings name the
+# kind and line only, never the matched text. Script: scripts/public_text_guard.py
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+permissions:
+  contents: read
+jobs:
+  diff:
+    name: diff and commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE: ${{ github.event.pull_request.base.sha }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Guard tests
+        run: |
+          python -m pip install --quiet pytest==8.3.3
+          python -m pytest -q tests/test_public_text_guard.py
+      - name: Scan added lines of the PR diff
+        run: git diff --no-color "$BASE...$HEAD" | python scripts/public_text_guard.py --diff -
+      - name: Scan commit messages
+        if: ${{ !cancelled() }}
+        run: python scripts/public_text_guard.py --commits "$BASE..$HEAD"
+
+  posted:
+    name: posted text
+    if: github.event_name != 'pull_request' || github.event.action == 'opened' || github.event.action == 'edited'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/public_text_guard.py
+          sparse-checkout-cone-mode: false
+      - name: Scan the posted text
+        id: scan
+        run: |
+          set +e
+          python3 scripts/public_text_guard.py --event "$GITHUB_EVENT_PATH" --json > "$RUNNER_TEMP/findings.json"
+          code=$?
+          set -e
+          if [ "$code" -gt 1 ]; then exit "$code"; fi
+          echo "hit=$code" >> "$GITHUB_OUTPUT"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("hits:", d["count"], d["kinds"])' "$RUNNER_TEMP/findings.json"
+      - name: Ask the author to edit and label the item
+        if: steps.scan.outputs.hit == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: |
+          python3 - "$GITHUB_EVENT_PATH" "$RUNNER_TEMP/findings.json" > "$RUNNER_TEMP/comment.md" <<'PY'
+          import json, sys
+          event = json.load(open(sys.argv[1]))
+          found = json.load(open(sys.argv[2]))
+          item = event.get("comment") or event.get("review") or event.get("pull_request") or event.get("issue") or {}
+          author = (item.get("user") or {}).get("login") or (event.get("sender") or {}).get("login") or ""
+          where = found["findings"][0]["source"]
+          link = item.get("html_url") or ""
+          lines = sorted({(f["label"], f["line"]) for f in found["findings"]}, key=lambda x: (x[1], x[0]))
+          hits = "\n".join(f"- {label}, line {line}" for label, line in lines)
+          print(f"Public text guard: the {where} {link} may contain personal data.\n")
+          print(hits + "\n")
+          print(
+              (f"@{author}, " if author else "")
+              + "this repository is public. Please edit the text to remove it; the edit history stays visible,"
+              " so the owner may also delete the old revision. If the value is synthetic, add"
+              " `guard: allow-public` to that line. The matched text is not repeated here."
+          )
+          PY
+          gh api "repos/$REPO/issues/$NUMBER/comments" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+          gh api "repos/$REPO/issues/$NUMBER/labels" -f "labels[]=leak-check" > /dev/null
