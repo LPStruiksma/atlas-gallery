@@ -244,65 +244,95 @@ internal fun DeclutterScreen(
                 .testTag("atlas-declutter-verifying"))
         }
         if (reviewing) {
-            Text("Review staged files", style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground)
             val visiblePending = scopedNamedMatches(pending, searchText) { it.name + " " + it.album }
-            // S1 / S2: filtering is only a view; Move still counts every staged file.
-            if (visiblePending.isEmpty()) {
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Column(Modifier.testTag("atlas-declutter-search-empty"),
-                        horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            if (pending.isEmpty()) "No staged files yet" else "No matching staged files",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            if (pending.isEmpty()) "Swipe left on a photo to stage it."
-                            else "Clear the search to see all ${pending.size}.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            // #702: only the body scrolls. The Move action is a sibling
+            // anchored at the bottom of the remaining IME-safe area, rather
+            // than the last child measured after a weighted list/Return button.
+            // safeDrawing above already accounts for the keyboard; do not add
+            // imePadding here or the inset will be applied twice.
+            // The search popup owns a separate IME window. On S24+ landscape,
+            // its visible top is 57px above the Activity review viewport bottom
+            // even after safeDrawing; reserve a small non-IME clearance for the
+            // anchored action rather than stacking imePadding on safeDrawing.
+            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 24.dp)) {
+                LazyColumn(
+                    Modifier.fillMaxSize().testTag("atlas-declutter-review-body"),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 56.dp)
+                ) {
+                    item {
+                        Text("Review staged files", style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground)
+                    }
+                    // S1/S2: a plain centered message, never a fake search hit.
+                    if (visiblePending.isEmpty()) {
+                        item {
+                            Box(Modifier.fillParentMaxHeight(0.65f).fillMaxWidth(),
+                                contentAlignment = Alignment.Center) {
+                                Column(Modifier.testTag("atlas-declutter-search-empty"),
+                                    horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        if (pending.isEmpty()) "No staged files yet"
+                                        else "No matching staged files",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Text(
+                                        if (pending.isEmpty()) "Swipe left on a photo to stage it."
+                                        else "Clear the search to see all ${pending.size}.",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(visiblePending, key = { it.uri }) { media ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    .padding(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                MediaPreview(media, Modifier.size(64.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .testTag("atlas-declutter-thumbnail"), ContentScale.Crop, 160)
+                                Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                                    Text(media.name, maxLines = 1,
+                                        color = MaterialTheme.colorScheme.onSurface)
+                                    Text(readableBytes(media.sizeBytes),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                TextButton(
+                                    enabled = !verifying,
+                                    onClick = { session = session.unstage(media.uri) }
+                                ) { Text("Keep") }
+                            }
+                        }
+                    }
+                    if (pending.size > maxTrashBatch) {
+                        item {
+                            Text("Review at most $maxTrashBatch files per Trash request. " +
+                                 "Unstage others or split into another session.")
+                        }
+                    }
+                    // In short landscape windows this action stays reachable
+                    // via the same scroll, instead of compressing the primary CTA.
+                    item {
+                        TextButton(onClick = { reviewing = false }) {
+                            Text("Return to swiping")
+                        }
                     }
                 }
-            } else {
-                LazyColumn(Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(visiblePending,
-                    key = { it.uri }) { media ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        MediaPreview(media, Modifier.size(64.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .testTag("atlas-declutter-thumbnail"), ContentScale.Crop, 160)
-                        Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                            Text(media.name, maxLines = 1,
-                                color = MaterialTheme.colorScheme.onSurface)
-                            Text(readableBytes(media.sizeBytes),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        TextButton(
-                            enabled = !verifying,
-                            onClick = { session = session.unstage(media.uri) }
-                        ) {
-                            Text("Keep")
-                        }
-                    }
-                }
-                }
-            }
-            TextButton(onClick = { reviewing = false }) { Text("Return to swiping") }
-            Button(
-                onClick = { confirming = true },
-                enabled = !verifying && pending.isNotEmpty() &&
-                    pending.size <= maxTrashBatch,
-                modifier = Modifier.fillMaxWidth().testTag("atlas-declutter-trash")
-            ) { Text("Move ${pendingCount} to Android Trash…") }
-            if (pending.size > maxTrashBatch) {
-                Text("Review at most $maxTrashBatch files per Trash request. " +
-                     "Unstage others or split into another session.")
+                // The review viewport can shrink to zero visible rows with the
+                // landscape IME, but the 48dp counted Move target must not.
+                Button(
+                    onClick = { confirming = true },
+                    enabled = !verifying && pending.isNotEmpty() &&
+                        pending.size <= maxTrashBatch,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag("atlas-declutter-trash")
+                ) { Text("Move ${pendingCount} to Android Trash…") }
             }
         } else if (current == null) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
