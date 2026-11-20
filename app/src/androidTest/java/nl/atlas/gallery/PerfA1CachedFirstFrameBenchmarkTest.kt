@@ -99,11 +99,13 @@ class PerfA1CachedFirstFrameBenchmarkTest {
     @Test fun seedCachedPicturesOutsideTimedWindow() {
         phase("seed")
         if (!marker.exists()) {
-            insertFixture()
+            // Mark ownership first: even a failed partial insert is removable
+            // in the host's unconditional cleanup path.
             assertTrue(marker.createNewFile())
+            insertFixture()
         }
-        val all = GalleryRepository(target).load()
-        assertEquals(6, rows().size)
+        val all = rows()
+        assertEquals(6, all.size)
         GalleryInventoryCacheFile(inventoryFile).write(
             GalleryMediaGrant(images = true, videos = true, selected = false), all)
         assertFixtureAndCache()
@@ -119,7 +121,7 @@ class PerfA1CachedFirstFrameBenchmarkTest {
         phase("cleanup")
         assertTrue("Cleanup requires its own fixture marker", marker.isFile)
         val fixtures = rows()
-        assertEquals("Cleanup refuses unknown/partial fixture", 6, fixtures.size)
+        assertTrue("Cleanup refuses an oversized fixture", fixtures.size <= 6)
         fixtures.forEach { row ->
             assertTrue("Only one invented MediaStore row may be deleted",
                 target.contentResolver.delete(android.net.Uri.parse(row.uri), null, null) == 1)
