@@ -85,6 +85,8 @@ class PeopleFullPublicationRetentionTest {
         override fun savePublishedVisual(value: PublishedVisualScope?) { publishedVisual = value }
     }
 
+    /** Native ONNX sessions this test opened; closed in [cleanup] (shard memory, PR #700). */
+    private val opened = java.util.concurrent.CopyOnWriteArrayList<AutoCloseable>()
     @Volatile private var probe: (() -> Unit)? = null
     @Volatile private var granted = true
     private var probing = false
@@ -135,9 +137,10 @@ class PeopleFullPublicationRetentionTest {
             photoGrantCurrent = ::grantCheck,
             photoGrantToken = { if (granted) "synthetic-full-grant" else null },
             inferenceFactory = {
-                FaceEmbeddingPipeline.forOnnx(
-                    OnnxFaceDetector.fromAssets(target.assets, scoreThreshold = 0.6f),
-                    OnnxFaceEmbedder.fromAssets(target.assets))
+                val detector = OnnxFaceDetector.fromAssets(target.assets, scoreThreshold = 0.6f)
+                    .also { opened += it }
+                val embedder = OnnxFaceEmbedder.fromAssets(target.assets).also { opened += it }
+                FaceEmbeddingPipeline.forOnnx(detector, embedder)
             },
             readerFor = { directory ->
                 FaceFrameReader { lease, _ ->
@@ -179,6 +182,8 @@ class PeopleFullPublicationRetentionTest {
         PeopleDiscoveryHost.replaceAppForTest(null)
         runCatching { faces.close() }
         runCatching { visual.close() }
+        opened.forEach { runCatching { it.close() } }
+        opened.clear()
         dir.deleteRecursively()
     }
 
