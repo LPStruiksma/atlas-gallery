@@ -28,7 +28,7 @@ const reviewLayout = declutter.slice(
   declutter.indexOf('if (reviewing) {', declutter.indexOf('AtlasGalleryHeader(')),
   declutter.indexOf('} else if (current == null)')
 );
-assert.match(reviewLayout, /Box\\(Modifier\\.weight\\(1f\\)\\.fillMaxWidth\\(\\)\\.padding\\(bottom = 24\\.dp\\)/,
+assert.ok(reviewLayout.includes('Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = 24.dp))'),
   'review viewport must reserve 24dp clearance above the popup IME');
 assert.match(reviewLayout,
   /LazyColumn\(\s*Modifier\.fillMaxSize\(\)[\s\S]*?contentPadding = PaddingValues\(bottom = 56\.dp\)/,
