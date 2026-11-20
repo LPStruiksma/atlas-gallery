@@ -101,7 +101,10 @@ class ViewerFingerFollowTest {
             val moved = rule.onNodeWithTag("atlas-viewer-drag-photo")
                 .fetchSemanticsNode().boundsInRoot
             assertTrue("Up drag must move the photo", moved.top != baseline.top)
-            rule.onNodeWithTag("atlas-details-drag-content").assertIsDisplayed()
+            // #details-motion: the one details surface follows the finger
+            // from the first pixels; it is not yet committed (no provider IO).
+            rule.onNodeWithTag("atlas-details-drag-preview").assertIsDisplayed()
+            rule.onNodeWithTag("atlas-viewer-details").assertDoesNotExist()
         }
         rule.onNodeWithTag("atlas-viewer-details").assertDoesNotExist()
         rule.onNodeWithTag("atlas-details-drag-preview").assertDoesNotExist()
