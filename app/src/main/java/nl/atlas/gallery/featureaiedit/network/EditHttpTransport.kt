@@ -76,7 +76,7 @@ data class EditHttpRequest(
     val headers: Map<String, String> = emptyMap()
 )
 
-enum class FailureCode { INVALID_REQUEST, RESPONSE_TOO_LARGE, NETWORK, TIMEOUT, AUTH, QUOTA, SERVER }
+enum class FailureCode { INVALID_REQUEST, RESPONSE_TOO_LARGE, NETWORK, TIMEOUT, AUTH, BILLING, QUOTA, SERVER }
 
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
@@ -321,6 +321,9 @@ class EditHttpTransport(
                     else byteArrayOf()
                 val mapped = when (status) {
                     401, 403 -> FailureCode.AUTH to false
+                    // Payment Required (e.g. depleted Gemini prepay credits); no automatic retry.
+                    // Other providers may use different codes for credit exhaustion.
+                    402 -> FailureCode.BILLING to false
                     408 -> FailureCode.TIMEOUT to true
                     429 -> FailureCode.QUOTA to false
                     400, 404, 405, 411, 413, 415, 422 -> FailureCode.INVALID_REQUEST to false
