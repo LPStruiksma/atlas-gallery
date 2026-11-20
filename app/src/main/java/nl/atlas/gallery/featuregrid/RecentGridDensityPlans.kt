@@ -24,12 +24,17 @@ internal class RecentGridDensityPlans<T : Any>(private val capacity: Int = 2) {
     /** Used only by the planner effect, to record genuine reuse. */
     fun get(density: GridDensity): T? = plans[density]
 
-    fun putCompleted(density: GridDensity, plan: T) {
+    /**
+     * Stores [plan]; over capacity, evicts the least recently used level that
+     * is not in [protect] (FLOW-1: the shown level and its pinch neighbours),
+     * else the least recently used other than [density].
+     */
+    fun putCompleted(density: GridDensity, plan: T, protect: Set<GridDensity> = emptySet()) {
         plans[density] = plan
         while (plans.size > capacity) {
-            val eldest = plans.keys.iterator()
-            eldest.next()
-            eldest.remove()
+            val victim = plans.keys.firstOrNull { it != density && it !in protect }
+                ?: plans.keys.first { it != density }
+            plans.remove(victim)
         }
     }
 

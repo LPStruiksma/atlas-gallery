@@ -386,16 +386,16 @@ class PinchCrossFlowEvidenceTest {
     }
 }
 
-/**
- * Note 3 of the design preflight: the landscape ladder, one mid-pinch and one
- * settled frame on the S24+ turned sideways (2340 × 1080).
- */
 /** Neighbouring levels are planned after a short idle pause, off the main thread. */
 private fun ComposeTestRule.awaitNeighboursPlanned(timeoutMs: Long = 30_000L) = awaitThat(
     "both neighbouring pinch levels planned", timeoutMs) {
     onAllNodes(SemanticsMatcher.expectValue(CrossNeighboursPlanned, true)).fetchSemanticsNodes().isNotEmpty()
 }
 
+/**
+ * Note 3 of the design preflight: the landscape ladder, one mid-pinch and one
+ * settled frame on the S24+ turned sideways (2340 × 1080).
+ */
 @RunWith(AndroidJUnit4::class)
 class PinchCrossFlowLandscapeEvidenceTest {
     private val compose = createAndroidComposeRule<ComponentActivity>()

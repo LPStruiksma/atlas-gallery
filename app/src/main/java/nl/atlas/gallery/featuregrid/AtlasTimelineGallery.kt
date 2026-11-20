@@ -526,7 +526,9 @@ fun AtlasTimelineGallery(
                     // work) before planning; a running pinch needs its pair now.
                     if (pair == null) kotlinx.coroutines.delay(CROSS_IDLE_PREFETCH_DELAY_MS)
                     val plan = buildPlan(level, null)
-                    recentPlans.putCompleted(level, plan)
+                    // Never evict the shown level or a neighbour this loop already found.
+                    val protect = (listOf(base.ordinal) + wanted).mapTo(HashSet()) { GridDensity.entries[it] }
+                    recentPlans.putCompleted(level, plan, protect)
                     plansVersion++
                 }
             }
