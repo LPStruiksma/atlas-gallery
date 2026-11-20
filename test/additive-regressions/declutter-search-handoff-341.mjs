@@ -35,7 +35,7 @@ assert.match(declutter, /testTag\("atlas-declutter-trash"\)/);
 const search = readFileSync('app/src/main/java/nl/atlas/gallery/featuresearch/AtlasSearch.kt', 'utf8');
 assert.match(search, /ATLAS_SEARCH_SINGLE_ROW_BELOW_DP = 280/, 'frame L threshold');
 assert.match(search, /WindowInsets\.ime\.getBottom/, 'single-row switch reads the host IME inset');
-assert.match(search, /LocalWindowInfo\.current\.containerSize\.height/, 'single-row switch reads the host window height, so resized windows count');
+assert.match(search, /hostHeightPx = bottom - top[\s\S]*addOnLayoutChangeListener/, 'single-row switch reads the host view height, so windows resized for the IME count');
 assert.match(search, /queryField\(Modifier\.width\(240\.dp\)\)\s*scopeChips\(\)\s*closeButton\(\)/,
   'frame L order: field, This screen, Whole library, Close');
 console.log('FIND-5 scoped Declutter search handoff contract passed');

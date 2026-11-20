@@ -20,7 +20,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,7 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -100,8 +104,22 @@ fun AtlasSearch(
     // popup below does not receive the IME inset itself.
     val density = LocalDensity.current
     val imeBottomDp = with(density) { WindowInsets.ime.getBottom(density).toDp().value.toInt() }
-    val windowHeightDp = with(density) {
-        LocalWindowInfo.current.containerSize.height.toDp().value.toInt()
+    // The host view's own height, not the window container: a window that
+    // resizes for the keyboard shrinks this view and reports no IME inset.
+    val hostView = LocalView.current
+    var hostHeightPx by remember(hostView) { mutableIntStateOf(hostView.height) }
+    DisposableEffect(hostView) {
+        val listener = View.OnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            hostHeightPx = bottom - top
+        }
+        hostView.addOnLayoutChangeListener(listener)
+        hostHeightPx = hostView.height
+        onDispose { hostView.removeOnLayoutChangeListener(listener) }
+    }
+    val windowHeightDp = if (hostHeightPx > 0) {
+        with(density) { hostHeightPx.toDp().value.toInt() }
+    } else {
+        LocalConfiguration.current.screenHeightDp
     }
     val singleRow = showQueryField && showScopeChips &&
         atlasSearchSingleRow(windowHeightDp, imeBottomDp)
