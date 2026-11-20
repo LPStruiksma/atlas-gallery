@@ -544,7 +544,7 @@ class PeopleVisualStatusDeleteRetentionTest {
             val active = faces.activeEpoch()
             inProbe += "$tag panel_total=${host.status(newGrant).visual?.total} " +
                 "direct_total=${active?.let { host.visualStatus(it) }?.total} " +
-                "direct_replaced_total=${host.visualStatus(before).total}"
+                "direct_replaced_total=${host.visualStatus(before)?.total}"
         }
         probe = {
             if (!fired && faceSwapped(before, newGrant)) {
@@ -572,7 +572,7 @@ class PeopleVisualStatusDeleteRetentionTest {
         release.countDown()
         if (boundary == Boundary.BETWEEN_SCOPE_AND_PROGRESS) finish(readers)
         sampleNow("after")
-        val summary = "$label fired=$fired failure=${host.visualStatus(before).failure != null} " +
+        val summary = "$label fired=$fired failure=${host.visualStatus(before)?.failure != null} " +
             "optin=${memory.visualOn} grant=$grantOn $inProbe " +
             readers.joinToString(" ") { "${it.label}:seam=${it.seamReached} total=${it.result?.total}" }
         Log.i(TAG, "case=$summary")
