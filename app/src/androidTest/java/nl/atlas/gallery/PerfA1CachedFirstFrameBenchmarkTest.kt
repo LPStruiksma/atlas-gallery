@@ -60,19 +60,26 @@ class PerfA1CachedFirstFrameBenchmarkTest {
                     put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/$folder/")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }))
-            val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            canvas.drawColor(Color.rgb(index * 27, 90 + index * 13, 220 - index * 17))
             try {
-                requireNotNull(target.contentResolver.openOutputStream(uri)).use {
-                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+                val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+                try {
+                    Canvas(bitmap).drawColor(
+                        Color.rgb(index * 27, 90 + index * 13, 220 - index * 17))
+                    requireNotNull(target.contentResolver.openOutputStream(uri)).use {
+                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+                    }
+                } finally {
+                    bitmap.recycle()
                 }
-            } finally {
-                bitmap.recycle()
+                assertEquals(1, target.contentResolver.update(uri, ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null))
+            } catch (error: Throwable) {
+                // A failed image write must not strand an IS_PENDING row that
+                // the normal MediaStore gallery query/cleanup cannot see.
+                target.contentResolver.delete(uri, null, null)
+                throw error
             }
-            assertEquals(1, target.contentResolver.update(uri, ContentValues().apply {
-                put(MediaStore.MediaColumns.IS_PENDING, 0)
-            }, null, null))
         }
         assertEquals(6, rows().size)
     }
