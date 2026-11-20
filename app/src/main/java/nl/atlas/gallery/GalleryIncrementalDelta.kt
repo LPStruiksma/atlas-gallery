@@ -58,3 +58,37 @@ internal fun mergeGalleryMediaDelta(
     }
     return if (modified) result else previous
 }
+
+/** #602: more changed rows than this since the checkpoint: a full scan is simpler. */
+internal const val COLD_DELTA_MAX_CHANGES = 4096
+
+/** #602: a saved checkpoint a cold-start delta may start from (API 30+ shape). */
+internal fun coldDeltaCheckpointUsable(checkpoint: GalleryMediaCheckpoint): Boolean =
+    checkpoint.versions.isNotEmpty() &&
+        checkpoint.versions.values.all { !it.isNullOrBlank() } &&
+        checkpoint.generations.keys == checkpoint.versions.keys &&
+        checkpoint.generations.values.all { it != null && it >= 0L }
+
+/**
+ * #602: the provider now is the provider the checkpoint was taken from: the
+ * same mounted volumes with the same versions (no reset) and no generation
+ * behind the saved one.
+ */
+internal fun coldDeltaMayResume(
+    checkpoint: GalleryMediaCheckpoint,
+    versions: Map<String, String?>,
+    generations: Map<String, Long?>
+): Boolean = coldDeltaCheckpointUsable(checkpoint) &&
+    versions == checkpoint.versions && generations.keys == versions.keys &&
+    generations.all { (volume, now) ->
+        val saved = checkpoint.generations[volume]
+        now != null && saved != null && now >= saved
+    }
+
+/** #602: every cached row whose identity the provider no longer lists. */
+internal fun coldDeltaDeletions(
+    previous: List<MediaRecord>, present: Set<GalleryMediaDeltaKey>
+): List<GalleryMediaDeltaChange> = previous.mapNotNull { record ->
+    val key = GalleryMediaDeltaKey.of(record)
+    if (key in present) null else GalleryMediaDeltaChange(key, null)
+}
