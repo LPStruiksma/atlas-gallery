@@ -69,7 +69,7 @@ fun AlbumPickerScreen(
         .systemBarsPadding().testTag("atlas-album-picker")) {
         AtlasGalleryHeader(title = title, onBack = onClose)
         if (albums == null) {
-            AtlasGalleryLoading("Gathering albums on this device…")
+            AtlasGalleryLoading("Loading albums…", bottomInset = 0.dp)
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),

@@ -109,17 +109,19 @@ class HostedEditJob(
 
 /**
  * Maps a transport failure to the provider contract with a fixed, code-only message. The `else`
- * branch keeps adapters compiling and conservative when the transport adds codes (for example a
- * dedicated oversized-reply code): unknown codes are never treated as retryable.
+ * branch keeps adapters compiling and conservative when the transport adds codes: unknown codes
+ * are never treated as retryable.
  */
 fun hostedFailure(result: EditHttpResult.Failed, retryableOverride: Boolean? = null): EditOutcome.Failed {
     val (kind, retryable) = when (result.code) {
         FailureCode.AUTH -> FailureKind.AUTH to false
+        FailureCode.BILLING -> FailureKind.BILLING to false
         FailureCode.QUOTA -> FailureKind.QUOTA to false
         FailureCode.TIMEOUT -> FailureKind.TIMEOUT to true
         FailureCode.NETWORK -> FailureKind.NETWORK to result.retryable
         FailureCode.SERVER -> FailureKind.SERVER to result.retryable
         FailureCode.INVALID_REQUEST -> FailureKind.INVALID_REQUEST to false
+        FailureCode.RESPONSE_TOO_LARGE -> FailureKind.SERVER to false
         else -> FailureKind.UNKNOWN to false
     }
     return EditOutcome.Failed(kind, retryableOverride ?: retryable, "HTTP_" + result.code.name)

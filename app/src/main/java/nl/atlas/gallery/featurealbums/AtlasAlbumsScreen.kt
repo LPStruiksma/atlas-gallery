@@ -3,6 +3,7 @@ package nl.atlas.gallery.featurealbums
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
@@ -33,10 +34,10 @@ import androidx.compose.ui.zIndex
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -61,6 +62,7 @@ import nl.atlas.gallery.featuredesign.AtlasScrollAwayHeader
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuredesign.AtlasSpace
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.featuresearch.AtlasSearch
 import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
@@ -216,7 +218,12 @@ fun AtlasAlbumCard(
     }
 }
 
-/** Sort as one icon, like Photos; the menu marks the current order. */
+/**
+ * Samsung parity R3/P5 (#20): one sort icon opens the same compact bottom
+ * choice sheet as Photos. This only chooses an AlbumSort; the caller retains
+ * the catalog projection, user Custom order and persistence contract.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AtlasAlbumSortMenu(
     sort: AlbumSort,
@@ -232,20 +239,50 @@ private fun AtlasAlbumSortMenu(
             Icon(Icons.AutoMirrored.Filled.Sort,
                 contentDescription = "Sort: " + albumSortLabel(sort))
         }
-        DropdownMenu(expanded = showSort, onDismissRequest = { showSort = false }) {
-            AlbumSort.entries.forEach { choice ->
-                DropdownMenuItem(
-                    text = { Text(albumSortLabel(choice)) },
-                    onClick = {
-                        showSort = false
-                        onSort(choice)
-                    },
-                    trailingIcon = if (choice == sort) {
-                        { Icon(Icons.Filled.Check, contentDescription = null) }
-                    } else null,
-                    modifier = Modifier.testTag("atlas-album-sort-" + choice.name.lowercase())
-                        .semantics { selected = choice == sort }
-                )
+    }
+    if (showSort) {
+        ModalBottomSheet(
+            onDismissRequest = { showSort = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            // Quiet Frame sheet: surface colour, 28 dp top corners (QUIET_FRAME.md).
+            shape = RoundedCornerShape(
+                topStart = AtlasTokens.Radii.Sheet, topEnd = AtlasTokens.Radii.Sheet),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.testTag("atlas-album-sort-sheet")
+        ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)
+                .testTag("atlas-album-sort-sheet-content")) {
+                Text("Sort by", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
+                AlbumSort.entries.forEach { choice ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                            .selectable(
+                                selected = choice == sort,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    showSort = false
+                                    onSort(choice)
+                                }
+                            )
+                            .testTag("atlas-album-sort-" + choice.name.lowercase()),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // #20 brief: the selected row shows accent text as well as the
+                        // accent radio; the label wraps (never clips) at large font scales.
+                        Text(
+                            albumSortLabel(choice),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (choice == sort) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+                                .testTag("atlas-album-sort-label-" + choice.name.lowercase())
+                        )
+                        RadioButton(selected = choice == sort, onClick = null)
+                    }
+                }
             }
         }
     }
@@ -324,55 +361,39 @@ fun AtlasAlbumsScreen(
         if (isLoading || loadIssue != null || albums.isEmpty()) header()
         // An in-progress permission/source refresh must not expose old covers.
         if (isLoading) {
-            AtlasGalleryLoading("Gathering albums on this device…")
+            AtlasGalleryLoading("Loading albums…")
             return@Column
         }
         if (loadIssue != null) {
             // Do not expose stale covers or claim access while permissions fail.
-            // Optional buttons are shown only when the provided action is real.
+            // The one action is shown only when it is real (DESIGN-6 #136).
             val accessFailure = loadIssue == AlbumLoadIssue.ACCESS_NOT_GRANTED
             val action = if (accessFailure) onOpenLibraryStatus else onRetry
-            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                AtlasEmptyState(
-                    title = if (accessFailure) "Albums need photo access"
-                        else "Couldn’t refresh albums",
-                    explanation = if (accessFailure)
-                        "ATLAS can only show albums you allow it to access. " +
-                            "Review your photo and video access in Library status."
-                    else "Your original photos haven’t been changed. " +
-                        "Try loading the library again.",
-                    icon = Icons.Filled.Collections,
-                    actionLabel = if (action == null) null else
-                        if (accessFailure) "Library status" else "Try again",
-                    onAction = action
-                )
-            }
+            AtlasEmptyState(
+                title = if (accessFailure) "Albums need photo access"
+                    else "Couldn’t load albums",
+                icon = Icons.Outlined.PhotoLibrary,
+                actionLabel = if (action == null) null else
+                    if (accessFailure) "Library status" else "Try again",
+                onAction = action,
+                modifier = Modifier.testTag("atlas-albums-quiet")
+            )
             return@Column
         }
         if (albums.isEmpty()) {
-            // Large font/landscape can otherwise clip the primary action.
-            Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                AtlasEmptyState(
-                    title = when (mediaFilter) {
-                        AlbumMediaFilter.ALL -> "Your albums will appear here"
-                        AlbumMediaFilter.PHOTOS -> "No photo albums here"
-                        AlbumMediaFilter.VIDEOS -> "No video albums here"
-                    },
-                    explanation = when (mediaFilter) {
-                        AlbumMediaFilter.ALL ->
-                            "Albums appear here when ATLAS can access photos or videos on this device."
-                        AlbumMediaFilter.PHOTOS ->
-                            "None of your currently accessible albums contain photos. Try All."
-                        AlbumMediaFilter.VIDEOS ->
-                            "None of your currently accessible albums contain videos. Try All."
-                    },
-                    icon = Icons.Filled.Collections,
-                    actionLabel = if (mediaFilter == AlbumMediaFilter.ALL) null else "Show all albums",
-                    onAction = if (mediaFilter == AlbumMediaFilter.ALL) null else {
-                        { onMediaFilterChange(AlbumMediaFilter.ALL) }
-                    }
-                )
-            }
+            AtlasEmptyState(
+                title = when (mediaFilter) {
+                    AlbumMediaFilter.ALL -> "No albums yet"
+                    AlbumMediaFilter.PHOTOS -> "No photo albums"
+                    AlbumMediaFilter.VIDEOS -> "No video albums"
+                },
+                icon = Icons.Outlined.PhotoLibrary,
+                actionLabel = if (mediaFilter == AlbumMediaFilter.ALL) null else "Show all albums",
+                onAction = if (mediaFilter == AlbumMediaFilter.ALL) null else {
+                    { onMediaFilterChange(AlbumMediaFilter.ALL) }
+                },
+                modifier = Modifier.testTag("atlas-albums-quiet")
+            )
             return@Column
         }
         AlbumGrid(

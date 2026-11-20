@@ -1,0 +1,20 @@
+# DESIGN-6 #136: production Albums and People composables, synthetic states.
+# 1080x2340 real emulator captures, each verified by ci_ui_evidence.sh.
+albums-136-empty-light
+albums-136-empty-dark
+albums-136-denied-light
+albums-136-denied-dark
+albums-136-error-light
+albums-136-error-dark
+albums-136-loading-light
+albums-136-loading-dark
+albums-136-loading-resolved-light
+albums-136-loading-resolved-dark
+people-136-not-scanned-light
+people-136-not-scanned-dark
+people-136-restoring-light
+people-136-restoring-dark
+people-136-scanning-light
+people-136-scanning-dark
+people-136-no-faces-light
+people-136-no-faces-dark

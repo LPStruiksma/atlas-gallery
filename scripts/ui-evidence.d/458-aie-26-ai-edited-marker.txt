@@ -1,0 +1,12 @@
+# AIE-26 / #458: "Edited with AI" marker on synthetic media (S24+).
+# C Photo DNA tiles light/dark; A saved-edit Details light and dark at 1.3x
+# text; B original Details (no marker); saved edit with its original deleted.
+aie-26-photo-dna-light
+aie-26-edit-details-light
+aie-26-edit-details-dark-large-text
+aie-26-original-details-dark-large-text
+aie-26-photo-dna-dark
+aie-26-edit-details-missing-original
+# Fallbacks: lineage still loading, and lineage read failing (revoked grant).
+aie-26-edit-details-loading
+aie-26-edit-details-lineage-error

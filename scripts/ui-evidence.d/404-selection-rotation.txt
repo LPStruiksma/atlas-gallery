@@ -1,0 +1,28 @@
+# #404 synthetic photo selection rotation evidence from
+# SelectionResultLightJourneyTest and SelectionResultDarkJourneyTest.
+# Each save follows selected-key, count and contextual-pill assertions.
+selection-404-light-portrait-before
+selection-404-light-landscape
+selection-404-light-portrait-after
+selection-404-dark-portrait-before
+selection-404-dark-landscape
+selection-404-dark-portrait-after
+
+# Album scope: same selected keys and contextual actions after both rotations.
+selection-404-light-album-portrait-before
+selection-404-light-album-landscape
+selection-404-light-album-portrait-after
+selection-404-dark-album-portrait-before
+selection-404-dark-album-landscape
+selection-404-dark-album-portrait-after
+
+# Person scope: real Activity recreation on fictional face images with a
+# configuration-retained selection holder, checked keys and constrained layout.
+selection-404-dark-person-portrait-before
+selection-404-dark-person-landscape
+selection-404-dark-person-portrait-after
+selection-404-light-person-portrait-before
+selection-404-light-person-landscape
+selection-404-light-person-portrait-after
+# 130% text-scale constrained landscape: checked tile and contextual action visible.
+selection-404-light-person-landscape-font130

@@ -10,6 +10,8 @@ import java.io.File
 import java.util.UUID
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.onnx.SFaceModel
+import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeople.identity.PeopleNumbers
@@ -19,9 +21,12 @@ import nl.atlas.gallery.featurepeople.identity.TapCount
 import nl.atlas.gallery.featurepeopleui.reviewTally
 import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepeopleui.reviewPeopleCluster
+import nl.atlas.gallery.featurepeopleui.needsSplitting
+import nl.atlas.gallery.featurepeopleui.samePersonQueue
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
+import nl.atlas.gallery.featurepersistence.NativePeopleNamesBackupCodec
 import nl.atlas.gallery.featurepersistence.PeopleReviewRecords
 import nl.atlas.gallery.featurepersistence.StoredPeopleReview
 import nl.atlas.gallery.featurepersistence.StoredPersonSummary
@@ -97,7 +102,7 @@ class FaceIndexStoreIdentityReviewTest {
     private fun count(store: FaceIndexStore, table: String): Int {
         require(table in listOf("people_names", "people_confirmed", "people_cannot_link",
             "people_rejected", "people_same_unknown", "cluster_members", "embeddings",
-            "people_matched"))
+            "people_matched", "people_mixed_group"))
         return store.readableDatabase.rawQuery("SELECT COUNT(*) FROM $table", null).use {
             check(it.moveToFirst()); it.getInt(0)
         }
@@ -264,6 +269,207 @@ class FaceIndexStoreIdentityReviewTest {
             assertTrue(apart.clusters.unknownClusters.none { it.members.size == 4 })
             assertEquals(3, count(store, "people_cannot_link"))
         }
+    }
+
+    /** HUB-1A (#210): [stored] plus a "not one person" fact for its 3-face group. */
+    private fun withMixedFact(stored: StoredPeopleReview): Pair<MixedGroup, PeopleClusterReviewState> {
+        val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        val fact = MixedGroup.of(group.members)
+        val clusters = FaceClusterer.update(stored.clusters,
+            reviews = stored.clusters.reviews.copy(mixedGroups = setOf(fact)))
+        assertEquals(stored.clusters.unknownClusters, clusters.unknownClusters)
+        return fact to PeopleClusterReviewState("epoch-A", stored.generation, clusters, stored.names)
+    }
+
+    /**
+     * HUB-1A (#210): a mixed-group fact is written with the review commit,
+     * read back, survives a restart and fresh grant, and later answers carry
+     * it. A file from before the table gets it on open with no other row lost.
+     */
+    @Test fun mixedGroupFactIsStoredAndSurvivesRestartAndOlderFiles() = withFile { file ->
+        var fact: MixedGroup? = null
+        FaceIndexStore(contextFor(file)).use { store ->
+            val stored = scannedLibrary(store)
+            val (mixed, next) = withMixedFact(stored)
+            fact = mixed
+            val generation = requireNotNull(commit(store, "epoch-A", stored.generation, next))
+            assertNotEquals(stored.generation, generation)
+            val reread = requireNotNull(store.peopleReview("epoch-A"))
+            assertEquals(setOf(mixed), reread.clusters.reviews.mixedGroups)
+            assertEquals(next.clusters.reviews, reread.clusters.reviews)
+            assertEquals(stored.clusters.unknownClusters, reread.clusters.unknownClusters)
+            assertEquals(1, count(store, "people_mixed_group"))
+            assertEquals(4, count(store, "cluster_members")) // nothing regrouped
+            // Naming another group commits through the reducer and keeps the fact.
+            val stranger = reread.clusters.unknownClusters.single { it.members.size == 1 }
+            val named = requireNotNull(reviewPeopleCluster(uiState("epoch-A", reread),
+                PeopleReviewAction.NameCluster(stranger.id, ana, "Ana")))
+            assertNotNull(commit(store, "epoch-A", reread.generation, named))
+            assertEquals(1, count(store, "people_mixed_group"))
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            grant(store, "epoch-B", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-B"))
+            val restored = requireNotNull(store.peopleReview("epoch-B"))
+            assertEquals(setOf(fact), restored.clusters.reviews.mixedGroups)
+            assertTrue(fact!!.matches(restored.clusters.unknownClusters.single().members))
+            assertEquals(mapOf(ana to "Ana"), restored.names)
+            // Simulate a file written before HUB-1A: no people_mixed_group table.
+            store.writableDatabase.execSQL("DROP TABLE people_mixed_group")
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            assertEquals(FaceIndexStore.SCHEMA_VERSION, store.readableDatabase.version)
+            grant(store, "epoch-C", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-C"))
+            val older = requireNotNull(store.peopleReview("epoch-C"))
+            assertTrue(older.clusters.reviews.mixedGroups.isEmpty())
+            assertEquals(0, count(store, "people_mixed_group"))
+            assertEquals(mapOf(ana to "Ana"), older.names) // no other fact lost
+            assertEquals(1, count(store, "people_confirmed"))
+            assertEquals(3, count(store, "cluster_members"))
+            // The re-created table accepts the fact again.
+            val (again, next) = withMixedFact(older)
+            assertNotNull(store.commitPeopleReview("epoch-C", older.generation,
+                next.clusters, next.names))
+            assertEquals(setOf(again), requireNotNull(store.peopleReview("epoch-C"))
+                .clusters.reviews.mixedGroups)
+        }
+    }
+
+    /** HUB-1A (#210): the table refuses malformed fingerprints and follows its anchor face. */
+    @Test fun mixedGroupRowsAreStrictAndCascadeWithTheAnchorFace() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val (fact, next) = withMixedFact(stored)
+        assertNotNull(commit(store, "epoch-A", stored.generation, next))
+        val db = store.writableDatabase
+        for (bad in listOf(fact.fingerprint.uppercase(), fact.fingerprint.dropLast(1),
+            fact.fingerprint.dropLast(1) + "g")) {
+            try {
+                db.execSQL("INSERT INTO people_mixed_group(anchor_uid,fingerprint) VALUES(?,?)",
+                    arrayOf(fact.anchor.localHex, bad))
+                fail("A malformed fingerprint was stored: $bad")
+            } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        }
+        try {
+            db.execSQL("INSERT INTO people_mixed_group(anchor_uid,fingerprint) VALUES(?,?)",
+                arrayOf("f".repeat(32), fact.fingerprint))
+            fail("A fact for an unknown face was stored")
+        } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        assertEquals(1, count(store, "people_mixed_group"))
+        // A rescan drops the anchor's embedding, and the fact goes with it.
+        db.execSQL("DELETE FROM embeddings WHERE face_uid=?", arrayOf(fact.anchor.localHex))
+        assertEquals(0, count(store, "people_mixed_group"))
+    }
+
+    /**
+     * HUB-1A (#210): People backup carries mixed-group facts. Export writes
+     * version 3 only when there are some; import restores a fact whose anchor
+     * is a current face, skips one whose anchor is unknown, and a fact-free
+     * backup stays version 2.
+     */
+    @Test fun peopleBackupExportsAndImportsMixedGroupFacts() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val plain = NativePeopleNamesBackupCodec.encode(
+            requireNotNull(store.exportNativeNamesSnapshot("epoch-A")))
+        assertEquals(2, java.nio.ByteBuffer.wrap(plain, 26, 4).int)
+        val (fact, next) = withMixedFact(stored)
+        assertNotNull(commit(store, "epoch-A", stored.generation, next))
+        val bytes = NativePeopleNamesBackupCodec.encode(
+            requireNotNull(store.exportNativeNamesSnapshot("epoch-A")))
+        assertEquals(3, java.nio.ByteBuffer.wrap(bytes, 26, 4).int)
+        val snapshot = NativePeopleNamesBackupCodec.decode(bytes)
+        assertEquals(setOf(fact.anchor.localHex to fact.fingerprint), snapshot.mixedGroups)
+        store.writableDatabase.execSQL("DELETE FROM people_mixed_group")
+        assertTrue(requireNotNull(store.peopleReview("epoch-A")).clusters.reviews.mixedGroups.isEmpty())
+        val unknownAnchor = "f".repeat(32) to fact.fingerprint
+        val result = store.importNativeNamesSnapshot("epoch-A",
+            snapshot.copy(mixedGroups = snapshot.mixedGroups + unknownAnchor))
+        assertEquals(1, result.applied)
+        assertEquals(1, result.skipped)
+        val restored = requireNotNull(store.peopleReview("epoch-A"))
+        assertEquals(setOf(fact), restored.clusters.reviews.mixedGroups)
+        assertEquals(stored.clusters.unknownClusters, restored.clusters.unknownClusters)
+        // Importing the same backup again adds no duplicate row.
+        store.importNativeNamesSnapshot("epoch-A", snapshot)
+        assertEquals(1, count(store, "people_mixed_group"))
+    }
+
+    /**
+     * HUB-1B (#211): "Not one person" through the review reducer is one
+     * commit; it survives a restart, a stale commit writes nothing, and a
+     * commit that fails half way leaves no fact and no other row behind.
+     */
+    @Test fun mixedGroupMarkIsOneAtomicCommitAndSurvivesRestart() = withFile { file ->
+        FaceIndexStore(contextFor(file)).use { store ->
+            val stored = scannedLibrary(store)
+            val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+            val ui = uiState("epoch-A", stored)
+            val marked = requireNotNull(reviewPeopleCluster(ui,
+                PeopleReviewAction.MarkMixedGroups(setOf(group.id))))
+            assertEquals(stored.clusters.unknownClusters, marked.clusters.unknownClusters)
+
+            // A failure inside the transaction rolls back every row of it.
+            val stranger = stored.clusters.unknownClusters.single { it.members.size == 1 }
+            val both = requireNotNull(reviewPeopleCluster(marked,
+                PeopleReviewAction.NameCluster(stranger.id, ana, "Ana")))
+            val db = store.writableDatabase
+            db.execSQL("""CREATE TEMP TRIGGER hub1b_fail BEFORE INSERT ON people_mixed_group
+                BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END""")
+            try {
+                store.commitPeopleReview("epoch-A", stored.generation, both.clusters, both.names)
+                fail("The failing commit was accepted")
+            } catch (_: android.database.SQLException) { }
+            db.execSQL("DROP TRIGGER hub1b_fail")
+            assertEquals(0, count(store, "people_mixed_group"))
+            assertEquals(0, count(store, "people_confirmed"))
+            assertEquals(stored.generation, requireNotNull(store.peopleReview("epoch-A")).generation)
+
+            // The plain mark commits; the same mark from a stale snapshot is refused.
+            assertNotNull(commit(store, "epoch-A", stored.generation, marked))
+            assertNull(commit(store, "epoch-A", stored.generation, marked))
+            assertEquals(1, count(store, "people_mixed_group"))
+            assertEquals(4, count(store, "cluster_members")) // nothing regrouped
+        }
+        FaceIndexStore(contextFor(file)).use { store ->
+            grant(store, "epoch-B", (1..4).map { media(it) })
+            assertTrue(store.materializeClusters("epoch-B"))
+            val restored = requireNotNull(store.peopleReview("epoch-B"))
+            val ui = uiState("epoch-B", restored)
+            assertEquals(listOf(3), needsSplitting(ui).map { it.faces })
+            assertEquals(0, samePersonQueue(ui).open)
+        }
+    }
+
+    /**
+     * HUB-1B (#211): a publication carries the mark when the group barely
+     * changes (one face joins three: Jaccard 0.75) and clears it after a
+     * substantial change (two more join four: Jaccard 0.67), in the same
+     * transaction as the membership.
+     */
+    @Test fun publicationCarriesOrClearsTheMixedMarkByJaccard() = withStore { store ->
+        val stored = scannedLibrary(store)
+        val group = stored.clusters.unknownClusters.first { it.members.size == 3 }
+        val marked = requireNotNull(reviewPeopleCluster(uiState("epoch-A", stored),
+            PeopleReviewAction.MarkMixedGroups(setOf(group.id))))
+        assertNotNull(commit(store, "epoch-A", stored.generation, marked))
+        val axisOf: (String) -> Int = { if (it.endsWith("/4#photo")) 5 else 0 }
+
+        grant(store, "epoch-B", (1..5).map { media(it) })
+        scanAll(store, "epoch-B", axisOf = axisOf)
+        assertTrue(store.materializeClusters("epoch-B"))
+        val grown = requireNotNull(store.peopleReview("epoch-B"))
+        val four = grown.clusters.unknownClusters.single { it.members.size == 4 }
+        assertEquals(setOf(MixedGroup.of(four.members)), grown.clusters.reviews.mixedGroups)
+        assertEquals(listOf(four.id), needsSplitting(uiState("epoch-B", grown)).map { it.cluster })
+        assertEquals(1, count(store, "people_mixed_group"))
+
+        grant(store, "epoch-C", (1..7).map { media(it) })
+        scanAll(store, "epoch-C", axisOf = axisOf)
+        assertTrue(store.materializeClusters("epoch-C"))
+        val big = requireNotNull(store.peopleReview("epoch-C"))
+        assertEquals(6, big.clusters.unknownClusters.maxOf { it.members.size })
+        assertTrue(big.clusters.reviews.mixedGroups.isEmpty())
+        assertEquals(0, count(store, "people_mixed_group"))
     }
 
     /** #434 part 2: the host's cheap generation read and the person album keys. */

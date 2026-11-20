@@ -1,6 +1,20 @@
 package nl.atlas.gallery
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.lifecycle.ViewModelProvider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,13 +44,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
-import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -62,10 +76,19 @@ import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.testShell
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,7 +108,10 @@ import org.junit.runner.RunWith
 class PersonPageJourneyTest {
     // #584: rendered like the app (dark theme, app system bars) at S24+ size.
     private val compose = createAndroidComposeRule<ComponentActivity>()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    // No keyboard slides up: the name and search steps are about the page,
+    // not layout above the keyboard (docs/testing/EMULATOR_TESTS.md).
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.None))
+        .around(S24DisplayRule()).around(compose)
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val target = instrumentation.targetContext
@@ -203,30 +229,6 @@ class PersonPageJourneyTest {
             FaceBatchStop.NO_PENDING && guard++ < 20) Unit
     }
 
-    private fun waitFor(label: String, condition: () -> Boolean) {
-        try {
-            compose.waitUntil(20_000, condition)
-        } catch (e: Throwable) {
-            val tree = runCatching { compose.onRoot().printToString() }.getOrDefault("?")
-            throw AssertionError("Timed out waiting for $label. Screen:\n$tree", e)
-        }
-    }
-
-    private fun waitForTag(tag: String) = waitFor("tag $tag") {
-        compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
-    }
-
-    private fun waitForText(text: String) = waitFor("text '$text'") {
-        compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
-    }
-
-    /** Let thumbnails and face crops decode before a screenshot. */
-    private fun settle() {
-        compose.waitForIdle()
-        Thread.sleep(1_200)
-        compose.waitForIdle()
-    }
-
     /** Pinch out on the grid until the real-ratio rows show (the ladder may need more than one). */
     private fun pinchToRatioRows() {
         fun shown(tag: String) = compose.onAllNodesWithTag(tag, useUnmergedTree = true)
@@ -234,7 +236,7 @@ class PersonPageJourneyTest {
         for (attempt in 1..3) {
             // #614: a pinch that worked can leave a moment with neither view in
             // the tree; wait for one of them instead of failing the grid lookup.
-            waitFor("grid or ratio rows") {
+            compose.awaitThat("grid or ratio rows", WAIT_MS) {
                 shown("atlas-ratio-gallery") || shown("atlas-timeline-grid")
             }
             if (shown("atlas-ratio-gallery")) break
@@ -248,7 +250,201 @@ class PersonPageJourneyTest {
             }
             compose.waitForIdle()
         }
-        waitForTag("atlas-ratio-gallery")
+        compose.waitForNode(hasTestTag("atlas-ratio-gallery"), WAIT_MS, useUnmergedTree = true)
+    }
+
+    /**
+     * #404: unlike a plain composition/theme toggle, this recreates the real
+     * ComponentActivity four times. The test supplies its fixture-backed page
+     * content again in the new Activity, as MainActivity does in onCreate;
+     * only the ViewModel-owned selection snapshot crosses that boundary.
+     * No real people or photos are used.
+     */
+    @Test fun selectionOnPersonPageSurvivesRealActivityRotation() {
+        val grant = "1" // Matches the synthetic catalogueEpoch and the live grant fence.
+        val host = host()
+        drain(host, grant)
+        val epoch = checkNotNull(host.displayEpoch(grant))
+        val group = store.peopleReview(epoch)!!.clusters.unknownClusters
+            .maxBy { it.members.size }
+        val matchingUris = checkNotNull(host.personPageFaces(grant, group.members)).keys
+        val selectedRecords = records.filter { it.uri in matchingUris }.take(2)
+        assertEquals("two authorized synthetic person photos", 2, selectedRecords.size)
+        val ids = selectedRecords.map { it.id }
+        val expectedUris = selectedRecords.map { it.uri }.toSet()
+        val request = NativePersonAlbumRequest(PersonPageTarget.Unnamed(group.id), "")
+        val holder = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
+            .pendingPersonSelectionRotationState
+        var dark by mutableStateOf(true)
+        var increasedFontScale by mutableStateOf(false)
+        var routeGrant by mutableStateOf(grant)
+        var catalogueEpoch by mutableStateOf(1L)
+
+        // On each Activity instance, re-attach the same synthetic route with
+        // the SAME configuration-retained holder, not a Bundle/rememberSaveable.
+        val page: @Composable () -> Unit = {
+            if (composing) {
+                AtlasGalleryTheme(dark = dark) {
+                    val density = LocalDensity.current
+                    // Synthetic font-scale stress without changing the emulator's
+                    // global setting: the selection action must still fit landscape.
+                    CompositionLocalProvider(LocalDensity provides Density(
+                        density.density, if (increasedFontScale) 1.3f else density.fontScale
+                    )) {
+                        Surface(Modifier.fillMaxSize(), color = DeepBg,
+                            contentColor = MaterialTheme.colorScheme.onBackground) {
+                            val discovery = rememberPeopleDiscoveryOf(host, grant, inventory) { it }
+                            NativePersonAlbumRoute(host, routeGrant, request,
+                                discovery.status?.people, records, rememberLazyGridState(),
+                                catalogueEpoch,
+                                selectionRotationState = holder, onBack = {},
+                                onOpen = { _, _ -> })
+                        }
+                    }
+                }
+            }
+        }
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        compose.setContent { page() }
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
+        ids.forEach { compose.waitForNode(hasTestTag("atlas-timeline-media-$it"), WAIT_MS, useUnmergedTree = true) }
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+            .performTouchInput { longClick() }
+        compose.waitForNode(hasText("1 selected"), WAIT_MS)
+        compose.tap(hasTestTag("atlas-timeline-media-${ids[1]}"))
+
+        fun assertPersonSelection() {
+            compose.waitForNode(hasText("2 selected"), WAIT_MS)
+            compose.onNodeWithTag("atlas-person-select-count").assertExists()
+            compose.onNodeWithTag("atlas-person-remove-confirm").assertExists()
+            // Both controls remain inside the current S24+ viewport, apart
+            // from each other, in portrait AND constrained landscape.
+            val root = compose.onRoot().getUnclippedBoundsInRoot()
+            val count = compose.onNodeWithTag("atlas-person-select-count")
+                .getUnclippedBoundsInRoot()
+            val action = compose.onNodeWithTag("atlas-person-remove-confirm")
+                .getUnclippedBoundsInRoot()
+            assertTrue("selection header is inside viewport", count.top >= root.top &&
+                count.bottom < action.top)
+            assertTrue("person action stays inside navigation-safe viewport",
+                action.bottom <= root.bottom)
+            ids.forEach { id ->
+                val tag = "atlas-timeline-media-$id"
+                compose.onNodeWithTag("atlas-timeline-grid")
+                    .performScrollToNode(hasTestTag(tag))
+                compose.onNodeWithTag(tag).assertIsSelected()
+            }
+            compose.waitForIdle()
+            assertEquals("configuration holder keeps exactly the same keys",
+                expectedUris, holder.value?.encoded?.drop(3)?.toSet())
+            assertEquals(request.opening, holder.value?.opening)
+            // #404: visible semantics alone can mean a 5px sliver below the
+            // person avatar, with the checked overlay entirely hidden.
+            // Require at least half of a selected square above the action bar
+            // and below the pinned person header in every landscape capture.
+            val selectedTile = compose.onNodeWithTag("atlas-timeline-media-${ids.last()}")
+                .assertIsDisplayed().getUnclippedBoundsInRoot()
+            if (root.right - root.left > root.bottom - root.top) {
+                val pinnedHeader = compose.onNodeWithTag("atlas-scrolling-header")
+                    .getUnclippedBoundsInRoot()
+                val visibleTop = maxOf(selectedTile.top, pinnedHeader.bottom, root.top)
+                val visibleBottom = minOf(selectedTile.bottom, action.top, root.bottom)
+                assertTrue("checked person tile must be at least half visible in landscape",
+                    visibleBottom - visibleTop >=
+                        (selectedTile.bottom - selectedTile.top) * 0.5f)
+            }
+            compose.waitForNode(hasText("2 selected"), WAIT_MS)
+        }
+
+        fun rotateAndReattach(landscape: Boolean) {
+            lateinit var before: ComponentActivity
+            compose.activityRule.scenario.onActivity { before = it }
+            instrumentation.uiAutomation.setRotation(
+                if (landscape) android.app.UiAutomation.ROTATION_FREEZE_90
+                else android.app.UiAutomation.ROTATION_FREEZE_0)
+            // UiAutomation rotation can update the window configuration in place
+            // on the API35 fixture Activity. Explicitly recreate after requesting
+            // orientation so this test actually exercises an Activity boundary,
+            // rather than waiting for a system-dependent automatic relaunch.
+            compose.activityRule.scenario.recreate()
+            compose.activityRule.scenario.onActivity {
+                assertTrue("rotation must replace the ComponentActivity", it !== before)
+                val retained = ViewModelProvider(it)[GalleryViewModel::class.java]
+                    .pendingPersonSelectionRotationState
+                assertSame("snapshot lives in the Activity-retained ViewModel", holder, retained)
+                applyAtlasSystemBars(it.window, dark = dark)
+                it.setContent { page() }
+            }
+            compose.awaitThat("person page laid out in requested orientation", WAIT_MS) {
+                val roots = compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+                val bounds = roots.maxByOrNull {
+                    it.boundsInRoot.width * it.boundsInRoot.height
+                }?.boundsInRoot
+                bounds != null && (bounds.width > bounds.height) == landscape
+            }
+            assertPersonSelection()
+        }
+
+        try {
+            assertPersonSelection()
+            compose.awaitScreenStill("selection-404-dark-person-portrait-before")
+            saveUiEvidence("selection-404-dark-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            compose.awaitScreenStill("selection-404-dark-person-landscape")
+            saveUiEvidence("selection-404-dark-person-landscape.png")
+            rotateAndReattach(landscape = false)
+            compose.awaitScreenStill("selection-404-dark-person-portrait-after")
+            saveUiEvidence("selection-404-dark-person-portrait-after.png")
+
+            dark = false
+            compose.activityRule.scenario.onActivity {
+                applyAtlasSystemBars(it.window, dark = false)
+            }
+            assertPersonSelection()
+            compose.awaitScreenStill("selection-404-light-person-portrait-before")
+            saveUiEvidence("selection-404-light-person-portrait-before.png")
+            rotateAndReattach(landscape = true)
+            compose.awaitScreenStill("selection-404-light-person-landscape")
+            saveUiEvidence("selection-404-light-person-landscape.png")
+            increasedFontScale = true
+            assertPersonSelection() // 130% text must keep count/action in bounds.
+            compose.awaitScreenStill("selection-404-light-person-landscape-font130")
+            saveUiEvidence("selection-404-light-person-landscape-font130.png")
+            increasedFontScale = false
+            rotateAndReattach(landscape = false)
+            compose.awaitScreenStill("selection-404-light-person-portrait-after")
+            saveUiEvidence("selection-404-light-person-portrait-after.png")
+
+            // Negative journey on the same real rendered person route: a
+            // newer publication must immediately disable the old action and
+            // permanently discard the snapshot, even if identity later reverts.
+            catalogueEpoch = 2L
+            compose.awaitThat("publication mismatch drops the person selection", WAIT_MS) {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            catalogueEpoch = 1L
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[0]}"), WAIT_MS, useUnmergedTree = true)
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
+
+            // A changed grant is an independent invalidation boundary.
+            compose.onNodeWithTag("atlas-timeline-media-${ids[0]}")
+                .performTouchInput { longClick() }
+            compose.waitForNode(hasText("1 selected"), WAIT_MS)
+            routeGrant = "2"
+            compose.awaitThat("grant mismatch drops the person selection", WAIT_MS) {
+                compose.onAllNodesWithTag("atlas-person-select-count")
+                    .fetchSemanticsNodes().isEmpty() &&
+                    holder.value?.encoded?.isEmpty() == true
+            }
+            routeGrant = grant
+            compose.waitForNode(hasTestTag("atlas-timeline-media-${ids[0]}"), WAIT_MS, useUnmergedTree = true)
+            compose.onNodeWithTag("atlas-person-select-count").assertDoesNotExist()
+        } finally {
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0)
+            instrumentation.uiAutomation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE)
+        }
     }
 
     @Test fun nameOnThePersonPageThenReopenShowsTheNameAndHideSurvivesRestart() {
@@ -300,9 +496,9 @@ class PersonPageJourneyTest {
         }
 
         // Unnamed: "Add name" and the group's photos, newest first.
-        waitForText("Add name")
-        waitForText("${unnamed.members.size} photos")
-        settle()
+        compose.waitForNode(hasText("Add name"), WAIT_MS)
+        compose.waitForNode(hasText("${unnamed.members.size} photos"), WAIT_MS)
+        compose.waitForIdle()
         // #642: one photo a day over consecutive days in a month shares one
         // header, so the photos fill rows of four instead of one per header.
         val dayHeaders = compose.onAllNodes(SemanticsMatcher("timeline date header") {
@@ -317,92 +513,90 @@ class PersonPageJourneyTest {
         // #662: the same page under the phone's light setting.
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
         dark = false
-        settle()
+        compose.awaitScreenStill("theme-662-person-light")
         saveUiEvidence("theme-662-person-light.png")
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
         dark = true
-        settle()
+        compose.waitForIdle()
 
         // Name it on the page: the page follows the new person.
-        compose.onNodeWithTag("atlas-person-name").performClick()
-        waitForTag("atlas-person-name-field")
-        compose.onNodeWithTag("atlas-person-name-field").performTextInput("Synthetic Ada")
-        // The text field exposes Done → onSave; an IME can swallow a tap on Save.
-        // Exercise this real submit path and still check the retarget and store.
-        compose.onNodeWithTag("atlas-person-name-field").performImeAction()
-        waitFor("page follows the named person") { request?.person != null }
+        // The keyboard's Done on this field has its own test below.
+        compose.tap(hasTestTag("atlas-person-name"))
+        compose.typeText(hasTestTag("atlas-person-name-field"), "Synthetic Ada")
+        compose.tap(hasTestTag("atlas-person-name-save"))
+        compose.awaitThat("page follows the named person", WAIT_MS) { request?.person != null }
         val ada = request!!.person!!
-        waitForText("Synthetic Ada")
+        compose.waitForNode(hasText("Synthetic Ada"), WAIT_MS)
         assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
-        settle()
+        compose.awaitScreenStill("person-named")
         saveUiEvidence("person-named.png")
 
         // FIND-0: native Person page exposes the shared scoped search and
         // retains its current face-grant result set. Invented fixture names only.
-        compose.onNodeWithTag("atlas-search-expand").performClick()
-        waitForTag("atlas-scoped-search-field")
+        compose.tap(hasTestTag("atlas-search-expand"))
+        compose.waitForNode(hasTestTag("atlas-scoped-search-field"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithTag("atlas-search-scope-screen").assertExists()
-        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("FIXTURE_")
-        settle()
+        compose.typeText(hasTestTag("atlas-scoped-search-field"), "FIXTURE_")
+        compose.awaitScreenStill("find-0-person-scoped")
         saveUiEvidence("find-0-person-scoped.png")
-        compose.onNodeWithContentDescription("Close search").performClick()
-        waitFor("scoped person search closes") {
+        compose.tap(hasContentDescription("Close search"))
+        compose.awaitThat("scoped person search closes", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-scoped-search-field").fetchSemanticsNodes().isEmpty()
         }
 
         // COVER-3: an actual synthetic face-crop chooser, checked selection,
         // selected portrait and reversible automatic default.
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitForTag("atlas-person-change-picture")
-        compose.onNodeWithTag("atlas-person-change-picture").performClick()
-        waitForTag("atlas-person-cover-grid")
-        settle()
+        compose.tap(hasTestTag("atlas-header-more"))
+        compose.waitForNode(hasTestTag("atlas-person-change-picture"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-person-change-picture"))
+        compose.waitForNode(hasTestTag("atlas-person-cover-grid"), WAIT_MS, useUnmergedTree = true)
+        compose.awaitScreenStill("person-cover-chooser-dark")
         saveUiEvidence("person-cover-chooser-dark.png")
-        compose.onNodeWithTag("atlas-person-cover-choice-1").performClick()
-        waitFor("selected profile cover persisted") {
+        compose.tap(hasTestTag("atlas-person-cover-choice-1"))
+        compose.awaitThat("selected profile cover persisted", WAIT_MS) {
             store.personCoverOverride(epoch, ada) != null
         }
-        settle()
+        compose.awaitScreenStill("person-cover-selected-page-dark")
         saveUiEvidence("person-cover-selected-page-dark.png")
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitForTag("atlas-person-change-picture")
-        compose.onNodeWithTag("atlas-person-change-picture").performClick()
-        waitForTag("atlas-person-cover-automatic")
-        waitForTag("atlas-person-cover-checked")
-        settle()
+        compose.tap(hasTestTag("atlas-header-more"))
+        compose.waitForNode(hasTestTag("atlas-person-change-picture"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-person-change-picture"))
+        compose.waitForNode(hasTestTag("atlas-person-cover-automatic"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasTestTag("atlas-person-cover-checked"), WAIT_MS, useUnmergedTree = true)
+        compose.awaitScreenStill("person-cover-checked-dark")
         saveUiEvidence("person-cover-checked-dark.png")
         // Design pair: the same checked chooser in the light theme.
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
         dark = false
-        settle()
+        compose.awaitScreenStill("person-cover-checked-light")
         saveUiEvidence("person-cover-checked-light.png")
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
         dark = true
-        settle()
-        compose.onNodeWithTag("atlas-person-cover-automatic").performClick()
-        waitFor("profile cover reverted") {
+        compose.waitForIdle()
+        compose.tap(hasTestTag("atlas-person-cover-automatic"))
+        compose.awaitThat("profile cover reverted", WAIT_MS) {
             store.personCoverOverride(epoch, ada) == null
         }
-        settle()
+        compose.awaitScreenStill("person-cover-automatic-dark")
         saveUiEvidence("person-cover-automatic-dark.png")
 
         // ⋮ menu, then Merge with… lists Bo; the confirmation opens and is cancelled.
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitForTag("atlas-person-merge")
+        compose.tap(hasTestTag("atlas-header-more"))
+        compose.waitForNode(hasTestTag("atlas-person-merge"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithTag("atlas-person-hide").assertExists()
         compose.onNodeWithTag("atlas-person-remove").assertExists()
         compose.onNodeWithTag("atlas-person-edit-name").assertExists()
-        settle()
+        compose.awaitScreenStill("person-menu")
         saveUiEvidence("person-menu.png")
-        compose.onNodeWithTag("atlas-person-merge").performClick()
-        waitForTag("atlas-person-merge-candidate")
+        compose.tap(hasTestTag("atlas-person-merge"))
+        compose.waitForNode(hasTestTag("atlas-person-merge-candidate"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithText("Synthetic Bo").assertExists()
-        settle()
+        compose.awaitScreenStill("person-merge-picker")
         saveUiEvidence("person-merge-picker.png")
-        compose.onNodeWithTag("atlas-person-merge-candidate").performClick()
-        waitForTag("atlas-person-merge-dialog")
-        compose.onNodeWithText("Cancel").performClick()
-        waitFor("merge cancelled") {
+        compose.tap(hasTestTag("atlas-person-merge-candidate"))
+        compose.waitForNode(hasTestTag("atlas-person-merge-dialog"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasText("Cancel"))
+        compose.awaitThat("merge cancelled", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-person-merge-dialog")
                 .fetchSemanticsNodes().isEmpty()
         }
@@ -418,7 +612,7 @@ class PersonPageJourneyTest {
         val squareGrid = compose.onNodeWithTag("atlas-ratio-gallery")
             .fetchSemanticsNode().config[SemanticsActions.CustomActions]
         compose.runOnIdle { squareGrid.first { it.label == SQUARE_GRID_ACTION }.action() }
-        waitForTag("atlas-timeline-grid")
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithText("Synthetic Ada").assertExists()
 
         // #584: a new opening (another person, as from People or the viewer's
@@ -427,20 +621,20 @@ class PersonPageJourneyTest {
         pinchToRatioRows()
         val bo = nl.atlas.gallery.featurepeople.cluster.PersonKey("synthetic-bo")
         request = NativePersonAlbumRequest(bo, "Synthetic Bo")
-        waitForText("Synthetic Bo")
-        waitForTag("atlas-timeline-grid")
+        compose.waitForNode(hasText("Synthetic Bo"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"), WAIT_MS, useUnmergedTree = true)
         assertTrue("a new person page opens at the grid",
             compose.onAllNodesWithTag("atlas-ratio-gallery", useUnmergedTree = true)
                 .fetchSemanticsNodes().isEmpty())
         request = NativePersonAlbumRequest(ada, "Synthetic Ada")
-        waitForText("Synthetic Ada")
-        waitForTag("atlas-timeline-grid")
+        compose.waitForNode(hasText("Synthetic Ada"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"), WAIT_MS, useUnmergedTree = true)
 
         // Hide: Samsung returns to People; the store keeps the hide.
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitForTag("atlas-person-hide")
-        compose.onNodeWithTag("atlas-person-hide").performClick()
-        waitFor("page closed after hide") { request == null }
+        compose.tap(hasTestTag("atlas-header-more"))
+        compose.waitForNode(hasTestTag("atlas-person-hide"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-person-hide"))
+        compose.awaitThat("page closed after hide", WAIT_MS) { request == null }
         assertEquals(setOf(ada), store.peopleReview(epoch)!!.hidden)
 
         // A new process over the same private store: name and hide are kept,
@@ -468,18 +662,12 @@ class PersonPageJourneyTest {
         assertEquals(setOf(ada), people.hidden)
         host = restarted
         request = NativePersonAlbumRequest(ada, "")
-        waitForText("Synthetic Ada")
-        // The page may still recompose as the restarted host publishes; a tap
-        // on ⋮ during that can be lost, so open the menu until it shows.
-        val shown = { compose.onAllNodesWithText("Show this person")
-            .fetchSemanticsNodes().isNotEmpty() }
-        for (attempt in 1..3) {
-            compose.waitForIdle()
-            if (shown()) break
-            compose.onNodeWithTag("atlas-header-more").performClick()
-            runCatching { compose.waitUntil(5_000) { shown() } }
+        compose.waitForNode(hasText("Synthetic Ada"), WAIT_MS)
+        // One tap on ⋮ must open the menu (rule 4): tap() waits until ⋮ holds
+        // still while the restarted host publishes, and names a lost touch.
+        compose.tap(hasTestTag("atlas-header-more"), timeoutMs = WAIT_MS) {
+            compose.exists(hasText("Show this person"))
         }
-        waitForText("Show this person")
     }
 
     /**
@@ -525,16 +713,16 @@ class PersonPageJourneyTest {
                 }
             }
         }
-        waitForText("3 photos")
-        waitForTag("atlas-person-same")
+        compose.waitForNode(hasText("3 photos"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-person-same"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithText("Same person?").assertExists()
         compose.onNodeWithText(if (all - 3 == 1) "1 more face" else "${all - 3} more faces").assertExists()
-        settle()
+        compose.awaitScreenStill("person-same-question")
         saveUiEvidence("person-same-question.png")
 
-        compose.onNodeWithTag("atlas-person-same-yes").performClick()
-        waitForText("$all photos")
-        waitFor("question answered") {
+        compose.tap(hasTestTag("atlas-person-same-yes"))
+        compose.waitForNode(hasText("$all photos"), WAIT_MS)
+        compose.awaitThat("question answered", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-person-same", useUnmergedTree = true)
                 .fetchSemanticsNodes().isEmpty()
         }
@@ -542,7 +730,7 @@ class PersonPageJourneyTest {
         assertEquals(all, joined.clusters.unknownClusters.single().members.size)
         assertEquals(1, joined.clusters.reviews.sameUnknown.size)
         assertTrue(joined.clusters.reviews.cannotLink.isEmpty())
-        settle()
+        compose.awaitScreenStill("person-same-joined")
         saveUiEvidence("person-same-joined.png")
     }
 
@@ -576,26 +764,26 @@ class PersonPageJourneyTest {
                 }
             }
         }
-        waitForTag("atlas-same-queue-yes")
+        compose.waitForNode(hasTestTag("atlas-same-queue-yes"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithText("1 open").assertExists()
         compose.onNodeWithText("Unnamed person").assertExists()
         compose.onNodeWithText("Unnamed group").assertExists()
-        waitFor("face crops of both sides") {
+        compose.awaitThat("face crops of both sides", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-person-face", useUnmergedTree = true)
                 .fetchSemanticsNodes().size >= 4
         }
-        settle()
+        compose.awaitScreenStill("people-same-queue")
         saveUiEvidence("people-same-queue.png")
 
-        compose.onNodeWithTag("atlas-same-queue-yes").performClick()
-        waitForText("No open questions.")
+        compose.tap(hasTestTag("atlas-same-queue-yes"))
+        compose.waitForNode(hasText("No open questions."), WAIT_MS)
         val joined = store.peopleReview(epoch)!!
         assertEquals(all, joined.clusters.unknownClusters.single().members.size)
         assertEquals(1, joined.clusters.reviews.sameUnknown.size)
         assertEquals(mapOf(ReviewTap.SAME_YES to TapCount(1, all.toLong())),
             store.peopleReviewTally(epoch))
-        compose.onNodeWithTag("atlas-same-queue-close").performClick()
-        waitFor("list closed") { !open }
+        compose.tap(hasTestTag("atlas-same-queue-close"))
+        compose.awaitThat("list closed", WAIT_MS) { !open }
     }
 
     /**
@@ -634,10 +822,10 @@ class PersonPageJourneyTest {
                 }
             }
         }
-        waitForText("3 photos")
-        waitForTag("atlas-person-same")
-        compose.onNodeWithTag("atlas-person-same-no").performClick()
-        waitFor("question answered") {
+        compose.waitForNode(hasText("3 photos"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-person-same"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-person-same-no"))
+        compose.awaitThat("question answered", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-person-same", useUnmergedTree = true)
                 .fetchSemanticsNodes().isEmpty() &&
                 store.peopleReview(epoch)?.clusters?.reviews?.cannotLink?.size == 1
@@ -651,17 +839,17 @@ class PersonPageJourneyTest {
         compose.onNodeWithText("3 photos").assertExists()
 
         compose.runOnUiThread { numbersOpen = true }
-        waitForTag("atlas-people-numbers-copy")
+        compose.waitForNode(hasTestTag("atlas-people-numbers-copy"), WAIT_MS, useUnmergedTree = true)
         compose.onNodeWithText("Same person? Yes 0 · No 1 · 0 questions open").assertExists()
         compose.onNodeWithText("0 named people with 0 faces").assertExists()
         // Before Copy: Android's own "copied" preview would cover part of the render.
-        settle()
+        compose.awaitScreenStill("people-numbers")
         saveUiEvidence("people-numbers.png")
-        compose.onNodeWithTag("atlas-people-numbers-copy").performClick()
+        compose.tap(hasTestTag("atlas-people-numbers-copy"))
         val clipboard = InstrumentationRegistry.getInstrumentation().targetContext
             .getSystemService(android.content.ClipboardManager::class.java)
         var copied: String? = null
-        waitFor("numbers on the clipboard") {
+        compose.awaitThat("numbers on the clipboard", WAIT_MS) {
             compose.runOnUiThread {
                 copied = clipboard.primaryClip?.takeIf { it.itemCount > 0 }
                     ?.getItemAt(0)?.text?.toString()
@@ -670,8 +858,12 @@ class PersonPageJourneyTest {
         }
         assertTrue(copied, copied!!.contains(",same_no:1/$all,"))
         assertTrue(copied, copied!!.contains(" named_people=0 "))
-        // Let that system preview go before another test takes a screenshot.
-        Thread.sleep(7_000)
+        // Before another test takes a screenshot, Android's own "copied"
+        // preview must be gone. It closes on CLOSE_SYSTEM_DIALOGS.
+        testShell("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
+        compose.awaitThat("the system clipboard preview to close", WAIT_MS) {
+            !clipboardPreviewShown()
+        }
     }
 
     /**
@@ -719,13 +911,13 @@ class PersonPageJourneyTest {
                 }
             }
         }
-        waitForText("Synthetic Ada")
-        waitForText("$all photos")
+        compose.waitForNode(hasText("Synthetic Ada"), WAIT_MS)
+        compose.waitForNode(hasText("$all photos"), WAIT_MS)
         // Nothing is left to ask about.
         assertTrue(compose.onAllNodesWithTag("atlas-person-same", useUnmergedTree = true)
             .fetchSemanticsNodes().isEmpty())
         assertEquals(all, host.personAlbumUris("gallery-1", ada)!!.size)
-        settle()
+        compose.awaitScreenStill("person-auto-added")
         saveUiEvidence("person-auto-added.png")
 
         // Take one of the added faces out again: it is an unnamed face once more.
@@ -733,7 +925,7 @@ class PersonPageJourneyTest {
         val live = host.liveReview(epoch)!!
         assertTrue(host.review(PeopleClusterReviewCommand(live,
             PeopleReviewAction.SplitPerson(ada, setOf(out)))))
-        waitForText("${all - 1} photos")
+        compose.waitForNode(hasText("${all - 1} photos"), WAIT_MS)
         val after = store.peopleReview(epoch)!!
         assertEquals(second.drop(1).toSet(), after.clusters.matched.keys)
         assertEquals(3, after.clusters.reviews.confirmed.size)
@@ -746,5 +938,59 @@ class PersonPageJourneyTest {
         val line = numbers.line()
         assertTrue(line, line.contains(" named_faces=3 auto_added=${all - 4} "))
         assertTrue(line, line.contains(",auto_taken_out:1/1 "))
+    }
+
+    /**
+     * The name dialog's text field exposes the keyboard's Done as its submit
+     * path (onSave): a person can press Done instead of Save. The journey
+     * above taps Save; this is the keyboard path on its own (#442).
+     */
+    @Test fun keyboardDoneInTheNameDialogNamesThePerson() {
+        val host = host()
+        drain(host, "gallery-1")
+        val epoch = host.displayEpoch("gallery-1")!!
+        val start = checkNotNull(host.reviewState(epoch)) { "no review snapshot after the scan" }
+        val group = checkNotNull(start.clusters.unknownClusters.maxByOrNull { it.members.size }) {
+            "no unknown face group after the scan: ${start.clusters.faceCount} faces"
+        }
+        var request by mutableStateOf<NativePersonAlbumRequest?>(
+            NativePersonAlbumRequest(PersonPageTarget.Unnamed(group.id), ""))
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        compose.setContent {
+            if (!composing) return@setContent
+            AtlasGalleryTheme(dark = true) {
+                Surface(Modifier.fillMaxSize(), color = DeepBg,
+                    contentColor = MaterialTheme.colorScheme.onBackground) {
+                    val discovery = rememberPeopleDiscoveryOf(host, "gallery-1", inventory) { it }
+                    val opened = request
+                    if (opened != null) NativePersonAlbumRoute(host, "gallery-1", opened,
+                        discovery.status?.people, records, rememberLazyGridState(), 1L,
+                        onBack = { request = null }, onOpen = { _, _ -> },
+                        onRetarget = { request = it })
+                }
+            }
+        }
+        compose.waitForNode(hasText("Add name"), WAIT_MS)
+        compose.tap(hasTestTag("atlas-person-name"))
+        compose.typeText(hasTestTag("atlas-person-name-field"), "Synthetic Ada")
+        compose.onNodeWithTag("atlas-person-name-field").performImeAction()
+        compose.awaitThat("page follows the named person", WAIT_MS) { request?.person != null }
+        val ada = request!!.person!!
+        compose.waitForNode(hasText("Synthetic Ada"), WAIT_MS)
+        assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
+    }
+
+    /** Android's own clipboard preview (System UI) is on screen. Window titles and ids only. */
+    private fun clipboardPreviewShown(): Boolean = runCatching {
+        interactiveUiAutomation().windows.any { window ->
+            window.title?.toString()?.contains("clipboard", ignoreCase = true) == true ||
+                window.root?.findAccessibilityNodeInfosByViewId(
+                    "com.android.systemui:id/clipboard_ui")?.isNotEmpty() == true
+        }
+    }.getOrDefault(false)
+
+    private companion object {
+        /** Scans, decodes and the store run on real time on a slow emulator. */
+        const val WAIT_MS = 20_000L
     }
 }

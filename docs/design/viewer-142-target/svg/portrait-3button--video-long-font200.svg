@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 708.0 902.0" font-family="Inter, Arial, sans-serif" font-size="8">
+<title>PROPOSED Lapis Atlas viewer target — portrait-3button — video-long-font200</title>
+<rect width="708.0" height="902.0" fill="#FFFFFF"/>
+<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Lapis Atlas viewer target — portrait-3button — video-long-font200</text>
+<text x="8" y="30" font-size="8.5" fill="#4A4F59">Target concept, NOT a runtime capture. Insets/cutout copied from the measured frame named below; every other rectangle is proposed.</text>
+<g transform="translate(8,44)">
+<rect width="384.0" height="832.0" fill="#000000"/>
+<rect x="0.0" y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<line x1="0.0" y1="272.0" x2="384.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="38.4" y1="272.0" x2="345.6" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="76.8" y1="272.0" x2="307.2" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="115.2" y1="272.0" x2="268.8" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="153.6" y1="272.0" x2="230.4" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="192.0" y1="272.0" x2="192.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="230.4" y1="272.0" x2="153.6" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="268.8" y1="272.0" x2="115.2" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="307.2" y1="272.0" x2="76.8" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="345.6" y1="272.0" x2="38.4" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<line x1="384.0" y1="272.0" x2="0.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<rect x="0" y="0" width="384.0" height="200.44" fill="#000" opacity="0.35"/>
+<rect x="0" y="0" width="384.0" height="44.44" fill="#6E7BFF" opacity="0.25"/>
+<rect x="0" y="784.0" width="384.0" height="48" fill="#6E7BFF" opacity="0.25"/>
+<rect x="170.67" y="0.0" width="40.89" height="44.44" fill="#FF3B30" opacity="0.55"/>
+<rect x="0" y="44.44" width="384.0" height="739.56" fill="none" stroke="#00C2A8" stroke-width="1" stroke-dasharray="4 3"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="21.0" y="61.44" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="8.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="245.0" y="61.44" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="232.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="293.0" y="61.44" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="280.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="341.0" y="61.44" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="328.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="12.0" y="100.44" width="360.0" height="84.0" fill="#FFFFFF" opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>
+<text x="192.0" y="111.44" text-anchor="middle" fill="#ECEDF0" font-size="7">date, time, place</text>
+<rect x="0.0" y="632.0" width="384.0" height="76.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.0" y="645.0" width="50.0" height="62.0" rx="11.0" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="97.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="84.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="153.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="140.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="209.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="196.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="265.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="252.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="12.0" y="576.0" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="21.0" y="585.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
+<rect x="8.0" y="572.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="72.0" y="594.0" width="296.0" height="4" rx="2" fill="#ECEDF0" opacity="0.6"/>
+<rect x="72.0" y="594.0" width="118.4" height="4" rx="2" fill="#8C9BFF"/>
+<circle cx="190.4" cy="596.0" r="8" fill="#ECEDF0"/>
+<rect x="64.0" y="572.0" width="312.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+<rect x="12.0" y="528.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<rect x="258.32" y="528.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<line x1="380.0" y1="620.0" x2="380.0" y2="632.0" stroke="#30D158" stroke-width="1.2"/>
+<text x="377.0" y="629.0" text-anchor="end" fill="#30D158" font-size="7">12.0 dp ≥ 8</text>
+</g>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#FF9F0A" stroke-width="2"/></pattern></defs>
+<g font-size="8" fill="#111318">
+<rect x="408.0" y="45" width="9" height="9" fill="#00C2A8" opacity="0.8"/><text x="422.0" y="52">safeDrawing (measured)</text>
+<rect x="408.0" y="58" width="9" height="9" fill="#6E7BFF" opacity="0.8"/><text x="422.0" y="65">status / navigation bars (measured)</text>
+<rect x="408.0" y="71" width="9" height="9" fill="#FF3B30" opacity="0.8"/><text x="422.0" y="78">display cutout (measured)</text>
+<rect x="408.0" y="84" width="9" height="9" fill="#FF2D55" opacity="0.8"/><text x="422.0" y="91">semantic hit rect (proposed)</text>
+<rect x="408.0" y="97" width="9" height="9" fill="#FF9F0A" opacity="0.8"/><text x="422.0" y="104">filmstrip touch band (proposed)</text>
+<rect x="408.0" y="110" width="9" height="9" fill="#FFD60A" opacity="0.8"/><text x="422.0" y="117">text box (proposed, estimate)</text>
+<text x="408.0" y="136">Viewport 384.0×832.0 dp · MEASURED photo/bright/dark/portrait/shown</text>
+<text x="408.0" y="147.5">safeDrawing L/T/R/B [0, 44.44, 0, 48] dp · nav mode 0</text>
+<text x="408.0" y="159.0">— proposed (dp, window coordinates) —</text>
+<text x="408.0" y="170.5">back: 12.0,52.4 → 52.0,92.4 (40.0×40.0)</text>
+<text x="408.0" y="182.0">top-group: 236.0,52.4 → 372.0,92.4 (136.0×40.0)</text>
+<text x="408.0" y="193.5">metadata [below-row-2-lines]: 12.0,100.4 → 372.0,184.4 (360.0×84.0)</text>
+<text x="408.0" y="205.0">filmstrip: 0.0,632.0 → 384.0,708.0 (384.0×76.0)</text>
+<text x="408.0" y="216.5">action-pill: 80.0,716.0 → 304.0,772.0 (224.0×56.0)</text>
+<text x="408.0" y="228.0">video-row [labels-above]: 0.0,528.0 → 384.0,620.0 (384.0×92.0)</text>
+<text x="408.0" y="239.5">back hit 8.0,48.4 → 56.0,96.4 (48.0×48.0)</text>
+<text x="408.0" y="251.0">favourite hit 84.0,720.0 → 132.0,768.0 (48.0×48.0)</text>
+<text x="408.0" y="262.5">seek hit 64.0,572.0 → 376.0,620.0 (312.0×48.0)</text>
+<text x="408.0" y="274.0">video row → strip gap 12.0 dp (rule ≥ 8)</text>
+<text x="408.0" y="285.5">free media band between chrome: 327.56 dp</text>
+<text x="408.0" y="297.0">— checks —</text>
+<text x="408.0" y="308.5">hit collisions: none</text>
+<text x="408.0" y="320.0">hits outside safeDrawing: none</text>
+<text x="408.0" y="331.5">hits over cutout: none</text>
+<text x="408.0" y="343.0">hits &lt; 44 dp: none</text>
+<text x="408.0" y="354.5">back clearance to safe edge L12.0 T8.0 R332.0 B691.56</text>
+<text x="408.0" y="366.0">top-group clearance to safe edge L236.0 T8.0 R12.0 B691.56</text>
+<text x="408.0" y="377.5">action-pill clearance to safe edge L80.0 T671.56 R80.0 B12.0</text>
+</g></svg>

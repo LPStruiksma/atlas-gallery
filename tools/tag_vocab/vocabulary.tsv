@@ -1,0 +1,161 @@
+# TAGS-0 vocabulary. One tag per row, tab-separated. Comments start with '#'.
+# id	category	en	nl	phrases (| separated; encoded into the text templates)	open_images (| separated Open Images V7 display names; empty = no labelled data)	confusers (| separated tag ids; hard-negative check)
+dog	pets	Dog	Hond	a dog|a puppy	Dog|Puppy	cat|horse|sheep
+cat	pets	Cat	Kat	a cat|a kitten	Cat|Kitten	dog|rabbit
+bird	animals	Bird	Vogel	a bird	Bird	duck|chicken|airplane
+horse	animals	Horse	Paard	a horse	Horse	cow|dog
+fish	animals	Fish	Vis	a fish	Fish	seafood
+rabbit	pets	Rabbit	Konijn	a rabbit	Rabbit	cat|hamster
+hamster	pets	Hamster	Hamster	a hamster	Hamster	rabbit
+insect	animals	Insect	Insect	an insect	Insect	butterfly
+butterfly	animals	Butterfly	Vlinder	a butterfly	Butterfly	insect|flowers
+sheep	animals	Sheep	Schaap	a sheep	Sheep	cow|dog
+cow	animals	Cow	Koe	a cow|cattle	Cattle	horse|sheep
+pig	animals	Pig	Varken	a pig	Pig	cow
+duck	animals	Duck	Eend	a duck	Duck	bird|chicken
+chicken	animals	Chicken	Kip	a chicken	Chicken	duck|bird
+animal	animals	Animals	Dieren	an animal	Animal	toy
+food	food	Food	Eten	food|a meal	Food	drinks
+cake	food	Cake	Taart	a cake	Cake|Cupcake	bread|cookies
+pizza	food	Pizza	Pizza	a pizza	Pizza	bread|cake
+fruit	food	Fruit	Fruit	fruit	Fruit|Apple|Orange (fruit)|Strawberry|Banana|Grape|Watermelon	vegetables|flowers
+vegetables	food	Vegetables	Groente	vegetables	Vegetable|Tomato|Carrot|Broccoli	fruit|salad
+bread	food	Bread	Brood	bread	Bread|Croissant	cake|cookies
+salad	food	Salad	Salade	a salad	Salad	vegetables
+icecream	food	Ice cream	IJs	ice cream	Ice cream	cake|snow
+burger	food	Burger	Hamburger	a hamburger	Hamburger	sandwich
+sandwich	food	Sandwich	Broodje	a sandwich	Sandwich	burger|bread
+pasta	food	Pasta and noodles	Pasta en noedels	pasta|noodles	Pasta|Noodle	soup|salad
+soup	food	Soup	Soep	soup	Soup	pasta|coffee
+seafood	food	Seafood	Zeevruchten	seafood	Seafood	fish
+cheese	food	Cheese	Kaas	cheese	Cheese	bread|cake
+cookies	food	Cookies	Koekjes	cookies	Cookie	cake|bread
+doughnut	food	Doughnuts	Donuts	a doughnut	Doughnut	cake|bread
+pancakes	food	Pancakes	Pannenkoeken	pancakes|waffles	Pancake|Waffle	cake|bread
+chocolate	food	Chocolate	Chocolade	chocolate	Chocolate	cake|cookies
+fries	food	Fries	Patat	french fries	French fries	burger
+drinks	drinks	Drinks	Drankjes	a drink	Drink	food
+coffee	drinks	Coffee	Koffie	a cup of coffee	Coffee cup|Latte	tea|soup
+tea	drinks	Tea	Thee	a cup of tea	Tea	coffee
+beer	drinks	Beer	Bier	beer	Beer	wine|juice
+wine	drinks	Wine	Wijn	wine	Wine	beer|cocktail
+cocktail	drinks	Cocktail	Cocktail	a cocktail	Cocktail	wine|juice
+juice	drinks	Juice	Sap	juice	Juice	beer|cocktail
+text	documents	Text	Tekst	text|a page of text	Text	drawing|poster
+document	documents	Documents	Documenten	a document|a printed document	Document	book|poster
+receipt	documents	Receipts	Bonnetjes	a receipt|a shopping receipt	Receipt	document|menu
+screenshot	documents	Screenshots	Schermafbeeldingen	a screenshot|a phone screenshot	Screenshot	computer|phone
+book	documents	Books	Boeken	a book	Book	document|newspaper
+poster	documents	Posters	Posters	a poster	Poster	painting|text
+whiteboard	documents	Whiteboard	Whiteboard	a whiteboard|a blackboard	Whiteboard|Blackboard	poster|text
+map	documents	Maps	Kaarten	a map	Map	drawing|diagram
+menu	documents	Menus	Menukaarten	a menu	Menu	receipt|document
+ticket	documents	Tickets	Kaartjes	a ticket	Ticket	receipt
+newspaper	documents	Newspapers	Kranten	a newspaper|a magazine	Newspaper|Magazine	book|document
+banknote	documents	Money	Geld	banknotes	Banknote	receipt|ticket
+iddoc	documents	ID documents	Identiteitsbewijzen	a passport|an identity card	Passport|Identity document	ticket|banknote
+calendar	documents	Calendar	Kalender	a calendar	Calendar	document|diagram
+diagram	documents	Charts and diagrams	Grafieken en diagrammen	a chart|a diagram	Chart|Diagram	map|whiteboard
+drawing	art	Drawings	Tekeningen	a drawing|a sketch	Drawing|Sketch	painting|cartoon
+cartoon	art	Cartoons	Cartoons	a cartoon	Cartoon	drawing
+painting	art	Paintings	Schilderijen	a painting	Painting	poster|drawing
+handwriting	documents	Handwriting	Handschrift	handwriting|a handwritten note	Handwriting	text|drawing
+beach	scenery	Beach	Strand	a beach	Beach|Coast	sea|desert|snow
+sea	scenery	Sea	Zee	the sea|the ocean	Sea|Ocean	lake|sky
+lake	scenery	Lake	Meer	a lake	Lake	sea|river
+river	scenery	River	Rivier	a river	River	lake|canal|road
+waterfall	scenery	Waterfall	Waterval	a waterfall	Waterfall	river|fountain
+snow	scenery	Snow	Sneeuw	snow	Snow	beach|sand|fog
+mountains	scenery	Mountains	Bergen	mountains	Mountain	hills|sky
+hills	scenery	Hills	Heuvels	hills	Hill	mountains|field
+forest	scenery	Forest	Bos	a forest	Forest	trees|field
+trees	scenery	Trees	Bomen	trees	Tree	forest|plants
+flowers	scenery	Flowers	Bloemen	flowers	Flower|Rose|Sunflower|Bouquet	plants|fruit
+plants	scenery	Plants	Planten	plants|a houseplant	Plant|Houseplant	flowers|trees
+sky	scenery	Sky	Lucht	the sky	Sky	sea
+sunset	scenery	Sunset	Zonsondergang	a sunset|a sunrise	Sunset|Sunrise	night|sky
+night	scenery	Night	Nacht	a photo at night	Night	sunset|fireworks
+desert	scenery	Desert	Woestijn	a desert	Desert	beach|sand
+field	scenery	Fields	Velden	a field|a meadow	Field	grass|hills
+sand	scenery	Sand	Zand	sand	Sand	beach|desert|snow
+fog	scenery	Fog	Mist	fog|mist	Fog|Mist	snow|sky
+rainbow	scenery	Rainbow	Regenboog	a rainbow	Rainbow	sky|sunset
+moon	scenery	Moon	Maan	the moon	Moon	night|sunset
+grass	scenery	Grass	Gras	grass	Grass	field|plants
+island	scenery	Island	Eiland	an island	Island	beach|sea
+city	places	City	Stad	a city|a city skyline	City|Cityscape|Skyline|Metropolis|Town	building|street
+skyscraper	places	Skyscrapers	Wolkenkrabbers	a skyscraper	Skyscraper	building|tower
+building	places	Buildings	Gebouwen	a building	Building	house|church
+house	places	Houses	Huizen	a house	House	building|church
+architecture	places	Architecture	Architectuur	architecture	Architecture	building
+street	places	Street	Straat	a street	Street	road|city
+road	places	Road	Weg	a road	Road|Highway	street|river
+bridge	places	Bridge	Brug	a bridge	Arch bridge|Suspension bridge|Beam bridge	river|road
+church	places	Church	Kerk	a church	Church	castle|building
+castle	places	Castle	Kasteel	a castle	Castle	church|building
+tower	places	Tower	Toren	a tower	Tower	skyscraper|lighthouse
+lighthouse	places	Lighthouse	Vuurtoren	a lighthouse	Lighthouse	tower|windmill
+statue	places	Statues	Beelden	a statue|a sculpture	Statue|Sculpture	painting|toy
+graffiti	places	Graffiti	Graffiti	graffiti	Graffiti	painting|poster
+fountain	places	Fountain	Fontein	a fountain	Fountain	waterfall|statue
+windmill	places	Windmill	Molen	a windmill	Windmill	lighthouse|tower
+canal	places	Canal	Gracht	a canal	Canal	river|street
+stadium	places	Stadium	Stadion	a stadium	Stadium	crowd|field
+pool	places	Swimming pool	Zwembad	a swimming pool	Swimming pool	sea|swimming
+kitchen	places	Kitchen	Keuken	a kitchen	Kitchen	restaurant|livingroom
+bedroom	places	Bedroom	Slaapkamer	a bedroom|a bed	Bedroom|Bed	livingroom
+bathroom	places	Bathroom	Badkamer	a bathroom	Bathroom	kitchen
+livingroom	places	Living room	Woonkamer	a living room|a couch	Living room|Couch	bedroom|kitchen
+restaurant	places	Restaurant	Restaurant	a restaurant	Restaurant|Bar	kitchen|food
+aquarium	places	Aquarium	Aquarium	an aquarium	Aquarium	fish|sea
+museum	places	Museum	Museum	a museum	Museum	painting|statue
+concert	events	Concert	Concert	a concert|people performing on stage	Concert|Stage|Musician	crowd|party
+party	events	Party	Feest	a party	Party	concert|crowd
+wedding	events	Wedding	Bruiloft	a wedding	Wedding|Wedding dress|Bride	party
+birthday	events	Birthday	Verjaardag	a birthday party|a birthday cake	Birthday|Birthday cake	party|cake
+christmas	events	Christmas	Kerst	christmas|a christmas tree	Christmas|Christmas tree	trees|night
+halloween	events	Halloween	Halloween	halloween	Halloween	christmas|party
+fireworks	events	Fireworks	Vuurwerk	fireworks	Fireworks	night|concert
+crowd	events	Crowd	Menigte	a crowd of people	Crowd	concert|stadium
+festival	events	Festival	Festival	a festival	Festival	concert|crowd
+sport	sport	Sport	Sport	a sport	Sports	crowd|stadium
+football	sport	Football	Voetbal	football|soccer	Football|Soccer	stadium|tennis
+tennis	sport	Tennis	Tennis	tennis	Tennis|Tennis racket|Tennis court	football|golf
+basketball	sport	Basketball	Basketbal	basketball	Basketball (Sport)|Basketball (Ball)	football
+cycling	sport	Cycling	Fietsen	cycling	Cycling	bicycle|running
+running	sport	Running	Hardlopen	running	Running	cycling
+swimming	sport	Swimming	Zwemmen	swimming	Swimming	pool|sea
+skiing	sport	Skiing	Skiën	skiing|snowboarding	Skiing|Snowboarding	snow
+surfing	sport	Surfing	Surfen	surfing	Surfing	sea|sailing
+sailing	sport	Sailing	Zeilen	sailing	Sailing	boat|surfing
+golf	sport	Golf	Golf	golf	Golf	tennis|field
+boxing	sport	Boxing	Boksen	boxing	Boxing	gym
+yoga	sport	Yoga	Yoga	yoga	Yoga	gym|dance
+gym	sport	Gym	Sportschool	a gym	Gym	yoga|boxing
+dance	sport	Dance	Dansen	dancing	Dance	concert|party
+hiking	sport	Hiking	Wandelen	hiking	Hiking	mountains|camping
+camping	sport	Camping	Kamperen	camping|a tent	Camping|Tent	hiking
+car	vehicles	Cars	Auto's	a car	Car	truck|bus
+motorcycle	vehicles	Motorcycles	Motoren	a motorcycle	Motorcycle	bicycle|car
+bicycle	vehicles	Bicycles	Fietsen	a bicycle	Bicycle	motorcycle|cycling
+train	vehicles	Trains	Treinen	a train|a tram	Train|Tram	bus
+airplane	vehicles	Airplanes	Vliegtuigen	an airplane	Airplane|Aircraft	helicopter|bird
+boat	vehicles	Boats	Boten	a boat|a ship	Boat|Ship|Canoe	sea|sailing
+bus	vehicles	Buses	Bussen	a bus	Bus	train|truck
+truck	vehicles	Trucks	Vrachtwagens	a truck	Truck	car|bus
+helicopter	vehicles	Helicopter	Helikopter	a helicopter	Helicopter	airplane
+tractor	vehicles	Tractor	Tractor	a tractor	Tractor	truck|car
+baby	people	Babies	Baby's	a baby	Baby	child|toy
+child	people	Children	Kinderen	a child	Child	baby
+selfie	people	Selfies	Selfies	a selfie	Selfie	child
+toy	objects	Toys	Speelgoed	a toy	Toy	animal|baby
+computer	objects	Computers	Computers	a computer|a laptop	Laptop|Computer|Computer monitor	phone|tv
+phone	objects	Phones	Telefoons	a mobile phone	Mobile phone	computer|camera
+tv	objects	Television	Televisie	a television	Television	computer
+camera	objects	Cameras	Camera's	a camera	Camera	phone
+instrument	objects	Musical instruments	Muziekinstrumenten	a musical instrument|a guitar|a piano	Musical instrument|Guitar|Piano	concert
+shoes	objects	Shoes	Schoenen	shoes	Shoe	toy
+tattoo	objects	Tattoos	Tatoeages	a tattoo	Tattoo	drawing
+jewellery	objects	Jewellery	Sieraden	jewellery|a ring	Jewellery|Ring	shoes
+glasses	objects	Glasses	Brillen	glasses|sunglasses	Glasses|Sunglasses	jewellery
+candle	objects	Candles	Kaarsen	a candle	Candle	fireworks|christmas
