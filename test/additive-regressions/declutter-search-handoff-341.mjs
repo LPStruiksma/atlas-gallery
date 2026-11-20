@@ -22,16 +22,26 @@ assert.match(declutter, /suggestionsTool = if \(reviewing\) null else[\s\S]*?"Sh
   'frame E: search while swiping offers the staged list and never filters the deck');
 assert.match(declutter, /"No staged files yet"[\s\S]*?"No matching staged files"[\s\S]*?Clear the search to see all \$\{pending\.size\}/,
   'S1/S2 copy');
-const emptyLayout = declutter.slice(
-  declutter.indexOf('if (visiblePending.isEmpty())'),
-  declutter.indexOf('TextButton(onClick = { reviewing = false })')
+// #702: the review body scrolls behind a separately reserved primary action.
+// This source contract fails on the original weighted list + trailing button.
+const reviewLayout = declutter.slice(
+  declutter.indexOf('if (reviewing) {', declutter.indexOf('AtlasGalleryHeader(')),
+  declutter.indexOf('} else if (current == null)')
 );
-assert.match(emptyLayout,
-  /if \(visiblePending\.isEmpty\(\)\) \{\s*Box\(Modifier\.weight\(1f\)\.fillMaxWidth\(\),\s*contentAlignment = Alignment\.Center\)/,
-  'S1/S2 message must occupy the centered list region, not sit beneath the popup');
-assert.match(emptyLayout,
-  /\} else \{\s*LazyColumn\(Modifier\.weight\(1f\)\.fillMaxWidth\(\)/,
-  'the staged list and empty message must be exclusive occupants of the weighted region');
+assert.match(reviewLayout, /Box\(Modifier\.weight\(1f\)\.fillMaxWidth\(\)/,
+  'review area must have a bounded weighted viewport');
+assert.match(reviewLayout,
+  /LazyColumn\(Modifier\.fillMaxSize\(\)[\s\S]*?contentPadding = PaddingValues\(bottom = 56\.dp\)/,
+  'heading, results and Return need a scrollable body with clearance for the fixed Move action');
+assert.match(reviewLayout, /item\s*\{\s*Text\("Review staged files"/,
+  'review heading belongs in scrollable body');
+assert.match(reviewLayout, /items\(visiblePending,\s*key = \{ it\.uri \}/,
+  'long filtered staging lists must remain lazy');
+assert.match(reviewLayout,
+  /Modifier\.align\(Alignment\.BottomCenter\)[\s\S]*?heightIn\(min = 48\.dp\)[\s\S]*?testTag\("atlas-declutter-trash"\)/,
+  'Move must be anchored above the IME at >=48dp, never measured after the list');
+assert.match(reviewLayout, /TextButton\(onClick = \{ reviewing = false \}\)/,
+  'Return to swiping stays reachable via scrolling');
 
 assert.match(declutter, /onSearchWholeLibrary: \(\) -> Unit/,
   'Declutter needs a dedicated host callback');
