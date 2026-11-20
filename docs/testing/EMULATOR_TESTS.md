@@ -45,6 +45,8 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 
 **9. Capture only a node that is whole on screen.** `captureToImage()` copies only the visible part of a node; `node.captureWhole()` scrolls it in and refuses a node that is still cut.
 
+Exception for **failure-only forensics**: `node.captureTimeoutViewport()` (testkit) intentionally records the current clipped viewport *without scrolling*. Use it only after an assertion timeout when the cut-off or moving state itself is evidence, never for passing assertions or acceptance screenshots. Compare it with the node's geometry in the same failure log.
+
 ## Which helper do I use
 
 | I want to | Use | Not |
