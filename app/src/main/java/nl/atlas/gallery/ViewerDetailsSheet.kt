@@ -3,12 +3,16 @@ package nl.atlas.gallery
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
@@ -20,6 +24,7 @@ import java.util.Date
 import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
 import nl.atlas.gallery.featureaiedit.save.AiEditDetails
 import nl.atlas.gallery.featureaiedit.save.aiEditDetailsFor
+import nl.atlas.gallery.featuredesign.darkGalleryColors
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -100,19 +105,24 @@ internal val LocalAiEditDetailsReader =
 
 /**
  * Samsung-like ordering: capture date, file name/path, physical file facts,
- * then photo/video camera facts. Only this fully opened sheet reads metadata;
- * the drag preview below stays entirely free of content-provider IO.
+ * then photo/video camera facts.
+ *
+ * #details-motion: this is the ONE details surface. The viewer composes it
+ * from the first pixel of a swipe-up and keeps the same node until it is
+ * closed, so nothing is swapped mid-gesture. Provider reads (dimensions,
+ * EXIF, AI lineage) start only once [loadMetadata] is true, i.e. when the
+ * user committed to opening Details; a gesture that merely starts never
+ * touches MediaStore. Until then the rows come from the catalogue record.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ViewerDetailsSheet(
-    media: MediaRecord, onDismiss: () -> Unit,
+internal fun ViewerDetailsContent(
+    media: MediaRecord,
     /** #553: who is in the photo; null (or no faces) hides the People row. */
     photoPeople: ViewerPhotoPeople? = null,
-    /** Fully open only when requested; normal Details keeps its partial-open gesture. */
-    fullyExpanded: Boolean = false
+    loadMetadata: Boolean = true,
+    scrollState: ScrollState = rememberScrollState(),
+    modifier: Modifier = Modifier
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = fullyExpanded)
     val context = LocalContext.current
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
@@ -121,7 +131,8 @@ internal fun ViewerDetailsSheet(
     // once app-private lineage confirms it. Any failure means no marker.
     val aiEditReader = LocalAiEditDetailsReader.current
     var aiEdit by remember(media.uri) { mutableStateOf<AiEditDetails?>(null) }
-    LaunchedEffect(media.uri, aiEditReader) {
+    LaunchedEffect(media.uri, aiEditReader, loadMetadata) {
+        if (!loadMetadata) return@LaunchedEffect
         aiEdit = null
         aiEdit = try {
             aiEditReader.read(context, media.uri)
@@ -140,40 +151,30 @@ internal fun ViewerDetailsSheet(
     var metadata by remember(media.uri, media.modifiedAtSeconds, media.generationModified) {
         mutableStateOf<ViewerExtendedMetadata?>(null)
     }
-    LaunchedEffect(media.uri, media.modifiedAtSeconds, dimensionsReader) {
-        queryFinished = false
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, dimensionsReader, loadMetadata) {
+        if (!loadMetadata || queryFinished) return@LaunchedEffect
         dimensions = dimensionsReader.read(context, media.uri)
         queryFinished = true
     }
-    LaunchedEffect(media.uri, media.modifiedAtSeconds, media.generationModified, metadataReader) {
-        metadata = null
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, media.generationModified,
+        metadataReader, loadMetadata) {
+        if (!loadMetadata || metadata != null) return@LaunchedEffect
         metadata = metadataReader.read(context, media)
     }
     val displayedDimensions = dimensions ?: media.takeIf {
         it.widthPixels > 0 && it.heightPixels > 0
     }?.let { ViewerDimensions(it.widthPixels, it.heightPixels) }
-    val ink = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val capture = viewerCaptureDateMillis(facts, metadata)
     val cameraRows = if (media.isVideo) emptyList() else viewerCameraRows(metadata)
     val videoRows = if (media.isVideo) {
         viewerVideoRows(metadata, media.durationMillis)
     } else emptyList()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = ink,
-        modifier = Modifier.testTag("atlas-viewer-details")
+    Column(
+        modifier.fillMaxSize().verticalScroll(scrollState)
+            .padding(horizontal = 24.dp)
+            .padding(top = 20.dp, bottom = 36.dp)
     ) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                // The scrollable rows clear the 3-button navigation area
-                // even with a viewer sheet drawn edge-to-edge (#680).
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                .padding(bottom = 36.dp)
-        ) {
             Text("Details", color = muted, style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(12.dp))
             capture?.let {
@@ -231,9 +232,41 @@ internal fun ViewerDetailsSheet(
                         .format(Date(it))
                 })
             }
+    }
+}
+
+/**
+ * The details surface itself: the viewer's black ground, continuing below
+ * the photo (Quiet Frame: viewer ground #000000), with the Details rows on
+ * it. No sheet window, scrim, handle or corner shape that could change
+ * between the drag and the settled state. The rows' scroll viewport ends
+ * above the navigation bar while the ground runs to the screen edge (#680).
+ * [contentAlpha] is read in the draw phase only, so a drag never recomposes
+ * the rows (Samsung fades its rows in over the second half of the slide).
+ */
+@Composable
+internal fun ViewerDetailsSurface(
+    media: MediaRecord,
+    modifier: Modifier = Modifier,
+    photoPeople: ViewerPhotoPeople? = null,
+    loadMetadata: Boolean = true,
+    contentAlpha: () -> Float = { 1f }
+) {
+    MaterialTheme(colorScheme = darkGalleryColors, typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Box(modifier.background(VIEWER_DETAILS_GROUND)
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) {
+                ViewerDetailsContent(media, photoPeople, loadMetadata,
+                    modifier = Modifier.graphicsLayer { alpha = contentAlpha() }
+                        .testTag("atlas-details-content"))
+            }
         }
     }
 }
+
+/** Quiet Frame viewer ground: the details continue the viewer's black. */
+internal val VIEWER_DETAILS_GROUND = Color.Black
 
 @Composable
 private fun ViewerDetailRow(label: String, value: String) {
@@ -265,20 +298,3 @@ private fun ViewerAiEditedRow() {
 
 /** #458: the one user-facing phrase for a saved AI edit (Details and Photo DNA). */
 internal const val AI_EDITED_LABEL = "Edited with AI"
-
-/**
- * The same presentation facts as the full details sheet, without a provider
- * query: a live drag must show content without triggering MediaStore access.
- */
-@Composable
-internal fun ViewerDetailsPreview(media: MediaRecord) {
-    val facts = remember(media) { viewerDetailsFacts(media) }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)
-        .testTag("atlas-details-drag-content")) {
-        Text("Details", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
-        ViewerDetailRow("Name", facts.filename)
-        ViewerDetailRow("Type", facts.kind)
-        ViewerDetailRow("Album", facts.album)
-    }
-}

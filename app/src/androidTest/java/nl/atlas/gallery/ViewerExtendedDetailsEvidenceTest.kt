@@ -98,10 +98,9 @@ class ViewerExtendedDetailsEvidenceTest {
                 AtlasGalleryTheme(dark = dark) {
                     Box(Modifier.fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)) {
-                        // The real sheet opens partially; evidence deliberately
-                        // presents its fully opened state so rows can be captured.
-                        ViewerDetailsSheet(
-                            selected, onDismiss = {}, fullyExpanded = true)
+                        // The viewer's one details surface, fully open, so
+                        // every row can be captured (always on the viewer's black).
+                        ViewerDetailsSurface(selected, Modifier.fillMaxSize())
                     }
                 }
             }

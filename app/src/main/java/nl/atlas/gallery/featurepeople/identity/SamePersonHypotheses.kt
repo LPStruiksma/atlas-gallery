@@ -124,49 +124,73 @@ object SamePersonHypotheses {
         limit: Int = DEFAULT_LIMIT
     ): List<SamePersonHypothesis> {
         require(limit in 0..10_000) { "Invalid limit" }
-        val policy = state.policy
-        if (policy.linkage != ClusterLinkage.MEAN_PAIR || limit == 0) return emptyList()
-        // unknownClusters is largest first, then by id: a stable prefix.
-        val groups = state.unknownClusters.asSequence()
-            .filter { it.members.size >= MIN_SECOND }.take(MAX_GROUPS).toList()
-        if (groups.size < 2 || groups[0].members.size < MIN_FIRST) return emptyList()
-        val dim = state.dimension
-        val g = groups.size
-        val sums = FloatArray(g * dim)
-        val crowd = FloatArray(g)
-        val frames = arrayOfNulls<HashSet<Long>>(g)
-        val indexOf = HashMap<FaceClusterId, Int>(g * 2)
-        val scratch = FloatArray(dim)
-        for ((k, group) in groups.withIndex()) {
-            indexOf[group.id] = k
-            val seen = HashSet<Long>()
-            for (m in group.members) {
-                val face = state.faces.getValue(m)
-                face.unitInto(scratch)
-                val base = k * dim
-                for (d in 0 until dim) sums[base + d] += scratch[d]
-                crowd[k] += face.crowd
-                if (face.frame != 0L) seen += face.frame
-            }
-            crowd[k] /= group.members.size
-            frames[k] = seen
-        }
-        // Human "not the same person" facts, as pairs of group indexes.
-        val vetoed = HashSet<Long>()
-        for (pair in state.reviews.cannotLink) {
-            val a = state.clusterOf(pair.first)?.let(indexOf::get) ?: continue
-            val b = state.clusterOf(pair.second)?.let(indexOf::get) ?: continue
-            if (a != b) vetoed += key(minOf(a, b), maxOf(a, b))
-        }
-        val w = policy.crowdWeight
+        if (limit == 0) return emptyList()
+        val index = PairIndex.of(state, sources) ?: return emptyList()
         val out = ArrayList<SamePersonHypothesis>()
-        val samples = arrayOfNulls<Sample>(g)
-        for (a in 0 until g) {
-            val na = groups[a].members.size
-            if (na < MIN_FIRST) break
-            for (b in a + 1 until g) {
+        for (b in 1 until index.size) index.pairsWithSecond(b, out)
+        out.sortWith(compareByDescending<SamePersonHypothesis> { it.strength }
+            .thenByDescending { it.firstFaces + it.secondFaces }
+            .thenBy { it.first.anchor.localHex }.thenBy { it.second.anchor.localHex })
+        return if (out.size > limit) out.subList(0, limit).toList() else out
+    }
+
+    private fun key(a: Int, b: Int): Long = a.toLong() shl 32 or b.toLong()
+
+    /**
+     * The work behind [of], one smaller group at a time, so a caller that
+     * wants the questions about the largest groups first (the "Same person?"
+     * list) can stop early instead of scoring every pair of the library.
+     * Group `k` is `state.unknownClusters[k]` for every `k < size`.
+     * Not thread-safe; one caller at a time.
+     */
+    class PairIndex private constructor(
+        private val state: FaceClusterState,
+        private val sources: List<EvidenceSource>,
+        private val groups: List<UnknownFaceCluster>
+    ) {
+        /** Groups that can be the smaller side of a pair. */
+        val size: Int get() = groups.size
+        private val dim = state.dimension
+        private val sums = FloatArray(groups.size * dim)
+        private val crowd = FloatArray(groups.size)
+        private val frames = arrayOfNulls<HashSet<Long>>(groups.size)
+        private val vetoed = HashSet<Long>()
+        private val samples = arrayOfNulls<Sample>(groups.size)
+        private val w = state.policy.crowdWeight
+
+        init {
+            val indexOf = HashMap<FaceClusterId, Int>(groups.size * 2)
+            val scratch = FloatArray(dim)
+            for ((k, group) in groups.withIndex()) {
+                indexOf[group.id] = k
+                val seen = HashSet<Long>()
+                for (m in group.members) {
+                    val face = state.faces.getValue(m)
+                    face.unitInto(scratch)
+                    val base = k * dim
+                    for (d in 0 until dim) sums[base + d] += scratch[d]
+                    crowd[k] += face.crowd
+                    if (face.frame != 0L) seen += face.frame
+                }
+                crowd[k] /= group.members.size
+                frames[k] = seen
+            }
+            // Human "not the same person" facts, as pairs of group indexes.
+            for (pair in state.reviews.cannotLink) {
+                val a = state.clusterOf(pair.first)?.let(indexOf::get) ?: continue
+                val b = state.clusterOf(pair.second)?.let(indexOf::get) ?: continue
+                if (a != b) vetoed += key(minOf(a, b), maxOf(a, b))
+            }
+        }
+
+        /** Adds to [out] every hypothesis whose smaller side is group [b]. */
+        fun pairsWithSecond(b: Int, out: MutableList<SamePersonHypothesis>) {
+            require(b in groups.indices) { "Invalid group index" }
+            val nb = groups[b].members.size
+            for (a in 0 until b) {
+                val na = groups[a].members.size
+                if (na < MIN_FIRST) break
                 if (key(a, b) in vetoed) continue
-                val nb = groups[b].members.size
                 var dot = 0f
                 val pa = a * dim
                 val pb = b * dim
@@ -197,13 +221,19 @@ object SamePersonHypotheses {
                 out += SamePersonHypothesis(groups[a].id, groups[b].id, na, nb, mean, best, evidence)
             }
         }
-        out.sortWith(compareByDescending<SamePersonHypothesis> { it.strength }
-            .thenByDescending { it.firstFaces + it.secondFaces }
-            .thenBy { it.first.anchor.localHex }.thenBy { it.second.anchor.localHex })
-        return if (out.size > limit) out.subList(0, limit).toList() else out
-    }
 
-    private fun key(a: Int, b: Int): Long = a.toLong() shl 32 or b.toLong()
+        companion object {
+            /** Null when [of] would list nothing for [state]. */
+            fun of(state: FaceClusterState, sources: List<EvidenceSource> = emptyList()): PairIndex? {
+                if (state.policy.linkage != ClusterLinkage.MEAN_PAIR) return null
+                // unknownClusters is largest first, then by id: a stable prefix.
+                val groups = state.unknownClusters.asSequence()
+                    .filter { it.members.size >= MIN_SECOND }.take(MAX_GROUPS).toList()
+                if (groups.size < 2 || groups[0].members.size < MIN_FIRST) return null
+                return PairIndex(state, sources, groups)
+            }
+        }
+    }
 
     /**
      * "Is this group also [PersonHypothesis.person]?" for unnamed groups
@@ -230,60 +260,75 @@ object SamePersonHypotheses {
         limit: Int = DEFAULT_LIMIT
     ): List<PersonHypothesis> {
         require(limit in 0..10_000) { "Invalid limit" }
-        val policy = state.policy
-        if (policy.linkage != ClusterLinkage.MEAN_PAIR || limit == 0) return emptyList()
-        val membersOf = HashMap<PersonKey, ArrayList<NativeFaceObservationId>>()
-        for ((face, person) in state.reviews.confirmed) {
-            if (face !in state || (people != null && person !in people)) continue
-            membersOf.getOrPut(person) { ArrayList() }.add(face)
-        }
-        val keys = membersOf.filterValues { it.size >= MIN_FIRST }.keys.sortedBy { it.value }
-        if (keys.isEmpty() || state.unknownClusters.isEmpty()) return emptyList()
-        val dim = state.dimension
-        val p = keys.size
-        val indexOf = HashMap<PersonKey, Int>(p * 2)
-        val faces = ArrayList<List<NativeFaceObservationId>>(p)
-        val sums = FloatArray(p * dim)
-        val crowd = FloatArray(p)
-        val frames = ArrayList<HashSet<Long>>(p)
-        val scratch = FloatArray(dim)
-        for ((k, person) in keys.withIndex()) {
-            indexOf[person] = k
-            val members = membersOf.getValue(person).sortedBy { it.localHex }
-            faces += members
-            val seen = HashSet<Long>()
-            for (m in members) {
-                val face = state.faces.getValue(m)
-                face.unitInto(scratch)
-                val base = k * dim
-                for (d in 0 until dim) sums[base + d] += scratch[d]
-                crowd[k] += face.crowd
-                if (face.frame != 0L) seen += face.frame
-            }
-            crowd[k] /= members.size
-            frames += seen
-        }
-        // Per unknown face: the people a human answer keeps it away from.
-        val barred = HashMap<NativeFaceObservationId, HashSet<Int>>()
-        for (r in state.reviews.rejectedPeople) {
-            val k = indexOf[r.person] ?: continue
-            barred.getOrPut(r.observation) { HashSet() }.add(k)
-        }
-        for (pair in state.reviews.cannotLink) {
-            state.reviews.confirmed[pair.first]?.let(indexOf::get)?.let {
-                barred.getOrPut(pair.second) { HashSet() }.add(it)
-            }
-            state.reviews.confirmed[pair.second]?.let(indexOf::get)?.let {
-                barred.getOrPut(pair.first) { HashSet() }.add(it)
-            }
-        }
-        val w = policy.crowdWeight
+        if (limit == 0) return emptyList()
+        val index = PeopleIndex.of(state, people) ?: return emptyList()
         val out = ArrayList<PersonHypothesis>()
-        val samples = arrayOfNulls<Sample>(p)
-        val sum = FloatArray(dim)
-        val no = HashSet<Int>()
-        val seen = HashSet<Long>()
-        for (group in state.unknownClusters) {
+        for (group in state.unknownClusters) index.forGroup(group, out)
+        out.sortWith(compareByDescending<PersonHypothesis> { it.strength }
+            .thenByDescending { it.groupFaces }
+            .thenBy { it.person.value }.thenBy { it.group.anchor.localHex })
+        return if (out.size > limit) out.subList(0, limit).toList() else out
+    }
+
+    /**
+     * The work behind [forPeople], one unnamed group at a time (see
+     * [PairIndex] for why). Not thread-safe; one caller at a time.
+     */
+    class PeopleIndex private constructor(
+        private val state: FaceClusterState,
+        private val keys: List<PersonKey>,
+        membersOf: Map<PersonKey, List<NativeFaceObservationId>>
+    ) {
+        private val dim = state.dimension
+        private val p = keys.size
+        private val faces = ArrayList<List<NativeFaceObservationId>>(p)
+        private val sums = FloatArray(p * dim)
+        private val crowd = FloatArray(p)
+        private val frames = ArrayList<HashSet<Long>>(p)
+        // Per unknown face: the people a human answer keeps it away from.
+        private val barred = HashMap<NativeFaceObservationId, HashSet<Int>>()
+        private val samples = arrayOfNulls<Sample>(p)
+        private val w = state.policy.crowdWeight
+        private val scratch = FloatArray(dim)
+        private val sum = FloatArray(dim)
+        private val no = HashSet<Int>()
+        private val seen = HashSet<Long>()
+
+        init {
+            val indexOf = HashMap<PersonKey, Int>(p * 2)
+            for ((k, person) in keys.withIndex()) {
+                indexOf[person] = k
+                val members = membersOf.getValue(person).sortedBy { it.localHex }
+                faces += members
+                val seen = HashSet<Long>()
+                for (m in members) {
+                    val face = state.faces.getValue(m)
+                    face.unitInto(scratch)
+                    val base = k * dim
+                    for (d in 0 until dim) sums[base + d] += scratch[d]
+                    crowd[k] += face.crowd
+                    if (face.frame != 0L) seen += face.frame
+                }
+                crowd[k] /= members.size
+                frames += seen
+            }
+            for (r in state.reviews.rejectedPeople) {
+                val k = indexOf[r.person] ?: continue
+                barred.getOrPut(r.observation) { HashSet() }.add(k)
+            }
+            for (pair in state.reviews.cannotLink) {
+                state.reviews.confirmed[pair.first]?.let(indexOf::get)?.let {
+                    barred.getOrPut(pair.second) { HashSet() }.add(it)
+                }
+                state.reviews.confirmed[pair.second]?.let(indexOf::get)?.let {
+                    barred.getOrPut(pair.first) { HashSet() }.add(it)
+                }
+            }
+        }
+
+        /** Adds to [out] every hypothesis about unnamed [group]. */
+        fun forGroup(group: UnknownFaceCluster, out: MutableList<PersonHypothesis>) {
+            val policy = state.policy
             val n = group.members.size
             sum.fill(0f)
             no.clear()
@@ -321,10 +366,21 @@ object SamePersonHypotheses {
                 out += PersonHypothesis(keys[k], group.id, np, n, mean, best)
             }
         }
-        out.sortWith(compareByDescending<PersonHypothesis> { it.strength }
-            .thenByDescending { it.groupFaces }
-            .thenBy { it.person.value }.thenBy { it.group.anchor.localHex })
-        return if (out.size > limit) out.subList(0, limit).toList() else out
+
+        companion object {
+            /** Null when [forPeople] would list nothing for [state] and [people]. */
+            fun of(state: FaceClusterState, people: Set<PersonKey>? = null): PeopleIndex? {
+                if (state.policy.linkage != ClusterLinkage.MEAN_PAIR) return null
+                val membersOf = HashMap<PersonKey, ArrayList<NativeFaceObservationId>>()
+                for ((face, person) in state.reviews.confirmed) {
+                    if (face !in state || (people != null && person !in people)) continue
+                    membersOf.getOrPut(person) { ArrayList() }.add(face)
+                }
+                val keys = membersOf.filterValues { it.size >= MIN_FIRST }.keys.sortedBy { it.value }
+                if (keys.isEmpty() || state.unknownClusters.isEmpty()) return null
+                return PeopleIndex(state, keys, membersOf)
+            }
+        }
     }
 
     /** Up to [MAX_SAMPLE] unit vectors of one group, evenly spread over its sorted members. */
