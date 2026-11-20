@@ -47,7 +47,7 @@ object DecorationRasterizer {
                 // The eraser must act on the shared decoration layer, not a nested layer.
                 val clearing = layer is StrokeLayer && layer.mode == StrokeMode.ERASER
                 val alpha = (p.opacity * 255.0).toInt().coerceIn(0, 255)
-                if (alpha == 0 && !clearing) return@forEach
+                if (alpha == 0) return@forEach
                 val layerSave = if (clearing) canvas.save() else canvas.saveLayerAlpha(bounds, alpha)
                 try {
                     val values = space.localToOutputMatrix(p).values()
