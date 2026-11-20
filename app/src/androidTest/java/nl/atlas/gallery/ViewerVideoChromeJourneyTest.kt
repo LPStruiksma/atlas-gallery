@@ -62,11 +62,14 @@ class ViewerVideoChromeJourneyTest {
             )
             val dark = mutableStateOf(true)
             var window: Window? = null
+            var insetSample: Viewer609InsetSample? = null
+            val recorder = Viewer609Recorder(compose) { window }
             compose.setContent {
                 val view = LocalView.current
                 SideEffect { window = view.context.testActivityForVideoEvidence()?.window }
                 AtlasGalleryTheme(dark = dark.value) {
                     Box(Modifier.fillMaxSize()) {
+                        Viewer609InsetProbe { insetSample = it }
                         GalleryViewer(items, items[0].uri, onBack = {})
                     }
                 }
@@ -86,6 +89,18 @@ class ViewerVideoChromeJourneyTest {
                     .assert(hasContentDescription("Play video"))
                 compose.onNodeWithTag("atlas-video-seek").assertIsDisplayed()
                 saveUiEvidence("viewer-video-$theme-still.png")
+                recorder.capture("video/short/$theme/portrait/still",
+                    "viewer-video-$theme-still.png", insetSample)
+                val videoFocus = hasTestTag("atlas-video-surface") and hasClickAction()
+                compose.onNode(videoFocus).performSemanticsAction(
+                    androidx.compose.ui.semantics.SemanticsActions.OnClick)
+                compose.onNodeWithTag("atlas-filmstrip").assertDoesNotExist()
+                saveUiEvidence("viewer-609-video-$theme-portrait-hidden.png")
+                recorder.capture("video/short/$theme/portrait/hidden",
+                    "viewer-609-video-$theme-portrait-hidden.png", insetSample)
+                compose.onNode(videoFocus).performSemanticsAction(
+                    androidx.compose.ui.semantics.SemanticsActions.OnClick)
+                compose.onNodeWithTag("atlas-filmstrip").assertExists()
 
                 try {
                     rotateViewerEvidenceLandscape()
@@ -95,6 +110,8 @@ class ViewerVideoChromeJourneyTest {
                     }
                     assertVideoControlsClearLandscapeCutout(requireNotNull(window))
                     saveUiEvidence("viewer-142-video-landscape-cutout-$theme.png")
+                    recorder.capture("video/short/$theme/landscape/shown",
+                        "viewer-142-video-landscape-cutout-$theme.png", insetSample)
                 } finally {
                     restoreViewerEvidencePortrait()
                 }
@@ -109,6 +126,8 @@ class ViewerVideoChromeJourneyTest {
                         .fetchSemanticsNodes().isNotEmpty()
                 }
                 saveUiEvidence("viewer-video-$theme-playing.png")
+                recorder.capture("video/short/$theme/portrait/playing",
+                    "viewer-video-$theme-playing.png", insetSample)
 
                 compose.onNodeWithTag("atlas-video-play-pause").performClick()
                 compose.waitUntil(10_000L) {
@@ -116,6 +135,8 @@ class ViewerVideoChromeJourneyTest {
                         .fetchSemanticsNodes().isNotEmpty()
                 }
                 saveUiEvidence("viewer-video-$theme-paused.png")
+                recorder.capture("video/short/$theme/portrait/paused",
+                    "viewer-video-$theme-paused.png", insetSample)
 
                 // Hold the slider thumb long enough for an actual extracted
                 // video frame, not a generic image or the photo filmstrip.
@@ -131,10 +152,45 @@ class ViewerVideoChromeJourneyTest {
                 compose.onNodeWithTag("atlas-video-seek-preview").assertIsDisplayed()
                 compose.onNodeWithTag("atlas-video-seek-frame").assertIsDisplayed()
                 saveUiEvidence("viewer-video-$theme-seek.png")
+                recorder.capture("video/short/$theme/portrait/seek-preview",
+                    "viewer-video-$theme-seek.png", insetSample)
                 compose.onNodeWithTag("atlas-video-seek").performTouchInput { up() }
                 compose.waitUntil(10_000L) {
                     compose.onAllNodes(hasContentDescription("Play video"))
                         .fetchSemanticsNodes().isNotEmpty()
+                }
+                // Actual Material3 slider accessibility actions, not a mock
+                // progress bar. Capture endpoints even if the renderer cannot
+                // provide a distinct frame at exactly 0 or duration.
+                for ((endpoint, fraction) in listOf("start" to 0f, "end" to 1f)) {
+                    compose.onNodeWithTag("atlas-video-seek")
+                        .performSemanticsAction(
+                            androidx.compose.ui.semantics.SemanticsActions.SetProgress) {
+                            it(fraction)
+                        }
+                    compose.waitForIdle()
+                    val file = "viewer-609-video-$theme-seek-$endpoint.png"
+                    saveUiEvidence(file)
+                    recorder.capture("video/short/$theme/portrait/seek-$endpoint",
+                        file, insetSample)
+                }
+                // A Material3 SetProgress action can leave the synthetic player
+                // seeking or positioned at the end of this four-second clip.
+                // Remount between themes to isolate the second theme's playback
+                // checks from the first theme's endpoint evidence.
+                if (theme == "dark") {
+                    compose.onNodeWithTag("atlas-thumbnail-1").performClick()
+                    compose.waitUntil(10_000L) {
+                        compose.onAllNodesWithTag("atlas-viewer-video-player")
+                            .fetchSemanticsNodes().isEmpty()
+                    }
+                    compose.onNodeWithTag("atlas-thumbnail-0").performClick()
+                    awaitPlayer()
+                    compose.waitUntil(20_000L) {
+                        runCatching {
+                            compose.onNodeWithTag("atlas-video-seek").assertIsEnabled()
+                        }.isSuccess
+                    }
                 }
             }
 
@@ -153,6 +209,12 @@ class ViewerVideoChromeJourneyTest {
                 compose.onAllNodes(hasContentDescription("Play video"))
                     .fetchSemanticsNodes().isNotEmpty()
             }
+            recorder.publish("viewer-609-video.json", listOf(
+                "Long-duration video not produced by this four-second H.264 fixture: NOT_CAPTURED",
+                "Codec unavailable/error video UI: NOT_CAPTURED (requires an independent codec fixture)",
+                "Media3 AndroidView gesture hit rectangles: not exposed by Compose semantics",
+                "System TalkBack spoken focus order: NOT_CAPTURED; descriptions are measured"
+            ))
         } finally {
             video.delete()
             photo.delete()

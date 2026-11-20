@@ -12,6 +12,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.FaceQuality
+import nl.atlas.gallery.featureface.FaceMediaKey
+import nl.atlas.gallery.featureface.UnknownFaceBox
+import nl.atlas.gallery.featureface.FaceQualityBackfillFace
+import nl.atlas.gallery.featureface.FaceQualityBackfillSource
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterDiagnostics
@@ -305,6 +309,7 @@ class FaceIndexStore(
         createPeopleCoverTable(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
+        createMixedGroupTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
         createPersonMediaIndexes(db)
@@ -421,6 +426,8 @@ class FaceIndexStore(
         if ("quality_score" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SCORE_COLUMN")
         if ("quality_version" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_VERSION_COLUMN")
         if ("quality_below_size_floor" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SIZE_COLUMN")
+        // Index only the legacy rows that actually need maintenance; no per-scan cost.
+        db.execSQL("CREATE INDEX IF NOT EXISTS face_quality_pending ON faces(media_key) WHERE quality_score IS NULL")
     }
 
     private fun createClusterGeneration(db: SQLiteDatabase) {
@@ -519,6 +526,15 @@ class FaceIndexStore(
         db.rawQuery("SELECT 1 FROM cluster_members LIMIT 1", null).use { it.moveToFirst() }
 
     /**
+     * #75: whether [epoch] is readable and holds published face groups. With
+     * a null [peopleHome] that means "not readable yet" (a regroup or the
+     * #580 refill), never "nobody": the first scan before any publication
+     * has no membership.
+     */
+    fun hasPublishedMembership(epoch: String): Boolean =
+        authorizedEmbeddingRead(epoch, false) { db, _ -> hasMembership(db) }
+
+    /**
      * #579: membership published under other grouping rules must be
      * regrouped under [ClusterPolicy.DEFAULT]. Opening only marks the
      * generation dirty (cluster reads return null, as during a scan) and
@@ -587,6 +603,7 @@ class FaceIndexStore(
         db.execSQL("""CREATE INDEX IF NOT EXISTS people_cannot_link_b
             ON people_cannot_link(face_b)""")
         createSameUnknownTable(db)
+        createMixedGroupTable(db)
         createReviewTallyTable(db)
         createPeopleMatchedTable(db)
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_rejected(
@@ -735,6 +752,23 @@ class FaceIndexStore(
             CHECK(face_a < face_b), PRIMARY KEY(face_a, face_b))""")
         db.execSQL("""CREATE INDEX IF NOT EXISTS people_same_unknown_b
             ON people_same_unknown(face_b)""")
+    }
+
+    /**
+     * HUB-1A (#210): a "not one person" answer for an unnamed group, kept as
+     * its anchor face and the SHA-256 fingerprint of its exact membership
+     * ([MixedGroup]). The anchor cascades with its embedding like every other
+     * face-keyed fact, so a source change, rescan or model bump drops it.
+     * Additive and created on open like `people_same_unknown`, without a
+     * [SCHEMA_VERSION] bump: a build without it (a plain revert) opens the
+     * same file and ignores the table.
+     */
+    private fun createMixedGroupTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_mixed_group(
+            anchor_uid TEXT NOT NULL REFERENCES embeddings(face_uid) ON DELETE CASCADE,
+            fingerprint TEXT NOT NULL CHECK(length(fingerprint)=64
+                AND fingerprint NOT GLOB '*[^0-9a-f]*'),
+            PRIMARY KEY(anchor_uid, fingerprint))""")
     }
 
     /**
@@ -1352,6 +1386,85 @@ class FaceIndexStore(
         } }
     }
 
+    /**
+     * COVER-0b: one existing processed media source with NULL quality, carrying
+     * only the source-key/box/frame and already-stored face uid. The active
+     * embedding version and revision must match; neither old-model vectors
+     * nor inaccessible/stale catalog rows may enter maintenance.
+     *
+     * The keyset cursor lets a batch skip undecodable or unmatched sources
+     * without repeatedly decoding the same source in a tight WorkManager loop.
+     */
+    fun pendingQualitySource(epoch: String, afterMediaKey: String? = null): FaceQualityBackfillSource? =
+        authorizedEmbeddingRead(epoch, null) { db, embedderVersion ->
+            val suffix = if (afterMediaKey == null) "" else " AND f.media_key > ?"
+            val args = if (afterMediaKey == null) arrayOf(embedderVersion)
+                else arrayOf(embedderVersion, afterMediaKey)
+            val header = db.rawQuery("""SELECT f.media_key,c.revision,c.detector_version
+                FROM faces f JOIN catalog c ON c.media_key=f.media_key
+                JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+                WHERE f.quality_score IS NULL AND c.state='processed'
+                AND e.model_version=?$suffix
+                ORDER BY f.media_key,f.ordinal LIMIT 1""", args).use { cursor ->
+                if (!cursor.moveToFirst()) null else Triple(
+                    cursor.getString(0), cursor.getString(1), cursor.getString(2))
+            } ?: return@authorizedEmbeddingRead null
+            val faces = db.rawQuery("""SELECT f.face_uid,f.l,f.t,f.r,f.b,f.frame_ms
+                FROM faces f JOIN embeddings e ON e.face_uid=f.face_uid
+                WHERE f.media_key=? AND f.quality_score IS NULL
+                AND e.source_revision=? AND e.model_version=?
+                ORDER BY f.ordinal LIMIT 32""",
+                arrayOf(header.first, header.second, embedderVersion)).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) add(FaceQualityBackfillFace(
+                        cursor.getString(0),
+                        UnknownFaceBox(cursor.getFloat(1), cursor.getFloat(2),
+                            cursor.getFloat(3), cursor.getFloat(4)),
+                        if (cursor.isNull(5)) null else cursor.getLong(5)))
+                }
+            }
+            if (faces.isEmpty()) null else FaceQualityBackfillSource(
+                FaceMediaKey(header.first, header.second), header.third, embedderVersion, faces)
+        }
+
+    /**
+     * Single short SQLite transaction: a re-grant, changed source, new model,
+     * or a competing scan defeats this write. Never replace a known score and
+     * never update vectors, clustering, review decisions or identity rows.
+     */
+    fun backfillQualityIfNull(
+        epoch: String, source: FaceQualityBackfillSource, scores: Map<String, FaceQuality>
+    ): Int {
+        validEpoch(epoch)
+        require(scores.keys.all { uid -> source.faces.any { it.uid == uid } })
+        if (scores.isEmpty()) return 0
+        return write { db ->
+            if (currentEpoch(db) != epoch ||
+                storedEmbedderVersion(db) != source.embedderVersion) return@write 0
+            val stillCurrent = db.rawQuery("""SELECT 1 FROM catalog
+                WHERE media_key=? AND revision=? AND detector_version=?
+                AND state='processed'""",
+                arrayOf(source.media.canonicalMediaKey, source.media.sourceRevision,
+                    source.detectorVersion)).use { it.moveToFirst() }
+            if (!stillCurrent) return@write 0
+            var written = 0
+            for ((uid, quality) in scores) {
+                val values = ContentValues().apply {
+                    put("quality_score", quality.score.toDouble())
+                    put("quality_version", quality.qualityVersion)
+                    put("quality_below_size_floor", if (quality.belowSizeFloor) 1 else 0)
+                }
+                written += db.update("faces", values,
+                    """face_uid=? AND media_key=? AND quality_score IS NULL
+                    AND EXISTS(SELECT 1 FROM embeddings e WHERE e.face_uid=faces.face_uid
+                        AND e.source_revision=? AND e.model_version=?)""",
+                    arrayOf(uid, source.media.canonicalMediaKey,
+                        source.media.sourceRevision, source.embedderVersion))
+            }
+            written
+        }
+    }
+
     /** Empty: every face is a photo face. Else one non-negative time (or null) per box. */
     private fun requireFrames(boxes: Int, frameMs: List<Long?>) =
         require((frameMs.isEmpty() || frameMs.size == boxes) &&
@@ -1431,12 +1544,14 @@ class FaceIndexStore(
         return PeopleReviewRecords.Rows(confirmed,
             pairs("SELECT face_a,face_b FROM people_cannot_link"),
             pairs("SELECT face_uid,person_key FROM people_rejected"),
-            pairs("SELECT face_a,face_b FROM people_same_unknown"))
+            pairs("SELECT face_a,face_b FROM people_same_unknown"),
+            pairs("SELECT anchor_uid,fingerprint FROM people_mixed_group"))
     }
     private fun reviewFacts(db: SQLiteDatabase): ClusterReviewFacts {
         val rows = reviewRows(db)
         return if (rows.confirmed.isEmpty() && rows.cannotLink.isEmpty() &&
-            rows.rejected.isEmpty() && rows.sameUnknown.isEmpty())
+            rows.rejected.isEmpty() && rows.sameUnknown.isEmpty() &&
+            rows.mixedGroups.isEmpty())
             ClusterReviewFacts.NONE else PeopleReviewRecords.facts(rows)
     }
     private fun personNames(db: SQLiteDatabase): Map<PersonKey, String> {
@@ -1498,6 +1613,18 @@ class FaceIndexStore(
         if (currentEpoch(db) != epoch) return false
         val gen = generation(db)
         return gen.dirty && gen.pending >= PUBLICATION_CONTINUES
+    }
+
+    /**
+     * Epoch-fenced, read-only dirty/pending aggregate for diagnostics.
+     * Do not change the publication gate or read any identity rows.
+     */
+    fun clusterGenerationDiagnostics(epoch: String): Pair<Boolean, Int>? {
+        validEpoch(epoch)
+        val db = readableDatabase
+        if (currentEpoch(db) != epoch) return null
+        val state = generation(db)
+        return state.dirty to state.pending.coerceAtLeast(0)
     }
 
     /**
@@ -1806,7 +1933,8 @@ class FaceIndexStore(
                 names.keys.associateWith { resolvedPersonCover(db,
                     storedEmbedderVersion(db) ?: "", it) }.mapNotNull { (person, face) ->
                     face?.let { person to it }
-                }.toMap())
+                }.toMap(),
+                pairs("SELECT anchor_uid,fingerprint FROM people_mixed_group"))
         }
 
     /**
@@ -1932,6 +2060,18 @@ class FaceIndexStore(
             }
             for ((person, uid) in incoming.coverOverrides) {
                 if (storePersonCover(db, version, person, uid)) applied++ else skipped++
+            }
+            // HUB-1A (#210): only for an anchor face of the current model;
+            // a fact never regroups, so it needs no publication.
+            val oldMixed = reviewRows(db).mixedGroups
+            for ((anchor, fingerprint) in incoming.mixedGroups) {
+                if (anchor !in faces) { skipped++; continue }
+                if ((anchor to fingerprint) !in oldMixed) {
+                    db.insertOrThrow("people_mixed_group", null, ContentValues().apply {
+                        put("anchor_uid", anchor); put("fingerprint", fingerprint)
+                    })
+                }
+                applied++
             }
             if (applied > 0) {
                 bumpReviewRevision(db, reviewRevision(db))
@@ -2106,6 +2246,8 @@ class FaceIndexStore(
                 PeopleReviewRecords.setDelta(old.rejected, newRows.rejected))
             pairDelta("people_same_unknown", "face_a", "face_b",
                 PeopleReviewRecords.setDelta(old.sameUnknown, newRows.sameUnknown))
+            pairDelta("people_mixed_group", "anchor_uid", "fingerprint",
+                PeopleReviewRecords.setDelta(old.mixedGroups, newRows.mixedGroups))
             pairDelta("people_names", "person_key", "name", PeopleReviewRecords.mapDelta(
                 personNames(db).entries.associate { it.key.value to it.value }, nameRows))
             val hiddenDelta = PeopleReviewRecords.setDelta(hiddenPeople(db), hiddenRows)

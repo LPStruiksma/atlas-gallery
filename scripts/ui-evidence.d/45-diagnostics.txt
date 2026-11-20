@@ -1,0 +1,2 @@
+#45: Settings → Advanced → Export diagnostics preview (synthetic aggregates only)
+settings-45-export-diagnostics

@@ -39,3 +39,35 @@ internal fun aiEditProvenanceFor(
 ): AiEditProvenanceGroup? = groups.firstOrNull {
     it.originalUri == uri || uri in it.editedUris
 }
+
+/**
+ * #458: what viewer Details shows for one photo. [editedWithAi] is true only
+ * when this exact, still-readable URI has its own completed lineage row; never
+ * from a filename, EXIF text, similarity, or merely having edited children.
+ * The original may be gone: the label stays, the "Edited from…" family does not.
+ */
+internal data class AiEditDetails(
+    val editedWithAi: Boolean,
+    val group: AiEditProvenanceGroup?
+)
+
+internal fun aiEditDetailsFor(
+    uri: String,
+    own: AiEditLineage?,
+    allRows: () -> List<AiEditLineage>,
+    visible: (String) -> Boolean
+): AiEditDetails? {
+    if (!visible(uri)) return null
+    val edited = own != null && own.editedUri == uri && own.originalUri != uri
+    val group = if (edited && visible(own!!.originalUri)) {
+        AiEditProvenanceGroup(own.originalUri, listOf(uri))
+    } else if (edited) {
+        null
+    } else {
+        val children = allRows().asSequence()
+            .filter { it.originalUri == uri && it.editedUri != uri }
+            .map { it.editedUri }.distinct().filter(visible).sorted().toList()
+        if (children.isEmpty()) null else AiEditProvenanceGroup(uri, children)
+    }
+    return if (!edited && group == null) null else AiEditDetails(edited, group)
+}

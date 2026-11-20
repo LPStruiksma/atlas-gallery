@@ -129,7 +129,9 @@ fun AtlasFeatureGrid(
     emptyDetail: String? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE) }
+    val prefs = remember(context) {
+        context.applicationContext.getSharedPreferences(DENSITY_PREFS, Context.MODE_PRIVATE)
+    }
     // Ungrouped Search/People/fallback screens have no chronological overview.
     // They must not inherit a 12/28-column Photos preference without the headers.
     fun classic(value: GridDensity): GridDensity =

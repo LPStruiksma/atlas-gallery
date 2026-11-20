@@ -2,9 +2,7 @@ package nl.atlas.gallery.featurepeopleui
 
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.os.ParcelFileDescriptor
 import android.os.SystemClock
-import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.Window
@@ -16,16 +14,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.test.ComposeTimeoutException
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.concurrent.CountDownLatch
@@ -37,9 +31,23 @@ import nl.atlas.gallery.featurepeople.cluster.FaceClusterState
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterer
 import nl.atlas.gallery.featurepeople.cluster.FaceEmbedding
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.keyboardInset
+import nl.atlas.gallery.testkit.keyboardInsetPx
+import nl.atlas.gallery.testkit.sampleOnFrames
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
+import nl.atlas.gallery.testkit.withAnimatorScale
+import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 
 /**
@@ -48,7 +56,13 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class UnknownPersonImeTouchTest {
-    @get:Rule val compose = createComposeRule()
+    private val compose = createComposeRule()
+
+    // The fixed test keyboard (docs/testing/EMULATOR_TESTS.md): one height,
+    // no LatinIME notice strip or PermissionsActivity (#424), and the
+    // platform's own show animation.
+    @get:Rule val chain: RuleChain =
+        RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed)).around(compose)
     private var hostActivity: Activity? = null
 
     private val target = PersonKey("touch-synthetic-target")
@@ -73,41 +87,6 @@ class UnknownPersonImeTouchTest {
 
     private fun activity(): Activity = checkNotNull(hostActivity) {
         "Compose host Activity missing"
-    }
-
-    /**
-     * Read IME bottom on real, distinct Choreographer frames. waitUntil polling
-     * alone can observe the same frame twice and is not a settled-IME proof.
-     */
-    private class ImeFrames(private val activity: Activity) {
-        @Volatile var frameCount = 0
-        @Volatile var stableFrames = 0
-        @Volatile var latestBottom = 0
-        private var lastBottom = -1
-        private var running = true
-        private val callback = object : Choreographer.FrameCallback {
-            override fun doFrame(frameTimeNanos: Long) {
-                if (!running) return
-                val insets = activity.window.decorView.rootWindowInsets
-                val bottom = insets?.getInsets(WindowInsets.Type.ime())?.bottom ?: 0
-                stableFrames = if (bottom > 0 && bottom == lastBottom) stableFrames + 1 else 0
-                lastBottom = bottom
-                latestBottom = bottom
-                frameCount++
-                Choreographer.getInstance().postFrameCallback(this)
-            }
-        }
-
-        fun start() {
-            activity.runOnUiThread { Choreographer.getInstance().postFrameCallback(callback) }
-        }
-
-        fun stop() {
-            activity.runOnUiThread {
-                running = false
-                Choreographer.getInstance().removeFrameCallback(callback)
-            }
-        }
     }
 
     /**
@@ -239,42 +218,6 @@ class UnknownPersonImeTouchTest {
         }
     }
 
-    private fun shell(command: String): String {
-        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation
-            .executeShellCommand(command)
-        return ParcelFileDescriptor.AutoCloseInputStream(descriptor)
-            .use { it.readBytes().decodeToString() }.trim()
-    }
-
-    /**
-     * CI emulators run with animator scale 0 (`disable-animations: true`), and
-     * then the platform shows the IME with no WindowInsetsAnimation at all:
-     * run 44278979909 timed out waiting for one. Phones animate the keyboard, so
-     * this one test turns the animator scale on for its own duration and puts
-     * the previous value back afterwards.
-     *
-     * #411: at scale 1 the CI keyboard animation lasts about 8 frames, and an
-     * injected tap needs a comparable time to travel through the input
-     * dispatcher, so DOWN arrived just after the animation ended (run
-     * 44319216708). [OPENING_ANIMATOR_SCALE] stretches the show animation so
-     * the "tap while it opens" window is wide enough to hit on a slow
-     * emulator. It is still a real platform animation; only its duration
-     * changes, and only inside this test.
-     */
-    private fun <T> withAnimatorScale(scale: String, body: () -> T): T {
-        val before = shell("settings get global animator_duration_scale")
-        shell("settings put global animator_duration_scale $scale")
-        try {
-            return body()
-        } finally {
-            if (before == "null" || before.isEmpty()) {
-                shell("settings delete global animator_duration_scale")
-            } else {
-                shell("settings put global animator_duration_scale $before")
-            }
-        }
-    }
-
     private fun fixture() {
         val initial = review()
         compose.setContent {
@@ -299,67 +242,57 @@ class UnknownPersonImeTouchTest {
         }
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-toggle-search"))
-        compose.onNodeWithTag("atlas-group-1-destination-toggle-search")
-            .performTouchInput { click() }
+        compose.tap(hasTestTag("atlas-group-1-destination-toggle-search"))
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-search"))
     }
 
+    /** A real pointer tap on the choice; it must select the person. */
     private fun tapChoice() {
-        compose.onNodeWithTag("atlas-group-1-destination-option-1")
-            .performTouchInput { click() }
+        compose.tap(hasTestTag("atlas-group-1-destination-option-1")) {
+            compose.exists(hasTestTag("atlas-group-1-destination-selected"))
+        }
         compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
+    }
+
+    /** Every test leaves the keyboard hidden (rule 7); never masks the test's own result. */
+    @After fun leaveKeyboardHidden() {
+        runCatching { compose.hideKeyboard() }
     }
 
     @Test fun settledImeTouchSelectsPerson() {
         fixture()
-        val frames = ImeFrames(activity())
-        frames.start()
-        try {
-            compose.onNodeWithTag("atlas-group-1-destination-search").performTextInput("Morgan")
-            compose.waitUntil(10_000) { frames.latestBottom > 0 && frames.stableFrames >= 2 }
-            assertTrue("IME inset must remain positive across distinct display frames", frames.stableFrames >= 2)
-            assertTrue("Frame callback must have observed real frames", frames.frameCount >= 3)
-            compose.onNodeWithTag("atlas-unknown-face-review-screen")
-                .performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
-            tapChoice()
-        } finally {
-            frames.stop()
-        }
+        // Up and still: one inset on distinct display frames, then product settle.
+        compose.typeText(hasTestTag("atlas-group-1-destination-search"), "Morgan",
+            KeyboardAfter.Shown)
+        val view = activity().window.decorView
+        val frames = sampleOnFrames(frames = 3) { view.keyboardInset() }
+        val stableFrames = frames.zipWithNext().count { (a, b) -> a > 0 && a == b }
+        assertTrue("IME inset must remain positive across distinct display frames", stableFrames >= 2)
+        assertTrue("Frame callback must have observed real frames", frames.size >= 3)
+        compose.onNodeWithTag("atlas-unknown-face-review-screen")
+            .performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
+        tapChoice()
     }
 
+    /**
+     * CI emulators run with animator scale 0 (`disable-animations: true`), and
+     * then the platform shows the IME with no WindowInsetsAnimation at all:
+     * run 44278979909 timed out waiting for one. Phones animate the keyboard, so
+     * this one test turns the animator scale on for its own duration through
+     * the kit, which puts the previous value back afterwards.
+     *
+     * #411: at scale 1 the CI keyboard animation lasts about 8 frames, and an
+     * injected tap needs a comparable time to travel through the input
+     * dispatcher, so DOWN arrived just after the animation ended (run
+     * 44319216708). [OPENING_ANIMATOR_SCALE] stretches the show animation so
+     * the "tap while it opens" window is wide enough to hit on a slow
+     * emulator. It is still a real platform animation; only its duration
+     * changes, and only inside this test.
+     */
     // Block body: JUnit only runs void test methods (an expression body returned
     // SemanticsNodeInteraction and failed the class with initializationError).
     @Test fun openingImeTouchIsNeverSilentlySwallowed() {
         withAnimatorScale(OPENING_ANIMATOR_SCALE) { openingImeTouch() }
-    }
-
-    /** IME state read on the UI thread, as "visible=<b> bottom=<px>". */
-    private fun imeState(): Pair<Boolean, Int> {
-        var state = false to 0
-        compose.runOnUiThread {
-            val insets = activity().window.decorView.rootWindowInsets
-            if (insets != null) {
-                state = insets.isVisible(WindowInsets.Type.ime()) to
-                    insets.getInsets(WindowInsets.Type.ime()).bottom
-            }
-        }
-        return state
-    }
-
-    private fun imeVisible(): Boolean = imeState().let { (visible, bottom) -> visible || bottom > 0 }
-
-    /**
-     * waitUntil that names its step and the IME state on timeout, so a CI
-     * failure says which precondition stalled instead of a bare timeout.
-     */
-    private fun step(name: String, timeoutMs: Long = 10_000, condition: () -> Boolean) {
-        try {
-            compose.waitUntil(timeoutMs, condition)
-        } catch (timeout: ComposeTimeoutException) {
-            val (visible, bottom) = imeState()
-            android.util.Log.i("ATLAS_TOUCH1", "step timeout: $name imeVisible=$visible imeBottom=$bottom")
-            throw AssertionError("TOUCH-1 step '$name' timed out (imeVisible=$visible imeBottom=$bottom)", timeout)
-        }
     }
 
     /**
@@ -370,31 +303,13 @@ class UnknownPersonImeTouchTest {
      */
     private fun openingImeTouch() {
         fixture()
-        step("animators enabled", 5_000) { ValueAnimator.areAnimatorsEnabled() }
-        val search = compose.onNodeWithTag("atlas-group-1-destination-search")
-        search.performTextInput("Morgan")
+        compose.awaitThat("animators enabled", 5_000) { ValueAnimator.areAnimatorsEnabled() }
+        val searchTag = hasTestTag("atlas-group-1-destination-search")
         // Same settled-IME proof as settledImeTouchSelectsPerson: hiding while
         // the show request is still in flight can be dropped by the IME.
-        val frames = ImeFrames(activity())
-        frames.start()
-        val keyboardHeight: Int
-        try {
-            step("keyboard settled after typing") { frames.latestBottom > 0 && frames.stableFrames >= 2 }
-            keyboardHeight = frames.latestBottom
-        } finally {
-            frames.stop()
-        }
-        // Hide, re-requesting once a second in case one request is dropped.
-        var lastHide = 0L
-        step("keyboard hidden") {
-            val now = SystemClock.uptimeMillis()
-            if (now - lastHide >= 1_000) {
-                lastHide = now
-                compose.runOnUiThread { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
-            }
-            !imeVisible()
-        }
-        compose.waitForIdle()
+        compose.typeText(searchTag, "Morgan", KeyboardAfter.Shown)
+        val keyboardHeight = compose.keyboardInsetPx()
+        compose.hideKeyboard()
         val screen = compose.onNodeWithTag("atlas-unknown-face-review-screen")
         screen.performScrollToNode(hasTestTag("atlas-group-1-destination-option-1"))
         // #424: the tap must land on screen that the keyboard does not take
@@ -437,9 +352,13 @@ class UnknownPersonImeTouchTest {
             // A real tap on the field brings the keyboard back; the first IME
             // onProgress of that show animation injects the one tap on the
             // suggestion (see ImeOpeningTap).
-            search.performTouchInput { click() }
+            compose.tap(searchTag)
+            // A timeout here is not the verdict: the assertions below name
+            // which part of the opening tap did not happen.
             runCatching {
-                compose.waitUntil(10_000) { tap.upArrived || tap.injectionError != null }
+                compose.awaitThat("the opening tap's pointer UP", 10_000) {
+                    tap.upArrived || tap.injectionError != null
+                }
             }
             android.util.Log.i(
                 "ATLAS_TOUCH1",
@@ -460,31 +379,6 @@ class UnknownPersonImeTouchTest {
             compose.onNodeWithTag("atlas-group-1-destination-selected").assertExists()
         } finally {
             tap.remove()
-            leaveKeyboardClosed()
-        }
-    }
-
-    /**
-     * #411 teardown: later tests in the same process must not inherit this
-     * test's keyboard, and a tap that reached the keyboard window may have
-     * brought one of the IME's own activities (LatinIME's PermissionsActivity
-     * in run 44303296470) in front of the next test. Hide the IME, wait for
-     * it to go, and send Back if a non-ATLAS activity took the foreground.
-     * Best effort: teardown never masks the test's own result.
-     */
-    private fun leaveKeyboardClosed() {
-        runCatching {
-            compose.runOnUiThread { activity().window.insetsController?.hide(WindowInsets.Type.ime()) }
-            compose.waitUntil(5_000) { !imeVisible() }
-        }
-        runCatching {
-            val top = shell("dumpsys activity activities").lineSequence()
-                .firstOrNull { "topResumedActivity" in it || "mResumedActivity" in it }.orEmpty()
-            val pkg = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-            if (top.isNotBlank() && "$pkg/" !in top && "${pkg}.test/" !in top) {
-                android.util.Log.i("ATLAS_TOUCH1", "teardown: foreign top activity, sending Back: ${top.trim()}")
-                shell("input keyevent KEYCODE_BACK")
-            }
         }
     }
 
