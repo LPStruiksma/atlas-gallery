@@ -21,8 +21,14 @@ test('decision lives in one pure function gated on API 34, gain map and foregrou
 test('viewer feeds the focused photo only, and the page reports its base decode (#572)', () => {
   const viewer = read('app/src/main/java/nl/atlas/gallery/GalleryViewer.kt');
   assert.match(viewer, /ViewerHdrWindowMode\(focusedHasGainmap = /);
-  assert.match(viewer, /onGainmapDecoded = \{ hasGainmap ->/);
-  assert.match(viewer, /viewerImageHasGainmap\(result\.result\.image\)/);
+  assert.match(viewer, /onGainmapDecoded = \{ revision, hasGainmap ->/);
+  assert.match(viewer, /onGainmapDecoded\(imageRevision, viewerImageHasGainmap\(result\.result\.image\)\)/);
+  // Review on #623: failed decodes record SDR, facts are per editor revision,
+  // and a held filmstrip scrub preview is never shown in HDR.
+  assert.match(viewer, /onError = \{ onGainmapDecoded\(imageRevision, false\) \}/);
+  assert.match(viewer, /gainmapFacts\[viewerHdrFactKey\(media\.uri, revision\)\]/);
+  assert.match(viewer, /scrubPreviewShown = scrubOverlayState\.value != null/);
+  assert.match(viewer, /viewerHdrRevision\(editorReturn\.mustReload\(it\.uri\), editorReturn\.revision\)/);
 });
 
 test('no manifest or app-wide HDR (#572)', () => {
@@ -38,4 +44,6 @@ test('instrumented proof uses a generated gain-map JPEG, base and tile paths, fo
   assert.match(t, /decodeRegion\(/);
   assert.match(t, /ActivityInfo\.COLOR_MODE_HDR/);
   assert.match(t, /swipeLeft\(\)/);
+  assert.match(t, /onNodeWithTag\("atlas-filmstrip"\)/);
+  assert.match(t, /filmstripHeldOnSdr=/);
 });

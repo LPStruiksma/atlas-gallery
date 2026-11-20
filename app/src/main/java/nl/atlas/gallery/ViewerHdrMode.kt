@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
@@ -34,6 +36,24 @@ internal fun viewerWindowColorMode(
     if (sdkInt >= GAINMAP_MIN_SDK && focusedHasGainmap && foreground) ActivityInfo.COLOR_MODE_HDR
     else priorMode
 
+/** The page's image revision, the same rule PhotoPage uses for its base request. */
+internal fun viewerHdrRevision(mustReload: Boolean, editorRevision: Long): Long =
+    if (mustReload) editorRevision else 0L
+
+/** One gain-map fact per photo revision: an edited photo must prove it again. */
+internal fun viewerHdrFactKey(uri: String, revision: Long): String = "$revision|$uri"
+
+/**
+ * Whether the focused photo may show in HDR: a photo (not a video) whose
+ * current revision's base decode proved a gain map, while no filmstrip scrub
+ * preview covers the pager. Unknown (still loading, edited, failed) is SDR.
+ */
+internal fun viewerFocusedHasGainmap(
+    uri: String?, isVideo: Boolean, revision: Long, scrubPreviewShown: Boolean,
+    facts: Map<String, Boolean>
+): Boolean = uri != null && !isVideo && !scrubPreviewShown &&
+    facts[viewerHdrFactKey(uri, revision)] == true
+
 /** True when Coil decoded [image] to a bitmap that kept its Ultra HDR gain map. */
 internal fun viewerImageHasGainmap(image: Image): Boolean {
     if (Build.VERSION.SDK_INT < GAINMAP_MIN_SDK) return false
@@ -47,18 +67,20 @@ internal fun viewerImageHasGainmap(image: Image): Boolean {
  * Below API 34 it does nothing at all.
  */
 @Composable
-internal fun ViewerHdrWindowMode(focusedHasGainmap: Boolean) {
+internal fun ViewerHdrWindowMode(focusedHasGainmap: () -> Boolean) {
     if (Build.VERSION.SDK_INT < GAINMAP_MIN_SDK) return
     val view = LocalView.current
     val window = view.context.viewerHostActivity()?.window ?: return
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val foreground = lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+    val latestFocused by rememberUpdatedState(focusedHasGainmap)
+    val hdrWanted by remember { derivedStateOf { latestFocused() } }
     val prior = remember(window) { window.colorMode }
     DisposableEffect(window) {
         onDispose { window.colorMode = prior }
     }
-    LaunchedEffect(window, focusedHasGainmap, foreground) {
-        val wanted = viewerWindowColorMode(Build.VERSION.SDK_INT, focusedHasGainmap, foreground, prior)
+    LaunchedEffect(window, hdrWanted, foreground) {
+        val wanted = viewerWindowColorMode(Build.VERSION.SDK_INT, hdrWanted, foreground, prior)
         if (window.colorMode != wanted) window.colorMode = wanted
     }
 }

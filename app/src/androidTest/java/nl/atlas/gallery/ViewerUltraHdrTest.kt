@@ -27,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -177,6 +180,27 @@ class ViewerUltraHdrTest {
         rule.onNodeWithTag("atlas-main-pager").performTouchInput { swipeRight() }
         rule.waitUntil(30_000L) { window?.colorMode == focusedHdr }
 
+        // Filmstrip scrub (review on #623): the pager stays on the HDR photo
+        // while a full-screen scrub preview of the SDR neighbour is held, so
+        // the window must drop to the prior mode until the scrub releases.
+        val strip = rule.onNodeWithTag("atlas-filmstrip")
+        val tileWidth = rule.onNodeWithTag("atlas-thumbnail-0").fetchSemanticsNode().boundsInRoot.width
+        strip.performTouchInput {
+            down(center)
+            repeat(12) { moveBy(Offset(-tileWidth * 1.2f / 12f, 0f)) }
+        }
+        rule.waitUntil(30_000L) {
+            rule.onAllNodesWithTag("atlas-photo-counter").fetchSemanticsNodes().firstOrNull()
+                ?.config?.getOrNull(SemanticsProperties.Text)?.joinToString("")?.startsWith("2 of") == true
+        }
+        rule.waitUntil(30_000L) { window?.colorMode == prior }
+        val heldOnSdr = window?.colorMode
+        strip.performTouchInput {
+            repeat(12) { moveBy(Offset(tileWidth * 1.2f / 12f, 0f)) }
+            up()
+        }
+        rule.waitUntil(30_000L) { window?.colorMode == focusedHdr }
+
         rule.runOnIdle { viewerOpen.value = false }
         rule.onNodeWithTag("test-hdr-gallery").assertExists()
         rule.runOnIdle {
@@ -184,7 +208,8 @@ class ViewerUltraHdrTest {
                 prior, requireNotNull(window).colorMode)
         }
         Log.i("ATLAS_HDR", "BENCH-1 #572 window mode $mode API ${Build.VERSION.SDK_INT}: " +
-            "prior=$prior focusedUltraHdr=$focusedHdr sdrNeighbour=$prior closed=$prior")
+            "prior=$prior focusedUltraHdr=$focusedHdr sdrNeighbour=$prior " +
+            "filmstripHeldOnSdr=$heldOnSdr closed=$prior")
     }
 
     /** 4032×3024 synthetic gradient; [hdr] adds a uniform gain map (Ultra HDR JPEG). */

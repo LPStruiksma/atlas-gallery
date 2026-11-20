@@ -262,9 +262,10 @@ private fun GalleryViewerSnapshot(
     var lastPrefetchFocus by remember(CatalogSourceKey(items)) { mutableIntStateOf(start) }
     // A single tap on a photo hides all chrome (and the system bars), without
     // changing the selected item, pager, zoom or the caller's Back stack.
-    // BENCH-1 (#572): which photos' 2400 px base decoded with an Ultra HDR
-    // gain map, as reported by their own page. Only the focused one counts.
-    val gainmapByUri = remember { mutableStateMapOf<String, Boolean>() }
+    // BENCH-1 (#572): which photo revisions' 2400 px base decoded with an
+    // Ultra HDR gain map (viewerHdrFactKey), as reported by their own page.
+    // An editor return is a new revision, so an old fact never carries over.
+    val gainmapFacts = remember { mutableStateMapOf<String, Boolean>() }
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
@@ -493,10 +494,20 @@ private fun GalleryViewerSnapshot(
     }
     // Samsung hides the status and navigation bars together with its chrome.
     ViewerSystemBars(visible = chromeVisible)
-    // BENCH-1 (#572): window HDR only while the focused photo has a gain map.
-    val focusedForHdr = items.getOrNull(pagerState.currentPage)
-    ViewerHdrWindowMode(focusedHasGainmap = focusedForHdr != null && !focusedForHdr.isVideo &&
-        gainmapByUri[focusedForHdr.uri] == true)
+    // BENCH-1 (#572): window HDR only while the focused photo's current
+    // revision proved a gain map and no filmstrip scrub preview covers it.
+    // Read inside the HDR effect's own scope (a lambda), never here, so a
+    // scrub frame does not recompose the whole viewer.
+    ViewerHdrWindowMode(focusedHasGainmap = {
+        val focusedForHdr = items.getOrNull(pagerState.currentPage)
+        viewerFocusedHasGainmap(
+            uri = focusedForHdr?.uri, isVideo = focusedForHdr?.isVideo ?: true,
+            revision = focusedForHdr?.let {
+                viewerHdrRevision(editorReturn.mustReload(it.uri), editorReturn.revision)
+            } ?: 0L,
+            scrubPreviewShown = scrubOverlayState.value != null,
+            facts = gainmapFacts)
+    })
 
     // Live drag transforms are animated back on cancellation and read only by
     // their owning layers, not by the full viewer on each pointer frame.
@@ -681,8 +692,8 @@ private fun GalleryViewerSnapshot(
                         { timingProbe.firstPreviewReady(page) }
                     } else null,
                     openingPage = onEntryPage && page == start,
-                    onGainmapDecoded = { hasGainmap ->
-                        gainmapByUri[media.uri] = hasGainmap
+                    onGainmapDecoded = { revision, hasGainmap ->
+                        gainmapFacts[viewerHdrFactKey(media.uri, revision)] = hasGainmap
                     })
             }
         }
@@ -1255,7 +1266,7 @@ private fun PhotoPage(
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
     openingPage: Boolean = false,
-    onGainmapDecoded: (Boolean) -> Unit = {}
+    onGainmapDecoded: (revision: Long, hasGainmap: Boolean) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
@@ -1465,8 +1476,10 @@ private fun PhotoPage(
                         onSuccess = { result ->
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                             if (sharpAt == 0L) sharpAt = System.nanoTime()
-                            onGainmapDecoded(viewerImageHasGainmap(result.result.image))
-                        })
+                            onGainmapDecoded(imageRevision, viewerImageHasGainmap(result.result.image))
+                        },
+                        // A failed decode is ordinary SDR, never a kept older fact.
+                        onError = { onGainmapDecoded(imageRevision, false) })
                     // PERF-32 (#334): full-resolution tiles over this base
                     // once the photo is magnified past what 2400 px can show.
                     ViewerRegionTileLayer(
