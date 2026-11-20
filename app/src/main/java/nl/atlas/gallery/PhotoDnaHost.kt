@@ -392,53 +392,210 @@ internal data class PhotoDnaVisualBudget(
 )
 
 /**
- * In-memory perceptual hashes per URI, valid only for the revision they were
- * computed at, plus the URIs whose decode failed at a revision (#456). Bound
- * to one media grant: a different grant clears both, and a revoke (no
- * tokens) clears them too. Never written to disk.
+ * Compact, process-only visual dHashes indexed by (MediaStore volume, ID, media kind).
+ * Five primitive arrays replace per-URI String/Entry/HashMap allocations. A small,
+ * bounded volume dictionary keeps removable volumes distinct without a String per
+ * cached photo. No URI, dHash, or failure is written to app storage (#604).
+ *
+ * Each slot includes a digest of the same four revision fields as
+ * [photoDnaRevision]. A cache hit is never evidence for Trash: the final byte
+ * and revision preflight still reads the live MediaStore entries.
  */
 internal class PhotoDnaVisualCache(private val maxEntries: Int = 250_000) {
-    private class Entry(val revision: String, val hash: CurationVisualHash)
-    private val entries = HashMap<String, Entry>()
-    private val failures = HashMap<String, String>()
+    private companion object {
+        const val EMPTY = 0
+        const val HASH_INFORMATIVE = 1
+        const val HASH_FLAT = 2
+        const val FAILURE = 3
+        const val VIDEO_OFFSET = 3
+        const val MAX_VOLUMES = 32
+        const val BYTES_PER_SLOT = 3 * 8 + 4 + 1
+        // SplitMix64 constants, in signed Long notation.
+        fun mix(value: Long): Long {
+            var x = value - 7046029254386353131L
+            x = (x xor (x ushr 30)) * -4658895280553007687L
+            x = (x xor (x ushr 27)) * -7723592293110705685L
+            return x xor (x ushr 31)
+        }
+        fun revision(record: MediaRecord): Long {
+            var x = mix(record.id)
+            x = mix(x xor record.sizeBytes)
+            x = mix(x xor record.modifiedAtSeconds)
+            return mix(x xor record.generationModified)
+        }
+    }
+
+    private val volumeIds = HashMap<String, Int>()
+    private var ids = LongArray(0)
+    private var volumes = IntArray(0)
+    private var revisions = LongArray(0)
+    private var hashes = LongArray(0)
+    // 0 empty; 1/2 successful image hash (informative/flat); 3 failed image;
+    // 4/5 successful video hash; 6 failed video. No tombstones are needed.
+    private var states = ByteArray(0)
+    private var hashesCount = 0
+    private var failureCount = 0
     private var grant: GalleryMediaGrant? = null
+
+    private fun volumeId(record: MediaRecord, create: Boolean): Int {
+        volumeIds[record.volumeName]?.let { return it }
+        if (!create || volumeIds.size == MAX_VOLUMES) return 0
+        return (volumeIds.size + 1).also { volumeIds[record.volumeName] = it }
+    }
+
+    private fun slot(record: MediaRecord, volume: Int): Int {
+        if (states.isEmpty()) return -1
+        val kind = record.isVideo
+        val combined = mix(record.id xor (volume.toLong() shl 32) xor
+            (if (kind) Long.MIN_VALUE else 0L))
+        var at = ((combined and Long.MAX_VALUE) % states.size).toInt()
+        repeat(states.size) {
+            val state = states[at].toInt()
+            if (state == EMPTY || (ids[at] == record.id && volumes[at] == volume &&
+                    (state > VIDEO_OFFSET) == kind)) return at
+            at++
+            if (at == states.size) at = 0
+        }
+        return -1
+    }
+
+    private fun isHash(state: Int) = state != EMPTY &&
+        state != FAILURE && state != FAILURE + VIDEO_OFFSET
+
+    private fun isFailure(state: Int) =
+        state == FAILURE || state == FAILURE + VIDEO_OFFSET
+
+    /** Grow only when load reaches 75%; cap the hash-only phase at 250k slots. */
+    private fun ensureSlot(extra: Int) {
+        if (states.isNotEmpty() && (hashesCount + failureCount + extra).toLong() * 4 <
+            states.size.toLong() * 3) return
+        val oldIds = ids
+        val oldVolumes = volumes
+        val oldRevisions = revisions
+        val oldHashes = hashes
+        val oldStates = states
+        val firstCap = maxOf(8, (maxEntries.toLong() * 4 / 3 + 2).toInt())
+        val bothCap = maxOf(firstCap, (maxEntries.toLong() * 8 / 3 + 2).toInt())
+        val nextCap = if (states.size < firstCap)
+            minOf(firstCap, maxOf(8, states.size * 2)) else
+            minOf(bothCap, maxOf(firstCap + 1, states.size * 2))
+        if (nextCap <= states.size) return
+        ids = LongArray(nextCap)
+        volumes = IntArray(nextCap)
+        revisions = LongArray(nextCap)
+        hashes = LongArray(nextCap)
+        states = ByteArray(nextCap)
+        for (old in oldStates.indices) {
+            if (oldStates[old].toInt() == EMPTY) continue
+            val video = oldStates[old].toInt() > VIDEO_OFFSET
+            val combined = mix(oldIds[old] xor (oldVolumes[old].toLong() shl 32) xor
+                (if (video) Long.MIN_VALUE else 0L))
+            var at = ((combined and Long.MAX_VALUE) % nextCap).toInt()
+            while (states[at].toInt() != EMPTY) {
+                at++
+                if (at == nextCap) at = 0
+            }
+            ids[at] = oldIds[old]
+            volumes[at] = oldVolumes[old]
+            revisions[at] = oldRevisions[old]
+            hashes[at] = oldHashes[old]
+            states[at] = oldStates[old]
+        }
+    }
+
+    private fun reset() {
+        ids = LongArray(0)
+        volumes = IntArray(0)
+        revisions = LongArray(0)
+        hashes = LongArray(0)
+        states = ByteArray(0)
+        volumeIds.clear()
+        hashesCount = 0
+        failureCount = 0
+    }
 
     @Synchronized fun bindGrant(current: GalleryMediaGrant) {
         if (current != grant) {
-            entries.clear()
-            failures.clear()
+            reset()
             grant = current
         }
     }
 
     @Synchronized fun clear() {
-        entries.clear()
-        failures.clear()
+        reset()
         grant = null
     }
 
-    /** True while [record]'s decode failed at its current revision; an edit retries it. */
-    @Synchronized fun failed(record: MediaRecord): Boolean =
-        failures[record.uri] == photoDnaRevision(record)
-
-    @Synchronized fun putFailure(record: MediaRecord) {
-        if (failures.size >= maxEntries && record.uri !in failures) return
-        entries.remove(record.uri)
-        failures[record.uri] = photoDnaRevision(record)
+    @Synchronized fun failed(record: MediaRecord): Boolean {
+        val volume = volumeId(record, false)
+        if (volume == 0) return false
+        val at = slot(record, volume)
+        return at >= 0 && isFailure(states[at].toInt()) &&
+            revisions[at] == revision(record)
     }
 
-    val failedSize: Int @Synchronized get() = failures.size
-
-    @Synchronized fun get(record: MediaRecord): CurationVisualHash? =
-        entries[record.uri]?.takeIf { it.revision == photoDnaRevision(record) }?.hash
+    @Synchronized fun get(record: MediaRecord): CurationVisualHash? {
+        val volume = volumeId(record, false)
+        if (volume == 0) return null
+        val at = slot(record, volume)
+        if (at < 0) return null
+        val state = states[at].toInt()
+        if (!isHash(state) || revisions[at] != revision(record)) return null
+        return CurationVisualHash(hashes[at],
+            state == HASH_INFORMATIVE || state == HASH_INFORMATIVE + VIDEO_OFFSET)
+    }
 
     @Synchronized fun put(record: MediaRecord, hash: CurationVisualHash) {
-        if (entries.size >= maxEntries && record.uri !in entries) return
-        failures.remove(record.uri)
-        entries[record.uri] = Entry(photoDnaRevision(record), hash)
+        val volume = volumeId(record, true)
+        if (volume == 0) return
+        var at = slot(record, volume)
+        val previous = if (at < 0) EMPTY else states[at].toInt()
+        if (!isHash(previous) && hashesCount >= maxEntries) return
+        if (previous == EMPTY) {
+            ensureSlot(1)
+            at = slot(record, volume)
+            if (at < 0) return
+            ids[at] = record.id
+            volumes[at] = volume
+            hashesCount++
+        } else if (isFailure(previous)) {
+            failureCount--
+            hashesCount++
+        }
+        revisions[at] = revision(record)
+        hashes[at] = hash.value
+        states[at] = ((if (hash.informative) HASH_INFORMATIVE else HASH_FLAT) +
+            (if (record.isVideo) VIDEO_OFFSET else 0)).toByte()
     }
 
-    val size: Int @Synchronized get() = entries.size
+    @Synchronized fun putFailure(record: MediaRecord) {
+        val volume = volumeId(record, true)
+        if (volume == 0) return
+        var at = slot(record, volume)
+        val previous = if (at < 0) EMPTY else states[at].toInt()
+        if (!isFailure(previous) && failureCount >= maxEntries) return
+        if (previous == EMPTY) {
+            ensureSlot(1)
+            at = slot(record, volume)
+            if (at < 0) return
+            ids[at] = record.id
+            volumes[at] = volume
+            failureCount++
+        } else if (isHash(previous)) {
+            hashesCount--
+            failureCount++
+        }
+        revisions[at] = revision(record)
+        hashes[at] = 0L
+        states[at] = (FAILURE + (if (record.isVideo) VIDEO_OFFSET else 0)).toByte()
+    }
+
+    val size: Int @Synchronized get() = hashesCount
+    val failedSize: Int @Synchronized get() = failureCount
+
+    /** Primitive backing-store bytes (five JVM arrays; headers add < 200 B). */
+    internal val primitiveBytes: Long @Synchronized get() =
+        states.size.toLong() * BYTES_PER_SLOT
 }
 
 internal class PhotoDnaVisualPass(
