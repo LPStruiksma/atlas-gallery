@@ -386,6 +386,7 @@ class PeopleVisualStatusDeleteRetentionTest {
         val gaps = restage("insert", "gallery-1", "gallery-2", base + photo(FILLER + 1))
         assertEquals("insert: panel kept visual counts ($gaps)", 0, gaps.panelTotalUnknown)
         assertEquals("insert: direct probe kept counts ($gaps)", 0, gaps.directTotalUnknown)
+        assertEquals("insert: named People stayed readable ($gaps)", 0, gaps.namedMissing)
         val visualAfter = visual.progress(memory.publishedVisual!!.epoch)!!
         assertEquals("insert: only the added photo is queued", 1,
             visualAfter.queued + visualAfter.running)
