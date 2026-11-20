@@ -13,6 +13,17 @@ import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CancellationException
 
 /**
+ * A cached gallery inventory is just a presentation optimization. Only a
+ * fresh real scan/delta published under the current grant can admit dHashes.
+ * Selection-scoped access cannot be proven by permission bits (a re-pick may
+ * leave them unchanged), so that scope is permanently memory-only.
+ */
+internal fun photoDnaPersistentPublicationAllowed(
+    grant: GalleryMediaGrant, published: GalleryPublishedInventory
+): Boolean = PhotoDnaVisualCacheStore.diskAllowed(grant) &&
+    !published.fromCache && published.scanBoundGrant == grant
+
+/**
  * #604: a best-effort, on-device dHash cache, never a source of authorization.
  *
  * Call only from IO while Photo DNA is open, with a newly scanned/published
