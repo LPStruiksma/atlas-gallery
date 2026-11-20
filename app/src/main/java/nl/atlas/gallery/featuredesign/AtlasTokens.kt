@@ -2,82 +2,106 @@ package nl.atlas.gallery.featuredesign
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-/**
- * DESIGN-1: central visual constants. Since 2026-11-18 the values follow the
- * Quiet Frame look (docs/design/QUIET_FRAME.md); role names are unchanged.
- */
+/** BRAND-L2 #655: Quiet Frame v3 Lapis Atlas. Opaque semantic roles are the source of truth. */
 object AtlasTokens {
     object Colors {
-        val Ink = Color(0xFF111318)
-        val InkRaised = Color(0xFF17191F)
-        val Mist = Color(0xFFF6F7F9)
-        val Paper = Color(0xFFFFFFFF)
-        val Tidal = Color(0xFF7FA8FF)
-        val DeepTidal = Color(0xFF2A62D4)
-        val WarmGray = Color(0xFFB4B8C1)
-        val QuietGray = Color(0xFF4A4F59)
-
         object Dark {
-            val PrimaryContainer = Color(0xFF1E2D4A)
-            val OnPrimaryContainer = Color(0xFFD6E3FF)
-            val SecondaryContainer = Color(0xFF23262E)
-            val OnSecondaryContainer = Color(0xFFECEDF0)
-            val Foreground = Color(0xFFECEDF0)
-            val SurfaceVariant = Color(0xFF23262E)
-            val OnSurfaceVariant = Color(0xFFB4B8C1)
-            val InverseSurface = Color(0xFFECEDF0)
-            val Outline = Color(0xFF6E737D)
-            val OutlineVariant = Color(0xFF2E313A)
-            val SurfaceBright = Color(0xFF2B2E37)
-            val SurfaceLowest = Color(0xFF0B0C0F)
-            val SurfaceLow = Color(0xFF131519)
-            val SurfaceHigh = Color(0xFF1D2027)
-            val Pill = Color(0xFF23262E)
+            val Ground = Color(0xFF000000)
+            val Surface = Color(0xFF14152A)
+            val Ink = Color(0xFFF2F3F8)
+            val InkSecondary = Color(0xFF9AA0B8)
+            val BrandFill = Color(0xFF3448E0)
+            val BrandText = Color(0xFF8C9BFF)
+            val OnBrand = Color(0xFFFFFFFF)
+            val OnBrandSecondary = Color(0xFFDCE1FF)
+            val ViewerGround = Color(0xFF000000)
+
+            // Material 3 container roles must be complete; never use its purple defaults.
+            val PrimaryContainer = BrandFill
+            val OnPrimaryContainer = OnBrand
+            val SecondaryContainer = Surface
+            val OnSecondaryContainer = Ink
+            val Foreground = Ink
+            val SurfaceVariant = Surface
+            val OnSurfaceVariant = InkSecondary
+            val InverseSurface = Light.Surface
+            val Outline = InkSecondary
+            val OutlineVariant = Surface
+            val SurfaceBright = Surface
+            val SurfaceLowest = Ground
+            val SurfaceLow = Surface
+            val SurfaceHigh = Surface
+            val Pill = Surface
         }
+        object Light {
+            val Ground = Color(0xFFFFFFFF)
+            val Surface = Color(0xFFF2F3F8)
+            val Ink = Color(0xFF0E1030)
+            val InkSecondary = Color(0xFF5A5F7A)
+            val BrandFill = Color(0xFF2639C9)
+            val BrandText = Color(0xFF2639C9)
+            val OnBrand = Color(0xFFFFFFFF)
+            val OnBrandSecondary = Color(0xFFDCE1FF)
+            val ViewerGround = Color(0xFF000000)
+
+            val PrimaryContainer = BrandFill
+            val OnPrimaryContainer = OnBrand
+            val SecondaryContainer = Surface
+            val SurfaceVariant = Surface
+            val InverseSurface = Dark.Surface
+            val InverseForeground = Dark.Ink
+            val Outline = InkSecondary
+            val OutlineVariant = Surface
+            val SurfaceDim = Surface
+            val SurfaceLow = Surface
+            val SurfaceContainer = Surface
+            val SurfaceHigh = Surface
+        }
+
+        // Compatibility names kept so feature call sites inherit the Lapis palette
+        // without a navigation/component rewrite (those changes belong to BRAND-L4+).
+        val Ink = Light.Ink
+        val InkRaised = Dark.Surface
+        val Mist = Light.Surface
+        val Paper = Light.Ground
+        val Tidal = Dark.BrandText
+        val DeepTidal = Light.BrandFill
+        val WarmGray = Dark.InkSecondary
+        val QuietGray = Light.InkSecondary
+
         object Viewer {
-            val FilmstripTrack = Color(0xFF2A2A2A)
-            val Favourite = Color(0xFFFF4D5E)
-            val Backdrop = Color(0xFF171A20)
-            val ActionPill = Color(0xD91C1E25)
-            val MediaTrack = Color(0xFF292929)
+            val FilmstripTrack = Dark.Surface
+            val Favourite = Dark.BrandText
+            val Backdrop = Dark.ViewerGround
+            val ActionPill = Dark.BrandFill.copy(alpha = 0.85f)
+            val MediaTrack = Dark.Surface
+            // Necessary transparent black overlays preserve media visibility.
             val Scrim = Color(0xA0000000)
-            val SeekInactive = Color(0xFF888888)
-            val SelectionAccent = Color(0xFF7FA8FF)
+            val SeekInactive = Dark.InkSecondary
+            val SelectionAccent = Dark.BrandText
             val ChromeScrimTop = Color(0xB8000000)
             val ChromeScrimBottom = Color(0xCC000000)
         }
         object People {
+            // Image placeholders, not UI chrome: synthetic portrait variation.
             val PortraitMuted = Color(0xFF8B95A1)
             val PortraitLight = Color(0xFFADBAC7)
             val PortraitDark = Color(0xFF2A303A)
         }
         object Selection {
-            val Accent = Color(0xFF3E91FF)
+            val Accent = Light.BrandFill
         }
         object Shell {
-            val DarkSurface = Color(0xFF17191F)
-            val DarkAccent = Viewer.SelectionAccent
-        }
-        object Light {
-            val PrimaryContainer = Color(0xFFDCE6FF)
-            val OnPrimaryContainer = Color(0xFF0B2A66)
-            val SecondaryContainer = Color(0xFFECEEF2)
-            val SurfaceVariant = Color(0xFFECEEF2)
-            val InverseSurface = Color(0xFF23262E)
-            val InverseForeground = Color(0xFFECEDF0)
-            val Outline = Color(0xFF737885)
-            val OutlineVariant = Color(0xFFD5D8DF)
-            val SurfaceDim = Color(0xFFDDE0E6)
-            val SurfaceLow = Color(0xFFFAFBFC)
-            val SurfaceContainer = Color(0xFFF1F3F6)
-            val SurfaceHigh = Color(0xFFFBFBFD)
+            val DarkSurface = Dark.Surface
+            val DarkAccent = Dark.BrandText
         }
     }
 
     object SyntheticArt {
-        // Fictional showcase artwork only; no Samsung or user media.
+        // Fictional showcase artwork only, exempt from UI chrome uniformity.
         val AlbumPalettes = listOf(
             listOf(Color(0xFF46686D), Color(0xFFB6C4B4), Color(0xFF40675E)),
             listOf(Color(0xFF99856D), Color(0xFFE2BFA1), Color(0xFF595A4B)),
@@ -101,7 +125,6 @@ object AtlasTokens {
     object Radii {
         val Cover = 20.dp
         val EmptyVisual = 28.dp
-        /** Quiet Frame bottom sheet, top corners only. */
         val Sheet = 28.dp
         val GridTile = 3.dp
         val PersonCard = 20.dp
@@ -109,8 +132,9 @@ object AtlasTokens {
     }
 
     object Type {
-        val BodyLineHeight = 21.sp
+        val BodyLineHeight = 22.sp
+        // Existing navigation caps at 200% are preserved pending BRAND-L4.
         val NavigationLabel = 11.sp
-        val DisplayTracking = (-0.6f).sp
+        val DisplayTracking = (-0.03f).em
     }
 }
