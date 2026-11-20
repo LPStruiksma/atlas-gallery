@@ -176,7 +176,7 @@ class DeclutterSearchLandscapeEvidenceTest {
         .around(S24DisplayRule()).around(rule)
 
     @Test fun landscapeKeyboardKeepsEveryControlAboveTheIme() =
-        syntheticDeck("Pictures/ATLAS-Declutter-341L/") { deck ->
+        fileDeck("Pictures/ATLAS-Declutter-341L/") { deck ->
             var dark by mutableStateOf(false)
             var left = 0
             // Rotate, then recreate explicitly so the Activity starts in landscape,
@@ -318,6 +318,44 @@ internal fun syntheticDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
             InstrumentationRegistry.getInstrumentation().targetContext)
         loader.memoryCache?.clear()
         loader.diskCache?.clear()
+    }
+}
+
+/**
+ * The same six flat-colour PNGs as [syntheticDeck], written to app-private
+ * cache files instead of MediaStore. The landscape test uses these: with its
+ * MediaStore rows, OriginalProportionsAlbumJourneyTest failed later in the
+ * same shard on every run, and passed with the class removed.
+ */
+internal fun fileDeck(folder: String, body: (List<MediaRecord>) -> Unit) {
+    val context = InstrumentationRegistry.getInstrumentation().targetContext
+    val dir = java.io.File(context.cacheDir, "atlas-declutter-341-deck").apply { mkdirs() }
+    val specs = listOf(
+        "BEACH_SYNTHETIC_01.png" to AndroidColor.rgb(33, 145, 192),
+        "RECEIPT_SYNTHETIC_02.png" to AndroidColor.rgb(214, 196, 160),
+        "BEACH_SYNTHETIC_03.png" to AndroidColor.rgb(237, 178, 92),
+        "RECEIPT_SYNTHETIC_04.png" to AndroidColor.rgb(150, 160, 170),
+        "SKY_SYNTHETIC_05.png" to AndroidColor.rgb(120, 170, 230),
+        "FOREST_SYNTHETIC_06.png" to AndroidColor.rgb(60, 130, 80)
+    )
+    val files = specs.map { (name, colour) ->
+        val file = java.io.File(dir, name)
+        val bitmap = Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888)
+        try {
+            bitmap.eraseColor(colour)
+            file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally {
+            bitmap.recycle()
+        }
+        file
+    }
+    try {
+        body(specs.mapIndexed { i, (name, _) ->
+            MediaRecord(341L + i, android.net.Uri.fromFile(files[i]).toString(), name, folder,
+                (6 - i) * 2_000_000L, 341L + i, false)
+        })
+    } finally {
+        dir.deleteRecursively()
     }
 }
 
