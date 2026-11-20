@@ -104,6 +104,11 @@ class ExecutionProviderBenchmarkTest {
         val compare: Compare,
         val embeddingOutput: String?,
         val graphs: List<Graph>,
+        /**
+         * Configurations whose session creation aborts the whole process inside ORT (a native
+         * `std::terminate`, which no Java catch can stop). They are reported, never run.
+         */
+        val abortsProcess: Set<Ep> = emptySet(),
     )
 
     /** Outputs of one provider run: per graph, per evaluated input, float outputs by name. */
@@ -193,7 +198,12 @@ class ExecutionProviderBenchmarkTest {
                         rgbInterleavedUnit(SyntheticFace.Spec(256, 256)),
                         noise(256 * 256 * 3, seed = 42, lo = 0f, hi = 1f),
                     )),
-                )),
+                ),
+                // PR #691 run 44679387896 (API 35 x86_64 emulator, ORT 1.23.2): creating the
+                // BlazePose sessions with XNNPACK ended in libc++abi "terminating" (SIGABRT)
+                // inside OrtSession.createSession, after CPU, XNNPACK and NNAPI had run for the
+                // other three models.
+                abortsProcess = setOf(Ep.XNNPACK)),
         )
     }
 
@@ -262,6 +272,15 @@ class ExecutionProviderBenchmarkTest {
                 rows += row(model, json)
                 continue
             }
+            if (ep in model.abortsProcess) {
+                json.put("status", "aborts_process")
+                    .put("note", "ORT aborts the process (std::terminate) while creating this session; not run")
+                results.put(json)
+                rows += row(model, json)
+                continue
+            }
+            // Names the configuration in logcat first, so a native abort still says where it was.
+            Log.i(BenchmarkReport.TAG, "PERF-EP start ${model.name} ${ep.label}")
             val outputs = try {
                 measure(model, ep, json)
             } catch (e: Exception) {
