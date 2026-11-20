@@ -1052,10 +1052,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // screen while a background scan refreshes it; only full access loss
     // empties it. Android enforces what can actually be read.
     val media = publishedGallery.displayItems(grants)
-    LaunchedEffect(publishedGallery.epoch, publishedGallery.fromCache, grants) {
-        if (perfA1Probe != null && !publishedGallery.fromCache &&
-            media.isNotEmpty() && publishedGallery.showable(grants)) {
-            perfA1Probe.refreshed()
+    if (perfA1Probe != null) {
+        LaunchedEffect(publishedGallery.epoch, publishedGallery.fromCache, grants) {
+            if (!publishedGallery.fromCache && media.isNotEmpty() &&
+                publishedGallery.showable(grants)) {
+                perfA1Probe.refreshed()
+            }
         }
     }
     // #555: ATLAS keeps its own micro thumbnails only under full media access
