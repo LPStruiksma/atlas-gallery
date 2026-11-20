@@ -71,9 +71,9 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
         val result = scenario.result
         assertEquals(Activity.RESULT_OK, result.resultCode)
         val data = requireNotNull(result.resultData)
-        assertEquals(media.second, data.data)
+        assertSameItem(media.second, data.data)
         assertEquals(1, data.clipData!!.itemCount)
-        assertEquals(media.second, data.clipData!!.getItemAt(0).uri)
+        assertSameItem(media.second, data.clipData!!.getItemAt(0).uri)
         assertTrue(data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
     }
 
@@ -87,9 +87,11 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
         compose.tap(hasTestTag(ExternalPickerTags.DONE))
         val data = requireNotNull(scenario.result.resultData)
         assertEquals(Activity.RESULT_OK, scenario.result.resultCode)
-        assertEquals(media.second, data.data)
+        assertSameItem(media.second, data.data)
         val clip = data.clipData!!
-        assertEquals(listOf(media.second, media.first), (0 until clip.itemCount).map { clip.getItemAt(it).uri })
+        assertEquals(2, clip.itemCount)
+        assertSameItem(media.second, clip.getItemAt(0).uri)
+        assertSameItem(media.first, clip.getItemAt(1).uri)
     }
 
     @Test fun legacyPickOfTheImagesCollectionBrowsesAlbums() {
@@ -106,7 +108,7 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
         compose.tapTile(media.first)
         compose.tap(hasTestTag(ExternalPickerTags.DONE))
         assertEquals(Activity.RESULT_OK, scenario.result.resultCode)
-        assertEquals(media.first, scenario.result.resultData!!.data)
+        assertSameItem(media.first, scenario.result.resultData!!.data)
     }
 
     @Test fun cancelAndBackReturnNothing() {
@@ -130,6 +132,17 @@ class ExternalPickerJourneyTest(private val dark: Boolean) {
         val scenario = media.launch(Intent.ACTION_GET_CONTENT, "text/plain", multiple = false)
         assertEquals(Activity.RESULT_CANCELED, scenario.result.resultCode)
     }
+}
+
+/**
+ * The same MediaStore row: ATLAS returns the volume-specific item URI
+ * (`external_primary`), while the test inserted through the `external` union.
+ */
+private fun assertSameItem(expected: Uri, actual: Uri?) {
+    requireNotNull(actual) { "no URI returned" }
+    assertEquals("content", actual.scheme)
+    assertEquals("media", actual.authority)
+    assertEquals(expected.pathSegments.drop(1), actual.pathSegments.drop(1))
 }
 
 private fun androidx.compose.ui.test.junit4.ComposeTestRule.awaitPicker(title: String) {
