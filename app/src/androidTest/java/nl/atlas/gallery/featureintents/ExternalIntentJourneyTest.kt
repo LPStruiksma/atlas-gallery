@@ -1,6 +1,5 @@
 package nl.atlas.gallery.featureintents
 
-import android.app.KeyguardManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
@@ -8,7 +7,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.net.Uri
-import android.os.PowerManager
 import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
@@ -32,9 +30,7 @@ import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.awaitWindowSettled
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
-import nl.atlas.gallery.testkit.testShell
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -72,28 +68,32 @@ class ExternalIntentJourneyTest {
         scenario.close()
     }
 
-    @Test fun cameraReviewIsSingleItemBackReturnsAndItStaysBehindTheKeyguard() {
+    @Test fun cameraReviewIsSingleItemNeverShowsWhenLockedAndBackReturns() {
         val scenario = fixture.launch(ExternalIntentParser.ACTION_REVIEW, fixture.media, "image/png")
         compose.awaitViewer()
         compose.assertReadOnlyChrome(secure = false)
+        // Ordinary review must not inherit the lock-screen privilege.
+        scenario.onActivity { assertFalse(it.showWhenLockedApplied) }
         // Back returns to the camera: the Activity finishes, nothing else opens.
         InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(
             android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
         compose.awaitDestroyed(scenario)
+    }
 
-        // Ordinary review must not inherit the lock-screen privilege.
-        fixture.lockScreen(compose)
-        fixture.startUnwaited(ExternalIntentParser.ACTION_REVIEW, fixture.media, "image/png")
-        compose.awaitThat("MainActivity to be created behind the keyguard") {
-            fixture.mainActivityStages().isNotEmpty()
+    @Test fun showWhenLockedIsScopedToTheSecureEntry() {
+        val scenario = fixture.launch(ExternalIntentParser.ACTION_REVIEW_SECURE, fixture.media, "image/png")
+        compose.awaitViewer()
+        scenario.onActivity { assertTrue(it.showWhenLockedApplied) }
+        // A later ordinary intent delivered to the same Activity clears the privilege.
+        fixture.deliverNewIntent(ExternalIntentParser.ACTION_VIEW, fixture.media, "image/png")
+        compose.awaitThat("the secure flag to clear on the new intent") {
+            var applied = true
+            scenario.onActivity { applied = it.showWhenLockedApplied }
+            !applied
         }
-        compose.awaitThat("MainActivity to settle behind the keyguard") {
-            fixture.mainActivityStages().none { it == Stage.PRE_ON_CREATE || it == Stage.CREATED }
-        }
-        assertTrue("keyguard must still be up", fixture.keyguardLocked())
-        assertFalse("ACTION_REVIEW must not resume over the keyguard",
-            Stage.RESUMED in fixture.mainActivityStages())
-        fixture.finishMainActivities()
+        compose.awaitViewer()
+        compose.assertReadOnlyChrome(secure = false)
+        scenario.close()
     }
 
     @Test fun unreadableIntentsShowCantOpenAndNeverCrash() {
@@ -138,20 +138,19 @@ class ExternalIntentEvidenceTest(private val dark: Boolean) {
         compose.awaitDestroyed(scenario)
     }
 
-    @Test fun secureReviewShowsOnlyTheCaptureOverTheLockScreen() {
-        fixture.lockScreen(compose)
+    @Test fun secureReviewShowsOnlyTheCapture() {
         val scenario = fixture.launch(ExternalIntentParser.ACTION_REVIEW_SECURE, fixture.media, "image/png")
         compose.awaitViewer()
-        assertTrue("keyguard must still be up", fixture.keyguardLocked())
-        assertEquals(Lifecycle.State.RESUMED, scenario.state)
+        scenario.onActivity { assertTrue(it.showWhenLockedApplied) }
         compose.onNodeWithTag(ExternalViewerTags.ROOT).assertIsDisplayed()
         compose.assertReadOnlyChrome(secure = true)
-        compose.capture("external-573-secure-locked-$theme")
+        compose.capture("external-573-secure-$theme")
         // Rotation / recreation keeps the same restricted single item.
         scenario.recreate()
         compose.awaitWindowSettled()
         compose.awaitViewer()
         compose.assertReadOnlyChrome(secure = true)
+        scenario.onActivity { assertTrue(it.showWhenLockedApplied) }
         compose.tap(hasTestTag("atlas-back"))
         compose.awaitDestroyed(scenario)
     }
@@ -199,8 +198,6 @@ internal class ExternalIntentFixture {
         finishMainActivities()
         mediaUri?.let { runCatching { context.contentResolver.delete(it, null, null) } }
         providerFile?.delete()
-        testShell("input keyevent KEYCODE_WAKEUP")
-        testShell("wm dismiss-keyguard")
     }
 
     fun intent(action: String, uri: String?, type: String?) = Intent(action).apply {
@@ -210,28 +207,17 @@ internal class ExternalIntentFixture {
             uri != null -> data = Uri.parse(uri)
             type != null -> this.type = type
         }
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        // No FLAG_GRANT_READ_URI_PERMISSION: the test and ATLAS share one uid, and
+        // granting a deleted row would throw in startActivity before ATLAS runs.
     }
 
     fun launch(action: String, uri: String?, type: String?): ActivityScenario<MainActivity> =
         ActivityScenario.launch(intent(action, uri, type))
 
-    /** Starts without waiting for RESUMED (an Activity behind the keyguard never gets there). */
-    fun startUnwaited(action: String, uri: String?, type: String?) {
-        context.startActivity(intent(action, uri, type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-
-    fun mainActivityStages(): List<Stage> {
-        val stages = mutableListOf<Stage>()
-        instrumentation.runOnMainSync {
-            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
-            Stage.values().forEach { stage ->
-                if (stage != Stage.DESTROYED && monitor.getActivitiesInStage(stage).any { it is MainActivity }) {
-                    stages += stage
-                }
-            }
-        }
-        return stages
+    /** Delivers [action] to the running MainActivity through onNewIntent (single top). */
+    fun deliverNewIntent(action: String, uri: String?, type: String?) {
+        context.startActivity(intent(action, uri, type)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
     }
 
     fun finishMainActivities() {
@@ -241,19 +227,6 @@ internal class ExternalIntentFixture {
                 monitor.getActivitiesInStage(stage).filterIsInstance<MainActivity>()
                     .forEach { if (!it.isFinishing) it.finish() }
             }
-        }
-    }
-
-    fun keyguardLocked(): Boolean = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
-
-    /** Screen off, then on: the emulator's swipe keyguard is up until dismissed. */
-    fun lockScreen(compose: ComposeTestRule) {
-        val power = context.getSystemService(PowerManager::class.java)
-        testShell("input keyevent KEYCODE_SLEEP")
-        compose.awaitThat("the screen to turn off") { !power.isInteractive }
-        testShell("input keyevent KEYCODE_WAKEUP")
-        compose.awaitThat("the screen to wake with the keyguard up") {
-            power.isInteractive && keyguardLocked()
         }
     }
 

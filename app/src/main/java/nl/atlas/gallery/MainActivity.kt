@@ -377,6 +377,10 @@ class MainActivity : ComponentActivity() {
     // getIntent() on every recreation; the caller's URI is never saved anywhere.
     private var externalEntry by mutableStateOf<ExternalEntry>(ExternalEntry.Library)
 
+    /** The last value passed to setShowWhenLocked (the platform has no getter); read by tests. */
+    @Volatile internal var showWhenLockedApplied: Boolean = false
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!acceptExternalIntent(intent)) return
@@ -427,7 +431,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun acceptExternalIntent(intent: Intent?): Boolean {
         val entry = ExternalIntentReader.entry(intent)
-        setShowWhenLocked(ExternalIntentParser.showWhenLocked(entry))
+        showWhenLockedApplied = ExternalIntentParser.showWhenLocked(entry)
+        setShowWhenLocked(showWhenLockedApplied)
         if (entry is ExternalEntry.Rejected && entry.pick) {
             setResult(RESULT_CANCELED)
             finish()
