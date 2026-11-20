@@ -1314,6 +1314,9 @@ internal class PeopleDiscoveryHost(
                 Carry.UNCHANGED -> {
                     mode = "carried"
                     onCarried()
+                    // #676: the carried people are readable now; show them
+                    // before the visual revive and any regroup below.
+                    changed()
                     // The catalogue is exactly what this inventory would stage.
                     val epoch = synchronized(lock) { scope }!!.epoch
                     if (synchronized(lock) { visualOptedIn } && visualScope?.faceEpoch != epoch) {
@@ -1327,6 +1330,7 @@ internal class PeopleDiscoveryHost(
                 Carry.STAGE_BEHIND -> {
                     mode = "staged-behind"
                     onCarried()
+                    changed() // #676: as above, before the visual and restage work
                     // The previous visual catalogue may remain readable only
                     // behind this still-authorized face inventory; worker holds.
                     if (token != null && synchronized(lock) { visualOptedIn }) {
@@ -1916,12 +1920,23 @@ internal class PeopleDiscoveryHost(
             generation?.second, observation?.timestampMs, observation?.durationMs)
     }
 
+    /**
+     * #676: a kept opt-in whose saved catalogue is not served yet (cold start
+     * after an app update, before or during the carry-over). Its people exist;
+     * they are only not readable yet, so People shows its restoring page, never
+     * "No people". A failure, a revoke or a first-ever run is not restoring.
+     */
+    private fun keptCatalogueRestoring(snap: Snapshot): Boolean =
+        snap.optedIn && snap.failure == null && photoGrantCurrent() &&
+            optInMemory.loadPublished() != null
+
     /** One consistent read for the People panel. Blocking; IO only. */
     fun status(galleryGrant: String?): PeopleDiscoveryStatus {
         val display = displayEpoch(galleryGrant)
         val snap = synchronized(lock) { Snapshot(optedIn, pausedByUser, scope, failure) }
         if (galleryGrant == null || display == null) {
-            return PeopleDiscoveryStatus(FaceDiscoveryUiState(), null, PeopleActionAvailability())
+            return PeopleDiscoveryStatus(FaceDiscoveryUiState(), null, PeopleActionAvailability(),
+                peoplePending = keptCatalogueRestoring(snap))
         }
         if (snap.failure != null) {
             return PeopleDiscoveryStatus(
@@ -1941,7 +1956,7 @@ internal class PeopleDiscoveryHost(
             ), display)
             return PeopleDiscoveryStatus(ui, display,
                 PeopleActionAvailability(mayStartScan = ui.phase == FaceDiscoveryPhase.READY),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         // The cluster writer may hold SQLite for a long publication part.
         // Report its actual live stage without waiting for a DB read or
@@ -1964,7 +1979,7 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
@@ -1976,7 +1991,7 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null))
+                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
         }
         val hold = conditions(scoped.epoch).holdReason()
         if (hold == FaceScanPhase.PERMISSION_REQUIRED) {
