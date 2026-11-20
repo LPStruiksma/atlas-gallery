@@ -105,10 +105,17 @@ class GalleryInventoryMemoryTest {
     @Test fun peopleProjectionAt250kRetainsOnlyIndicesAndPreservesDigest() {
         val n = 250_000
         val records = catalogue(n).asReversed()
-        // Baseline intentionally materializes the old projection; it is not kept
-        // after the digest is computed.
-        val expected = faceInventoryDigest(newestFirst(
-            records.map { it.toFaceVisibleMedia(editorRevision = 0L) }))
+        // The local baseline recreates the pre-PERF-6b projection and sorted
+        // reference list. Return only scalar evidence, so neither list can be
+        // retained alongside the new implementation's heap readings.
+        fun oldDigestAndBytes(): Pair<String, Long> {
+            val before = usedHeap()
+            val projected = records.map { it.toFaceVisibleMedia(editorRevision = 0L) }
+            val sortedOld = newestFirst(projected)
+            val bytes = usedHeap() - before
+            return faceInventoryDigest(sortedOld) to bytes
+        }
+        val (expected, beforeBytes) = oldDigestAndBytes()
         val h0 = usedHeap()
         val view = MediaRecordFaceView(records)
         val sorted = newestFirst(view)
@@ -139,6 +146,7 @@ class GalleryInventoryMemoryTest {
         val retainedIndexBytes = sorted.retainedIndexBytes + 8L * directory.mediaCount
         val bytesPerItem = retainedIndexBytes.toDouble() / n
         println("PERF-6b People projection at 250k (JVM, bytes/item): " +
+            "before_heap=${beforeBytes.toDouble() / n} " +
             "view_heap=${(h1 - h0).toDouble() / n} " +
             "directory_heap=${(h2 - h1).toDouble() / n} " +
             "retained_indices=$bytesPerItem")
