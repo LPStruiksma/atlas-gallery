@@ -247,22 +247,25 @@ internal fun DeclutterScreen(
             Text("Review staged files", style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground)
             val visiblePending = scopedNamedMatches(pending, searchText) { it.name + " " + it.album }
+            // S1 / S2: filtering is only a view; Move still counts every staged file.
             if (visiblePending.isEmpty()) {
-                // S1 / S2: the filter is only a view; Move still counts every staged file.
-                Column(Modifier.testTag("atlas-declutter-search-empty")) {
-                    Text(
-                        if (pending.isEmpty()) "No staged files yet" else "No matching staged files",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        if (pending.isEmpty()) "Swipe left on a photo to stage it."
-                        else "Clear the search to see all ${pending.size}.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Column(Modifier.testTag("atlas-declutter-search-empty"),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (pending.isEmpty()) "No staged files yet" else "No matching staged files",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            if (pending.isEmpty()) "Swipe left on a photo to stage it."
+                            else "Clear the search to see all ${pending.size}.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            }
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(),
+            } else {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(visiblePending,
                     key = { it.uri }) { media ->
@@ -287,6 +290,7 @@ internal fun DeclutterScreen(
                             Text("Keep")
                         }
                     }
+                }
                 }
             }
             TextButton(onClick = { reviewing = false }) { Text("Return to swiping") }
