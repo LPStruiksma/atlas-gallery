@@ -24,8 +24,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.FaceCropGeometry
 import nl.atlas.gallery.MediaRecord
@@ -91,7 +97,10 @@ object SwapPersonMediaCheck {
         val result = try {
             val resolver = context.contentResolver
             val mime = resolver.getType(uri)
-            val header = resolver.openInputStream(uri)?.use { readUpTo(it, SwapPersonEligibility.HEADER_BYTES) }
+            val png = mime?.substringBefore(';')?.trim()?.lowercase() == "image/png"
+            val header = resolver.openInputStream(uri)?.use {
+                if (png) SwapPersonEligibility.pngChunkSkeleton(it) else readUpTo(it, SwapPersonEligibility.HEADER_BYTES)
+            }
             header != null && SwapPersonEligibility.staticImage(mime, header)
         } catch (_: IOException) {
             false
@@ -133,38 +142,85 @@ private sealed interface SwapSource {
     data class Ready(val image: EditImage, val file: File) : SwapSource
 }
 
-/** Session folder for one launch: the source copy and picker previews. Removed on close. */
-private fun sessionDir(context: Context, sessionId: String) =
-    File(context.cacheDir, "atlas-identity-entry/" + sessionId.filter { it.isLetterOrDigit() || it == '-' }.take(64))
+/**
+ * The per-launch source copy (and picker previews) under `cacheDir/atlas-identity-entry/<session>`.
+ * Copy and removal take one lock, so a removal asked for during a copy (Back while preparing)
+ * runs after the copy has stopped and deletes whatever it wrote. Removal runs on a process scope,
+ * not the composition, so leaving the screen cannot cancel it. Starting a launch also clears any
+ * other session's folder, so a folder orphaned by a killed process lives only until the next one.
+ */
+internal object SwapSourceFiles {
+    private val lock = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun root(cacheDir: File) = File(cacheDir, "atlas-identity-entry")
+
+    fun dir(cacheDir: File, sessionId: String) =
+        File(root(cacheDir), sessionId.filter { it.isLetterOrDigit() || it == '-' }.take(64).ifEmpty { "session" })
+
+    /**
+     * Copies [open]'s bytes to `<session>/source` unless a complete copy is already there (kept
+     * across rotation and process death). Returns null and leaves no folder behind on any failure;
+     * on cancellation the partial copy is deleted before the lock is released.
+     */
+    suspend fun copy(cacheDir: File, sessionId: String, open: () -> InputStream?): File? = lock.withLock {
+        withContext(Dispatchers.IO) {
+            val dir = dir(cacheDir, sessionId)
+            root(cacheDir).listFiles()?.filter { it.name != dir.name }?.forEach { it.deleteRecursively() }
+            val file = File(dir, "source")
+            if (file.isFile && file.length() > 0L) return@withContext file
+            val tmp = File(dir, "source.part")
+            var done = false
+            try {
+                if (!dir.isDirectory && !dir.mkdirs()) return@withContext null
+                val input = open() ?: return@withContext null
+                input.use { inp ->
+                    tmp.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            ensureActive()
+                            val n = inp.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                        }
+                    }
+                }
+                ensureActive()
+                done = tmp.length() > 0L && tmp.renameTo(file)
+                if (done) file else null
+            } catch (_: IOException) {
+                null
+            } catch (_: SecurityException) {
+                null
+            } finally {
+                if (!done) dir.deleteRecursively()
+            }
+        }
+    }
+
+    /** Removes one session's folder once no copy is running. Safe to call more than once. */
+    fun discard(cacheDir: File, sessionId: String): Job =
+        scope.launch { lock.withLock { dir(cacheDir, sessionId).deleteRecursively() } }
+}
 
 /** Copies the MediaStore photo (stored bytes, EXIF kept) so the flow and engine read one file. */
-private fun prepareSource(context: Context, media: MediaRecord, sessionId: String): SwapSource {
-    val dir = sessionDir(context, sessionId)
-    val file = File(dir, "source")
-    return try {
-        if (!file.isFile || file.length() == 0L) {
-            check(dir.isDirectory || dir.mkdirs())
-            val tmp = File(dir, "source.part")
-            context.contentResolver.openInputStream(Uri.parse(media.uri))?.use { input ->
-                tmp.outputStream().use { input.copyTo(it) }
-            } ?: return SwapSource.Failed
-            check(tmp.renameTo(file))
-        }
+private suspend fun prepareSource(context: Context, media: MediaRecord, sessionId: String): SwapSource {
+    val file = SwapSourceFiles.copy(context.cacheDir, sessionId) {
+        context.contentResolver.openInputStream(Uri.parse(media.uri))
+    } ?: return SwapSource.Failed
+    return withContext(Dispatchers.IO) {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return SwapSource.Failed
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            SwapSourceFiles.discard(context.cacheDir, sessionId)
+            return@withContext SwapSource.Failed
+        }
         val format = when (bounds.outMimeType) {
             "image/png" -> ImageFormat.PNG
             "image/webp" -> ImageFormat.WEBP
             else -> ImageFormat.JPEG
         }
         SwapSource.Ready(EditImage(file.path, bounds.outWidth, bounds.outHeight, format), file)
-    } catch (_: IOException) {
-        SwapSource.Failed
-    } catch (_: SecurityException) {
-        SwapSource.Failed
-    } catch (_: IllegalStateException) {
-        SwapSource.Failed
     }
 }
 
@@ -193,14 +249,15 @@ internal fun SwapPersonEntry(
     }
     val vm: SwapPersonViewModel = viewModel(key = "swap-person:$sessionId")
     val prepared by produceState<SwapSource>(SwapSource.Loading, sessionId) {
-        value = withContext(Dispatchers.IO) { prepareSource(app, source, sessionId) }
+        value = prepareSource(app, source, sessionId)
     }
     fun cleanUp() {
-        vm.viewModelScope.launch(Dispatchers.IO) { sessionDir(app, sessionId).deleteRecursively() }
+        SwapSourceFiles.discard(app.cacheDir, sessionId)
     }
     when (val p = prepared) {
         SwapSource.Loading -> {
-            BackHandler { onClose() }
+            // The copy may still be running: discard waits for it, then removes what it wrote.
+            BackHandler { cleanUp(); onClose() }
             Box(Modifier.fillMaxSize().background(SwapColors.Canvas).testTag("swap-person-preparing"))
         }
         SwapSource.Failed -> {
@@ -212,7 +269,7 @@ internal fun SwapPersonEntry(
             }
         }
         is SwapSource.Ready -> {
-            val host = remember(sessionId) { AtlasSwapPersonHost(app, stablePorts, source, p.file, sessionDir(app, sessionId)) }
+            val host = remember(sessionId) { AtlasSwapPersonHost(app, stablePorts, source, p.file, SwapSourceFiles.dir(app.cacheDir, sessionId)) }
             val machine = remember(vm, sessionId) {
                 vm.initialize(host, host.engine, p.image, app.cacheDir,
                     host.saver(vm, Uri.parse(source.uri)))

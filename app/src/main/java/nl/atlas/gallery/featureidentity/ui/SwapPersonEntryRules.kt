@@ -53,7 +53,12 @@ object SwapPersonEligibility {
 
     private val PNG_SIGNATURE = intArrayOf(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
 
-    /** PNG signature, and no `acTL` chunk (APNG) before the first `IDAT`. */
+    /**
+     * PNG signature, and the first `IDAT` is reached with no `acTL` chunk (APNG) before it. Fails
+     * closed: bytes that end before `IDAT` (a large ancillary chunk such as iCCP, or a truncated
+     * file) never count as a still. Callers with a stream use [pngChunkSkeleton] so a long PNG
+     * header is still decided from its real chunk sequence.
+     */
     private fun stillPng(b: ByteArray): Boolean {
         if (b.size < 8 || PNG_SIGNATURE.indices.any { u8(b, it) != PNG_SIGNATURE[it] }) return false
         var at = 8
@@ -66,7 +71,53 @@ object SwapPersonEligibility {
             if (length > Int.MAX_VALUE - 12L) return false
             at += 12 + length.toInt()
         }
-        // acTL must come before IDAT; a header too short to reach IDAT showed no animation.
+        return false
+    }
+
+    /** Most chunks walked before giving up (and failing closed) in [pngChunkSkeleton]. */
+    const val PNG_MAX_CHUNKS = 1024
+
+    /**
+     * Streams a PNG's chunk headers up to the first `IDAT` or `acTL`, skipping chunk data, and
+     * returns the signature plus each chunk as an empty chunk (length 0, type, CRC 0). The result
+     * feeds [staticImage] like a header, but is decided over the whole pre-IDAT structure however
+     * large its ancillary chunks are. A stream that is not PNG, ends early or is too long
+     * returns what was read, which [staticImage] rejects.
+     */
+    fun pngChunkSkeleton(input: java.io.InputStream): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val sig = readFully(input, 8) ?: return out.toByteArray()
+        out.write(sig)
+        if (PNG_SIGNATURE.indices.any { u8(sig, it) != PNG_SIGNATURE[it] }) return out.toByteArray()
+        repeat(PNG_MAX_CHUNKS) {
+            val head = readFully(input, 8) ?: return out.toByteArray()
+            out.write(byteArrayOf(0, 0, 0, 0)); out.write(head, 4, 4); out.write(byteArrayOf(0, 0, 0, 0))
+            val type = ascii(head, 4, 4)
+            if (type == "IDAT" || type == "acTL") return out.toByteArray()
+            if (!skipFully(input, u32(head, 0) + 4)) return out.toByteArray()
+        }
+        return out.toByteArray()
+    }
+
+    private fun readFully(input: java.io.InputStream, n: Int): ByteArray? {
+        val b = ByteArray(n)
+        var got = 0
+        while (got < n) {
+            val r = input.read(b, got, n - got)
+            if (r < 0) return null
+            got += r
+        }
+        return b
+    }
+
+    private fun skipFully(input: java.io.InputStream, n: Long): Boolean {
+        var left = n
+        while (left > 0) {
+            val s = input.skip(left)
+            if (s > 0) { left -= s; continue }
+            if (input.read() < 0) return false
+            left--
+        }
         return true
     }
 

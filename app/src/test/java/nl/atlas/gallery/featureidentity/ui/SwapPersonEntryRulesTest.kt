@@ -59,6 +59,24 @@ class SwapPersonEntryRulesTest {
         assertFalse(SwapPersonEligibility.staticImage("image/webp", png))
     }
 
+    @Test fun pngThatEndsBeforeIdatFailsClosed() {
+        // Review of #688: a large ancillary chunk (iCCP) pushes acTL past the header bytes.
+        val bigApng = pngSig + chunk("IHDR", 13) + chunk("iCCP", 6000) + chunk("acTL", 8) + chunk("IDAT", 2)
+        val bigStill = pngSig + chunk("IHDR", 13) + chunk("iCCP", 6000) + chunk("IDAT", 2)
+        val head = bigApng.copyOf(SwapPersonEligibility.HEADER_BYTES)
+        assertFalse("header ends inside iCCP", SwapPersonEligibility.staticImage("image/png", head))
+        assertFalse("truncated PNG", SwapPersonEligibility.staticImage("image/png", png.copyOf(20)))
+        assertFalse("signature only", SwapPersonEligibility.staticImage("image/png", pngSig))
+        // Streaming the chunk structure decides from the real pre-IDAT sequence.
+        fun skeleton(b: ByteArray) = SwapPersonEligibility.pngChunkSkeleton(b.inputStream())
+        assertFalse("APNG behind a big iCCP", SwapPersonEligibility.staticImage("image/png", skeleton(bigApng)))
+        assertTrue("still behind a big iCCP", SwapPersonEligibility.staticImage("image/png", skeleton(bigStill)))
+        assertTrue(SwapPersonEligibility.staticImage("image/png", skeleton(png)))
+        assertFalse(SwapPersonEligibility.staticImage("image/png", skeleton(apng)))
+        assertFalse("stream ends inside a chunk", SwapPersonEligibility.staticImage("image/png", skeleton(bigStill.copyOf(3000))))
+        assertFalse("not a PNG", SwapPersonEligibility.staticImage("image/png", skeleton(jpeg)))
+    }
+
     @Test fun onlyMediaStoreStillsAreOffered() {
         assertTrue(SwapPersonEligibility.eligible(false, "content", "media", "image/jpeg", jpeg))
         assertFalse("video", SwapPersonEligibility.eligible(true, "content", "media", "image/jpeg", jpeg))
