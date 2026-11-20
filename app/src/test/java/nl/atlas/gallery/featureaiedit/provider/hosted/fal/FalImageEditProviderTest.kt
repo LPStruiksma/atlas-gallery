@@ -199,12 +199,18 @@ class FalImageEditProviderTest {
     }
 
     @Test fun submitFailuresMapToTypedOutcomesWithoutReplay() {
-        val cases = listOf(401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 429 to FailureKind.QUOTA,
+        val cases = listOf(401 to FailureKind.AUTH, 403 to FailureKind.AUTH,
+            402 to FailureKind.BILLING, 429 to FailureKind.QUOTA,
             422 to FailureKind.INVALID_REQUEST, 500 to FailureKind.SERVER)
         for ((status, kind) in cases) {
             FalHarness(FakeFalQueue(submit = { FakeResponse.json("""{"detail":"synthetic"}""", status) })).use { h ->
                 val result = h.provider().submit(request()).await(maxPolls = 200) as EditOutcome.Failed
                 assertEquals("status $status", kind, result.kind)
+                if (status == 402) {
+                    assertFalse(result.retryable)
+                    assertEquals("HTTP_BILLING", result.message)
+                    assertFalse(result.toString().contains("synthetic"))
+                }
                 assertEquals(1, h.calls("POST").size)
                 assertTrue(h.calls("GET").isEmpty())
             }

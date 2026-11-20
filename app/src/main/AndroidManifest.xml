@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- #183/#191: only user-initiated AI Edit (featureaiedit/**) may use the network.
-         Indexing, People and search stay on-device; see test/additive-regressions/network-scope-191.mjs. -->
+         Indexing, People and search stay on-device; see test/additive-regressions/network-scope-191.mjs.
+         The Swap person model setup (#619) fetches through featureaiedit/network/ after the user's tap. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- #619: the one-time Swap person model download runs as WorkManager foreground work
+         (dataSync) with a progress notification and Cancel. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:name=".AtlasApplication"
         android:allowBackup="false"
@@ -35,5 +41,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/atlas_diagnostics_file_paths" />
         </provider>
+        <!-- #619: WorkManager declares this service without a type; Android 14+ needs one for
+             foreground work. dataSync is the model download's type. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 </manifest>

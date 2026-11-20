@@ -101,6 +101,8 @@ object AtlasTokens {
     object Radii {
         val Cover = 20.dp
         val EmptyVisual = 28.dp
+        /** Quiet Frame bottom sheet, top corners only. */
+        val Sheet = 28.dp
         val GridTile = 3.dp
         val PersonCard = 20.dp
         val PersonCover = 18.dp

@@ -204,7 +204,8 @@ class GeminiImageEditProviderTest {
 
     @Test fun httpStatusesMapToTypedFailuresWithoutReplay() {
         val cases = listOf(
-            401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 429 to FailureKind.QUOTA,
+            401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 402 to FailureKind.BILLING,
+            429 to FailureKind.QUOTA,
             500 to FailureKind.SERVER, 503 to FailureKind.SERVER, 400 to FailureKind.INVALID_REQUEST
         )
         for ((status, kind) in cases) {
@@ -212,6 +213,10 @@ class GeminiImageEditProviderTest {
                 val result = outcome(h) as EditOutcome.Failed
                 assertEquals("status $status", kind, result.kind)
                 assertEquals(status >= 500, result.retryable)
+                if (status == 402) {
+                    assertEquals("HTTP_BILLING", result.message)
+                    assertFalse(result.toString().contains("synthetic"))
+                }
                 assertEquals("POST is never replayed", 1, h.server.requests.size)
             }
         }
@@ -272,7 +277,7 @@ class GeminiImageEditProviderTest {
         val huge = SyntheticPng.encode(8, 8) + ByteArray(1_200_000)
         GeminiHarness { FakeResponse.json(successReply(huge)) }.use { h ->
             val result = h.provider(maxReplyBytes = 1_000_000).submit(request()).await()
-            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_SERVER"), result)
+            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_RESPONSE_TOO_LARGE"), result)
             assertEquals(1, h.server.requests.size)
             assertTrue(h.output.listFiles()!!.isEmpty())
         }

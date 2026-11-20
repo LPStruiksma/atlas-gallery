@@ -58,6 +58,20 @@ class ViewerTimingProbeTest {
         assertEquals(2.0, trace.aggregate()["samples"]!!, 0.0)
     }
 
+    @Test fun enteringInitialPageAndSwipingCreatesPreviewSamples() {
+        var nanos = 10L
+        val trace = ViewerTimingProbe(nowNanos = { nanos })
+        trace.pageEntered(2)
+        nanos += 9_000_000
+        trace.firstPreviewReady(2)
+        assertEquals(9.0, trace.snapshot().single().firstPreviewMs, 0.0)
+        trace.pageEntered(3)
+        nanos += 12_000_000
+        trace.firstPreviewReady(3)
+        assertEquals(listOf(2, 3), trace.snapshot().map { it.selectedIndex })
+        assertEquals(0, trace.superseded)
+    }
+
     @Test fun reportsAreIndexOnlyAndMemoryBounded() {
         val t = ViewerTimingProbe(maxSamples = 1)
         t.selectionRequested(-99)

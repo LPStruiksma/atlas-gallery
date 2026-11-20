@@ -89,11 +89,6 @@
   "PeopleCsvApprovalDialogTest.kt": {
     "rawClick": 2
   },
-  "PeopleDiscoveryHostTest.kt": {
-    "rawClick": 10,
-    "typingWithoutKeyboardRule": 1,
-    "privateWait": 3
-  },
   "PeopleFaceCropsAndroidTest.kt": {
     "privateWait": 1
   },
@@ -104,12 +99,6 @@
   },
   "PeopleNamesBackupSettingsEvidenceTest.kt": {
     "rawClick": 2
-  },
-  "PeoplePrototypeJourneyTest.kt": {
-    "sleep": 4,
-    "rawClick": 11,
-    "typingWithoutKeyboardRule": 2,
-    "privateWait": 4
   },
   "PeopleScanProcessKillTest.kt": {
     "sleep": 1
@@ -127,12 +116,6 @@
   },
   "PersonNameSearchEvidenceTest.kt": {
     "privateWait": 1
-  },
-  "PersonPageJourneyTest.kt": {
-    "sleep": 2,
-    "rawClick": 21,
-    "typingWithoutKeyboardRule": 2,
-    "privateWait": 4
   },
   "PhotoDnaJourneyTest.kt": {
     "rawClick": 5,
@@ -160,12 +143,6 @@
   },
   "PhotoEditorHandoffTest.kt": {
     "rawClick": 4
-  },
-  "PhotoPeopleDetailsTest.kt": {
-    "sleep": 1,
-    "rawClick": 4,
-    "typingWithoutKeyboardRule": 1,
-    "privateWait": 1
   },
   "PhotosSortSheetJourneyTest.kt": {
     "deviceStateWrite": 2
@@ -231,10 +208,6 @@
   },
   "UnifiedPeopleJourneyTest.kt": {
     "rawClick": 5
-  },
-  "UnknownGroupDesignEvidenceTest.kt": {
-    "sleep": 1,
-    "typingWithoutKeyboardRule": 1
   },
   "VideoFaceCropAndroidTest.kt": {
     "privateWait": 1
@@ -307,15 +280,8 @@
     "rawCapture": 1,
     "privateWait": 1
   },
-  "featurepeopleui/PeopleDestinationSelectorUiTest.kt": {
-    "typingWithoutKeyboardRule": 6
-  },
   "featurepeopleui/UnknownFacesReviewScreenStateTest.kt": {
     "rawClick": 1
-  },
-  "featurepeopleui/UnknownPersonImeTouchTest.kt": {
-    "typingWithoutKeyboardRule": 2,
-    "deviceStateWrite": 3
   },
   "featurepeopleui/UnknownSplitGridCapTest.kt": {
     "rawClick": 2

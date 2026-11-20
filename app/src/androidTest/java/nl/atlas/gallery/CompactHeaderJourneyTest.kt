@@ -198,8 +198,13 @@ internal fun saveUiEvidence(filename: String) {
         val problem = uiEvidenceProblem(bitmap) ?: break
         bitmap.recycle()
         check(android.os.SystemClock.uptimeMillis() < deadline) {
-            "UI evidence $filename $problem"
+            "UI evidence $filename $problem; ${describeFocus()}"
         }
+        // #570: an idle app posts no new frame, so a buffer the loaded
+        // emulator's GPU lost ("Failed to find ColorBuffer") stays on screen
+        // as a flat window ground however long we wait, while the composition
+        // behind it is complete. Ask the resumed window to draw again.
+        redrawResumedWindows()
         Thread.sleep(250L)
     }
     val png = try {
@@ -210,6 +215,22 @@ internal fun saveUiEvidence(filename: String) {
         bitmap.recycle()
     }
     writeUiEvidenceFile(uiEvidenceDisplayName(filename), png)
+}
+
+/** Invalidates every resumed activity's window so the next screenshot sees a fresh frame. */
+private fun redrawResumedWindows() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync {
+        androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+            .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+            .forEach { activity -> invalidateTree(activity.window.decorView) }
+    }
+}
+
+private fun invalidateTree(view: android.view.View) {
+    view.invalidate()
+    if (view is android.view.ViewGroup) {
+        for (i in 0 until view.childCount) invalidateTree(view.getChildAt(i))
+    }
 }
 
 /**

@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.os.SystemClock
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertCountEquals
@@ -12,12 +11,17 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.MutableStateFlow
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.sampleOnFrames
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -34,8 +38,10 @@ import org.junit.runner.RunWith
 class PhotoPeopleDetailsTest {
     private val rule = createComposeRule()
 
-    // #645: evidence at the owner's S24+ size.
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(rule)
+    // #645: evidence at the owner's S24+ size. No keyboard slides up over the
+    // name dialog's render (docs/testing/EMULATOR_TESTS.md).
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.None))
+        .around(S24DisplayRule()).around(rule)
 
     private fun uid(n: Int) = n.toString(16).padStart(32, '0')
 
@@ -51,10 +57,14 @@ class PhotoPeopleDetailsTest {
         paint.color = 0xFFB0605A.toInt(); canvas.drawOval(66f, 118f, 94f, 128f, paint)
     }.asImageBitmap()
 
-    /** uiAutomation reads the screen, not Compose: let the last frame land first. */
-    private fun settle() {
+    /**
+     * uiAutomation reads the screen, not Compose: let the last frame land
+     * first. The crops are in-memory bitmaps, so nothing decodes later.
+     */
+    private fun evidence(filename: String) {
         rule.waitForIdle()
-        SystemClock.sleep(500)
+        sampleOnFrames(frames = 3) { }
+        saveUiEvidence(filename)
     }
 
     @Test fun detailsShowsPeopleTapOpensPersonAndPlusNamesTheGroup() {
@@ -96,9 +106,9 @@ class PhotoPeopleDetailsTest {
                 }
             }
         }
-        rule.onNodeWithTag("atlas-viewer-details-open").performClick()
-        rule.waitUntil(8_000) {
-            rule.onAllNodesWithTag("atlas-details-people").fetchSemanticsNodes().isNotEmpty()
+        rule.tap(hasTestTag("atlas-viewer-details-open"))
+        rule.awaitThat("the Details people row", 8_000) {
+            rule.exists(hasTestTag("atlas-details-people"))
         }
         rule.onNodeWithTag("atlas-details-people").performScrollTo()
         rule.onNodeWithText("Ada").assertExists()
@@ -106,31 +116,28 @@ class PhotoPeopleDetailsTest {
         rule.onAllNodesWithTag("atlas-details-person-add", useUnmergedTree = true)
             .assertCountEquals(1)
         assertEquals(listOf(photo.uri), synchronized(loads) { loads.toList() })
-        settle()
-        saveUiEvidence("553-details-people.png")
+        evidence("553-details-people.png")
 
-        rule.onNodeWithTag("atlas-details-person-1").performClick()
+        rule.tap(hasTestTag("atlas-details-person-1")) { opened.isNotEmpty() }
         assertEquals(listOf(ada), opened)
 
-        rule.onNodeWithTag("atlas-details-person-3").performClick()
-        rule.waitUntil(5_000) {
-            rule.onAllNodesWithTag("atlas-details-name-dialog").fetchSemanticsNodes().isNotEmpty()
+        rule.tap(hasTestTag("atlas-details-person-3"))
+        // The name dialog is its own window (rule 5).
+        rule.awaitThat("the name dialog", 5_000) {
+            rule.exists(hasTestTag("atlas-details-name-dialog"))
         }
-        rule.onNodeWithTag("atlas-details-name-field").performTextInput("  Cleo ")
+        rule.typeText(hasTestTag("atlas-details-name-field"), "  Cleo ")
         rule.onNodeWithText("  Cleo ").assertExists()
-        settle()
-        saveUiEvidence("553-details-add-name.png")
-        rule.onNodeWithTag("atlas-details-name-done").performClick()
-        rule.waitUntil(5_000) {
-            rule.onAllNodesWithTag("atlas-details-name-dialog").fetchSemanticsNodes().isEmpty()
+        evidence("553-details-add-name.png")
+        rule.tap(hasTestTag("atlas-details-name-done"))
+        rule.awaitThat("the name dialog to close", 5_000) {
+            !rule.exists(hasTestTag("atlas-details-name-dialog"))
         }
         assertEquals(listOf(unknown to "Cleo"), named)
-        rule.waitUntil(5_000) {
-            rule.onAllNodesWithTag("atlas-details-person-add", useUnmergedTree = true)
-                .fetchSemanticsNodes().isEmpty()
+        rule.awaitThat("the + circle to go", 5_000) {
+            !rule.exists(hasTestTag("atlas-details-person-add"), useUnmergedTree = true)
         }
         rule.onNodeWithText("Cleo").assertExists()
-        settle()
-        saveUiEvidence("553-details-people-named.png")
+        evidence("553-details-people-named.png")
     }
 }
