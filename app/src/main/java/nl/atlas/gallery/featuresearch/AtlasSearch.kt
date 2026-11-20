@@ -27,9 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -41,9 +41,14 @@ import androidx.compose.ui.unit.dp
  */
 internal const val ATLAS_SEARCH_SINGLE_ROW_BELOW_DP = 280
 
-/** True when the panel must use its single-row layout (frame L). */
+/**
+ * True when the panel must use its single-row layout (frame L).
+ * [windowHeightDp] is the host window's current height, so a window that
+ * resizes for the keyboard (and reports no IME inset) counts as well as an
+ * edge-to-edge window that reports the keyboard as [imeBottomDp].
+ */
 internal fun atlasSearchSingleRow(windowHeightDp: Int, imeBottomDp: Int): Boolean =
-    imeBottomDp > 0 && windowHeightDp - imeBottomDp < ATLAS_SEARCH_SINGLE_ROW_BELOW_DP
+    windowHeightDp - imeBottomDp < ATLAS_SEARCH_SINGLE_ROW_BELOW_DP
 
 /**
  * Single shared search surface, with an icon-anchored expansion on overview
@@ -95,8 +100,11 @@ fun AtlasSearch(
     // popup below does not receive the IME inset itself.
     val density = LocalDensity.current
     val imeBottomDp = with(density) { WindowInsets.ime.getBottom(density).toDp().value.toInt() }
+    val windowHeightDp = with(density) {
+        LocalWindowInfo.current.containerSize.height.toDp().value.toInt()
+    }
     val singleRow = showQueryField && showScopeChips &&
-        atlasSearchSingleRow(LocalConfiguration.current.screenHeightDp, imeBottomDp)
+        atlasSearchSingleRow(windowHeightDp, imeBottomDp)
     val queryField: @Composable (Modifier) -> Unit = { fieldModifier ->
         OutlinedTextField(
             value = query,

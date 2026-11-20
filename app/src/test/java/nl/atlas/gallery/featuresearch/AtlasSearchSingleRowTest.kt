@@ -16,6 +16,11 @@ class AtlasSearchSingleRowTest {
         assertTrue(atlasSearchSingleRow(windowHeightDp = 384, imeBottomDp = 184))
     }
 
+    @Test fun windowThatResizesForTheKeyboardAlsoSwitches() {
+        // ADJUST_RESIZE: the window shrinks above the keyboard, no IME inset.
+        assertTrue(atlasSearchSingleRow(windowHeightDp = 175, imeBottomDp = 0))
+    }
+
     @Test fun thresholdIsStrict() {
         assertFalse(atlasSearchSingleRow(windowHeightDp = 480, imeBottomDp = 200))
         assertTrue(atlasSearchSingleRow(windowHeightDp = 479, imeBottomDp = 200))
