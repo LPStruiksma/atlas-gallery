@@ -1,9 +1,32 @@
 {
   "artifact": "saved-1-search-albums.png",
-  "board_px": [2520, 6900],
-  "phone_frame_px": [1080, 2340],
-  "phone_frames": [{"theme": "light", "type_scale_percent": 100}, {"theme": "dark", "type_scale_percent": 200}],
-  "panel_ids": ["A", "B", "C", "D", "E", "F", "G"],
+  "board_px": [
+    2520,
+    6900
+  ],
+  "phone_frame_px": [
+    1080,
+    2340
+  ],
+  "phone_frames": [
+    {
+      "theme": "light",
+      "type_scale_percent": 100
+    },
+    {
+      "theme": "dark",
+      "type_scale_percent": 200
+    }
+  ],
+  "panel_ids": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+  ],
   "paired_panel_scale_percent": 42,
   "generator": "tools/design/saved1_board.py",
   "check": "tools/design/saved1_check.py",
@@ -14,16 +37,83 @@
   "byte_size": 0,
   "font_provenance": {
     "status": "clearly labelled fallback; Funnel is not installed in the generation environment",
-    "regular": {"path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"},
-    "bold": {"path": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "sha256": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895"},
+    "regular": {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"
+    },
+    "bold": {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+      "sha256": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895"
+    },
     "license": "DejaVu font license packaged by the generation environment; fallback is visibly disclosed by this manifest"
   },
-  "geometry_assumptions": {"canvas_dp": [384, 832], "px_per_dp": 2.8125, "status_bar_dp": 29, "gesture_region_dp": 16, "ime_dp": 324, "disposition": "proposal; verify on device"},
-  "target_rectangles_px": [[138, 1720, 568, 1855], [603, 1720, 1033, 1855], [138, 1870, 568, 2005], [603, 1870, 1033, 2005], [180, 2352, 475, 2468], [810, 2352, 926, 2468]],
-  "reference_decisions": [
-    {"reference": "Quiet Frame v3", "decision": "Use the lapis palette, single search sphere, two-place slab, real-shape media and >=48dp targets."},
-    {"reference": "SAVED-1 #578 rev 1", "decision": "Show structured saved-query, exclusion, removal and Unsorted semantics without adding a tab."},
-    {"reference": "Aves / Immich / Material discussions listed in README", "decision": "Use as behavior questions only; copy no third-party visual placement."}
+  "geometry_assumptions": {
+    "canvas_dp": [
+      384,
+      832
+    ],
+    "px_per_dp": 2.8125,
+    "status_bar_dp": 29,
+    "gesture_region_dp": 16,
+    "ime_dp": 324,
+    "disposition": "proposal; verify on device"
+  },
+  "target_rectangles_px": [
+    [
+      138,
+      1720,
+      568,
+      1855
+    ],
+    [
+      603,
+      1720,
+      1033,
+      1855
+    ],
+    [
+      138,
+      1870,
+      568,
+      2005
+    ],
+    [
+      603,
+      1870,
+      1033,
+      2005
+    ],
+    [
+      195,
+      2342,
+      510,
+      2477
+    ],
+    [
+      860,
+      2342,
+      996,
+      2478
+    ]
   ],
-  "claims": ["synthetic fictional silhouettes only", "design evidence only", "not a runtime/device screenshot"]
+  "reference_decisions": [
+    {
+      "reference": "Quiet Frame v3",
+      "decision": "Use the lapis palette, single search sphere, two-place slab, real-shape media and >=48dp targets."
+    },
+    {
+      "reference": "SAVED-1 #578 rev 1",
+      "decision": "Show structured saved-query, exclusion, removal and Unsorted semantics without adding a tab."
+    },
+    {
+      "reference": "Aves / Immich / Material discussions listed in README",
+      "decision": "Use as behavior questions only; copy no third-party visual placement."
+    }
+  ],
+  "claims": [
+    "synthetic fictional silhouettes only",
+    "design evidence only",
+    "not a runtime/device screenshot",
+    "Final artifact digest and font hashes pending generation on a reproducible Python/Pillow host"
+  ]
 }
