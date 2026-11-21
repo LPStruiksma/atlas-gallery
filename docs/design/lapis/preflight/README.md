@@ -8,7 +8,7 @@
 | [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
 | [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
-| [brand-l8-justified.png](brand-l8-justified.png) | L8 justified day rows; pinch storyboard and month/year signature repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) | 26 |
+| [brand-l8-justified.png](brand-l8-justified.png) | L8 six-stop day and overview densities; pinch storyboard, month/year signature and precision selection, repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) and corrected in [#855](https://github.com/LPStruiksma/atlas-gallery/issues/855) | 43 |
 
 Each sheet opens with two full-scale 1080 × 2340 frames (light 100 % and dark 200 %), then labelled state panels (the same full frames at 50 %), then tables: a dated **source → observed convention → Atlas adaptation/deviation** row set, and the unit's copy, TalkBack, tap-path, gesture or layout rules. [manifest.json](manifest.json) records every sheet's size, SHA-256, panel codes, font hashes and Pillow version.
 
@@ -43,23 +43,38 @@ python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a
 
 Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
 
-## L8 pinch anchor and month/year signature (#836)
+## L8 six stops, pinch anchor and precision selection (#836, #855)
 
-The [blocking L8 preflight](https://github.com/LPStruiksma/atlas-gallery/issues/661#issuecomment-7056128733) found that the #770 frames C1–C4 claimed "same screen point" while the tile only kept its Y, and that month/year frames showed no selection sphere or thumb. The repaired sheet replaces both.
+The [blocking L8 preflight](https://github.com/LPStruiksma/atlas-gallery/issues/661#issuecomment-7056128733) found that the #770 frames claimed "same screen point" while the tile only kept its Y, and that month/year frames showed no selection sphere or thumb; [#840](https://github.com/LPStruiksma/atlas-gallery/pull/840) repaired both. The next review ([#661 comment](https://github.com/LPStruiksma/atlas-gallery/issues/661#issuecomment-7057281181)) found that the repaired sheet still drew *four* columns as "month" and *eight* as "year", which is not the approved ladder of [parity spec §2](../../../product/SAMSUNG_PARITY_SPEC.md) and [FLOW-2 #712](https://github.com/LPStruiksma/atlas-gallery/issues/712). #855 redraws the sheet on the approved six stops. No stop is added or removed.
 
-**Geometry is computed, not drawn by hand.** `tools/design/lapis_screens.py` builds one synthetic 970-item library (November 268, September 702, as in the L6 counts), lays it out as justified day rows and edge-aligned 4- and 8-column square grids, and `storyboard()` derives every pinch step. The frames, their annotation cards and the measured table on the sheet print those numbers; `tools/design/tests/test_lapis_l8_pinch.py` asserts them.
+| Stop | Layout | Size at 384 dp | Direct per-media tap |
+|---|---|---|---|
+| 1 ORIGINAL | 1 per row, real ratio | full width, tall portraits centred narrower | yes, ≥ 48 dp |
+| 2 LARGE | ~3 per row (3.06 measured), real-ratio justified rows | row height target 118 dp | yes, ≥ 48 dp |
+| 3 MEDIUM | ~4 per row (3.83 measured), real-ratio justified rows | row height target 86 dp | yes, ≥ 48 dp |
+| 4 SMALL | 7 squares, month sections | 53.0 dp tiles | yes, ≥ 48 dp |
+| 5 MONTH | 12 squares, month sections | 30.0 dp tiles | no: precision pathway |
+| 6 YEAR | 28 squares, short month headings | 11.7 dp tiles | no: precision pathway |
 
-**Rule drawn:** the pinch keeps the media key under the focal point F (the two-finger centroid) and restores the same relative height inside it by choosing the new scroll offset, clamped to the content. A key's column in a square grid is its position in the month modulo the column count, so its horizontal position is quantized.
+Tile sizes use the 1080 px frame, (1080 px − gaps) / columns / 2.8125. YEAR is never drawn with 7 columns.
+
+**Geometry is computed, not drawn by hand.** `tools/design/lapis_screens.py` builds one synthetic 5290-item library (November 268 and September 702 as in the L6 counts, plus six older synthetic months so the 28-column YEAR stop is longer than one screen), lays it out at all six stops, and `storyboard()` and `precision_flow()` derive every pinch step. The frames, their annotation cards and the measured table on the sheet print those numbers; `tools/design/tests/test_lapis_l8_pinch.py` asserts them.
+
+**Pinch invariant drawn.** The same media key is the anchor. The new scroll offset restores its *relative* height under the focal point F wherever scroll bounds allow; X follows the destination grid's fixed column (a key's column is its position in the month modulo the column count). So the key slides to its column, and F may no longer be over it. The sheet prints the measured shift and which key is under F. It does not claim that a stationary pointer stays over the same tile, zero X drift, or a literal same-screen-point landing. At the top and bottom clamps the height residual is disclosed instead.
 
 | Frames | What it shows | Measured |
 |---|---|---|
-| C1–C4 | Pinch in day → month → year on key 88 | same key under F at every step; height residual 0 px; centre shift X −144 px (month), −68 px (year) |
-| C5–C7 | Pinch out year → month → day, F unchanged | key under F is still 88; day scroll returns to exactly 8354 px |
-| C8–C10 | Interior key 83 (wide photo mid-row) | height kept, but the fixed column moves it +388 px (month) and −475 px (year): F then rests on keys 82 and 84 |
-| C11, C12 | Top and bottom of the library | scroll clamps at 0 / at the end; the key lands −31 px / +53 px from its focal height |
-| B1–B4 | Month and year, light 100 % and dark 200 % | ordered spheres 1–3 with 2 dp white halo, video badge (month) or play glyph (year), 46 dp "Nov" thumb in a 48 dp target, scaled headings |
-| E3 | Month loading, dark 200 % | surface squares hold their place; selection and thumb already work |
+| S1–S6 | Key 828 at each of the six stops | height under F restored at every step |
+| C1–C5 | Pinch in LARGE → MEDIUM → SMALL → MONTH → YEAR | centre shift X +537 px, −926 px, +692 px, −750 px; F rests on keys 826, 830, 825, 839 |
+| C7–C10 | Pinch out from YEAR, anchored on key 839 (the key under F in C5) | centre shift X +659 px, +19 px, −536 px, +109 px; the round trip ends on key 839, not on key 828 |
+| C11–C14 | Interior key 825 (wide photo mid-row) | +188 px (SMALL), −200 px (MONTH), +491 px (YEAR); F rests on keys 824, 825, 813 |
+| C15, C16 | Top and bottom of the library | scroll clamps at 0 / at the end; the key lands −90 px / +147 px from its focal height |
+| P1–P6 | Precision selection from MONTH and YEAR | see below |
+| B1–B5 | SMALL, MONTH and YEAR, light 100 % and dark 200 % | ordered spheres 1–3 with 2 dp white halo, video badge (SMALL), play glyph (MONTH), no video mark on YEAR's 12 dp tiles, 46 dp "Nov" thumb in a 48 dp target |
+| E3 | MONTH loading, dark 200 % | surface squares hold their place; selection, thumb and the precision pill already work |
 
-**Measured constraint.** 4- and 8-column tile centres sit at odd/8 and odd/16 of the width and never coincide. One stationary F can stay on the same key in both month and year only for keys in year columns 0 and 7 (`same_point_columns()`); elsewhere the key keeps its height and slides to its column. No frame or caption claims a 0 px centre shift.
+**Measured constraint.** One stationary F can stay on the same key in two grids only when the key's two horizontal spans overlap. The key at zero-based month position *i* sits in column *i* mod 7, *i* mod 12 and *i* mod 28, so this depends on the key's index, not on the finer column alone (`shared_point_x()`). Over a full cycle of 84 month positions, SMALL → MONTH can share a point for 18 and MONTH → YEAR for 8 (`shared_point_positions()`). Example: month position 85 is column 1 in both SMALL and MONTH, spans of about 155–304 px and 90–175 px, so F at x = 160 px stays on it. For all other positions the key keeps its height and moves to its column.
 
-**Open for Strategy before the re-preflight:** (1) accept the invariant "same photo at the same height under the fingers; it slides to its column" for #661, or choose another; (2) year tiles are 46.25 dp, below 48 dp when a tile tap toggles selection (flagged in B3/B4): keep 8 columns or use 7 (52.6 dp). Runtime motion stays with [FLOW-2 #712](https://github.com/LPStruiksma/atlas-gallery/issues/712); S24+ frames, TalkBack and the 150k FrameMetrics fling gate stay with the #661 build.
+**Precision selection from the dense overviews.** MONTH (30.0 dp) and YEAR (11.7 dp) tiles are below the 48 dp target of [Quiet Frame v3](../../QUIET_FRAME.md), so they are not drawn as direct per-media taps. Selection spheres and the fast-scroll thumb stay visible at every stop. A long-press on a dense tile, or the 48 dp *Select precisely* pill, selects that key and focuses the SMALL 7-column view on the same key at the same height, where every tap is a real 53.0 dp target (P1–P3). The *12 columns* pill or system Back returns to the overview with the selection and anchor intact (P4); YEAR uses the same pathway (P5), and the pill grows at 200 % font (P6). The pathway is a proposal: if #661 cannot keep the parity behaviour with it, the gap returns to Strategy rather than a smaller target. The TalkBack equivalent is a requirement to verify on the S24+, not a measurement.
+
+**Still open or post-build.** Smooth cross-layer motion stays with [FLOW-2 #712](https://github.com/LPStruiksma/atlas-gallery/issues/712). S24+ frames, Android gestures, TalkBack and the < 1 % FrameMetrics fling gate on 150k synthetic media stay with the [#661](https://github.com/LPStruiksma/atlas-gallery/issues/661) build. These are synthetic frames, not device captures.
