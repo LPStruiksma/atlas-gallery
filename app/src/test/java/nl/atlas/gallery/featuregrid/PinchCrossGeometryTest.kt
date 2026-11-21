@@ -159,4 +159,39 @@ class PinchCrossGeometryTest {
         assertEquals(900f, rect.top + .75f * rect.height, 1e-3f)
         assertTrue(abs(rect.width - 200f) < 1e-3f)
     }
+
+    private fun uniform(count: Int, columns: Int) = UniformGridLevel(count,
+        composeGridColumnSlots(width - 2 * gap, 5, columns), 5, gap, height, 200)
+
+    @Test fun plainGridAnchorSitsUnderTheFocusInEveryLevel() {
+        val focus = Offset(700f, 1_300f)
+        for (columns in listOf(3, 4, 7)) {
+            val level = uniform(5_000, columns)
+            val target = level.target(1_234, .4f, focus.y)
+            assertFalse(target.clampedByBounds)
+            val rect = level.anchorRect(1_234, level.scrollTopFor(target))
+            assertEquals("columns $columns", focus.y, rect.top + rect.height * .4f, 1.01f)
+            val cells = level.visibleCells(level.scrollTopFor(target))
+            val anchor = cells.single { it.slotIndex == 1_234 }
+            assertEquals(rect.left.toInt(), anchor.left)
+            assertEquals(rect.top.toInt(), anchor.top)
+            assertTrue(cells.size <= columns * (height / level.pitchPx + 2))
+        }
+    }
+
+    @Test fun plainGridClampsAtBothEndsAndHandlesTinyAndEmpty() {
+        val level = uniform(5_000, 4)
+        val top = level.target(1, .5f, 1_500f)
+        assertTrue(top.clampedByBounds)
+        assertEquals(0L, level.scrollTopFor(top))
+        val bottom = level.target(4_999, .5f, 10f)
+        assertTrue(bottom.clampedByBounds)
+        assertEquals(level.maxScrollPx, level.scrollTopFor(bottom))
+        val lastRow = level.visibleCells(level.maxScrollPx).maxOf { it.top + it.height }
+        assertEquals(height - 200, lastRow)
+        val tiny = uniform(5, 4)
+        assertEquals(0L, tiny.maxScrollPx)
+        assertEquals(5, tiny.visibleCells(0L).size)
+        assertTrue(uniform(0, 4).visibleCells(0L).isEmpty())
+    }
 }

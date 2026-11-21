@@ -236,3 +236,84 @@ internal fun crossSettleMillis(from: Float, to: Float, fullMs: Int, minMs: Int):
 /** Test hook: the timeline grid's neighbouring pinch levels are planned (FLOW-1 evidence waits on it). */
 internal val CrossNeighboursPlanned = SemanticsPropertyKey<Boolean>("AtlasCrossNeighboursPlanned")
 internal var SemanticsPropertyReceiver.crossNeighboursPlanned by CrossNeighboursPlanned
+
+/**
+ * FLOW-1 for the plain grid (`AtlasFeatureGrid`: People album, Search, the
+ * ungrouped fallback): `GridCells.Fixed(columns)` of square tiles, no headers,
+ * no top padding. Closed form, so a level needs no background plan.
+ */
+internal class UniformGridLevel(
+    val count: Int,
+    val slots: GridColumnSlots,
+    val gapPx: Int,
+    val startPaddingPx: Int,
+    val viewportHeightPx: Int,
+    val bottomPaddingPx: Int
+) {
+    val columns: Int get() = slots.columns
+    /** A LazyGrid row is as tall as its tallest square: the first column's (+1 px) width. */
+    val rowHeightPx: Int = slots.width.maxOrNull() ?: 0
+    val pitchPx: Int = rowHeightPx + gapPx
+    val rows: Int = if (columns == 0) 0 else (count + columns - 1) / columns
+    val maxScrollPx: Long = if (rows == 0) 0L else
+        (rows.toLong() * pitchPx - gapPx + bottomPaddingPx - viewportHeightPx).coerceAtLeast(0L)
+
+    /** Scroll that puts [fractionY] of item [mediaIndex] at [focusYPx], clamped to the content. */
+    fun target(mediaIndex: Int, fractionY: Float, focusYPx: Float): TimelineScrollTarget {
+        require(mediaIndex in 0 until count && fractionY.isFinite() && focusYPx.isFinite())
+        val rowTop = (mediaIndex / columns).toLong() * pitchPx
+        val wanted = rowTop + rowHeightPx * fractionY.coerceIn(0f, 1f).toDouble() - focusYPx
+        val bounded = wanted.coerceIn(0.0, maxScrollPx.toDouble()).let { Math.round(it) }
+        val firstRow = (bounded / pitchPx).toInt().coerceIn(0, (rows - 1).coerceAtLeast(0))
+        return TimelineScrollTarget(firstRow * columns, (bounded - firstRow.toLong() * pitchPx).toInt(),
+            abs(wanted - bounded) > .501)
+    }
+
+    fun scrollTopFor(target: TimelineScrollTarget): Long =
+        (target.firstSlotIndex / columns).toLong() * pitchPx + target.firstSlotScrollOffsetPx
+
+    /** The tiles a grid scrolled to [scrollTopPx] draws, in screen coordinates. O(visible). */
+    fun visibleCells(scrollTopPx: Long): List<CrossCell> {
+        if (rows == 0 || viewportHeightPx <= 0) return emptyList()
+        val out = ArrayList<CrossCell>()
+        var r = (scrollTopPx / pitchPx).toInt().coerceIn(0, rows - 1)
+        while (r < rows) {
+            val top = r.toLong() * pitchPx - scrollTopPx
+            if (top >= viewportHeightPx) break
+            if (top + rowHeightPx > 0) for (c in 0 until columns) {
+                val index = r * columns + c
+                if (index >= count) break
+                out.add(CrossCell(index, false, startPaddingPx + slots.x[c], top.toInt(),
+                    slots.width[c], slots.width[c]))
+            }
+            r++
+        }
+        return out
+    }
+
+    fun anchorRect(mediaIndex: Int, scrollTopPx: Long): Rect {
+        val c = mediaIndex % columns
+        val left = (startPaddingPx + slots.x[c]).toFloat()
+        val top = ((mediaIndex / columns).toLong() * pitchPx - scrollTopPx).toFloat()
+        val side = slots.width[c].toFloat()
+        return Rect(left, top, left + side, top + side)
+    }
+}
+
+/**
+ * Test hook (#711 review): main-thread time spent on the pinch layers, by
+ * kind ("geometry", "pose", "bitmaps", "draw"), so a frame-time budget can be
+ * attributed to this code rather than to the whole frame. Null in the app,
+ * where [measure] is a plain call.
+ */
+internal object PinchCrossTiming {
+    @Volatile var sink: ((kind: String, nanos: Long) -> Unit)? = null
+
+    inline fun <T> measure(kind: String, block: () -> T): T {
+        val record = sink ?: return block()
+        val start = System.nanoTime()
+        val result = block()
+        record(kind, System.nanoTime() - start)
+        return result
+    }
+}

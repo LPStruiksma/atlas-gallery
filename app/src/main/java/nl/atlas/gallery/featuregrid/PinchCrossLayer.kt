@@ -51,12 +51,16 @@ import kotlin.math.roundToInt
 @Composable
 internal fun PinchCrossLayer(
     cells: List<CrossCell>,
-    slots: List<TimelineSlot>,
-    items: List<MediaRecord>,
+    /** The photo a cell's slot shows (null for a header or an out-of-range slot). */
+    mediaAt: (slotIndex: Int) -> MediaRecord?,
+    /** The date header a cell's slot shows, if any (plain grids have none). */
+    headerAt: (slotIndex: Int) -> TimelineSlot.Header?,
     candidatePixels: IntArray,
     selectedMediaUris: Set<String>?,
     selecting: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** URI of catalogue item i, for a header's "whole group selected" circle. */
+    mediaUriAt: ((mediaIndex: Int) -> String?)? = null
 ) {
     val context = LocalContext.current
     val epoch = LocalGalleryPublicationEpoch.current
@@ -65,25 +69,22 @@ internal fun PinchCrossLayer(
     val headerStyle = MaterialTheme.typography.titleSmall.merge(color = LocalContentColor.current)
     val markStyle = LocalTextStyle.current.merge(color = LocalContentColor.current)
     val measurer = rememberTextMeasurer(cacheSize = 32)
-    val bitmaps: List<ImageBitmap?> = remember(cells, items, epoch, candidatePixels) {
-        cells.map { cell ->
-            if (cell.header) null else {
-                val media = (slots.getOrNull(cell.slotIndex) as? TimelineSlot.Media)
-                    ?.let { items.getOrNull(it.mediaIndex) }
-                media?.let { cachedGridTileBitmap(context, it, epoch, candidatePixels)?.asImageBitmap() }
-            }
-        }
+    val bitmaps: List<ImageBitmap?> = remember(cells, mediaAt, epoch, candidatePixels) {
+        PinchCrossTiming.measure("bitmaps") { cells.map { cell ->
+            if (cell.header) null
+            else mediaAt(cell.slotIndex)
+                ?.let { cachedGridTileBitmap(context, it, epoch, candidatePixels)?.asImageBitmap() }
+        } }
     }
     val cornerPx = with(density) { 3.dp.toPx() }
     val headerStartPx = with(density) { (if (selecting) 36.dp else 8.dp).toPx() }
     val markPadPx = with(density) { 6.dp.toPx() }
     Box(modifier.testTag("atlas-pinch-cross-layer")) {
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize()) { PinchCrossTiming.measure("draw") {
             val path = Path()
             cells.forEachIndexed { i, cell ->
-                val slot = slots.getOrNull(cell.slotIndex)
                 if (cell.header) {
-                    val label = (slot as? TimelineSlot.Header)?.label ?: return@forEachIndexed
+                    val label = headerAt(cell.slotIndex)?.label ?: return@forEachIndexed
                     val layout = measurer.measure(label, headerStyle, maxLines = 1)
                     drawText(layout, topLeft = Offset(cell.left + headerStartPx,
                         cell.top + (cell.height - layout.size.height) / 2f))
@@ -110,35 +111,37 @@ internal fun PinchCrossLayer(
                             dstSize = IntSize(cell.width, cell.height))
                     }
                 }
-                val media = (slot as? TimelineSlot.Media)?.let { items.getOrNull(it.mediaIndex) }
+                val media = mediaAt(cell.slotIndex)
                 if (media?.isVideo == true) {
                     val mark = measurer.measure("▶", markStyle, maxLines = 1)
                     drawText(mark, topLeft = Offset(cell.left + cell.width - markPadPx - mark.size.width,
                         cell.top + cell.height - markPadPx - mark.size.height))
                 }
             }
-        }
+        } }
         if (selecting) {
             val selected = selectedMediaUris.orEmpty()
             val headerCirclePx = with(density) { 8.dp.roundToPx() }
             cells.forEach { cell ->
-                when (val slot = slots.getOrNull(cell.slotIndex)) {
-                    is TimelineSlot.Media -> {
-                        val media = items.getOrNull(slot.mediaIndex) ?: return@forEach
+                val header = if (cell.header) headerAt(cell.slotIndex) else null
+                val media = if (cell.header) null else mediaAt(cell.slotIndex)
+                when {
+                    media != null -> {
                         Box(Modifier.offset { IntOffset(cell.left, cell.top) }.padding(5.dp)) {
                             SelectionCheckCircle(media.uri in selected)
                         }
                     }
-                    is TimelineSlot.Header -> {
+                    header != null -> {
+                        val slot = header
                         val checked = groupFullySelected(slot.firstMediaIndex, slot.mediaCount,
-                            selected) { items.getOrNull(it)?.uri }
+                            selected) { mediaUriAt?.invoke(it) }
                         Box(Modifier.offset { IntOffset(cell.left + headerCirclePx, cell.top) }
                             .padding(top = with(density) { ((cell.height - 20.dp.roundToPx()) / 2)
                                 .coerceAtLeast(0).toDp() })) {
                             SelectionCheckCircle(checked, size = 20, onPage = true)
                         }
                     }
-                    null -> Unit
+                    else -> Unit
                 }
             }
         }

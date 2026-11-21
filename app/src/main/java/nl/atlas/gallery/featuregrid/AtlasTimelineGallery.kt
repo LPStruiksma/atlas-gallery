@@ -674,12 +674,12 @@ fun AtlasTimelineGallery(
                 val crossNow = cross
                 val pair = crossLevels
                 val ghosts: Map<Int, CrossGhost> = remember(crossNow, pair, plansVersion, ready) {
-                    if (crossNow == null || pair == null) emptyMap() else buildMap {
+                    PinchCrossTiming.measure("geometry") { if (crossNow == null || pair == null) emptyMap() else buildMap {
                         for (level in listOf(pair.first, pair.second).distinct()) {
                             if (level == crossNow.baseLevel) continue
                             ghostFor(crossNow, level)?.let { put(level, it) }
                         }
-                    }
+                    } }
                 }
                 fun restRect(c: CrossPinch, level: Int): Rect =
                     if (level == c.baseLevel) c.baseAnchor
@@ -911,7 +911,7 @@ fun AtlasTimelineGallery(
                         .zoomEntryLayer(entryZoom) { bounds.cellSidePx(ready.density.columns).toFloat() }
                         // FLOW-1: only while a pinch runs or settles (a fling never
                         // draws through an extra layer). Draw-phase reads only.
-                        .then(if (crossNow == null) Modifier else Modifier.graphicsLayer {
+                        .then(if (crossNow == null) Modifier else Modifier.graphicsLayer { PinchCrossTiming.measure("pose") {
                             val v = crossPosition.floatValue
                             val pose = poseAt(crossNow, crossNow.baseLevel, v)
                             alpha = lookAt(crossNow, crossNow.baseLevel, v)?.alpha ?: 0f
@@ -920,7 +920,7 @@ fun AtlasTimelineGallery(
                             scaleY = pose.scale
                             translationX = pose.translationX
                             translationY = pose.translationY
-                        })
+                        } })
                 ) {
                     itemsIndexed(ready.geometry.timeline.slots,
                         key = { index, _ -> gridLazySaveablePositionKey(index) },
@@ -1010,9 +1010,17 @@ fun AtlasTimelineGallery(
                     val candidates = remember(level, crossNow.baseLevel, bounds) {
                         listOf(levelPixels(level), levelPixels(crossNow.baseLevel)).distinct().toIntArray()
                     }
-                    PinchCrossLayer(ghost.cells, ghost.plan.geometry.timeline.slots, items, candidates,
+                    val ghostSlots = ghost.plan.geometry.timeline.slots
+                    val mediaAt = remember(ghostSlots, items) { { slot: Int ->
+                        (ghostSlots.getOrNull(slot) as? TimelineSlot.Media)?.let { items.getOrNull(it.mediaIndex) }
+                    } }
+                    val headerAt = remember(ghostSlots) { { slot: Int ->
+                        ghostSlots.getOrNull(slot) as? TimelineSlot.Header
+                    } }
+                    PinchCrossLayer(ghost.cells, mediaAt, headerAt, candidates,
                         selectedMediaUris, selectedMediaUris != null && onMediaToggle != null,
-                        Modifier.zIndex(if (onTop) 1f else 0f).fillMaxSize().graphicsLayer {
+                        mediaUriAt = { items.getOrNull(it)?.uri },
+                        modifier = Modifier.zIndex(if (onTop) 1f else 0f).fillMaxSize().graphicsLayer { PinchCrossTiming.measure("pose") {
                             val v = crossPosition.floatValue
                             val pose = poseAt(crossNow, level, v)
                             alpha = lookAt(crossNow, level, v)?.alpha ?: 0f
@@ -1021,7 +1029,7 @@ fun AtlasTimelineGallery(
                             scaleY = pose.scale
                             translationX = pose.translationX
                             translationY = pose.translationY
-                        })
+                        } })
                 }
                 } // FLOW-1 layer box
                 } // Tile fallback provider

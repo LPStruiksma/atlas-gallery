@@ -409,7 +409,13 @@ class PinchCrossFlowEvidenceTest {
             repeat(3) { grid.performTouchInput { swipeUp() }; compose.waitForIdle() }
             compose.awaitNeighboursPlanned(60_000L)
         }
-        val ms = recordFrames {
+        // Attributable cost (#711 review): main-thread time inside the pinch
+        // code itself, by kind, independent of the emulator's frame cost.
+        val spent = Collections.synchronizedMap(HashMap<String, MutableList<Double>>())
+        PinchCrossTiming.sink = { kind, nanos ->
+            spent.getOrPut(kind) { Collections.synchronizedList(ArrayList()) } += nanos / 1_000_000.0
+        }
+        val ms = try { recordFrames {
             val (_, local) = focusPoint(.6f)
             val pinch = Pinch(local, 260f)
             pinch.to(.5f, 12)
@@ -421,7 +427,12 @@ class PinchCrossFlowEvidenceTest {
             back.to(-1f, 16)
             back.release()
             grid.assert(columns(4))
-        }
+        } } finally { PinchCrossTiming.sink = null }
+        val own = synchronized(spent) { spent.mapValues { (_, v) -> synchronized(v) { v.toDoubleArray() } } }
+        val ownJson = JSONObject()
+        for ((kind, v) in own) ownJson.put(kind, JSONObject().put("n", v.size)
+            .put("p90_ms", BenchmarkReport.round1(BenchmarkReport.percentile(v, 90.0)))
+            .put("max_ms", BenchmarkReport.round1(v.max())))
         val pinchP90 = BenchmarkReport.percentile(ms, 90.0)
         val scrollP90 = BenchmarkReport.percentile(scrollMs, 90.0)
         val report = JSONObject()
@@ -437,6 +448,7 @@ class PinchCrossFlowEvidenceTest {
                 BenchmarkReport.round1(100.0 * ms.count { it > 16.7 } / ms.size))
             .put("scroll_frames", scrollMs.size)
             .put("scroll_p90_ms", BenchmarkReport.round1(scrollP90))
+            .put("pinch_code_ms", ownJson)
             .toString()
         println("${BenchmarkReport.TAG} 711-pinch-150k json $report")
         Log.i(BenchmarkReport.TAG, "711-pinch-150k json $report")
@@ -447,6 +459,15 @@ class PinchCrossFlowEvidenceTest {
         assertTrue("pinch p90 within 2x scroll p90 (or 50 ms): $report",
             pinchP90 <= maxOf(2.0 * scrollP90, 50.0))
         assertTrue("no pinch frame over 700 ms: $report", ms.max() < 700.0)
+        // The pinch code's own per-frame work (pose of each layer) and its
+        // per-level work (ghost geometry, cache lookup, draw recording) each
+        // fit one 60 Hz frame at p90 even on the emulator.
+        for (kind in listOf("pose", "geometry", "draw")) {
+            val v = own[kind]
+            assertTrue("pinch code '$kind' recorded: $report", v != null && v.isNotEmpty())
+        }
+        for ((kind, v) in own) assertTrue("pinch code '$kind' p90 <= 16.6 ms: $report",
+            BenchmarkReport.percentile(v, 90.0) <= 16.6)
     }
 
     /** Total frame durations (ms) drawn while [body] runs. */

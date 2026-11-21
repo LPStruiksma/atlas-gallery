@@ -35,3 +35,15 @@ flow1-bottom-settled-3
 flow1-cold-in-50
 flow1-cold-settled-7
 flow1-reduced-settled-7
+flow1-plain-dark-in-25
+flow1-plain-dark-in-50
+flow1-plain-dark-in-75
+flow1-plain-dark-in-settling
+flow1-plain-dark-in-settled-7
+flow1-plain-light-in-25
+flow1-plain-light-in-50
+flow1-plain-light-in-75
+flow1-plain-light-in-settling
+flow1-plain-light-in-settled-7
+flow1-plain-dark-out-50
+flow1-plain-dark-revert-settled-7
