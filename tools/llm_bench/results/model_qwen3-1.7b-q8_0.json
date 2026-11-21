@@ -1,0 +1,1126 @@
+{
+ "method": "qwen3-1.7b-q8_0 via llama-cpp-python, grammar-constrained JSON, temperature 0, 5-shot",
+ "is_model": true,
+ "measured_on": "host CPU x86_64, 4 threads (NOT a handset)",
+ "gguf_file": "qwen3-1.7b-q8.gguf",
+ "latency_seconds_per_query": {
+  "median": 2.014,
+  "max": 5.798
+ },
+ "summary": {
+  "n": 72,
+  "valid_json": 1.0,
+  "exact": 0.25,
+  "by_lang": {
+   "en": {
+    "n": 36,
+    "exact": 0.222
+   },
+   "nl": {
+    "n": 36,
+    "exact": 0.278
+   }
+  },
+  "by_kind": {
+   "colloquial": {
+    "n": 4,
+    "exact": 0.0
+   },
+   "date-absolute": {
+    "n": 12,
+    "exact": 0.167
+   },
+   "date-relative": {
+    "n": 16,
+    "exact": 0.125
+   },
+   "media": {
+    "n": 2,
+    "exact": 0.0
+   },
+   "metadata-question": {
+    "n": 2,
+    "exact": 0.5
+   },
+   "negation": {
+    "n": 12,
+    "exact": 0.5
+   },
+   "out-of-scope": {
+    "n": 4,
+    "exact": 0.0
+   },
+   "person": {
+    "n": 8,
+    "exact": 0.375
+   },
+   "tag": {
+    "n": 6,
+    "exact": 0.667
+   },
+   "unresolved": {
+    "n": 6,
+    "exact": 0.0
+   }
+  },
+  "field_accuracy_filter_queries": {
+   "intent": 0.788,
+   "people": 0.803,
+   "exclude_people": 0.985,
+   "place": 0.864,
+   "date_from": 0.727,
+   "date_to": 0.682,
+   "media": 0.909,
+   "tags": 0.712,
+   "exclude_tags": 0.894,
+   "unresolved": 0.561
+  },
+  "failures": [
+   "person-tag.en",
+   "person-tag.nl",
+   "last-summer.en",
+   "last-summer.nl",
+   "year.en",
+   "year.nl",
+   "neg-people.en",
+   "person-place-month.en",
+   "person-place-month.nl",
+   "two-tags.en",
+   "two-tags.nl",
+   "last-year-place.en",
+   "last-year-place.nl",
+   "yesterday.en",
+   "yesterday.nl",
+   "person-tag-2.en",
+   "neg-tag.nl",
+   "person-tag-year.en",
+   "person-tag-year.nl",
+   "season-no-year.en",
+   "season-no-year.nl",
+   "q-identity.en",
+   "q-identity.nl",
+   "q-count.en",
+   "last-week.en",
+   "last-week.nl",
+   "media-video.en",
+   "media-video.nl",
+   "screenshots-year.en",
+   "screenshots-year.nl",
+   "two-people-tag.en",
+   "two-people-tag.nl",
+   "season-year.en",
+   "season-year.nl",
+   "neg-people-2.en",
+   "neg-people-2.nl",
+   "neg-person.en",
+   "neg-person.nl",
+   "month-no-year.en",
+   "month-no-year.nl",
+   "unknown-person.en",
+   "unknown-person.nl",
+   "unknown-place.en",
+   "unknown-place.nl",
+   "unknown-tag.en",
+   "unknown-tag.nl",
+   "years-ago.en",
+   "years-ago.nl",
+   "colloquial.en",
+   "colloquial.nl",
+   "colloquial-2.en",
+   "colloquial-2.nl",
+   "action.en",
+   "action.nl"
+  ]
+ },
+ "timings": [
+  {
+   "id": "beach.en",
+   "seconds": 3.198,
+   "prompt_tokens": 416,
+   "completion_tokens": 15
+  },
+  {
+   "id": "beach.nl",
+   "seconds": 1.244,
+   "prompt_tokens": 419,
+   "completion_tokens": 15
+  },
+  {
+   "id": "person-tag.en",
+   "seconds": 2.089,
+   "prompt_tokens": 418,
+   "completion_tokens": 30
+  },
+  {
+   "id": "person-tag.nl",
+   "seconds": 2.252,
+   "prompt_tokens": 418,
+   "completion_tokens": 31
+  },
+  {
+   "id": "two-people-place.en",
+   "seconds": 2.05,
+   "prompt_tokens": 419,
+   "completion_tokens": 23
+  },
+  {
+   "id": "two-people-place.nl",
+   "seconds": 1.973,
+   "prompt_tokens": 419,
+   "completion_tokens": 23
+  },
+  {
+   "id": "last-summer.en",
+   "seconds": 1.608,
+   "prompt_tokens": 419,
+   "completion_tokens": 21
+  },
+  {
+   "id": "last-summer.nl",
+   "seconds": 2.336,
+   "prompt_tokens": 426,
+   "completion_tokens": 25
+  },
+  {
+   "id": "year.en",
+   "seconds": 2.298,
+   "prompt_tokens": 422,
+   "completion_tokens": 21
+  },
+  {
+   "id": "year.nl",
+   "seconds": 3.591,
+   "prompt_tokens": 426,
+   "completion_tokens": 39
+  },
+  {
+   "id": "neg-people.en",
+   "seconds": 1.568,
+   "prompt_tokens": 417,
+   "completion_tokens": 15
+  },
+  {
+   "id": "neg-people.nl",
+   "seconds": 2.276,
+   "prompt_tokens": 419,
+   "completion_tokens": 22
+  },
+  {
+   "id": "person-place-month.en",
+   "seconds": 2.834,
+   "prompt_tokens": 425,
+   "completion_tokens": 25
+  },
+  {
+   "id": "person-place-month.nl",
+   "seconds": 2.39,
+   "prompt_tokens": 429,
+   "completion_tokens": 27
+  },
+  {
+   "id": "neg-screenshot.en",
+   "seconds": 2.028,
+   "prompt_tokens": 419,
+   "completion_tokens": 22
+  },
+  {
+   "id": "neg-screenshot.nl",
+   "seconds": 2.06,
+   "prompt_tokens": 422,
+   "completion_tokens": 22
+  },
+  {
+   "id": "two-tags.en",
+   "seconds": 1.778,
+   "prompt_tokens": 418,
+   "completion_tokens": 19
+  },
+  {
+   "id": "two-tags.nl",
+   "seconds": 1.795,
+   "prompt_tokens": 424,
+   "completion_tokens": 19
+  },
+  {
+   "id": "last-year-place.en",
+   "seconds": 4.867,
+   "prompt_tokens": 419,
+   "completion_tokens": 47
+  },
+  {
+   "id": "last-year-place.nl",
+   "seconds": 5.798,
+   "prompt_tokens": 420,
+   "completion_tokens": 56
+  },
+  {
+   "id": "yesterday.en",
+   "seconds": 3.663,
+   "prompt_tokens": 417,
+   "completion_tokens": 39
+  },
+  {
+   "id": "yesterday.nl",
+   "seconds": 3.252,
+   "prompt_tokens": 420,
+   "completion_tokens": 39
+  },
+  {
+   "id": "this-month.en",
+   "seconds": 3.394,
+   "prompt_tokens": 416,
+   "completion_tokens": 39
+  },
+  {
+   "id": "this-month.nl",
+   "seconds": 3.195,
+   "prompt_tokens": 417,
+   "completion_tokens": 39
+  },
+  {
+   "id": "person-tag-2.en",
+   "seconds": 1.418,
+   "prompt_tokens": 419,
+   "completion_tokens": 19
+  },
+  {
+   "id": "person-tag-2.nl",
+   "seconds": 1.971,
+   "prompt_tokens": 420,
+   "completion_tokens": 21
+  },
+  {
+   "id": "neg-tag.en",
+   "seconds": 1.814,
+   "prompt_tokens": 418,
+   "completion_tokens": 21
+  },
+  {
+   "id": "neg-tag.nl",
+   "seconds": 1.278,
+   "prompt_tokens": 420,
+   "completion_tokens": 15
+  },
+  {
+   "id": "person-tag-year.en",
+   "seconds": 3.995,
+   "prompt_tokens": 424,
+   "completion_tokens": 45
+  },
+  {
+   "id": "person-tag-year.nl",
+   "seconds": 2.552,
+   "prompt_tokens": 428,
+   "completion_tokens": 29
+  },
+  {
+   "id": "season-no-year.en",
+   "seconds": 1.636,
+   "prompt_tokens": 417,
+   "completion_tokens": 18
+  },
+  {
+   "id": "season-no-year.nl",
+   "seconds": 1.37,
+   "prompt_tokens": 418,
+   "completion_tokens": 18
+  },
+  {
+   "id": "q-identity.en",
+   "seconds": 1.56,
+   "prompt_tokens": 420,
+   "completion_tokens": 20
+  },
+  {
+   "id": "q-identity.nl",
+   "seconds": 1.93,
+   "prompt_tokens": 423,
+   "completion_tokens": 19
+  },
+  {
+   "id": "q-count.en",
+   "seconds": 0.714,
+   "prompt_tokens": 422,
+   "completion_tokens": 7
+  },
+  {
+   "id": "q-count.nl",
+   "seconds": 2.568,
+   "prompt_tokens": 425,
+   "completion_tokens": 29
+  },
+  {
+   "id": "last-week.en",
+   "seconds": 4.113,
+   "prompt_tokens": 420,
+   "completion_tokens": 45
+  },
+  {
+   "id": "last-week.nl",
+   "seconds": 4.029,
+   "prompt_tokens": 423,
+   "completion_tokens": 45
+  },
+  {
+   "id": "tag-place.en",
+   "seconds": 1.774,
+   "prompt_tokens": 417,
+   "completion_tokens": 21
+  },
+  {
+   "id": "tag-place.nl",
+   "seconds": 1.906,
+   "prompt_tokens": 418,
+   "completion_tokens": 21
+  },
+  {
+   "id": "media-video.en",
+   "seconds": 1.978,
+   "prompt_tokens": 417,
+   "completion_tokens": 25
+  },
+  {
+   "id": "media-video.nl",
+   "seconds": 1.893,
+   "prompt_tokens": 421,
+   "completion_tokens": 24
+  },
+  {
+   "id": "screenshots-year.en",
+   "seconds": 1.688,
+   "prompt_tokens": 421,
+   "completion_tokens": 22
+  },
+  {
+   "id": "screenshots-year.nl",
+   "seconds": 1.628,
+   "prompt_tokens": 421,
+   "completion_tokens": 22
+  },
+  {
+   "id": "two-people-tag.en",
+   "seconds": 1.496,
+   "prompt_tokens": 421,
+   "completion_tokens": 20
+  },
+  {
+   "id": "two-people-tag.nl",
+   "seconds": 1.929,
+   "prompt_tokens": 422,
+   "completion_tokens": 27
+  },
+  {
+   "id": "season-year.en",
+   "seconds": 1.471,
+   "prompt_tokens": 422,
+   "completion_tokens": 21
+  },
+  {
+   "id": "season-year.nl",
+   "seconds": 1.156,
+   "prompt_tokens": 426,
+   "completion_tokens": 16
+  },
+  {
+   "id": "neg-people-2.en",
+   "seconds": 2.384,
+   "prompt_tokens": 419,
+   "completion_tokens": 30
+  },
+  {
+   "id": "neg-people-2.nl",
+   "seconds": 2.074,
+   "prompt_tokens": 418,
+   "completion_tokens": 21
+  },
+  {
+   "id": "neg-person.en",
+   "seconds": 1.815,
+   "prompt_tokens": 419,
+   "completion_tokens": 20
+  },
+  {
+   "id": "neg-person.nl",
+   "seconds": 2.26,
+   "prompt_tokens": 419,
+   "completion_tokens": 23
+  },
+  {
+   "id": "month-no-year.en",
+   "seconds": 3.38,
+   "prompt_tokens": 420,
+   "completion_tokens": 34
+  },
+  {
+   "id": "month-no-year.nl",
+   "seconds": 3.242,
+   "prompt_tokens": 422,
+   "completion_tokens": 37
+  },
+  {
+   "id": "unknown-person.en",
+   "seconds": 1.505,
+   "prompt_tokens": 417,
+   "completion_tokens": 18
+  },
+  {
+   "id": "unknown-person.nl",
+   "seconds": 1.492,
+   "prompt_tokens": 418,
+   "completion_tokens": 18
+  },
+  {
+   "id": "unknown-place.en",
+   "seconds": 1.213,
+   "prompt_tokens": 417,
+   "completion_tokens": 14
+  },
+  {
+   "id": "unknown-place.nl",
+   "seconds": 1.527,
+   "prompt_tokens": 418,
+   "completion_tokens": 19
+  },
+  {
+   "id": "unknown-tag.en",
+   "seconds": 1.981,
+   "prompt_tokens": 418,
+   "completion_tokens": 21
+  },
+  {
+   "id": "unknown-tag.nl",
+   "seconds": 1.744,
+   "prompt_tokens": 421,
+   "completion_tokens": 22
+  },
+  {
+   "id": "years-ago.en",
+   "seconds": 3.079,
+   "prompt_tokens": 417,
+   "completion_tokens": 39
+  },
+  {
+   "id": "years-ago.nl",
+   "seconds": 3.741,
+   "prompt_tokens": 419,
+   "completion_tokens": 39
+  },
+  {
+   "id": "range.en",
+   "seconds": 4.069,
+   "prompt_tokens": 426,
+   "completion_tokens": 39
+  },
+  {
+   "id": "range.nl",
+   "seconds": 3.462,
+   "prompt_tokens": 426,
+   "completion_tokens": 39
+  },
+  {
+   "id": "colloquial.en",
+   "seconds": 2.014,
+   "prompt_tokens": 420,
+   "completion_tokens": 23
+  },
+  {
+   "id": "colloquial.nl",
+   "seconds": 2.901,
+   "prompt_tokens": 423,
+   "completion_tokens": 29
+  },
+  {
+   "id": "colloquial-2.en",
+   "seconds": 2.95,
+   "prompt_tokens": 420,
+   "completion_tokens": 28
+  },
+  {
+   "id": "colloquial-2.nl",
+   "seconds": 2.06,
+   "prompt_tokens": 424,
+   "completion_tokens": 25
+  },
+  {
+   "id": "except.en",
+   "seconds": 1.165,
+   "prompt_tokens": 418,
+   "completion_tokens": 16
+  },
+  {
+   "id": "except.nl",
+   "seconds": 1.29,
+   "prompt_tokens": 421,
+   "completion_tokens": 16
+  },
+  {
+   "id": "action.en",
+   "seconds": 1.405,
+   "prompt_tokens": 418,
+   "completion_tokens": 15
+  },
+  {
+   "id": "action.nl",
+   "seconds": 1.989,
+   "prompt_tokens": 423,
+   "completion_tokens": 24
+  }
+ ],
+ "predictions": {
+  "beach.en": {
+   "intent": "filter",
+   "tags": [
+    "beach"
+   ]
+  },
+  "beach.nl": {
+   "intent": "filter",
+   "tags": [
+    "beach"
+   ]
+  },
+  "person-tag.en": {
+   "intent": "question",
+   "people": [
+    "Alex"
+   ],
+   "tags": [
+    "beach"
+   ],
+   "unresolved": [
+    "Alex"
+   ]
+  },
+  "person-tag.nl": {
+   "intent": "question",
+   "people": [
+    "Alex"
+   ],
+   "tags": [
+    "beach"
+   ],
+   "unresolved": [
+    "sunset"
+   ]
+  },
+  "two-people-place.en": {
+   "intent": "filter",
+   "people": [
+    "Alex",
+    "Sam"
+   ],
+   "place": "Rome"
+  },
+  "two-people-place.nl": {
+   "intent": "filter",
+   "people": [
+    "Alex",
+    "Sam"
+   ],
+   "place": "Rome"
+  },
+  "last-summer.en": {
+   "intent": "filter",
+   "tags": [
+    "dog"
+   ],
+   "unresolved": [
+    "summer"
+   ]
+  },
+  "last-summer.nl": {
+   "intent": "filter",
+   "tags": [
+    "dog"
+   ],
+   "unresolved": [
+    "vorige zomer"
+   ]
+  },
+  "year.en": {
+   "intent": "filter",
+   "tags": [
+    "birthday"
+   ],
+   "unresolved": [
+    "year"
+   ]
+  },
+  "year.nl": {
+   "intent": "filter",
+   "tags": [
+    "birthday"
+   ],
+   "exclude_tags": [
+    "people"
+   ],
+   "unresolved": [
+    "verjaardagsfoto's uit 2024"
+   ]
+  },
+  "neg-people.en": {
+   "intent": "filter",
+   "exclude_tags": [
+    "people"
+   ]
+  },
+  "neg-people.nl": {
+   "intent": "filter",
+   "tags": [
+    "snow"
+   ],
+   "exclude_tags": [
+    "people"
+   ]
+  },
+  "person-place-month.en": {
+   "intent": "question",
+   "unresolved": [
+    "Lisbon",
+    "March 2025"
+   ]
+  },
+  "person-place-month.nl": {
+   "intent": "question",
+   "unresolved": [
+    "Lissabon",
+    "maart 2025"
+   ]
+  },
+  "neg-screenshot.en": {
+   "intent": "filter",
+   "tags": [
+    "food"
+   ],
+   "exclude_tags": [
+    "screenshot"
+   ]
+  },
+  "neg-screenshot.nl": {
+   "intent": "filter",
+   "tags": [
+    "food"
+   ],
+   "exclude_tags": [
+    "screenshot"
+   ]
+  },
+  "two-tags.en": {
+   "intent": "question",
+   "tags": [
+    "sunset",
+    "sea"
+   ]
+  },
+  "two-tags.nl": {
+   "intent": "question",
+   "tags": [
+    "sunset",
+    "sea"
+   ]
+  },
+  "last-year-place.en": {
+   "intent": "filter",
+   "date_from": "2025-01-01",
+   "date_to": "2025-12-31",
+   "exclude_tags": [
+    "people"
+   ]
+  },
+  "last-year-place.nl": {
+   "intent": "filter",
+   "date_from": "2025-01-01",
+   "date_to": "2025-12-31",
+   "exclude_tags": [
+    "people"
+   ],
+   "unresolved": [
+    "Utrecht"
+   ]
+  },
+  "yesterday.en": {
+   "intent": "filter",
+   "date_from": "2026-06-14",
+   "date_to": "2026-06-15"
+  },
+  "yesterday.nl": {
+   "intent": "filter",
+   "date_from": "2026-06-14",
+   "date_to": "2026-06-15"
+  },
+  "this-month.en": {
+   "intent": "filter",
+   "date_from": "2026-06-01",
+   "date_to": "2026-06-30"
+  },
+  "this-month.nl": {
+   "intent": "filter",
+   "date_from": "2026-06-01",
+   "date_to": "2026-06-30"
+  },
+  "person-tag-2.en": {
+   "intent": "question",
+   "unresolved": [
+    "Daan",
+    "bike"
+   ]
+  },
+  "person-tag-2.nl": {
+   "intent": "filter",
+   "people": [
+    "Daan"
+   ],
+   "tags": [
+    "bike"
+   ]
+  },
+  "neg-tag.en": {
+   "intent": "filter",
+   "tags": [
+    "cat"
+   ],
+   "exclude_tags": [
+    "dog"
+   ]
+  },
+  "neg-tag.nl": {
+   "intent": "filter",
+   "exclude_tags": [
+    "dog"
+   ]
+  },
+  "person-tag-year.en": {
+   "intent": "filter",
+   "people": [
+    "Sam"
+   ],
+   "date_from": "2022-01-01",
+   "date_to": "2023-12-31"
+  },
+  "person-tag-year.nl": {
+   "intent": "question",
+   "tags": [
+    "wedding"
+   ],
+   "exclude_tags": [
+    "people"
+   ],
+   "unresolved": [
+    "Sam"
+   ]
+  },
+  "season-no-year.en": {
+   "intent": "filter",
+   "tags": [
+    "mountains",
+    "snow"
+   ]
+  },
+  "season-no-year.nl": {
+   "intent": "filter",
+   "tags": [
+    "mountains",
+    "snow"
+   ]
+  },
+  "q-identity.en": {
+   "intent": "question",
+   "people": [
+    "me"
+   ],
+   "tags": [
+    "photo"
+   ]
+  },
+  "q-identity.nl": {
+   "intent": "question",
+   "people": [
+    "mijn nieuwste foto"
+   ]
+  },
+  "q-count.en": {
+   "intent": "unsupported"
+  },
+  "q-count.nl": {
+   "intent": "question",
+   "place": "Rome",
+   "media": "photo",
+   "unresolved": [
+    "foto's"
+   ]
+  },
+  "last-week.en": {
+   "intent": "filter",
+   "people": [
+    "Alex"
+   ],
+   "date_from": "2025-06-01",
+   "date_to": "2025-06-30"
+  },
+  "last-week.nl": {
+   "intent": "filter",
+   "people": [
+    "Alex"
+   ],
+   "date_from": "2025-06-01",
+   "date_to": "2025-06-30"
+  },
+  "tag-place.en": {
+   "intent": "filter",
+   "place": "Rome",
+   "tags": [
+    "church"
+   ]
+  },
+  "tag-place.nl": {
+   "intent": "filter",
+   "place": "Rome",
+   "tags": [
+    "church"
+   ]
+  },
+  "media-video.en": {
+   "intent": "filter",
+   "media": "video",
+   "tags": [
+    "city",
+    "Lisbon"
+   ]
+  },
+  "media-video.nl": {
+   "intent": "filter",
+   "media": "video",
+   "exclude_tags": [
+    "Lissabon"
+   ]
+  },
+  "screenshots-year.en": {
+   "intent": "filter",
+   "media": "photo",
+   "unresolved": [
+    "screenshots"
+   ]
+  },
+  "screenshots-year.nl": {
+   "intent": "filter",
+   "media": "photo",
+   "unresolved": [
+    "screenshots"
+   ]
+  },
+  "two-people-tag.en": {
+   "intent": "question",
+   "unresolved": [
+    "Sam",
+    "Noor"
+   ]
+  },
+  "two-people-tag.nl": {
+   "intent": "question",
+   "tags": [
+    "party"
+   ],
+   "unresolved": [
+    "Sam",
+    "Noor"
+   ]
+  },
+  "season-year.en": {
+   "intent": "filter",
+   "tags": [
+    "flowers"
+   ],
+   "unresolved": [
+    "spring"
+   ]
+  },
+  "season-year.nl": {
+   "intent": "question",
+   "unresolved": [
+    "bloemen"
+   ]
+  },
+  "neg-people-2.en": {
+   "intent": "filter",
+   "media": "photo",
+   "exclude_tags": [
+    "people"
+   ],
+   "unresolved": [
+    "cars"
+   ]
+  },
+  "neg-people-2.nl": {
+   "intent": "filter",
+   "media": "photo",
+   "exclude_tags": [
+    "people"
+   ]
+  },
+  "neg-person.en": {
+   "intent": "filter",
+   "exclude_people": [
+    "Alex",
+    "Noor"
+   ]
+  },
+  "neg-person.nl": {
+   "intent": "filter",
+   "exclude_people": [
+    "Alex"
+   ],
+   "exclude_tags": [
+    "people"
+   ]
+  },
+  "month-no-year.en": {
+   "intent": "question",
+   "tags": [
+    "boat",
+    "trip",
+    "Amsterdam",
+    "August"
+   ],
+   "unresolved": [
+    "trip"
+   ]
+  },
+  "month-no-year.nl": {
+   "intent": "filter",
+   "place": "Amsterdam",
+   "tags": [
+    "car"
+   ],
+   "exclude_tags": [
+    "bike"
+   ],
+   "unresolved": [
+    "bootreis"
+   ]
+  },
+  "unknown-person.en": {
+   "intent": "filter",
+   "people": [
+    "Max"
+   ],
+   "tags": []
+  },
+  "unknown-person.nl": {
+   "intent": "filter",
+   "people": [
+    "Max"
+   ],
+   "tags": []
+  },
+  "unknown-place.en": {
+   "intent": "filter",
+   "place": "Kyoto"
+  },
+  "unknown-place.nl": {
+   "intent": "filter",
+   "place": "Kyoto",
+   "tags": []
+  },
+  "unknown-tag.en": {
+   "intent": "filter",
+   "media": "photo",
+   "tags": [
+    "guitar"
+   ]
+  },
+  "unknown-tag.nl": {
+   "intent": "filter",
+   "media": "photo",
+   "tags": [
+    "gitaar"
+   ]
+  },
+  "years-ago.en": {
+   "intent": "filter",
+   "date_from": "2024-01-01",
+   "date_to": "2025-12-31"
+  },
+  "years-ago.nl": {
+   "intent": "filter",
+   "date_from": "2024-01-01",
+   "date_to": "2025-01-01"
+  },
+  "range.en": {
+   "intent": "filter",
+   "date_from": "2022-01-01",
+   "date_to": "2024-12-31"
+  },
+  "range.nl": {
+   "intent": "filter",
+   "date_from": "2022-01-01",
+   "date_to": "2024-12-31"
+  },
+  "colloquial.en": {
+   "intent": "filter",
+   "people": [
+    "Sam",
+    "dog"
+   ],
+   "tags": [
+    "dog"
+   ]
+  },
+  "colloquial.nl": {
+   "intent": "filter",
+   "people": [
+    "Sam"
+   ],
+   "tags": [
+    "dog"
+   ],
+   "unresolved": [
+    "kiekjes"
+   ]
+  },
+  "colloquial-2.en": {
+   "intent": "question",
+   "tags": [
+    "chilling",
+    "sea"
+   ],
+   "unresolved": [
+    "Daan"
+   ]
+  },
+  "colloquial-2.nl": {
+   "intent": "question",
+   "unresolved": [
+    "Daan",
+    "chillen",
+    "zee"
+   ]
+  },
+  "except.en": {
+   "intent": "filter",
+   "exclude_tags": [
+    "beach"
+   ]
+  },
+  "except.nl": {
+   "intent": "filter",
+   "exclude_tags": [
+    "beach"
+   ]
+  },
+  "action.en": {
+   "intent": "filter",
+   "tags": [
+    "blurry"
+   ]
+  },
+  "action.nl": {
+   "intent": "filter",
+   "tags": [
+    "blurry"
+   ],
+   "exclude_tags": [
+    "blurry"
+   ]
+  }
+ }
+}

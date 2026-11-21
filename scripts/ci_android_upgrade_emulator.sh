@@ -504,6 +504,17 @@ run_perf_a1_cached_frame() (
       logged_pid="${BASH_REMATCH[1]}"
       ms="${BASH_REMATCH[2]}"
     else
+      # A missing completed cached frame is an unsuccessful measured sample,
+      # never a fast latency. These debug-only app events distinguish an
+      # absent cached draw from an unmatched completed frame.
+      local draw_seen=0 match_seen=0
+      if printf '%s\n' "$capture" | grep -Fxq "event=cached_draw pid=$pid"; then
+        draw_seen=1
+      fi
+      if printf '%s\n' "$capture" | grep -Fxq "event=vsync_match pid=$pid"; then
+        match_seen=1
+      fi
+      echo "ATLAS_PERF_A1 sample mode=cold index=$i pid=$pid outcome=no_completed_cached_frame cached_draw=$draw_seen vsync_match=$match_seen refreshed=$refreshed emulator=$model api=$api head=$head"
       echo "::error::PERF-A1A has no attributable completed cached grid frame"; exit 1;
     fi
     [[ "$logged_pid" == "$pid" && "$(adb shell pidof "$pkg" | tr -d '\r')" == "$pid" ]] || {

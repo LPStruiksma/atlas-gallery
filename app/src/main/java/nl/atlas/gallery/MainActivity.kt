@@ -407,12 +407,22 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     private var originElapsedNs =
         android.os.Process.getStartElapsedRealtime() * 1_000_000L
     private var refreshReported = false
+    // Diagnostic events run only in the marked emulator benchmark. They
+    // distinguish an absent cached draw from a dropped/mismatched frame metric.
+    // Neither event is accepted as a completed rendered frame by the host.
+    private var cachedDrawLogged = false
+    private var cachedMatchLogged = false
     private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, _ ->
         // A draw only qualifies if this completed frame has the very same vsync.
         // Other window frames, missed vsyncs and non-cached cold grids are not proof.
         val cached = witnessedFrames.remove(
             frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP))
         if (!reported && !stopped && cached != null) {
+            if (cached && !cachedMatchLogged) {
+                cachedMatchLogged = true
+                Log.i("ATLAS_PERF_A1",
+                    "event=vsync_match pid=${android.os.Process.myPid()}")
+            }
             val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
             val completedNs = frame.getMetric(android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP) + totalNs
             val nowNs = System.nanoTime()
@@ -441,6 +451,11 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         if (reported || stopped || closed || (mode == "cold" && !cached)) return
         val vsync = currentFrameVsyncNs
         if (vsync > 0L && !witnessedFrames.containsKey(vsync)) {
+            if (cached && !cachedDrawLogged) {
+                cachedDrawLogged = true
+                Log.i("ATLAS_PERF_A1",
+                    "event=cached_draw pid=${android.os.Process.myPid()}")
+            }
             // FrameMetrics delivery can lag or a frame can be dropped. Retain
             // several drawn candidates, but never accept a non-matching one.
             if (witnessedFrames.size >= 120) {
@@ -469,6 +484,8 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         witnessedFrames.clear()
         currentFrameVsyncNs = -1L
         reported = false
+        cachedDrawLogged = false
+        cachedMatchLogged = false
         choreographer.postFrameCallback(frameCallback)
     }
     fun close() {
