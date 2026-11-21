@@ -332,6 +332,11 @@ echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Keep the bounded query even on a failed test so review can read the p50.
 timeout 30 adb logcat -d -s ATLAS_PERF10:I || echo "ATLAS_PERF10 logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
+echo "::group::ATLAS_EDIT2 editor renderer agreement and EMULATOR timings (#632)"
+# EditorRendererGpuTest/EditorRendererBudgetTest: diff maxima and BUDGETS.md records
+# on synthetic images only; printed even when the suite failed.
+timeout 30 adb logcat -d -s ATLAS_EDIT2:I || echo "ATLAS_EDIT2 logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
 echo "::group::ATLAS_RESUME620 recents-resume People/visual retention timeline"
 # #620: aggregate counts, epoch changes and gap counts only (no IDs or names),
 # from PeopleVisualResumeRetentionTest; printed even when the suite failed.
