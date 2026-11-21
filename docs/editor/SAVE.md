@@ -16,6 +16,10 @@ Unit [#633](https://github.com/LPStruiksma/atlas-gallery/issues/633), goal [#629
 
 Process death between 3 and 5 is recovered on the next `save`, `revert` or `recover()`: a write that never started is rolled back, a partial or finished write is completed from `pending.bin`.
 
+### Location redaction
+
+Android redacts GPS EXIF when an app without ACCESS_MEDIA_LOCATION opens another app's photo read-only. Atlas does not request that permission (no permission change in this unit), so every read of the photo being saved over or reverted goes through a writable descriptor, which MediaProvider never redacts: the stored original, the hashes and Revert match the file on disk byte for byte. **Limit:** Save as copy of a photo another app created has no write access, so its source read may be redacted and the copy can lose its location. Keeping it needs ACCESS_MEDIA_LOCATION, an owner-gated permission change for a later unit.
+
 ## Save as copy
 
 Inserts a new pending item in the same volume and `RELATIVE_PATH`, named with a random `atlas-edit-pending-<uuid>` token, writes and verifies the bytes, then renames to `<stem>_edited.<ext>` (then `_edited_2`, ...) and publishes in one update. `DATE_TAKEN` is copied so the copy sorts next to the source. A failure deletes only that pending row; recovery deletes only this app's still-pending token-named rows. The source is never opened for writing. The copy's record holds the recipe, the source URI and both hashes, not the source bytes.
@@ -52,6 +56,6 @@ Android has no HEIF encoder in `Bitmap.compress`, and a new Gradle dependency is
 
 ## Proof and limits
 
-JVM: `JpegMetadataTest`, `EditorSaveStoreTest`, `EditorReturnStateTest`. Emulator (`EditorSaverAndroidTest`, synthetic only): in-place Save with EXIF, XMP and byte-identical Revert after two Saves; Save as copy naming, folder and untouched source; HEIF `CopyRequired` and JPEG copy from a generated HEIF asset; Ultra HDR gainmap present and aligned with the base after rotate and crop; motion clip kept on rotate and dropped on a colour edit; a failed Save leaving no trace; journal roll-forward after a partial write; a shell-owned photo returning `NeedsWriteConsent` with nothing written.
+JVM: `JpegMetadataTest`, `EditorSaveStoreTest`, `EditorReturnStateTest`. Emulator (`EditorSaverAndroidTest`, synthetic only): in-place Save with EXIF, XMP and byte-identical Revert after two Saves; Save as copy naming, folder and untouched source; HEIF `CopyRequired` and JPEG copy from a generated HEIF asset; Ultra HDR gainmap present and aligned with the base after rotate and crop; motion clip kept on rotate and dropped on a colour edit; a failed Save leaving no trace; journal roll-forward after a partial write; a shell-owned photo returning `NeedsWriteConsent` with nothing written (checked by the on-disk SHA-256, since Atlas's own read of it is redacted).
 
 Not tested here: the consent dialog itself (system UI), how other apps display carried XMP or a kept clip (the test clip is a synthetic MP4 header, not playable video), Samsung motion-photo trailers, and real device HEIF/HDR captures (S24+ check in `BUDGETS.md`).

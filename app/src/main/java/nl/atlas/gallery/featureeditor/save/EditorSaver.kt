@@ -21,6 +21,7 @@ import nl.atlas.gallery.featureaiedit.save.AiEditXmp
 import nl.atlas.gallery.featureeditor.engine.EditRecipe
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.lang.reflect.Modifier
 import java.util.UUID
 
@@ -476,8 +477,26 @@ internal class EditorSaver(
         if (it.moveToFirst()) it.getString(0) else null
     }
 
-    private fun read(uri: Uri): ByteArray =
-        resolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Cannot read $uri")
+    /**
+     * The item's real bytes. A read-only open of a photo another app created is *redacted* by
+     * MediaProvider (GPS EXIF zeroed) unless the app holds ACCESS_MEDIA_LOCATION, which Atlas
+     * does not request. A writable open is never redacted, so once Atlas may write the item
+     * (its own photo, or after the consent request) this reads through a "rw" descriptor. That
+     * keeps the stored original, the hashes and Revert byte-identical to the file on disk.
+     * Without write access it falls back to `setRequireOriginal`, then to a plain (possibly
+     * redacted) read; only Save as copy of another app's photo can land there.
+     */
+    private fun read(uri: Uri): ByteArray {
+        runCatching {
+            resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                return FileInputStream(pfd.fileDescriptor).readBytes()
+            }
+        }
+        runCatching {
+            resolver.openInputStream(MediaStore.setRequireOriginal(uri))?.use { return it.readBytes() }
+        }
+        return resolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Cannot read $uri")
+    }
 
     /** Truncate-and-write, then read back: the item must hold exactly [bytes]. */
     private fun writeVerified(uri: Uri, bytes: ByteArray) {

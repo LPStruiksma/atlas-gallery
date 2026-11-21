@@ -392,7 +392,9 @@ class EditorSaverAndroidTest {
             val recipe = rotate(32, 24)
             val result = saver().save(uri, render(card(32, 24), recipe), recipe, SaveMode.IN_PLACE)
             assertTrue("expected a consent request, got $result", result is EditorSaveResult.NeedsWriteConsent)
-            assertArrayEquals("nothing written without consent", payload, bytes(uri))
+            // Atlas's own read of another app's photo is location-redacted, so compare on disk.
+            val onDisk = shell("sha256sum $path").trim().substringBefore(' ')
+            assertEquals("nothing written without consent", EditorSaveStore.sha256(payload), onDisk)
             assertNull(store.entry(uri.toString()))
         } finally {
             shell("rm -f $path")
