@@ -93,6 +93,38 @@ guessed into policy refusals.
 
 Providers differ in moderation and legal/licence constraints. ATLAS does not impose an additional content-category filter on the local gallery or promise that any external provider accepts all lawful requests. Benchmark refusal rate independently of output quality using synthetic/licensed inputs; do not put free-text prompts or media in logs, crash reports or analytics.
 
+### Delivery, recovery and cost scope (AIE-20 contract, [#431](https://github.com/LPStruiksma/atlas-gallery/issues/431))
+
+These typed fields let the editor say exactly what happened to a request that may cost money. It never parses free text, a display name or `supportsAsync`.
+
+- **Failure phase (transport).** `EditHttpResult.Failed.phase` is `BEFORE_BODY` only when no attempt of the request got past opening the connection: refused locally, DNS, connect or TLS failed, or the deadline passed first. Everything else, including an unknown phase, is `AFTER_BODY_OR_UNKNOWN`.
+- **Delivery (provider).** `EditOutcome.Failed.delivery` can be one of three values:
+  - `NOT_SENT`: proven never sent. This is the only case where the editor may say "Nothing was sent".
+  - `ANSWERED`: the service answered with a definite 4xx (not 408), so it did not process the edit.
+  - `UNCERTAIN`: the default, so an adapter that doesn't say fails closed. Every failure after a queue provider accepted the request is uncertain, even a 4xx on a status call.
+- **Rate limit is not credit.** `BILLING` (HTTP 402) leads to "out of credit". `QUOTA` (HTTP 429, Gemini `RESOURCE_EXHAUSTED`) is its own rate-limit state, with a manual retry only (`engine/AiEditIssue.kt`).
+- **Remote recovery.** `ProviderCapabilities.remoteRecovery` is separate from `supportsAsync`:
+  - Gemini is `NONE`. It makes one synchronous `generateContent` POST, so there is nothing to look up later.
+  - fal is `QUERY_BY_PERSISTED_ID`.
+  - `submit(request, journal)` calls `SubmitJournal.beforeSend()` immediately before the paid request. For fal it then calls `remoteAccepted(RemoteHandle)` with the validated `request_id`, bound to the provider id and endpoint, before the first status call.
+  - `resume(handle)` follows that id with status and result calls only, never a POST. It refuses a handle for another provider or endpoint.
+  - If the key is gone, or the lookup answers 401, 403 or 404, the result is `FailureKind.CANNOT_CHECK`, never a wrong-key state.
+- **Key binding.** The editor stores `KeyFingerprint.of(salt, key)` with the handle: the first 8 bytes of SHA-256 over a per-install random salt plus the key. It never stores the key itself, and only a matching fingerprint may "Check again".
+- **Cost scope.** `CostEstimate` carries `scope` (`TOTAL`, `OUTPUT_ONLY` or `PARTIAL`), `source` and `observedOn`, and the amount stays in the provider's currency. `CostDisclosure.of` falls back to the unknown-price path if any of these is missing. Gemini list prices are `OUTPUT_ONLY` (input is charged on top). fal has no verified price.
+
+### Editor wiring (AIE-20, [#431](https://github.com/LPStruiksma/atlas-gallery/issues/431))
+
+The editor now runs the real hosted adapters. Only what this section names happens; nothing else is sent.
+
+- **Which services.** `ProviderRegistry.DEFAULT` registers Google Gemini, fal.ai and the custom ATLAS server. The editor offers only kinds with a hosted adapter (`AiEditServices.usable`), so a custom ATLAS server stays in Settings and keeps its own `EditJobRunner` path; offering it in the editor is a follow-up. The model is the profile's `modelId`, else the kind's default. Settings has no model picker yet.
+- **Where it runs.** A hosted edit runs in the editor's `ViewModel` coroutine, not in WorkManager. Recovery after process death comes from the request journal below plus the adapter's `resume()`, so a request that may cost money is never started again by the system.
+- **Before anything is sent.** Generate opens, in order, the one-time "Before your first AI Edit" sheet, then a per-service price consent when the price is unknown or only partly known (`AiEditGates`), then "{Service} may charge again" after any outcome-unknown card. "Not now", Cancel and "Open {Service}" send nothing. A connectivity pre-check shows "No connection. Nothing was sent." without journalling.
+- **What is sent.** Only the selected photo (`AndroidSourceImageLoader` refuses any other Uri) and the instruction. The photo is decoded, turned upright, scaled to the planned size (`OutputPlanner`: the source aspect, never above the larger of the source's pixels and 1 MP, capped by the service) and re-encoded in memory, which drops EXIF and location. The original bytes go only when "Keep location" is on, no resize is needed, the photo is already upright and it is JPEG or PNG. A notice under the photo says "This photo will be sent at W×H." when it is made smaller.
+- **Request journal.** `AndroidRequestJournal` writes `request.json` in the session folder: stage `SENT` right before the paid request, `ACCEPTED` with the fal request id, provider, endpoint and key fingerprint once fal accepts it, and it is removed when results are stored or the outcome is final and free. On reopen, `RestoreDecision` gives Normal, Resume (status and result calls only, never a POST) or Unknown (the non-recoverable card).
+- **Cards.** `AiEditIssue.classify` maps the typed outcome to one card (`AiEditStateCopy`): declined, declined after fal accepted the request (which may have charged, so a retry asks first), wrong key, out of credit (402), limiting requests (429, no "Open {Service}"), no connection, couldn't reach, couldn't make, and the three outcome-unknown cards. Only proven not-sent cases say "Nothing was sent". Cancel after sending shows "Cancelled. {Service} may still charge for work already started."
+- **Look.** Quiet Frame v3: black viewer ground, the photo takes the flexible space, one lapis slab (`AtlasTokens.Colors.AiEdit`, 24 dp corners) holds the prompt and actions, the held sphere shows work without a bar or shimmer, every target is at least 48 dp. The Lapis Atlas tokens and Funnel fonts arrive with BRAND-L2; until then the editor keeps its colours in `AtlasTokens.Colors.AiEdit` and uses the system font.
+- **Evidence.** `AiEditUiEvidenceTest` renders every state in both themes, at font scale 1.3, with the keyboard open and in landscape (`scripts/ui-evidence.d/aie-20-431.txt`). `AiEditServiceJourneyTest` drives the real editor, view model, journal and fal adapter against an in-memory fake exchange: first-use sheet, one submit, result, Save copy with lineage, cancel during submit, resume by saved id, the unknown cards and the no-service state.
+
 ## Credentials and network options
 
 - **Direct BYOK on phone:** user configures a provider credential, used only for their chosen edit endpoint. Protect the credential with an Android Keystore-backed per-install key and encrypted app-private storage. **Exclude both stored ciphertext and key material from all Android backups/restore transfers**; reconfiguration after restore is preferable to leaked credentials. Never embed keys in the APK, repository, URL/query strings, usage export ([#173](https://github.com/LPStruiksma/atlas-gallery/issues/173)), logs, crash reports or telemetry; redact Authorization headers and endpoint secrets from diagnostics. A compromised phone/app process can still misuse a locally stored key; Keystore does not turn BYOK into a server-held secret.

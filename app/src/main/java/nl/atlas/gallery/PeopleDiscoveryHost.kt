@@ -107,6 +107,7 @@ import nl.atlas.gallery.featurevisual.VisualEmbedOutcome
 import nl.atlas.gallery.featurevisual.VisualKeyframe
 import nl.atlas.gallery.featurevisual.VisualScanResult
 import nl.atlas.gallery.featurevisual.VisualScanStage
+import nl.atlas.gallery.featurevisual.tags.store.VisualTagHook
 import nl.atlas.gallery.featurevisual.VisualScanStop
 import nl.atlas.gallery.featurevisual.VisualStepPlan
 import nl.atlas.gallery.featurevisual.VisualVideoBudget
@@ -530,7 +531,7 @@ internal fun nextVisualBatchAfter(result: VisualScanResult?, stillQueued: Boolea
         null -> NextBatch.NONE
         VisualScanStop.COMPLETED -> NextBatch.NOW
         VisualScanStop.BUDGET_OR_GUARD ->
-            if (result.indexed + result.skipped > 0) NextBatch.NOW else NextBatch.LATER
+            if (result.indexed + result.skipped + result.tagged > 0) NextBatch.NOW else NextBatch.LATER
         VisualScanStop.HELD -> NextBatch.LATER
         VisualScanStop.NOTHING_CLAIMED -> if (stillQueued) NextBatch.LATER else NextBatch.NONE
     }
@@ -588,6 +589,8 @@ internal class PeopleDiscoveryHost(
         ((FaceAuthorizedMediaDirectory<FaceVisibleMedia>) -> (VisualMedia) ->
             VisualVideoFrames<Bitmap>)? = null,
     private val visualVideoBudget: VisualVideoBudget = VisualVideoBudget(),
+    /** TAGS-1 (#732): automatic tags from the stored vectors; null leaves tagging off. */
+    private val visualTags: VisualTagHook? = null,
     private val visualModelVersion: String = SiglipModel.MODEL_VERSION,
     private val visualDimension: Int = SiglipModel.DIMENSION,
     /** Deletes the joined model copy in no-backup storage; true when gone. */
@@ -678,6 +681,7 @@ internal class PeopleDiscoveryHost(
             power = { devicePower(context) },
             faceCropDecoder = MediaStoreFaceCropDecoder(context.contentResolver),
             visualStore = VisualIndexStore(context),
+            visualTags = VisualTagHook.forApp(context),
             visualEmbedderFactory = { SiglipImageEmbedder.open(context) },
             visualDecoderFor = { directory ->
                 { media ->
@@ -1129,6 +1133,7 @@ internal class PeopleDiscoveryHost(
     private fun deleteVisualData(store: VisualIndexStore) {
         closeEmbedder()
         val rows = try { store.deleteIndex(); true } catch (_: SQLException) { false }
+        visualTags?.deleteAll()
         val model = try { deleteVisualModelCopy() } catch (_: RuntimeException) { false }
         synchronized(lock) { visualDataKept = !(rows && model) }
     }
@@ -1776,7 +1781,9 @@ internal class PeopleDiscoveryHost(
             get() {
                 if (visualStore == null || !synchronized(lock) { visualOptedIn }) return null
                 if (visualScope?.faceEpoch != owned.epoch || visualScope?.staging == true) return null
-                return PeopleVisualScanStep { canContinue -> runVisualStep(canContinue) }
+                return PeopleVisualScanStep { canContinue ->
+                    withTagSweep(runVisualStep(canContinue), canContinue)
+                }
             }
 
         /**
@@ -1802,7 +1809,8 @@ internal class PeopleDiscoveryHost(
             val embedder = embedderForRun() ?: return null
             val decode = visualDecoderFor(owned.directory)
             val sample = visualVideoFramesFor?.invoke(owned.directory)
-            val stage = VisualScanStage(store, embedder.modelVersion, embedder.dimension,
+            val stage = VisualScanStage(visualTags?.wrap(store) ?: store,
+                embedder.modelVersion, embedder.dimension,
                 { media ->
                     if (media !in videos) {
                         VisualScanStage.decodeAndEmbedWith(media, decode, embedder::embed,
@@ -1831,6 +1839,29 @@ internal class PeopleDiscoveryHost(
                 visual.cursor.set(selected.last().first)
             }
             return result
+        }
+
+        /**
+         * TAGS-1 (#732): when the visual step found nothing to claim, one
+         * bounded tag sweep step over the stored vectors of the same epoch
+         * (backfill and reconcile; no image decode). While the sweep has more
+         * to do the step reports [VisualScanResult.tagged], so the worker
+         * comes back under its usual guards (charging, thermal, grant).
+         */
+        private fun withTagSweep(
+            result: VisualScanResult?, canContinue: () -> Boolean
+        ): VisualScanResult? {
+            val tags = visualTags ?: return result
+            if (result?.stop != VisualScanStop.NOTHING_CLAIMED) return result
+            val store = visualStore ?: return result
+            val visual = visualScope?.takeIf { it.faceEpoch == owned.epoch && !it.staging }
+                ?: return result
+            val sweep = tags.sweepStep(visual.epoch, visualModelVersion,
+                { after, limit -> store.loadActiveVectors(visual.epoch, visualModelVersion, after, limit) },
+                canContinue) ?: return result
+            if (!sweep.moreWork) return result
+            return result.copy(held = true, stop = VisualScanStop.BUDGET_OR_GUARD,
+                tagged = sweep.examined)
         }
 
         /**

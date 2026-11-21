@@ -1,0 +1,12 @@
+{
+  "_comment": "Synthetic library context handed to every parser. Names, places and tags are invented; no real person or library content.",
+  "reference_date": "2026-06-15",
+  "people": ["Alex", "Sam", "Noor", "Daan"],
+  "places": {
+    "Rome": ["rome", "roma"],
+    "Lisbon": ["lisbon", "lissabon"],
+    "Utrecht": ["utrecht"],
+    "Amsterdam": ["amsterdam"]
+  },
+  "tags": ["beach", "sea", "snow", "dog", "cat", "birthday", "food", "sunset", "mountains", "car", "bike", "church", "wedding", "flowers", "boat", "party", "screenshot", "people"]
+}
