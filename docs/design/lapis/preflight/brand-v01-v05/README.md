@@ -1,41 +1,48 @@
-# BRAND-VE1 — V01–V05 synthetic pre-build design evidence
+# BRAND-VE1 — V01–V05 synthetic pre-build evidence
 
-> **Draft work area, not approved design evidence.** This index sets the evidence contract for [unit #806](https://github.com/LPStruiksma/atlas-gallery/issues/806). Screen panels, states and visual verification are pending. Do not release a child for implementation on this scaffold.
+> **Proposed screens, not a design PASS.** This is an inspectable proposal for [unit #806](https://github.com/LPStruiksma/atlas-gallery/issues/806), not a measured Samsung display, app runtime capture or implementation approval. Independent visual preflight and merge are required before releasing any V01–V05 child.
 
-Source of truth: [Quiet Frame v3](../../../QUIET_FRAME.md), [Lapis coverage audit](../../../LAPIS_COVERAGE.md), [design preflight index](../README.md). Owner intent: a coherent visual identity throughout ATLAS, without new features, Android-code changes or personal-media access.
+Authority: [Quiet Frame v3](../../../QUIET_FRAME.md) and [Lapis coverage audit](../../../LAPIS_COVERAGE.md). All media are generated abstract shapes; no owner photos, person identities, biometric embeddings, media metadata or private places. [Reference observations and design decisions](references-decisions.md) separate documented Android conventions from proposed Lapis layouts.
 
-## Requested artifact set
+## Frame index
 
-All examples are synthetic. Target phone: Samsung Galaxy S24+ **1080 × 2340 px portrait**, annotated assumed density/insets. Every **V01–V05** row needs inspectable **light and dark** primary-task frames, plus the named states and interaction/accessibility matrix. The ten expected frames are `v01-light.svg` / `v01-dark.svg`, through `v05-light.svg` / `v05-dark.svg`. An additional `references-decisions.md` must distinguish cited Android/One UI/Material conventions from ATLAS proposals. No frame here represents a runtime screenshot or measured Samsung behavior.
+Each link opens a distinct **1080 × 2340 SVG** portrait. Light and dark are separately inspectable. The viewer remains black in both themes. Alternative states are drawn or labelled inside each frame and specified in the matrix below.
 
-| Child | Primary task | Required distinct states / proofs |
-| --- | --- | --- |
-| V01 | Viewer actions and filmstrip | Current item with 2 dp white ring and small #8C9BFF held sphere; ordered multi-selection and accessible order announcement; gesture arrows |
-| V02 | Viewer details sheet | Open details sheet, photo/exif captions and dismiss flow; full-height/one-handed/large-text treatment |
-| V03 | People home / sort / progress | No people; scan in progress with sphere climbing an arc and plain count; 68+ people with search and sort; no arbitrary circular portraits |
-| V04 | Person page / cover chooser | Real-shape photo strip, selected cover, name editing with keyboard open; 200% font and inset behavior |
-| V05 | Identity review | Same-person choice, unknown-face review and explicit split confirmation; non-colour-only decision and undo/confirmation |
-
-## Presentation and inspection contract
-
-- Each SVG is a complete **1080 × 2340** synthetic phone panel, not an Android implementation. Provide meaningful image geometry with synthetic photos/faces (abstract illustrations are acceptable if clearly marked), real-shape strip proportions, and explanatory captions outside/alongside the primary device surface where possible.
-- Use **Funnel Display 38/44 sp 700** for screen titles, **Funnel Sans** for body and nav; if fonts are unavailable, mark substitutions as design approximations rather than asserting exact glyph metrics.
-- Palette must follow approved v3: light ground #FFFFFF, mist #F2F3F8, ink #0E1030, secondary #5A5F7A, lapis fill/text #2639C9; dark ground #000000, mist #14152A, ink #F2F3F8, secondary #9AA0B8, fill #3448E0, text #8C9BFF. Viewer ground is black in both modes. Use a **solid** lapis accent, never an accent outline.
-- Radii: **8 dp** for real-shape photo strips, **22 dp** for secondary surfaces, **24 dp** for short centred action/nav slab, circular held sphere. Use a **2 dp white halo** for selection, numbered when ordered. No permanent banners or decorative extra chrome.
-- Every screen documents **100% vs 200% font**, status/nav/IME inset assumptions, **48 dp minimum touch bounds**, one-handed reach, gesture/touch flow arrows, TalkBack labels, focus order and accessible state changes. Where a full-size 200% scenario cannot fit, supply a clearly labelled inset/alternate state panel and explain the overflow or scrolling.
-- State diagrams may be schematic; *never* claim animations were captured. Annotate Lift as a **200 ms** deliberate transition with immediate cut when Android Remove animations is enabled.
-- Clearly mark each observation of OS/One UI/Material convention with a source and which pieces are proposed v3 adaptations. Do not treat a speculative layout as observed Android behavior.
-- Link every child to its primary paired frames, and include a state-by-state matrix so an independent pre-build reviewer can score rubric dimensions **#1–#6 and #8**, with precise follow-up gaps.
-- Evidence release requires independent review and merge; subsequently each child must get the evidence link and its own independent design preflight. Hosted CI checks and later runtime screenshots remain separate proof.
-
-## Status
-
-| Child | Light | Dark | State matrix | Design preflight |
+| Child | Primary proposed task | Light | Dark | Named alternates on the frame |
 | --- | --- | --- | --- | --- |
-| V01 | pending | pending | pending | not requested |
-| V02 | pending | pending | pending | not requested |
-| V03 | pending | pending | pending | not requested |
-| V04 | pending | pending | pending | not requested |
-| V05 | pending | pending | pending | not requested |
+| V01 | Viewer media, actions and filmstrip | [V01 light](v01-light.svg) | [V01 dark](v01-dark.svg) | Current filmstrip sphere + 2 dp white ring; ordered picks 1, 2, 3; swipes, long-press, Lift |
+| V02 | Swipe-up details sheet | [V02 light](v02-light.svg) | [V02 dark](v02-dark.svg) | Open details; date/size/dimensions; large-text sheet; swipe-down, Close and Back |
+| V03 | People browse and sort | [V03 light](v03-light.svg) | [V03 dark](v03-dark.svg) | 68 people; search; sort; empty state; partial scan and sphere-on-arc counter |
+| V04 | Person page and cover | [V04 light](v04-light.svg) | [V04 dark](v04-dark.svg) | Real-shape photo strip; chosen cover; editable name; keyboard-open |
+| V05 | Identity decisions | [V05 light](v05-light.svg) | [V05 dark](v05-dark.svg) | Same-person yes/no; unknown face; explicit split confirmation; cancel and undo |
 
-**Do not interpret any blank or pending panel as a verified design PASS.**
+## Viewport, scale, synthetic source and visual grammar
+
+- Canvas: **1080 × 2340 px**, portrait reference for a Galaxy S24+; screen density is **not measured**. Annotative touch bound assumes ~3 px per dp for spatial planning only. The status inset is assumed **76 px**, bottom system navigation region ~**84 px**, and V04 demonstration IME **408 px**; actual window insets and IME sizes must be measured in Android. V02 covers part of the viewer with a proposed scrollable sheet.
+- Type reference: **Funnel Display 700, 38/44 sp screen title**, and **Funnel Sans** for 18/24 section, 15/22 body and 14/20 navigation roles; SVG font fallback to Arial is an explicit *approximation*. Rendered SVG pixel sizes are composed for visual inspection and **must not** be interpreted as validated device sp-to-px mapping. V01/V02 use white-on-black viewer copy with the approved dark action slab.
+- Palette: light ground `#FFFFFF`, mist `#F2F3F8`, ink `#0E1030`, muted `#5A5F7A`, lapis fill/text `#2639C9`. Dark ground `#000000`, mist `#14152A`, ink `#F2F3F8`, muted `#9AA0B8`, lapis fill `#3448E0`, lapis text `#8C9BFF`. On-brand `#FFFFFF`; viewer always `#000000`, actions `#3448E0`. No additional accent; geometric photo fields are synthetic and are not UI semantics.
+- Shape / state: **8 dp** real-aspect photo strip corners, **22 dp** secondary sheet/row surfaces, **24 dp** semantic slab reference (SVG slab is visually spacious to leave targets), fully round filled held sphere; white **2 dp** halo with ordered number for selection. Filmstrip current item has a **small #8C9BFF sphere above the tile and 2 dp white ring**. No avatar circles, permanent banners or four-tab bar.
+- Static frame only: selected item **Lift 200 ms** after an explicit gesture; when system **Remove animations** is on, cut immediately to the same chosen state. The progress sphere **climbs an arc** only as a proposed loading state; SVGs do not animate autonomously.
+
+## State and accessibility matrix for rubric #1–#6 and #8
+
+Rubric targets: visual identity, visual hierarchy, tokens/shape, navigability, accessibility, interaction feedback and inspectable variant completeness. These **are pre-build proposals**, not runtime-tested claims.
+
+| Child / named state | Entry, interaction and visible feedback | TalkBack focus and spoken semantics | 100% / 200% text, insets and one-hand reach | Reviewer check or unresolved proof |
+| --- | --- | --- | --- | --- |
+| V01 current viewer | Photo opens on black; swipe left/right advances, tap filmstrip image selects; current thumbnail gets white ring and small sphere. | Back → image ("Photo 3 of 5") → ordered strip ("Current photo 3") → Edit/Share/More. Gestures have named reachable controls. | Full-screen media retains aspect ratio; at 200%, move long action labels into More. Primary slab stays in bottom thumb zone above nav inset. | Verify filmstrip ring remains visible against real imagery and editor/AI edit parity in full-size device render. |
+| V01 ordered multi-select | Long press any tile → Lift and filled numbered sphere with white halo; explicit selection count updates; press same item toggles. | "Selected photo 2 of 3, selection order 2"; selected-state change announced. A selection order is never colour-only. | 48 × 48 dp minimum *hit* region even if visible sphere is smaller; 200% wraps selection count and retains actionable tiles. | Render actual selection order with TalkBack focus and remove-animations. |
+| V02 details open | Swipe up or invoke Details; sheet opens with image, date, dimensions and clear Close; drag down / Back dismisses. | Back → sheet title → metadata rows → Close; state "Photo details open" announced; details available without swiping. | Long values wrap at 200% and sheet scrolls above nav/IME; close target at least 48 dp reachable near bottom. | Verify real EXIF overflow, contrast over media, full-height and TalkBack modal semantics. |
+| V03 zero people | Empty: "No people yet. Start a scan in People settings"; explicit Start scan. | People title → empty message → Start scan; permission implications remain part of actual flow. | Single sentence plus action, no decorative circles; 200% may push CTA down; preserve scroll and nav inset. | Need render of permission/disabled-scanning branch if it differs on device. |
+| V03 scanning | Deliberate scan begins; held sphere climbs arc; "Finding faces, 7,140 of 12,305" indicates measurable progress. | Announce phase and count politely, not every frame; stop/cancel functionality must retain parity if available. | Text not embedded in colour; 48 dp action; 200% wraps count; animation removed means static state updates. | Verify real progress phase semantics / count accuracy in runtime. |
+| V03 68+ people and sort | Named latest-photo strip rows with count/date; search, Sort (latest/name/most photos) accessible. | Title → count → search → sort → named row and count; sort choice announced. No arbitrary circular portrait substitute. | Real-ratio photo tiles (8 dp), 48 dp minimum row bounds; 200% rows expand rather than ellipsize. | Verify search keyboard insets and sort-sheet options on device. |
+| V04 person page and cover | Latest photos in real-aspect strips; choosing cover adds filled sphere and updates selected preview. | Person name/count → photos → Choose cover → options ("Cover selected") → Rename. | 200% labels wrap / picker scrolls; no circle-only face, 48 dp hit bounds; bottom actions reachable. | Need real device crop-selection and no-name/auto-cover variant. |
+| V04 keyboard-open naming | Rename enters focused field above IME and explicit Save, preserving prior name until committed. | Name edit focused → typed name → Save → changed name announcement; Back dismisses IME without implicit save. | IME assumed 408 px in drawing, **not measured**; 200% scrolls Save and text field above actual keyboard. | Independently capture IME-resized light/dark at 200% in Android. |
+| V05 same-person review | Two abstract rectangular photos; explicit "Yes, same" / "No, different". | Title → description → Photo A → Photo B → each decision; confirm outcome spoken. | 48 dp buttons in bottom thumb zone; 200% stacks buttons and scrolls. | Check undecided and back-navigation parity, large font dialog. |
+| V05 unknown-face and split | Leave as unknown or assign name; split asks "Move 3 selected photos to a new person?" Confirm split / Cancel; Undo offered after action. | Focus unknown choice → candidate → split question → Confirm / Cancel; irreversible-looking action not conveyed by colour alone. | No colour-only approve/reject, confirmation verb, undo; 200% confirm stack and modal scroll above nav inset. | Verify cancel and undo actual data semantics before implementing. |
+
+**Shared minimum target:** every actionable control, thumbnail choice, swipe equivalent, handle, toolbar entry and list row must expose an accessible 48 × 48 dp hit box, even if the rendered symbol is smaller. Focus reading order follows the matrix; TalkBack announcements are *proposed strings*, not tested output.
+
+## Inspection / release gate
+
+The SVGs are actual source text with distinct light/dark fills and inspectable named states. **They are not screenshots, independently checked contrast/render clips, or visual PASS.** The reviewer must open each SVG at full size, judge rubric #1–#6 and #8, check visible clipping/contrast and any font substitution, and file exact missing-state follow-ups before approval. After an independent CLEAN review and merge, link this evidence from V01–V05 child issues, then obtain each child’s **own** independent design preflight. Only then release the typed holds for implementation; later exact-head CI and on-device rendering are separate proof.
