@@ -291,11 +291,11 @@ class Viewer142GestureNavigationEvidenceTest {
     /** Puts the viewer back on [index] with chrome shown, after a probe moved it. */
     private fun resetTo(index: Int, counter: String) {
         compose.awaitWindowSettled()
-        if (!compose.exists(hasTestTag("atlas-filmstrip"))) {
+        if (!chromeShown()) {
             val focus = (hasTestTag("atlas-photo-surface") or hasTestTag("atlas-video-surface")) and
                 hasClickAction()
             compose.onNode(focus).performSemanticsAction(SemanticsActions.OnClick)
-            compose.awaitThat("chrome back after probe") { compose.exists(hasTestTag("atlas-filmstrip")) }
+            compose.awaitThat("chrome back after probe") { chromeShown() }
         }
         if (counterText() != counter) {
             // Reset is setup, not a measured touch: use the click action.
@@ -307,6 +307,9 @@ class Viewer142GestureNavigationEvidenceTest {
             awaitCounter(counter)
         }
     }
+
+    private fun chromeShown() = compose.exists(hasTestTag("atlas-filmstrip")) &&
+        compose.exists(hasTestTag("atlas-back"))
 
     private fun selectThumbnail(index: Int) {
         compose.awaitScreenStill("filmstrip settled before selecting tile $index")
@@ -485,12 +488,24 @@ class Viewer142GestureNavigationEvidenceTest {
          * recorded, not asserted: the baseline is whatever the system does.
          */
         fun probe(name: String, reset: () -> Unit, inject: (Box2) -> Unit) {
+            for (attempt in 1..PROBE_REPEATS) probeOnce("$name#$attempt", reset, inject)
+        }
+
+        private fun probeOnce(name: String, reset: () -> Unit, inject: (Box2) -> Unit) {
             reset()
             compose.awaitScreenStill("before $name")
             val before = state()
             val b = box()
             val started = SystemClock.uptimeMillis()
             inject(b)
+            // A single tap is delivered only after the double-tap timeout and
+            // Back after the gesture ends, so give any effect a bounded chance
+            // to appear; "nothing happened" is a valid MEASURED outcome.
+            val changed = runCatching {
+                compose.awaitThat("any effect of $name", EFFECT_WAIT_MS) {
+                    signature(state()) != signature(before)
+                }
+            }.isSuccess
             compose.awaitWindowSettled()
             compose.awaitScreenStill("after $name")
             val after = state()
@@ -499,6 +514,7 @@ class Viewer142GestureNavigationEvidenceTest {
                 .put("window_px", JSONArray(listOf(b.width, b.height)))
                 .put("gesture_left_px", b.gestureLeft)
                 .put("before", before).put("after", after)
+                .put("effect_within_ms", if (changed) EFFECT_WAIT_MS else JSONObject.NULL)
                 // GalleryViewer's own BackHandler routes system Back AND its
                 // toolbar back button to onBack; the outer handler only sees
                 // a Back the viewer did not consume.
@@ -506,10 +522,16 @@ class Viewer142GestureNavigationEvidenceTest {
                 .put("back_not_consumed_by_viewer", after.getInt("system_back") - before.getInt("system_back"))
                 .put("page_changed", before.opt("counter") != after.opt("counter"))
                 .put("chrome_changed", before.getBoolean("chrome") != after.getBoolean("chrome"))
+                .put("seek_changed", before.opt("seek_fraction") != after.opt("seek_fraction"))
+                .put("playing_changed", before.getBoolean("video_playing") != after.getBoolean("video_playing"))
+                .put("filmstrip_scrolled", before.opt("thumbnail0_left_px") != after.opt("thumbnail0_left_px"))
                 .put("elapsed_ms", SystemClock.uptimeMillis() - started)
             probes.put(outcome)
             Log.i(G142_TAG, "G142 probe ${outcome.toString()}")
         }
+
+        private fun signature(s: JSONObject) = listOf("system_back", "viewer_back", "counter",
+            "chrome", "seek_fraction", "video_playing", "thumbnail0_left_px").map { s.opt(it) }
 
         private fun state(): JSONObject {
             val seek = compose.onAllNodesWithTag("atlas-video-seek", useUnmergedTree = true)
@@ -524,7 +546,8 @@ class Viewer142GestureNavigationEvidenceTest {
                     .fetchSemanticsNodes(atLeastOneRootRequired = false).firstOrNull()
                     ?.config?.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }
                     ?: JSONObject.NULL)
-                .put("chrome", compose.exists(hasTestTag("atlas-filmstrip")))
+                .put("chrome", compose.exists(hasTestTag("atlas-filmstrip")) &&
+                    compose.exists(hasTestTag("atlas-back")))
                 .put("seek_fraction", seek?.toDouble() ?: JSONObject.NULL)
                 .put("video_playing", playing)
                 .put("thumbnail0_left_px", strip?.left ?: JSONObject.NULL)
@@ -575,6 +598,8 @@ class Viewer142GestureNavigationEvidenceTest {
     /** Edge swipe starts this many px from the screen edge. */
     private companion object {
         const val EDGE_PX = 2
+        const val PROBE_REPEATS = 2
+        const val EFFECT_WAIT_MS = 2_500L
 
         fun swipe(x1: Int, y1: Int, x2: Int, y2: Int) {
             testShell("input swipe $x1 $y1 $x2 $y2 250")
