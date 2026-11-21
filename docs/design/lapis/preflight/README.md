@@ -43,6 +43,28 @@ python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a
 
 Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
 
-## COLLECT-1 utilities board (work in progress, #776)
+## COLLECT-1 utility collections (#776)
 
-[COLLECT-1 #776](https://github.com/LPStruiksma/atlas-gallery/issues/776) extends the separate [#576 rev-2 design brief](https://github.com/LPStruiksma/atlas-gallery/issues/576#issuecomment-7055670165) with synthetic S24+ evidence. The deliverable is a reproducible `collect-1-utilities.png` sheet covering Collections media-type entry, category-grid results, scoped search and IME, unknown/empty/error counts, and 200% font/accessibility states in light and dark. This branch is **not yet evidence** until the generated PNG, verified manifest entry and regeneration instructions are committed. No app code or private media belong in this work.
+[COLLECT-1 #776](https://github.com/LPStruiksma/atlas-gallery/issues/776) extends the [#576 rev-2 design brief](https://github.com/LPStruiksma/atlas-gallery/issues/576#issuecomment-7055670165) without changing app code. The text-only change supplies the deterministic generator for `collect-1-utilities.png`; the Dev driver must render the omitted binary with Funnel fonts, record its SHA-256 and exact dimensions in the manifest, and commit it before this becomes review evidence.
+
+The board preserves the merged L5 row and L7 search contracts and covers, in order:
+
+* **A — Collections rows:** named rows have latest-photo strips at their real ratios, including genuinely short strips. Utilities always appear as Videos, Screenshots, Selfies, Portrait, Panoramas, Bursts, Recently added. Videos and Screenshots reuse their existing destinations. A zero-count category keeps its position and accessible count while the visible numeric zero is hidden.
+* **B — category destination:** Screenshots opens its normal square grid; sort and a typed query remain scoped to that category.
+* **C — search:** the search sphere expands immediately above the slab with **This screen** selected and **Whole library** available. The assumed 324 dp IME opens; first Back hides it and keeps the query, second Back closes search.
+* **D — pending, error and empty:** the held sphere accompanies plain progress; error offers one 48 dp retry; empty uses one sentence and one useful next step.
+* **E — stress and accessibility:** long labels at 200%, a schematic 148,912-item lazy grid, assumed system insets, merged row semantics, visual-order TalkBack traversal and 48 dp targets.
+
+Two hero frames are annotated native **1080 × 2340 px** S24+ frames: light at 100% and dark at 200%. Every A–E panel is built from the same full-size frame before the board scales it to 50%. The 29 dp status inset, 16 dp gesture inset and 324 dp keyboard are explicitly **assumptions**, not device measurements. All pictures are generated gradients and shapes; no image file, MediaStore item, network resource or private board is read.
+
+The dated decision table compares Apple Photos Media Types, Apple Photos Utilities, Google Photos Recently Added, and Android Material 3 SearchBar as **observed convention → Atlas proposal/deviation**. It does not credit or infer behaviour from private design material.
+
+### Regenerate and validate COLLECT-1
+
+```bash
+python3 tools/design/collect_1_utilities.py --font-dir <dir with funnel_display.ttf and funnel_sans.ttf>
+python3 tools/design/collect_1_utilities.py --check
+python3 -m unittest tools.design.tests.test_collect_1_utilities
+```
+
+`--check` renders without writing the PNG and validates the 1080 × 2340 device frames, fixed A–E panel/category order, board bounds and the generator's no-private-asset rule. The fallback font is allowed only for this programmatic check; the review PNG must use Funnel Display and Funnel Sans. The generator uses Quiet Frame v3 tokens and shares the existing Lapis drawing kit, so L5/L7 behaviour stays unchanged.

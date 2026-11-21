@@ -1,5 +1,36 @@
 {
   "boards": {
+    "collect-1": {
+      "file": "collect-1-utilities.png",
+      "size": null,
+      "sha256": null,
+      "binary_status": "render and record size/sha256 in the Dev driver commit",
+      "device_frames": 16,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "A3",
+        "B1",
+        "B2",
+        "B3",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "D3",
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "generator": "tools/design/collect_1_utilities.py",
+      "synthetic_only": true
+    },
     "l4": {
       "file": "brand-l4-navigation.png",
       "size": [
