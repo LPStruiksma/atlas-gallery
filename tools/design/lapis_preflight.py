@@ -601,15 +601,11 @@ class Gen:
                             self.l6_frame(frac=1.0, no_geo=True)))
         panels.append(Panel("C3", "Dense places", "Overlapping dots merge into a counted cluster; tap zooms the "
                             "list to those places.", self.l6_frame(frac=1.0, dense=True)))
-        s = self.scr("dark")
-        s.status_bar()
-        y = L.title(s, "Pictures")
-        L.message(s, y + L.px(8), "Couldn't read dates and places.", "Your pictures are safe. Try again.",
-                  "Try again")
-        s.slab("Pictures")
-        s.gesture_bar()
-        panels.append(Panel("C4", "Metadata error, dark", "Pull still opens; the atlas shows this message "
-                            "instead of bars.", s))
+        panels.append(Panel("C4", "Metadata error in open atlas, dark",
+                            "Atlas remains an overlay over the Pictures grid, not a full-screen Pictures "
+                            "failure: no stale month/place actions; 56 dp Retry, 48 dp Close and system Back "
+                            "return safely without changing the grid.",
+                            self.l6_frame("dark", frac=1.0, error=True)))
         panels.append(Panel("C5", "Large library", "Bars scale to the tallest month; totals use full counts.",
                             self.l6_frame(frac=1.0, counts=[9120, 8400, 11020, 12804, 15500, 18210, 22340, 21900,
                                                              13000, 7800, 6100, 2718])))
