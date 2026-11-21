@@ -49,7 +49,13 @@ def _text(v):
 
 
 def _num(v):
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    """A finite real number. Huge JSON integers (beyond float range) are not finite evidence."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return False
+    try:
+        return math.isfinite(v)
+    except OverflowError:
+        return False
 
 
 def _digest_ok(v):
@@ -353,12 +359,94 @@ def gate_identity(pairs, by_id):
 
 # ---------------------------------------------------------------- top level
 
+MAX_DEPTH = 32
+
+
+def _plain(v, depth=0):
+    """True if v is plain JSON-shaped data: dict with string keys, list, str, bool, int, float, None."""
+    if depth > MAX_DEPTH:
+        return False
+    if v is None or isinstance(v, (str, bool, int, float)):
+        return True
+    if isinstance(v, list):
+        return all(_plain(x, depth + 1) for x in v)
+    if isinstance(v, dict):
+        return all(isinstance(k, str) and _plain(x, depth + 1) for k, x in v.items())
+    return False
+
+
+def normalize_input(cohort, rows):
+    """The one shape boundary. Everything after it sees only these guaranteed shapes.
+
+    Returns (pairs, row_list, problems): `pairs` is a list of dicts with a non-empty string
+    pair_id, `row_list` a list of dicts, `problems` plain strings explaining what was dropped.
+    Dropped items are never turned into passes: any problem makes the verdict INSUFFICIENT, and
+    planned pairs without usable rows stay in the denominators.
+    """
+    problems = []
+    if not _plain(cohort):
+        problems.append("cohort is not plain JSON data (or nested too deeply)")
+        cohort = None
+    if not _plain(rows):
+        problems.append("rows are not plain JSON data (or nested too deeply)")
+        rows = None
+    raw_pairs = None
+    if isinstance(cohort, dict):
+        raw_pairs = cohort.get("pairs")
+    elif cohort is not None:
+        problems.append("cohort is not an object")
+    if raw_pairs is None and isinstance(cohort, dict):
+        problems.append("cohort has no pairs list")
+    elif raw_pairs is not None and not isinstance(raw_pairs, list):
+        problems.append("cohort pairs is not a list")
+        raw_pairs = None
+    pairs = []
+    for i, p in enumerate(raw_pairs or []):
+        if isinstance(p, dict) and _text(p.get("pair_id")):
+            pairs.append(p)
+        else:
+            problems.append(f"pair #{i} is not an object with a non-empty string pair_id")
+    if rows is not None and not isinstance(rows, list):
+        problems.append("rows is not a list")
+        rows = None
+    row_list = []
+    for i, r in enumerate(rows or []):
+        if isinstance(r, dict):
+            row_list.append(r)
+        else:
+            problems.append(f"row #{i} is not an object")
+    return pairs, row_list, problems
+
+
+def _insufficient_report(cause, n=0):
+    return {"rubric_revision": RUBRIC_REVISION, "verdict": INSUFFICIENT, "n_planned": n, "n_declared": n,
+            "cohort_status": INSUFFICIENT, "cohort_problems": [cause], "row_problems": [], "gates": [],
+            "note": "Evaluator output over supplied records only; not a measured model-quality claim."}
+
+
 def evaluate(cohort, rows):
-    """Return the machine-readable report. Verdict PASS only when everything passes."""
-    cstatus, cproblems = check_cohort(cohort)
-    pairs = [p for p in cohort.get("pairs", []) if isinstance(p, dict) and _text(p.get("pair_id"))] \
-        if isinstance(cohort, dict) else []
-    by_id, extra = _index_rows(pairs, rows)
+    """Return the machine-readable report. Verdict PASS only when everything passes.
+
+    Never raises on untrusted data: input shape is normalised once (`normalize_input`) and any
+    unexpected internal error still yields an INSUFFICIENT_EVIDENCE report that names its cause.
+    """
+    try:
+        return _evaluate(cohort, rows)
+    except Exception as exc:  # fail closed, never a traceback instead of a verdict
+        return _insufficient_report(f"evaluation aborted on malformed evidence: {type(exc).__name__}")
+
+
+def _evaluate(cohort, rows):
+    pairs, row_list, shape_problems = normalize_input(cohort, rows)
+    declared = len(cohort["pairs"]) if isinstance(cohort, dict) and isinstance(cohort.get("pairs"), list) else 0
+    if shape_problems:
+        cstatus, cproblems = INSUFFICIENT, []
+        if isinstance(cohort, dict) and _plain(cohort):
+            cstatus, cproblems = check_cohort(cohort)
+        cproblems = shape_problems + [x for x in cproblems if x not in shape_problems]
+    else:
+        cstatus, cproblems = check_cohort(cohort)
+    by_id, extra = _index_rows(pairs, row_list)
     row_problems = []
     if extra:
         row_problems.append(f"rows not matching a unique planned pair: {[str(e) for e in extra]}")
@@ -375,7 +463,7 @@ def evaluate(cohort, rows):
              gate_judges(pairs, by_id, "hair_votes", "new_hair_hairline"),
              gate_judges(pairs, by_id, "seam_votes", "neck_seam"),
              gate_identity(pairs, by_id)]
-    if cstatus != PASS or row_problems:
+    if cstatus != PASS or row_problems or shape_problems:
         verdict = INSUFFICIENT
     elif all(g["status"] == PASS for g in gates):
         verdict = PASS
@@ -383,7 +471,7 @@ def evaluate(cohort, rows):
         verdict = FAIL
     else:
         verdict = INSUFFICIENT
-    return {"rubric_revision": RUBRIC_REVISION, "verdict": verdict, "n_planned": len(pairs),
+    return {"rubric_revision": RUBRIC_REVISION, "verdict": verdict, "n_planned": len(pairs), "n_declared": declared,
             "cohort_status": cstatus, "cohort_problems": cproblems, "row_problems": row_problems,
             "gates": gates,
             "note": "Evaluator output over supplied records only; not a measured model-quality claim."}
@@ -400,6 +488,9 @@ def render_text(report):
     return "\n".join(out)
 
 
+_UNREADABLE = object()
+
+
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
     out_path = argv[argv.index("--json") + 1] if "--json" in argv else None
@@ -408,8 +499,18 @@ def main(argv):
     if len(args) != 2:
         print("usage: quality.py COHORT.json ROWS.json [--json OUT.json]", file=sys.stderr)
         return 2
-    with open(args[0], encoding="utf-8") as a, open(args[1], encoding="utf-8") as b:
-        report = evaluate(json.load(a), json.load(b))
+    loaded = []
+    for path in args:
+        try:
+            with open(path, encoding="utf-8") as f:
+                loaded.append(json.load(f))
+        except (OSError, ValueError, RecursionError) as exc:  # unreadable or malformed JSON is evidence too
+            print(f"cannot read {path}: {type(exc).__name__}", file=sys.stderr)
+            loaded.append(_UNREADABLE)
+    if any(x is _UNREADABLE for x in loaded):
+        report = _insufficient_report("cohort or rows file is missing or not valid JSON")
+    else:
+        report = evaluate(loaded[0], loaded[1])
     print(render_text(report))
     if out_path:
         with open(out_path, "w", encoding="utf-8") as f:

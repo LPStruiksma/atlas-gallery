@@ -624,6 +624,144 @@ class Malformed(unittest.TestCase):
                 self.assert_closed(cohort, rows)
 
 
+class ShapeBoundary(unittest.TestCase):
+    """Strategy recovery scope for #841: one shape boundary, exercised through evaluate() and the CLI."""
+
+    def run_cli(self, cohort_text, rows_text):
+        import contextlib
+        import io
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            cp, rp, op = Path(d) / "c.json", Path(d) / "r.json", Path(d) / "out.json"
+            cp.write_text(cohort_text, encoding="utf-8")
+            if rows_text is not None:
+                rp.write_text(rows_text, encoding="utf-8")
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                code = q.main([str(cp), str(rp), "--json", str(op)])
+            return code, out.getvalue(), json.loads(op.read_text()) if op.exists() else None
+
+    def good(self):
+        c = make_cohort()
+        return c, make_rows(c)
+
+    def test_known_valid_fixture_passes_through_evaluate_and_cli(self):
+        c, rows = self.good()
+        self.assertEqual(q.evaluate(c, rows)["verdict"], q.PASS)
+        code, out, report = self.run_cli(json.dumps(c), json.dumps(rows))
+        self.assertEqual((code, report["verdict"]), (0, q.PASS))
+        self.assertIn("PASS", out)
+
+    # Deterministic table: top-level cohort shapes (JSON text, so the CLI parses it exactly as shipped).
+    COHORTS = ('{"pairs": null}', '{"pairs": 3}', '{"pairs": {}}', '{"pairs": "x"}', '{"pairs": true}',
+               '{"pairs": [null, 1, "x", [], {}]}', '{"rubric_revision": "IDS-12A@096f0796"}', "{}", "[]", "null",
+               "3", '"x"', "true", '{"pairs": [{"pair_id": []}, {"pair_id": {}}, {"pair_id": 7}]}')
+    ROWS = ("null", "3", "{}", '"x"', "[]", "[null, 1, [], {}]", '[{"pair_id": []}, {"pair_id": {"a": 1}}]',
+            '[{"pair_id": "p0"}]')
+
+    def test_malformed_top_level_table_gives_report_never_traceback(self):
+        for ct in self.COHORTS:
+            for rt in self.ROWS:
+                with self.subTest(cohort=ct, rows=rt):
+                    r = q.evaluate(json.loads(ct), json.loads(rt))
+                    self.assertEqual(r["verdict"], q.INSUFFICIENT)
+                    self.assertTrue(r["cohort_problems"] or r["row_problems"])
+                    json.dumps(r)
+                    q.render_text(r)
+                    code, out, report = self.run_cli(ct, rt)
+                    self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+                    self.assertIn("INSUFFICIENT_EVIDENCE", out)
+
+    def test_pairs_null_integer_object_string_and_omitted_key_with_valid_rows(self):
+        c, rows = self.good()
+        for bad in (None, 5, {}, "x", "omit"):
+            cc = dict(c)
+            if bad == "omit":
+                cc.pop("pairs")
+            else:
+                cc["pairs"] = bad
+            r = q.evaluate(cc, rows)
+            self.assertEqual(r["verdict"], q.INSUFFICIENT, bad)
+            self.assertIn(r["n_planned"], (0,))
+            code, _, report = self.run_cli(json.dumps(cc), json.dumps(rows))
+            self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+            self.assertTrue(any("pairs" in x for x in report["cohort_problems"]), report["cohort_problems"])
+
+    def test_malformed_pair_and_row_ids_keep_planned_pairs_in_the_denominator(self):
+        c, rows = self.good()
+        c["pairs"][3]["pair_id"] = []
+        rows[4]["pair_id"] = {"a": 1}
+        r = q.evaluate(c, rows)
+        self.assertEqual(r["verdict"], q.INSUFFICIENT)
+        self.assertEqual((r["n_declared"], r["n_planned"]), (20, 19))
+        code, _, report = self.run_cli(json.dumps(c), json.dumps(rows))
+        self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+        # a bad row never counts as a pass: p4 has lost its row
+        self.assertIn("p4", gate(r, "whole_head_and_pose")["incomplete"])
+
+    def test_huge_json_integers_are_not_evidence_and_do_not_raise(self):
+        big = 10 ** 400
+        self.assertFalse(q._num(big))
+        self.assertFalse(q._num(-big))
+        self.assertFalse(q._num(float("nan")))
+        self.assertFalse(q._num(float("inf")))
+        self.assertTrue(q._num(10 ** 300))
+        c, rows = self.good()
+        rows[0]["target_head_span"] = m(big)
+        rows[1]["result_head_span"] = m(big)
+        rows[2]["seed"] = big
+        c["pairs"][5]["seed"] = big
+        r = q.evaluate(c, rows)
+        self.assertEqual(gate(r, "scale")["status"], q.INSUFFICIENT)
+        self.assertEqual(gate(r, "scale")["incomplete"], ["p0", "p1"])
+        self.assertNotEqual(r["verdict"], q.PASS)
+        code, _, report = self.run_cli(json.dumps(c), json.dumps(rows))
+        self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+
+    def test_json_nonfinite_literals_and_deep_nesting(self):
+        c, rows = self.good()
+        text = json.dumps(rows).replace('"value": 105.0', '"value": NaN', 1)
+        code, _, report = self.run_cli(json.dumps(c), text)
+        self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+        deep = "[" * 500 + "]" * 500
+        for cohort_text, rows_text in ((deep, "[]"), (json.dumps(c), deep)):
+            code, _, report = self.run_cli(cohort_text, rows_text)
+            self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT))
+        nested = []
+        for _ in range(q.MAX_DEPTH + 5):
+            nested = [nested]
+        rows2 = make_rows(c)
+        rows2[0]["extra"] = nested
+        self.assertEqual(q.evaluate(c, rows2)["verdict"], q.INSUFFICIENT)
+
+    def test_unreadable_or_invalid_json_files_give_a_report(self):
+        for cohort_text, rows_text in (("{not json", "[]"), ("{}", "{also not"), ("", ""), ("{}", None)):
+            code, out, report = self.run_cli(cohort_text, rows_text)
+            self.assertEqual((code, report["verdict"]), (1, q.INSUFFICIENT), (cohort_text, rows_text))
+            self.assertIn("INSUFFICIENT_EVIDENCE", out)
+
+    def test_non_plain_python_values_are_rejected_at_the_boundary(self):
+        c, rows = self.good()
+        rows[0]["classification"] = m(object())
+        rows[1]["identity"] = m({1: "non-string key"})
+        rows[2]["outside_fence"] = m({"equal": True, "outside_pixels": 5, "fence_hash": {"a", "b"}})
+        r = q.evaluate(c, rows)
+        self.assertEqual(r["verdict"], q.INSUFFICIENT)
+        json.dumps(r)
+
+    def test_internal_error_still_reports_insufficient(self):
+        c, rows = self.good()
+        original = q.gate_scale
+        q.gate_scale = lambda *a, **k: 1 / 0
+        try:
+            r = q.evaluate(c, rows)
+        finally:
+            q.gate_scale = original
+        self.assertEqual(r["verdict"], q.INSUFFICIENT)
+        self.assertIn("ZeroDivisionError", r["cohort_problems"][0])
+        self.assertEqual(q.evaluate(c, rows)["verdict"], q.PASS)  # restored
+
+
 class Frozen(unittest.TestCase):
     def test_thresholds_match_the_preregistration(self):
         self.assertEqual((q.MIN_PAIRS, q.MIN_PROFILE_PAIRS, q.MIN_HAIR_SHAPES), (20, 4, 2))
