@@ -128,4 +128,59 @@ class BestShotCoverAndroidTest {
             mapOf(bySource.getValue(2) to FaceQuality(.68f, belowSizeFloor = false))))
         assertEquals(bySource.getValue(1), cover(store, "epoch-M"))
     }
+
+    private fun hide(store: FaceIndexStore, epoch: String, hidden: Boolean) {
+        val current = requireNotNull(store.peopleReview(epoch))
+        val next = requireNotNull(reviewPeopleCluster(
+            PeopleClusterReviewState(epoch, current.generation, current.clusters,
+                current.names, hidden = current.hidden),
+            PeopleReviewAction.SetPersonHidden(person, hidden)))
+        assertNotNull(store.commitPeopleReview(epoch, current.generation,
+            next.clusters, next.names, next.hidden))
+    }
+
+    @Test fun hiddenPersonKeepsBestShotThroughBackfillManualChoiceAndUnhide() =
+        withStore { store ->
+            scan(store, "epoch-H", mapOf(1 to .65f, 2 to .85f, 3 to null))
+            name(store, "epoch-H")
+            val bySource = faceBySource(store, "epoch-H")
+            assertEquals(bySource.getValue(2), cover(store, "epoch-H"))
+
+            hide(store, "epoch-H", true)
+            assertFalse(requireNotNull(store.peopleHome("epoch-H")).people.containsKey(person))
+            assertEquals(bySource.getValue(2),
+                store.hiddenPersonCovers("epoch-H")[person])
+            assertEquals(bySource.getValue(2),
+                store.personDisplayCover("epoch-H", person))
+
+            val pending = requireNotNull(store.pendingQualitySource("epoch-H"))
+            assertEquals(item(3).key, pending.media.canonicalMediaKey)
+            val revision = requireNotNull(store.peopleReviewGeneration("epoch-H"))
+            assertEquals(1, store.backfillQualityIfNull("epoch-H", pending,
+                mapOf(bySource.getValue(3) to FaceQuality(.99f, belowSizeFloor = false))))
+            assertEquals(revision, store.peopleReviewGeneration("epoch-H"))
+            assertEquals(bySource.getValue(3),
+                store.hiddenPersonCovers("epoch-H")[person])
+            assertEquals(bySource.getValue(3),
+                store.personDisplayCover("epoch-H", person))
+
+            val album = requireNotNull(store.peopleReview("epoch-H"))
+            val faces = album.clusters.reviews.confirmed.keys
+                .sortedBy { it.localHex }
+            assertEquals(bySource.getValue(3),
+                hiddenPortraitFace(faces, store.hiddenPersonCovers("epoch-H")[person])?.localHex)
+
+            assertTrue(store.setPersonCoverOverride("epoch-H", person, bySource.getValue(1)))
+            assertEquals(bySource.getValue(1),
+                store.hiddenPersonCovers("epoch-H")[person])
+            assertEquals(bySource.getValue(1),
+                store.personDisplayCover("epoch-H", person))
+            assertTrue(store.setPersonCoverOverride("epoch-H", person, null))
+            assertEquals(bySource.getValue(3),
+                store.hiddenPersonCovers("epoch-H")[person])
+
+            hide(store, "epoch-H", false)
+            assertFalse(store.hiddenPersonCovers("epoch-H").containsKey(person))
+            assertEquals(bySource.getValue(3), cover(store, "epoch-H"))
+        }
 }
