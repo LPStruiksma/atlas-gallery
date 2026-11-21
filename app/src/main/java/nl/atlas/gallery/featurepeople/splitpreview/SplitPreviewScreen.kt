@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,12 +38,17 @@ import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featuredesign.AtlasTokens
 
 /** Host-scoped opaque handles only; never expose private media keys in semantics. */
+enum class SplitPreviewStatus { READY, LOADING, ERROR }
+
 data class SplitPreviewFace(val handle: String, val sampleHandle: String? = null)
 data class SplitPreviewGroup(val id: String, val label: String, val faces: List<SplitPreviewFace>)
 data class SplitPreviewUiModel(
     val groups: List<SplitPreviewGroup>,
     val unsure: List<SplitPreviewFace>,
-    val totalCount: Int = groups.sumOf { it.faces.size } + unsure.size
+    val totalCount: Int = groups.sumOf { it.faces.size } + unsure.size,
+    val status: SplitPreviewStatus = SplitPreviewStatus.READY,
+    /** Set only when the producer documents meaningful proposal order. */
+    val proposalOrderMeaningful: Boolean = false
 ) {
     init {
         require(groups.map { it.id }.distinct().size == groups.size) { "Duplicate group" }
@@ -65,15 +72,19 @@ fun SplitPreviewScreen(
     onMoveFace: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
     selectedFaceHandle: String? = null,
+    onRetry: () -> Unit = {},
     facePreview: @Composable (String?) -> Unit = { SyntheticSplitFacePreview() }
 ) {
+    val displayGroups = if (model.proposalOrderMeaningful) model.groups else
+        model.groups.sortedWith(compareByDescending<SplitPreviewGroup> { it.faces.size }.thenBy { it.id })
     val selectedFace = (model.groups.flatMap { it.faces } + model.unsure)
         .firstOrNull { it.handle == selectedFaceHandle }
+    val ready = model.status == SplitPreviewStatus.READY
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            DecisionRail(model.groups.size > 1, onCancel, onAdjust, onAccept)
+            DecisionRail(ready && model.groups.size > 1, onCancel, onAdjust, onAccept)
         }
     ) { scaffoldPadding ->
         LazyColumn(
@@ -89,37 +100,49 @@ fun SplitPreviewScreen(
             item {
                 Text("Split this group", style = MaterialTheme.typography.headlineMedium)
                 Text(
-                    when (model.groups.size) {
-                        0 -> "No faces to split."
-                        1 -> "No clear split"
-                        else -> "${model.groups.size} suggested people · ${model.totalCount} faces"
+                    when (model.status) {
+                        SplitPreviewStatus.LOADING -> "Finding groups"
+                        SplitPreviewStatus.ERROR -> "Couldn't load suggested groups."
+                        SplitPreviewStatus.READY -> when (model.groups.size) {
+                            0 -> "No faces to split."
+                            1 -> "No clear split"
+                            else -> "${model.groups.size} suggested people · ${model.totalCount} faces"
+                        }
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (model.groups.isNotEmpty()) Text(
+                if (ready && model.groups.isNotEmpty()) Text(
                     "Suggestions only. Review every face before confirming.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (model.groups.size == 1) item {
+            if (model.status == SplitPreviewStatus.ERROR) item {
+                OutlinedButton(onClick = onRetry, modifier = Modifier.testTag("split-preview-retry")) {
+                    Text("Retry")
+                }
+            }
+            if (ready && model.groups.size == 1) item {
                 Text("These faces may belong together. You can split them manually.")
                 Button(onClick = onManualSplit, modifier = Modifier.testTag("split-preview-manual")) {
                     Text("Split manually")
                 }
             }
-            itemsIndexed(model.groups) { groupIndex, group ->
-                GroupCard(groupIndex, group, selectedFace, facePreview, onSelectFace, onMoveFace)
+            if (ready) itemsIndexed(displayGroups) { groupIndex, group ->
+                GroupCard(groupIndex, group, selectedFace, facePreview, onSelectFace, onMoveFace, onAdjust)
             }
-            if (model.unsure.isNotEmpty()) item {
+            if (ready && model.unsure.isNotEmpty()) item {
                 Card(Modifier.fillMaxWidth().testTag("split-preview-unsure")) {
                     Column(Modifier.padding(AtlasTokens.Spacing.Gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Unsure · ${model.unsure.size} faces", style = MaterialTheme.typography.titleMedium)
                         Text("Not assigned to a suggested person", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        model.unsure.forEachIndexed { index, face ->
+                        model.unsure.take(3).forEachIndexed { index, face ->
                             FaceRow(face, "Unsure face ${index + 1}", selectedFace?.handle == face.handle,
                                 "split-preview-unsure-face-${index + 1}", onSelectFace, facePreview)
+                        }
+                        if (model.unsure.size > 3) OutlinedButton(onClick = onAdjust) {
+                            Text("See all ${model.unsure.size} unsure faces")
                         }
                         if (selectedFace != null) OutlinedButton(
                             onClick = { onMoveFace(selectedFace.handle, null) },
@@ -139,7 +162,8 @@ private fun GroupCard(
     selectedFace: SplitPreviewFace?,
     facePreview: @Composable (String?) -> Unit,
     onSelectFace: (String) -> Unit,
-    onMoveFace: (String, String?) -> Unit
+    onMoveFace: (String, String?) -> Unit,
+    onAdjust: () -> Unit
 ) {
     Card(Modifier.fillMaxWidth().testTag("split-preview-group-${index + 1}")) {
         Column(Modifier.padding(AtlasTokens.Spacing.Gutter), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -153,9 +177,12 @@ private fun GroupCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            group.faces.forEachIndexed { faceIndex, face ->
+            group.faces.take(3).forEachIndexed { faceIndex, face ->
                 FaceRow(face, "Face ${faceIndex + 1} in ${group.label}", selectedFace?.handle == face.handle,
                     "split-preview-face-${index + 1}-${faceIndex + 1}", onSelectFace, facePreview)
+            }
+            if (group.faces.size > 3) OutlinedButton(onClick = onAdjust) {
+                Text("See all ${group.faces.size} faces")
             }
             if (selectedFace != null) OutlinedButton(
                 onClick = { onMoveFace(selectedFace.handle, group.id) },
@@ -196,18 +223,18 @@ private fun DecisionRail(
 ) {
     Surface(tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding()
+            Modifier.fillMaxWidth().navigationBarsPadding().imePadding()
                 .padding(horizontal = AtlasTokens.Spacing.PillEdge, vertical = AtlasTokens.Spacing.TileGap),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f).testTag("split-preview-cancel")) {
+            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f).heightIn(min = AtlasTokens.Spacing.MinimumTarget).testTag("split-preview-cancel")) {
                 Text("Cancel", maxLines = 1)
             }
             if (canConfirm) {
-                OutlinedButton(onClick = onAdjust, modifier = Modifier.weight(1f).testTag("split-preview-adjust")) {
+                OutlinedButton(onClick = onAdjust, modifier = Modifier.weight(1f).heightIn(min = AtlasTokens.Spacing.MinimumTarget).testTag("split-preview-adjust")) {
                     Text("Adjust", maxLines = 1)
                 }
-                Button(onClick = onAccept, modifier = Modifier.weight(1f).testTag("split-preview-accept")) {
+                Button(onClick = onAccept, modifier = Modifier.weight(1f).heightIn(min = AtlasTokens.Spacing.MinimumTarget).testTag("split-preview-accept")) {
                     Text("Accept", maxLines = 1)
                 }
             }

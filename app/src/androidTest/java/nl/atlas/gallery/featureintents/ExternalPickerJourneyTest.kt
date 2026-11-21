@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -30,6 +31,9 @@ import nl.atlas.gallery.MainActivity
 import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.testkit.DisplayPrefsRule
 import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.sampleOnFrames
+import nl.atlas.gallery.testkit.visibilityProblem
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
 import org.junit.After
@@ -229,13 +233,42 @@ internal fun assertSameItem(expected: Uri, actual: Uri?) {
 
 internal fun androidx.compose.ui.test.junit4.ComposeTestRule.awaitPicker(title: String) {
     awaitThat("the picker titled $title") { exists(hasTestTag(ExternalPickerTags.TITLE) and hasText(title)) }
+    // A launch or recreate attaches a new window; touches sent before it has focus and a
+    // steady size fail with "Failed to inject touch input" (#897, rule 6).
+    awaitWindowSettled()
 }
 
 internal fun androidx.compose.ui.test.junit4.ComposeTestRule.tapTile(uri: Uri) {
     val tag = "atlas-timeline-media-${ContentUris.parseId(uri)}"
     awaitThat("grid tile $tag", timeoutMs = 30_000L) { exists(hasTestTag(tag)) }
+    awaitTileSteady(tag)
     tap(hasTestTag(tag))
 }
+
+/**
+ * The picker grid is rebuilt when MediaStore reports the test's freshly inserted rows, so a
+ * tile can exist, then vanish or move once (#897: "the node disappeared", a tile cut to
+ * 0,0..0,0). Wait until this tile has stayed whole at one place for [FRAMES] display frames in
+ * a row; a grid that keeps reloading fails here with the positions it saw, never later in tap().
+ */
+private fun androidx.compose.ui.test.junit4.ComposeTestRule.awaitTileSteady(tag: String) {
+    val matcher = hasTestTag(tag)
+    var seen = "never present"
+    awaitThat("grid tile $tag to stay whole at one place for $FRAMES frames", timeoutMs = 15_000L) {
+        var first: String? = null
+        repeat(FRAMES) {
+            sampleOnFrames(1) { }
+            val node = onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).singleOrNull()
+            val now = node?.let { "${it.positionInRoot} ${it.size} cut=${it.visibilityProblem() != null}" } ?: "absent"
+            seen = now
+            if (first == null) first = now
+            if (now != first || node == null || node.visibilityProblem() != null) return@awaitThat false
+        }
+        true
+    }.also { Log.i("ATLAS_897", "tile $tag steady at $seen") }
+}
+
+private const val FRAMES = 40
 
 /** Two generated PNGs in their own folder; the second is the newer. */
 internal class PickerMedia {

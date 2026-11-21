@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="state-matrix" data-theme="light" data-synthetic="true" data-density-illustrative="3" data-font-scale="1">
+<title id="title">Collections — synthetic light design proposal</title>
+<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#FFFFFF"/>
+<text x="16" y="84" fill="#2639C9" font-size="38" font-family="Funnel Display, sans-serif" font-weight="700" letter-spacing="-0.03em" data-role="screen-title" data-spec="38/44sp; 76/88sp at 200%">Collections</text>
+<text x="16" y="118" fill="#5A5F7A" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">Fallback states</text>
+<rect x="295" y="35" width="52" height="52" rx="15" fill="#F2F3F8" data-target="sort"/>
+<text x="303" y="67" fill="#2639C9" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Sort</text>
+<text x="16" y="142" fill="#5A5F7A" font-size="12" font-family="Funnel Sans, sans-serif" font-weight="400">Pictured loading, retry, grants and huge library</text>
+<g data-state="loading">
+<rect x="15" y="159" width="160" height="274" rx="15" fill="#F2F3F8"/>
+<text x="27" y="187" fill="#0E1030" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="600">Loading</text>
+<path d="M42 296 A57 57 0 0 1 151 296" stroke="#D8DAE6" stroke-width="5" fill="none"/>
+<circle cx="121" cy="253" r="17" stroke="white" stroke-width="2" fill="#2639C9"/>
+<text x="28" y="341" fill="#0E1030" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">7,140 / 12,305</text>
+<rect x="27" y="361" width="136" height="12" rx="5" fill="#D8DAE6"/>
+<rect x="27" y="361" width="83" height="12" rx="5" fill="#2639C9"/>
+</g>
+<g data-state="error">
+<rect x="185" y="159" width="160" height="274" rx="15" fill="#F2F3F8"/>
+<text x="197" y="187" fill="#0E1030" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="600">Error and retry</text>
+<rect x="200" y="235" width="130" height="76" rx="11" fill="#FFFFFF"/>
+<text x="209" y="268" fill="#0E1030" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="400">Couldn't load</text>
+<text x="209" y="289" fill="#5A5F7A" font-size="11" font-family="Funnel Sans, sans-serif" font-weight="400">No changes made</text>
+<rect x="200" y="333" width="130" height="52" rx="10" fill="#2639C9" data-target="retry"/>
+<text x="242" y="367" fill="#FFFFFF" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">Retry</text>
+</g>
+<g data-state="revoked">
+<rect x="15" y="446" width="160" height="274" rx="15" fill="#F2F3F8"/>
+<text x="27" y="474" fill="#0E1030" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="600">Access revoked</text>
+<rect x="30" y="522" width="130" height="76" rx="11" fill="#FFFFFF"/>
+<text x="37" y="554" fill="#0E1030" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="400">Media hidden</text>
+<text x="37" y="576" fill="#5A5F7A" font-size="11" font-family="Funnel Sans, sans-serif" font-weight="400">Scope protected</text>
+<rect x="30" y="620" width="130" height="52" rx="10" fill="#2639C9" data-target="grant"/>
+<text x="54" y="654" fill="#FFFFFF" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Allow access</text>
+</g>
+<g data-state="progressive">
+<rect x="185" y="446" width="160" height="274" rx="15" fill="#F2F3F8"/>
+<text x="197" y="474" fill="#0E1030" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="600">250k media</text>
+<text x="198" y="512" fill="#5A5F7A" font-size="11" font-family="Funnel Sans, sans-serif" font-weight="400">18,400 of 250,000</text>
+<rect x="197" y="524" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="243" y="524" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="289" y="524" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="197" y="578" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="243" y="578" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="289" y="578" width="43" height="50" rx="4" fill="#C5CAE1"/>
+<rect x="197" y="654" width="136" height="10" rx="5" fill="#D8DAE6"/>
+<rect x="197" y="654" width="55" height="10" rx="5" fill="#2639C9"/>
+<text x="197" y="689" fill="#5A5F7A" font-size="11" font-family="Funnel Sans, sans-serif" font-weight="400">Load as you scroll</text>
+</g>
+<rect x="0" y="757" width="360" height="23" rx="0" fill="#FFFFFF"/>
+<rect x="126" y="768" width="108" height="4" rx="2" fill="#0E1030"/>
+</svg>
