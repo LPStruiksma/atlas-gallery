@@ -1752,7 +1752,12 @@ internal class PeopleDiscoveryHost(
                             ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
                                 it.embedderVersion == pipeline.embedderVersion } },
                         store = { source, scores ->
-                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                            store.backfillQualityIfNull(owned.epoch, source, scores).also { written ->
+                                // The review revision does not change for quality-only writes.
+                                // Evict the home projection before the next Compose refresh.
+                                if (written > 0) synchronized(reviewLock) { liveHome = null }
+                            }
+                        },
                         reader = scanReader,
                         scoreOnly = pipeline::scoreWithoutEmbeddings,
                         canContinue = guard
