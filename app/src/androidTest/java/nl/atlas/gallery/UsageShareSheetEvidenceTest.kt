@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -40,6 +41,16 @@ class UsageShareSheetEvidenceTest {
         val file = java.io.File(compose.activity.cacheDir, "usage/" + log.exportFileName())
         assertTrue("export file missing: $file", file.isFile)
         assertTrue(file.readText().startsWith("{\"schema_version\":1,\"days\":["))
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        // The synthetic recipient declared in the androidTest manifest must be on the sheet:
+        // the capture shows a real target, not Android's "No apps can perform this action".
+        compose.awaitThat("the share sheet to list the synthetic recipient") {
+            automation.rootInActiveWindow
+                ?.findAccessibilityNodeInfosByText("Test recipient")?.isNotEmpty() == true
+        }
+        val named = automation.rootInActiveWindow
+            ?.findAccessibilityNodeInfosByText(log.exportFileName())?.isNotEmpty() == true
+        android.util.Log.i("ATLAS_EVIDENCE", "share sheet shows the file name: $named")
         compose.awaitScreenStill("the share sheet")
         saveUiEvidence("usage-0-share-sheet.png")
         InstrumentationRegistry.getInstrumentation().uiAutomation
