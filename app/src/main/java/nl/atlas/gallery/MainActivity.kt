@@ -4217,9 +4217,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     onClick = {
                                         val live = discoveryHost.liveReview(
                                             discovery.status?.people?.permissionEpoch)
-                                        if (live != null && discoveryHost.scopeCurrent(live.permissionEpoch)) {
+                                        val skipScope = live?.let {
+                                            discoveryHost.stableSamePersonSkipScope(it.permissionEpoch)
+                                        }
+                                        if (skipScope != null) {
                                             SamePersonSkipPreferences.forApp(context)
-                                                .clear(live.permissionEpoch)
+                                                .clear(skipScope)
                                             samePersonQueueOpen = true
                                         }
                                     }))
