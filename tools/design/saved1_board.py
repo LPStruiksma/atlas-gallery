@@ -112,8 +112,22 @@ def build(path=OUT):
 
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument("--output",type=Path,default=OUT); args=p.parse_args()
-    im=build(args.output); digest=hashlib.sha256(args.output.read_bytes()).hexdigest()
+    p = argparse.ArgumentParser()
+    p.add_argument("--output", type=Path, default=OUT)
+    p.add_argument("--finalize", action="store_true", help="record exact artifact/font digests in manifest")
+    args = p.parse_args()
+    im = build(args.output)
+    digest = hashlib.sha256(args.output.read_bytes()).hexdigest()
+    if args.finalize:
+        if args.output.resolve() != OUT.resolve():
+            p.error("--finalize requires the canonical output path")
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        manifest["sha256"] = digest
+        manifest["byte_size"] = args.output.stat().st_size
+        manifest["pillow"] = PILLOW_VERSION
+        for key, path in (("regular", FONT), ("bold", FONT_BOLD)):
+            manifest["font_provenance"][key]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        MANIFEST.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{args.output}: {im.width}x{im.height} sha256={digest} bytes={args.output.stat().st_size} Pillow={PILLOW_VERSION}")
 
 if __name__ == "__main__": main()
