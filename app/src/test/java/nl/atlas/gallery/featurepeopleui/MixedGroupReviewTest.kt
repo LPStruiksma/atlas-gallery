@@ -13,6 +13,8 @@ import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepersistence.ClusterPublication
 import nl.atlas.gallery.featurepersistence.PeopleReviewRecords
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -314,4 +316,40 @@ class MixedGroupReviewTest {
         // No pending faces: the seed itself, marks untouched.
         assertSame(seed, ClusterPublication.publish(seed, emptyList()))
     }
+    @Test fun skipIdentityChangesWithEitherMembershipOrPermissionScope() {
+        val original = state()
+        val question = samePersonQueue(original).items.first()
+        val fingerprint = samePersonSkipFingerprint(original, question)
+        assertNotNull(fingerprint)
+        assertEquals(fingerprint, samePersonSkipFingerprint(original, question))
+        assertNotEquals(fingerprint, samePersonSkipFingerprint(
+            original.copy(permissionEpoch = "another-current-grant"), question))
+        val subject = (question.subject as PersonPageTarget.Unnamed).cluster
+        val other = question.other
+
+        fun swappedMember(target: FaceClusterId): PeopleClusterReviewState {
+            val group = original.clusters.unknownClusters.single { it.id == target }
+            val spare = original.group(4)
+            val out = group.members.maxBy { it.localHex }
+            val incoming = spare.members.maxBy { it.localHex }
+            val groups = original.clusters.unknownClusters.map { g ->
+                when (g.id) {
+                    target -> (g.members - out) + incoming
+                    spare.id -> (g.members - incoming) + out
+                    else -> g.members
+                }
+            }
+            val rebuilt = FaceClusterer.restore("m", policy, fixtureFaces,
+                groups, original.clusters.reviews)
+            return original.copy(clusters = rebuilt)
+        }
+
+        val changedSubject = samePersonSkipFingerprint(swappedMember(subject), question)
+        val changedOther = samePersonSkipFingerprint(swappedMember(other), question)
+        assertNotEquals(fingerprint, changedSubject)
+        assertNotEquals(fingerprint, changedOther)
+        // The open count remains an all-question count; Skip is only a preference.
+        assertEquals(2, samePersonQueue(original).open)
+    }
+
 }
