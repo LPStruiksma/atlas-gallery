@@ -33,7 +33,7 @@ Qwen3 1.7B per-field accuracy on filter queries: intent 0.79, people 0.80, place
 - One model run only (n=72, greedy decoding), so differences of a few points are noise.
 - Q8_0 on a desktop CPU is not the quantisation or runtime a phone would use.
 
-## Candidates and runtime (screen)
+## Candidates (screen)
 
 | Model | Params | Licence (HF metadata) | Fit to ATLAS | Status |
 |---|---|---|---|---|
@@ -43,7 +43,19 @@ Qwen3 1.7B per-field accuracy on filter queries: intent 0.79, people 0.80, place
 | Llama 3.2 1B | 1.2B | `llama3.2` community licence, gated | Licence has an acceptable-use policy and attribution terms; Dutch is not among its officially supported languages | Not measured |
 | SmolLM3 3B | 3.1B | `apache-2.0`, not gated | Larger than the others; card lists no Dutch | Not measured |
 
-**Redistribution.** The Gemma and Llama licences are custom terms with use restrictions, not Apache-2.0, and both models are gated. ATLAS plans to download weights after install for private use only (the identity-model decision, #467), which fits, but **the actual terms must be read and cleared before any bundle or download** (open item). Apache-2.0 Qwen3 and SmolLM3 carry no such restriction.
+## Runtimes (screen, nothing integrated)
+
+ATLAS already ships `com.microsoft.onnxruntime:onnxruntime-android:1.23.2` (arm64-v8a and x86_64, minSdk 29; `app/build.gradle.kts`). Any new inference runtime is a dependency change in that **protected** file, so Lukas must merge it. Facts below come from the runtimes' public documentation as I know it and were **not** re-verified or run in this unit; unknowns are labelled.
+
+| Runtime | What it needs on Android | Models and formats | Viability for ATLAS | Open unknowns |
+|---|---|---|---|---|
+| **ONNX Runtime GenAI** (`onnxruntime-genai`) | A new AAR beside the ONNX Runtime ATLAS already ships, and the two must be version-compatible. Protected Gradle change | ONNX exports of Qwen, Llama, Gemma and Phi families | Best fit for tooling reuse: same runtime family, same asset pipeline as the SigLIP towers. Constrained JSON output is not assumed | AAR size and ABI set, whether it coexists with ORT 1.23.2, which candidate exports exist for Dutch-capable models, speed on the S24+ |
+| **llama.cpp** (JNI) | A native build (NDK, CMake) or a community AAR; new native code for arm64. Protected Gradle change | GGUF, including Q4 and Q8; the widest model coverage; grammar-constrained JSON (used in this host run) | Most flexible and the only runtime measured here (host). Grammar output matches the filter schema well. Heaviest integration: native build and JNI wrapper to maintain | NDK build cost in CI, APK size, thermal behaviour, GPU or NPU use on the handset |
+| **LiteRT-LM / MediaPipe LLM Inference** | A Google AAR (MediaPipe tasks genai or LiteRT-LM). Protected Gradle change | `.task` / `.litertlm` bundles; Gemma 3 1B bundles exist in int4 and int8 (litert-community) | Easiest path for Gemma, with vendor-tuned kernels. Narrower model choice; JSON constraint support not assumed | Whether the AAR conflicts with ORT, API stability of the LiteRT-LM successor, Dutch quality of Gemma 3 1B, Gemma terms for bundling |
+
+No runtime was installed on a handset, and none is recommended yet: the spike in the next steps picks one only if the model earns it. If a model clears the bar, prefer reusing ONNX Runtime GenAI if an adequate export exists, because it avoids a second inference stack; otherwise decide between llama.cpp and LiteRT-LM on the S24+ measurements.
+
+**Redistribution and weights.** The Gemma and Llama licences are custom terms with use restrictions, not Apache-2.0, and both models are gated. Qwen3 and SmolLM3 are Apache-2.0 per their metadata (full terms and any bundled-data notices still to be read). **The existing weights decision does not cover any of these.** The OD-1 owner decision ([#467 comment](https://github.com/LPStruiksma/atlas-gallery/issues/467#issuecomment-6990241396)) allows a post-install download only for HyperSwap 1a 256 and InsightFace w600k_r50, and explicitly not for other restricted models without a new decision. A post-install download of any language model is therefore only a **proposal**. Permissive weights (Apache-2.0) still need the delivery and approval decision for a new download path; gated or custom-licence weights (Gemma, Llama) additionally need that model's terms read and a candidate-specific owner decision. Nothing is downloaded or bundled by this unit.
 
 **Estimated S24+ cost (not measured).** Assumptions: decode on CPU is memory-bandwidth-bound; the handset sustains roughly 10 to 20 GB/s effective for LLM decode (below the chip's peak); int4 weights; the fixed prompt is cached so only the query is prefilled. Tokens per second is then bandwidth divided by weight bytes.
 
@@ -67,7 +79,7 @@ Cold start (loading weights) is likely several seconds and should happen lazily,
 
 ## Privacy and offline rules (unchanged)
 
-Inference would run only on the device. No query, title, caption or metadata leaves the phone; no cloud call at runtime; weights arrive by an explicit user-approved download, not a silent one. Model output is never executed: it is parsed, validated against the schema and vocabulary, and discarded if invalid.
+Inference would run only on the device. No query, title, caption or metadata leaves the phone; no cloud call at runtime. If a model is ever delivered after install, that is a separate owner decision (above), and the download would be explicit, never silent. Model output is never executed: it is parsed, validated against the schema and vocabulary, and discarded if invalid.
 
 ## Next steps (not done here)
 
@@ -75,4 +87,4 @@ Inference would run only on the device. No query, title, caption or metadata lea
 2. Run the remaining candidates through `tools/llm_bench/run_model.py` (Gemma 3 1B needs Lukas's gated-licence acceptance; Llama likewise).
 3. Only if a model clearly beats rules: an S24+ spike measuring RAM, decode speed, heat and cold start, then independent review.
 
-Reproduce: `python3 tools/llm_bench/run_baseline.py`; model: `python tools/llm_bench/run_model.py --gguf <Qwen3-1.7B-Q8_0.gguf> --name qwen3-1.7b-q8_0` (GGUF SHA-256 `061b54da…cb1a`, from Qwen/Qwen3-1.7B-GGUF, Apache-2.0).
+Reproduce: `python3 tools/llm_bench/run_baseline.py`; model: `python tools/llm_bench/run_model.py --gguf <Qwen3-1.7B-Q8_0.gguf> --name qwen3-1.7b-q8_0` (GGUF SHA-256 `061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a`, from Qwen/Qwen3-1.7B-GGUF, Apache-2.0; llama-cpp-python 0.3.37).
