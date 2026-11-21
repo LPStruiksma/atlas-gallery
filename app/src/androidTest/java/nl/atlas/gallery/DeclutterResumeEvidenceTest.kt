@@ -81,9 +81,9 @@ class DeclutterResumeEvidenceTest {
             }
             rule.onNodeWithTag("atlas-declutter-resume-dialog").assertExists()
             rule.onNodeWithText("Reviewed 2 of 3", substring = true).assertExists()
-            capture("declutter-577-resume-light")
+            capture("declutter-577-resume-light.png")
             rule.runOnIdle { dark = true }
-            capture("declutter-577-resume-dark")
+            capture("declutter-577-resume-dark.png")
 
             // Start again asks first; cancelling keeps every saved Keep.
             rule.onNodeWithTag("atlas-declutter-start-again").performClick()
@@ -94,9 +94,9 @@ class DeclutterResumeEvidenceTest {
             rule.onNodeWithTag("atlas-declutter-resume").performClick()
             rule.onNodeWithTag("atlas-declutter-progress").assertTextEquals("Reviewed 2 of 3")
             rule.onNodeWithText("ATLAS_577_C.png", substring = true).assertExists()
-            capture("declutter-577-deck-dark")
+            capture("declutter-577-deck-dark.png")
             rule.runOnIdle { dark = false }
-            capture("declutter-577-deck-light")
+            capture("declutter-577-deck-light.png")
 
             // Keep is saved at once; a stage never is.
             rule.onNodeWithTag("atlas-declutter-keep").performClick()
