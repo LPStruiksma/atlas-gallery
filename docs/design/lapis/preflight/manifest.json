@@ -133,10 +133,10 @@
       "file": "brand-l8-justified.png",
       "size": [
         3480,
-        14491
+        27339
       ],
-      "sha256": "20e96a8eff791976adeb297e6b18a46ee8d0bf3c5ae90d49550fb4d94fcca229",
-      "device_frames": 26,
+      "sha256": "1e09b009c5837b66dc3e0459ccc2d6cb1b5d8d92866b9c516dd8102ce671cab4",
+      "device_frames": 43,
       "device_frame_px": [
         1080,
         2340
@@ -144,6 +144,12 @@
       "panels": [
         "A1",
         "A2",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
         "C1",
         "C2",
         "C3",
@@ -156,10 +162,21 @@
         "C10",
         "C11",
         "C12",
+        "C13",
+        "C14",
+        "C15",
+        "C16",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6",
         "B1",
         "B2",
         "B3",
         "B4",
+        "B5",
         "D1",
         "D2",
         "E1",

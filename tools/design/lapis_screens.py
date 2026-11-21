@@ -7,6 +7,7 @@ import random
 
 from lapis_kit import (
     ANNO,
+    DENSITY,
     DEVICE_W,
     VIEWER_SLAB,
     dashed_rect,
@@ -629,7 +630,7 @@ DAY_LABELS = ["Saturday 14 November", "Friday 13 November", "Thursday 12 Novembe
               "Friday 6 November", "Thursday 5 November", "Wednesday 4 November", "Tuesday 3 November",
               "Monday 2 November", "Sunday 1 November"]
 LIB_RATIOS = [1.33, 0.75, 1.5, 1.0, 0.56, 1.78, 0.8, 2.4, 0.66, 1.25]
-LIB_VIDEOS = frozenset({6, 12, 21, 30, 44, 86, 97})
+LIB_VIDEOS = frozenset({6, 12, 21, 30, 44, 86, 97, 566, 830})
 
 
 @dataclass(frozen=True)
@@ -641,9 +642,14 @@ class Item:
     video: bool = False
 
 
+OLDER_MONTHS = [("August", 8, 880), ("July", 7, 640), ("June", 6, 910), ("May", 5, 520), ("April", 4, 770),
+                ("March", 3, 600)]  # synthetic older months so YEAR (28 columns) has real scroll range
+
+
 def synthetic_library(n_nov: int = 268, n_sep: int = 702) -> list[Item]:
     """Newest first. Keys 0-15 are the A1 day rows (DAY_RATIOS); the rest are seeded synthetic shapes.
-    Counts follow the L6 atlas bars (November 268, October 0, September 702)."""
+    Counts follow the L6 atlas bars (November 268, October 0, September 702); older months are synthetic padding
+    so the 28-column YEAR stop is longer than one screen (#855)."""
     r = random.Random(836)
     items: list[Item] = []
     split = [9, 7]
@@ -665,17 +671,42 @@ def synthetic_library(n_nov: int = 268, n_sep: int = 702) -> list[Item]:
         d = _date(2026, 9, max(1, 30 - j // 24))
         items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} September", "September 2026"))
         k += 1
+    for name, m, n in OLDER_MONTHS:
+        for j in range(n):
+            d = _date(2026, m, max(1, 28 - j // 30))
+            items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} {name}", f"{name} 2026"))
+            k += 1
     return items
 
 
 @dataclass
 class Layout:
-    kind: str  # "day", "month" or "year"
-    cols: int  # 0 for day
+    kind: str  # "original", "large", "medium" (real-ratio rows) or "small", "month", "year" (squares)
+    cols: int  # 0 for real-ratio rows; 1 for original
     rects: dict[int, tuple[float, float, float, float]]  # key -> content rect
     headers: list[tuple[float, str]]  # (content y of header band top, label)
     height: float
     header_h: float
+
+    @property
+    def square(self) -> bool:
+        return self.kind in SQUARE_COLS
+
+
+# The approved six-stop ladder (SAMSUNG_PARITY_SPEC section 2, FLOW-2 #712): ORIGINAL day real-ratio, LARGE ~3
+# justified day, MEDIUM ~4 justified day, SMALL 7 square/month, MONTH 12 square/month, YEAR 28 square/year.
+LADDER = ("original", "large", "medium", "small", "month", "year")
+SQUARE_COLS = {"small": 7, "month": 12, "year": 28}
+STOP_NAMES = {"original": "ORIGINAL (1, real ratio)", "large": "LARGE (~3, real ratio)",
+              "medium": "MEDIUM (~4, real ratio)", "small": "SMALL (7 squares)", "month": "MONTH (12 squares)",
+              "year": "YEAR (28 squares)"}
+ROW_TARGET_DP = {"large": 118, "medium": 86}
+ORIGINAL_MAX_DP = 520  # tallest ORIGINAL frame; a taller portrait keeps its ratio and is centred narrower
+MIN_TARGET_DP = 48  # Quiet Frame v3 touch target
+
+
+def tile_dp(cols: int) -> float:
+    return ((DEVICE_W - px(GAP) * (cols - 1)) / cols) / DENSITY
 
 
 def header_h_for(s: Screen) -> int:
@@ -683,7 +714,7 @@ def header_h_for(s: Screen) -> int:
     return s.line_h("date") + px(16)
 
 
-def day_layout(items: list[Item], header_h: float, target_dp: int = 118) -> Layout:
+def day_layout(items: list[Item], header_h: float, target_dp: int = 118, kind: str = "large") -> Layout:
     rects: dict[int, tuple] = {}
     headers: list[tuple[float, str]] = []
     y = 0.0
@@ -702,11 +733,33 @@ def day_layout(items: list[Item], header_h: float, target_dp: int = 118) -> Layo
                 rects[grp[j].key] = (x, y, x + w, y + h)
                 x += w + px(GAP)
             y += h + px(GAP)
-    return Layout("day", 0, rects, headers, y, header_h)
+    return Layout(kind, 0, rects, headers, y, header_h)
+
+
+def original_layout(items: list[Item], header_h: float) -> Layout:
+    """ORIGINAL stop: one picture per row at its real ratio, full width (or centred narrower when very tall)."""
+    rects: dict[int, tuple] = {}
+    headers: list[tuple[float, str]] = []
+    y = 0.0
+    day = None
+    for it in items:
+        if it.day != day:
+            day = it.day
+            headers.append((y, day))
+            y += header_h
+        w, h = float(DEVICE_W), DEVICE_W / it.ratio
+        if h > px(ORIGINAL_MAX_DP):
+            h = float(px(ORIGINAL_MAX_DP))
+            w = h * it.ratio
+        x = (DEVICE_W - w) / 2
+        rects[it.key] = (x, y, x + w, y + h)
+        y += h + px(GAP)
+    return Layout("original", 1, rects, headers, y, header_h)
 
 
 def grid_layout(items: list[Item], cols: int, header_h: float) -> Layout:
     """Edge-aligned square grid, one section per month: a key's column is its index in the month mod cols."""
+    kind = {c: k for k, c in SQUARE_COLS.items()}[cols]
     tile = (DEVICE_W - px(GAP) * (cols - 1)) / cols
     step = tile + px(GAP)
     rects: dict[int, tuple] = {}
@@ -717,14 +770,14 @@ def grid_layout(items: list[Item], cols: int, header_h: float) -> Layout:
         if it.month != month:
             y += (i + cols - 1) // cols * step  # rows of the previous month
             month, i = it.month, 0
-            label = it.month if cols <= 4 else it.month[:3] + " " + it.month.split()[-1]
+            label = it.month if cols <= 12 else it.month[:3] + " " + it.month.split()[-1]
             headers.append((y, label))
             y += header_h
         c, r = i % cols, i // cols
         rects[it.key] = (c * step, y + r * step, c * step + tile, y + r * step + tile)
         i += 1
     y += (i + cols - 1) // cols * step
-    return Layout("month" if cols <= 4 else "year", cols, rects, headers, y, header_h)
+    return Layout(kind, cols, rects, headers, y, header_h)
 
 
 @dataclass(frozen=True)
@@ -806,7 +859,7 @@ def key_at(layout: Layout, scroll: float, vp: Viewport, point) -> int | None:
     return None
 
 
-def same_point_columns(cols_a: int = 4, cols_b: int = 8) -> list[int]:
+def same_point_columns(cols_a: int = 7, cols_b: int = 12) -> list[int]:
     """Columns of the finer grid whose span lies inside the coarser grid's column for the same key.
     Only for these can one stationary focal point sit on the same key in both grids."""
     ta = (DEVICE_W - px(GAP) * (cols_a - 1)) / cols_a
@@ -862,13 +915,16 @@ def video_glyph(s: Screen, box) -> None:
 def draw_layout(s: Screen, items: dict[int, Item], layout: Layout, scroll: float, vp: Viewport, *,
                 selected: dict[int, int] | None = None, placeholders: bool = False,
                 outline: int | None = None) -> dict[int, tuple]:
-    """Draw the visible part of ``layout`` and return key -> screen rect for what is visible."""
+    """Draw the visible part of ``layout`` and return key -> screen rect for what is visible.
+
+    Selection per stop: day rows and SMALL (53 dp tiles) keep the full sphere and record a direct ≥48 dp target;
+    MONTH (30 dp) and YEAR (12 dp) tiles are dense: a smaller sphere is painted (visible, not a target) and no
+    direct tap is recorded, because a dense tile may not be passed off as a compliant touch target (#855)."""
     vis: dict[int, tuple] = {}
     for hy, label in layout.headers:
         y = hy - scroll + vp.top
         if vp.top - layout.header_h < y < vp.bottom:
             s.text((px(SIDE), y + px(10)), label, "date")
-    year = layout.kind == "year"
     for k, r in layout.rects.items():
         sr = to_screen(r, scroll, vp)
         if sr[3] <= vp.top or sr[1] >= vp.bottom:
@@ -878,17 +934,55 @@ def draw_layout(s: Screen, items: dict[int, Item], layout: Layout, scroll: float
             s.d.rectangle([sr[0], max(sr[1], vp.top), sr[2], min(sr[3], vp.bottom)], fill=s.t["surface"])
         else:
             key_photo(s, sr, items[k], (vp.top, vp.bottom))
-        if items[k].video and sr[3] < vp.bottom:
-            video_glyph(s, sr) if year else video_badge(s, sr, "0:14" if layout.kind != "day" else "1:02")
-        if selected and k in selected and sr[1] >= vp.top:
-            if layout.kind == "day":
-                select_sphere(s, sr, selected[k])
+        if items[k].video and sr[3] < vp.bottom and layout.kind != "year":
+            if layout.kind == "month":
+                video_glyph(s, sr)
             else:
-                select_sphere(s, sr, selected[k], r_dp=10 if year else 12, inset_dp=4 if year else 8,
-                              target="tile")
+                video_badge(s, sr, "1:02" if not layout.square else "0:14")
+        if selected and k in selected and sr[1] >= vp.top:
+            dense_sphere(s, sr, selected[k], layout.kind)
     if outline is not None and outline in vis:
         s.d.rectangle(vis[outline], outline=ANNO, width=px(3))
     return vis
+
+
+def dense_sphere(s: Screen, box, n: int, kind: str) -> None:
+    if kind in ("original", "large", "medium"):
+        select_sphere(s, box, n)
+    elif kind == "small":  # 53 dp tile: the whole tile is the direct target, >= 48 dp
+        select_sphere(s, box, n, r_dp=11, inset_dp=5, target="tile")
+    else:
+        # MONTH (30 dp tile): sphere inside the tile corner, no direct tap recorded.
+        # YEAR (12 dp tile): the sphere is wider than its tile and sits on its centre.
+        r = px(8 if kind == "month" else 7)
+        if kind == "month":
+            cx, cy = box[0] + px(3) + r, box[1] + px(3) + r
+        else:
+            cx = min(max((box[0] + box[2]) / 2, r + px(2)), DEVICE_W - r - px(2))
+            cy = (box[1] + box[3]) / 2
+        s.d.rectangle(box, fill=(255, 255, 255, 40 if kind == "month" else 90))
+        s.sphere((cx, cy), r, halo_dp=2)
+        s.d.text((cx, cy), str(n), font=s.fonts.get("sans", 700, px(10)), fill=s.t["on_brand"], anchor="mm")
+
+
+def precision_pill(s: Screen, y_top: float, text: str, back: bool = False) -> tuple[float, float, float, float]:
+    """48 dp (or taller at large font) floating pill that gives the dense overview its precision-selection
+    pathway: "Select precisely" in MONTH/YEAR, "12 columns" (back) in the focused SMALL stop. Records a target."""
+    f = s.font("nav", True, None)
+    w = s.d.textlength(text, font=f) + px(48 if back else 40)
+    h = max(px(MIN_TARGET_DP), s.line_h("nav") + px(20))
+    x0 = px(SIDE)
+    box = (x0, y_top, x0 + w, y_top + h)
+    s.d.rounded_rectangle(box, radius=h / 2, fill=s.t["brand_fill"])
+    tx = x0 + px(20)
+    if back:  # chevron
+        cy = y_top + h / 2
+        s.d.line([(x0 + px(24), cy - px(6)), (x0 + px(17), cy), (x0 + px(24), cy + px(6))], fill=s.t["on_brand"],
+                 width=px(2))
+        tx = x0 + px(30)
+    s.d.text((tx, y_top + h / 2), text, font=f, fill=s.t["on_brand"], anchor="lm")
+    s.target(box, "back to overview" if back else "select precisely", actual=True)
+    return box
 
 
 def thumb_frac(layout: Layout, scroll: float, vp: Viewport) -> float:
@@ -936,10 +1030,10 @@ def fmt_pt(p) -> str:
 # ---------------------------------------------------------------------------
 # L8 storyboard scenarios: computed once, drawn by the board, asserted by the tests
 # ---------------------------------------------------------------------------
-MAIN_KEY = 88  # Monday 9 November; left day edge, column 0 in month and year, deep enough to scroll freely
+MAIN_KEY = 828  # September, deep in the library: no stop clamps at the top or the end
 MAIN_TOP_FRAC = 0.45  # day frame scrolled so the main key's top sits at 45 % of the viewport
-INTERIOR_KEY = 83  # same day frame, a wide photo whose month/year columns lie away from its day position
-SELECTED = {80: 1, 86: 2, 93: 3}  # ordered selection carried through every zoom (86 is a video)
+INTERIOR_KEY = 825  # same day frame, a wide photo whose small/month/year columns lie away from its day position
+SELECTED = {822: 1, 830: 2, 837: 3}  # ordered selection carried through every zoom (830 is a video)
 
 
 def l8_env(s: Screen):
@@ -948,41 +1042,90 @@ def l8_env(s: Screen):
     vp = Viewport(title(probe, "Pictures"), probe.bottom)
     hh = header_h_for(probe)
     lib = synthetic_library()
-    lays = {"day": day_layout(lib, hh), "month": grid_layout(lib, 4, hh), "year": grid_layout(lib, 8, hh)}
+    lays = {
+        "original": original_layout(lib, hh),
+        "large": day_layout(lib, hh, ROW_TARGET_DP["large"], "large"),
+        "medium": day_layout(lib, hh, ROW_TARGET_DP["medium"], "medium"),
+        **{k: grid_layout(lib, c, hh) for k, c in SQUARE_COLS.items()},
+    }
     return {it.key: it for it in lib}, lays, vp
 
 
 def storyboard(lays: dict[str, Layout], vp: Viewport) -> dict[str, PinchStep]:
-    day, month, year = lays["day"], lays["month"], lays["year"]
+    """Pinch in = LARGE -> MEDIUM -> SMALL(7) -> MONTH(12) -> YEAR(28); pinch out walks back. Same F throughout."""
+    large, medium, small, month, year = (lays[k] for k in ("large", "medium", "small", "month", "year"))
     out: dict[str, PinchStep] = {}
-    # Main: fingers on the main key at 40 % of its height, x inside its day, month and year columns.
-    s0 = round(day.rects[MAIN_KEY][1] - MAIN_TOP_FRAC * vp.h)
-    r = to_screen(day.rects[MAIN_KEY], s0, vp)
-    f = (70.0, round(r[1] + 0.4 * (r[3] - r[1])))
-    start = PinchStep(MAIN_KEY, f, r, r, s0, s0, "", "day")
+    # Main: fingers on the main key at 40 % of its height, x at the centre of its LARGE day rect.
+    s0 = round(large.rects[MAIN_KEY][1] - MAIN_TOP_FRAC * vp.h)
+    r = to_screen(large.rects[MAIN_KEY], s0, vp)
+    fy = round(r[1] + 0.4 * (r[3] - r[1]))
+    chain: dict[str, PinchStep] = {}
+    # F sits at the rect's centre x, nudged sideways (smallest move first) until a key lies under it at every
+    # stop: a 2 dp gap between square tiles would make the frame say nothing about the key under F.
+    for off in sorted(range(-40, 41, 2), key=abs):
+        f = (round(centre(r)[0]) + off, fy)
+        if not r[0] <= f[0] <= r[2]:
+            continue
+        chain = {"in_medium": pinch(r, f, MAIN_KEY, medium, vp)}
+        chain["in_small"] = pinch(chain["in_medium"].dst, f, MAIN_KEY, small, vp)
+        chain["in_month"] = pinch(chain["in_small"].dst, f, MAIN_KEY, month, vp)
+        chain["in_year"] = pinch(chain["in_month"].dst, f, MAIN_KEY, year, vp)
+        for name, st_ in chain.items():
+            st_.extra["key_under_pointer"] = key_at(lays[st_.kind], st_.scroll, vp, f)
+        if all(st_.extra["key_under_pointer"] is not None for st_ in chain.values()):
+            break
+    start = PinchStep(MAIN_KEY, f, r, r, s0, s0, "", "large")
     out["start"] = start
-    out["in_month"] = pinch(r, f, MAIN_KEY, month, vp)
-    out["in_year"] = pinch(out["in_month"].dst, f, MAIN_KEY, year, vp)
+    out["original"] = pinch(r, f, MAIN_KEY, lays["original"], vp)
+    out.update(chain)
     k_back = key_at(year, out["in_year"].scroll, vp, f)
+    if k_back is None:  # F fell into a 2 dp gap: take the key nearest to it
+        k_back = min(year.rects, key=lambda k: _dist(to_screen(year.rects[k], out["in_year"].scroll, vp), f))
     out["out_month"] = pinch(out["in_year"].dst, f, k_back, month, vp)
-    out["out_day"] = pinch(out["out_month"].dst, f, k_back, day, vp)
+    out["out_small"] = pinch(out["out_month"].dst, f, k_back, small, vp)
+    out["out_medium"] = pinch(out["out_small"].dst, f, k_back, medium, vp)
+    out["out_large"] = pinch(out["out_medium"].dst, f, k_back, large, vp)
     # Interior key: the photo cannot stay under a stationary pointer once columns are fixed.
-    ri = to_screen(day.rects[INTERIOR_KEY], s0, vp)
+    ri = to_screen(large.rects[INTERIOR_KEY], s0, vp)
     fi = (round(centre(ri)[0]), round(centre(ri)[1]))
-    out["int_start"] = PinchStep(INTERIOR_KEY, fi, ri, ri, s0, s0, "", "day")
-    out["int_month"] = pinch(ri, fi, INTERIOR_KEY, month, vp)
+    out["int_start"] = PinchStep(INTERIOR_KEY, fi, ri, ri, s0, s0, "", "large")
+    out["int_small"] = pinch(ri, fi, INTERIOR_KEY, small, vp)
+    out["int_month"] = pinch(out["int_small"].dst, fi, INTERIOR_KEY, month, vp)
     out["int_year"] = pinch(out["int_month"].dst, fi, INTERIOR_KEY, year, vp)
-    out["int_month"].extra["key_under_pointer"] = key_at(month, out["int_month"].scroll, vp, fi)
-    out["int_year"].extra["key_under_pointer"] = key_at(year, out["int_year"].scroll, vp, fi)
+    for name in ("int_small", "int_month", "int_year"):
+        out[name].extra["key_under_pointer"] = key_at(lays[out[name].kind], out[name].scroll, vp, fi)
     # Top clamp: first photo of the library at day scroll 0.
-    r0 = to_screen(day.rects[0], 0, vp)
-    out["top"] = pinch(r0, (round(centre(r0)[0]), round(centre(r0)[1])), 0, month, vp)
+    r0 = to_screen(large.rects[0], 0, vp)
+    out["top"] = pinch(r0, (round(centre(r0)[0]), round(centre(r0)[1])), 0, small, vp)
     # Bottom clamp: last photo of the library with the day timeline at its end.
-    last = max(day.rects)
-    sb = max_scroll(day, vp)
-    rl = to_screen(day.rects[last], sb, vp)
-    out["bottom"] = pinch(rl, (round(centre(rl)[0]), round(rl[1] + 0.2 * (rl[3] - rl[1]))), last, month, vp)
+    last = max(large.rects)
+    sb = max_scroll(large, vp)
+    rl = to_screen(large.rects[last], sb, vp)
+    out["bottom"] = pinch(rl, (round(centre(rl)[0]), round(rl[1] + 0.2 * (rl[3] - rl[1]))), last, small, vp)
     out["bottom"].extra["day_scroll"] = sb
+    return out
+
+
+def _dist(rect, p) -> float:
+    c = centre(rect)
+    return math.hypot(c[0] - p[0], c[1] - p[1])
+
+
+# Precision selection from a dense overview (MONTH 12 / YEAR 28): long-press or "Select precisely" opens the same
+# media key in the 7-column SMALL stop, whose 53 dp tiles are real >= 48 dp targets; Back returns to the overview.
+PRECISION_KEY = 568  # a selected item, so continuity across the round trip is visible
+PRECISION_SELECTED = {560: 1, 566: 2}  # selected before the long-press; the pressed key becomes 3
+
+
+def precision_flow(lays: dict[str, Layout], vp: Viewport, from_kind: str = "month") -> dict[str, PinchStep]:
+    """Dense overview -> SMALL focus -> back, anchored on PRECISION_KEY at the long-press height."""
+    dense, small = lays[from_kind], lays["small"]
+    scroll = max(0.0, min(max_scroll(dense, vp), dense.rects[PRECISION_KEY][1] - 0.4 * vp.h))
+    r = to_screen(dense.rects[PRECISION_KEY], scroll, vp)
+    press = (round(centre(r)[0]), round(centre(r)[1]))
+    out = {"press": PinchStep(PRECISION_KEY, press, r, r, scroll, scroll, "", from_kind)}
+    out["focus"] = pinch(r, press, PRECISION_KEY, small, vp)
+    out["back"] = pinch(out["focus"].dst, press, PRECISION_KEY, dense, vp)
     return out
 
 
