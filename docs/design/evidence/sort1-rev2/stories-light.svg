@@ -58,29 +58,43 @@
 <path d="M237 495 L268 458 L289 479 L316 447 L347 492 V513 H237Z" fill="#3448E0" opacity=".9"/>
 <path d="M237 503 L289 482 L347 502 V513 H237Z" fill="#2639C9"/>
 <rect x="0" y="0" width="360" height="780" rx="0" fill="#0E1030" opacity=".18"/>
-<rect x="0" y="392" width="360" height="388" rx="22" fill="#F2F3F8" />
-<rect x="151" y="402" width="58" height="4" rx="3" fill="#5A5F7A" opacity=".65"/>
-<text x="20" y="437" font-size="20" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="700" >Sort by</text>
-<clipPath id="rows"><rect x="12" y="449" width="336" height="206"/></clipPath><g clip-path="url(#rows)">
-<circle cx="33" cy="470.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
-<text x="55" y="475.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date created</text>
-<circle cx="33" cy="513.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
-<text x="55" y="518.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date modified</text>
-<circle cx="33" cy="556.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
-<text x="55" y="561.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >File name</text>
-<rect x="15" y="580" width="330" height="40" rx="12" fill="#FFFFFF" />
-<circle cx="33" cy="599.5" r="9" fill="#2639C9" stroke="#2639C9" stroke-width="1.5"/>
-<circle cx="33" cy="599.5" r="3.2" fill="#FFFFFF" />
-<text x="55" y="604.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="700" >Size</text>
-<circle cx="33" cy="642.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
-<text x="55" y="647.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Random</text>
+<rect x="0" y="359" width="360" height="421" rx="22" fill="#F2F3F8" />
+<rect x="151" y="369" width="58" height="4" rx="3" fill="#5A5F7A" opacity=".65"/>
+<text x="20" y="404" font-size="20" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="700" >Sort by</text>
+<clipPath id="rows"><rect x="12" y="416" width="336" height="249"/></clipPath><g clip-path="url(#rows)">
+<g role="radio" aria-label="Date created" aria-checked="false">
+<rect x="15" y="418" width="330" height="48" rx="12" fill="#F2F3F8" stroke="#5A5F7A" stroke-opacity=".18" stroke-width="1"/>
+<circle cx="33" cy="442" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="447" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date created</text>
 </g>
-<rect x="12" y="713" width="336" height="1" rx="0" fill="#5A5F7A" opacity=".25"/>
-<text x="20" y="738" font-size="13" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="600" >Direction</text>
-<rect x="111" y="720" width="103" height="34" rx="16" fill="#FFFFFF" />
-<text x="162" y="742" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="600" text-anchor="middle">↓ Newest</text>
-<rect x="223" y="720" width="121" height="34" rx="16" fill="#FFFFFF" />
-<text x="282" y="742" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="600" text-anchor="middle">↑ Oldest</text>
+<g role="radio" aria-label="Date modified" aria-checked="false">
+<rect x="15" y="466" width="330" height="48" rx="12" fill="#F2F3F8" stroke="#5A5F7A" stroke-opacity=".18" stroke-width="1"/>
+<circle cx="33" cy="490" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="495" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date modified</text>
+</g>
+<g role="radio" aria-label="File name" aria-checked="false">
+<rect x="15" y="514" width="330" height="48" rx="12" fill="#F2F3F8" stroke="#5A5F7A" stroke-opacity=".18" stroke-width="1"/>
+<circle cx="33" cy="538" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="543" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >File name</text>
+</g>
+<g role="radio" aria-label="Size" aria-checked="true">
+<rect x="15" y="562" width="330" height="48" rx="12" fill="#FFFFFF" stroke="#5A5F7A" stroke-opacity=".18" stroke-width="1"/>
+<circle cx="33" cy="586" r="9" fill="#2639C9" stroke="#2639C9" stroke-width="1.5"/>
+<circle cx="33" cy="586" r="3.2" fill="#FFFFFF" />
+<text x="55" y="591" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="700" >Size</text>
+</g>
+<g role="radio" aria-label="Random" aria-checked="false">
+<rect x="15" y="610" width="330" height="48" rx="12" fill="#F2F3F8" stroke="#5A5F7A" stroke-opacity=".18" stroke-width="1"/>
+<circle cx="33" cy="634" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="639" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Random</text>
+</g>
+</g>
+<rect x="12" y="685" width="336" height="1" rx="0" fill="#5A5F7A" opacity=".25"/>
+<text x="20" y="722" font-size="13" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="600" >Direction</text>
+<rect x="111" y="694" width="103" height="48" rx="16" fill="#FFFFFF" />
+<text x="162" y="722" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="600" text-anchor="middle">↓ Newest</text>
+<rect x="223" y="694" width="121" height="48" rx="16" fill="#FFFFFF" />
+<text x="282" y="722" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="600" text-anchor="middle">↑ Oldest</text>
 <rect x="0" y="757" width="360" height="23" rx="0" fill="#FFFFFF" />
 <rect x="137" y="767" width="86" height="4" rx="2" fill="#0E1030" />
 </svg>
