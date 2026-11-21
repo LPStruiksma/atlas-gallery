@@ -95,6 +95,15 @@ class SelectionMoreJourneyTest {
         assertEquals(FIXTURE_PATH, fixtures.relativePathOf(ids[0]))
         assertEquals(FIXTURE_PATH, fixtures.relativePathOf(ids[1]))
         waitFor(hasTestTag("atlas-nav-photos")) // selection ended
+        // #693: the copy changes MediaStore under the running scan, so the app
+        // reloads its library a moment later (SNAPSHOT_CHANGED, then a retry
+        // after 2.5 s). Run 44677974548 started step 3 before that reload: it
+        // published while the Create album dialog was open, the selection
+        // then read "Select items" and Move never started. Go on only once
+        // the reload has put both copies on screen.
+        val copies = fixtures.idsIn(TARGET_PATH, setOf(fixtures.nameOf(0), fixtures.nameOf(1)))
+        assertEquals(2, copies.size)
+        copies.forEach { waitFor(hasTestTag("atlas-timeline-media-$it")) }
         compose.waitForIdle()
         saveUiEvidence("more-568-copied.png")
 
@@ -413,6 +422,16 @@ class SelectionMoreJourneyTest {
                 arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
                 "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.IS_PENDING} = 0",
                 arrayOf(path), null)?.use { while (it.moveToNext()) add(it.getString(0)) }
+        }
+
+        /** MediaStore ids of the finished rows in [path] named one of [names]. */
+        fun idsIn(path: String, names: Set<String>): List<Long> = buildList {
+            context.contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(android.provider.BaseColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME),
+                "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.IS_PENDING} = 0",
+                arrayOf(path), null)?.use {
+                while (it.moveToNext()) if (it.getString(1) in names) add(it.getLong(0))
+            }
         }
 
         private fun column(id: Long, column: String): String? =
