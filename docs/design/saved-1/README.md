@@ -49,11 +49,18 @@ Render labelled **light/dark pairs** for all A–G, with at least **two 1080 × 
 | [Material 3 SearchBar](https://developer.android.com/develop/ui/compose/components/search-bar) | Documented expandable search/suggestion pattern; version-dependent APIs. | Keep Quiet Frame search immediately above slab, not Material's conventional top position. |
 | [Merged L5/L7 preflight](../lapis/preflight/README.md) | Synthetic layout grammar for photo-led Collections and expandable AtlasSearch; not runtime screenshots. | Preserve single-sphere search, white active pill, and lapis light/dark identity. |
 
-## Deliverable and validation ledger (pending)
+## Deliverable and validation ledger
 
 - `docs/design/saved-1/saved-1-search-albums.png`: generated storyboard; capture dimensions and SHA-256 in manifest.
 - `docs/design/saved-1/manifest.json`: deterministic generator, font paths/licences and hashes, full panel label/scale/rectangle inventory, all assumptions and final board digest.
 - `tools/design/saved1_*.py`: isolated generator and minimal unittest/check; no shared L5/L7 generator changes.
 - Reproduce from declared Python/Pillow versions, verify every panel present and dimensions/digests, validate 48 dp minimum targets and state semantics. CI must run on the **exact applied PR head** before Review.
+
+Generate with `python3 tools/design/saved1_board.py` and validate with
+`python3 tools/design/saved1_check.py`. The board labels its fallback font, geometry
+assumptions, target rectangles, synthetic real-shape media, and design-evidence
+status. The manifest is the machine-readable inventory and digest ledger. The PNG
+is intentionally excluded from the Codex text patch and must be committed and
+inspected separately before #779 can be considered satisfied.
 
 **Codex apply limitation:** the installed bounded apply workflow accepts only normal UTF-8 text additions/edits and refuses PNG/binary hunks, deletes or protected paths. The Python generator and documentation can be applied automatically; the generated PNG must be materialized and committed separately by the Dev relay, followed by exact-head CI. A patch-applied receipt **alone is not an artifact or a Review pass**.
