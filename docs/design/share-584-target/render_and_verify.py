@@ -12,7 +12,7 @@ def contrast(a, b):
     def lum(s):
         rgb=[int(s[i:i+2],16)/255 for i in (1,3,5)]
         c=[v/12.92 if v<=0.04045 else ((v+0.055)/1.055)**2.4 for v in rgb]
-        return sum(x*y for x,y in zip(c,(0.2126,0.7152,0.0722)))
+        return sum(x*y for x,y in zip(c,(0.2126,0.7152,0.0722)))  # guard: allow-public (synthetic sRGB luminance weights, not coordinates)
     q=sorted((lum(a),lum(b)))
     return (q[1]+0.05)/(q[0]+0.05)
 
