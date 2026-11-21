@@ -168,7 +168,16 @@ internal const val UI_EVIDENCE_PREFIX = "IMG_20010101_000000_"
 
 internal fun uiEvidenceDisplayName(filename: String): String = UI_EVIDENCE_PREFIX + filename
 
-internal fun saveUiEvidence(filename: String) {
+/**
+ * [beforeLook], when given, runs before every look at the screen. A Compose
+ * test passes a wait for the state it means to capture: Compose only
+ * recomposes when the test clock advances, which this loop's real-time
+ * polling never does on its own. #693 (inferred from run 44677974548): the
+ * Month/Year grid passed its level check, then showed only the page ground
+ * for the whole 10 s retry while the app kept drawing frames; a replan that
+ * could not reach the screen without a Compose sync fits that.
+ */
+internal fun saveUiEvidence(filename: String, beforeLook: (() -> Unit)? = null) {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val target = instrumentation.targetContext
     // Never publish obscured evidence. A slow CI emulator sometimes shows a
@@ -179,7 +188,14 @@ internal fun saveUiEvidence(filename: String) {
     // content, and fail rather than publish one that never does.
     val deadline = android.os.SystemClock.uptimeMillis() + 10_000L
     var bitmap: Bitmap
+    var looks = 0
     while (true) {
+        if (beforeLook != null) {
+            if (looks > 0) android.util.Log.i("ATLAS_EVIDENCE",
+                "$filename look ${looks + 1}: waiting for the captured state again")
+            beforeLook()
+        }
+        looks++
         // UiAutomation's Wait click may be asynchronous on a loaded emulator.
         // Never capture a frame through an ANR window, but allow the bounded
         // window to disappear before deciding the evidence is obstructed.
