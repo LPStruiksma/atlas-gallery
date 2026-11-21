@@ -35,10 +35,10 @@ import kotlinx.coroutines.delay
 private fun readableBytes(size: Long): String = cleanupSize(size)
 
 /**
- * Left = stage for trash, right = keep, both reversible until the Android OS
- * approval request. No direct file or MediaStore mutations occur here.
+ * Source-level wrapper (TIDY-1): with a [keepStore] and [scopeKey] it offers to
+ * resume where saved Keeps end and records new Keeps. Without them it behaves
+ * exactly like the plain folder review.
  */
-@androidx.compose.runtime.NonSkippableComposable
 @Composable
 internal fun DeclutterScreen(
     folder: String,
@@ -46,7 +46,108 @@ internal fun DeclutterScreen(
     onExit: () -> Unit,
     onSearchWholeLibrary: () -> Unit = {},
     onTrashRequest: (List<MediaRecord>) -> Unit,
-    verifying: Boolean = false
+    verifying: Boolean = false,
+    scopeKey: String? = null,
+    keepStore: DeclutterKeepStore? = null
+) {
+    if (scopeKey == null || keepStore == null) {
+        DeclutterReviewScreen(folder, deck, onExit, onSearchWholeLibrary,
+            onTrashRequest, verifying, 0, deck.size, null, null)
+        return
+    }
+    val sourceKey = CatalogSourceKey(deck)
+    val progress = remember(sourceKey, scopeKey) {
+        DeclutterProgress.of(deck, keepStore.load(scopeKey))
+    }
+    // null = still asking; false = start again; true = resume.
+    var resume by remember(sourceKey, scopeKey) {
+        mutableStateOf<Boolean?>(if (progress.reviewed == 0) false else null)
+    }
+    var confirmingReset by remember(sourceKey, scopeKey) { mutableStateOf(false) }
+    val chosen = resume
+    if (chosen == null) {
+        if (confirmingReset) {
+            AlertDialog(
+                onDismissRequest = { confirmingReset = false },
+                title = { Text("Start this review again?") },
+                text = { Text("Your ${progress.reviewed} kept photos here will come back for review. Nothing is deleted.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            keepStore.clear(scopeKey)
+                            confirmingReset = false
+                            resume = false
+                        },
+                        modifier = Modifier.testTag("atlas-declutter-reset-confirm")
+                    ) { Text("Start again") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmingReset = false }) { Text("Cancel") }
+                }
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = onExit,
+                title = { Text("Resume review?") },
+                text = { Text(
+                    "Reviewed ${progress.reviewed} of ${progress.total}. " +
+                    "Resume with the first photo you have not kept yet."
+                ) },
+                confirmButton = {
+                    TextButton(
+                        onClick = { resume = true },
+                        modifier = Modifier.testTag("atlas-declutter-resume")
+                    ) { Text("Resume review") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(
+                            onClick = { confirmingReset = true },
+                            modifier = Modifier.testTag("atlas-declutter-start-again")
+                        ) { Text("Start again") }
+                        TextButton(
+                            onClick = onExit,
+                            modifier = Modifier.testTag("atlas-declutter-not-now")
+                        ) { Text("Not now") }
+                    }
+                },
+                modifier = Modifier.testTag("atlas-declutter-resume-dialog")
+            )
+        }
+        Box(Modifier.fillMaxSize())
+        return
+    }
+    // `progress` is frozen per source, so new Keeps never reshuffle this deck.
+    // Fresh start keeps the full source; resume leaves only unkept items.
+    val reviewDeck = remember(sourceKey, scopeKey, chosen) {
+        sourceDeclutterDeck(if (chosen) progress.unreviewed else deck)
+    }
+    DeclutterReviewScreen(
+        folder, reviewDeck, onExit, onSearchWholeLibrary, onTrashRequest, verifying,
+        reviewedBefore = if (chosen) progress.reviewed else 0,
+        sourceTotal = progress.total,
+        onKeep = { keepStore.add(scopeKey, declutterKeepIdentity(it)) },
+        onUnkeep = { keepStore.remove(scopeKey, declutterKeepIdentity(it)) }
+    )
+}
+
+/**
+ * Left = stage for trash, right = keep, both reversible until the Android OS
+ * approval request. No direct file or MediaStore mutations occur here.
+ */
+@androidx.compose.runtime.NonSkippableComposable
+@Composable
+private fun DeclutterReviewScreen(
+    folder: String,
+    deck: List<MediaRecord>,
+    onExit: () -> Unit,
+    onSearchWholeLibrary: () -> Unit,
+    onTrashRequest: (List<MediaRecord>) -> Unit,
+    verifying: Boolean,
+    reviewedBefore: Int,
+    sourceTotal: Int,
+    onKeep: ((MediaRecord) -> Unit)?,
+    onUnkeep: ((MediaRecord) -> Unit)?
 ) {
     // The review deck may contain 150k entries; never ask Compose to
     // structurally compare List contents in remember/effect keys. Fresh
@@ -71,6 +172,18 @@ internal fun DeclutterScreen(
     val pendingCount = session.stagedCount
     val pendingBytes = session.stagedBytes()
     val current = deck.getOrNull(session.position)
+    // Persist only positive Keeps; a stage or skip is never saved.
+    fun decide(discard: Boolean) {
+        val media = deck.getOrNull(session.position) ?: return
+        session = session.decide(deck, discard)
+        if (!discard) onKeep?.invoke(media)
+    }
+    fun undoLast() {
+        val last = session.lastDecision ?: return
+        session = session.undo()
+        // The item returns to review, so its saved Keep (if any) must go.
+        onUnkeep?.invoke(last.media)
+    }
     // Rapid left/right swipes should not instantiate a new ExoPlayer
     // for each briefly focused video. Show the existing thumbnail and
     // instantiate the actual player only after the video settles.
@@ -243,6 +356,14 @@ internal fun DeclutterScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth()
                 .testTag("atlas-declutter-verifying"))
         }
+        if (onKeep != null && sourceTotal > 0) {
+            Text(
+                "Reviewed ${reviewedBefore + session.position} of $sourceTotal",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("atlas-declutter-progress")
+            )
+        }
         if (reviewing) {
             val visiblePending = scopedNamedMatches(pending, searchText) { it.name + " " + it.album }
             // #702: only the body scrolls. The Move action is a sibling
@@ -304,7 +425,10 @@ internal fun DeclutterScreen(
                                 }
                                 TextButton(
                                     enabled = !verifying,
-                                    onClick = { session = session.unstage(media.uri) }
+                                    onClick = {
+                                        session = session.unstage(media.uri)
+                                        onKeep?.invoke(media)
+                                    }
                                 ) { Text("Keep") }
                             }
                         }
@@ -347,7 +471,7 @@ internal fun DeclutterScreen(
                 modifier = Modifier.fillMaxWidth().testTag("atlas-declutter-review")) {
                 Text("Review staged (${pendingCount})")
             }
-            TextButton(onClick = { session = session.undo() },
+            TextButton(onClick = { undoLast() },
                 enabled = !verifying && session.position > 0) { Text("Undo last decision") }
         } else {
             Text(
@@ -369,9 +493,8 @@ internal fun DeclutterScreen(
                                     val delta = dragX
                                     dragX = 0f
                                     dragging = false
-                                    if (delta < -threshold) session = session.decide(deck, true)
-                                    else if (delta > threshold)
-                                        session = session.decide(deck, false)
+                                    if (delta < -threshold) decide(true)
+                                    else if (delta > threshold) decide(false)
                                 },
                                 onHorizontalDrag = { change, amount ->
                                     change.consume()
@@ -420,14 +543,14 @@ internal fun DeclutterScreen(
             Row(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(
-                    onClick = { session = session.decide(deck, true) },
+                    onClick = { decide(true) },
                     enabled = !verifying,
                     modifier = Modifier.weight(1f).testTag("atlas-declutter-discard")
                 ) {
                     Text("← Stage Trash")
                 }
                 Button(
-                    onClick = { session = session.decide(deck, false) },
+                    onClick = { decide(false) },
                     enabled = !verifying,
                     modifier = Modifier.weight(1f).testTag("atlas-declutter-keep")
                 ) {
@@ -437,7 +560,7 @@ internal fun DeclutterScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(
                     enabled = !verifying && session.position > 0,
-                    onClick = { session = session.undo() },
+                    onClick = { undoLast() },
                     modifier = Modifier.testTag("atlas-declutter-undo")
                 ) { Text("Undo") }
                 TextButton(onClick = { reviewing = true },

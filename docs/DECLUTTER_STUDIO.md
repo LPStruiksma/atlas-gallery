@@ -87,3 +87,19 @@ signing-safe APK upgrade and backup**.
 - Non-destructive image comparison and best-of-burst suggestions.
 - "Revisit later" queue and batch-aware content prefetch, including
   video decoding and S24+ input-frame trace benchmarks.
+
+## Durable Keep and resume (TIDY-1A, #577)
+
+- **Only Keep persists.** A Keep is saved on the device, per review source
+  (today: the album folder, size-sorted), keyed by URI, size and modified time.
+  Staged Trash choices, Skip, Android requests and confirmations are never
+  saved: a staged item returns on the next review.
+- **Resume.** Reopening a source with saved Keeps asks *Resume review* /
+  *Start again* / *Not now*. Resume reviews only items not kept yet; the line
+  *Reviewed n of m* counts Keeps that still match a file in the source. Keeps
+  for files that were edited or left the album do not count and trigger nothing.
+- **Start again** clears that source's Keeps only after a confirmation.
+- Undo removes the saved Keep of the item it returns to review. The two
+  Trash confirmations and the MediaStore re-query are unchanged.
+- Not yet built (TIDY-1A follow-ups, 1B, 1C): month, search and Photo DNA
+  entries, compare mode, recent-album filing.
