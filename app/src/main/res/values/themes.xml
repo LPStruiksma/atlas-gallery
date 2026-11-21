@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BRAND-L3 (#656): the application theme. It is the platform theme the app used before
+         (Theme.Material.NoActionBar), plus a static Lapis cold-start window. On API 29-30 the
+         starting window draws windowBackground, so it is the Lapis layer-list with the centred
+         mark. After launch, MainActivity paints its own system bars and a full-screen root
+         Surface, so the app looks as before. API 31+ uses values-v31 instead. -->
+    <style name="Theme.Atlas.Launch" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/atlas_launch_background</item>
+    </style>
+</resources>
