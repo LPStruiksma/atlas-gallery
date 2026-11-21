@@ -42,3 +42,7 @@ python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a
 ```
 
 Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
+
+## COLLECT-1 utilities board (work in progress, #776)
+
+[COLLECT-1 #776](https://github.com/LPStruiksma/atlas-gallery/issues/776) extends the separate [#576 rev-2 design brief](https://github.com/LPStruiksma/atlas-gallery/issues/576#issuecomment-7055670165) with synthetic S24+ evidence. The deliverable is a reproducible `collect-1-utilities.png` sheet covering Collections media-type entry, category-grid results, scoped search and IME, unknown/empty/error counts, and 200% font/accessibility states in light and dark. This branch is **not yet evidence** until the generated PNG, verified manifest entry and regeneration instructions are committed. No app code or private media belong in this work.
