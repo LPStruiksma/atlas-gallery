@@ -22,6 +22,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -50,6 +51,10 @@ import nl.atlas.gallery.featureaiedit.settings.ProviderRuntime
 import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featuredesign.AtlasSystemBarIcons
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -68,7 +73,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AiEditSettingsEvidenceTest {
     private val compose = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    // A deterministic IME is installed before Compose starts: cold LatinIME startup must not
+    // race with the fake key check or the screenshots of the Save button above the keyboard.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(compose)
 
     private class FakeKeyCheck : KeyCheck {
         val queued = ArrayDeque<KeyCheckOutcome>()
@@ -158,9 +166,8 @@ class AiEditSettingsEvidenceTest {
             // Rejected: message under the field, field keeps its content, nothing saved.
             synchronized(fake.queued) { fake.queued.addLast(KeyCheckOutcome.REJECTED) }
             compose.onNodeWithTag("aie-save").performClick()
-            compose.waitUntil(10_000) {
-                compose.onAllNodes(hasText("This key was not accepted"), true)
-                    .fetchSemanticsNodes().isNotEmpty()
+            compose.awaitThat("rejected key message", 10_000) {
+                compose.exists(hasText("This key was not accepted"), useUnmergedTree = true)
             }
             assertTrue(store.profiles().isEmpty())
             shot("aie-19-key-rejected-$t")
@@ -247,9 +254,8 @@ class AiEditSettingsEvidenceTest {
     }
 
     private fun waitFor(tag: String): SemanticsNodeInteraction {
-        compose.waitUntil(10_000) {
-            compose.onAllNodes(androidx.compose.ui.test.hasTestTag(tag), true)
-                .fetchSemanticsNodes().isNotEmpty()
+        compose.awaitThat("UI node $tag", 10_000) {
+            compose.exists(hasTestTag(tag), useUnmergedTree = true)
         }
         return compose.onNodeWithTag(tag)
     }
