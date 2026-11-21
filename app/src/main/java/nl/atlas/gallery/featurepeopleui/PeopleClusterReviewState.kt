@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featurepeopleui
 
+import java.time.LocalDate
 import java.util.Locale
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.identity.ReviewTally
@@ -36,7 +37,18 @@ data class PeopleClusterReviewState(
      * person"). Their photos and facts are untouched; People ⋮ → Hidden
      * lists them and can show them again.
      */
-    val hidden: Set<PersonKey> = emptySet()
+    val hidden: Set<PersonKey> = emptySet(),
+    /**
+     * YEARS-1 (#586): named people the user ignores. A separate, stronger flag
+     * than [hidden] (which stays searchable): an ignored person leaves People,
+     * name suggestions, merge and assign lists, Same person? questions and
+     * automatic Stories, and is recovered from People ⋮ → Ignored people. It
+     * is stored beside, never inside, the review commit (see FaceIndexStore),
+     * so no review action reads or writes it.
+     */
+    val ignored: Set<PersonKey> = emptySet(),
+    /** YEARS-1 (#586): optional local birth dates the user typed, by person. */
+    val birthDates: Map<PersonKey, LocalDate> = emptyMap()
 ) {
     init {
         require(permissionEpoch.isNotBlank() && sourceGeneration.isNotBlank())
@@ -457,7 +469,9 @@ fun peopleAlbumsForGrant(
     currentSourceGeneration: String?,
     authorizedMediaByFace: Map<NativeFaceObservationId, String> = emptyMap(),
     includeHidden: Boolean = false,
-    hiddenOnly: Boolean = false
+    hiddenOnly: Boolean = false,
+    /** YEARS-1 (#586): People ⋮ → Ignored people lists only these. */
+    ignoredOnly: Boolean = false
 ): List<NativePersonAlbum> {
     if (state == null || state.permissionEpoch != currentPermissionEpoch ||
         state.sourceGeneration != currentSourceGeneration ||
@@ -467,6 +481,9 @@ fun peopleAlbumsForGrant(
     val addedTo = state.clusters.matched.entries.groupBy({ it.value.person }, { it.key })
     return state.names.mapNotNull { (person, name) ->
         val isHidden = person in state.hidden
+        val isIgnored = person in state.ignored
+        // Ignored people appear only in the Ignored people list.
+        if (ignoredOnly != isIgnored) return@mapNotNull null
         if (hiddenOnly && !isHidden || !hiddenOnly && !includeHidden && isHidden)
             return@mapNotNull null
         // Confirmed faces first (the cover is one of them), then the faces

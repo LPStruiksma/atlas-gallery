@@ -127,7 +127,7 @@ class SamePersonQueueCursor(
 
     private fun prepare() {
         if (ready) return
-        val asking = state.names.keys.filterTo(HashSet()) { it !in state.hidden }
+        val asking = state.names.keys.filterTo(HashSet()) { it !in state.hidden && it !in state.ignored }
         if (asking.isNotEmpty()) {
             people = SamePersonHypotheses.PeopleIndex.of(clusters, asking)
             confirmed = clusters.reviews.confirmed.entries.filter { it.key in clusters }
@@ -242,7 +242,8 @@ fun samePersonQueueStillAsks(live: PeopleClusterReviewState, item: SamePersonQue
     val sizes = live.clusters.unknownClusters.associate { it.id to it.members.size }
     if (sizes[item.other] != item.otherFaces) return false
     return when (val subject = item.subject) {
-        is PersonPageTarget.Named -> subject.person in live.names && subject.person !in live.hidden
+        is PersonPageTarget.Named -> subject.person in live.names && subject.person !in live.hidden &&
+            subject.person !in live.ignored
         is PersonPageTarget.Unnamed -> sizes[subject.cluster] == item.subjectFaces
     }
 }

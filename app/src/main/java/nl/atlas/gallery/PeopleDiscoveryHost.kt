@@ -150,6 +150,7 @@ import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedFacePageCursor
 import nl.atlas.gallery.featurepersistence.IndexedMedia
+import nl.atlas.gallery.featurepersistence.IndexedYearsMedia
 
 /** Battery and storage facts for [FaceScanConditions]; injectable for tests. */
 internal data class PeoplePowerState(
@@ -288,7 +289,9 @@ internal fun peopleWithPresentFaces(
     val names = state.names.filterKeys { it in present }
     return if (names.size == state.names.size) state
     else PeopleClusterReviewState(state.permissionEpoch, state.sourceGeneration,
-        state.clusters, names, hidden = state.hidden.filterTo(HashSet()) { it in names })
+        state.clusters, names, hidden = state.hidden.filterTo(HashSet()) { it in names },
+        ignored = state.ignored.filterTo(HashSet()) { it in names },
+        birthDates = state.birthDates.filterKeys { it in names })
 }
 
 /**
@@ -2223,8 +2226,10 @@ internal class PeopleDiscoveryHost(
             liveHome = null
             return null
         }
+        // YEARS-1 (#586): an ignored person is not on People home.
+        val ignored = try { store.ignoredPeople() } catch (_: SQLException) { emptySet() }
         PeopleHomeSummary(epoch, "$epoch|${stored.generation}",
-            stored.people.mapValues { (_, person) ->
+            stored.people.filterKeys { it !in ignored }.mapValues { (_, person) ->
                 PeopleHomePerson(person.name, person.faceCount, person.coverFaceUid,
                     person.mediaCount, person.firstAppearanceMs, person.mostRecentAppearanceMs,
                     person.photoCount, person.videoCount)
@@ -2252,8 +2257,12 @@ internal class PeopleDiscoveryHost(
         }?.let { if (live) servedReview = it; return it }
         val stored = store.peopleReview(epoch)
             ?: return if (live || held) heldReview(epoch) else null
+        val ignored = try { store.ignoredPeople() } catch (_: SQLException) { emptySet() }
+        val births = try { store.personBirthDates() } catch (_: SQLException) { emptyMap() }
         LiveReview(PeopleClusterReviewState(epoch, "$epoch|${stored.generation}",
-            stored.clusters, stored.names, hidden = stored.hidden), stored.generation)
+            stored.clusters, stored.names, hidden = stored.hidden,
+            ignored = ignored.filterTo(HashSet()) { it in stored.names },
+            birthDates = births.filterKeys { it in stored.names }), stored.generation)
             .also { liveReview = it; if (live) servedReview = it }
     }
 
@@ -2318,6 +2327,68 @@ internal class PeopleDiscoveryHost(
         }
         changed()
         return committed
+    }
+
+    /**
+     * YEARS-1 (#586): ignore or stop ignoring a named person. The flag is its
+     * own durable row beside names (never inside the review commit), so Hide
+     * is untouched and a model change, rescan or restart keeps it. Called on
+     * IO; refused for a stale grant or a person that is not named.
+     */
+    fun setPersonIgnored(galleryGrant: String?, person: PersonKey, ignored: Boolean): Boolean {
+        val epoch = displayEpoch(galleryGrant) ?: return false
+        val applied = synchronized(reviewLock) {
+            if (!scopeCurrent(epoch)) return@synchronized false
+            val named = currentReview(epoch)?.state?.names?.containsKey(person) == true
+            if (!named) return@synchronized false
+            try { store.setPersonIgnored(person, ignored); true }
+            catch (_: SQLException) { false }
+            .also { if (it) { liveReview = null; liveHome = null } }
+        }
+        if (applied) changed()
+        return applied
+    }
+
+    /**
+     * YEARS-1 (#586): save or clear (null) a person's optional birth date.
+     * Local only; the planner shows an age only from this date.
+     */
+    fun setPersonBirthDate(galleryGrant: String?, person: PersonKey,
+                           date: java.time.LocalDate?): Boolean {
+        val epoch = displayEpoch(galleryGrant) ?: return false
+        val applied = synchronized(reviewLock) {
+            if (!scopeCurrent(epoch)) return@synchronized false
+            val named = currentReview(epoch)?.state?.names?.containsKey(person) == true
+            if (!named) return@synchronized false
+            try { store.setPersonBirthDate(person, date); true }
+            catch (_: SQLException) { false }
+            .also { if (it) liveReview = null }
+        }
+        if (applied) changed()
+        return applied
+    }
+
+    /** YEARS-1 (#586): every optional birth date the user entered, by person. IO only. */
+    fun birthDates(): Map<PersonKey, java.time.LocalDate> =
+        try { store.personBirthDates() } catch (_: SQLException) { emptyMap() }
+
+    /**
+     * YEARS-1 (#586): the media of [person] that may enter a Through the years
+     * Story, by authorized URI, each with whether a face was confirmed and its
+     * best stored face quality. Only confirmed faces and engine matches above
+     * the existing confidence floor are read. Blocking; IO only.
+     */
+    fun personYearsMedia(galleryGrant: String?, person: PersonKey): Map<String, IndexedYearsMedia>? {
+        val s = synchronized(lock) {
+            scope?.takeIf { optedIn && it.galleryGrant == galleryGrant }
+        } ?: return null
+        if (!scopeCurrent(s.epoch)) return null
+        val out = HashMap<String, IndexedYearsMedia>()
+        for (m in store.personYearsMedia(s.epoch, person)) {
+            try { out[s.directory.authorizedUri(FaceMediaKey(m.key, m.revision))] = m }
+            catch (_: SecurityException) { if (!scopeCurrent(s.epoch)) return null }
+        }
+        return out
     }
 
     /**

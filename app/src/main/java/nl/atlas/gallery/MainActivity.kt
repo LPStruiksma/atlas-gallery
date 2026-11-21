@@ -121,6 +121,7 @@ import nl.atlas.gallery.featurealbums.AlbumPickerScreen
 import nl.atlas.gallery.featurealbums.HiddenAlbums
 import nl.atlas.gallery.featurealbums.HideAlbumsScreen
 import nl.atlas.gallery.featurestories.AtlasStoriesScreen
+import nl.atlas.gallery.featurestories.StoryPlaybackPosition
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
 import nl.atlas.gallery.featurealbums.buildAlbumSummaries
@@ -1310,11 +1311,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         authorized = searchGrant != null,
         catalogRevision = storyRevision,
         epochDay = java.time.LocalDate.now().toEpochDay())
-    val storyDeck = rememberStoryDeck(media, storyTokens, enabled = tab == 1)
+    val storyDeckBase = rememberStoryDeck(media, storyTokens, enabled = tab == 1)
     // The open slideshow lives above the viewer route (#444): Back from a
     // photo opened in a story returns to that story at the same moment, and
     // it is saved across rotation and process death (#451).
-    val storyPlayback = rememberStoryPlaybackState(storyDeck)
+    val storyPlayback = rememberStoryPlaybackState(storyDeckBase)
     // #457: Stories closed by any route never resumes a pending restore later.
     ClearStoryPlaybackWhenHidden(shown = tab == 1 && storiesOpen, playback = storyPlayback)
     // Photo DNA (#442) hashes same-size files only while it is open, once per
@@ -1344,6 +1345,19 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // running scan even while another tab is shown. Nothing starts here.
     val discoveryHost = remember(context) { PeopleDiscoveryHost.forApp(context) }
     val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, media)
+    // YEARS-1 (#586): a named person's Through the years Story joins the one
+    // existing deck and player; it is planned only while Stories is shown.
+    val yearsCards = rememberPeopleYearsCards(discoveryHost, searchGrant, media,
+        discovery.status?.people, storyTokens, enabled = tab == 1)
+    val storyDeck = remember(storyDeckBase, yearsCards) {
+        if (storyDeckBase == null || yearsCards.isEmpty()) storyDeckBase
+        else storyDeckBase.copy(cards = storyDeckBase.cards + yearsCards)
+    }
+    // Where an opened people Story returns to when it closes (the person's page).
+    var yearsOrigin by remember { mutableStateOf<NativePersonAlbumRequest?>(null) }
+    // Ignore and Undo feedback: one quiet snackbar, no dialog and no banner.
+    val ignoreSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val ignoreScope = rememberCoroutineScope()
     val diagnosticPeople = discovery.status?.ui
     LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
         diagnosticPeople?.eligible) {
@@ -1356,6 +1370,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
     var hiddenPeopleOpen by rememberSaveable { mutableStateOf(false) }
+    // YEARS-1 (#586): People ⋮ → Ignored people, the way back for an ignored person.
+    var ignoredPeopleOpen by rememberSaveable { mutableStateOf(false) }
     // #643: People maintenance tools live in Settings.
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
@@ -1363,6 +1379,17 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // A retained ViewModel owns the person route across Activity rotation.
     // Its key and name never enter saved instance state; process death drops it.
     var nativePersonAlbum by remember(vm) { vm.nativePersonAlbumState }
+    // Closing a people Story (player Close, or Back from the grid) returns to the page.
+    val storyPosition = storyPlayback.position
+    LaunchedEffect(storyPosition == null, yearsOrigin) {
+        val origin = yearsOrigin
+        if (storyPosition == null && origin != null && tab == 1 && storiesOpen) {
+            yearsOrigin = null
+            storiesOpen = false
+            tab = 2
+            nativePersonAlbum = origin
+        }
+    }
     val nativePersonGridState = rememberLazyGridState()
     // An old render must NEVER expose old Person IDs/terms while LaunchedEffect
     // is still adopting the new grant or People identity.
@@ -3119,6 +3146,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     peopleReviewOpen = false
                     hiddenPeopleOpen = false
+                    ignoredPeopleOpen = false
                     nativePersonAlbum = NativePersonAlbumRequest(person.person, person.name)
                 }
             },
@@ -3217,6 +3245,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 personFilter = null
                 nativePersonAlbum = null
                 hiddenPeopleOpen = false
+                    ignoredPeopleOpen = false
             },
             onClose = {
                 val origin = faceOrigin
@@ -3355,6 +3384,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     nativePersonAlbum = null
                     hiddenPeopleOpen = false
+                    ignoredPeopleOpen = false
                     album = null
                     albumVolume = null
                     albumReturnToAlbums = false
@@ -4131,7 +4161,49 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 facetPeople = people,
                                 onSearchWholeLibrary = { nativePersonAlbum = null; tab = 3 },
                                 // #551: a merge or first name follows the surviving person.
-                                onRetarget = { nativePersonAlbum = it }
+                                onRetarget = { nativePersonAlbum = it },
+                                // YEARS-1 (#586): Through the years opens in the Stories
+                                // player; closing it returns to this person's page.
+                                onOpenYears = { person ->
+                                    val tokens = storyTokens
+                                    if (tokens != null) {
+                                        yearsOrigin = nativePersonAlbum
+                                        nativePersonAlbum = null
+                                        hiddenPeopleOpen = false
+                                        ignoredPeopleOpen = false
+                                        storyPlayback.position = StoryPlaybackPosition(
+                                            tokens.grantEpoch, tokens.catalogRevision,
+                                            yearsStoryKey(person), 0)
+                                        storiesOpen = true
+                                        tab = 1
+                                    }
+                                },
+                                onIgnoredChanged = { name, person, ignored ->
+                                    ignoreScope.launch {
+                                        ignoreSnackbar.currentSnackbarData?.dismiss()
+                                        if (ignored) {
+                                            val result = ignoreSnackbar.showSnackbar(
+                                                "$name ignored", actionLabel = "Undo",
+                                                duration = androidx.compose.material3.SnackbarDuration.Long)
+                                            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                withContext(Dispatchers.IO) {
+                                                    discoveryHost.setPersonIgnored(searchGrant, person, false)
+                                                }
+                                            }
+                                        } else {
+                                            ignoreSnackbar.showSnackbar("$name is back in People")
+                                        }
+                                    }
+                                }
+                            )
+                        } else if (ignoredPeopleOpen) {
+                            BackHandler { ignoredPeopleOpen = false }
+                            IgnoredPeopleRoute(
+                                host = discoveryHost,
+                                people = discovery.status?.people,
+                                onBack = { ignoredPeopleOpen = false },
+                                onOpen = { nativePersonAlbum = it },
+                                onSearchWholeLibrary = { ignoredPeopleOpen = false; tab = 3 }
                             )
                         } else if (hiddenPeopleOpen) {
                             BackHandler { hiddenPeopleOpen = false }
@@ -4159,6 +4231,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // on a hidden person's page brings it back.
                                 AtlasHeaderMenuItem("Hidden", "atlas-people-hidden-open",
                                     onClick = { hiddenPeopleOpen = true }),
+                                // YEARS-1 (#586): ignored people, the way back for them.
+                                AtlasHeaderMenuItem("Ignored people", "atlas-people-ignored-open",
+                                    onClick = { ignoredPeopleOpen = true }),
                                 // #580: every open "Same person?" question in a row.
                                 AtlasHeaderMenuItem("Same person?", "atlas-people-same-open",
                                     onClick = { samePersonQueueOpen = true }))
@@ -4241,6 +4316,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
         }
     }
+    androidx.compose.material3.SnackbarHost(ignoreSnackbar,
+        Modifier.align(Alignment.BottomCenter)
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+            .padding(bottom = if (!settingsOpen && !statusOpen) AtlasTabPillHeight + 22.dp else 8.dp)
+            .testTag("atlas-people-ignore-snackbar"))
     // FIND-3a (#182): Undo for history actions. Above the nav pill when the
     // keyboard is closed, and right above the keyboard when it is open.
     SearchHistorySnackbarHost(searchHistory, Modifier.align(Alignment.BottomCenter),

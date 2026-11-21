@@ -22,6 +22,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,13 +37,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featuredesign.AtlasSpace
+import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
 import nl.atlas.gallery.featurestories.StoryCard
+import nl.atlas.gallery.featurestories.StoryKind
+import nl.atlas.gallery.featurestories.YearsCandidate
+import nl.atlas.gallery.featurestories.YearsFrame
+import nl.atlas.gallery.featurestories.YearsStoryPlanner
 import nl.atlas.gallery.featurestories.StoryCatalog
 import nl.atlas.gallery.featurestories.StoryDeck
 import nl.atlas.gallery.featurestories.StoryMedia
 import nl.atlas.gallery.featurestories.StoryPlaybackState
 import nl.atlas.gallery.featurestories.currentStoryCardsOrEmpty
 import nl.atlas.gallery.featurestories.planStories
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicLong
 
@@ -196,6 +205,100 @@ internal fun rememberStoryDeck(
         deck = planned
     }
     return deck
+}
+
+/**
+ * YEARS-1 (#586): the Through the years frames of one named person. Blocking
+ * (a People index read, then the pure planner): call on IO. Reads only
+ * confirmed faces and engine matches above the confidence floor, resolves each
+ * photo through the live grant, and vetoes hidden, trashed and video rows the
+ * same way [planStoryDeck] does. Empty when the person is not eligible.
+ */
+internal fun personYearsFrames(
+    host: PeopleDiscoveryHost,
+    galleryGrant: String?,
+    person: PersonKey,
+    source: List<MediaRecord>,
+    birthDate: LocalDate?,
+    nowMillis: Long,
+    zone: ZoneId,
+    checkpoint: () -> Unit = {}
+): List<YearsFrame> {
+    val byUri = host.personYearsMedia(galleryGrant, person) ?: return emptyList()
+    if (byUri.size < YearsStoryPlanner.MIN_PHOTOS_PER_YEAR * YearsStoryPlanner.MIN_YEARS) {
+        return emptyList()
+    }
+    val records = ArrayList<MediaRecord>(byUri.size)
+    source.forEachIndexed { index, record ->
+        if ((index and 1023) == 0) checkpoint()
+        if (record.uri in byUri) records += record
+    }
+    val candidates = storyMediaFromAuthorized(records, checkpoint).mapNotNull { media ->
+        byUri[media.uri]?.let {
+            YearsCandidate(media.uri, media.takenAtMillis, it.confirmed, it.quality,
+                media.isVideo, media.isHidden, media.isTrashed)
+        }
+    }
+    return YearsStoryPlanner.plan(candidates, zone, nowMillis, birthDate, checkpoint)
+}
+
+/** The single card for a person's frames, in the same deck and player as every Story. */
+internal fun yearsStoryCard(person: PersonKey, name: String, frames: List<YearsFrame>): StoryCard? {
+    if (frames.isEmpty()) return null
+    return StoryCard(
+        key = yearsStoryKey(person),
+        title = "$name through the years",
+        caption = if (frames.first().year == frames.last().year) frames.first().year.toString()
+            else "${frames.first().year} to ${frames.last().year}",
+        kind = StoryKind.PERSON_YEARS,
+        items = frames.map { StoryMedia(it.uri, it.takenAtMillis) },
+        frameCaptions = frames.map { it.caption }
+    )
+}
+
+internal fun yearsStoryKey(person: PersonKey): String = "years:" + person.value
+
+/** At most this many people get an automatic Story, most photographed first. */
+private const val MAX_YEARS_STORIES = 12
+
+/**
+ * YEARS-1 (#586): the people Stories for the current Stories tokens, planned off
+ * main and only while [enabled]. People home already leaves out hidden and
+ * ignored people, so none of them gets an automatic Story. Never persisted.
+ */
+@Composable
+internal fun rememberPeopleYearsCards(
+    host: PeopleDiscoveryHost,
+    galleryGrant: String?,
+    source: List<MediaRecord>,
+    people: PeopleHomeSummary?,
+    tokens: StoryPlanTokens?,
+    enabled: Boolean
+): List<StoryCard> {
+    val version by host.changes.collectAsState()
+    val cards by produceState<List<StoryCard>>(emptyList(), tokens, CatalogSourceKey(source),
+        people, version, enabled, galleryGrant) {
+        value = emptyList()
+        if (!enabled || tokens == null || people == null || galleryGrant == null) return@produceState
+        value = withContext(Dispatchers.IO) {
+            val births = host.birthDates()
+            val now = System.currentTimeMillis()
+            val zone = ZoneId.systemDefault()
+            people.people.entries
+                .filter { it.value.photoCount >=
+                    YearsStoryPlanner.MIN_PHOTOS_PER_YEAR * YearsStoryPlanner.MIN_YEARS }
+                .sortedWith(compareByDescending<Map.Entry<PersonKey, nl.atlas.gallery.featurepeopleui.PeopleHomePerson>> {
+                    it.value.photoCount }.thenBy { it.key.value })
+                .take(MAX_YEARS_STORIES)
+                .mapNotNull { (person, entry) ->
+                    ensureActive()
+                    yearsStoryCard(person, entry.name,
+                        personYearsFrames(host, galleryGrant, person, source, births[person],
+                            now, zone) { ensureActive() })
+                }
+        }
+    }
+    return cards
 }
 
 /**

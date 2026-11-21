@@ -36,7 +36,7 @@ data class ManualStory(
     val orderedUris: List<String>
 )
 
-enum class StoryKind { ON_THIS_DAY, LAST_MONTH, FAVORITES, MANUAL }
+enum class StoryKind { ON_THIS_DAY, LAST_MONTH, FAVORITES, MANUAL, PERSON_YEARS }
 
 data class StoryCard(
     val key: String,
@@ -44,7 +44,13 @@ data class StoryCard(
     val caption: String,
     val kind: StoryKind,
     val items: List<StoryMedia>,
-    val missingCount: Int = 0
+    val missingCount: Int = 0,
+    /**
+     * YEARS-1 (#586): one short caption per item ("2017" or "Age 9"), shown in
+     * the player. Empty for every other kind; a shorter list shows no caption
+     * for the items past its end.
+     */
+    val frameCaptions: List<String> = emptyList()
 ) {
     val cover: StoryMedia get() = items.firstOrNull { it.isFavorite } ?: items.first()
 }
