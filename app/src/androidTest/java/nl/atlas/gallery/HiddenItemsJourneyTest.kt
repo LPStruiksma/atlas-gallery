@@ -23,6 +23,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featurepersistence.HiddenMediaStore
 import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -50,30 +53,30 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
 
     @Test fun hideFromSelectionAndViewerThenFindAndUnhideInHidden() {
         val ids = fixtures.ids
-        waitFor(hasTestTag("atlas-nav-photos"))
-        waitFor(hasTestTag("atlas-timeline-media-${ids[3]}"))
+        awaitNode(hasTestTag("atlas-nav-photos"))
+        awaitNode(hasTestTag("atlas-timeline-media-${ids[3]}"))
         compose.waitForIdle()
         compose.onNodeWithTag("atlas-timeline-grid")
             .performScrollToNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
 
         // 1. Select two items, More → Hide.
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
-        waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        awaitNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
         compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").performClick()
-        waitFor(hasTestTag("atlas-selection-count") and hasText("2 selected"))
-        compose.onNodeWithTag("atlas-selection-more").performClick()
-        waitFor(hasTestTag("atlas-selection-hide"))
+        awaitNode(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+        compose.tap(hasTestTag("atlas-selection-more"))
+        awaitNode(hasTestTag("atlas-selection-hide"))
         compose.waitForIdle()
         saveUiEvidence("hidden-585-selection-more-$theme")
-        compose.onNodeWithTag("atlas-selection-hide").performClick()
+        compose.tap(hasTestTag("atlas-selection-hide"))
 
         // Both leave Photos at once; the other two stay; no file moved or was deleted.
-        waitUntil("hidden items leave Photos") {
+        compose.awaitThat("hidden items leave Photos") {
             compose.onAllNodes(hasTestTag("atlas-timeline-media-${ids[0]}")).fetchSemanticsNodes().isEmpty() &&
                 compose.onAllNodes(hasTestTag("atlas-timeline-media-${ids[1]}")).fetchSemanticsNodes().isEmpty()
         }
-        waitFor(hasTestTag("atlas-hidden-result-undo"))
-        waitFor(hasTestTag("atlas-timeline-media-${ids[2]}"))
+        awaitNode(hasTestTag("atlas-hidden-result-undo"))
+        awaitNode(hasTestTag("atlas-timeline-media-${ids[2]}"))
         compose.waitForIdle()
         saveUiEvidence("hidden-585-after-hide-$theme")
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)
@@ -83,13 +86,13 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         assertEquals(2, stored?.size)
 
         // 2. Albums ⋮ → Hidden lists exactly the two hidden items.
-        compose.onNodeWithTag("atlas-nav-albums").performClick()
-        waitFor(hasTestTag("atlas-header-more"))
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor(hasTestTag("atlas-albums-menu-hidden"))
-        compose.onNodeWithTag("atlas-albums-menu-hidden").performClick()
-        waitFor(hasTestTag("atlas-hidden-grid"))
-        waitUntil("two hidden tiles") {
+        compose.tap(hasTestTag("atlas-nav-albums"))
+        awaitNode(hasTestTag("atlas-header-more"))
+        compose.tap(hasTestTag("atlas-header-more"))
+        awaitNode(hasTestTag("atlas-albums-menu-hidden"))
+        compose.tap(hasTestTag("atlas-albums-menu-hidden"))
+        awaitNode(hasTestTag("atlas-hidden-grid"))
+        compose.awaitThat("two hidden tiles") {
             compose.onAllNodes(hasTestTag("atlas-hidden-tile")).fetchSemanticsNodes().size == 2
         }
         compose.waitForIdle()
@@ -97,53 +100,42 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
 
         // 3. Long-press a tile, Unhide: the collection empties, Photos shows them again.
         compose.onAllNodesWithTag("atlas-hidden-tile")[0].performTouchInput { longClick() }
-        waitFor(hasTestTag("atlas-hidden-unhide"))
+        awaitNode(hasTestTag("atlas-hidden-unhide"))
         compose.onAllNodesWithTag("atlas-hidden-tile")[1].performClick()
-        compose.onNodeWithTag("atlas-hidden-unhide").performClick()
-        waitFor(hasTestTag("atlas-hidden-empty"))
+        compose.tap(hasTestTag("atlas-hidden-unhide"))
+        awaitNode(hasTestTag("atlas-hidden-empty"))
         compose.waitForIdle()
         saveUiEvidence("hidden-585-empty-$theme")
-        compose.onNodeWithTag("atlas-hidden-back").performClick()
-        compose.onNodeWithTag("atlas-nav-photos").performClick()
-        waitFor(hasTestTag("atlas-timeline-media-${ids[0]}"))
-        waitFor(hasTestTag("atlas-timeline-media-${ids[1]}"))
+        compose.tap(hasTestTag("atlas-hidden-back"))
+        compose.tap(hasTestTag("atlas-nav-photos"))
+        awaitNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
+        awaitNode(hasTestTag("atlas-timeline-media-${ids[1]}"))
         assertEquals(0, HiddenMediaStore(fixtures.context).readOrNull()?.size)
 
         // 4. Viewer More → Hide hides the open item and moves on to a neighbour.
         compose.onNodeWithTag("atlas-timeline-grid")
             .performScrollToNode(hasTestTag("atlas-timeline-media-${ids[2]}"))
         compose.onNodeWithTag("atlas-timeline-media-${ids[2]}").performClick()
-        waitFor(hasTestTag("atlas-viewer-more"))
-        compose.onNodeWithTag("atlas-viewer-more").performClick()
-        waitFor(hasTestTag("atlas-viewer-hide"))
+        awaitNode(hasTestTag("atlas-viewer-more"))
+        compose.tap(hasTestTag("atlas-viewer-more"))
+        awaitNode(hasTestTag("atlas-viewer-hide"))
         compose.waitForIdle()
         saveUiEvidence("hidden-585-viewer-more-$theme")
-        compose.onNodeWithTag("atlas-viewer-hide").performClick()
-        waitUntil("viewer item is hidden") {
+        compose.tap(hasTestTag("atlas-viewer-hide"))
+        compose.awaitThat("viewer item is hidden") {
             HiddenMediaStore(fixtures.context).readOrNull()?.size == 1
         }
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        waitFor(hasTestTag("atlas-timeline-grid"))
-        waitUntil("viewer item left Photos") {
+        awaitNode(hasTestTag("atlas-timeline-grid"))
+        compose.awaitThat("viewer item left Photos") {
             compose.onAllNodes(hasTestTag("atlas-timeline-media-${ids[2]}")).fetchSemanticsNodes().isEmpty()
         }
         compose.onAllNodesWithTag("atlas-timeline-media-${ids[3]}").assertCountEquals(1)
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)
     }
 
-    private fun waitUntil(what: String, condition: () -> Boolean) {
-        try {
-            compose.waitUntil(60_000L, condition)
-        } catch (e: Throwable) {
-            throw AssertionError("Timed out: $what", e)
-        }
-    }
-
-    private fun waitFor(matcher: SemanticsMatcher) {
-        compose.waitUntil(60_000L) {
-            compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
-        }
-    }
+    private fun awaitNode(matcher: SemanticsMatcher) =
+        compose.awaitThat("a node matching $matcher") { compose.exists(matcher) }
 
     private companion object {
         const val FIXTURE_PATH = "Pictures/ATLAS-Hide-Fixture/"
