@@ -27,6 +27,20 @@ import nl.atlas.gallery.featureintents.ExternalEntry
 import nl.atlas.gallery.featureintents.ExternalPickerHost
 import nl.atlas.gallery.featureintents.PickResultPlan
 import nl.atlas.gallery.featureintents.pickResultIntent
+import nl.atlas.gallery.featureguest.GuestAndroid
+import nl.atlas.gallery.featureguest.GuestAuthRequest
+import nl.atlas.gallery.featureguest.GuestBoot
+import nl.atlas.gallery.featureguest.GuestCandidate
+import nl.atlas.gallery.featureguest.GuestCopy
+import nl.atlas.gallery.featureguest.GuestEntry
+import nl.atlas.gallery.featureguest.GuestEntryPlan
+import nl.atlas.gallery.featureguest.GuestGuard
+import nl.atlas.gallery.featureguest.GuestPaging
+import nl.atlas.gallery.featureguest.GuestPort
+import nl.atlas.gallery.featureguest.GuestScreen
+import nl.atlas.gallery.featureguest.GuestSessionStore
+import nl.atlas.gallery.featureguest.GuestStartResult
+import nl.atlas.gallery.featureguest.LocalGuestPort
 import nl.atlas.gallery.featureintents.ExternalIntentParser
 import nl.atlas.gallery.featureintents.ExternalIntentReader
 import nl.atlas.gallery.featureintents.ExternalViewerHost
@@ -44,6 +58,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
@@ -391,14 +406,50 @@ class MainActivity : ComponentActivity() {
      */
     private var pickSession by mutableIntStateOf(0)
 
+    // GUEST-1 (#589): the durable guard, read before ANY route or intent.
+    private lateinit var guestStore: GuestSessionStore
+
+    /** Owner, a live guest session, or the recovery shell. Never Owner without a confirmed exit. */
+    private var guestBoot by mutableStateOf<GuestBoot>(GuestBoot.Owner)
+
+    /** After a confirmed exit from a viewer entry: the photo to reopen once for the owner. */
+    private var guestReturnViewerUri by mutableStateOf<String?>(null)
+
+    // The system's own device-credential confirmation. Registered as a field so
+    // a result after recreation reaches this Activity; it is accepted only when
+    // it matches the request THIS process launched (GuestGuard.acceptsExit).
+    private val guestAuthLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            onGuestAuthResult(result.resultCode)
+        }
+
+    internal val guestActive: Boolean get() = guestBoot !is GuestBoot.Owner
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
-        if (!acceptExternalIntent(intent)) return
-        applyAtlasSystemBars(window, resources.configuration.isNightMode())
+        guestStore = GuestAndroid.store(this)
+        guestBoot = guestStore.boot()
+        if (GuestGuard.routesToGuest(guestBoot)) {
+            // Secure window before the first draw; the intent is not even parsed.
+            applyGuestWindow(true)
+        } else if (!acceptExternalIntent(intent)) return
+        // Guest view is black in both themes, system bars included.
+        applyAtlasSystemBars(window, guestActive || resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
         try {
             setContent {
+                // Holds the owner's saveable UI state (tab, scroll) while guest
+                // view replaces it, so a confirmed exit returns to the same place.
+                val ownerState = rememberSaveableStateHolder()
+                val guest = guestBoot
+                if (guest !is GuestBoot.Owner) {
+                    AtlasGalleryTheme(dark = true) {
+                        GuestScreen(guest, onExit = ::requestGuestExit,
+                            onPageSettled = ::onGuestPageSettled, onFirstFrame = ::offerGuestPin)
+                    }
+                    return@setContent
+                }
                 val entry = externalEntry
                 if (entry.opensExternalViewer()) {
                     // Open with / camera review: one item, no catalogue, no scan,
@@ -425,7 +476,14 @@ class MainActivity : ComponentActivity() {
                                 ExternalPickerHost(entry, session, galleryVm, onFinish = ::answerPick)
                             }
                         } else {
-                            AtlasApp(galleryVm)
+                            val port = GuestPort(::startGuest, guestReturnViewerUri) {
+                                guestReturnViewerUri = null
+                            }
+                            CompositionLocalProvider(LocalGuestPort provides port) {
+                                ownerState.SaveableStateProvider("atlas-owner") {
+                                    AtlasApp(galleryVm)
+                                }
+                            }
                         }
                     }
                 }
@@ -438,8 +496,141 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // GUEST-1: while guest view is live no new request is read or routed.
+        if (guestActive || GuestGuard.routesToGuest(guestStore.boot())) return
         setIntent(intent)
         acceptExternalIntent(intent, newRequest = true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (guestActive) applyGuestWindow(true)
+    }
+
+    /**
+     * Brief v2 gap 4: FLAG_SECURE keeps guest frames out of screenshots,
+     * recordings and the Recents thumbnail; API 33+ also turns the Recents
+     * screenshot off. Set before leaving the owner screen and on every guarded
+     * start; cleared only after a durable exit.
+     */
+    private fun applyGuestWindow(on: Boolean) {
+        if (on) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            showWhenLockedApplied = false
+            setShowWhenLocked(false)
+            applyAtlasSystemBars(window, dark = true)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            applyAtlasSystemBars(window, resources.configuration.isNightMode())
+        }
+        if (Build.VERSION.SDK_INT >= 33) setRecentsScreenshotEnabled(!on)
+    }
+
+    /** Selection More / viewer More → Guest view. */
+    private fun startGuest(selectedInTapOrder: List<GuestCandidate>, returnViewerUri: String?) {
+        if (guestActive) return
+        when (val plan = GuestEntry.plan(selectedInTapOrder, GuestAndroid.deviceSecure(this))) {
+            is GuestEntryPlan.Refuse -> plan.message?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+            }
+            is GuestEntryPlan.Start -> {
+                applyGuestWindow(true)
+                guestBoot = when (val started = guestStore.start(plan.items, returnViewerUri.orEmpty())) {
+                    is GuestStartResult.Started -> GuestBoot.Guest(started.record)
+                    GuestStartResult.Shell -> GuestBoot.RecoveryShell
+                }
+            }
+        }
+    }
+
+    private fun onGuestPageSettled(page: Int) {
+        val record = (guestBoot as? GuestBoot.Guest)?.record ?: return
+        val index = GuestPaging.clamp(page, record.items.size)
+        if (guestStore.activeRecord()?.index != index) guestStore.update { it.copy(index = index) }
+    }
+
+    private fun lockTaskState(): Int =
+        getSystemService(android.app.ActivityManager::class.java)?.lockTaskModeState
+            ?: android.app.ActivityManager.LOCK_TASK_MODE_NONE
+
+    /**
+     * Brief: offer screen pinning once per session, after the guest frame is
+     * visible. Only the OS's own pinning prompt can appear; a decline is final
+     * for the session and guest view stays confined inside ATLAS.
+     */
+    private fun offerGuestPin() {
+        if (guestBoot !is GuestBoot.Guest || isFinishing) return
+        if (lockTaskState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) return
+        val record = guestStore.activeRecord() ?: return
+        if (record.pinOffered) return
+        guestStore.update { it.copy(pinOffered = true) } ?: return
+        try {
+            startLockTask()
+        } catch (refused: Exception) {
+            android.util.Log.i(GUEST_LOG, "Screen pinning refused: ${refused.javaClass.simpleName}")
+        }
+    }
+
+    /** "Exit guest view": persist a fresh nonce, then open the system confirmation. */
+    private fun requestGuestExit() {
+        if (!guestActive) return
+        val intent = GuestAndroid.confirmIntent(this)
+        if (intent == null) {
+            // The lock was removed while guest view was live: stay in guest
+            // (fail closed) and say what would let the owner out.
+            Toast.makeText(this, GuestCopy.NEEDS_LOCK, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val request = guestStore.prepareAuth() ?: return
+        guestAuthPending = request
+        val pinned = lockTaskState()
+        android.util.Log.i(GUEST_LOG, "Exit requested; lockTaskModeState=$pinned")
+        try {
+            guestAuthLauncher.launch(intent)
+        } catch (refused: Exception) {
+            // Review note A fallback: if the system confirmation cannot start
+            // while pinned, unpin with the guard and secure window still ACTIVE,
+            // retry, and re-pin after a cancel or error.
+            android.util.Log.i(GUEST_LOG, "Confirmation refused (${refused.javaClass.simpleName}); " +
+                "lockTaskModeState=$pinned")
+            if (pinned == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+                guestAuthPending = null
+                return
+            }
+            try {
+                guestRepinAfterAuth = true
+                stopLockTask()
+                guestAuthLauncher.launch(intent)
+            } catch (again: Exception) {
+                guestAuthPending = null
+                repinGuestIfNeeded()
+            }
+        }
+    }
+
+    private fun onGuestAuthResult(resultCode: Int) {
+        val launched = guestAuthPending
+        guestAuthPending = null
+        val returnUri = guestStore.activeRecord()?.returnViewerUri.orEmpty()
+        val pinOffered = guestStore.activeRecord()?.pinOffered == true
+        if (!guestStore.exit(resultCode == RESULT_OK, launched)) {
+            android.util.Log.i(GUEST_LOG, "Exit not confirmed (result=$resultCode); guest stays")
+            repinGuestIfNeeded()
+            return
+        }
+        guestRepinAfterAuth = false
+        if (pinOffered && lockTaskState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
+            try { stopLockTask() } catch (_: Exception) { }
+        }
+        applyGuestWindow(false)
+        guestReturnViewerUri = returnUri.ifEmpty { null }
+        guestBoot = GuestBoot.Owner
+    }
+
+    private fun repinGuestIfNeeded() {
+        if (!guestRepinAfterAuth) return
+        guestRepinAfterAuth = false
+        try { startLockTask() } catch (_: Exception) { }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -475,6 +666,12 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val PICK_SESSION_KEY = "atlas.external.pickSession"
+        const val GUEST_LOG = "ATLAS_GUEST"
+
+        // Process memory only: survives rotation while the system prompt is up,
+        // never process death, so an old RESULT_OK cannot end a session.
+        @Volatile var guestAuthPending: GuestAuthRequest? = null
+        @Volatile var guestRepinAfterAuth = false
     }
 
     /** True once a pick was answered; a second Done or Cancel is ignored. */
@@ -489,6 +686,18 @@ class MainActivity : ComponentActivity() {
         pickAnswered = true
         if (plan == null) setResult(RESULT_CANCELED) else setResult(RESULT_OK, pickResultIntent(plan))
         finish()
+    }
+}
+
+/** GUEST-1 (#589): the selection's items in tap order (the set keeps insertion order). */
+internal fun guestCandidates(selection: nl.atlas.gallery.featureorganization.GalleryBatchSelection):
+    List<GuestCandidate> {
+    val byUri = HashMap<String, MediaRecord>(selection.uris.size * 2)
+    for (media in selection.source) if (media.uri in selection.uris) byUri[media.uri] = media
+    return selection.uris.map { uri ->
+        // An item no longer in the source is refused as a whole, never dropped.
+        byUri[uri]?.let { GuestCandidate(it.id, it.uri, it.isVideo) }
+            ?: GuestCandidate(-1L, uri, isVideo = true)
     }
 }
 
@@ -1018,6 +1227,7 @@ private fun rememberAsyncAlbumCoverPage(
 
 @Composable
 private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
+    val guestPort = LocalGuestPort.current
     val context = LocalContext.current
     // The source list and successful grant epoch MUST be collected together.
     // Collecting two StateFlows separately can expose an obsolete album for
@@ -2259,6 +2469,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerExitShared = false
         SharedPhotoOrigins.clear()
     }
+    // GUEST-1 (#589): after a confirmed exit from a viewer entry, reopen that
+    // photo once in the owner's current grid (skipped if it is gone).
+    val guestReturnUri = guestPort?.returnViewerUri
+    LaunchedEffect(guestReturnUri, visible, busy) {
+        val uri = guestReturnUri ?: return@LaunchedEffect
+        if (busy || visible.isEmpty()) return@LaunchedEffect
+        guestPort?.consumeReturn()
+        if (viewerUri == null && visible.any { it.uri == uri }) openViewer(visible, uri)
+    }
     fun galleryAccessCurrent(): Boolean = grants.hasAny &&
         publishedGallery.showable(grants) && publishedGallery.epoch >= 0L
     fun openAiEdit(photo: MediaRecord) {
@@ -3036,6 +3255,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             },
             onAiEdit = { photo -> openAiEdit(photo) },
             swapPerson = viewerSwapPerson,
+            // GUEST-1 (#589): exactly the photo on screen, never its neighbours.
+            onGuestView = guestPort?.let { port ->
+                { photo: MediaRecord ->
+                    port.start(listOf(GuestCandidate(photo.id, photo.uri, photo.isVideo)), photo.uri)
+                }
+            },
             onEdit = { photo ->
                 val launchResult = PhotoEditorHandoff.launch(context, photo)
                 when (launchResult) {
@@ -3323,6 +3548,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         },
                         SelectionMoreAction("Move to album", "atlas-selection-move-to-album") {
                             albumPicker = AlbumTransferMode.MOVE
+                        }
+                    ) else emptyList()) + (if (guestPort != null && live) listOf(
+                        // GUEST-1 (#589): the chosen photos, in tap order, and nothing else.
+                        SelectionMoreAction(GuestCopy.ENTRY, "atlas-selection-guest-view") {
+                            guestPort.start(guestCandidates(photosSelection), null)
                         }
                     ) else emptyList())
                 )

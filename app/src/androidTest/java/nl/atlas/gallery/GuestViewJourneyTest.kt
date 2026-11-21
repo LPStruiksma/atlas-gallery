@@ -1,0 +1,474 @@
+package nl.atlas.gallery
+
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.ParcelFileDescriptor
+import android.util.Log
+import android.view.PixelCopy
+import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.unit.dp
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import nl.atlas.gallery.testkit.DeviceCredentialRule
+import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.featureguest.GuestAndroid
+import nl.atlas.gallery.featureguest.GuestBoot
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.runner.Description
+import org.junit.runner.RunWith
+import org.junit.runners.model.Statement
+
+/**
+ * GUEST-1 (#589): the guest view journey on generated media only.
+ *
+ * Light: selection More entry, tap order, bounded paging, Back, a new intent,
+ * recreation, landscape, the OS pinning prompt ACCEPTED, credential cancel and
+ * success. Dark: the same entry with the pinning prompt DECLINED. Viewer: entry
+ * from viewer More at 200% text, exactly one photo, return to that photo.
+ *
+ * Guest frames are FLAG_SECURE, so OS screenshots are black by design (that is
+ * asserted and published as evidence). The guest UI itself is captured from
+ * the app's own window with PixelCopy. Pinning and credential behaviour is
+ * logged under ATLAS_GUEST_PROBE for the PR.
+ */
+@RunWith(AndroidJUnit4::class)
+class GuestViewLightJourneyTest : GuestViewSelectionJourney(dark = false, acceptPin = true)
+
+@RunWith(AndroidJUnit4::class)
+class GuestViewDarkJourneyTest : GuestViewSelectionJourney(dark = true, acceptPin = false)
+
+private const val PROBE = "ATLAS_GUEST_PROBE"
+private const val PIN = "1589"
+private const val FOLDER = "ATLAS-Guest-589"
+
+abstract class GuestViewSelectionJourney(private val dark: Boolean, private val acceptPin: Boolean) {
+    private val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+        .around(DisplayPrefsRule(dark))
+        .around(DeviceCredentialRule(PIN))
+        .around(GuestStoreRule())
+        .around(SyntheticHeaderFixtures(sizes = List(4) { 1200 to 900 }, folderOf = { FOLDER }))
+        .around(compose)
+
+    private val theme get() = if (dark) "dark" else "light"
+
+    @Test fun selectionEntryConfinesToChosenPhotosUntilDeviceCredential() {
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        val tile = SemanticsMatcher("visible timeline media") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-timeline-media-") == true
+        }
+        compose.awaitThat("four synthetic tiles", 30_000L) { compose.onAllNodes(tile).fetchSemanticsNodes().size >= 4 }
+        val tags = compose.onAllNodes(tile).fetchSemanticsNodes()
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.distinct()
+        // Tap order 0, 2, 1: guest view must page in exactly this order.
+        compose.onNodeWithTag(tags[0]).performTouchInput { longClick() }
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.tap(hasTestTag(tags[2]))
+        compose.tap(hasTestTag(tags[1]))
+        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("3 selected"))
+        compose.tap(hasTestTag("atlas-selection-more"))
+        compose.waitForNode(hasTestTag("atlas-selection-guest-view"))
+        compose.waitForIdle()
+        saveUiEvidence("guest-589-$theme-a-entry.png")
+        compose.tap(hasTestTag("atlas-selection-guest-view"))
+
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        val expectedIds = tags.map { it.removePrefix("atlas-timeline-media-").toLong() }
+            .let { listOf(it[0], it[2], it[1]) }
+        val record = requireNotNull(store().activeRecord()) { "no live guest record" }
+        assertEquals("frozen set in tap order", expectedIds, record.items.map { it.id })
+        assertOwnerChromeGone()
+        assertTrue("FLAG_SECURE on the guest window", secureFlag())
+        awaitPage(0, 3)
+
+        // The OS pinning prompt, if any: accept (light) or decline (dark).
+        val pinProbe = handlePinPrompt(acceptPin)
+        Log.i(PROBE, "API ${android.os.Build.VERSION.SDK_INT} $theme pin: $pinProbe")
+        assertEquals("OS screenshot of a guest frame is blocked", true, osScreenshotIsBlack())
+        publishBlockedOsScreenshot("guest-589-$theme-os-screenshot-blocked.png")
+        captureGuest("guest-589-$theme-c-first.png")
+
+        // Swipes stay inside the frozen three; no wrap, no neighbours.
+        repeat(4) {
+            compose.onNodeWithTag("atlas-guest-pager").performTouchInput { swipeLeft() }
+            compose.waitForIdle()
+        }
+        awaitPage(2, 3)
+        compose.onNodeWithTag("atlas-guest-page-3").assertDoesNotExist()
+        captureGuest("guest-589-$theme-c-last.png")
+        compose.tap(hasTestTag("atlas-guest-thumb-1"))
+        awaitPage(1, 3)
+
+        // Back is consumed silently; a new intent is not routed.
+        shell("input keyevent 4")
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        compose.activityRule.scenario.onActivity {
+            it.startActivity(Intent(it, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        }
+        compose.awaitWindowSettled()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        assertOwnerChromeGone()
+
+        // Recreation (as on rotation) restores the same set at the same page.
+        compose.activityRule.scenario.recreate()
+        compose.awaitWindowSettled()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        awaitPage(1, 3)
+        assertTrue("FLAG_SECURE after recreation", secureFlag())
+        if (!dark) {
+            compose.activityRule.scenario.onActivity {
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            compose.awaitThat("landscape") { displayIsLandscape() }
+            compose.awaitWindowSettled()
+            compose.waitForNode(hasTestTag("atlas-guest-root"))
+            awaitPage(1, 3)
+            captureGuest("guest-589-light-c-landscape.png")
+            compose.activityRule.scenario.onActivity {
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+            compose.awaitThat("portrait") { !displayIsLandscape() }
+            compose.awaitWindowSettled()
+            compose.waitForNode(hasTestTag("atlas-guest-root"))
+        }
+
+        // Exit → system confirmation → cancel keeps guest.
+        compose.tap(hasTestTag("atlas-guest-exit"))
+        val prompt = credentialScreen()
+        Log.i(PROBE, "API ${android.os.Build.VERSION.SDK_INT} $theme credential screen while " +
+            "lockTaskModeState=${lockState()}: $prompt")
+        assertTrue("system credential screen opened: ${describeFocus()}", prompt.opened)
+        shell("input keyevent 4")
+        compose.awaitThat("the credential screen to close") { !credentialOnTop() }
+        compose.awaitWindowSettled()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        assertOwnerChromeGone()
+        Log.i(PROBE, "after cancel lockTaskModeState=${lockState()}")
+        assertTrue(GuestGuardCheck.guest(store().boot()))
+
+        // Exit again → correct device PIN → the owner's gallery returns.
+        compose.tap(hasTestTag("atlas-guest-exit"))
+        assertTrue("credential screen again: ${describeFocus()}", credentialScreen().opened)
+        shell("input text $PIN")
+        shell("input keyevent 66")
+        compose.awaitThat("the owner's gallery after the PIN", 30_000L) {
+            compose.exists(hasTestTag("atlas-nav-photos")) || compose.exists(hasTestTag("atlas-selection-count"))
+        }
+        compose.onNodeWithTag("atlas-guest-root").assertDoesNotExist()
+        assertEquals(GuestBoot.Owner, store().boot())
+        assertFalse("FLAG_SECURE cleared after exit", secureFlag())
+        compose.awaitThat("unpinned after exit") { lockState() == ActivityManager.LOCK_TASK_MODE_NONE }
+        Log.i(PROBE, "API ${android.os.Build.VERSION.SDK_INT} $theme exit ok; selection restored=" +
+            compose.onAllNodes(hasTestTag("atlas-selection-count")).fetchSemanticsNodes().isNotEmpty())
+    }
+
+    private fun assertOwnerChromeGone() {
+        for (tag in listOf("atlas-nav-photos", "atlas-selection-count", "atlas-selection-more",
+                "atlas-viewer-more", "atlas-viewer-details-open")) {
+            compose.onNodeWithTag(tag).assertDoesNotExist()
+        }
+    }
+
+    private fun awaitPage(page: Int, count: Int) {
+        compose.waitForNode(hasTestTag("atlas-guest-page-$page") and
+            hasContentDescription("Photo ${page + 1} of $count"))
+        compose.awaitThat("guest page $page saved") { store().activeRecord()?.index == page }
+    }
+
+    private fun displayIsLandscape(): Boolean {
+        var landscape = false
+        compose.activityRule.scenario.onActivity {
+            landscape = it.resources.configuration.orientation ==
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        }
+        return landscape
+    }
+
+    private fun store() = GuestAndroid.store(InstrumentationRegistry.getInstrumentation().targetContext)
+
+    private fun secureFlag(): Boolean {
+        var flags = 0
+        compose.activityRule.scenario.onActivity { flags = it.window.attributes.flags }
+        return flags and WindowManager.LayoutParams.FLAG_SECURE != 0
+    }
+
+    private fun lockState(): Int {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        return context.getSystemService(ActivityManager::class.java).lockTaskModeState
+    }
+
+    /** Clicks the OS pinning prompt's own button, or declines it; returns what happened. */
+    private fun handlePinPrompt(accept: Boolean): String {
+        val automation = interactiveUiAutomation()
+        var button: AccessibilityNodeInfo? = null
+        var promptPackage = "none"
+        var pinnedSilently = false
+        // The prompt is optional OS behaviour: observe, never fail, if it does not come.
+        compose.observe(6_000L) {
+            if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) {
+                pinnedSilently = true
+                return@observe true
+            }
+            val roots = runCatching { automation.windows.mapNotNull { it.root } }.getOrDefault(emptyList())
+            for (root in roots) {
+                if (root.packageName?.toString() == InstrumentationRegistry.getInstrumentation()
+                        .targetContext.packageName) continue
+                val labels = if (accept) listOf("Got it", "Pin", "Start", "Yes", "OK")
+                else listOf("No thanks", "Cancel", "No")
+                button = labels.firstNotNullOfOrNull { label ->
+                    root.findAccessibilityNodeInfosByText(label).firstOrNull {
+                        it.text?.toString()?.trim().equals(label, ignoreCase = true)
+                    }?.let { node -> generateSequence(node) { it.parent }.firstOrNull { it.isClickable } }
+                }
+                if (button != null) { promptPackage = root.packageName?.toString() ?: "?"; break }
+            }
+            button != null
+        }
+        if (pinnedSilently) return "pinned without a prompt (state ${lockState()})"
+        val pressed = button?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        if (pressed == true) {
+            compose.observe(5_000L) {
+                (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) == accept
+            }
+        }
+        // A system window we could not read still holding focus: decline it with Back.
+        val focus = currentFocus()
+        if (!focus.contains(InstrumentationRegistry.getInstrumentation().targetContext.packageName)) {
+            Log.i(PROBE, "unrecognised focused window after the pin step: $focus; pressing Back")
+            shell("input keyevent 4")
+        }
+        compose.awaitWindowSettled()
+        return "prompt=$promptPackage ${if (accept) "accept" else "decline"} pressed=$pressed " +
+            "→ lockTaskModeState=${lockState()}"
+    }
+
+    private data class Prompt(val opened: Boolean, val focus: String)
+
+    private fun credentialScreen(): Prompt {
+        val opened = compose.observe(10_000L) { credentialOnTop() }
+        if (opened) compose.observe(5_000L) { credentialFocused() }
+        return Prompt(opened, resumedActivities())
+    }
+
+    private fun osScreenshotIsBlack(): Boolean {
+        val shot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        try {
+            val margin = shot.height / 6
+            var bright = 0
+            var samples = 0
+            for (y in margin until shot.height - margin step 24) for (x in 0 until shot.width step 24) {
+                val c = shot.getPixel(x, y)
+                if ((c shr 16 and 0xFF) + (c shr 8 and 0xFF) + (c and 0xFF) > 60) bright++
+                samples++
+            }
+            Log.i(PROBE, "OS screenshot of guest: $bright of $samples content samples not black")
+            // The guest photo alone covers about a third; a pinning toast is a few percent.
+            return bright * 10 < samples
+        } finally {
+            shot.recycle()
+        }
+    }
+
+    private fun publishBlockedOsScreenshot(name: String) {
+        val shot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        writeGuestPng(name, shot)
+    }
+
+    /** The guest window's own pixels (PixelCopy works under FLAG_SECURE; the OS screenshot does not). */
+    private fun captureGuest(name: String) {
+        compose.awaitWindowSettled()
+        lateinit var bitmap: Bitmap
+        var result = -1
+        val thread = HandlerThread("guest-capture").apply { start() }
+        try {
+            val latch = CountDownLatch(1)
+            compose.activityRule.scenario.onActivity { activity ->
+                val decor = activity.window.decorView
+                bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
+                PixelCopy.request(activity.window, bitmap, { code -> result = code; latch.countDown() },
+                    Handler(thread.looper))
+            }
+            check(latch.await(10, TimeUnit.SECONDS)) { "PixelCopy timed out for $name" }
+        } finally {
+            thread.quitSafely()
+        }
+        check(result == PixelCopy.SUCCESS) { "PixelCopy failed ($result) for $name" }
+        Log.i(PROBE, "$name captured with PixelCopy ${bitmap.width}x${bitmap.height}")
+        val problem = uiEvidenceProblem(bitmap)
+        check(problem == null || problem.startsWith("is ") && !problem.contains("blank")) {
+            "guest evidence $name $problem"
+        }
+        writeGuestPng(name, bitmap)
+    }
+
+    private fun writeGuestPng(name: String, bitmap: Bitmap) {
+        val png = try {
+            java.io.ByteArrayOutputStream().also {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }.toByteArray()
+        } finally {
+            bitmap.recycle()
+        }
+        writeUiEvidenceFile(uiEvidenceDisplayName(name), png)
+    }
+}
+
+/** Viewer More entry: one photo only, at 200% text, back to that photo after the PIN. */
+@RunWith(AndroidJUnit4::class)
+class GuestViewViewerEntryTest {
+    private val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+        .around(DisplayPrefsRule(dark = false, fontScale = 2f))
+        .around(DeviceCredentialRule(PIN))
+        .around(GuestStoreRule())
+        .around(SyntheticHeaderFixtures(sizes = List(3) { 900 to 1200 }, folderOf = { FOLDER }))
+        .around(compose)
+
+    @Test fun viewerEntryShowsExactlyThePhotoOnScreen() {
+        compose.waitForNode(hasTestTag("atlas-nav-photos"))
+        val tile = SemanticsMatcher("visible timeline media") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-timeline-media-") == true
+        }
+        compose.awaitThat("three synthetic tiles", 30_000L) { compose.onAllNodes(tile).fetchSemanticsNodes().size >= 3 }
+        val tag = compose.onAllNodes(tile).fetchSemanticsNodes()
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.distinct()[1]
+        val id = tag.removePrefix("atlas-timeline-media-").toLong()
+        compose.tap(hasTestTag(tag))
+        compose.waitForNode(hasTestTag("atlas-viewer-more"))
+        compose.tap(hasTestTag("atlas-viewer-more"))
+        compose.waitForNode(hasTestTag("atlas-viewer-guest-view"))
+        compose.waitForIdle()
+        saveUiEvidence("guest-589-light-b-viewer-entry-font200.png")
+        compose.tap(hasTestTag("atlas-viewer-guest-view"))
+
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        val store = GuestAndroid.store(InstrumentationRegistry.getInstrumentation().targetContext)
+        assertEquals(listOf(id), requireNotNull(store.activeRecord()).items.map { it.id })
+        compose.onNodeWithTag("atlas-guest-filmstrip").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-viewer-more").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-guest-pager").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        compose.waitForNode(hasTestTag("atlas-guest-page-0") and hasContentDescription("Photo 1 of 1"))
+        // Decline any pinning prompt so the exit runs unpinned here.
+        if (compose.observe(6_000L) { pinPromptShown() }) shell("input keyevent 4")
+        compose.awaitWindowSettled()
+        // 200% text: the Exit slab keeps at least 48 dp and stays inside the screen.
+        val exit = compose.onNodeWithTag("atlas-guest-exit").getUnclippedBoundsInRoot()
+        val root = compose.onNodeWithTag("atlas-guest-root").getUnclippedBoundsInRoot()
+        assertTrue("Exit at least 48 dp tall at 200%: $exit", exit.bottom - exit.top >= 48.dp)
+        assertTrue("Exit inside the screen at 200%: $exit in $root", exit.bottom <= root.bottom)
+
+        compose.tap(hasTestTag("atlas-guest-exit"))
+        compose.awaitThat("the system credential screen") { credentialOnTop() }
+        compose.awaitThat("the PIN field focused") { credentialFocused() }
+        shell("input text $PIN")
+        shell("input keyevent 66")
+        compose.waitForNode(hasTestTag("atlas-viewer-more"), 30_000L)
+        compose.onNodeWithTag("atlas-guest-root").assertDoesNotExist()
+        assertEquals(GuestBoot.Owner, store.boot())
+    }
+}
+
+private object GuestGuardCheck {
+    fun guest(boot: GuestBoot) = boot !is GuestBoot.Owner
+}
+
+private fun shell(command: String): String {
+    val fd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+    return ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() }
+}
+
+/** A clean guest store before and after each test, also on failure. */
+private class GuestStoreRule : TestRule {
+    override fun apply(base: Statement, description: Description): Statement = object : Statement() {
+        override fun evaluate() {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            clearGuestStore(context)
+            try {
+                base.evaluate()
+            } finally {
+                clearGuestStore(context)
+            }
+        }
+    }
+
+    private fun clearGuestStore(context: Context) {
+        context.getSharedPreferences("atlas_guest_guard", Context.MODE_PRIVATE).edit().clear().commit()
+        for (suffix in listOf("", ".bak", ".new")) {
+            File(context.noBackupFilesDir, "guest-session.v1$suffix").delete()
+        }
+    }
+}
+
+/**
+ * Waits up to [timeoutMs] for optional system behaviour (an OS prompt that may
+ * or may not appear) and reports whether it happened; never fails the test.
+ */
+private fun ComposeTestRule.observe(timeoutMs: Long, condition: () -> Boolean): Boolean = try {
+    waitUntil(timeoutMs) { condition() }
+    true
+} catch (_: ComposeTimeoutException) {
+    false
+}
+
+private fun resumedActivities(): String = shell("dumpsys activity activities").lineSequence()
+    .map { it.trim() }
+    .filter { it.startsWith("topResumedActivity") || it.startsWith("ResumedActivity") }
+    .joinToString("; ").take(300)
+
+private fun credentialOnTop(): Boolean = resumedActivities().let {
+    it.contains("ConfirmLock") || it.contains("ConfirmDeviceCredential")
+}
+
+private fun currentFocus(): String = shell("dumpsys window").lineSequence()
+    .map { it.trim() }.firstOrNull { it.startsWith("mCurrentFocus=") }.orEmpty()
+
+/** The credential screen's own window has focus, so typed keys reach its PIN field. */
+private fun credentialFocused(): Boolean = shell("dumpsys window").lineSequence()
+    .map { it.trim() }.filter { it.startsWith("mCurrentFocus=") }
+    .any { it.contains("ConfirmLock") || it.contains("ConfirmDeviceCredential") }
+
+/** A system window offering to pin the app (any package but ATLAS). */
+private fun pinPromptShown(): Boolean {
+    val own = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+    return runCatching { interactiveUiAutomation().windows.mapNotNull { it.root } }
+        .getOrDefault(emptyList())
+        .filter { it.packageName?.toString() != own }
+        .any { root -> listOf("Got it", "No thanks", "Pin").any {
+            root.findAccessibilityNodeInfosByText(it).isNotEmpty() } }
+}
