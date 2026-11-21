@@ -227,7 +227,8 @@ class Gen:
         f1 = self.scr(viewer=True)
         L.viewer(f1)
         panels.append(Panel("F1", "Viewer", "Black ground, actions on the #3448E0 slab, current filmstrip item "
-                            "with a #8C9BFF sphere and 2 dp white ring.", f1))
+                            "with a #8C9BFF sphere and 2 dp white ring. Seven 40 dp tiles, 8 dp gaps: 48 dp pitch, so the "
+                            "seven 48 dp effective targets touch but never overlap.", f1))
         g1 = self.scr()
         g1.status_bar()
         yy = L.title(g1, "Pictures")

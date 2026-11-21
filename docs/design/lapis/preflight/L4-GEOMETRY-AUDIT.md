@@ -30,3 +30,27 @@ python3 -m unittest discover -s tools/design/tests
 ```
 
 The Funnel files used are the BRAND-L2 files from PR #720 (SHA-256 recorded in the manifest, unchanged).
+
+## BRAND-L4-E3 · F1 filmstrip hit regions ([#889](https://github.com/LPStruiksma/atlas-gallery/issues/889))
+
+Finding (design preflight on #657): the F1 viewer drew seven 40 dp tiles with 4 dp gaps (44 dp pitch), and `Screen.target()` pads every target to 48 dp, so neighbouring effective targets overlapped by 4 dp. Synthetic only; not device proof, not a Design: PASS.
+
+- **Fix:** gap 8 dp (`filmstrip_gap()` in `tools/design/lapis_screens.py`), tiles stay 40 dp wide, so the centre pitch is exactly 48 dp (135 px at 2.8125). The strip is 328 dp wide and re-centred on the 384 dp screen (effective targets 336 dp, x 67–1012 px). Still seven visible items; slab, white 2 dp ring, held sphere and viewer actions are untouched; no token changed.
+- **Effective targets:** seven boxes of 48 × 52 dp (135 × 146 px), adjacent boxes share an edge (0 px overlap, checked in whole pixels, so rounding cannot overlap them), all inside the viewport and clear of the action slab.
+- **Evidence:** full-resolution [brand-l4-f1-viewer-48dp.png](brand-l4-f1-viewer-48dp.png) (1080 × 2340, targets dashed and labelled in the annotation colour); regenerated L4 sheet and manifest hash (`python3 tools/design/lapis_preflight.py --check` passes).
+- **Test:** `tools/design/tests/test_lapis_l4_filmstrip.py`, light/dark × 100 %/200 %: seven targets, each ≥ 48 dp, pairwise non-overlapping, pitch 48 dp, inside the viewport, centred, clear of actions; the current-item ring and sphere sit on the fourth tile and no other tile has a ring. It fails on the old 4 dp gap (4 subtests).
+- **Other sheets:** only the L4 sheet renders `viewer()`. The L5–L8 sheets and the GIF were not regenerated; their manifest hashes are unchanged.
+
+Regenerate the full-resolution view:
+
+```bash
+cd tools/design && python3 - <<'PY'
+import sys; sys.path.insert(0, ".")
+from lapis_kit import Fonts, Screen
+from lapis_preflight import find_fonts, REPO
+import lapis_screens as L
+s = Screen(Fonts(find_fonts("<font dir>", REPO, False)), theme="light", font_scale=1.0, viewer=True)
+L.viewer(s); s.overlay_annotations()
+s.img.convert("RGB").save("../../docs/design/lapis/preflight/brand-l4-f1-viewer-48dp.png", optimize=True)
+PY
+```
