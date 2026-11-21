@@ -19,6 +19,14 @@ internal data class EditorReturnState(
         if (pendingUri == null) this else
             copy(pendingUri = null, refreshedUri = pendingUri, revision = revision + 1L)
 
+    /**
+     * EDIT-3 (#633): Atlas's own editor saved or reverted [uri] in place. Same refresh as a
+     * return from the system editor: only this URI gets a new revision key.
+     */
+    fun savedInPlace(uri: String): EditorReturnState =
+        if (!uri.startsWith("content://media/")) this else
+            copy(pendingUri = null, refreshedUri = uri, revision = revision + 1L)
+
     /** Unchanged image: use Coil's normal warm cache. Only returned image opts out. */
     fun mustReload(mediaUri: String): Boolean =
         revision > 0 && refreshedUri == mediaUri
