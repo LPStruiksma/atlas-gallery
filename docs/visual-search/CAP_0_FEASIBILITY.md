@@ -48,8 +48,8 @@ The offline, model-agnostic harness never downloads a model or sends images over
 1. Record hardware/OS/CPU, Python/ORT; model repo/revision, file and licence SHA-256; conversion command/container digest, opset, quantization and calibration provenance.
 2. Generate synthetic fixtures. `check-manifest` rejects symlinks, missing/mismatched hashes, duplicates, non-absolute paths and absent rights metadata.
 3. Convert in isolation. Compare source and int8 on approved parity data before timing. Static int8 needs licensed calibration data. Never silently partition to remote inference.
-4. Run the local adapter with network externally disabled, deterministic decoding, five warm-ups and ≥30 recorded runs/images. Record latency, failures and child peak RSS. Android needs platform memory/energy tooling.
-5. Retain only results permitted by data terms; no private bytes/EXIF. Report n, failures, p50/p95, peak memory, storage, and cold/warm separately.
+4. Run the local adapter with network externally disabled and deterministic decoding. The included harness creates a **new process per inference**, so its results are **cold process-launch** timings only. The optional discarded trial launches do not warm later model state. For warm-throughput measurement CAP-1 must use a separate persistent, resident adapter. Record attempt/success/failure counts and success-only cold p50/p95; a run with zero valid captions fails closed.
+5. Retain only results permitted by data terms; no private bytes/EXIF. The harness deliberately reports peak memory **NOT MEASURED** rather than misusing the cumulative child-process high-water mark. Measure per-process host RSS and Android PSS with validated external tools in CAP-1; keep cold/warm and host/phone results separately.
 
 Canonical commands are in `tools/caption_bench/README.md`. They are protocol, not proof a VLM ran.
 
@@ -101,4 +101,4 @@ Only after all gates and independent legal/security/privacy review may Research 
 - [ ] Physical S24+ latency/RAM/energy — **NOT MEASURED**; no device.
 - [ ] Capability map — unchanged; evidence does not support Planned.
 
-Live-main instructions were inaccessible: this checkout has no remote/main ref, and `git show origin/main:{AGENTS.md,docs/agents/codex-wake.md,roles/dev.md}` failed `fatal: invalid object name 'origin/main'`. Model execution was intentionally not attempted without approved artefacts/data, conversion, or devices.
+Historical provenance: the **detached Codex task checkout** (before the report was integrated into this PR) had no remote/main ref, so its attempted `git show origin/main:{AGENTS.md,docs/agents/codex-wake.md,roles/dev.md}` returned `fatal: invalid object name 'origin/main'`. The later connector-written PR branch merged live main; this historical error does **not** describe the integrated PR. Model execution was intentionally not attempted without approved artefacts/data, conversion, or devices.
