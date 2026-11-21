@@ -349,4 +349,41 @@ class ViewerMotionMathTest {
         val nanTap = viewerDoubleTapFrame(from, to, Float.NaN, Float.NaN, vw, vh, vw, vh, .5f)
         assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
     }
+
+    @Test fun filmstripTapEasingIsMonotoneBoundedAndConstantTimeForLargeAlbums() {
+        assertEquals(260, AtlasMotion.FILMSTRIP_TAP_MS)
+        val checkpoints = listOf(0, 16, 65, 130, 195, 260)
+        val frames = checkpoints.map { elapsed ->
+            viewerTapStripFrame(ViewerStripPosition(4, 0), 7,
+                AtlasMotion.FilmstripTapEase.transform(elapsed / 260f), 150_000, 60)
+        }
+        assertEquals(ViewerStripPosition(4, 0), frames.first())
+        assertEquals(ViewerStripPosition(7, 0), frames.last())
+        val coordinates = frames.map { it.index.toLong() * 60 + it.scrollOffsetPx }
+        assertTrue(coordinates.zipWithNext().all { (a, b) -> a <= b })
+        assertTrue(coordinates.drop(1).dropLast(1).any { it > 240 && it < 420 })
+
+        val far = viewerTapStripFrame(ViewerStripPosition(0, 0), 149_999,
+            AtlasMotion.FilmstripTapEase.transform(.5f), 150_000, 60)
+        assertTrue(far.index in 1 until 149_999)
+        assertEquals(ViewerStripPosition(149_999, 0),
+            viewerTapStripFrame(ViewerStripPosition(0, 0), 149_999, 1f, 150_000, 60))
+        assertEquals(ViewerStripPosition(0, 0),
+            viewerTapStripFrame(ViewerStripPosition(149_999, 0), 0, 1f, 150_000, 60))
+    }
+
+    @Test fun newTapStartsAtRenderedSubTileCoordinateAndBoundsStayLegal() {
+        val interrupted = ViewerStripPosition(16, 23)
+        assertEquals(interrupted, viewerTapStripFrame(interrupted, 2, 0f, 20, 60))
+        val next = (0..10).map {
+            viewerTapStripFrame(interrupted, 2, it / 10f, 20, 60)
+        }
+        val positions = next.map { it.index * 60 + it.scrollOffsetPx }
+        assertTrue(positions.zipWithNext().all { (a, b) -> a >= b })
+        assertEquals(ViewerStripPosition(2, 0), next.last())
+        assertEquals(ViewerStripPosition(0, 0),
+            viewerTapStripFrame(ViewerStripPosition(0, 0), 0, .5f, 1, 60))
+        assertEquals(ViewerStripPosition(1, 0),
+            viewerTapStripFrame(ViewerStripPosition(1, 0), 99, 1f, 2, 60))
+    }
 }
