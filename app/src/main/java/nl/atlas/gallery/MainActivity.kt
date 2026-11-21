@@ -193,6 +193,7 @@ import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
+import nl.atlas.gallery.featuresearch.scopeRankedHits
 import nl.atlas.gallery.featuresearch.LocalSearchControls
 import nl.atlas.gallery.featuresearch.personSearchLabel
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
@@ -1541,6 +1542,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Transient only: search text must not enter Android saved instance state.
     var overviewQuery by remember { mutableStateOf("") }
     var overviewScope by remember { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
+    var overviewExpanded by remember { mutableStateOf(false) }
+    // FIND-2: this is a transient pointer to one *authorized overview publication*.
+    // Never save its URIs, use the picker as a source, or reuse it across a grant.
+    var advancedScreenSource by remember {
+        mutableStateOf<List<MediaRecord>?>(null, referentialEqualityPolicy())
+    }
+    var advancedScreenEpoch by remember { mutableLongStateOf(-1L) }
+    var advancedScreenRoute by remember { mutableStateOf<String?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -1834,12 +1843,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val overviewRoute = "$tab:$album:$albumVolume:$personFilter:$nativePersonAlbum:$storiesOpen:$photoDnaOpen"
     LaunchedEffect(overviewRoute, searchGrant) {
         overviewQuery = ""
+        overviewExpanded = false
         overviewScope = if (tab == 3) AtlasSearchScope.LIBRARY else AtlasSearchScope.THIS_SCREEN
     }
     val overviewBase = when {
         personFilter != null -> selectedPersonPhotos.orEmpty()
         tab == 3 -> if (!searchActive) sorted else searched.orEmpty()
         else -> albumItems
+    }
+    // A refresh, route change or revoked permission invalidates this search
+    // immediately, before the old result grid can be composed or opened.
+    val activeAdvancedSource = advancedScreenSource?.takeIf {
+        searchGrant != null && advancedScreenEpoch == publishedGallery.epoch &&
+            advancedScreenRoute == overviewRoute && it === overviewBase
+    }
+    LaunchedEffect(activeAdvancedSource?.let(::CatalogSourceKey),
+        advancedScreenSource?.let(::CatalogSourceKey)) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            closeFaceSearch()
+            closeFindSimilar()
+            advancedScreenSource = null
+        }
     }
     var scopedResult by remember {
         mutableStateOf<ScopedMediaSearchSnapshot?>(null, referentialEqualityPolicy())
@@ -3152,17 +3176,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     val similarRoute = similarStep
     if (similarRoute != null) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            Text("This screen's photo access changed. Return to the overview.")
+            return
+        }
         FindSimilarRoute(
             session = similarSession,
             portVersion = faceHostVersion,
             step = similarRoute,
-            photos = sorted,
+            photos = activeAdvancedSource ?: sorted,
+            screenMedia = activeAdvancedSource,
             onStep = { similarStep = it },
             onOpen = { items, record, _ ->
                 val current = similarResults
                 if (current != null && galleryAccessCurrent() &&
+                    readGalleryMediaGrant(context) == grants &&
+                    vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                    (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
-                    items.all { row -> current.records.any { it.uri == row.uri } }) {
+                    items.all { row -> current.records.any { it.uri == row.uri } } &&
+                    (activeAdvancedSource == null ||
+                        items.all { row -> activeAdvancedSource.any { it.uri == row.uri } })) {
                     openViewer(items, record.uri)
                 }
             },
@@ -3190,18 +3224,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
 
     val faceRoute = faceStep
     if (faceRoute != null) {
+        if (advancedScreenSource != null && activeAdvancedSource == null) {
+            Text("This screen's photo access changed. Return to the overview.")
+            return
+        }
         FaceSearchRoute(
             port = facePort,
             portVersion = faceHostVersion,
             session = faceSession,
             step = faceRoute,
-            photos = sorted,
+            photos = activeAdvancedSource ?: sorted,
+            screenMedia = activeAdvancedSource,
             onStep = { faceStep = it },
             onOpen = { items, record ->
                 val current = faceResults
                 if (current != null && galleryAccessCurrent() &&
+                    readGalleryMediaGrant(context) == grants &&
+                    vm.publishedInventory.value.epoch == publishedGallery.epoch &&
+                    (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
-                    items.all { row -> current.records.any { it.uri == row.uri } }) {
+                    items.all { row -> current.records.any { it.uri == row.uri } } &&
+                    (activeAdvancedSource == null ||
+                        items.all { row -> activeAdvancedSource.any { it.uri == row.uri } })) {
                     openViewer(items, record.uri)
                 }
             },
@@ -3506,6 +3550,42 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         if ((photosControls || personFilter != null) && !settingsOpen && !statusOpen) AtlasSearch(
                             query = overviewQuery,
                             onQueryChange = { overviewQuery = it },
+                            expandedState = overviewExpanded,
+                            onExpandedChange = { overviewExpanded = it },
+                            faceTool = {
+                                AssistChip(
+                                    onClick = {
+                                        if (searchGrant != null && !sortPending &&
+                                            !albumSelectionPending && !personAlbumPending) {
+                                            advancedScreenSource = overviewBase
+                                            advancedScreenEpoch = publishedGallery.epoch
+                                            advancedScreenRoute = overviewRoute
+                                            faceSession.clear()
+                                            faceOrigin = null
+                                            faceStep = FaceSearchStep.ChooseReference
+                                        }
+                                    },
+                                    label = { Text("By face") },
+                                    modifier = Modifier.testTag("atlas-overview-by-face")
+                                )
+                            },
+                            imageTool = {
+                                AssistChip(
+                                    onClick = {
+                                        if (searchGrant != null && !sortPending &&
+                                            !albumSelectionPending && !personAlbumPending) {
+                                            advancedScreenSource = overviewBase
+                                            advancedScreenEpoch = publishedGallery.epoch
+                                            advancedScreenRoute = overviewRoute
+                                            similarSession.clear()
+                                            similarOrigin = null
+                                            similarStep = FindSimilarStep.ChooseReference
+                                        }
+                                    },
+                                    label = { Text("By image") },
+                                    modifier = Modifier.testTag("atlas-overview-by-image")
+                                )
+                            },
                             selectedScope = overviewScope,
                             historyScope = when {
                                 personFilter != null -> SearchHistoryScope.PERSON
@@ -4045,11 +4125,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 searchHistory.clear(SearchHistoryScope.GLOBAL)
                             },
                             onSearchByFace = {
+                                advancedScreenSource = null
                                 faceSession.clear()
                                 faceOrigin = null
                                 faceStep = FaceSearchStep.ChooseReference
                             },
                             onFindSimilar = {
+                                advancedScreenSource = null
                                 similarSession.clear()
                                 similarOrigin = null
                                 similarStep = FindSimilarStep.ChooseReference
