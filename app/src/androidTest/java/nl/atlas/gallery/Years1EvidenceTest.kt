@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasTestTag
+import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.tap
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -154,13 +156,14 @@ class Years1EvidenceTest {
         rule.setContent { PersonPage(dark, 1f) }
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-person-years").assertExists()
+        rule.awaitScreenStill("the person page thumbnails")
         saveUiEvidence("years1-person-page-row-dark.png")
         rule.runOnIdle { dark = false }
         rule.waitForIdle()
         saveUiEvidence("years1-person-page-row-light.png")
         rule.runOnIdle { dark = true }
         rule.waitForIdle()
-        rule.onNodeWithTag("atlas-header-more").performClick()
+        rule.tap(hasTestTag("atlas-header-more"))
         rule.onNodeWithTag("atlas-person-ignore").assertExists()
         rule.onNodeWithTag("atlas-person-birth-date").assertExists()
         // Every pre-existing named-person action is still in the menu.
@@ -172,7 +175,7 @@ class Years1EvidenceTest {
     @Test fun personMenuAtLargeText() {
         rule.setContent { PersonPage(true, 2f) }
         rule.waitForIdle()
-        rule.onNodeWithTag("atlas-header-more").performClick()
+        rule.tap(hasTestTag("atlas-header-more"))
         rule.onNodeWithTag("atlas-person-ignore").assertExists()
         saveUiEvidence("years1-person-menu-large-text-dark.png")
     }
@@ -234,11 +237,11 @@ class Years1EvidenceTest {
         }
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-story-frame-caption").assertExists()
-        Thread.sleep(1500) // let the synthetic photo decode before the capture
+        rule.awaitScreenStill("the first synthetic Story photo")
         saveUiEvidence("years1-story-year-dark.png")
         rule.runOnIdle { captions = ages }
         rule.waitForIdle()
-        Thread.sleep(500)
+        rule.awaitScreenStill("the second caption")
         saveUiEvidence("years1-story-age-dark.png")
     }
 
