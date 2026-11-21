@@ -14,13 +14,30 @@ class ProviderRegistryTest {
         ProviderRuntime.AtlasJobRunner
     })
 
-    @Test fun mainOffersOnlyKindsWithARuntime() {
+    @Test fun mainOffersBothHostedServicesThenCustom() {
         val offered = ProviderRegistry.DEFAULT.offeredPresets()
-        assertEquals(listOf(ProviderKind.ATLAS_PROTOCOL), offered.map { it.kind })
-        assertTrue(offered.single().advanced)
-        assertFalse(ProviderRegistry.DEFAULT.supports(ProviderKind.GEMINI))
-        assertFalse(ProviderRegistry.DEFAULT.supports(ProviderKind.FAL))
+        assertEquals(listOf(ProviderKind.GEMINI, ProviderKind.FAL, ProviderKind.ATLAS_PROTOCOL), offered.map { it.kind })
+        assertEquals(listOf(false, false, true), offered.map { it.advanced })
+        assertTrue(ProviderRegistry.DEFAULT.runtimeFor(ProviderProfile("g", "Google Gemini",
+            ProviderRegistry.GEMINI_PRESET.baseUrl!!, ProviderAuthType.CUSTOM_HEADER, "x-goog-api-key",
+            ProviderKind.GEMINI)) is ProviderRuntime.Adapter)
         assertFalse(ProviderRegistry.DEFAULT.supports(null))
+    }
+
+    @Test fun hostedRuntimesBuildTheProfilesModelOrTheDefault() {
+        val inputs = HostedInputs({ null }, { _, _ -> null }, java.nio.file.Files.createTempDirectory("reg").toFile())
+        val gemini = ProviderProfile("g", "Google Gemini", ProviderRegistry.GEMINI_PRESET.baseUrl!!,
+            ProviderAuthType.CUSTOM_HEADER, "x-goog-api-key", ProviderKind.GEMINI)
+        assertEquals("gemini:gemini-3.1-flash-image", ProviderRegistry.GEMINI_RUNTIME.create(gemini, inputs).id)
+        assertEquals("gemini:gemini-3-pro-image",
+            ProviderRegistry.GEMINI_RUNTIME.create(gemini.copy(modelId = "gemini-3-pro-image"), inputs).id)
+        assertEquals("gemini:gemini-3.1-flash-image",
+            ProviderRegistry.GEMINI_RUNTIME.create(gemini.copy(modelId = "unknown-model"), inputs).id)
+        val fal = ProviderProfile("f", "fal.ai", ProviderRegistry.FAL_PRESET.baseUrl!!,
+            ProviderAuthType.KEY_SCHEME, "Authorization", ProviderKind.FAL)
+        assertEquals("fal:fal-ai/qwen-image-edit-2511", ProviderRegistry.FAL_RUNTIME.create(fal, inputs).id)
+        assertEquals("fal:fal-ai/flux-pro/kontext",
+            ProviderRegistry.FAL_RUNTIME.create(fal.copy(modelId = "fal-ai/flux-pro/kontext"), inputs).id)
     }
 
     @Test fun presetOrderIsGeminiFalThenCustomUnderAdvanced() {

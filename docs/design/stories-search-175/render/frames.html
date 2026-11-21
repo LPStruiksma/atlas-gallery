@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  atlas-gallery #797 · FIND-6 Stories scoped-search design frames (pre-build). Synthetic only.
+  atlas-gallery #797 · FIND-6 (CURRENT MAIN composition: legacy four-tab pill + header-icon popup; proposed target = target.html, #872) · Stories scoped-search design frames (pre-build). Synthetic only.
   CSS px = Android dp. render.mjs captures at deviceScaleFactor 2.8125, so a
   384 × 832 dp viewport becomes the S24+ 1080 × 2340 px frame.
   Colours: Quiet Frame v3 / Lapis Atlas tokens (docs/design/QUIET_FRAME.md).
@@ -241,7 +241,7 @@ if(ANN){let a='';for(const x of anns){
   else if(x.c)a+=`<div class="callout" style="left:${x.c[0]}px;top:${x.c[1]}px">${x.c[2]}</div>`;
   else if(x.zone)a+=`<div class="ann zone" style="top:${x.zone[0]}px;height:${x.zone[1]-x.zone[0]}px;background:${x.zone[3]};color:#8A3B00">${x.zone[4]}</div>`;
  }
- a+=`<div class="tag" style="bottom:${(ime?IME+NB:NB+(showPill&&!LAND?CHROME:0))+6}px">${tag}</div>`;
+ a+=`<div class="tag" style="bottom:${(ime?IME+NB:NB+(showPill&&!LAND?CHROME:0))+6}px">CURRENT MAIN (legacy shell, not the target) · ${tag}</div>`;
  R.insertAdjacentHTML('beforeend',a)}
 document.title='ready';
 </script></body></html>
