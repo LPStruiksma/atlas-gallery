@@ -10,8 +10,8 @@ import org.junit.runners.model.Statement
  * credential confirmation screen can open, and removes it afterwards, also
  * when the test fails (rule 7). Also turns the system's app pinning setting
  * on for the test (so an app's pinning request reaches the OS prompt) and
- * puts it back, and ends any screen pinning or credential screen the test
- * left.
+ * puts it back, and ends any screen pinning, credential screen or lock
+ * screen the test left.
  * Make it an outer rule, around the Activity rule.
  */
 class DeviceCredentialRule(val pin: String) : TestRule {
@@ -34,6 +34,9 @@ class DeviceCredentialRule(val pin: String) : TestRule {
                 }
                 Log.i(TEST_KIT_LOG_TAG, "clear-pin: " +
                     testShell("locksettings clear --old $pin").trim())
+                // Unpinning on a secure device locks it; with the PIN gone the
+                // lock screen dismisses without a credential.
+                runCatching { testShell("wm dismiss-keyguard") }
                 if (pinning == "0" || pinning == "1") testShell("settings put secure lock_to_app_enabled $pinning")
                 else testShell("settings delete secure lock_to_app_enabled")
             }

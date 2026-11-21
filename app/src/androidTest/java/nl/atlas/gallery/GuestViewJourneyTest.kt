@@ -203,6 +203,11 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         shell("input keyevent 66")
         compose.awaitCredentialClosed()
         compose.awaitThat("guest view ended in the store") { store().boot() == GuestBoot.Owner }
+        // Ending screen pinning on a device with a screen lock locks the device
+        // (the system's "lock device when unpinning" default); unlock it again.
+        val lockedByUnpin = compose.unlockIfLocked()
+        Log.i(PROBE, "API ${android.os.Build.VERSION.SDK_INT} $theme exit: unpinning locked the device=" +
+            "$lockedByUnpin, lockTaskModeState=${lockState()}")
         compose.awaitWindowSettled()
         compose.awaitThat("the owner's gallery after the PIN", 30_000L) {
             compose.exists(hasTestTag("atlas-nav-photos")) || compose.exists(hasTestTag("atlas-selection-count"))
@@ -497,6 +502,25 @@ private fun credentialFocused(): Boolean = shell("dumpsys window").lineSequence(
 
 private fun lockState(): Int = InstrumentationRegistry.getInstrumentation().targetContext
     .getSystemService(ActivityManager::class.java).lockTaskModeState
+
+private fun keyguardLocked(): Boolean = InstrumentationRegistry.getInstrumentation().targetContext
+    .getSystemService(android.app.KeyguardManager::class.java).isKeyguardLocked
+
+/** Unlocks the lock screen with the test PIN if it is showing; returns whether it was. */
+private fun ComposeTestRule.unlockIfLocked(): Boolean {
+    if (!observe(3_000L) { keyguardLocked() }) return false
+    shell("wm dismiss-keyguard")
+    observe(3_000L) { credentialFocusIsKeyguardPin() }
+    shell("input text $PIN")
+    shell("input keyevent 66")
+    awaitThat("the lock screen to unlock with the test PIN", 15_000L) { !keyguardLocked() }
+    return true
+}
+
+/** The lock screen's PIN entry (SystemUI's bouncer) has focus. */
+private fun credentialFocusIsKeyguardPin(): Boolean = shell("dumpsys window").lineSequence()
+    .map { it.trim() }.filter { it.startsWith("mCurrentFocus=") }
+    .any { it.contains("NotificationShade") || it.contains("Bouncer") }
 
 /** The credential screen has left the top, so the activity's Compose tree is readable again. */
 private fun ComposeTestRule.awaitCredentialClosed() =
