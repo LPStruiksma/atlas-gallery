@@ -700,7 +700,9 @@ class FaceIndexStore(
         db: SQLiteDatabase, version: String, only: Set<String>? = null
     ) {
         if (only != null && only.isEmpty()) return
-        val people = only ?: db.rawQuery("SELECT person_key FROM people_home", null).use { c ->
+        // Hidden named people are absent from people_home but still need their
+        // ranked automatic winner refreshed on publication and review writes.
+        val people = only ?: db.rawQuery("SELECT person_key FROM people_names", null).use { c ->
             buildSet { while (c.moveToNext()) add(c.getString(0)) }
         }
         val candidates = if (only == null) autoCoverCandidates(db, version)
@@ -822,6 +824,34 @@ class FaceIndexStore(
     fun personCoverOverride(epoch: String, person: PersonKey): String? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             if (!servable(db)) null else resolvedPersonCover(db, version, person.value)
+        }
+
+    /**
+     * Current canonical portrait for a named person, including one hidden from
+     * People home. The manual choice wins; fallback reranks only currently
+     * processed, model/source-matched published members under the live grant.
+     */
+    fun personDisplayCover(epoch: String, person: PersonKey): String? =
+        authorizedEmbeddingRead(epoch, null) { db, version ->
+            if (!servable(db)) null else
+                resolvedPersonCover(db, version, person.value)
+                    ?: liveAutomaticCover(db, version, person.value)
+        }
+
+    /**
+     * Hidden rows are not in People home. Resolve their manual/automatic covers
+     * in one authorized transaction, and never expose a visible person or an
+     * unprocessed/stale member through this separate Hidden list projection.
+     */
+    fun hiddenPersonCovers(epoch: String): Map<PersonKey, String> =
+        authorizedEmbeddingRead(epoch, emptyMap<PersonKey, String>()) { db, version ->
+            if (!servable(db)) emptyMap() else buildMap {
+                for (person in hiddenPeople(db)) {
+                    val cover = resolvedPersonCover(db, version, person)
+                        ?: liveAutomaticCover(db, version, person)
+                    if (cover != null) put(PersonKey(person), cover)
+                }
+            }
         }
 
     /** Returns false without mutation for a stale grant, face or person. */
