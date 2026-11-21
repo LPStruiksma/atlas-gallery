@@ -2,8 +2,8 @@ package nl.atlas.gallery
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -40,18 +40,23 @@ class UsageShareSheetEvidenceTest {
         val file = java.io.File(compose.activity.cacheDir, "usage/" + log.exportFileName())
         assertTrue("export file missing: $file", file.isFile)
         assertTrue(file.readText().startsWith("{\"schema_version\":1,\"days\":["))
-        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        // The synthetic recipient (androidTest manifest) gives the sheet a real target. The sheet
-        // is a system window, so whether its labels are visible to accessibility is logged for the
-        // evidence reader, not asserted: the capture itself is the proof.
-        fun seen(text: String) = automation.windows.any { w ->
-            w.root?.findAccessibilityNodeInfosByText(text)?.isNotEmpty() == true
+        // The chooser is a system window: read it through the interactive-windows automation (the
+        // plain one cannot see it). The synthetic recipient declared in the androidTest manifest
+        // must be listed and the sheet must stop moving before the capture, so the PNG shows the
+        // real ACTION_SEND sheet, not the screen underneath.
+        val automation = interactiveUiAutomation()
+        val own = compose.activity.packageName
+        fun sheetHas(text: String): Boolean {
+            val roots = runCatching { automation.windows.mapNotNull { it.root } }.getOrDefault(emptyList())
+            return roots.filter { it.packageName?.toString() != own }
+                .any { it.findAccessibilityNodeInfosByText(text)?.isNotEmpty() == true }
         }
-        android.util.Log.i("ATLAS_EVIDENCE", "share sheet lists the test recipient: ${seen("Test recipient")}")
-        android.util.Log.i("ATLAS_EVIDENCE", "share sheet shows the file name: ${seen(log.exportFileName())}")
+        compose.awaitThat("the share sheet to list the synthetic recipient", timeoutMs = 20_000L) {
+            sheetHas("Test recipient")
+        }
+        android.util.Log.i("ATLAS_EVIDENCE", "share sheet shows the file name: ${sheetHas(log.exportFileName())}")
         compose.awaitScreenStill("the share sheet")
         saveUiEvidence("usage-0-share-sheet.png")
-        InstrumentationRegistry.getInstrumentation().uiAutomation
-            .performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+        automation.executeShellCommand("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS").close()
     }
 }
