@@ -1,0 +1,247 @@
+<!doctype html>
+<!--
+  atlas-gallery #797 · FIND-6 (CURRENT MAIN composition: legacy four-tab pill + header-icon popup; proposed target = target.html, #872) · Stories scoped-search design frames (pre-build). Synthetic only.
+  CSS px = Android dp. render.mjs captures at deviceScaleFactor 2.8125, so a
+  384 × 832 dp viewport becomes the S24+ 1080 × 2340 px frame.
+  Colours: Quiet Frame v3 / Lapis Atlas tokens (docs/design/QUIET_FRAME.md).
+  Sizes: AtlasStoriesScreen.kt, AtlasSearch.kt, SearchHistoryUi.kt and Material 3 defaults on main.
+  Inter / Inter Display stand in for Funnel Sans / Funnel Display (not installed in the render container).
+-->
+<html><head><meta charset="utf-8">
+<style>
+:root{
+  --ground:#FFFFFF; --mist:#F2F3F8; --ink:#0E1030; --ink2:#5A5F7A; --fill:#2639C9; --btext:#2639C9; --on:#FFFFFF;
+  --line:#5A5F7A; --err:#B3261E; --kbd:#E4E6EE; --key:#FFFFFF; --pill:#F2F3F8F2; --shadow:0 4px 10px rgba(14,16,48,.16),0 10px 28px rgba(14,16,48,.12);
+}
+body.dark{
+  --ground:#000000; --mist:#14152A; --ink:#F2F3F8; --ink2:#9AA0B8; --fill:#3448E0; --btext:#8C9BFF; --on:#FFFFFF;
+  --line:#9AA0B8; --err:#F2B8B5; --kbd:#14152A; --key:#262844; --pill:#14152AF2; --shadow:0 4px 14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--ground);color:var(--ink);font-family:Inter,sans-serif;font-size:calc(14px*var(--fs));position:relative;--fs:1}
+.abs{position:absolute}
+.status{left:0;right:0;top:0;height:var(--st);display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600}
+.navbar{left:0;right:0;bottom:0;height:var(--nb);display:flex;align-items:center;justify-content:center}
+.navbar i{display:block;width:108px;height:4px;border-radius:2px;background:var(--ink);opacity:.55}
+.ib{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;flex:none;color:var(--ink)}
+.ib svg{width:24px;height:24px;fill:currentColor}
+.header{position:absolute;left:0;right:0;height:64px;display:flex;align-items:center;padding:8px 10px}
+.title{font-family:'Inter Display',Inter,sans-serif;font-weight:600;font-size:calc(24px*var(--fs));line-height:1.25;margin-left:8px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid{position:absolute;left:16px;right:16px;display:grid;grid-template-columns:1fr 1fr;column-gap:12px;row-gap:18px;align-content:start;overflow:hidden}
+.tile{display:flex;flex-direction:column;min-width:0}
+.cover{height:220px;border-radius:18px;overflow:hidden;position:relative}
+.cover .lab{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.57);color:#fff;font-size:calc(12px*var(--fs));font-weight:500;padding:10px 12px}
+.tile .tt{margin-top:8px;font-size:calc(16px*var(--fs));line-height:1.5;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .cp{font-size:calc(11px*var(--fs));line-height:1.45;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .ms{font-size:calc(11px*var(--fs));line-height:1.45;color:var(--err)}
+mark{background:transparent;color:inherit;font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px}
+.menu{position:absolute;background:var(--mist);border-radius:22px;padding:8px 0;box-shadow:var(--shadow);z-index:20}
+body.dark .menu{outline:1px solid #ffffff14}
+.mc{display:flex;flex-direction:column;gap:6px}
+.frow{display:flex;align-items:center}
+.field{flex:1;height:56px;border:1px solid var(--line);border-radius:999px;display:flex;align-items:center;padding:0 12px;gap:12px;color:var(--ink2);font-size:calc(16px*var(--fs));min-width:0;white-space:nowrap;overflow:hidden;background:var(--ground)}
+.field.focus{border:2px solid var(--fill);padding:0 11px}
+.field .val{color:var(--ink)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--fill);vertical-align:middle;margin-left:1px}
+.field svg{width:24px;height:24px;fill:currentColor;flex:none}
+.chips{display:flex;gap:8px;height:48px;align-items:center;white-space:nowrap}
+.chip{height:32px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;padding:0 16px;font-size:calc(14px*var(--fs));font-weight:600;color:var(--ink2);gap:8px;flex:none;background:var(--ground)}
+.chip.on{background:var(--fill);border-color:transparent;color:var(--on);padding-left:8px}
+.chip.on svg{width:18px;height:18px;fill:currentColor}
+.rec .rh{display:flex;justify-content:space-between;align-items:center;height:40px;padding:0 4px 0 16px;font-size:calc(14px*var(--fs));font-weight:600;color:var(--ink2)}
+.rec .rh b{color:var(--btext);font-weight:600;padding:0 12px;height:40px;display:flex;align-items:center}
+.rec .pr{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px}
+.ichip{height:32px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;padding:0 8px 0 12px;gap:6px;font-size:calc(14px*var(--fs));color:var(--ink)}
+.ichip svg{width:16px;height:16px;fill:var(--ink2)}
+.kbd{position:absolute;left:0;right:0;bottom:0;background:var(--kbd);z-index:30;display:flex;flex-direction:column;padding:8px 4px 0;gap:9px}
+.kbd .sug{height:36px;display:flex;align-items:center;justify-content:space-around;color:var(--ink);opacity:.8;font-size:15px}
+.kbd .kr{display:flex;justify-content:center;gap:5px}
+.kbd .k{height:44px;flex:0 0 32px;background:var(--key);border-radius:6px;color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:18px}
+.kbd .k.w{flex:0 0 52px;font-size:13px}.kbd .k.sp{flex:0 0 170px}.kbd .k.go{background:var(--fill);color:var(--on);flex:0 0 62px}
+body.land .kbd .k{height:34px;flex-basis:62px}body.land .kbd .k.w{flex-basis:90px}body.land .kbd .k.sp{flex-basis:320px}body.land .kbd .k.go{flex-basis:110px}body.land .kbd{gap:6px}
+.pillnav{position:absolute;left:28px;right:28px;height:64px;border-radius:32px;background:var(--pill);box-shadow:var(--shadow);display:flex;justify-content:space-around;align-items:center;z-index:5}
+.pillnav div{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--ink2);gap:2px}
+.pillnav div.on{color:var(--btext);font-weight:700}
+.pillnav svg{width:24px;height:24px;fill:currentColor}
+.empty{position:absolute;left:24px;right:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.empty .t{font-size:calc(15px*var(--fs));line-height:1.45;color:var(--ink)}
+.empty svg{width:40px;height:40px;fill:var(--ink2)}
+.tbtn{height:48px;padding:0 12px;display:flex;align-items:center;color:var(--btext);font-weight:600;font-size:calc(14px*var(--fs));border-radius:24px}
+.schem{border:1px dashed var(--line);border-radius:22px;display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:13px;text-align:center;padding:12px;opacity:.85}
+.sq{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+.sq div{aspect-ratio:1;overflow:hidden}
+.player{position:absolute;inset:0;background:#000}
+.pbar{position:absolute;left:0;right:0;background:rgba(0,0,0,.68);display:flex;align-items:center;color:#fff;padding:0 12px;gap:4px}
+.pbar .ib{color:#fff}
+.ripple{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);z-index:25}
+/* annotations */
+.ann{position:absolute;z-index:100;pointer-events:none}
+.badge{width:26px;height:26px;border-radius:13px;background:#E8590C;color:#fff;font:700 14px/26px Inter,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
+.tgt{border:1.5px dashed #E8590C;border-radius:6px}
+.inset{background:repeating-linear-gradient(135deg,rgba(232,89,12,.16) 0 6px,transparent 6px 12px);border:1px solid rgba(232,89,12,.55);color:#B3440A;font:600 9px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:center}
+body.dark .inset{color:#FFB38A}
+.clear{background:rgba(46,160,67,.18);border-top:1.5px dashed #2EA043;border-bottom:1.5px dashed #2EA043;color:#1A7F37;font:700 10px/1 Inter,sans-serif;display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 6px 0 0}
+body.dark .clear{color:#7EE787}
+.risk{border:2px solid #D7263D;background:rgba(215,38,61,.14)}
+.callout{position:absolute;z-index:101;font:700 11px/1.3 Inter,sans-serif;background:#E8590C;color:#fff;border-radius:6px;padding:4px 7px;max-width:230px}
+.tag{position:absolute;z-index:101;left:8px;font:700 11px/1.3 Inter,sans-serif;background:#E8590C;color:#fff;border-radius:6px;padding:4px 7px;max-width:300px}
+.zone{position:absolute;left:0;right:0;z-index:90;font:700 11px/1 Inter,sans-serif;display:flex;align-items:flex-start;justify-content:flex-start;padding:6px 8px}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+const I = {
+  back:'<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+  image:'<svg viewBox="0 0 24 24"><path d="M19 5v14H5V5h14m0-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/></svg>',
+  grid:'<svg viewBox="0 0 24 24"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>',
+  people:'<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+  history:'<svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0013 21a9 9 0 000-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>',
+  stories:'<svg viewBox="0 0 24 24"><path d="M19 1l-5 5v11l5-4.5V1zM1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5V6c-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6zm22 13.5V6c-.6-.45-1.25-.75-2-1v13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5v2c1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5v-1.1z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>',
+  next:'<svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>',
+  full:'<svg viewBox="0 0 24 24"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg>',
+};
+// Synthetic artwork: deterministic abstract "photos" (AtlasTokens.SyntheticArt-style palettes). No real media.
+const PAL=[["#46686D","#B6C4B4","#40675E"],["#99856D","#E2BFA1","#595A4B"],["#4E657F","#D5BDB0","#596786"],["#6E736B","#C5C2AF","#454E48"],["#5B4E7A","#D9C6E6","#3D3556"]];
+function art(i,w,h){i=Math.abs(i);const p=PAL[i%PAL.length];const s=(i*37)%100;return `<svg width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:100%"><rect width="100" height="100" fill="${p[1]}"/><circle cx="${20+s*0.6}" cy="${22+(s%30)}" r="${9+(i%5)}" fill="#FFF0D0" opacity=".85"/><path d="M0 ${62+(i%4)*4} Q 30 ${44+(s%20)} 55 ${64-(i%3)*5} T 100 ${58+(i%6)*3} V100 H0Z" fill="${p[0]}"/><path d="M0 ${80+(i%3)*3} Q 40 ${70+(s%9)} 100 ${84-(i%4)*2} V100 H0Z" fill="${p[2]}"/></svg>`}
+// Synthetic stories: [title, caption, moments, unavailable]
+const STORIES=[
+  ["Summer by the lake","June 2024, 3 days",24,0],
+  ["Weekend in Utrecht","March 2024",18,0],
+  ["Snow day","January 2024",12,0],
+  ["Summer evenings","August 2023",31,3],
+  ["Garden in bloom","May 2023",15,0],
+  ["One year ago today","21 November 2025",9,0],
+];
+const P=new URLSearchParams(location.search);
+const F=P.get('f'), ANN=P.get('ann')!=='0', LAND=P.get('land')==='1';
+if(LAND)document.body.classList.add('land');
+if(P.get('theme')==='dark')document.body.classList.add('dark');
+const W=LAND?832:384, H=LAND?384:832, ST=LAND?24:29, NB=LAND?0:16, IME=LAND?184:324;
+const CHROME=LAND?0:88; // existing floating nav pill (64 dp + 8 dp gap) above gesture nav; content stays above it (drawUnderBar is false while Stories is open)
+document.body.style.setProperty('--st',ST+'px');document.body.style.setProperty('--nb',NB+'px');
+const R=document.getElementById('root');
+const anns=[]; const badge=(n,x,y)=>anns.push({n,x,y}); const tgt=(x,y,w,h)=>anns.push({t:[x,y,w,h]});
+const callout=(x,y,text)=>anns.push({c:[x,y,text]});
+const HT=ST, HB=ST+64; // header band
+const ICON_X=W-10-48, ICON_Y=ST+8;
+function status(){return `<div class="abs status"><span>12:30</span><span>▾ ◢ 87%</span></div>`}
+function nav(){return NB?`<div class="abs navbar"><i></i></div>`:''}
+function pill(on){const it=[['Photos',I.image],['Albums',I.grid],['People',I.people],['Search',I.search]];return LAND?'':`<div class="pillnav" style="bottom:${NB+8}px">${it.map(([l,s])=>`<div class="${l===on?'on':''}">${s}${l}</div>`).join('')}</div>`}
+function header(title='Stories',opts={}){return `<div class="header" style="top:${HT}px"><div class="ib">${I.back}</div><div class="title">${title}</div>${opts.noSearch?'':`<div class="ib" style="${opts.active?'background:var(--mist)':''}">${I.search}</div>`}</div>`}
+function hl(s,q){if(!q)return s;const i=s.toLowerCase().indexOf(q.toLowerCase());return i<0?s:s.slice(0,i)+'<mark>'+s.slice(i,i+q.length)+'</mark>'+s.slice(i+q.length)}
+function tiles(list,q){return list.map(([t,c,m,u])=>{const k=STORIES.findIndex(s=>s[0]===t);return `<div class="tile"><div class="cover">${art(k<0?7:k,170,220)}<div class="lab">${m} moments</div></div><div class="tt">${hl(t,q)}</div><div class="cp">${hl(c,q)}</div>${u?`<div class="ms">${u} items unavailable</div>`:''}</div>`}).join('')}
+function grid(list,q,bottom){return `<div class="grid" style="top:${HB}px;bottom:${bottom??(NB+CHROME)}px">${tiles(list,q)}</div>`}
+const match=(q)=>STORIES.filter(s=>(s[0]+' '+s[1]).toLowerCase().includes(q.toLowerCase()));
+// Shared AtlasSearch panel: DropdownMenu anchored to the header icon (right edges aligned, top at icon bottom).
+const PANEL_W=360, PANEL_L=W-10-PANEL_W, PANEL_T=ICON_Y+48;
+function panel(o={}){
+  const chips=`<div class="chips" id="chiprow"><div class="chip ${o.lib?'':'on'}">${o.lib?'':I.check}This screen</div><div class="chip ${o.lib?'on':''}" id="libchip">${o.lib?I.check:''}Whole library</div></div>`;
+  const fieldInner=`${I.search}${o.q?`<span class="val">${o.q}${o.focus?'<span class="caret"></span>':''}</span>`:(o.focus?'<span class="caret" style="margin-left:-6px"></span><span style="margin-left:-4px">Search</span>':'<span>Search</span>')}`;
+  const close=`<div class="ib" style="color:var(--ink2)">${I.close}</div>`;
+  const rec=(!o.q&&o.recents!==false)?`<div class="rec"><div class="rh"><span>Recent searches</span><b>Clear</b></div><div class="pr"><div class="ichip">${I.history}lake<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div><div class="ichip">${I.history}2024<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div></div></div>`:'';
+  if(o.inline){ // FIND-5 frame L single-row layout (atlasSearchSingleRow)
+    return `<div class="menu" id="panel" style="top:${PANEL_T}px;right:10px"><div style="display:flex;align-items:center;gap:8px;padding:0 8px"><div class="field ${o.focus?'focus':''}" style="flex:none;width:240px">${fieldInner}</div>${chips.replace('id="chiprow"','')}${close}</div></div>`;
+  }
+  return `<div class="menu" id="panel" style="top:${PANEL_T}px;left:${PANEL_L}px;width:${PANEL_W}px"><div class="mc"><div class="frow"><div class="field ${o.focus?'focus':''}">${fieldInner}</div>${close}</div>${chips}${rec}${o.extra??''}</div></div>`;
+}
+function kbd(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="kbd" style="height:${IME+NB}px">${LAND?'':'<div class="sug"><span>summer</span><span>sum</span><span>sunny</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
+function insets(ime){anns.push({inset:[0,0,W,ST,`status bar ${ST} dp (assumed)`]});if(NB&&!ime)anns.push({inset:[0,H-NB,W,NB,`gesture nav ${NB} dp (assumed)`]});if(ime)anns.push({inset:[0,H-IME-NB,W,3,'']})}
+function emptyAt(top,bottom,html){return `<div class="empty" style="top:${top}px;bottom:${bottom}px">${html}</div>`}
+const iconTargets=()=>{tgt(10,ST+8,48,48);tgt(ICON_X,ICON_Y,48,48)};
+let body='', tag='', ime=false, showPill=true, pillOn='Albums';
+switch(F){
+case 'A-collapsed': {
+  body=header()+grid(STORIES,'');
+  iconTargets(); badge(1,ICON_X-14,ICON_Y-8); badge(2,4,ST+2); badge(3,W/2-13,HB+110);
+  tag='A · Stories first: one quiet search icon in the existing header slot'; insets(false); break;}
+case 'B-expanded': {
+  body=header('Stories',{active:true})+grid(STORIES,'')+panel({});
+  iconTargets(); badge(4,PANEL_L-10,PANEL_T+20); badge(5,PANEL_L+108,PANEL_T+8+56+6+2); tgt(PANEL_L+PANEL_W-48,PANEL_T+8+4,48,48); badge(6,PANEL_L+PANEL_W-28,PANEL_T-10); badge(7,PANEL_L+150,PANEL_T+8+56+6+48+6+4);
+  tag='B · Shared panel open, keyboard down (no auto-focus in source)'; insets(false); break;}
+case 'C1-keyboard-typing': {
+  ime=true; const q='summer'; body=header('Stories',{active:true})+grid(match(q),q,NB+IME)+panel({q,focus:true})+kbd();
+  badge(8,PANEL_L-10,PANEL_T+20); badge(9,W-40,H-IME-NB-44); anns.push({risk:[16,H-IME-NB-2,W-32,4]});
+  tag='C1 · Typing "summer": only this deck is filtered; keyboard over the grid'; insets(true); showPill=false; break;}
+case 'C2-no-match': {
+  ime=true; const q='beach'; const top=HB, bot=NB+IME;
+  body=header('Stories',{active:true})+emptyAt(PANEL_T+8+56+6+48+8+12,bot+12,`<div class="t">No stories match “beach”.</div><div class="tbtn" id="nm-act">Search whole library</div>`)+panel({q,focus:true})+kbd();
+  badge(10,24,PANEL_T+150); badge(11,W/2+86,PANEL_T+190);
+  tag='C2 · No match (proposed copy); keyboard stays up'; insets(true); showPill=false; break;}
+case 'D1-whole-library': {
+  body=header('Stories',{active:true})+grid(STORIES,'')+panel({lib:true,recents:false});
+  const cx=PANEL_L+110+60, cy=PANEL_T+8+56+6+24; body+=`<div class="ripple" style="left:${cx-40}px;top:${cy-40}px;width:80px;height:80px"></div>`;
+  tgt(PANEL_L+100,PANEL_T+8+56+6,135,48); badge(12,PANEL_L+238,PANEL_T+8+56+6+10);
+  callout(PANEL_L+60,PANEL_T+8+56+6+48+16,'Tap = leave Stories now. No dialog: Stories holds no unsaved choices.');
+  tag='D1 · Deliberate handoff: tap Whole library'; insets(false); break;}
+case 'D2-search-tab': {
+  pillOn='Search';
+  body=`<div class="abs" style="top:${ST+12}px;left:12px;right:12px"><div class="frow"><div class="field">${I.search}<span>Search</span></div><div class="ib" style="color:var(--ink2)">${I.close}</div></div><div class="chips"><div class="chip">This screen</div><div class="chip on">${I.check}Whole library</div></div></div>`+
+    `<div class="abs schem" style="top:${ST+12+56+6+48+12}px;left:12px;right:12px;bottom:${NB+CHROME+12}px">Existing global Search (persistentInline AtlasSearch + LocalSearchControls): library facets, people, history and suggestions, unchanged.<br><br>Query starts empty. The Stories query “summer” is not carried.</div>`;
+  badge(13,W-44,ST+16); badge(14,W/2+60,H-NB-CHROME+6);
+  tag='D2 · Landed on the existing Search tab (storiesOpen = false, tab = 3)'; insets(false); break;}
+case 'D3-back': {
+  pillOn='Photos';
+  let sq=''; for(let i=0;i<28;i++) sq+=`<div>${art(i+11,90,90)}</div>`;
+  body=`<div class="header" style="top:${HT}px;padding-left:16px"><div class="title" style="margin-left:0">Photos</div><div class="ib">${I.search}</div></div><div class="abs sq" style="top:${HB}px;left:0;right:0">${sq}</div>`;
+  badge(15,W-90,ST+14); callout(24,HB+250,'System Back on Search → Photos (host rule: tab ≠ 0 → tab = 0). Stories is not reopened; it stays one tap away in Albums.');
+  tag='D3 · Back from Search lands on Photos, as every other library handoff'; insets(false); break;}
+case 'L-landscape-keyboard': {
+  ime=true; showPill=false; const q='summer';
+  body=header('Stories',{active:true})+`<div class="grid" style="top:${HB}px;bottom:${IME}px">${tiles(match(q),q)}</div>`+panel({q,focus:true,inline:true})+kbd();
+  const pb=PANEL_T+8+56+8; anns.push({clear:[0,pb,W,H-IME-pb,`${H-IME-pb} dp clear above IME`]});
+  tgt(10,ST+8,48,48); badge(16,W-10-26,PANEL_T-14); badge(17,4,ST+2); badge(18,W-170,pb+8);
+  tag='L · Landscape, keyboard up: FIND-5 single-row panel'; insets(true); break;}
+case 'S1-no-stories': {
+  body=header()+emptyAt(HB,NB+CHROME,`${I.stories}<div class="t">Your stories will appear here</div>`);
+  iconTargets(); badge(19,ICON_X-14,ICON_Y-8);
+  tag='S1 · No stories: search icon stays (Whole library still useful)'; insets(false); break;}
+case 'S2-planning': {
+  body=header()+emptyAt(HB,NB+CHROME,`<div class="t" style="color:var(--ink2)">Getting your stories ready…</div>`);
+  badge(20,ICON_X-14,ICON_Y-8);
+  tag='S2 · Restored slideshow waits for the re-planned deck (#457)'; insets(false); break;}
+case 'S3-unavailable-items': {
+  const q='summer'; body=header('Stories',{active:true})+grid(match(q),q)+panel({q});
+  badge(21,W-50,HB+300); badge(22,PANEL_L-10,PANEL_T+20);
+  tag='S3 · Missing items stay marked; permission change resets the query'; insets(false); break;}
+case 'S4-large-text': {
+  document.body.style.setProperty('--fs','1.7');
+  const long=[["A very long story title that keeps going past the tile edge","Weekend away with a caption long enough to need a second line and then some",142,0],STORIES[1]];
+  body=header()+`<div class="grid" style="top:${HB}px;bottom:${NB+CHROME}px">${long.map(([t,c,m,u],k)=>`<div class="tile"><div class="cover">${art(k,170,220)}<div class="lab">${m} moments</div></div><div class="tt">${t}</div><div class="cp">${c}</div></div>`).join('')}</div>`+panel({recents:false});
+  badge(23,PANEL_L-10,PANEL_T+20); badge(24,W/2-13,HB+300);
+  tag='S4 · Font scale ≈ 1.7×: long titles, 142-moment story, chip row width'; insets(false); break;}
+case 'S5-one-handed': {
+  body=header('Stories',{active:true})+grid(STORIES,'')+panel({});
+  anns.push({zone:[ST,250,0,'rgba(215,38,61,.13)','Hard reach (right thumb)']},{zone:[250,520,0,'rgba(232,170,12,.12)','Stretch']},{zone:[520,H,0,'rgba(46,160,67,.13)','Natural thumb zone']});
+  badge(25,PANEL_L+PANEL_W-60,PANEL_T+8+56+6+10);
+  tag='S5 · One-handed reach: top panel, bottom content'; insets(false); break;}
+case 'S6-playback': {
+  showPill=false;
+  body=`<div class="player"><div class="abs" style="left:0;right:0;top:${H/2-260}px;height:520px">${art(0,384,520)}</div>`+
+    `<div class="pbar" style="top:0;height:${ST+64}px;padding-top:${ST}px"><div style="flex:1;font-size:14px">Summer by the lake<br><span style="opacity:.75;font-size:12px">Moment 3 of 24</span></div><div class="ib">${I.pause}</div><div class="ib">${I.close}</div></div>`+
+    `<div class="pbar" style="bottom:0;height:${64+NB}px;padding-bottom:${NB}px;justify-content:space-between"><div class="ib">${I.prev}</div><div style="display:flex;align-items:center;gap:8px;font-size:14px">${I.full.replace('<svg','<svg style="width:20px;height:20px;fill:#fff"')}Open in gallery</div><div class="ib">${I.next}</div></div></div>`;
+  badge(26,W/2-13,ST+80); badge(27,W-50,ST+6);
+  tag='S6 · Playback active: no search here; Back returns to the grid'; insets(false); break;}
+default: body='unknown frame '+F;
+}
+R.innerHTML=status()+body+(showPill&&!ime?pill(pillOn):'')+(ime?'':nav());
+// S4: flag the chip row if it overflows the 360 dp panel cap.
+if(F==='S4-large-text'){const row=document.getElementById('chiprow'),pn=document.getElementById('panel');if(row&&pn){const over=row.scrollWidth>pn.clientWidth;const r=row.getBoundingClientRect();if(over)anns.push({risk:[r.left+pn.clientWidth-40,r.top+4,40,40]});document.body.dataset.chipOverflow=over?'yes':'no';}}
+if(ANN){let a='';for(const x of anns){
+  if(x.n)a+=`<div class="ann badge" style="left:${x.x}px;top:${x.y}px">${x.n}</div>`;
+  else if(x.t)a+=`<div class="ann tgt" style="left:${x.t[0]}px;top:${x.t[1]}px;width:${x.t[2]}px;height:${x.t[3]}px"></div>`;
+  else if(x.inset)a+=`<div class="ann inset" style="left:${x.inset[0]}px;top:${x.inset[1]}px;width:${x.inset[2]}px;height:${x.inset[3]}px">${x.inset[3]>8?x.inset[4]:''}</div>`;
+  else if(x.clear)a+=`<div class="ann clear" style="left:${x.clear[0]}px;top:${x.clear[1]}px;width:${x.clear[2]}px;height:${x.clear[3]}px">${x.clear[4]}</div>`;
+  else if(x.risk)a+=`<div class="ann risk" style="left:${x.risk[0]}px;top:${x.risk[1]}px;width:${x.risk[2]}px;height:${Math.max(4,x.risk[3])}px"></div>`;
+  else if(x.c)a+=`<div class="callout" style="left:${x.c[0]}px;top:${x.c[1]}px">${x.c[2]}</div>`;
+  else if(x.zone)a+=`<div class="ann zone" style="top:${x.zone[0]}px;height:${x.zone[1]-x.zone[0]}px;background:${x.zone[3]};color:#8A3B00">${x.zone[4]}</div>`;
+ }
+ a+=`<div class="tag" style="bottom:${(ime?IME+NB:NB+(showPill&&!LAND?CHROME:0))+6}px">CURRENT MAIN (legacy shell, not the target) · ${tag}</div>`;
+ R.insertAdjacentHTML('beforeend',a)}
+document.title='ready';
+</script></body></html>
