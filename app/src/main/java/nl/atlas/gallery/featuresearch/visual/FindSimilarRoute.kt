@@ -167,6 +167,10 @@ fun FindSimilarRoute(
                         searchQuery = resultQuery,
                         onSearchQueryChange = { resultQuery = it },
                         onSearchWholeLibrary = onSearchWholeLibrary,
+                        // VisualSearchResultsScreen also applies its text-query
+                        // allowlist. Pass the exact projected media identities
+                        // or it would erase every hit for a nonempty query.
+                        visibleMedia = shownHits?.mapTo(HashSet()) { it.hit.media },
                         filtering = results != null && shownHits == null,
                         thumbnail = { media ->
                             (session.state.value as? FindSimilarState.Results)
