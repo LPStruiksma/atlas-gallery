@@ -215,10 +215,15 @@ internal fun SamePersonQueueRoute(
             onMarkMixed = {
                 val asked = item
                 val liveEpoch = epoch
-                if (asked != null && liveEpoch != null && (markSubject || markOther) &&
-                    !mixedBusy && !undoBusy && resolved == answers.size) {
+                val fingerprint = asked?.let { question ->
+                    skipSnapshot?.let { samePersonSkipFingerprint(it, question) }
+                }
+                if (asked != null && liveEpoch != null && fingerprint != null &&
+                    (markSubject || markOther) && !mixedBusy && !undoBusy &&
+                    resolved == answers.size) {
                     mixedBusy = true
-                    SamePersonQueueCommits.mark(host, liveEpoch, asked, markSubject, markOther) { generation ->
+                    SamePersonQueueCommits.mark(host, liveEpoch, asked, markSubject, markOther,
+                        fingerprint) { generation ->
                         mixedBusy = false
                         if (generation != null) {
                             lastMixedGeneration = generation
@@ -297,7 +302,8 @@ internal object SamePersonQueueCommits {
     /** Serialized with Yes/No to prevent races with earlier questions. */
     fun mark(
         host: PeopleDiscoveryHost, epoch: String, item: SamePersonQueueItem,
-        subject: Boolean, other: Boolean, done: (String?) -> Unit
+        subject: Boolean, other: Boolean, expectedFingerprint: String,
+        done: (String?) -> Unit
     ) {
         worker.execute {
             val generation = try {
@@ -305,6 +311,7 @@ internal object SamePersonQueueCommits {
                     ?: host.reviewState(epoch)?.let { host.liveReview(epoch) }
                 val action = samePersonQueueMixedSides(item, subject, other)
                 if (live != null && action != null && samePersonQueueStillAsks(live, item) &&
+                    samePersonSkipFingerprint(live, item) == expectedFingerprint &&
                     host.review(PeopleClusterReviewCommand(live, action))) {
                     host.liveReview(epoch)?.sourceGeneration
                 } else null
