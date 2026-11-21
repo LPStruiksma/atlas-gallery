@@ -3,7 +3,6 @@ package nl.atlas.gallery.featureintents
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -11,6 +10,7 @@ import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.interactiveUiAutomation
 import nl.atlas.gallery.saveUiEvidence
 import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.awaitThat
 import org.junit.After
 import org.junit.Assert.assertNotNull
 import org.junit.Before
@@ -51,13 +51,19 @@ class ExternalChooserJourneyTest {
             .firstOrNull { it.text?.toString()?.trim() == "ATLAS" }
     }
 
+    /** Waits for the sheet to list ATLAS and for its entry to stop moving, then returns the entry. */
     private fun awaitAtlasChoice(): AccessibilityNodeInfo {
-        val deadline = SystemClock.uptimeMillis() + 20_000L
-        while (SystemClock.uptimeMillis() < deadline) {
-            atlasChoice()?.let { return it }
-            Thread.sleep(300L)
+        var last: android.graphics.Rect? = null
+        var found: AccessibilityNodeInfo? = null
+        compose.awaitThat("the system chooser to list ATLAS and stop animating", timeoutMs = 20_000L) {
+            val node = atlasChoice()
+            val bounds = node?.let { android.graphics.Rect().also { r -> it.getBoundsInScreen(r) } }
+            val still = bounds != null && bounds == last
+            last = bounds
+            if (still) found = node
+            still
         }
-        throw AssertionError("The system chooser never listed ATLAS")
+        return requireNotNull(found)
     }
 
     @Test fun theSystemChooserListsAtlasAndHandsTheItemOver() {
@@ -67,8 +73,6 @@ class ExternalChooserJourneyTest {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
         val choice = awaitAtlasChoice()
-        // Let the sheet finish animating in before the evidence frame.
-        Thread.sleep(1_000L)
         saveUiEvidence("external-573-chooser-light.png")
 
         val clickable = generateSequence(choice) { it.parent }.firstOrNull { it.isClickable && it.isEnabled }
