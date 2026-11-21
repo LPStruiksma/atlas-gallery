@@ -835,6 +835,14 @@ private fun rememberNativePersonUris(
     return resolved?.takeIf { it.first == keys }?.second
 }
 
+/**
+ * Like rememberUpdatedState, but by reference: a new publication with equal
+ * rows still replaces the value, and Compose never runs a 150k-row equals().
+ */
+@Composable
+private fun <T> rememberLatestReference(value: T): State<T> =
+    remember { mutableStateOf(value, referentialEqualityPolicy()) }.apply { this.value = value }
+
 /** Exact, testable route matching; never substitute a filename or folder display name. */
 internal fun matchesAlbumRoute(record: MediaRecord, route: AlbumRoute): Boolean =
     record.volumeName == route.volumeName &&
@@ -1880,7 +1888,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             advancedUnionOrigin = null
         }
     }
-    val latestUnionCheck = rememberUpdatedState(::unionOriginCurrent)
+    // One updated state per input: a reference to the local function above
+    // can compare equal across compositions and keep a stale closure.
+    val latestUnionSorted = rememberLatestReference(sorted)
+    val latestUnionEpoch = rememberUpdatedState(publishedGallery.epoch)
+    val latestUnionRoute = rememberUpdatedState(overviewRoute)
+    val latestUnionGrant = rememberUpdatedState(searchGrant)
+    val latestUnionPeople = rememberLatestReference(people)
+    val latestUnionNative = rememberUpdatedState(nativePeopleGeneration)
+    val latestUnionSortPending = rememberUpdatedState(sortPending)
+    fun unionOriginStillCurrent(origin: OverviewUnionOrigin): Boolean = origin.isCurrent(
+        latestUnionSorted.value, latestUnionEpoch.value, latestUnionRoute.value,
+        latestUnionGrant.value,
+        peopleSource = if (origin.tracksPeople) latestUnionPeople.value else null,
+        nativeGeneration = if (origin.tracksPeople) latestUnionNative.value else null)
     /**
      * FIND-2 F (#181): By face / By image from an Albums or People list. The
      * union of the listed entries' authorized media is built on a worker
@@ -1890,13 +1911,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     fun startOverviewUnion(
         mode: OverviewAdvancedMode, label: String, peopleUnion: Boolean,
         nativeKeys: Set<String>,
-        build: (nativeUris: Set<String>, checkpoint: () -> Unit) -> List<MediaRecord>
+        build: (authorized: List<MediaRecord>, people: List<PersonEntry>,
+                nativeUris: Set<String>, checkpoint: () -> Unit) -> List<MediaRecord>
     ) {
-        val grant = searchGrant ?: return
-        if (sortPending || advancedUnionPending || faceStep != null || similarStep != null) return
-        val origin = OverviewUnionOrigin(label, sorted, publishedGallery.epoch, overviewRoute,
-            grant, peopleSource = if (peopleUnion) people else null,
-            nativeGeneration = if (peopleUnion) nativePeopleGeneration else null)
+        // Read the live inputs, never values a remembered click lambda captured.
+        val grant = latestUnionGrant.value ?: return
+        val authorized = latestUnionSorted.value
+        val reviewed = latestUnionPeople.value
+        if (latestUnionSortPending.value || advancedUnionPending ||
+            faceStep != null || similarStep != null) return
+        val origin = OverviewUnionOrigin(label, authorized, latestUnionEpoch.value,
+            latestUnionRoute.value, grant, peopleSource = if (peopleUnion) reviewed else null,
+            nativeGeneration = if (peopleUnion) latestUnionNative.value else null)
         advancedUnionPending = true
         atlasScope.launch {
             try {
@@ -1912,9 +1938,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     }
                 val union = withContext(Dispatchers.Default) {
                     val job = currentCoroutineContext()
-                    build(nativeUris) { job.ensureActive() }
+                    build(authorized, reviewed, nativeUris) { job.ensureActive() }
                 }
-                if (!latestUnionCheck.value(origin)) return@launch
+                if (!unionOriginStillCurrent(origin)) {
+                    Log.i("ATLAS_FIND2", "overview union dropped: its source changed")
+                    return@launch
+                }
                 advancedUnionOrigin = origin
                 advancedScreenSource = union
                 advancedScreenEpoch = origin.epoch
@@ -4118,8 +4147,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onAdvancedSearch = { mode, displayed ->
                                 val filter = albumMediaFilter
                                 startOverviewUnion(mode, "Albums", peopleUnion = false,
-                                    nativeKeys = emptySet()) { _, checkpoint ->
-                                    albumsOverviewUnion(sorted, displayed, filter, checkpoint)
+                                    nativeKeys = emptySet()) { authorized, _, _, checkpoint ->
+                                    albumsOverviewUnion(authorized, displayed, filter, checkpoint)
                                 }
                             },
                             onOpenAlbum = { route ->
@@ -4381,12 +4410,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 searchExpanded = overviewExpanded,
                                 onSearchExpandedChange = { overviewExpanded = it },
                                 onAdvancedSearch = { mode, selection ->
-                                    val importedPaths = people
-                                        .filter { it.id in selection.importedPersonIds }
-                                        .flatMapTo(HashSet()) { it.imagePaths }
                                     startOverviewUnion(mode, "People", peopleUnion = true,
-                                        nativeKeys = selection.nativePersonKeys) { nativeUris, checkpoint ->
-                                        peopleOverviewUnion(sorted, importedPaths, nativeUris, checkpoint)
+                                        nativeKeys = selection.nativePersonKeys
+                                    ) { authorized, reviewed, nativeUris, checkpoint ->
+                                        val importedPaths = reviewed
+                                            .filter { it.id in selection.importedPersonIds }
+                                            .flatMapTo(HashSet()) { it.imagePaths }
+                                        peopleOverviewUnion(authorized, importedPaths, nativeUris, checkpoint)
                                     }
                                 },
                                 portrait = { profile ->

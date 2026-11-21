@@ -15,7 +15,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.printToString
@@ -34,6 +34,7 @@ import nl.atlas.gallery.featuresearch.face.FaceSearchResultsScreen
 import nl.atlas.gallery.featuresearch.face.FaceSearchState
 import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.typeText
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -47,7 +48,9 @@ private fun ComposeTestRule.awaitNode(matcher: SemanticsMatcher) {
             onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
     } catch (e: Throwable) {
-        val tree = runCatching { onRoot().printToString() }.getOrDefault("?")
+        // A popup (the search tray) is a second root: print every root.
+        val tree = runCatching { onAllNodes(isRoot()).printToString() }
+            .getOrElse { "unprintable: $it" }
         throw AssertionError("Timed out waiting for ${matcher.description}. Screen:\n$tree", e)
     }
 }
@@ -69,7 +72,8 @@ class Find2OverviewUnionJourneyTest {
         folderOf = { step -> if (step <= 3) "FIND2-Alpha" else "FIND2-Beta" })
     private val compose = createAndroidComposeRule<MainActivity>()
 
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
+    // A fixed test keyboard, so the IME frame has a real keyboard to show.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
         .around(S24DisplayRule())
         .around(fixtures).around(compose)
 
@@ -90,6 +94,7 @@ class Find2OverviewUnionJourneyTest {
         // The list's own name filter decides the source: only Alpha is shown.
         compose.typeText(hasTestTag("atlas-scoped-search-field"), "Alpha", KeyboardAfter.Hidden)
         compose.awaitNode(hasTestTag("atlas-albums-by-image"))
+        compose.onNodeWithTag("atlas-albums-by-image").assertIsEnabled()
         compose.onNodeWithTag("atlas-albums-by-image").performClick()
 
         // D: the reference chooser offers exactly Alpha's three photos.
