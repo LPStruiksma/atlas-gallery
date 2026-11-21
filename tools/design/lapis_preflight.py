@@ -625,6 +625,8 @@ class Gen:
             y += s.line_h("secondary") + L.px(4)
         L.square_grid(s, y, s.bottom, seed=kw.pop("seed", 1), header=kw.pop("header", "Today"))
         if frac > 0:
+            # Chosen 2 x 6 layout in every open-atlas state.
+            kw.setdefault("grid", True)
             bottom = L.atlas_panel(s, frac, **kw)
             if finger:
                 L.finger(s, (DEVICE_W // 2, bottom - L.px(30)), (DEVICE_W // 2, bottom - L.px(30) + finger),
@@ -641,11 +643,10 @@ class Gen:
         a1 = self.l6_frame(frac=1.0)
         a2 = self.l6_frame("dark", 2.0, frac=1.0)
         b.heroes([
-            Panel("A1", "Atlas open, light, 100 %", "Month bars sized by count (tallest labelled), sphere on the "
-                  "current month, schematic dot map with labelled places. Bars are 29 dp wide: see the flagged "
-                  "targets and the 2 x 6 alternative (C6).", a1),
-            Panel("A2", "Atlas open, dark, 200 %", "Month labels shorten to one letter; the year and totals scale. "
-                  "The atlas stops above the slab and the gesture inset.", a2),
+            Panel("A1", "Atlas open, light, 100 %", "Normative 2 x 6 month bars: 58.7 x 80 dp non-overlapping "
+                  "targets, counted bars and held current-month sphere. Schematic places stay below.", a1),
+            Panel("A2", "Atlas open, dark, 200 %", "Same 2 x 6 month targets and three-letter labels "
+                  "at 200 % font. The year, total, map, slab and insets remain in frame.", a2),
         ], self.LEGEND)
         panels = [
             Panel("B1", "Closed, first use", "Hint line under the title until the atlas has been opened once.",
@@ -686,6 +687,18 @@ class Gen:
         p8.gesture_bar()
         panels.append(Panel("B8", "Place in the grid", "Pictures shows only that place, newest first. Back or "
                             "'Clear place' restores the full grid and scroll position.", p8))
+        panels.append(Panel("B9", "Empty year, dark 200 %", "Same accessible 2 x 6 targets; "
+                             "empty months show baselines, with insets and slab present.",
+                             self.l6_frame("dark", 2.0, frac=1.0, year="2019",
+                                           counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0, 15, 0], current=6)))
+        p10 = self.scr("dark", 2.0)
+        p10.status_bar()
+        yy = L.title(p10, "Coast", "1.408 photos, July and August 2026")
+        L.square_grid(p10, yy, p10.bottom, seed=14, header="August 2026")
+        p10.slab("Pictures")
+        p10.gesture_bar()
+        panels.append(Panel("B10", "Place-filtered grid, dark 200 %", "Filtering remains in Pictures; "
+                             "Back restores its previous position and the title remains legible.", p10))
         panels.append(Panel("C1", "Year with empty months", "Empty months draw a baseline only, never a fake "
                             "bar.", self.l6_frame(frac=1.0, year="2019", counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0,
                                                                                     15, 0], current=6)))
@@ -693,28 +706,25 @@ class Gen:
                             self.l6_frame(frac=1.0, no_geo=True)))
         panels.append(Panel("C3", "Dense places", "Overlapping dots merge into a counted cluster; tap zooms the "
                             "list to those places.", self.l6_frame(frac=1.0, dense=True)))
-        s = self.scr("dark")
-        s.status_bar()
-        y = L.title(s, "Pictures")
-        L.message(s, y + L.px(8), "Couldn't read dates and places.", "Your pictures are safe. Try again.",
-                  "Try again")
-        s.slab("Pictures")
-        s.gesture_bar()
-        panels.append(Panel("C4", "Metadata error, dark", "Pull still opens; the atlas shows this message "
-                            "instead of bars.", s))
+        panels.append(Panel("C4", "Metadata error in open atlas, dark",
+                            "Atlas remains an overlay over the Pictures grid, not a full-screen Pictures "
+                            "failure: no stale month/place actions; 56 dp Retry, 48 dp Close and system Back "
+                            "return safely without changing the grid.",
+                            self.l6_frame("dark", frac=1.0, error=True)))
         panels.append(Panel("C5", "Large library", "Bars scale to the tallest month; totals use full counts.",
                             self.l6_frame(frac=1.0, counts=[9120, 8400, 11020, 12804, 15500, 18210, 22340, 21900,
                                                              13000, 7800, 6100, 2718])))
-        panels.append(Panel("C6", "Alternative: 2 x 6 months", "Two rows of six: 58 x 80 dp month targets, rows "
-                            "touch but never overlap. Recommended over 29 dp one-row bars.", self.l6_frame(frac=1.0, grid=True)))
+        panels.append(Panel("C6", "Chosen: 2 x 6 target anatomy", "Normative everywhere the atlas is "
+                             "open: twelve 58.7 x 80 dp month targets. Rows touch but never overlap.",
+                             self.l6_frame(frac=1.0)))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Atlas", "TalkBack list view")
         items = [("Months", None)] + [(f"{m}, {L._nl(c)} photos" if c else f"{m}, no photos", 1)
                                       for m, c in zip(["January", "February", "March", "April", "May", "June"],
                                                       L.COUNTS[:6])]
-        items += [("Places", None), ("Amsterdam, 6.120 photos", 1), ("Coast, 1.408 photos", 1),
-                  ("Mountains, 912 photos", 1)]
+        # The first viewport shows Jan-Jun; the scrolled continuation
+        # includes Jul-Dec before Places (D3).
         k = 0
         for text_, kind in items:
             if kind is None:
@@ -729,12 +739,38 @@ class Gen:
                 y += L.px(48)
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("D1", "TalkBack lists", "With TalkBack the map is replaced by lists: months, then "
-                            "places, e.g. 'Amsterdam, 6.120 photos'. Each is a 48 dp row.", s))
+        panels.append(Panel("D1", "TalkBack months, first viewport", "The list begins with January-June; "
+                             "scroll to July-December, then Places. Rows have 48 dp targets.", s))
         d2 = self.l6_frame(frac=1.0)
         d2.note((L.px(8), d2.top + L.px(580)), "Remove animations: closed › open in one frame")
-        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once.",
-                            d2))
+        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once. "
+                             "See the timed synthetic SVG for the tracked and reverse movement.", d2))
+        d3 = self.scr()
+        d3.status_bar()
+        yy = L.title(d3, "Atlas", "TalkBack list, scrolled")
+        d3_items = [("Months continued", None)] + [
+            (f"{name}, {L._nl(count)} photos" if count else f"{name}, no photos", 1)
+            for name, count in zip(
+                ["July", "August", "September", "October", "November", "December"], L.COUNTS[6:]
+            )
+        ] + [("Places", None), ("Amsterdam, 6.120 photos", 1),
+             ("Coast, 1.408 photos", 1), ("Mountains, 912 photos", 1)]
+        focus_no = 6
+        for name, kind in d3_items:
+            if kind is None:
+                d3.text((L.px(L.SIDE), yy + L.px(8)), name, "section")
+                yy += d3.line_h("section") + L.px(12)
+            else:
+                focus_no += 1
+                d3.text((L.px(L.SIDE), yy + L.px(14)), name, "body", anchor="lm")
+                d3.target([0, yy - L.px(10), DEVICE_W, yy + L.px(38)], name)
+                if focus_no in (7, 12, 13):
+                    d3.focus_order((L.px(6), yy + L.px(14)), name)
+                yy += L.px(48)
+        d3.slab("Pictures")
+        d3.gesture_bar()
+        panels.append(Panel("D3", "TalkBack months then places", "Scrolled list: July-December precede "
+                             "Amsterdam, Coast and Mountains; each row is 48 dp.", d3))
         b.grid("Storyboard and states", panels)
         b.table("Gesture precedence", ["Situation", "What a downward drag does", "Alternative"], [
             ["Grid scrolled to the top", "Opens the atlas, finger-tracked", "Tap the month sphere"],
@@ -747,8 +783,9 @@ class Gen:
                     "push up or Back closes. It is a scrim-free overlay, so the grid position is kept."),
             ref_row("nested", "Adopted: the grid consumes the drag until it is at the top; only the remaining "
                     "downward delta pulls the atlas."),
-            ref_row("touch", "Open issue: 12 bars in one row are 29 dp wide. Either accept full-height 29 x 96 dp "
-                    "targets with drag-to-scrub, or use 2 x 6 (C6, 58 dp). Recommended: 2 x 6."),
+            ref_row("touch", "Selected: 2 x 6 month targets of 58.7 x 80 dp replace the 29 dp strip "
+                     "in every open state. Smaller visible place dots use 48 dp effective targets. "
+                     "Labels remain legible at 200 %."),
         ], DECISION_W, DECISION_NOTE + " No map tiles, network call or new permission is involved.")
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")

@@ -1,6 +1,6 @@
 # Lapis L4–L8 synthetic pre-build evidence (#753)
 
-**Status:** five annotated sheets ready for independent Review and then a fresh design re-preflight on [L4 #657](https://github.com/LPStruiksma/atlas-gallery/issues/657), [L5 #658](https://github.com/LPStruiksma/atlas-gallery/issues/658), [L6 #659](https://github.com/LPStruiksma/atlas-gallery/issues/659), [L7 #660](https://github.com/LPStruiksma/atlas-gallery/issues/660) and [L8 #661](https://github.com/LPStruiksma/atlas-gallery/issues/661). These are **synthetic design storyboards**: not device screenshots, emulator captures, implementation, recordings or performance readings, and not an inspection of the private Round 3, Continuum or Lapis boards. Source of truth: [Quiet Frame v3](../../QUIET_FRAME.md) and the preflight receipts on each unit.
+**Status:** the L6 sheet (#817) is rendered from the current generator with the bundled Funnel fonts: the normative 2 × 6 month layout in every open-atlas state, 200 %-font month labels inside their targets, the held sphere and scale legend outside other months' targets, and the C4 in-atlas error recovery. `brand-l6-atlas.png` and `manifest.json` were regenerated and committed together. Still pending: the independent #659 pre-build Design: PASS; no Design: PASS is claimed here. The other sheets retain the latest main evidence.
 
 | Sheet | Unit | Device frames |
 |---|---|---|
@@ -8,7 +8,7 @@
 | [brand-l4-f1-viewer-48dp.png](brand-l4-f1-viewer-48dp.png) | F1 viewer at full 1080 × 2340 with the 48 dp target bounds dashed (BRAND-L4-E3, [#889](https://github.com/LPStruiksma/atlas-gallery/issues/889)) | 1 |
 | [brand-l4-fast-scroll.gif](brand-l4-fast-scroll.gif) | L4 synthetic fast-scroll recording (11 frames, 1.4 s) | 11 |
 | [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 17 |
-| [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
+| [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay; normative 2 × 6 month targets, 200 % labels and C4 error recovery (#817) | 21 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
 | [brand-l8-justified.png](brand-l8-justified.png) | L8 six-stop day and overview densities; pinch storyboard, month/year signature and precision selection, repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) and corrected in [#855](https://github.com/LPStruiksma/atlas-gallery/issues/855) and [#864](https://github.com/LPStruiksma/atlas-gallery/issues/864) | 67 |
 
@@ -29,11 +29,19 @@ The annotation layer is magenta `#E0007A`, outside the palette: dashed box = eff
 
 ## Open design questions the sheets surface
 
-1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 × 80 dp targets that touch but do not overlap (unit-tested); the sheet recommends it. Decide at re-preflight.
+1. **L6 month targets (resolved in [#817](https://github.com/LPStruiksma/atlas-gallery/issues/817)):** the earlier one-row strip of twelve 29 dp bars is gone. Every open-atlas state uses the 2 × 6 layout of twelve 58.7 × 80 dp targets that touch but do not overlap (C6 shows the anatomy; unit-tested). The generator refuses the single-row layout.
 2. **L4 F1 filmstrip hit regions (fixed in [#889](https://github.com/LPStruiksma/atlas-gallery/issues/889)):** seven 40 dp tiles now sit 8 dp apart (48 dp pitch), so the seven 48 dp effective targets touch but no longer overlap by 4 dp. See [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 2b. **L4 slab at 200 % font (resolved in [#816](https://github.com/LPStruiksma/atlas-gallery/issues/816)):** Pictures, Collections and the search sphere stay in ONE centred slab (about 360 of 384 dp wide), with three separate targets of at least 48 dp. The detached-sphere proposal is removed. Evidence and checks: [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 3. **L7 auto-focus and the Whole library handoff (corrected in [#824](https://github.com/LPStruiksma/atlas-gallery/issues/824)):** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused *opening*. Focus-on-open does not change the *scope handoff*: choosing Whole library closes the scoped bar, releases focus and the keyboard, clears the local query and opens the existing Search tab with a blank query, exactly as `MainActivity` does on main. The sheet no longer shows a query-retaining, in-place library mode. The two-step Back and the This screen / Whole library chips are kept. Panel B5 is now the arrival frame; B6, B13 and B14 show `This screen`; the "Search state transitions" table lists query ownership, scope, focus, Back and what is kept or discarded for person, album and Declutter. Whether person and album routes warn about an active selection is left to the L7 implementation (#660): keep it or confirm, never discard silently. Synthetic evidence only; the S24+ runtime checks stay a separate pre-merge obligation.
 4. **L5 named routes ([#819](https://github.com/LPStruiksma/atlas-gallery/issues/819)):** only recent named people, albums and places are two-tap direct rows (C1-C7). An off-screen person among 500 is Collections, scoped search, result: 3 taps plus typing (D2, a proposal); via People and pets it is 3 taps if visible. No global-search shortcut is claimed.
+
+## L6 synthetic pull-motion proof (#817)
+
+[View the six-second animated SVG](brand-l6-pull-motion.svg). It is a **synthetic vector storyboard**, not an Android, emulator, touch capture, video recording or performance measurement. The authored timeline shows closed → finger-tracked 50% pull → release past halfway → open, then finger-tracked push-up → close, a cancelled short pull before the threshold, and the remove-animations cut (direct closed/open frame with no tween). The UI drawings are illustrative; the generator's still frames and the independent pre-build Review remain authoritative for geometry. A reviewer must explicitly decide whether the inspectable timed animation meets the brief's motion-proof gate.
+
+For the selected static layout: all 12 month targets are 58.7 × 80 dp with no area overlap, the current-month sphere stays on its counted bar inside its own target (on the tallest month it sits on the bar's top), and visible place dots receive separate effective 48 × 48 dp hit targets. The primary light/100% and dark/200% atlas and the dark/200% empty-year and filtered-grid states are rendered from the same selected layout. TalkBack chronological order is January–December before Places, shown across two scrolled synthetic list panels. Inset assumptions remain status 29 dp and gesture navigation 16 dp. No real picture, place coordinate, tile, permission or network fetch is used.
+
+**Publishing rule:** after any L6 generator change, regenerate `--only l6` with the bundled Funnel files and commit `brand-l6-atlas.png` together with `manifest.json`, then run `--check` and the L6 invariants against those committed bytes. Regenerating only L6 leaves L4/L5/L7/L8 output unchanged. The committed L6 sheet was produced this way; it is not design-approved or ready for Android implementation until the independent #659 Design: PASS (and the L4 #657 runtime dependency).
 
 ## Regenerate
 
