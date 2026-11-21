@@ -2823,7 +2823,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 pendingSelectionRestore = null
             }
             personFilter != null -> personFilter = null
-            tab == 0 && album != null -> closeAlbumRoute()
+            tab == 0 && album != null && insightsReturn -> closeAlbumRoute()
+            tab == 0 && album != null -> {
+                album = null
+                albumVolume = null
+                if (albumReturnToAlbums) tab = 1
+                albumReturnToAlbums = false
+            }
             else -> tab = 0
         }
     }
