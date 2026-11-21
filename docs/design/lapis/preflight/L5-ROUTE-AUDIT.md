@@ -1,6 +1,6 @@
 # L5 Collections route and reference audit — #819
 
-Status: **pre-build proposal; not Android proof or a completed sheet**. The branch generator has changed; the committed L5 PNG and its SHA-256 in `manifest.json` still show the earlier 13-panel board until a Python/render-capable seat regenerates and checks them. The dark/200% shared slab remains governed by [L4 correction #816](https://github.com/LPStruiksma/atlas-gallery/issues/816), not by this L5 proposal. Re-review #658 only after that integration and artifact verification.
+Status: **pre-build proposal; not Android proof**. The L5 PNG and manifest were regenerated (17 frames, pinned Funnel fonts, `--check` PASS) and inspected at full size. The dark/200% shared slab remains governed by [L4 correction #816](https://github.com/LPStruiksma/atlas-gallery/issues/816), not by this L5 proposal. Re-review #658 only after that integration and artifact verification.
 
 ## Scope and counted tap paths
 

@@ -102,6 +102,30 @@ class L5HighFontLayout(unittest.TestCase):
         self.assertLess(slab[3], keyboard_top)
 
 
+class L5GlyphsAndCaptions(unittest.TestCase):
+    """The Funnel fonts have no arrow glyph: it rendered as a tofu box in the tap tables."""
+
+    def test_l5_text_has_no_arrow_glyph(self):
+        import inspect
+        src = inspect.getsource(lapis_preflight.Preflight.l5) if hasattr(lapis_preflight, "Preflight") else ""
+        if not src:
+            for obj in vars(lapis_preflight).values():
+                if isinstance(obj, type) and hasattr(obj, "l5"):
+                    src = inspect.getsource(obj.l5)
+        self.assertTrue(src)
+        self.assertNotIn("\u2192", src)
+
+    def test_l5_hero_captions_fit_two_lines(self):
+        import inspect
+        for obj in vars(lapis_preflight).values():
+            if isinstance(obj, type) and hasattr(obj, "l5"):
+                src = inspect.getsource(obj.l5)
+        for name in ("A1", "A2"):
+            i = src.index('Panel("%s", "Collections' % name)
+            cap = src[i:src.index(", a", i + 20)]
+            self.assertLess(len(cap.split('", "', 2)[-1]), 130, name)
+
+
 class Render(unittest.TestCase):
     def test_every_sheet_renders_with_full_device_frames(self):
         with tempfile.TemporaryDirectory() as tmp:

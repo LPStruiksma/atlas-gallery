@@ -408,13 +408,10 @@ class Gen:
         a2 = self.scr("dark", 2.0)
         self.l5_collections(a2)
         b.heroes([
-            Panel("A1", "Collections, light, 100 %", "Named recent Noor (person), Coastal weekend "
-                  "(album) and Dunes trip (place) rows open precise destinations in two taps. "
-                  "Albums, People and pets and Places below are category landings. "
-                  "Four real-shape photos, 8 dp radius, merged TalkBack row.", a1),
-            Panel("A2", "Collections, dark, 200 %", "Only complete recent rows are drawn above "
-                  "navigation; scroll for other members. Rows retain 72 dp photo strips. "
-                  "Shared one-group slab geometry belongs to #816; detached search is not accepted.", a2),
+            Panel("A1", "Collections, light, 100 %", "Recent Noor, Coastal weekend and Dunes trip rows "
+                  "open in two taps; category rows below open landings.", a1),
+            Panel("A2", "Collections, dark, 200 %", "Only complete recent rows sit above navigation. "
+                  "Slab geometry follows #816.", a2),
         ], self.LEGEND)
         panels = []
         s = self.scr()
@@ -511,7 +508,7 @@ class Gen:
         sb = s.slab("Collections", y_bottom=kb, search=False)
         L.search_bar(s, sb[1], "lotte", True, scope="This screen",
                      items=[("Person", "Lotte")], thumbs=True)
-        s.note((L.px(8), s.top + L.px(8)), "3 taps + typing: Collections → search → Lotte result")
+        s.note((L.px(8), s.top + L.px(8)), "3 taps + typing: Collections > search > Lotte result")
         panels.append(Panel("D2", "500 people · search, dark 200 %", "Lotte is not a visible "
                             "recent row: tap 1 Collections, tap 2 scoped search, type, tap 3 "
                             "direct Lotte result. Back hides IME, then closes the query panel; "
@@ -564,18 +561,18 @@ class Gen:
         panels.append(Panel("E3", "Error, dark", "Plain message and a 48 dp retry.", s))
         b.grid("States and tap paths", panels, cols=5, scale=0.5)
         b.table("Tap counts (from any screen with the slab)", ["Goal", "Taps", "Path"], [
-            ["Named person: Noor, recent", "2", "Collections (tap 1) → Noor row (tap 2) → person (C1-C3)."],
-            ["Named album: Coastal weekend", "2", "Collections (tap 1) → Coastal weekend row (tap 2) "
-             "→ album (C4-C5)."],
-            ["Named place/trip: Dunes trip", "2", "Collections (tap 1) → Dunes trip row (tap 2) "
-             "→ place detail (C6-C7)."],
-            ["Off-screen person: Lotte (of 500)", "3 + typing", "Collections (tap 1) → scoped search "
-             "(tap 2) → type 'lotte' → direct Lotte result (tap 3) (D2)."],
-            ["People and pets category", "3 for visible", "Collections → category → visible member. "
+            ["Named person: Noor, recent", "2", "Collections (tap 1) > Noor row (tap 2) > person (C1-C3)."],
+            ["Named album: Coastal weekend", "2", "Collections (tap 1) > Coastal weekend row (tap 2) "
+             "> album (C4-C5)."],
+            ["Named place/trip: Dunes trip", "2", "Collections (tap 1) > Dunes trip row (tap 2) "
+             "> place detail (C6-C7)."],
+            ["Off-screen person: Lotte (of 500)", "3 + typing", "Collections (tap 1) > scoped search "
+             "(tap 2) > type 'lotte' > direct Lotte result (tap 3) (D2)."],
+            ["People and pets category", "3 for visible", "Collections > category > visible member. "
              "Off-screen members require scroll or further search actions."],
             ["Global search sphere", "Unknown", "No observed evidence that the global #175 search "
              "opens named person/album/place destinations directly."],
-            ["System Back", "Per level", "Detail → Collections → original slab screen. With IME: "
+            ["System Back", "Per level", "Detail > Collections > original slab screen. With IME: "
              "Back hides keyboard before closing scoped search."],
         ], [0.27, 0.14, 0.59])
         b.table("Destination parity (every former entry keeps a row)", ["Destination", "Row and order",
