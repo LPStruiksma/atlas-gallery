@@ -996,6 +996,10 @@ class FaceIndexStoreIdentityReviewTest {
         scanAll(store, "epoch-B") { if (it.endsWith("/4#photo")) 5 else 0 }
         val after = requireNotNull(store.peopleReview("epoch-B"))
         val facts = after.clusters.reviews
+        // The edited photo 1 lost its confirmation; photo 3 remains the sole
+        // source-matched, explicitly named face before any model migration.
+        assertEquals(1, count(store, "people_confirmed"))
+        assertEquals(mapOf(faceOf(store, "epoch-B", 3) to ana), facts.confirmed)
         assertFalse(oldId in after.clusters)
         assertFalse(oldId in facts.confirmed)
         assertTrue(facts.rejectedPeople.none { it.observation == oldId })
@@ -1018,6 +1022,10 @@ class FaceIndexStoreIdentityReviewTest {
         // The earlier source edit invalidated one of the two confirmations.
         // Only the remaining source-matched face may survive the model bump.
         assertEquals(1, bumped.clusters.reviews.confirmed.size)
+        // A new model must recover only photo 3's exact source/box match,
+        // never the edited photo 1 or the explicitly split photo 2.
+        assertEquals(mapOf(faceOf(store, "epoch-C", 3) to ana),
+            bumped.clusters.reviews.confirmed)
         assertTrue(bumped.clusters.reviews.confirmed.keys.none { it == oldId })
         assertEquals(0, count(store, "people_cannot_link"))
         assertEquals(0, count(store, "people_rejected"))
