@@ -5,6 +5,7 @@
 | Sheet | Unit | Device frames |
 |---|---|---|
 | [brand-l4-navigation.png](brand-l4-navigation.png) | L4 slab and held sphere | 20 |
+| [brand-l4-fast-scroll.gif](brand-l4-fast-scroll.gif) | L4 synthetic fast-scroll recording (11 frames, 1.4 s) | 11 |
 | [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
 | [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
@@ -28,7 +29,7 @@ The annotation layer is magenta `#E0007A`, outside the palette: dashed box = eff
 ## Open design questions the sheets surface
 
 1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 × 80 dp targets that touch but do not overlap (unit-tested); the sheet recommends it. Decide at re-preflight.
-2. **L4 slab at 200 % font:** the pills widen instead of truncating, so the search sphere no longer fits and detaches above the slab's right end (A2). A proposal, not part of Quiet Frame v3 yet.
+2. **L4 slab at 200 % font (resolved in [#816](https://github.com/LPStruiksma/atlas-gallery/issues/816)):** Pictures, Collections and the search sphere stay in ONE centred slab (about 360 of 384 dp wide), with three separate targets of at least 48 dp. The detached-sphere proposal is removed. Evidence and checks: [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 3. **L7 auto-focus:** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused field. The two-step Back and the This screen / Whole library chips are kept.
 4. **L5 two-tap reach:** recent people and albums get their own rows; any of 500 people is Collections, then search (2 taps plus typing) or 3 taps via People and pets.
 
