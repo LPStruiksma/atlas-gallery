@@ -205,6 +205,14 @@ internal fun NativePersonAlbumRoute(
             withContext(Dispatchers.IO) { host.currentPersonCover(galleryGrant, person) }
         }
     }
+    // People home intentionally excludes hidden people. Resolve their current
+    // default from the store, with the same grant/model/member fences as home.
+    val displayCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
+        value = null
+        value = request.person?.let { person ->
+            withContext(Dispatchers.IO) { host.currentPersonDisplayCover(galleryGrant, person) }
+        }
+    }
     val scope = rememberCoroutineScope()
 
     /** Build the action from the live snapshot now; commit it on IO. */
@@ -340,8 +348,7 @@ internal fun NativePersonAlbumRoute(
         PersonFaceImage(host, cropEpoch, face)
     }
     // Reuse the canonical person cover on rename/merge choice cards too.
-    // An unnamed group (or a hidden person absent from home) stays on its
-    // existing stable face fallback; there are no new thumbnail surfaces.
+    // An unnamed group without a canonical summary keeps its stable fallback.
     fun albumPortrait(album: NativePersonAlbum): NativeFaceObservationId? =
         people?.people?.get(album.person)?.coverFaceUid
             ?.let { uid -> album.observations.firstOrNull { it.localHex == uid } }
@@ -361,6 +368,7 @@ internal fun NativePersonAlbumRoute(
         opening = request.opening,
         portrait = { portrait(
             chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+                ?: displayCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
                 ?: summaryCover?.takeIf { faces == null || it in faces }
                 ?: facts?.coverFace) },
         onBack = onBack,
@@ -492,6 +500,13 @@ internal fun PersonFaceImage(host: PeopleDiscoveryHost, epoch: String?, face: Na
     } else PersonPortraitFallback()
 }
 
+/** Use a current authorized winner only while it is in this person's live face list. */
+internal fun hiddenPortraitFace(
+    faces: List<NativeFaceObservationId>, selectedUid: String?
+): NativeFaceObservationId? =
+    selectedUid?.let { uid -> faces.firstOrNull { it.localHex == uid } }
+        ?: faces.firstOrNull()
+
 /**
  * People ⋮ → Hidden: the hidden named people of the live snapshot. Tapping
  * one opens its page through [onOpen].
@@ -510,9 +525,19 @@ internal fun HiddenPeopleRoute(
         state?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
             hiddenOnly = true) }.orEmpty()
     }
+    val hiddenCovers by produceState<Map<PersonKey, String>>(emptyMap(), version, state) {
+        // Reset on a scope change; never reuse a portrait chosen under an old grant.
+        value = emptyMap()
+        value = withContext(Dispatchers.IO) {
+            host.currentHiddenPersonCovers(state?.permissionEpoch)
+        }
+    }
     HiddenPeopleScreen(
         people = hidden,
-        portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
+        portrait = { album ->
+            PersonFaceImage(host, state?.permissionEpoch,
+                hiddenPortraitFace(album.observations, hiddenCovers[album.person]))
+        },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
