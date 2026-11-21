@@ -16,6 +16,18 @@ The first-party [big_vision README](https://github.com/google-research/big_visio
 
 Therefore the general repository licence is insufficient proof for this separate object, and the Gemma terms cannot safely be presumed to cover it. **Inclusion of these tokenizer bytes in an APK is not presently proven permitted.** Obtain a first-party statement that expressly covers this exact object/digest (and comply with its conditions) before packaging it.
 
+## Offline contract regression tests
+
+The generator implements the same **ASCII-only** normalization as NLS-0's `text_tower.ascii_lower` (the default `tf.strings.lower` behavior). Non-ASCII uppercase letters such as `É` are not lowercased. This matters for byte-identical token IDs across the text tower and offline goldens.
+
+Run the dependency-free mock-backed regression tests without downloading the model:
+
+```sh
+python3 tools/visual_search_bench/nls1_tokenizer_golden.py --self-test
+```
+
+The tests check EN/NL ASCII case folding, Unicode preservation, no automatic BOS/EOS injection, empty input, 64-ID sticky EOS/truncation, padding, and validation rejection of corrupted vectors. These tests do **not** establish real SentencePiece token IDs, a verified model digest, or APK redistribution rights. The checked-in golden file remains BLOCKED until the real binary is independently verified and used.
+
 ## Golden-vector evidence gap
 
 Actual regeneration was also impossible: the exact bytes could not be obtained or verified, and the evidence environment did not have the tooling-only `sentencepiece` module installed. No IDs have been invented. `tools/visual_search_bench/data/nls1_tokenizer_goldens.json` records the blocked state and intentionally contains no cases.
