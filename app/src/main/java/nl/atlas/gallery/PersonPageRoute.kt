@@ -37,6 +37,7 @@ import nl.atlas.gallery.featurepeopleui.SamePersonQuestion
 import nl.atlas.gallery.featurepeopleui.mergeAction
 import nl.atlas.gallery.featurepeopleui.mergeCandidates
 import nl.atlas.gallery.featurepeopleui.nameSuggestions
+import nl.atlas.gallery.featurepeopleui.needsSplittingLists
 import nl.atlas.gallery.featurepeopleui.peopleAlbumsForGrant
 import nl.atlas.gallery.featurepeopleui.personNaming
 import nl.atlas.gallery.featurepeopleui.personPageFacts
