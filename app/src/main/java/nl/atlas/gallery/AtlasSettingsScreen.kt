@@ -149,10 +149,6 @@ internal fun AtlasSettingsScreen(
             SettingsActionRow("Export names", "atlas-people-names-export", onExportNames)
             SettingsActionRow("Import names", "atlas-people-names-import", onImportNames)
         }
-        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
-            SettingsActionRow("Library insights", "atlas-settings-library-insights",
-                onLibraryInsights, "Size by folder, type and year")
-        }
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
             SettingsActionRow("Theme", "atlas-settings-theme", value = "Follows system")
@@ -253,6 +249,11 @@ internal fun AtlasSettingsScreen(
                     }
                 }
             }
+        }
+        // #587: below Advanced too, so existing rows keep their place on screen.
+        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
+            SettingsActionRow("Library insights", "atlas-settings-library-insights",
+                onLibraryInsights, "Size by folder, type and year")
         }
         // #427 review: below Advanced, so the existing groups keep their place on screen.
         if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {

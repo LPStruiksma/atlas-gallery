@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featureinsights.InsightsRow
 import nl.atlas.gallery.featureinsights.InsightsScope
@@ -172,8 +173,7 @@ class LibraryInsightsEvidenceTest {
 
         compose.runOnIdle { state = InsightsUiState.Failed(sample) }
         both("error-last-known")
-        compose.onNodeWithTag("atlas-insights-retry").performClick()
-        assertEquals(1, retries)
+        compose.tap(hasTestTag("atlas-insights-retry")) { retries == 1 }
 
         compose.runOnIdle { state = InsightsUiState.Failed(null) }
         both("error")
