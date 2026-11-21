@@ -152,7 +152,8 @@ fun FaceSearchRoute(
                 }
             }
             FaceSearchStep.Results -> {
-                BackHandler { close() }
+                val resultsBack = { if (screenMedia != null) onStep(FaceSearchStep.ChooseReference) else close() }
+                BackHandler { resultsBack() }
                 val state by session.state.collectAsState()
                 FaceSearchResultsScreen(state,
                     onOpen = { records, record ->
@@ -162,7 +163,7 @@ fun FaceSearchRoute(
                                 onOpen(records, record)
                         }
                     },
-                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = onClose,
+                    onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = resultsBack,
                     facetPeople = facetPeople, onSearchWholeLibrary = onSearchWholeLibrary,
                     screenMedia = screenMedia)
             }
