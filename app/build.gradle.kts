@@ -106,6 +106,9 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-video:3.5.0")
     implementation("androidx.media3:media3-exoplayer:1.9.4")
     implementation("androidx.media3:media3-ui:1.9.4")
+    // Video editor engine (#731, goal #629 M6): same Media3 line as the player above.
+    implementation("androidx.media3:media3-transformer:1.9.4")
+    implementation("androidx.media3:media3-effect:1.9.4")
     // Native People (#402 wave 2): on-device face detection/embedding runtime (MIT)
     // and resumable, constraint-aware background scanning. No network use.
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")

@@ -267,6 +267,13 @@ class VisualNextBatchTest {
             result(VisualScanStop.HELD), true))
     }
 
+    @Test fun tagSweepProgressComesBackNowWithoutIndexing() {
+        // TAGS-1 (#732): a drained visual queue whose tag sweep read vectors and has more left.
+        assertEquals(nl.atlas.gallery.NextBatch.NOW, nl.atlas.gallery.nextVisualBatchAfter(
+            VisualScanResult(0, 0, held = true, stop = VisualScanStop.BUDGET_OR_GUARD, tagged = 2048),
+            stillQueued = false))
+    }
+
     @Test fun drainedOrAbsentVisualStageQueuesNothing() {
         assertEquals(nl.atlas.gallery.NextBatch.NONE, nl.atlas.gallery.nextVisualBatchAfter(
             VisualScanResult(0, 0, held = false), stillQueued = false))

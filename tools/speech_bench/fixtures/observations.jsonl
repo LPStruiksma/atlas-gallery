@@ -1,0 +1,4 @@
+{"id": "a", "lang": "en", "audio_s": 10, "wall_s": 1.0, "ref_words": 10, "hyp_words": 9, "sub": 1, "del": 1, "ins": 0}
+{"id": "b", "lang": "en", "audio_s": 10, "wall_s": 2.0, "ref_words": 10, "hyp_words": 10, "sub": 0, "del": 0, "ins": 0}
+{"id": "c", "lang": "nl", "audio_s": 20, "wall_s": 4.0, "ref_words": 20, "hyp_words": 24, "sub": 2, "del": 0, "ins": 4}
+{"id": "d", "lang": "nl", "audio_s": 5, "wall_s": 0.5, "ref_words": 0, "hyp_words": 3, "sub": 0, "del": 0, "ins": 3}

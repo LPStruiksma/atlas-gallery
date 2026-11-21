@@ -66,6 +66,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasMotion
 import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
@@ -110,6 +111,7 @@ import coil3.request.ImageRequest
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -1470,6 +1472,12 @@ private fun PhotoPage(
         derivedStateOf { zoomPose.scale > 1.01f }
     }
     var zoomedOnce by remember(media.uri, focused, imageRevision) { mutableStateOf(false) }
+    // FLOW-4 (#713): the running double-tap zoom animation, if any. Any new
+    // touch on the photo cancels it at its current pose (no snap-back).
+    val zoomPoseProbe = LocalViewerZoomPoseProbe.current
+    val doubleTapZoom = remember(media.uri, focused, imageRevision) {
+        arrayOfNulls<kotlinx.coroutines.Job>(1)
+    }
     LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
     LaunchedEffect(viewport, decodedSize, tiledSize) {
         zoomPose = viewerReboundZoom(zoomPose, viewport.width, viewport.height,
@@ -1536,6 +1544,9 @@ private fun PhotoPage(
                     // while magnified; two-finger transitions remain smooth.
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
+                        // FLOW-4 (#713): a new touch takes over from the
+                        // animated double-tap zoom wherever it has got to.
+                        doubleTapZoom[0]?.cancel()
                         // A pinch is a single atomic gesture: when its second
                         // finger lifts (or the photo reaches 1x), the remaining
                         // movement must NOT unexpectedly page to another photo.
@@ -1593,15 +1604,47 @@ private fun PhotoPage(
                 .pointerInput(media.uri, imageRevision, focused) {
                     // Same identity-only key: a pending single tap waits for
                     // the double-tap timeout and must survive the HQ decode.
-                    detectTapGestures(
-                        onTap = { latestToggleChrome() },
-                        onDoubleTap = { tap ->
-                            zoomPose = viewerDoubleTapZoom(zoomPose, tap.x, tap.y,
-                                viewport.width, viewport.height,
-                                decodedSize.width, decodedSize.height)
-                            latestZoomChanged(zoomPose.scale)
-                        }
-                    )
+                    // The animation is a child of this scope, so a page or
+                    // focus change (which restarts this block) also ends it.
+                    coroutineScope {
+                        detectTapGestures(
+                            onTap = { latestToggleChrome() },
+                            onDoubleTap = { tap ->
+                                doubleTapZoom[0]?.cancel()
+                                val from = zoomPose
+                                val to = viewerDoubleTapZoom(from, tap.x, tap.y,
+                                    viewport.width, viewport.height,
+                                    decodedSize.width, decodedSize.height)
+                                if (to == from || AtlasMotion.animationsDisabled(context)) {
+                                    // Reduced motion: cut straight to the end pose.
+                                    zoomPose = to
+                                    latestZoomChanged(to.scale)
+                                } else {
+                                    // FLOW-4 (#713): 160 ms sine in-out around the
+                                    // tapped point (VIEW:V20). Zooming in locks the
+                                    // pager at once; zooming out keeps it locked
+                                    // until the photo is back at fit.
+                                    if (to.scale > from.scale) latestZoomChanged(to.scale)
+                                    doubleTapZoom[0] = launch {
+                                        try {
+                                            animate(0f, 1f, animationSpec = tween(
+                                                AtlasMotion.DOUBLE_TAP_ZOOM_MS,
+                                                easing = AtlasMotion.SineInOut70)
+                                            ) { progress, _ ->
+                                                zoomPose = viewerDoubleTapFrame(from, to,
+                                                    tap.x, tap.y,
+                                                    viewport.width, viewport.height,
+                                                    decodedSize.width, decodedSize.height,
+                                                    progress)
+                                            }
+                                        } finally {
+                                            latestZoomChanged(zoomPose.scale)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
                 // Raw pointerInput gestures do not supply TalkBack with an
                 // activation action. Expose the same chrome toggle, even in
@@ -1613,6 +1656,7 @@ private fun PhotoPage(
                         this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
                         this[ViewerPhotoSharpAtKey] = sharpAt
                         this[ViewerPhotoSettledAtKey] = settledAt
+                        if (zoomPoseProbe) this[ViewerZoomPoseKey] = zoomPose
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
                         onClick(label = if (chromeVisible) "Hide gallery controls"
@@ -1767,6 +1811,15 @@ internal val ViewerPhotoSharpAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhot
  * the decode lands, so a gesture test that zooms earlier races the decode.
  */
 internal val ViewerPhotoDecodedKey = SemanticsPropertyKey<Boolean>("AtlasViewerPhotoDecoded")
+
+/**
+ * FLOW-4 (#713) emulator proof only: when [LocalViewerZoomPoseProbe] is true,
+ * the focused photo surface publishes its live zoom pose, so a test can read
+ * the double-tap animation frame by frame. Off in the app, so no frame of a
+ * real gesture ever touches semantics for it.
+ */
+internal val ViewerZoomPoseKey = SemanticsPropertyKey<ViewerZoomPosition>("AtlasViewerZoomPose")
+internal val LocalViewerZoomPoseProbe = staticCompositionLocalOf { false }
 
 /** Pause when leaving the foreground; never auto-resume on a later event. */
 internal fun viewerVideoMustPause(event: Lifecycle.Event): Boolean =
