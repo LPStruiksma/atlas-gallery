@@ -39,7 +39,7 @@ class UsageShareSheetEvidenceTest {
         assertEquals(UsageExportFile.Result.SHEET_OPENED, result)
         val file = java.io.File(compose.activity.cacheDir, "usage/" + log.exportFileName())
         assertTrue("export file missing: $file", file.isFile)
-        assertTrue(file.readText().startsWith("{\"schema\":\"usage-1\""))
+        assertTrue(file.readText().startsWith("{\"schema_version\":1,\"days\":["))
         compose.awaitScreenStill("the share sheet")
         saveUiEvidence("usage-0-share-sheet.png")
         InstrumentationRegistry.getInstrumentation().uiAutomation

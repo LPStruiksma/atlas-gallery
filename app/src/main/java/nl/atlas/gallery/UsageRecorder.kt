@@ -44,10 +44,22 @@ internal object UsageRecorder {
     @Volatile private var instance: UsageLog? = null
     val dwell = UsageDwellTracker { screen, seconds -> instance?.dwell(screen, seconds) }
 
+    /**
+     * Builds the log off the main thread: the first SharedPreferences read is disk I/O
+     * (#435: no disk reads on Main at startup). Every hook is a no-op until it finishes.
+     */
     fun install(context: Context) {
-        if (instance == null) synchronized(this) {
-            if (instance == null) instance = UsageLog(UsagePrefsStore(context), SystemUsageClock)
-        }
+        val app = context.applicationContext
+        if (instance != null) return
+        Thread({
+            synchronized(this) {
+                if (instance == null) {
+                    val store = UsagePrefsStore(app)
+                    store.isEnabled() // forces the preferences file to load here, not on Main
+                    instance = UsageLog(store, SystemUsageClock)
+                }
+            }
+        }, "atlas-usage-init").start()
     }
 
     /** Null before [install]; every hook below is then a no-op. */
