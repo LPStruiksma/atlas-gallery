@@ -110,6 +110,36 @@ class L6PrimaryMonthTargets(unittest.TestCase):
                         self.assertLessEqual(glyph[2], right + 1, name)
                         self.assertLessEqual(glyph[3], bottom + 1, name)
 
+    def test_current_month_sphere_stays_inside_its_own_target(self):
+        # B9: the current month is also the tallest bar; its sphere must not
+        # climb into the row above and cover that month's label.
+        for theme, scale in (("light", 1.0), ("dark", 2.0)):
+            for counts, current in (
+                ([0, 0, 40, 0, 0, 220, 610, 0, 0, 0, 15, 0], 6),
+                ([10] * 12, 0),
+                (None, 10),
+            ):
+                with self.subTest(theme=theme, scale=scale, current=current):
+                    kw = {"current": current} | ({"counts": counts} if counts else {})
+                    frame = self.gen.l6_frame(theme, scale, frac=1.0, **kw)
+                    targets = [t for t in frame.targets if t.label.startswith("month ")]
+                    left, top, right, bottom = targets[current].box
+                    sphere = frame.current_sphere_box
+                    self.assertIsNotNone(sphere)
+                    self.assertGreaterEqual(sphere[0], left - 1)
+                    self.assertGreaterEqual(sphere[1], top - 1)
+                    self.assertLessEqual(sphere[2], right + 1)
+                    self.assertLessEqual(sphere[3], bottom + 1)
+                    glyph = frame.month_label_boxes[current][1]
+                    self.assertLessEqual(sphere[3], glyph[1], "sphere covers its own label")
+
+    def test_scale_legend_sits_below_the_month_targets(self):
+        for theme, scale in (("light", 1.0), ("dark", 2.0)):
+            with self.subTest(theme=theme, scale=scale):
+                frame = self.gen.l6_frame(theme, scale, frac=1.0)
+                bottom = max(t.box[3] for t in frame.targets if t.label.startswith("month "))
+                self.assertGreaterEqual(frame.legend_box[1], bottom, "legend text inside month targets")
+
     def test_metadata_failure_is_a_recoverable_atlas_overlay(self):
         frame = self.gen.l6_frame("dark", frac=1.0, error=True)
         self.assertTrue(frame.atlas_error)

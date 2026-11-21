@@ -567,6 +567,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     row_bases = [px(118) + head_shift, px(198) + head_shift]  # 80 dp pitch, targets touch but do not overlap
     month_boxes = []
     month_label_boxes = []
+    current_sphere_box = None
     place_pts: dict[str, tuple[float, float]] = {}
     label_chips: list = []
     for i, c in enumerate(counts):
@@ -596,15 +597,23 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 fill=s.t["ink"], anchor="ma")
         month_label_boxes.append((MONTHS[i], label_bb))
         if i == current:
+            # Held month sphere sits above its bar, but never above its own
+            # 80 dp target: on the tallest month (bh == bar_max) it used to
+            # land on the previous row's label (B9, current=6 covered 'Jan').
             r = px(10)
-            cy = base_y - bh - px(14)
+            cy = max(base_y - bh - px(14), base_y - bar_max + r + px(2))
+            current_sphere_box = (x + bw / 2 - r - px(2), cy - r - px(2), x + bw / 2 + r + px(2), cy + r + px(2))
             ld.ellipse([x + bw / 2 - r - px(2), cy - r - px(2), x + bw / 2 + r + px(2), cy + r + px(2)],
                        fill="#FFFFFF")
             ld.ellipse([x + bw / 2 - r, cy - r, x + bw / 2 + r, cy + r], fill=s.t["brand_fill"])
         month_boxes.append((x, base_y - bar_max, x + bw, base_y + px(36)))
-    legend_y = row_bases[-1] + px(30) * min(s.font_scale, 1.6)
-    ld.text((DEVICE_W - px(SIDE), legend_y), f"tallest bar = {_nl(mx)} photos",
-            font=s.fonts.get("sans", 400, px(11) * min(s.font_scale, 1.6)), fill=s.t["ink2"], anchor="ra")
+    # The legend starts below the second row's 36 dp label band: at 100 %
+    # the old +30 dp put 'tallest bar' text inside the Nov/Dec targets.
+    legend_y = row_bases[-1] + max(px(42), px(30) * min(s.font_scale, 1.6))
+    f_legend = s.fonts.get("sans", 400, px(11) * min(s.font_scale, 1.6))
+    legend_text = f"tallest bar = {_nl(mx)} photos"
+    legend_bb = ld.textbbox((DEVICE_W - px(SIDE), legend_y), legend_text, font=f_legend, anchor="ra")
+    ld.text((DEVICE_W - px(SIDE), legend_y), legend_text, font=f_legend, fill=s.t["ink2"], anchor="ra")
     if places:
         my0, my1 = int(legend_y + px(24) * min(s.font_scale, 1.6)), full_h - px(24)
         ld.rounded_rectangle([px(SIDE), my0, DEVICE_W - px(SIDE), my1], radius=px(22), fill=s.t["ground"])
@@ -679,6 +688,10 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     s.year_bottom = shift_y + year_bbox[3]
     s.month_label_boxes = [(n, (b[0], shift_y + b[1], b[2], shift_y + b[3]))
                            for n, b in month_label_boxes]
+    s.legend_box = (legend_bb[0], shift_y + legend_bb[1], legend_bb[2], shift_y + legend_bb[3])
+    s.current_sphere_box = (None if current_sphere_box is None else
+                            (current_sphere_box[0], shift_y + current_sphere_box[1],
+                             current_sphere_box[2], shift_y + current_sphere_box[3]))
     s.label_chips = [(n, (c[0], shift_y + c[1], c[2], shift_y + c[3])) for n, c in label_chips]
     s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
