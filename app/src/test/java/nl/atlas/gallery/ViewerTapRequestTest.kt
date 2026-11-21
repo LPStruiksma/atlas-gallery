@@ -58,4 +58,17 @@ class ViewerJumpIntentTest {
             }
         }
     }
+
+    @Test fun onlyRealThumbnailTapsAnimateAndReducedMotionCutsImmediately() {
+        val tap = nextViewerJumpIntent(null, 6, 12, ViewerJumpOrigin.THUMBNAIL)
+        val scrub = nextViewerJumpIntent(tap, 8, 12)
+        assertEquals(ViewerJumpOrigin.THUMBNAIL, tap.origin)
+        assertEquals(ViewerJumpOrigin.DIRECT, scrub.origin)
+        val offset = ViewerStripPosition(4, 17)
+        assertTrue(viewerShouldEaseStripJump(tap.origin, false, offset, 6))
+        assertFalse(viewerShouldEaseStripJump(scrub.origin, false, offset, 8))
+        assertFalse(viewerShouldEaseStripJump(tap.origin, true, offset, 6))
+        assertFalse(viewerShouldEaseStripJump(tap.origin, false,
+            ViewerStripPosition(6, 0), 6))
+    }
 }

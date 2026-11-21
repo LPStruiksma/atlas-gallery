@@ -1,0 +1,24 @@
+{
+ "inputs": [
+  "input",
+  "state",
+  "sr"
+ ],
+ "model": "onnx-community/silero-vad@e71cae966052b992a7eca6b17738916ce0eca4ec",
+ "note": "VAD effect on WER is NOT measured; FLEURS clips are read speech with little silence.",
+ "per_language": {
+  "en": {
+   "audio_s": 305.6,
+   "clips": 30,
+   "speech_fraction_p>0.5": 0.7233,
+   "vad_rtf": 0.0041
+  },
+  "nl": {
+   "audio_s": 293.3,
+   "clips": 30,
+   "speech_fraction_p>0.5": 0.7153,
+   "vad_rtf": 0.00448
+  }
+ },
+ "sha256": "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808"
+}
