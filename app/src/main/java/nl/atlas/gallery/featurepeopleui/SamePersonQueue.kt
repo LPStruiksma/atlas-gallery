@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featurepeopleui
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
+import java.security.MessageDigest
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
 import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
@@ -31,6 +32,33 @@ data class SamePersonQueueItem(
         is PersonPageTarget.Named -> "n:" + subject.person.value
         is PersonPageTarget.Unnamed -> "u:" + subject.cluster.anchor.localHex
     } + "|" + other.anchor.localHex
+}
+
+/**
+ * HUB-1C: opaque Skip identity for this exact authorized scope and both actual
+ * sets of faces. A same-sized membership edit on EITHER side invalidates it.
+ * No raw person, anchor or observation identifier is written to preferences.
+ */
+fun samePersonSkipFingerprint(
+    state: PeopleClusterReviewState, item: SamePersonQueueItem
+): String? {
+    val unknown = state.clusters.unknownClusters.associateBy { it.id }
+    val subject = when (val side = item.subject) {
+        is PersonPageTarget.Unnamed -> unknown[side.cluster]?.members
+        is PersonPageTarget.Named -> {
+            if (side.person !in state.names || side.person in state.hidden) return null
+            state.clusters.reviews.confirmed.filterValues { it == side.person }.keys.toList()
+        }
+    } ?: return null
+    val other = unknown[item.other]?.members ?: return null
+    if (subject.size != item.subjectFaces || other.size != item.otherFaces) return null
+    fun members(ids: Collection<NativeFaceObservationId>) =
+        ids.map { it.localHex }.sorted().joinToString(",")
+    val bytes = ("same-person-skip-v1|" + state.permissionEpoch + "|" + item.key +
+        "|subject:" + members(subject) + "|other:" + members(other))
+        .toByteArray(Charsets.UTF_8)
+    return MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { "%02x".format(it) }
 }
 
 /** [items] in asking order and how many questions are [open] in all (skipped ones included). */
