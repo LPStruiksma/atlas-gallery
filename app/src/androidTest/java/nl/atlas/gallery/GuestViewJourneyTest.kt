@@ -181,8 +181,15 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         Log.i(PROBE, "API ${android.os.Build.VERSION.SDK_INT} $theme credential screen while " +
             "lockTaskModeState=${lockState()}: $prompt")
         assertTrue("system credential screen opened: ${describeFocus()}", prompt.opened)
-        shell("input keyevent 4")
-        compose.awaitThat("the credential screen to close") { !credentialOnTop() }
+        // Back first hides the PIN keyboard, then cancels the confirmation.
+        var backs = 0
+        while (credentialOnTop() && backs < 4) {
+            shell("input keyevent 4")
+            backs++
+            compose.observe(4_000L) { !credentialOnTop() }
+        }
+        Log.i(PROBE, "credential cancelled with $backs Back press(es)")
+        compose.awaitCredentialClosed()
         compose.awaitWindowSettled()
         compose.waitForNode(hasTestTag("atlas-guest-root"))
         assertOwnerChromeGone()
@@ -267,6 +274,12 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         }
         var byShell = false
         if (accept && lockState() == ActivityManager.LOCK_TASK_MODE_NONE) {
+            // The prompt is listed by the window manager but not exposed to
+            // accessibility on this image: close it, then pin as "Got it" would.
+            if (pinWindows().isNotEmpty()) {
+                shell("input keyevent 4")
+                compose.observe(3_000L) { pinWindows().isEmpty() }
+            }
             var task = -1
             compose.activityRule.scenario.onActivity { task = it.taskId }
             shell("am task lock $task")
@@ -521,7 +534,7 @@ private fun findPinButton(automation: UiAutomation, accept: Boolean): Pair<Acces
     return null
 }
 
-/** Ends any screen pinning before the Activity rule closes the activity. */
+/** Ends any screen pinning or open credential screen before the Activity rule closes the activity. */
 private class UnpinRule : TestRule {
     override fun apply(base: Statement, description: Description): Statement = object : Statement() {
         override fun evaluate() {
@@ -529,6 +542,7 @@ private class UnpinRule : TestRule {
                 base.evaluate()
             } finally {
                 if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) shell("am task lock stop")
+                if (credentialOnTop()) shell("am force-stop com.android.settings")
             }
         }
     }
