@@ -36,5 +36,5 @@
 <text x="96" y="639" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Move</text>
 <rect x="184" y="607" width="160" height="52" rx="22" fill="#F2F3F8" opacity="1"/>
 <text x="264" y="639" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030" text-anchor="middle">Copy</text>
-<text x="180" y="705" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="700" fill="#2639C9" text-anchor="middle">More albums</text>
+<rect x="18" y="674" width="324" height="56" rx="22" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/><text x="180" y="705" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="700" fill="#2639C9" text-anchor="middle">More albums</text>
 <text x="180" y="739" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#5A5F7A" text-anchor="middle">File through existing album operations</text></svg>
