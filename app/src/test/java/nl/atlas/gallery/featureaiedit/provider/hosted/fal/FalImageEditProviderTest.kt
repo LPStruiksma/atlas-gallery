@@ -134,6 +134,9 @@ class FalImageEditProviderTest {
             assertEquals(FalImageEditProvider.QUEUE_HOST, submit.host)
             assertEquals("/fal-ai/qwen-image-edit-2511", submit.path)
             assertEquals("Key $FAKE_KEY", submit.headers["authorization"])
+            // #464: every submit asks fal to expire its public result objects after one hour.
+            assertEquals("""{"expiration_duration_seconds":3600}""",
+                submit.headers["x-fal-object-lifecycle-preference"])
             val input = HostedJson.parse(submit.text).obj()!!
             assertEquals("Remove the synthetic lamp post", input["prompt"].str())
             val uri = input["image_urls"].arr()!!.single().str()!!
@@ -148,6 +151,7 @@ class FalImageEditProviderTest {
             gets.filter { it.host == FalImageEditProvider.QUEUE_HOST }.forEach {
                 assertEquals("Key $FAKE_KEY", it.headers["authorization"])
             }
+            assertTrue(gets.none { it.headers.containsKey("x-fal-object-lifecycle-preference") })
             val download = gets.single { it.path == "/files/synthetic/out.png" }
             assertEquals("v3b.fal.media", download.host)
             assertNull("key never sent to the media host", download.headers["authorization"])
@@ -195,12 +199,18 @@ class FalImageEditProviderTest {
     }
 
     @Test fun submitFailuresMapToTypedOutcomesWithoutReplay() {
-        val cases = listOf(401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 429 to FailureKind.QUOTA,
+        val cases = listOf(401 to FailureKind.AUTH, 403 to FailureKind.AUTH,
+            402 to FailureKind.BILLING, 429 to FailureKind.QUOTA,
             422 to FailureKind.INVALID_REQUEST, 500 to FailureKind.SERVER)
         for ((status, kind) in cases) {
             FalHarness(FakeFalQueue(submit = { FakeResponse.json("""{"detail":"synthetic"}""", status) })).use { h ->
                 val result = h.provider().submit(request()).await(maxPolls = 200) as EditOutcome.Failed
                 assertEquals("status $status", kind, result.kind)
+                if (status == 402) {
+                    assertFalse(result.retryable)
+                    assertEquals("HTTP_BILLING", result.message)
+                    assertFalse(result.toString().contains("synthetic"))
+                }
                 assertEquals(1, h.calls("POST").size)
                 assertTrue(h.calls("GET").isEmpty())
             }
@@ -252,7 +262,13 @@ class FalImageEditProviderTest {
             "https://v3b.fal.media:8443/files/synthetic/out.png",
             "https://v3b.fal.media/files/synthetic/out.png?token=x",
             "data:image/png;base64,AAAA",
-            "https://fal.run/files/synthetic/out.png"
+            "https://fal.run/files/synthetic/out.png",
+            // #464: official examples for other fal models use this public bucket; it is not
+            // allowlisted, so a result there fails closed instead of widening the hosts.
+            "https://storage.googleapis.com/falserverless/files/synthetic/out.png",
+            "https://falserverless.storage.googleapis.com/files/synthetic/out.png",
+            "https://fal.ai/files/synthetic/out.png",
+            "https://cdn.fal.ai/files/synthetic/out.png"
         )
         for (url in urls) {
             FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"), result = {
@@ -261,12 +277,15 @@ class FalImageEditProviderTest {
                 val result = h.provider().submit(request()).await(maxPolls = 200) as EditOutcome.Failed
                 assertEquals(url, "RESULT_HOST_REJECTED", result.message)
                 assertTrue(h.calls("GET").none { it.path.startsWith("/files/") })
+                assertTrue(url, h.output.listFiles().orEmpty().isEmpty())
             }
         }
         assertTrue(FalImageEditProvider.isFalMediaHost("fal.media"))
         assertTrue(FalImageEditProvider.isFalMediaHost("v3.fal.media"))
         assertFalse(FalImageEditProvider.isFalMediaHost("evilfal.media"))
         assertFalse(FalImageEditProvider.isFalMediaHost("x.fal.media.example"))
+        assertFalse(FalImageEditProvider.isFalMediaHost("storage.googleapis.com"))
+        assertFalse(FalImageEditProvider.isFalMediaHost("fal.ai"))
     }
 
     @Test fun oversizedOrFakeResultImagesAreNeverStored() {
@@ -359,6 +378,137 @@ class FalImageEditProviderTest {
             assertTrue(h.server.requests.isEmpty())
             assertTrue(FalModel.CATALOG.any { it.openWeights })
             assertEquals(FalModel.QWEN_EDIT, FalModel.DEFAULT)
+        }
+    }
+}
+
+/** #431 rev 4 row 6 and addendum A3/A4: send boundary, durable request id, resume without POST. */
+class FalRecoveryTest {
+    private class RecordingJournal(private val allow: Boolean = true) : nl.atlas.gallery.featureaiedit.provider.SubmitJournal {
+        val events = mutableListOf<String>()
+        var handle: nl.atlas.gallery.featureaiedit.provider.RemoteHandle? = null
+        override fun beforeSend(): Boolean { events += "beforeSend"; return allow }
+        override fun remoteAccepted(handle: nl.atlas.gallery.featureaiedit.provider.RemoteHandle) {
+            events += "accepted"; this.handle = handle
+        }
+    }
+
+    @Test fun journalSeesSendBoundaryThenValidatedIdBoundToProviderAndEndpoint() {
+        FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"))).use { h ->
+            val journal = RecordingJournal()
+            val provider = h.provider()
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.RemoteRecovery.QUERY_BY_PERSISTED_ID,
+                provider.capabilities().remoteRecovery)
+            val outcome = provider.submit(request(), journal).await(maxPolls = 200)
+            assertTrue(outcome.toString(), outcome is EditOutcome.Success)
+            assertEquals(listOf("beforeSend", "accepted"), journal.events)
+            val handle = journal.handle!!
+            assertEquals(provider.id, handle.providerId)
+            assertEquals("fal-ai/qwen-image-edit-2511", handle.endpoint)
+            assertEquals("req-1", handle.remoteId)
+            assertNull("the adapter never fingerprints or stores the key", handle.keyFingerprint)
+            assertFalse(handle.toString().contains("req-1"))
+        }
+    }
+
+    @Test fun refusedSendStopsBeforeAnyRequest() {
+        FalHarness().use { h ->
+            val outcome = h.provider().submit(request(), RecordingJournal(allow = false)).await(maxPolls = 200)
+            assertEquals(EditOutcome.Cancelled, outcome)
+            assertTrue(h.server.requests.isEmpty())
+        }
+    }
+
+    @Test fun lostSubmitReplyIsUncertainAndNeverReplayed() {
+        FalHarness(FakeFalQueue(submit = { FakeResponse(200, dropConnection = true) })).use { h ->
+            val journal = RecordingJournal()
+            val failed = h.provider().submit(request(), journal).await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, failed.delivery)
+            assertEquals(listOf("beforeSend"), journal.events)
+            assertEquals(1, h.calls("POST").size)
+        }
+    }
+
+    @Test fun answeredSubmitRefusalsAreDefiniteAndRateLimitIsNotCredit() {
+        for ((status, kind) in listOf(402 to FailureKind.BILLING, 429 to FailureKind.QUOTA, 401 to FailureKind.AUTH)) {
+            FalHarness(FakeFalQueue(submit = { FakeResponse.json("""{"detail":"synthetic"}""", status) })).use { h ->
+                val failed = h.provider().submit(request(), RecordingJournal()).await(maxPolls = 200) as EditOutcome.Failed
+                assertEquals(kind, failed.kind)
+                assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.ANSWERED, failed.delivery)
+            }
+        }
+    }
+
+    @Test fun completedWithNoImagesIsUncertainAndKeepsTheChargeWarning() {
+        FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"),
+            result = { FakeResponse.json("""{"images":[],"has_nsfw_concepts":[],"seed":1}""") })).use { h ->
+            val journal = RecordingJournal()
+            val failed = h.provider().submit(request(), journal).await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals("NO_IMAGE", failed.message)
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, failed.delivery)
+            assertEquals(listOf("beforeSend", "accepted"), journal.events)
+            assertEquals(1, h.calls("POST").size)
+            // With the saved id this is the recoverable outcome-unknown card, never a free "couldn't make it".
+            val issue = nl.atlas.gallery.featureaiedit.engine.AiEditIssue.classify(failed, remoteSaved = true)
+            assertEquals(nl.atlas.gallery.featureaiedit.engine.AiEditIssue.UNKNOWN_RECOVERABLE, issue)
+            assertTrue(issue!!.mayHaveCharged)
+            assertEquals(nl.atlas.gallery.featureaiedit.engine.AiEditIssue.UNKNOWN_NONRECOVERABLE,
+                nl.atlas.gallery.featureaiedit.engine.AiEditIssue.classify(failed, remoteSaved = false))
+        }
+    }
+
+    @Test fun failureAfterAcceptanceIsUncertainEvenForAnsweredStatus() {
+        FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"), result = { FakeResponse.json("{}", 402) })).use { h ->
+            val failed = h.provider().submit(request(), RecordingJournal()).await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, failed.delivery)
+        }
+    }
+
+    @Test fun resumeQueriesTheSavedIdWithoutAnyPost() {
+        FalHarness(FakeFalQueue(statuses = listOf("IN_PROGRESS", "COMPLETED"))).use { h ->
+            val provider = h.provider()
+            val handle = nl.atlas.gallery.featureaiedit.provider.RemoteHandle(provider.id, "fal-ai/qwen-image-edit-2511", "req-1")
+            val outcome = provider.resume(handle)!!.await(maxPolls = 200)
+            assertTrue(outcome.toString(), outcome is EditOutcome.Success)
+            assertTrue(h.calls("POST").isEmpty())
+            assertTrue(h.calls("GET").any { it.path == "/fal-ai/qwen-image-edit-2511/requests/req-1/status" })
+        }
+    }
+
+    @Test fun resumeRefusesForeignOrMalformedHandles() {
+        FalHarness().use { h ->
+            val provider = h.provider()
+            val ok = nl.atlas.gallery.featureaiedit.provider.RemoteHandle(provider.id, "fal-ai/qwen-image-edit-2511", "req-1")
+            assertNull(provider.resume(ok.copy(providerId = "gemini:gemini-3.1-flash-image")))
+            assertNull(provider.resume(ok.copy(endpoint = "fal-ai/flux-pro/kontext")))
+            assertNull(provider.resume(ok.copy(remoteId = "../other")))
+            assertNull(provider.resume(ok.copy(candidates = 0)))
+            assertTrue(h.server.requests.isEmpty())
+        }
+    }
+
+    @Test fun resumeLookupRefusedOrKeyRemovedIsCannotCheckNeverWrongKey() {
+        for (status in listOf(401, 403, 404)) {
+            FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"))).use { h ->
+                val server = FakeProviderServer { FakeResponse.json("{}", status) }
+                server.use {
+                    val provider = FalImageEditProvider(model = FalModel.QWEN_EDIT, apiKey = { FAKE_KEY }, images = h.loader,
+                        outputDirectory = h.output, exchange = TransportFalExchange(server.transport()),
+                        timing = FalTiming(pollWaitMs = 50, statusIntervalMs = 10, connectTimeoutMs = 1_000,
+                            readTimeoutMs = 2_000, callTimeoutMs = 5_000, jobTimeoutMs = 10_000))
+                    val handle = nl.atlas.gallery.featureaiedit.provider.RemoteHandle(provider.id, "fal-ai/qwen-image-edit-2511", "req-1")
+                    val failed = provider.resume(handle)!!.await(maxPolls = 200) as EditOutcome.Failed
+                    assertEquals("status $status", FailureKind.CANNOT_CHECK, failed.kind)
+                    assertTrue(server.requests.none { it.method == "POST" })
+                }
+            }
+        }
+        FalHarness().use { h ->
+            val provider = h.provider(key = null)
+            val handle = nl.atlas.gallery.featureaiedit.provider.RemoteHandle(provider.id, "fal-ai/qwen-image-edit-2511", "req-1")
+            val failed = provider.resume(handle)!!.await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals(FailureKind.CANNOT_CHECK, failed.kind)
+            assertTrue(h.server.requests.isEmpty())
         }
     }
 }

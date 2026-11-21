@@ -3,21 +3,28 @@ package nl.atlas.gallery
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import nl.atlas.gallery.featureaiedit.save.AiEditLineageStore
-import nl.atlas.gallery.featureaiedit.save.AiEditProvenanceGroup
+import nl.atlas.gallery.featureaiedit.save.AiEditDetails
+import nl.atlas.gallery.featureaiedit.save.aiEditDetailsFor
+import nl.atlas.gallery.featuredesign.darkGalleryColors
 
 internal data class ViewerDimensions(val width: Int, val height: Int)
 
@@ -70,49 +77,74 @@ internal val LocalViewerDimensionsReader =
     staticCompositionLocalOf { MediaStoreViewerDimensionsReader }
 
 /**
- * Samsung-like ordering: capture date, file name/path, physical file facts,
- * then photo/video camera facts. Only this fully opened sheet reads metadata;
- * the drag preview below stays entirely free of content-provider IO.
+ * #458: reads whether this URI is a saved AI edit, from app-private lineage
+ * and the current MediaStore grant. Tests swap it through
+ * [LocalAiEditDetailsReader] to hold the loading state or fail like a revoked
+ * grant; the sheet treats any failure as "no marker".
  */
-@OptIn(ExperimentalMaterial3Api::class)
+internal fun interface AiEditDetailsReader {
+    suspend fun read(context: Context, uri: String): AiEditDetails?
+}
+
+internal val LineageAiEditDetailsReader = AiEditDetailsReader { context, uri ->
+    withContext(Dispatchers.IO) {
+        val store = AiEditLineageStore(context.applicationContext)
+        // Only show media still readable under the current grant.
+        fun visible(candidate: String): Boolean = try {
+            context.contentResolver.query(
+                Uri.parse(candidate), arrayOf(MediaStore.MediaColumns._ID),
+                null, null, null
+            )?.use { it.moveToFirst() } == true
+        } catch (_: RuntimeException) { false }
+        aiEditDetailsFor(uri, store.get(uri), store::all, ::visible)
+    }
+}
+
+internal val LocalAiEditDetailsReader =
+    staticCompositionLocalOf { LineageAiEditDetailsReader }
+
+/**
+ * Samsung-like ordering: capture date, file name/path, physical file facts,
+ * then photo/video camera facts.
+ *
+ * #details-motion: this is the ONE details surface. The viewer composes it
+ * from the first pixel of a swipe-up and keeps the same node until it is
+ * closed, so nothing is swapped mid-gesture. Provider reads (dimensions,
+ * EXIF, AI lineage) start only once [loadMetadata] is true, i.e. when the
+ * user committed to opening Details; a gesture that merely starts never
+ * touches MediaStore. Until then the rows come from the catalogue record.
+ */
 @Composable
-internal fun ViewerDetailsSheet(
-    media: MediaRecord, onDismiss: () -> Unit,
+internal fun ViewerDetailsContent(
+    media: MediaRecord,
     /** #553: who is in the photo; null (or no faces) hides the People row. */
     photoPeople: ViewerPhotoPeople? = null,
-    /** Fully open only when requested; normal Details keeps its partial-open gesture. */
-    fullyExpanded: Boolean = false
+    loadMetadata: Boolean = true,
+    scrollState: ScrollState = rememberScrollState(),
+    modifier: Modifier = Modifier
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = fullyExpanded)
     val context = LocalContext.current
     val dimensionsReader = LocalViewerDimensionsReader.current
     val metadataReader = LocalViewerMetadataReader.current
     val facts = remember(media) { viewerDetailsFacts(media) }
-    var provenance by remember(media.uri) { mutableStateOf<AiEditProvenanceGroup?>(null) }
-    LaunchedEffect(media.uri) {
-        provenance = withContext(Dispatchers.IO) {
-            runCatching {
-                val store = AiEditLineageStore(context.applicationContext)
-                // Only show media still readable under the current grant.
-                fun visible(uri: String): Boolean = try {
-                    context.contentResolver.query(
-                        android.net.Uri.parse(uri),
-                        arrayOf(android.provider.MediaStore.MediaColumns._ID),
-                        null, null, null
-                    )?.use { it.moveToFirst() } == true
-                } catch (_: RuntimeException) { false }
-                val parent = store.get(media.uri)
-                if (parent != null && parent.originalUri != media.uri &&
-                    visible(parent.originalUri))
-                    AiEditProvenanceGroup(parent.originalUri, listOf(media.uri))
-                else {
-                    val children = store.all().asSequence()
-                        .filter { it.originalUri == media.uri && it.editedUri != media.uri }
-                        .map { it.editedUri }.distinct().filter(::visible).sorted().toList()
-                    if (children.isEmpty()) null else AiEditProvenanceGroup(media.uri, children)
-                }
-            }.getOrNull()
+    // #458: ordinary Details render at once; the AI marker is added in place
+    // once app-private lineage confirms it. Any failure means no marker.
+    val aiEditReader = LocalAiEditDetailsReader.current
+    // Read once per photo and reader. A surface grabbed while closing drops
+    // loadMetadata and regains it on reopen; the known answer is kept rather
+    // than cleared and re-read, so the marker row never blinks out (#682).
+    var aiEdit by remember(media.uri, aiEditReader) { mutableStateOf<AiEditDetails?>(null) }
+    var aiEditRead by remember(media.uri, aiEditReader) { mutableStateOf(false) }
+    LaunchedEffect(media.uri, aiEditReader, loadMetadata) {
+        if (!loadMetadata || aiEditRead) return@LaunchedEffect
+        aiEdit = try {
+            aiEditReader.read(context, media.uri)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
         }
+        aiEditRead = true
     }
     var dimensions by remember(media.uri, media.modifiedAtSeconds) {
         mutableStateOf<ViewerDimensions?>(null)
@@ -123,40 +155,30 @@ internal fun ViewerDetailsSheet(
     var metadata by remember(media.uri, media.modifiedAtSeconds, media.generationModified) {
         mutableStateOf<ViewerExtendedMetadata?>(null)
     }
-    LaunchedEffect(media.uri, media.modifiedAtSeconds, dimensionsReader) {
-        queryFinished = false
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, dimensionsReader, loadMetadata) {
+        if (!loadMetadata || queryFinished) return@LaunchedEffect
         dimensions = dimensionsReader.read(context, media.uri)
         queryFinished = true
     }
-    LaunchedEffect(media.uri, media.modifiedAtSeconds, media.generationModified, metadataReader) {
-        metadata = null
+    LaunchedEffect(media.uri, media.modifiedAtSeconds, media.generationModified,
+        metadataReader, loadMetadata) {
+        if (!loadMetadata || metadata != null) return@LaunchedEffect
         metadata = metadataReader.read(context, media)
     }
     val displayedDimensions = dimensions ?: media.takeIf {
         it.widthPixels > 0 && it.heightPixels > 0
     }?.let { ViewerDimensions(it.widthPixels, it.heightPixels) }
-    val ink = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val capture = viewerCaptureDateMillis(facts, metadata)
     val cameraRows = if (media.isVideo) emptyList() else viewerCameraRows(metadata)
     val videoRows = if (media.isVideo) {
         viewerVideoRows(metadata, media.durationMillis)
     } else emptyList()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = ink,
-        modifier = Modifier.testTag("atlas-viewer-details")
+    Column(
+        modifier.fillMaxSize().verticalScroll(scrollState)
+            .padding(horizontal = 24.dp)
+            .padding(top = 20.dp, bottom = 36.dp)
     ) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                // The scrollable rows clear the 3-button navigation area
-                // even with a viewer sheet drawn edge-to-edge (#680).
-                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                .padding(bottom = 36.dp)
-        ) {
             Text("Details", color = muted, style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(12.dp))
             capture?.let {
@@ -171,7 +193,8 @@ internal fun ViewerDetailsSheet(
                 Spacer(Modifier.height(16.dp))
             }
             ViewerDetailRow("Name", facts.filename)
-            provenance?.let { group ->
+            if (aiEdit?.editedWithAi == true) ViewerAiEditedRow()
+            aiEdit?.group?.let { group ->
                 if (group.originalUri == media.uri) {
                     ViewerDetailRow("AI versions (${group.editedUris.size})", "Saved AI edits")
                 } else {
@@ -213,9 +236,41 @@ internal fun ViewerDetailsSheet(
                         .format(Date(it))
                 })
             }
+    }
+}
+
+/**
+ * The details surface itself: the viewer's black ground, continuing below
+ * the photo (Quiet Frame: viewer ground #000000), with the Details rows on
+ * it. No sheet window, scrim, handle or corner shape that could change
+ * between the drag and the settled state. The rows' scroll viewport ends
+ * above the navigation bar while the ground runs to the screen edge (#680).
+ * [contentAlpha] is read in the draw phase only, so a drag never recomposes
+ * the rows (Samsung fades its rows in over the second half of the slide).
+ */
+@Composable
+internal fun ViewerDetailsSurface(
+    media: MediaRecord,
+    modifier: Modifier = Modifier,
+    photoPeople: ViewerPhotoPeople? = null,
+    loadMetadata: Boolean = true,
+    contentAlpha: () -> Float = { 1f }
+) {
+    MaterialTheme(colorScheme = darkGalleryColors, typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Box(modifier.background(VIEWER_DETAILS_GROUND)
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) {
+                ViewerDetailsContent(media, photoPeople, loadMetadata,
+                    modifier = Modifier.graphicsLayer { alpha = contentAlpha() }
+                        .testTag("atlas-details-content"))
+            }
         }
     }
 }
+
+/** Quiet Frame viewer ground: the details continue the viewer's black. */
+internal val VIEWER_DETAILS_GROUND = Color.Black
 
 @Composable
 private fun ViewerDetailRow(label: String, value: String) {
@@ -230,18 +285,20 @@ private fun ViewerDetailRow(label: String, value: String) {
 }
 
 /**
- * The same presentation facts as the full details sheet, without a provider
- * query: a live drag must show content without triggering MediaStore access.
+ * #458: one plain-text row, read by TalkBack as the whole phrase. Not a
+ * button and not colour-coded; it sits between Name and "Edited from…".
  */
 @Composable
-internal fun ViewerDetailsPreview(media: MediaRecord) {
-    val facts = remember(media) { viewerDetailsFacts(media) }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)
-        .testTag("atlas-details-drag-content")) {
-        Text("Details", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
-        ViewerDetailRow("Name", facts.filename)
-        ViewerDetailRow("Type", facts.kind)
-        ViewerDetailRow("Album", facts.album)
+private fun ViewerAiEditedRow() {
+    // One TalkBack stop that reads the whole phrase.
+    Column(Modifier.fillMaxWidth().padding(vertical = 9.dp)
+        .semantics(mergeDescendants = true) {}
+        .testTag("atlas-details-ai-edited")) {
+        Text(AI_EDITED_LABEL, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface)
     }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
+
+/** #458: the one user-facing phrase for a saved AI edit (Details and Photo DNA). */
+internal const val AI_EDITED_LABEL = "Edited with AI"

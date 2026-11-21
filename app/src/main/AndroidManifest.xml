@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <!-- #183/#191: only user-initiated AI Edit (featureaiedit/**) may use the network.
-         Indexing, People and search stay on-device; see test/additive-regressions/network-scope-191.mjs. -->
+         Indexing, People and search stay on-device; see test/additive-regressions/network-scope-191.mjs.
+         The Swap person model setup (#619) fetches through featureaiedit/network/ after the user's tap. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- #619: the one-time Swap person model download runs as WorkManager foreground work
+         (dataSync) with a progress notification and Cancel. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:name=".AtlasApplication"
         android:allowBackup="false"
@@ -14,7 +20,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="ATLAS"
-        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:theme="@style/Theme.Atlas.Launch"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
@@ -24,6 +30,55 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- #573 Phase B: other apps and the camera hand ATLAS photos and videos.
+                 MainActivity re-checks every one (featureintents): content:// only,
+                 provider MIME type, live grant; secure review alone shows over the
+                 lock screen. The filters only make ATLAS a listed choice. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="image/*" />
+                <data android:scheme="content" android:mimeType="video/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.provider.action.REVIEW" />
+                <action android:name="android.provider.action.REVIEW_SECURE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="image/*" />
+                <data android:scheme="content" android:mimeType="video/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+            <!-- ACTION_PICK names a MediaStore collection; its resolved type is the cursor dir type. -->
+            <intent-filter>
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="vnd.android.cursor.dir/image" />
+                <data android:mimeType="vnd.android.cursor.dir/video" />
+            </intent-filter>
         </activity>
+        <!-- Export #45 shares only an explicitly generated aggregate text report. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.diagnostics"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/atlas_diagnostics_file_paths" />
+        </provider>
+        <!-- #619: WorkManager declares this service without a type; Android 14+ needs one for
+             foreground work. dataSync is the model download's type. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 </manifest>

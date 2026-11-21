@@ -72,7 +72,7 @@ fun HideAlbumsScreen(
                 })
         })
         if (albums == null) {
-            AtlasGalleryLoading("Gathering albums on this device…")
+            AtlasGalleryLoading("Loading albums…", bottomInset = 0.dp)
             return@Column
         }
         LazyVerticalGrid(

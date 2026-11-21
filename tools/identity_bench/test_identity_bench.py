@@ -7,6 +7,7 @@ import os
 import re
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 import numpy as np
@@ -26,6 +27,50 @@ else:  # run as a file path: python3 -m unittest tools/identity_bench/test_ident
     from tools.identity_bench import __main__ as cli
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+class LicenceAdmission(unittest.TestCase):
+    def test_every_known_model_has_an_explicit_bench_admission_decision(self):
+        known = set(pipeline.MODELS) | set(pipeline.LOCAL_MODELS) | set(pipeline.SHIPPED_MODELS)
+        self.assertEqual(known, pipeline.BENCH_ALLOWED | pipeline.BENCH_BLOCKED)
+        self.assertFalse(pipeline.BENCH_ALLOWED & pipeline.BENCH_BLOCKED)
+
+    def test_alphaface_is_refused_before_cache_or_download(self):
+        with mock.patch.object(pipeline, "cache_dir", side_effect=AssertionError("cache accessed")), \
+             mock.patch.object(pipeline, "_download", side_effect=AssertionError("network accessed")):
+            with self.assertRaisesRegex(PermissionError, r"LICENCES\.md.*author permission"):
+                pipeline.Config("alphaface_256")
+            with self.assertRaisesRegex(PermissionError, r"LICENCES\.md.*author permission"):
+                pipeline.model_path("alphaface_256")
+
+    def test_unknown_models_fail_closed(self):
+        with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+            pipeline.require_bench_model("new_unreviewed_model")
+        with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+            pipeline.model_path("new_unreviewed_model", fetch=False)
+
+    def test_permitted_research_paths_include_converters_and_separate_judge(self):
+        for model in ("inswapper_128", "hyperswap_1a_256", "arcface_w600k_r50",
+                      "crossface_simswap", "crossface_ghost", "glintr100",
+                      "ghost_backbone_fp32", "gfpgan_1.4"):
+            pipeline.require_bench_model(model)
+        ghost = pipeline.candidate_dependencies(pipeline.Config("ghost_1_256"))
+        simswap = pipeline.candidate_dependencies(pipeline.Config("simswap_256"))
+        exported = pipeline.candidate_dependencies(pipeline.Config("ghost1_generator_fp32"))
+        self.assertIn("crossface_ghost", ghost)
+        self.assertIn("crossface_simswap", simswap)
+        self.assertIn("ghost_backbone_fp32", exported)
+        self.assertIn("glintr100", ghost)
+        self.assertNotIn("crossface_ghost", exported)
+
+    def test_candidate_mask_and_restoration_dependencies_are_checked(self):
+        deps = pipeline.candidate_dependencies(
+            pipeline.Config("inswapper_128", mask="mp", restore=True))
+        self.assertIn("selfie_multiclass_256", deps)
+        self.assertIn("gfpgan_1.4", deps)
+        self.assertNotIn("bisenet_resnet_34", deps)
+        with self.assertRaises(ValueError):
+            pipeline.Config("ghost_1_256", mask="unregistered")
 
 
 def photo(seed=1, h=240, w=320):
@@ -454,7 +499,7 @@ class Report(unittest.TestCase):
         self.assertTrue(verdict_good.rstrip().endswith("pass |"))
 
     def test_labels_round_trip(self):
-        for config in cli.final_candidates() + [pipeline.Config("inswapper_128", boost=2, mask="mp", restore=True)]:
+        for config in [pipeline.Config(name) for name in cli.FINALISTS if name != "alphaface_256"] + [pipeline.Config("inswapper_128", boost=2, mask="mp", restore=True)]:
             self.assertEqual(cli.parse_label(config.label), config)
         with self.assertRaises(ValueError):
             cli.parse_label("inswapper_128+turbo")

@@ -9,6 +9,15 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import androidx.activity.ComponentActivity
+import android.util.Log
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.onMainThread
+import nl.atlas.gallery.testkit.rootViews
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -22,6 +31,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
+import android.provider.Settings
 
 /** Works with isolated synthetic metadata; never requires the user's photos. */
 @RunWith(AndroidJUnit4::class)
@@ -369,10 +379,46 @@ class ViewerInteractionTest {
         saveUiEvidence("viewer-509-after-scrub.png")
     }
 
+    /**
+     * #781: do not gesture into a Compose tree until its Activity is RESUMED,
+     * the root view is attached, and the pager has actually composed. The
+     * previous failure was "No compose hierarchies found" in shard 1.
+     * Record lifecycle/root transitions, including the last state on timeout.
+     */
+    private fun awaitSwipeViewerReady() {
+        var previous = ""
+        try {
+            rule.awaitThat("resumed viewer Activity, attached Compose root, and pager") {
+                val resumed = onMainThread {
+                    ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(Stage.RESUMED)
+                        .any { it is ComponentActivity }
+                }
+                val roots = rule.rootViews()
+                val attached = roots.any { view ->
+                    onMainThread { view.isAttachedToWindow && view.width > 0 && view.height > 0 }
+                }
+                val pager = rule.exists(hasTestTag("atlas-main-pager"))
+                val state = "resumed=$resumed roots=${roots.size} attached=$attached pager=$pager"
+                if (state != previous) {
+                    Log.i("ATLAS_EVIDENCE", "viewer-781 first-compose $state")
+                    previous = state
+                }
+                resumed && attached && pager
+            }
+        } catch (failure: AssertionError) {
+            throw AssertionError("${failure.message}; last lifecycle/Compose-root state: $previous", failure)
+        }
+        rule.awaitWindowSettled()
+        rule.onNodeWithTag("atlas-main-pager").assertIsDisplayed()
+        rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("11 of 64")
+    }
+
     /** #509 (Lukas 2026-11-10): Samsung's swipe up on a photo shows its details. */
     @Test fun swipeUpOnPhotoOpensDetails() {
         val media = fixtures()
         rule.setContent { AtlasEvidenceHarness(edgeToEdge = true) { GalleryViewer(media, media[10].uri) {} } }
+        awaitSwipeViewerReady()
         rule.onNodeWithTag("atlas-main-pager").performTouchInput {
             swipeUp(startY = height * .75f, endY = height * .35f, durationMillis = 250)
         }
@@ -466,4 +512,317 @@ class ViewerInteractionTest {
     private val thumbnailTile = SemanticsMatcher("filmstrip tile") {
         it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-thumbnail-") == true
     }
+
+    /**
+     * The CI emulator boots with disable-animations=true for deterministic gesture tests.
+     * Enable animator duration for this motion-only timeline; otherwise the production
+     * reduced-motion path correctly cuts to the destination and no ease can be captured.
+     * Restore the original global scale even if an assertion fails.
+     * Synthetic emulator instrumentation only: never a real user's phone.
+     */
+    private fun withSystemAnimationScale(scale: Float, block: () -> Unit) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val resolver = instrumentation.targetContext.contentResolver
+        val previous = Settings.Global.getFloat(
+            resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        fun setScale(scale: Float) {
+            val automation = instrumentation.uiAutomation
+            automation.adoptShellPermissionIdentity(android.Manifest.permission.WRITE_SECURE_SETTINGS)
+            try {
+                check(Settings.Global.putFloat(
+                    resolver, Settings.Global.ANIMATOR_DURATION_SCALE, scale)) {
+                    "Unable to configure isolated emulator animator duration scale"
+                }
+            } finally {
+                automation.dropShellPermissionIdentity()
+            }
+        }
+        setScale(scale)
+        try {
+            block()
+        } finally {
+            setScale(previous)
+        }
+    }
+
+    private fun withSystemAnimationsEnabled(block: () -> Unit) =
+        withSystemAnimationScale(1f, block)
+
+    private fun currentViewerIndex(): Int = rule.onNodeWithTag("atlas-photo-counter")
+        .fetchSemanticsNode().config[SemanticsProperties.Text]
+        .joinToString("") { it.text }.substringBefore(" of ").toInt() - 1
+
+    private fun thumbnailDistanceFromCentre(index: Int): Float {
+        val strip = rule.onNodeWithTag("atlas-filmstrip").fetchSemanticsNode().boundsInRoot
+        val tile = rule.onNodeWithTag("atlas-thumbnail-$index").fetchSemanticsNode().boundsInRoot
+        return kotlin.math.abs(strip.center.x - tile.center.x)
+    }
+
+    private fun assertViewerTileCentered(index: Int) {
+        val tile = rule.onNodeWithTag("atlas-thumbnail-$index")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Tile $index must finish at the strip centre",
+            thumbnailDistanceFromCentre(index) < tile.width * .25f)
+        rule.onNodeWithTag("atlas-thumbnail-$index").assertIsSelected()
+        assertEquals(index, currentViewerIndex())
+    }
+
+    /** FLOW-5 (#714): emulator captures are synthetic, not physical S24+ observations. */
+    private fun captureThumbnailTapTimeline(dark: Boolean) = withSystemAnimationsEnabled {
+        val media = fixtures()
+        rule.setContent {
+            AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
+                GalleryViewer(media, media[10].uri) {}
+            }
+        }
+        rule.waitForIdle()
+        awaitViewerDrawn()
+        rule.mainClock.autoAdvance = false
+        try {
+            fun distanceFromCentre(): Float {
+                val center = rule.onNodeWithTag("atlas-filmstrip")
+                    .fetchSemanticsNode().boundsInRoot.center.x
+                val tile = rule.onNodeWithTag("atlas-thumbnail-13")
+                    .fetchSemanticsNode().boundsInRoot
+                return kotlin.math.abs(center - tile.center.x)
+            }
+
+            val theme = if (dark) "dark" else "light"
+            saveUiEvidence("viewer-714-$theme-tap-000.png")
+            rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+            // Advance one UI frame for the selection effect. A thumbnail
+            // request does NOT animate pages 11 and 12 to reach page 13.
+            rule.mainClock.advanceTimeByFrame()
+            rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+            rule.onNodeWithTag("atlas-thumbnail-13").assertIsSelected()
+            var previousDistance = distanceFromCentre()
+            assertTrue("First animation frame teleported to destination",
+                previousDistance > 1f)
+            saveUiEvidence("viewer-714-$theme-tap-016.png")
+
+            for ((atMs, deltaMs) in listOf(65L to 49L, 130L to 65L,
+                195L to 65L, 260L to 65L, 300L to 40L)) {
+                rule.mainClock.advanceTimeBy(deltaMs)
+                val distance = distanceFromCentre()
+                assertTrue("Strip reversed or teleported at ${atMs}ms: ${distance} > ${previousDistance}",
+                    distance <= previousDistance + 2f)
+                previousDistance = distance
+                saveUiEvidence("viewer-714-$theme-tap-${atMs.toString().padStart(3, '0')}.png")
+            }
+            val tile = rule.onNodeWithTag("atlas-thumbnail-13")
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue("The tapped tile must finish centred", previousDistance < tile.width * .25f)
+            rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+        } finally {
+            rule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test fun thumbnailTapEasesStripWithoutPagingThroughPhotosDark() =
+        captureThumbnailTapTimeline(dark = true)
+
+    @Test fun thumbnailTapEasesStripWithoutPagingThroughPhotosLight() =
+        captureThumbnailTapTimeline(dark = false)
+
+    /**
+     * #714: a real finger-down, before touch slop, interrupts an in-flight
+     * programmatic scroll. Keeping the finger held must freeze that offset,
+     * not silently complete the old tap. Screenshot contains synthetic media.
+     */
+    @Test fun thumbnailEaseStopsOnFirstPhysicalStripDownBeforeTouchSlop() =
+        withSystemAnimationsEnabled {
+            val media = fixtures()
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[10].uri) {}
+                }
+            }
+            awaitViewerDrawn()
+            rule.mainClock.autoAdvance = false
+            try {
+                rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+                rule.mainClock.advanceTimeBy(65L)
+                rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+                val moving = thumbnailDistanceFromCentre(13)
+                assertTrue("Tap already settled before touch-down", moving > 2f)
+
+                // Do not release: no click or fling may mask the first-down signal.
+                rule.onNodeWithTag("atlas-filmstrip").performTouchInput { down(center) }
+                rule.mainClock.advanceTimeByFrame()
+                val held = thumbnailDistanceFromCentre(13)
+                rule.mainClock.advanceTimeBy(300L)
+                val after = thumbnailDistanceFromCentre(13)
+                val tileWidth = rule.onNodeWithTag("atlas-thumbnail-13")
+                    .fetchSemanticsNode().boundsInRoot.width
+                assertTrue("An obsolete strip ease continued while finger was held",
+                    kotlin.math.abs(after - held) < tileWidth * .3f)
+                assertTrue("Interrupt unexpectedly snapped the strip to destination",
+                    after > tileWidth * .3f)
+                rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+                saveUiEvidence("viewer-714-interrupt-strip-down.png")
+                rule.onNodeWithTag("atlas-filmstrip").performTouchInput { up() }
+            } finally {
+                rule.mainClock.autoAdvance = true
+            }
+        }
+
+    /** #714: the pager drag owns the gesture after the earliest pointer down. */
+    @Test fun pagerSwipeTakesOwnershipOfInFlightThumbnailEase() =
+        withSystemAnimationsEnabled {
+            val media = fixtures()
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[10].uri) {}
+                }
+            }
+            awaitViewerDrawn()
+            rule.mainClock.autoAdvance = false
+            try {
+                rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+                rule.mainClock.advanceTimeBy(65L)
+                rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+                rule.onNodeWithTag("atlas-main-pager").performTouchInput {
+                    swipeLeft(durationMillis = 220)
+                }
+            } finally {
+                rule.mainClock.autoAdvance = true
+            }
+            rule.waitForIdle()
+            assertTrue("Pager swipe lost control to the obsolete strip tap",
+                currentViewerIndex() > 13)
+            assertViewerTileCentered(currentViewerIndex())
+            saveUiEvidence("viewer-714-interrupt-pager-drag.png")
+        }
+
+    /** #714: a second tap reverses from the actual partly rendered offset. */
+    @Test fun newestTapReversesFromPartlyRenderedFilmstripPosition() =
+        withSystemAnimationsEnabled {
+            val media = fixtures()
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[10].uri) {}
+                }
+            }
+            awaitViewerDrawn()
+            rule.mainClock.autoAdvance = false
+            try {
+                rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+                rule.mainClock.advanceTimeBy(65L)
+                val before = rule.onNodeWithTag("atlas-thumbnail-10")
+                    .fetchSemanticsNode().boundsInRoot.center.x
+                rule.onNodeWithTag("atlas-thumbnail-9").performClick()
+                rule.mainClock.advanceTimeByFrame()
+                rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("10 of 64")
+                val after = rule.onNodeWithTag("atlas-thumbnail-10")
+                    .fetchSemanticsNode().boundsInRoot.center.x
+                val width = rule.onNodeWithTag("atlas-thumbnail-10")
+                    .fetchSemanticsNode().boundsInRoot.width
+                assertTrue("Second tap teleported the strip before its first frame",
+                    kotlin.math.abs(after - before) < width * 1.5f)
+                assertTrue("Second tap falsely landed instantly",
+                    thumbnailDistanceFromCentre(9) > 1f)
+                saveUiEvidence("viewer-714-interrupt-new-tap.png")
+                rule.mainClock.advanceTimeBy(320L)
+                assertViewerTileCentered(9)
+            } finally {
+                rule.mainClock.autoAdvance = true
+            }
+        }
+
+    /** #714: system animator scale 0 must bypass every intermediate frame. */
+    @Test fun removeAnimationsCutsToLastAndFirstFilmstripTile() =
+        withSystemAnimationScale(0f) {
+            val media = fixtures()
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[61].uri) {}
+                }
+            }
+            awaitViewerDrawn()
+            rule.onNodeWithTag("atlas-thumbnail-63").performClick()
+            rule.waitForIdle()
+            assertViewerTileCentered(63)
+            rule.onNodeWithTag("atlas-thumbnail-61").performClick()
+            rule.waitForIdle()
+            assertViewerTileCentered(61)
+            saveUiEvidence("viewer-714-reduced-motion-edge.png")
+        }
+
+    /** #714: small albums must not scroll past the first/last slot. */
+    @Test fun twoPhotoFilmstripTapPreservesBounds() = withSystemAnimationsEnabled {
+        val media = fixtures().take(2)
+        rule.setContent {
+            AtlasEvidenceHarness(edgeToEdge = true) { GalleryViewer(media, media[0].uri) {} }
+        }
+        rule.onNodeWithTag("atlas-thumbnail-1").performClick()
+        rule.waitForIdle()
+        assertViewerTileCentered(1)
+        rule.onNodeWithTag("atlas-thumbnail-0").performClick()
+        rule.waitForIdle()
+        assertViewerTileCentered(0)
+    }
+
+    /** #714: large synthetic index space is virtualized; 150k arithmetic is JVM-tested. */
+    @Test fun largeSyntheticListTapDoesNotPageThroughIntermediatePhotos() =
+        withSystemAnimationsEnabled {
+            val source = fixtures()
+            val media = List(2_048) { source[it % source.size] }
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[0].uri) {}
+                }
+            }
+            rule.onNodeWithTag("atlas-thumbnail-3").performClick()
+            rule.waitForIdle()
+            rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("4 of 2048")
+            assertViewerTileCentered(3)
+        }
+
+    /**
+     * #714: auditable frame/request trace, not an inference from source code.
+     * A selected photo may issue its base request once; intermediate pages
+     * must not request previews/decodes on successive strip animation frames.
+     * A real Coil Loading transition is recorded separately from model creation.
+     */
+    @Test fun tapEaseFramesDoNotDrivePagerOrPerFramePhotoRequests() =
+        withSystemAnimationsEnabled {
+            val media = fixtures()
+            val trace = ViewerFilmstripMotionProbe()
+            rule.setContent {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    GalleryViewer(media, media[10].uri, motionProbe = trace) {}
+                }
+            }
+            awaitViewerDrawn()
+            rule.mainClock.autoAdvance = false
+            try {
+                rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+                rule.mainClock.advanceTimeByFrame()
+                rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+                val before = trace.snapshot()
+                repeat(16) { rule.mainClock.advanceTimeBy(16L) }
+                val after = trace.snapshot()
+                val frames = after.stripFrames - before.stripFrames
+                val focusedCompositions =
+                    after.compositionsAt(13) - before.compositionsAt(13)
+                val focusedRequests = after.requestsAt(13) - before.requestsAt(13)
+                val focusedLoading = after.loadingAt(13) - before.loadingAt(13)
+                println("FLOW5_TRACE frames=$frames focusedPageCompositions=$focusedCompositions " +
+                    "focusedPhotoRequests=$focusedRequests focusedPreviewLoading=$focusedLoading")
+                assertTrue("Animation produced no inspectable strip frames: $frames", frames >= 8)
+                assertTrue("Pager re-composed for each strip frame: $focusedCompositions/$frames",
+                    focusedCompositions < frames)
+                assertTrue("Focused photo requested a new decode for every strip frame",
+                    focusedRequests <= 1 && focusedLoading <= 1)
+                for (middle in 11..12) {
+                    assertEquals("Intermediate page $middle started a photo request",
+                        0, after.requestsAt(middle) - before.requestsAt(middle))
+                    assertEquals("Intermediate page $middle began a preview load",
+                        0, after.loadingAt(middle) - before.loadingAt(middle))
+                }
+                assertViewerTileCentered(13)
+            } finally {
+                rule.mainClock.autoAdvance = true
+            }
+        }
 }

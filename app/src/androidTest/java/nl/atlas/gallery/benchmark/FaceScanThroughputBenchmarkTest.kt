@@ -84,14 +84,19 @@ class FaceScanThroughputBenchmarkTest {
         InstrumentationRegistry.getArguments().getString(ARG) == "true"
 
     /** One setup: ORT intra-op threads of YuNet and SFace. */
-    private data class Setup(val threads: Int)
+    private data class Setup(val threads: Int, val quality: Boolean = true)
 
     private val production = Setup(FaceOnnxThreads.intraOp)
     private val setups = linkedMapOf(
         "warmup" to Setup(2),
         "before" to Setup(2),
         "after" to production,
-        "before_again" to Setup(2)
+        "before_again" to Setup(2),
+        // COVER-0b: same ORT threads, same synthetic source, separate fresh
+        // stores; off/on/off order exposes thermal or cache drift.
+        "quality_off" to Setup(FaceOnnxThreads.intraOp, quality = false),
+        "quality_on" to Setup(FaceOnnxThreads.intraOp, quality = true),
+        "quality_off_again" to Setup(FaceOnnxThreads.intraOp, quality = false)
     )
 
     private class Timers {
@@ -113,6 +118,16 @@ class FaceScanThroughputBenchmarkTest {
             val runs = JSONObject()
             for ((name, setup) in setups) runs.put(name, inProcess(rows, setup).put("setup", setup.toString()))
             report.put("in_process", runs)
+            val offA = runs.getJSONObject("quality_off").getDouble("photos_per_s_exact")
+            val offB = runs.getJSONObject("quality_off_again").getDouble("photos_per_s_exact")
+            val on = runs.getJSONObject("quality_on").getDouble("photos_per_s_exact")
+            val baseline = (offA + offB) / 2.0
+            val regression = if (baseline > 0.0) 100.0 * (1.0 - on / baseline)
+                else Double.NaN
+            report.put("quality_regression_percent", regression)
+                .put("quality_within_5pct", regression.isFinite() && regression <= 5.0)
+                .put("quality_off_drift_percent",
+                    if (offA > 0.0) 100.0 * (offB / offA - 1.0) else Double.NaN)
             report.put("workmanager", workManager(rows, production))
         } finally {
             for (row in rows) target.contentResolver.delete(Uri.parse(row.uri), null, null)
@@ -201,12 +216,17 @@ class FaceScanThroughputBenchmarkTest {
             t.faces.addAndGet(faces.size.toLong())
             faces.map { face ->
                 val e0 = System.nanoTime()
-                val embedding = embedder.embed(bitmap, face)
+                val (embedding, quality) = if (setup.quality) {
+                    embedder.embedWithQuality(bitmap, face,
+                        (frame as AndroidBitmapFaceFrame).sourceScale)
+                } else {
+                    embedder.embedWithoutQuality(bitmap, face) to null
+                }
                 t.sfaceNs.addAndGet(System.nanoTime() - e0)
                 FaceEmbeddedDetection(FacePixelBounds(
                     floor(face.left.toDouble()).toInt(), floor(face.top.toDouble()).toInt(),
                     ceil(face.right.toDouble()).toInt(), ceil(face.bottom.toDouble()).toInt()
-                ), embedding.vector)
+                ), embedding.vector, quality)
             }
         }
     }
@@ -250,6 +270,7 @@ class FaceScanThroughputBenchmarkTest {
             .put("faces", t.faces.get())
             .put("wall_ms", Math.round(wallMs))
             .put("photos_per_s", Math.round(processed * 10_000.0 / wallMs) / 10.0)
+            .put("photos_per_s_exact", processed * 1000.0 / wallMs.coerceAtLeast(1.0))
             .put("decode_ms_per_photo", Math.round(decode * 10 / photos) / 10.0)
             .put("yunet_ms_per_photo", Math.round(yunet * 10 / photos) / 10.0)
             .put("sface_ms_per_face", Math.round(sface * 10 / t.faces.get().coerceAtLeast(1)) / 10.0)

@@ -1,0 +1,18 @@
+# IDS-11 (#478): "Swap person" entry points, design brief rev 2. SwapPersonEntry*EvidenceTest
+# drives the real MainActivity at S24+ size (1080x2340, density 450) with synthetic MediaStore
+# fixtures (plain PNGs, a static GIF, a generated clip): light and dark at 100%, light at 200%.
+ids11-selection-more-light-100
+ids11-selection-more-dark-100
+ids11-selection-more-light-200
+ids11-selection-two-light-100
+ids11-selection-two-dark-100
+ids11-selection-two-light-200
+ids11-selection-gif-light-100
+ids11-selection-gif-dark-100
+ids11-selection-video-light-100
+ids11-selection-video-dark-100
+ids11-viewer-menu-light-100
+ids11-viewer-menu-dark-100
+ids11-viewer-menu-light-200
+ids11-flow-from-viewer-light-100
+ids11-flow-from-viewer-dark-100

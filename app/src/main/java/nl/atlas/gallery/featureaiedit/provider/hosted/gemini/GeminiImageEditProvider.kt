@@ -10,6 +10,10 @@ import nl.atlas.gallery.featureaiedit.network.EditHttpTransport
 import nl.atlas.gallery.featureaiedit.provider.Admission
 import nl.atlas.gallery.featureaiedit.provider.AspectRange
 import nl.atlas.gallery.featureaiedit.provider.CostEstimate
+import nl.atlas.gallery.featureaiedit.provider.CostScope
+import nl.atlas.gallery.featureaiedit.provider.Delivery
+import nl.atlas.gallery.featureaiedit.provider.SubmitJournal
+import nl.atlas.gallery.featureaiedit.provider.RemoteRecovery
 import nl.atlas.gallery.featureaiedit.provider.EditExecutionPlan
 import nl.atlas.gallery.featureaiedit.provider.EditJob
 import nl.atlas.gallery.featureaiedit.provider.EditOutcome
@@ -34,6 +38,7 @@ import nl.atlas.gallery.featureaiedit.provider.hosted.hostedFailure
 import nl.atlas.gallery.featureaiedit.provider.hosted.obj
 import nl.atlas.gallery.featureaiedit.provider.hosted.str
 import java.io.File
+import java.time.LocalDate
 import java.util.Base64
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicLong
@@ -98,7 +103,10 @@ class GeminiImageEditProvider(
         // poll() never blocks past pollWaitMs and cancel() closes the socket from any thread.
         supportsAsync = true,
         supportsStreaming = false,
-        estimatedCostPerRequest = model.sizes.firstOrNull()?.price
+        estimatedCostPerRequest = model.sizes.firstOrNull()?.price,
+        // generateContent is one synchronous POST: there is no remote job to look up later, so a
+        // request interrupted after it may have been sent can never be recovered (#431 row 6).
+        remoteRecovery = RemoteRecovery.NONE
     )
 
     override fun estimateCost(request: ImageEditRequest): CostEstimate? {
@@ -106,38 +114,47 @@ class GeminiImageEditProvider(
         return sizeFor(request.output).price
     }
 
-    override fun submit(request: ImageEditRequest): EditJob {
+    override fun submit(request: ImageEditRequest): EditJob = submit(request, SubmitJournal.NONE)
+
+    /** [SubmitJournal.beforeSend] runs right before the one POST; nothing earlier sends anything. */
+    override fun submit(request: ImageEditRequest, journal: SubmitJournal): EditJob {
         val jobId = "gemini-" + nextJob.getAndIncrement()
         val admission = ImageEditRequestValidator.validate(request, capabilities())
         if (admission is Admission.Rejected) {
             return HostedEditJob(jobId, pollWaitMs, DIRECT, {
-                EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, admission.reason.name)
+                EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, admission.reason.name, Delivery.NOT_SENT)
             })
         }
         val plan = (admission as Admission.Accepted).plan
-        return HostedEditJob(jobId, pollWaitMs, executor, { context -> run(jobId, request, plan, context) })
+        return HostedEditJob(jobId, pollWaitMs, executor, { context -> run(jobId, request, plan, context, journal) })
     }
 
     private fun run(
         jobId: String,
         request: ImageEditRequest,
         plan: EditExecutionPlan,
-        context: HostedWorkContext
+        context: HostedWorkContext,
+        journal: SubmitJournal
     ): EditOutcome {
+        // Everything before beforeSend() is local: such failures are proven NOT_SENT.
         val key = apiKey()?.takeIf { it.isNotBlank() }
-            ?: return EditOutcome.Failed(FailureKind.AUTH, false, "NO_API_KEY")
-        if (!results.isUsable) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_OUTPUT_DIRECTORY")
+            ?: return EditOutcome.Failed(FailureKind.AUTH, false, "NO_API_KEY", Delivery.NOT_SENT)
+        if (!results.isUsable) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_OUTPUT_DIRECTORY", Delivery.NOT_SENT)
         val source = images.load(request.source, plan.source)
-            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "SOURCE_UNREADABLE")
+            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "SOURCE_UNREADABLE", Delivery.NOT_SENT)
         val references = request.references.mapIndexed { index, image ->
             images.load(image, plan.references[index])
-                ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "REFERENCE_UNREADABLE")
+                ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "REFERENCE_UNREADABLE", Delivery.NOT_SENT)
         }
         val size = sizeFor(request.output)
         val aspect = aspectFor(request.output)
         val body = GeminiWire.requestBody(request.instruction, listOf(source) + references, aspect.label, size.label)
-            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "UPLOAD_TOO_LARGE")
+            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "UPLOAD_TOO_LARGE", Delivery.NOT_SENT)
         if (context.isCancelled) return EditOutcome.Cancelled
+        val allowed = try { journal.beforeSend() } catch (_: Exception) {
+            return EditOutcome.Failed(FailureKind.UNKNOWN, false, "JOURNAL_UNAVAILABLE", Delivery.NOT_SENT)
+        }
+        if (!allowed || context.isCancelled) return EditOutcome.Cancelled
         // The image comes back base64-encoded inside the JSON reply (about 33 MB at 4K), so the
         // reply is spooled to a hidden app-private file and the image decoded from it in a stream.
         val replyFile = results.newScratchFile(jobId)
@@ -166,7 +183,9 @@ class GeminiImageEditProvider(
         return when (val parsed = GeminiWire.parseReply(root)) {
             is GeminiReply.Malformed -> EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_REPLY")
             is GeminiReply.Blocked -> EditOutcome.Refused(parsed.code, parsed.description)
-            is GeminiReply.NoImage -> EditOutcome.Failed(FailureKind.UNKNOWN, parsed.retryable, parsed.code)
+            // A 2xx without an image (text only, NO_IMAGE, MAX_TOKENS) is not a definite refusal: Gemini
+            // processed the request and may have billed it, so it stays uncertain (addendum A3).
+            is GeminiReply.NoImage -> EditOutcome.Failed(FailureKind.UNKNOWN, parsed.retryable, parsed.code, Delivery.UNCERTAIN)
             is GeminiReply.Image -> {
                 val target = results.newDownloadTarget(jobId, 0)
                 val decoded = when (val data = parsed.data) {
@@ -267,7 +286,10 @@ data class GeminiModel(
         }
         private val COMMON = aspects("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")
         private val WIDE = COMMON + aspects("1:4", "4:1", "1:8", "8:1")
-        private fun usd(cents: Long, note: String) = CostEstimate("USD", cents, note)
+        /** Gemini list prices are per output image; input is charged on top, so never a total. */
+        private val PRICES_OBSERVED: LocalDate = LocalDate.of(2026, 11, 15)
+        private fun usd(cents: Long, note: String) = CostEstimate("USD", cents, note,
+            scope = CostScope.OUTPUT_ONLY, source = "Gemini API pricing (PROVIDERS.md [G2])", observedOn = PRICES_OBSERVED)
         private const val ONE_K = 1_048_576L
         private const val TWO_K = 4_194_304L
         private const val FOUR_K = 16_777_216L
@@ -285,17 +307,22 @@ data class GeminiModel(
             aspectRatios = WIDE
         )
 
-        /** Nano Banana Pro: thinking model for the hardest edits. Preview id, may change. */
+        /**
+         * Nano Banana Pro: thinking model for the hardest edits. Stable (GA) id since
+         * 2026-05-28; the old `gemini-3-pro-image-preview` was shut down 2026-06-25
+         * (ai.google.dev/gemini-api/docs/deprecations, read 2026-11-19, #463).
+         * Pro documents only the ten common aspect ratios: 1:4, 4:1, 1:8, 8:1 are Flash-only.
+         */
         val PRO = GeminiModel(
-            id = "gemini-3-pro-image-preview",
-            displayName = "Nano Banana Pro (preview)",
+            id = "gemini-3-pro-image",
+            displayName = "Nano Banana Pro",
             maxInputImages = 14,
             sizes = listOf(
                 GeminiSize("1K", ONE_K, usd(14, "List price ~US\$0.134 per 1K image plus input (PROVIDERS.md [G2], 2026-11-15)")),
                 GeminiSize("2K", TWO_K, usd(14, "List price ~US\$0.134 per 2K image plus input (PROVIDERS.md [G2], 2026-11-15)")),
                 GeminiSize("4K", FOUR_K, usd(25, "List price ~US\$0.24 per 4K image plus input (PROVIDERS.md [G2], 2026-11-15)"))
             ),
-            aspectRatios = WIDE
+            aspectRatios = COMMON
         )
 
         /** Nano Banana 2 Lite: fastest, up to 3 input images, 1K only. Price not in PROVIDERS.md. */

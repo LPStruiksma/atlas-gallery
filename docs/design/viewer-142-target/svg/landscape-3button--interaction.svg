@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1192.0 444.0" font-family="Inter, Arial, sans-serif" font-size="8">
+<title>PROPOSED gesture priority and TalkBack order — landscape-3button</title>
+<rect width="1192.0" height="444.0" fill="#FFFFFF"/>
+<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED gesture priority and TalkBack order — landscape-3button, video, chrome shown</text>
+<g transform="translate(8,30)">
+<rect width="832.0" height="384.0" fill="#1C1C1E"/>
+<rect x="0.0" y="0.0" width="24.0" height="384.0" fill="#FF453A" opacity="0.35" stroke="#FF453A"/>
+<rect x="808.0" y="0.0" width="24.0" height="384.0" fill="#FF453A" opacity="0.35" stroke="#FF453A"/>
+<rect x="144.92" y="172.0" width="586.6" height="48.0" fill="#BF5AF2" opacity="0.35" stroke="#BF5AF2"/>
+<rect x="44.44" y="232.0" width="739.56" height="76.0" fill="#FF9F0A" opacity="0.35" stroke="#FF9F0A"/>
+<rect x="52.44" y="28.18" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="632.0" y="28.18" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="680.0" y="28.18" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="728.0" y="28.18" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="52.44" y="172.0" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="306.22" y="320.0" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="362.22" y="320.0" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="418.22" y="320.0" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="474.22" y="320.0" width="48.0" height="48.0" fill="#0A84FF" opacity="0.35" stroke="#0A84FF"/>
+<rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="389.72" y="245.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="391.22" y="247.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+<rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="251.4" y="37.18" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="416.0" y="56.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<text x="416.0" y="192.0" text-anchor="middle" fill="#ECEDF0" font-size="10">5 media: tap · double-tap · pinch · swipe</text>
+<rect x="0" y="232.0" width="24" height="76.0" fill="none" stroke="#FFFFFF" stroke-dasharray="2 2"/>
+<rect x="808.0" y="232.0" width="24" height="76.0" fill="none" stroke="#FFFFFF" stroke-dasharray="2 2"/>
+<rect x="0" y="172.0" width="24" height="48.0" fill="none" stroke="#FFFFFF" stroke-dasharray="2 2"/>
+<rect x="808.0" y="172.0" width="24" height="48.0" fill="none" stroke="#FFFFFF" stroke-dasharray="2 2"/>
+<circle cx="76.44" cy="34.18" r="6" fill="#FFFFFF" stroke="#111318"/><text x="76.44" y="37.18" text-anchor="middle" font-size="7" font-weight="700">1</text>
+<circle cx="416.0" cy="47.18" r="6" fill="#FFFFFF" stroke="#111318"/><text x="416.0" y="50.18" text-anchor="middle" font-size="7" font-weight="700">2</text>
+<circle cx="656.0" cy="34.18" r="6" fill="#FFFFFF" stroke="#111318"/><text x="656.0" y="37.18" text-anchor="middle" font-size="7" font-weight="700">3</text>
+<circle cx="704.0" cy="34.18" r="6" fill="#FFFFFF" stroke="#111318"/><text x="704.0" y="37.18" text-anchor="middle" font-size="7" font-weight="700">4</text>
+<circle cx="752.0" cy="34.18" r="6" fill="#FFFFFF" stroke="#111318"/><text x="752.0" y="37.18" text-anchor="middle" font-size="7" font-weight="700">5</text>
+<circle cx="416.0" cy="208.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="416.0" y="211.0" text-anchor="middle" font-size="7" font-weight="700">6</text>
+<circle cx="76.44" cy="178.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="76.44" y="181.0" text-anchor="middle" font-size="7" font-weight="700">7</text>
+<circle cx="438.22" cy="178.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="438.22" y="181.0" text-anchor="middle" font-size="7" font-weight="700">8</text>
+<circle cx="414.22" cy="238.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="414.22" y="241.0" text-anchor="middle" font-size="7" font-weight="700">9</text>
+<circle cx="330.22" cy="326.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="330.22" y="329.0" text-anchor="middle" font-size="7" font-weight="700">10</text>
+<circle cx="386.22" cy="326.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="386.22" y="329.0" text-anchor="middle" font-size="7" font-weight="700">11</text>
+<circle cx="442.22" cy="326.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="442.22" y="329.0" text-anchor="middle" font-size="7" font-weight="700">12</text>
+<circle cx="498.22" cy="326.0" r="6" fill="#FFFFFF" stroke="#111318"/><text x="498.22" y="329.0" text-anchor="middle" font-size="7" font-weight="700">13</text>
+</g>
+<text x="856.0" y="44" fill="#111318">Gesture priority (highest wins where regions overlap):</text>
+<text x="856.0" y="56" fill="#111318">1  System edge zones: none in three-button mode; red bands show a 24 dp PLACEHOLDER,</text>
+<text x="856.0" y="68" fill="#111318">   EXCEPT inside the strip and seek bands, which request gesture exclusion</text>
+<text x="856.0" y="80" fill="#111318">   (76.0 + 48.0 = 124.0 dp per edge, under Android&#x27;s 200 dp cap).</text>
+<text x="856.0" y="92" fill="#111318">   Dashed white boxes = requested exclusion rects (only while chrome is shown).</text>
+<text x="856.0" y="104" fill="#111318">   The bottom mandatory home zone is never excluded; no hit rect enters it.</text>
+<text x="856.0" y="116" fill="#111318">2  Seek drag: touch-down in the seek hit band consumes the gesture; no chrome</text>
+<text x="856.0" y="128" fill="#111318">   toggle, no pager swipe; holding swaps the strip band for frame thumbnails</text>
+<text x="856.0" y="140" fill="#111318">   (VIEW:V16-V18, UNVERIFIED).</text>
+<text x="856.0" y="152" fill="#111318">3  Strip drag: horizontal slop inside the band scrubs; tap = nearest tile centre.</text>
+<text x="856.0" y="164" fill="#111318">   Consumed; never toggles chrome.</text>
+<text x="856.0" y="176" fill="#111318">4  Buttons: 48 dp hit rects; a press that slides off cancels.</text>
+<text x="856.0" y="188" fill="#111318">5  Media: single tap toggles chrome + system bars (200 ms Lift, waits out</text>
+<text x="856.0" y="200" fill="#111318">   the double-tap timeout); double-tap zoom x2.31; pinch; horizontal = pager;</text>
+<text x="856.0" y="212" fill="#111318">   swipe up = Details; swipe down = close (unzoomed only).</text>
+<text x="856.0" y="224" fill="#111318"></text>
+<text x="856.0" y="236" fill="#111318">TalkBack order (numbers on the left):</text>
+<text x="856.0" y="248" fill="#111318">1 Back · 2 date · time · place (one node) · 3-5 top actions (only those shown)</text>
+<text x="856.0" y="260" fill="#111318">· 6 media (&quot;Photo N of M: &lt;title&gt;&quot;, state: controls shown/hidden)</text>
+<text x="856.0" y="272" fill="#111318">· 7 play/pause · 8 seek (adjustable, value = elapsed of duration)</text>
+<text x="856.0" y="284" fill="#111318">· 9 filmstrip (collection; current tile selected; custom actions</text>
+<text x="856.0" y="296" fill="#111318">  previous/next) · 10-13 favourite, edit, share, delete.</text>
+<text x="856.0" y="308" fill="#111318">Hidden chrome: only the media node + system back remain; a TalkBack</text>
+<text x="856.0" y="320" fill="#111318">double-tap on media shows chrome again. Spoken output is NOT_CAPTURED.</text>
+</svg>

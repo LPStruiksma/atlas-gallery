@@ -43,8 +43,13 @@ test('AI Edit safe drawing and IME keep primary actions reachable', () => {
   const evidence = readFileSync('app/src/androidTest/java/nl/atlas/gallery/AiEditUiEvidenceTest.kt', 'utf8');
   assert.match(screen, /windowInsetsPadding\(WindowInsets\.safeDrawing\)/);
   assert.match(screen, /imePadding\(\)/);
-  assert.match(screen, /verticalScroll\(rememberScrollState\(\)\)/);
+  // AIE-20 (#431) replaced the scrolling column with a fixed photo-first layout: the photo
+  // takes the flexible space and the slab never scrolls away. Reachability is proven on the
+  // emulator at font scale 1.3, with the keyboard open and in landscape instead.
+  assert.match(screen, /\.weight\(1f\)\.heightIn\(min = 160\.dp\)/);
   assert.match(evidence, /boundsInWindow/);
   assert.match(evidence, /WindowInsetsCompat\.Type\.systemBars\(\)/);
-  assert.match(evidence, /performScrollTo\(\)/);
+  assert.match(evidence, /fontScale = 1\.3f/);
+  assert.match(evidence, /KeyboardAfter\.Shown/);
+  assert.match(evidence, /rotateViewerEvidenceLandscape\(\)/);
 });

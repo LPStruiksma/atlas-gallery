@@ -289,14 +289,7 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
         private fun runNetwork(crop: IntArray, identity: FloatArray): IntArray {
             val spec = config.spec
             val s = spec.cropSize
-            val plane = s * s
-            val input = FloatArray(3 * plane)
-            for (i in 0 until plane) {
-                val p = crop[i]
-                val r = ((p shr 16) and 255) / 255f; val g = ((p shr 8) and 255) / 255f; val b = (p and 255) / 255f
-                val c = if (spec.bgr) floatArrayOf(b, g, r) else floatArrayOf(r, g, b)
-                for (k in 0 until 3) input[k * plane + i] = if (spec.pixelRange == PixelRange.ZERO_ONE) c[k] else c[k] * 2 - 1
-            }
+            val input = SwapTensors.toInput(crop, spec)
             val inputs = HashMap<String, OnnxTensor>()
             try {
                 inputs[spec.targetInput] = OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, 3, s.toLong(), s.toLong()))
@@ -308,16 +301,7 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
                     val value = result.get(spec.output).orElseThrow { IllegalStateException("Swap output missing") }
                     val buffer = (value as OnnxTensor).floatBuffer
                     val out = FloatArray(buffer.remaining()).also { buffer.get(it) }
-                    require(out.size == 3 * plane) { "Swap output has the wrong size" }
-                    return IntArray(plane) { i ->
-                        fun ch(k: Int): Int {
-                            val v = out[k * plane + i]
-                            val unit = if (spec.pixelRange == PixelRange.ZERO_ONE) v else (v + 1) / 2
-                            return FaceAlignWarp.round8(unit * 255.0)
-                        }
-                        val (r, g, b) = if (spec.bgr) Triple(ch(2), ch(1), ch(0)) else Triple(ch(0), ch(1), ch(2))
-                        (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-                    }
+                    return SwapTensors.fromOutput(out, spec)
                 }
             } finally { inputs.values.forEach { it.close() } }
         }

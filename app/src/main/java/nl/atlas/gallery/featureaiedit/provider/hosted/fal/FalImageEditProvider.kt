@@ -7,6 +7,10 @@ import nl.atlas.gallery.featureaiedit.provider.Admission
 import nl.atlas.gallery.featureaiedit.provider.AspectRange
 import nl.atlas.gallery.featureaiedit.provider.CapabilityKey
 import nl.atlas.gallery.featureaiedit.provider.CostEstimate
+import nl.atlas.gallery.featureaiedit.provider.Delivery
+import nl.atlas.gallery.featureaiedit.provider.RemoteHandle
+import nl.atlas.gallery.featureaiedit.provider.RemoteRecovery
+import nl.atlas.gallery.featureaiedit.provider.SubmitJournal
 import nl.atlas.gallery.featureaiedit.provider.EditExecutionPlan
 import nl.atlas.gallery.featureaiedit.provider.EditImage
 import nl.atlas.gallery.featureaiedit.provider.EditJob
@@ -57,6 +61,11 @@ import kotlin.math.ln
  * - cancel: `PUT https://queue.fal.run/{owner}/{alias}/requests/{id}/cancel`.
  * Images go up inline as base64 data URIs (no fal storage upload, no third URL). Results are
  * downloaded only from fal's media hosts, over HTTPS, without the key, with a bounded size.
+ * fal result URLs are public to anyone holding them until they expire, so every submit asks fal
+ * to expire generated objects after [RESULT_EXPIRY_SECONDS] (`X-Fal-Object-Lifecycle-Preference`,
+ * the header `@fal-ai/client` 1.11.0 sends for `storageSettings.expiresIn`). A result URL on any
+ * host outside [isFalMediaHost] fails closed with `RESULT_HOST_REJECTED`; the allowlist is never
+ * widened at run time (#464, `docs/ai-edit/adapters/fal.md`).
  * The submit POST is never replayed: a lost reply may still have been queued and billed.
  */
 class FalImageEditProvider(
@@ -93,15 +102,23 @@ class FalImageEditProvider(
         supportsAsync = true,
         supportsStreaming = false,
         estimatedCostPerRequest = model.price,
-        advancedParameters = model.options.mapValues { it.value.schema }
+        advancedParameters = model.options.mapValues { it.value.schema },
+        // fal queues the request under a request_id that status/result can query later (#431).
+        remoteRecovery = RemoteRecovery.QUERY_BY_PERSISTED_ID
     )
 
-    override fun submit(request: ImageEditRequest): EditJob {
+    override fun submit(request: ImageEditRequest): EditJob = submit(request, SubmitJournal.NONE)
+
+    /**
+     * [SubmitJournal.beforeSend] runs right before the one queue POST; [SubmitJournal.remoteAccepted]
+     * gets the validated request_id bound to this provider and endpoint before the first status call.
+     */
+    override fun submit(request: ImageEditRequest, journal: SubmitJournal): EditJob {
         val jobId = "fal-" + nextJob.getAndIncrement()
         val admission = ImageEditRequestValidator.validate(request, capabilities())
         if (admission is Admission.Rejected) {
             return HostedEditJob(jobId, timing.pollWaitMs, DIRECT, {
-                EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, admission.reason.name)
+                EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, admission.reason.name, Delivery.NOT_SENT)
             })
         }
         val plan = (admission as Admission.Accepted).plan
@@ -109,8 +126,36 @@ class FalImageEditProvider(
         val key = AtomicReference<String?>(null)
         return HostedEditJob(
             jobId, timing.pollWaitMs, executor,
-            work = { context -> run(jobId, request, plan, context, requestId, key) },
+            work = { context -> run(jobId, request, plan, context, requestId, key, journal) },
             onCancel = { cancelRemote(requestId.get(), key.get()) }
+        )
+    }
+
+    /**
+     * Follows a request this provider and endpoint accepted earlier: status, then result, then the
+     * download, and never a new POST. A handle for another provider, endpoint or a malformed id is
+     * refused. Uses the current key; if it is gone, or fal refuses the lookup (401, 403, 404), the
+     * job ends with [FailureKind.CANNOT_CHECK], never a "wrong key" failure (#431 addendum A4).
+     */
+    override fun resume(handle: RemoteHandle): EditJob? {
+        if (handle.providerId != id || handle.endpoint != model.endpoint ||
+            !REQUEST_ID.matches(handle.remoteId) || handle.candidates !in 1..model.maxImages) return null
+        val jobId = "fal-" + nextJob.getAndIncrement()
+        val key = AtomicReference<String?>(null)
+        return HostedEditJob(
+            jobId, timing.pollWaitMs, executor,
+            work = { context ->
+                val current = apiKey()?.takeIf { it.isNotBlank() }
+                when {
+                    current == null -> EditOutcome.Failed(FailureKind.CANNOT_CHECK, false, "NO_API_KEY")
+                    !results.isUsable -> EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_OUTPUT_DIRECTORY")
+                    else -> {
+                        key.set(current)
+                        follow(jobId, handle.remoteId, handle.candidates, current, context, resumed = true)
+                    }
+                }
+            },
+            onCancel = { cancelRemote(handle.remoteId, key.get()) }
         )
     }
 
@@ -128,36 +173,67 @@ class FalImageEditProvider(
         plan: EditExecutionPlan,
         context: HostedWorkContext,
         requestIdRef: AtomicReference<String?>,
-        keyRef: AtomicReference<String?>
+        keyRef: AtomicReference<String?>,
+        journal: SubmitJournal
     ): EditOutcome {
+        // Everything before beforeSend() is local: such failures are proven NOT_SENT.
         val key = apiKey()?.takeIf { it.isNotBlank() }
-            ?: return EditOutcome.Failed(FailureKind.AUTH, false, "NO_API_KEY")
-        if (!results.isUsable) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_OUTPUT_DIRECTORY")
+            ?: return EditOutcome.Failed(FailureKind.AUTH, false, "NO_API_KEY", Delivery.NOT_SENT)
+        if (!results.isUsable) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_OUTPUT_DIRECTORY", Delivery.NOT_SENT)
         keyRef.set(key)
         val source = images.load(request.source, plan.source)
-            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "SOURCE_UNREADABLE")
+            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "SOURCE_UNREADABLE", Delivery.NOT_SENT)
         val references = request.references.mapIndexed { index, image ->
             images.load(image, plan.references[index])
-                ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "REFERENCE_UNREADABLE")
+                ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "REFERENCE_UNREADABLE", Delivery.NOT_SENT)
         }
         val input = model.input(request, listOf(source) + references)
-            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "UPLOAD_TOO_LARGE")
+            ?: return EditOutcome.Failed(FailureKind.INVALID_REQUEST, false, "UPLOAD_TOO_LARGE", Delivery.NOT_SENT)
         if (context.isCancelled) return EditOutcome.Cancelled
+        val allowed = try { journal.beforeSend() } catch (_: Exception) {
+            return EditOutcome.Failed(FailureKind.UNKNOWN, false, "JOURNAL_UNAVAILABLE", Delivery.NOT_SENT)
+        }
+        if (!allowed || context.isCancelled) return EditOutcome.Cancelled
 
         // 1. Submit once.
         val submitted = exchange.execute(
-            FalCall(FalMethod.POST, queueConfig().copy(maxAttempts = 1), model.endpoint, input, withKey = true),
+            FalCall(FalMethod.POST, queueConfig().copy(maxAttempts = 1), model.endpoint, input, withKey = true,
+                headers = SUBMIT_HEADERS),
             key, context.cancellation
         )
         val requestId = when (submitted) {
             EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-            is EditHttpResult.Failed -> return falError(submitted)
+            is EditHttpResult.Failed -> return falError(submitted, afterAccepted = false)
+            // A 2xx without a usable id may still have queued (and billed) a job: uncertain.
             is EditHttpResult.Success -> HostedJson.parseOrNull(submitted.bytes).obj()?.get("request_id").str()
                 ?.takeIf { REQUEST_ID.matches(it) }
                 ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_SUBMIT_REPLY")
         }
         requestIdRef.set(requestId)
+        // Durable before the first status call, so a restart can look up exactly this request.
+        try {
+            journal.remoteAccepted(RemoteHandle(id, model.endpoint, requestId, request.output.candidates))
+        } catch (_: Exception) {
+            cancelRemote(requestId, key)
+            return EditOutcome.Failed(FailureKind.UNKNOWN, false, "JOURNAL_UNAVAILABLE")
+        }
         if (context.isCancelled) return EditOutcome.Cancelled
+        return follow(jobId, requestId, request.output.candidates, key, context, resumed = false)
+    }
+
+    /** Steps 2 to 4 for an accepted request; every failure here is after acceptance (uncertain). */
+    private fun follow(
+        jobId: String,
+        requestId: String,
+        candidates: Int,
+        key: String,
+        context: HostedWorkContext,
+        resumed: Boolean
+    ): EditOutcome {
+        fun lookupFailure(failure: EditHttpResult.Failed): EditOutcome =
+            if (resumed && failure.status in LOOKUP_REFUSED)
+                EditOutcome.Failed(FailureKind.CANNOT_CHECK, false, "LOOKUP_REFUSED")
+            else falError(failure, afterAccepted = true)
 
         // 2. Poll status until COMPLETED, cancel, or the job deadline.
         val deadline = System.nanoTime() + timing.jobTimeoutMs * 1_000_000L
@@ -173,7 +249,7 @@ class FalImageEditProvider(
             )
             val body = when (status) {
                 EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-                is EditHttpResult.Failed -> return falError(status)
+                is EditHttpResult.Failed -> return lookupFailure(status)
                 is EditHttpResult.Success -> HostedJson.parseOrNull(status.bytes).obj()
                     ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_STATUS")
             }
@@ -196,7 +272,7 @@ class FalImageEditProvider(
         )
         val result = when (resultReply) {
             EditHttpResult.Cancelled -> return EditOutcome.Cancelled
-            is EditHttpResult.Failed -> return when (val mapped = falError(resultReply)) {
+            is EditHttpResult.Failed -> return when (val mapped = lookupFailure(resultReply)) {
                 is EditOutcome.Failed -> if (mapped.kind == FailureKind.INVALID_REQUEST)
                     mapped.copy(message = "RESULT_REJECTED") else mapped
                 else -> mapped
@@ -205,7 +281,9 @@ class FalImageEditProvider(
                 ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_RESULT")
         }
         val described = result["images"].arr()?.mapNotNull { it.obj() }.orEmpty()
-        if (described.isEmpty()) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_IMAGE")
+        // After acceptance an empty result doesn't prove fal never ran or billed the edit (rev 4):
+        // it stays uncertain so the editor keeps the may-have-charged warning.
+        if (described.isEmpty()) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_IMAGE", Delivery.UNCERTAIN)
         val flagged = result["has_nsfw_concepts"].arr()
         // fal's safety checker returns flagged images as black frames: a refusal, never a success.
         if (flagged != null && described.indices.any { flagged.getOrNull(it).bool() == true })
@@ -213,7 +291,7 @@ class FalImageEditProvider(
 
         // 4. Download each image from an allowlisted media host, without the key.
         val stored = ArrayList<EditImage>()
-        for ((index, item) in described.take(request.output.candidates).withIndex()) {
+        for ((index, item) in described.take(candidates).withIndex()) {
             val image = download(jobId, index, item["url"].str(), key, context)
             when (image) {
                 is Downloaded.Ok -> stored.add(image.image)
@@ -230,7 +308,7 @@ class FalImageEditProvider(
     }
 
     /** fal documents `detail.type=content_policy_violation` for its structured policy error. */
-    private fun falError(failure: EditHttpResult.Failed): EditOutcome {
+    private fun falError(failure: EditHttpResult.Failed, afterAccepted: Boolean): EditOutcome {
         val root = HostedJson.parseOrNull(failure.errorBody).obj()
         val details = when (val detail = root?.get("detail")) {
             is List<*> -> detail
@@ -240,7 +318,7 @@ class FalImageEditProvider(
         val policy = details.mapNotNull { it.obj()?.get("type").str() }
             .firstOrNull { it == "content_policy_violation" }
         return if (policy != null) EditOutcome.Refused("fal:$policy", "fal.ai declined the request ($policy).")
-        else hostedFailure(failure)
+        else hostedFailure(failure, afterAccepted = afterAccepted)
     }
 
     private sealed interface Downloaded {
@@ -262,7 +340,7 @@ class FalImageEditProvider(
         )
         return when (reply) {
             EditHttpResult.Cancelled -> { file.delete(); Downloaded.Error(EditOutcome.Cancelled) }
-            is EditHttpResult.Failed -> { file.delete(); Downloaded.Error(hostedFailure(reply)) }
+            is EditHttpResult.Failed -> { file.delete(); Downloaded.Error(hostedFailure(reply, afterAccepted = true)) }
             is EditHttpResult.Success -> {
                 val bytes = if (file.isFile && file.length() in 1..MAX_RESULT_BYTES) file.readBytes() else null
                 val probe = bytes?.let { ImageProbe.probe(it) }
@@ -314,7 +392,20 @@ class FalImageEditProvider(
         private const val MAX_RESULT_PIXELS = 8192L * 8192L
         private val ENDPOINT = Regex("[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*){1,4}")
         private val REQUEST_ID = Regex("[A-Za-z0-9-]{1,128}")
+        /** Status answers that mean "this key can no longer see this request" during a resume. */
+        private val LOOKUP_REFUSED = setOf(401, 403, 404)
         private val DIRECT = Executor { it.run() }
+
+        /**
+         * Lifetime fal is asked to give generated result objects (#464): one hour, the client's
+         * `"1h"` preset. Results are downloaded seconds after `COMPLETED`, so this only bounds
+         * how long a public result URL stays retrievable afterwards.
+         */
+        const val RESULT_EXPIRY_SECONDS = 3_600
+        const val LIFECYCLE_HEADER = "X-Fal-Object-Lifecycle-Preference"
+        internal val SUBMIT_HEADERS = mapOf(
+            LIFECYCLE_HEADER to "{\"expiration_duration_seconds\":$RESULT_EXPIRY_SECONDS}"
+        )
 
         /** fal's media CDN hosts (for example `v3b.fal.media` in the official client). */
         fun isFalMediaHost(host: String): Boolean =
