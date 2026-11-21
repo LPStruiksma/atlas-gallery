@@ -352,4 +352,39 @@ class MixedGroupReviewTest {
         assertEquals(2, samePersonQueue(original).open)
     }
 
+    @Test fun stableFullGrantSkipSurvivesFaceEpochChangesButNotMembershipChanges() {
+        val original = state()
+        val question = samePersonQueue(original).items.first()
+        val stableScope = "full-photo-grant:images"
+        val token = requireNotNull(samePersonSkipFingerprint(original, question, stableScope))
+        val reissued = original.copy(
+            permissionEpoch = "new-random-face-publication-epoch",
+            sourceGeneration = "new-source-generation"
+        )
+        // A publication epoch is not the owner's grant or a changed group.
+        assertEquals(token, samePersonSkipFingerprint(reissued, question, stableScope))
+        // Selected-photos or changed full-grant scopes cannot reuse the token.
+        assertNotEquals(token, samePersonSkipFingerprint(reissued, question))
+        assertNotEquals(token, samePersonSkipFingerprint(
+            reissued, question, "full-photo-grant:images+videos"))
+
+        // Actual membership, not merely the question's key/count, defines Skip.
+        val first = original.clusters.unknownClusters.single {
+            it.id == (question.subject as PersonPageTarget.Unnamed).cluster
+        }
+        val replacement = original.group(4)
+        val displaced = first.members.maxBy { it.localHex }
+        val incoming = replacement.members.maxBy { it.localHex }
+        val changed = FaceClusterer.restore("m", policy, fixtureFaces,
+            original.clusters.unknownClusters.map { group ->
+                when (group.id) {
+                    first.id -> (group.members - displaced) + incoming
+                    replacement.id -> (group.members - incoming) + displaced
+                    else -> group.members
+                }
+            }, original.clusters.reviews)
+        assertNotEquals(token, samePersonSkipFingerprint(
+            original.copy(clusters = changed), question, stableScope))
+    }
+
 }
