@@ -14,3 +14,9 @@ parity-24-pinch-large-light
 parity-24-pinch-large-dark
 parity-24-original-ratio-light
 parity-24-original-ratio-dark
+parity-24-people-named-light
+parity-24-people-named-dark
+parity-24-viewer-details-people-light
+parity-24-viewer-details-people-dark
+parity-24-search-person-light
+parity-24-search-person-dark
