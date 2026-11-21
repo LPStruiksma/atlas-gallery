@@ -21,6 +21,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.runner.Description
+import org.junit.runners.model.Statement
 import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
@@ -109,17 +112,31 @@ import org.junit.runner.RunWith
 class PersonPageJourneyTest {
     // #584: rendered like the app (dark theme, app system bars) at S24+ size.
     private val compose = createAndroidComposeRule<ComponentActivity>()
+    // JUnit @After runs inside createAndroidComposeRule, while its Activity and
+    // produceState(Dispatchers.IO) effects may still be winding down. Keep the
+    // synthetic SQLite store and media fixtures alive through the entire inner
+    // Compose rule; only this outer rule owns their final cleanup (#782).
+    private val fixtureLifetime = object : TestRule {
+        override fun apply(base: Statement, description: Description): Statement =
+            object : Statement() {
+                override fun evaluate() {
+                    try { base.evaluate() } finally { finishFixture() }
+                }
+            }
+    }
     // Render journeys use no keyboard, but the IME-Done journey needs a real,
     // deterministic test keyboard selected before the Activity is created.
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(
-        TestKeyboard.None,
-        methodKeyboards = mapOf("keyboardDoneInTheNameDialogNamesThePerson" to TestKeyboard.Fixed)
-    )).around(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(fixtureLifetime)
+        .around(KeyboardRule(
+            TestKeyboard.None,
+            methodKeyboards = mapOf("keyboardDoneInTheNameDialogNamesThePerson" to TestKeyboard.Fixed)
+        )).around(S24DisplayRule()).around(compose)
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val target = instrumentation.targetContext
     private val dir = File(target.cacheDir, "person-page-" + UUID.randomUUID())
     private lateinit var store: FaceIndexStore
+    @Volatile private var fixtureClosed = false
     private val inserted = mutableListOf<Uri>()
     private val specs = HashMap<String, SyntheticFace.Spec>()
     private lateinit var inventory: List<FaceVisibleMedia>
@@ -172,22 +189,37 @@ class PersonPageJourneyTest {
         records = rows
     }
 
-    /** Test content is composed only while this holds; see [cleanUp]. */
+    /** Test content is composed only while this holds; see [detachComposedRoutes]. */
     private var composing by mutableStateOf(true)
 
-    @After fun cleanUp() {
-        // Dispose the composed routes first: their effects still read the
-        // store, and closing or deleting it under them fails the test.
+    /** Only the outer fixture rule calls this, after the Activity rule exits. */
+    private fun finishFixture() {
+        fixtureClosed = true
+        PeopleScanWorkRuntime.clear()
+        try {
+            if (::store.isInitialized) store.close()
+        } finally {
+            try {
+                check(dir.deleteRecursively()) { "Could not delete PersonPage fixture $dir" }
+            } finally {
+                // Clean up synthetic MediaStore rows even when SQLite close fails.
+                inserted.forEach { runCatching { target.contentResolver.delete(it, null, null) } }
+            }
+        }
+    }
+
+    @After fun detachComposedRoutes() {
+        // Dispose routes and request cancellation of their IO effects, but
+        // leave faces.db alive until the Compose rule finishes Activity teardown.
         composing = false
         compose.waitForIdle()
-        PeopleScanWorkRuntime.clear()
-        if (::store.isInitialized) store.close()
-        dir.deleteRecursively()
-        inserted.forEach { runCatching { target.contentResolver.delete(it, null, null) } }
     }
 
     private fun host(): PeopleDiscoveryHost {
-        val file = File(dir.apply { mkdirs() }, "faces.db")
+        check(!fixtureClosed) { "PersonPage fixture is already closed" }
+        val file = File(dir.apply {
+            check(isDirectory || mkdirs()) { "Could not create PersonPage fixture $this" }
+        }, "faces.db")
         val context: Context = object : ContextWrapper(target) {
             override fun getDatabasePath(name: String): File = file
             override fun openOrCreateDatabase(
