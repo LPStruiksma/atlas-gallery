@@ -1,0 +1,5 @@
+# #548 repair A/B arm: listener on (proof-only throwaway head, never a PR)
+15 nl.atlas.gallery.featureintents.ExternalPickerJourneyTest
+15 nl.atlas.gallery.featureintents.ExternalNeighboursJourneyTest
+# Last, so it cannot disturb the matched lines: proves this arm's listener is live (red by design: c_failsOnPurpose)
+1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest
