@@ -277,8 +277,8 @@ LISTENER=nl.atlas.gallery.testkit.AtlasRunListener
 # #440 keyboard health check, once per shard before any suite: the emulator's
 # own keyboard must open for a focused field and close again. A dead keyboard
 # would otherwise turn every typing test red one by one; stop with one named
-# failure instead. Whether this counts as an infrastructure failure for the
-# one-re-run rule is ATLAS Strategy's call; until then it is an ordinary red.
+# failure instead. It is an ordinary red, not an infrastructure failure: the
+# check is a test, so no same-head re-run (ATLAS Strategy ruling on #548).
 if [[ "$SHARD_INDEX" != "0" ]]; then
   gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 fi
