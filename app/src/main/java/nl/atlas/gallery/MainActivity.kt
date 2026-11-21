@@ -24,6 +24,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import nl.atlas.gallery.featureintents.ExternalEntry
+import nl.atlas.gallery.featureintents.ExternalPickerHost
+import nl.atlas.gallery.featureintents.PickResultPlan
+import nl.atlas.gallery.featureintents.pickResultIntent
 import nl.atlas.gallery.featureintents.ExternalIntentParser
 import nl.atlas.gallery.featureintents.ExternalIntentReader
 import nl.atlas.gallery.featureintents.ExternalViewerHost
@@ -485,6 +488,13 @@ class MainActivity : ComponentActivity() {
     @Volatile internal var showWhenLockedApplied: Boolean = false
         private set
 
+    /**
+     * Which pick request is current. A new GET_CONTENT / PICK delivered to this
+     * Activity (onNewIntent) starts a new session, so nothing chosen for the
+     * previous caller carries over; recreation (rotation) keeps the session.
+     */
+    private var pickSession by mutableIntStateOf(0)
+
     internal var perfA1Probe: PerfA1FrameProbe? = null
 
     override fun onStart() {
@@ -505,6 +515,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
         if (!acceptExternalIntent(intent)) return
         // Opt-in marker is created only by the synthetic hosted benchmark.
         // Release builds and normal debug sessions never install a listener.
@@ -536,7 +547,16 @@ class MainActivity : ComponentActivity() {
                     // (viewer, cover chooser, Declutter, loading text).
                     Surface(Modifier.fillMaxSize(), color = DeepBg,
                         contentColor = MaterialTheme.colorScheme.onBackground) {
-                        AtlasApp(galleryVm)
+                        if (entry is ExternalEntry.Pick) {
+                            // GET_CONTENT / PICK: the grid in pick mode, nothing else
+                            // of the library; the result is answered exactly once.
+                            val session = pickSession
+                            key(session) {
+                                ExternalPickerHost(entry, session, galleryVm, onFinish = ::answerPick)
+                            }
+                        } else {
+                            AtlasApp(galleryVm)
+                        }
                     }
                 }
             }
@@ -549,7 +569,12 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        acceptExternalIntent(intent)
+        acceptExternalIntent(intent, newRequest = true)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(PICK_SESSION_KEY, pickSession)
     }
 
     /**
@@ -559,7 +584,7 @@ class MainActivity : ComponentActivity() {
      * A pick for something that is not a photo or video is answered at once
      * with RESULT_CANCELED. Returns false when the Activity is finishing.
      */
-    private fun acceptExternalIntent(intent: Intent?): Boolean {
+    private fun acceptExternalIntent(intent: Intent?, newRequest: Boolean = false): Boolean {
         val entry = ExternalIntentReader.entry(intent)
         showWhenLockedApplied = ExternalIntentParser.showWhenLocked(entry)
         setShowWhenLocked(showWhenLockedApplied)
@@ -568,10 +593,32 @@ class MainActivity : ComponentActivity() {
             finish()
             return false
         }
-        // #573 Phase A1: the picker grid lands in A2; until then a pick opens
-        // the normal library and Back answers RESULT_CANCELED (the default).
-        externalEntry = if (entry is ExternalEntry.Pick) ExternalEntry.Library else entry
+        // A new pick request starts unanswered; RESULT_CANCELED stays the default
+        // until Done, so a caller killed or backed out of gets nothing.
+        if (entry is ExternalEntry.Pick) {
+            pickAnswered = false
+            if (newRequest) pickSession++
+        }
+        externalEntry = entry
         return true
+    }
+
+    private companion object {
+        const val PICK_SESSION_KEY = "atlas.external.pickSession"
+    }
+
+    /** True once a pick was answered; a second Done or Cancel is ignored. */
+    private var pickAnswered = false
+
+    /**
+     * Answers the caller once: the chosen items with a read grant, or cancelled.
+     * [plan] has been checked by [PickResultPlanner] and the provider already.
+     */
+    private fun answerPick(plan: PickResultPlan?) {
+        if (pickAnswered || isFinishing) return
+        pickAnswered = true
+        if (plan == null) setResult(RESULT_CANCELED) else setResult(RESULT_OK, pickResultIntent(plan))
+        finish()
     }
 }
 
@@ -579,7 +626,7 @@ class MainActivity : ComponentActivity() {
 internal fun ExternalEntry.opensExternalViewer(): Boolean =
     this is ExternalEntry.Viewer || (this is ExternalEntry.Rejected && !pick)
 
-private fun necessaryPermissions(): Array<String> = when {
+internal fun necessaryPermissions(): Array<String> = when {
     Build.VERSION.SDK_INT >= 34 -> arrayOf(
         Manifest.permission.READ_MEDIA_IMAGES,
         Manifest.permission.READ_MEDIA_VIDEO,
