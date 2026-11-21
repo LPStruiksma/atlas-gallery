@@ -85,12 +85,15 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         val stored = HiddenMediaStore(fixtures.context).readOrNull()
         assertEquals(2, stored?.size)
 
-        // 2. Albums ⋮ → Hidden lists exactly the two hidden items.
+        // 2. Albums → the Hidden row (label and count, no covers) lists exactly the two.
         compose.tap(hasTestTag("atlas-nav-albums"))
-        awaitNode(hasTestTag("atlas-header-more"))
-        compose.tap(hasTestTag("atlas-header-more"))
-        awaitNode(hasTestTag("atlas-albums-menu-hidden"))
-        compose.tap(hasTestTag("atlas-albums-menu-hidden"))
+        awaitNode(hasTestTag("atlas-album-grid"))
+        compose.onNodeWithTag("atlas-album-grid")
+            .performScrollToNode(hasTestTag("atlas-albums-hidden-row"))
+        awaitNode(hasTestTag("atlas-albums-hidden-row"))
+        compose.waitForIdle()
+        saveUiEvidence("hidden-585-collections-row-$theme.png")
+        compose.tap(hasTestTag("atlas-albums-hidden-row"))
         awaitNode(hasTestTag("atlas-hidden-grid"))
         compose.awaitThat("two hidden tiles") {
             compose.onAllNodes(hasTestTag("atlas-hidden-tile")).fetchSemanticsNodes().size == 2
@@ -125,6 +128,10 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         compose.awaitThat("viewer item is hidden") {
             HiddenMediaStore(fixtures.context).readOrNull()?.size == 1
         }
+        // The result and its Undo are visible in the full-screen viewer itself.
+        awaitNode(hasTestTag("atlas-hidden-result-undo"))
+        compose.waitForIdle()
+        saveUiEvidence("hidden-585-viewer-undo-$theme.png")
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         awaitNode(hasTestTag("atlas-timeline-grid"))
         compose.awaitThat("viewer item left Photos") {
@@ -134,7 +141,7 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)
         val listing = shellOut("ls /data/local/tmp/atlas-ui-evidence")
         assertTrue("no hidden-585-$theme evidence on device: $listing",
-            listing.lines().count { it.contains("hidden-585-") && it.contains(theme) && it.trim().endsWith(".png") } == 5)
+            listing.lines().count { it.contains("hidden-585-") && it.contains(theme) && it.trim().endsWith(".png") } == 7)
     }
 
     private fun shellOut(command: String): String {

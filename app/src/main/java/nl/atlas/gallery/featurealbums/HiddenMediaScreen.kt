@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,7 +41,7 @@ import nl.atlas.gallery.featuredesign.AtlasSpace
 import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 
 /**
- * HIDE-1 (#585): the Hidden collection. Entered in one tap from the Albums menu,
+ * HIDE-1 (#585): the Hidden collection. Entered in one tap from the Hidden row on Albums,
  * no authentication and no warning screen; a hidden item is only a stored key,
  * other apps still see the file. A long press starts selection; Unhide is direct.
  * Tapping a photo outside selection opens the viewer, where More offers Unhide.
@@ -78,21 +78,23 @@ fun HiddenMediaScreen(
                     modifier = Modifier.testTag("atlas-hidden-empty"))
                 TextButton(onClick = onClose,
                     modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-hidden-back")) {
-                    Text("Back to albums")
+                    Text("Back to Albums")
                 }
             }
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                // Real shapes (the approved brief): three columns, each tile at its own
+                // aspect ratio, never a square crop.
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(3),
                     contentPadding = PaddingValues(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalItemSpacing = 2.dp,
                     modifier = Modifier.weight(1f).testTag("atlas-hidden-grid")
                 ) {
                     items(items, key = { it.uri }) { record ->
                         val isSelected = record.uri in selected
                         Box(
-                            Modifier.fillMaxWidth().aspectRatio(1f)
+                            Modifier.fillMaxWidth().aspectRatio(tileRatio(record))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .combinedClickable(
                                     onClick = {
@@ -135,4 +137,14 @@ fun HiddenMediaScreen(
             }
         }
     }
+}
+
+/** Width over height of the displayed media; square when the provider gave no size. */
+private fun tileRatio(record: MediaRecord): Float {
+    val w = record.widthPixels
+    val h = record.heightPixels
+    if (w <= 0 || h <= 0) return 1f
+    val turned = record.orientationDegrees % 180 != 0
+    val ratio = if (turned) h.toFloat() / w else w.toFloat() / h
+    return ratio.coerceIn(0.4f, 2.5f)
 }

@@ -37,7 +37,7 @@ test("Hide and Unhide are reachable from selection More, viewer More and the Alb
   assert.match(main, /onOpenHidden = \{ hiddenOpen = true \}/);
   assert.match(viewer, /atlas-viewer-unhide/);
   assert.match(viewer, /atlas-viewer-hide/);
-  assert.match(read("featurealbums/AtlasAlbumsScreen.kt"), /atlas-albums-menu-hidden/);
+  assert.match(read("featurealbums/AtlasAlbumsScreen.kt"), /atlas-albums-hidden-row/);
 });
 
 test("the Hidden screen has the specified empty copy, direct Unhide and no auth or warning", () => {
@@ -57,5 +57,23 @@ test("Stories, Photo DNA, search, People covers, albums and Declutter all read t
   // Nothing derives a user-visible list from the unfiltered catalogue except the
   // face-index host and the Hidden collection itself.
   const uses = [...main.matchAll(/\ballMedia\b/g)].length;
-  assert.ok(uses <= 8, `allMedia leaked into ordinary surfaces (${uses} uses)`);
+  assert.ok(uses <= 12, `allMedia leaked into ordinary surfaces (${uses} uses)`);
+});
+
+test("People home counts and covers skip hidden media while the face index stays unfiltered", () => {
+  const host = read("PeopleDiscoveryHost.kt");
+  const faceStore = read("featurepersistence/FaceIndexStore.kt");
+  assert.match(main, /rememberPeopleDiscovery\(discoveryHost, searchGrant, allMedia\)/);
+  assert.match(main, /discoveryHost\.setHiddenMedia\(/);
+  assert.match(host, /store\.peopleHome\(epoch, hidden\)/);
+  assert.match(faceStore, /hiddenMediaKeys: Set<String> = emptySet\(\)/);
+  assert.match(read("featurepersistence/PeopleHomeHidden.kt"), /object PeopleHomeHidden/);
+});
+
+test("Hidden is a row on Albums and the viewer shows the Hide result with Undo", () => {
+  const albums = read("featurealbums/AtlasAlbumsScreen.kt");
+  assert.match(albums, /HiddenUtilityRow\(/);
+  assert.doesNotMatch(albums, /atlas-albums-menu-hidden/);
+  const viewerBranch = main.slice(main.indexOf("if (contextItems != null && currentUri != null)"));
+  assert.match(viewerBranch.slice(0, viewerBranch.indexOf("return\n")), /HiddenUndoSnackbarHost\(hiddenResults/);
 });

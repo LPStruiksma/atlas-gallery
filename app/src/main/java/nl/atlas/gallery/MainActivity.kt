@@ -1441,6 +1441,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // UNFILTERED catalogue: hiding must never delete face data. Hidden photos are
     // filtered from every People surface that derives from [media].
     val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, allMedia)
+    // HIDE-1 (#585): People home counts and covers skip hidden media; the face
+    // index keeps scanning the unfiltered inventory (`allMedia`) above.
+    LaunchedEffect(discoveryHost, CatalogSourceKey(allMedia), hiddenKeys) {
+        val hidden = hiddenKeys
+        discoveryHost.setHiddenMedia(if (hidden == null) null else withContext(Dispatchers.Default) {
+            hiddenFaceMediaKeys(HiddenMedia.hiddenOnly(allMedia, hidden))
+        })
+    }
     val diagnosticPeople = discovery.status?.ui
     LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
         diagnosticPeople?.eligible) {
@@ -3267,6 +3275,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     val currentUri = viewerUri?.takeIf { viewerAllowed }
     if (contextItems != null && currentUri != null) {
+      // HIDE-1 (#585): the viewer replaces the Scaffold, so its Hide/Unhide
+      // result and Undo are drawn here, above the filmstrip.
+      Box(Modifier.fillMaxSize()) {
       // #662: the viewer stays dark whatever the phone's setting, as on Samsung.
       AtlasDarkRoute {
         SharedPhotoMotionLayer(
@@ -3413,6 +3424,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         )
         }
+      }
+      HiddenUndoSnackbarHost(hiddenResults,
+          Modifier.align(Alignment.BottomCenter).padding(bottom = 188.dp))
       }
         return
     }
@@ -4277,6 +4291,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
                             onOpenHidden = { hiddenOpen = true },
+                            hiddenCount = hiddenKeys?.let { allMedia.size - media.size },
                             onSearchWholeLibrary = { tab = 3 },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
