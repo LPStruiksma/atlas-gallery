@@ -3,7 +3,7 @@
 <desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>
 <rect x="0" y="0" width="360" height="780" rx="0" fill="#000000"/>
 <text x="16" y="84" fill="#8C9BFF" font-size="38" font-family="Funnel Display, sans-serif" font-weight="700" letter-spacing="-0.03em" data-role="screen-title" data-spec="38/44sp; 76/88sp at 200%">Person</text>
-<text x="16" y="118" fill="#9AA0B8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">People and pets · 301 photos</text>
+<text x="16" y="118" fill="#9AA0B8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">301 photos of people and pets</text>
 <rect x="295" y="35" width="52" height="52" rx="15" fill="#14152A" data-target="sort"/>
 <text x="303" y="67" fill="#8C9BFF" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Sort</text>
 <rect x="16" y="148" width="104" height="72" rx="6" fill="#333C6C" opacity=".84"/><path d="M23 211 l23 -17 l20 9 l25 -21" stroke="#14152A" stroke-width="3" fill="none"/>
