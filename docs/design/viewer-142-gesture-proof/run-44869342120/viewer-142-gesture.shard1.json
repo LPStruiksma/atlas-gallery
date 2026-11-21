@@ -1,0 +1,2845 @@
+{
+  "schema": "atlas-viewer-142-gesture\/1",
+  "issue": 833,
+  "host": "GitHub-hosted API 35 x86_64 pixel_6 AVD with S24DisplayRule (1080x2340, 450 dpi); NOT a physical Galaxy S24+",
+  "subject": "CURRENT viewer baseline (GalleryViewer on main), not the #142 target",
+  "original_navigation": {
+    "navigation_mode": "0",
+    "enabled_navbar_overlays": []
+  },
+  "frames": [
+    {
+      "key": "photo\/portrait\/shown",
+      "png": "viewer-142-gesture-photo-portrait-shown.png",
+      "png_sha256": "ae04773c11622d6f703b326a73707bab12073e36111f1ce44018fb74d1f0c79c",
+      "environment_MEASURED": {
+        "navigation_mode": "2",
+        "navbar_overlays": [
+          "[ ] com.android.internal.systemui.navbar.threebutton",
+          "[ ] com.android.internal.systemui.navbar.twobutton",
+          "[ ] com.android.internal.systemui.navbar.transparent",
+          "[x] com.android.internal.systemui.navbar.gestural"
+        ],
+        "wm_size": "Physical size: 1080x2400\nOverride size: 1080x2340",
+        "wm_density": "Physical density: 420\nOverride density: 450",
+        "api": 35,
+        "device_model": "Android SDK built for x86_64",
+        "emulator": "1"
+      },
+      "MEASURED": {
+        "rotation": 0,
+        "window_px": [
+          1080,
+          2340
+        ],
+        "pixels_per_dp": 2.8125,
+        "density_dpi": 450,
+        "android_insets": {
+          "statusBars": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "displayCutout": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "systemGestures": {
+            "px": [
+              84,
+              157,
+              84,
+              90
+            ],
+            "dp": [
+              29.866667,
+              55.822224,
+              29.866667,
+              32
+            ]
+          },
+          "mandatorySystemGestures": {
+            "px": [
+              0,
+              157,
+              0,
+              90
+            ],
+            "dp": [
+              0,
+              55.822224,
+              0,
+              32
+            ]
+          },
+          "tappableElement": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "statusBars_ignoringVisibility": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars_ignoringVisibility": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "cutout_rects": [
+            {
+              "px": [
+                480,
+                0,
+                595,
+                125
+              ],
+              "dp": [
+                170.66667,
+                0,
+                211.55556,
+                44.444443
+              ]
+            }
+          ]
+        },
+        "compose_safeDrawing_px": [
+          0,
+          125,
+          0,
+          68
+        ],
+        "compose_statusBars_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "compose_navigationBars_px": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "compose_displayCutout_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "gesture_exclusion_rects": [],
+        "regions_semantics_bounds_screen": {
+          "atlas-viewer-top-chrome": {
+            "px": [
+              34,
+              148,
+              1046,
+              283
+            ],
+            "dp": [
+              12.088889,
+              52.622223,
+              371.9111,
+              100.62222
+            ],
+            "click": false
+          },
+          "atlas-back": {
+            "px": [
+              56,
+              159,
+              169,
+              272
+            ],
+            "dp": [
+              19.911112,
+              56.533333,
+              60.08889,
+              96.71111
+            ],
+            "click": true
+          },
+          "atlas-viewer-details-open": {
+            "px": [
+              911,
+              159,
+              1024,
+              272
+            ],
+            "dp": [
+              323.9111,
+              56.533333,
+              364.0889,
+              96.71111
+            ],
+            "click": true
+          },
+          "atlas-viewer-find-person": "NOT_RENDERED",
+          "atlas-viewer-find-similar": "NOT_RENDERED",
+          "atlas-viewer-more": "NOT_RENDERED",
+          "atlas-viewer-bottom-chrome": {
+            "px": [
+              0,
+              2058,
+              1080,
+              2272
+            ],
+            "dp": [
+              0,
+              731.73334,
+              384,
+              807.8222
+            ],
+            "click": false
+          },
+          "atlas-filmstrip": {
+            "px": [
+              0,
+              2058,
+              1080,
+              2216
+            ],
+            "dp": [
+              0,
+              731.73334,
+              384,
+              787.91113
+            ],
+            "click": false
+          },
+          "atlas-thumbnail-0": {
+            "px": [
+              408,
+              2081,
+              492,
+              2194
+            ],
+            "dp": [
+              145.06667,
+              739.91113,
+              174.93333,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-1": {
+            "px": [
+              487,
+              2066,
+              592,
+              2208
+            ],
+            "dp": [
+              173.15555,
+              734.57776,
+              210.48889,
+              785.06665
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-2": {
+            "px": [
+              588,
+              2081,
+              672,
+              2194
+            ],
+            "dp": [
+              209.06667,
+              739.91113,
+              238.93333,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-3": {
+            "px": [
+              678,
+              2081,
+              762,
+              2194
+            ],
+            "dp": [
+              241.06667,
+              739.91113,
+              270.93332,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-viewer-favourite": "NOT_RENDERED",
+          "atlas-edit-photo": "NOT_RENDERED",
+          "atlas-share-media": "NOT_RENDERED",
+          "atlas-viewer-trash": "NOT_RENDERED",
+          "atlas-video-controls": "NOT_RENDERED",
+          "atlas-video-play-pause": "NOT_RENDERED",
+          "atlas-video-seek": "NOT_RENDERED",
+          "atlas-photo-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          },
+          "atlas-video-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          }
+        }
+      },
+      "COMPUTED_zone_overlap": {
+        "atlas-viewer-top-chrome": {
+          "in_left_gesture_zone_px": 50,
+          "in_right_gesture_zone_px": 50,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-back": {
+          "in_left_gesture_zone_px": 28,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-details-open": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 28,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-bottom-chrome": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 22
+        },
+        "atlas-filmstrip": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-0": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-1": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-2": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-3": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-photo-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        }
+      }
+    },
+    {
+      "key": "photo\/portrait\/hidden",
+      "png": "viewer-142-gesture-photo-portrait-hidden.png",
+      "png_sha256": "f18f0bd4cba21a5ea842e153368ed1f9867cb34a235c405f0f66b8de71a1db52",
+      "environment_MEASURED": {
+        "navigation_mode": "2",
+        "navbar_overlays": [
+          "[ ] com.android.internal.systemui.navbar.threebutton",
+          "[ ] com.android.internal.systemui.navbar.twobutton",
+          "[ ] com.android.internal.systemui.navbar.transparent",
+          "[x] com.android.internal.systemui.navbar.gestural"
+        ],
+        "wm_size": "Physical size: 1080x2400\nOverride size: 1080x2340",
+        "wm_density": "Physical density: 420\nOverride density: 450",
+        "api": 35,
+        "device_model": "Android SDK built for x86_64",
+        "emulator": "1"
+      },
+      "MEASURED": {
+        "rotation": 0,
+        "window_px": [
+          1080,
+          2340
+        ],
+        "pixels_per_dp": 2.8125,
+        "density_dpi": 450,
+        "android_insets": {
+          "statusBars": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "navigationBars": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "displayCutout": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "systemGestures": {
+            "px": [
+              84,
+              157,
+              84,
+              90
+            ],
+            "dp": [
+              29.866667,
+              55.822224,
+              29.866667,
+              32
+            ]
+          },
+          "mandatorySystemGestures": {
+            "px": [
+              0,
+              157,
+              0,
+              90
+            ],
+            "dp": [
+              0,
+              55.822224,
+              0,
+              32
+            ]
+          },
+          "tappableElement": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "statusBars_ignoringVisibility": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars_ignoringVisibility": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "cutout_rects": [
+            {
+              "px": [
+                480,
+                0,
+                595,
+                125
+              ],
+              "dp": [
+                170.66667,
+                0,
+                211.55556,
+                44.444443
+              ]
+            }
+          ]
+        },
+        "compose_safeDrawing_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "compose_statusBars_px": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "compose_navigationBars_px": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "compose_displayCutout_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "gesture_exclusion_rects": [],
+        "regions_semantics_bounds_screen": {
+          "atlas-viewer-top-chrome": "NOT_RENDERED",
+          "atlas-back": "NOT_RENDERED",
+          "atlas-viewer-details-open": "NOT_RENDERED",
+          "atlas-viewer-find-person": "NOT_RENDERED",
+          "atlas-viewer-find-similar": "NOT_RENDERED",
+          "atlas-viewer-more": "NOT_RENDERED",
+          "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+          "atlas-filmstrip": "NOT_RENDERED",
+          "atlas-thumbnail-0": "NOT_RENDERED",
+          "atlas-thumbnail-1": "NOT_RENDERED",
+          "atlas-thumbnail-2": "NOT_RENDERED",
+          "atlas-thumbnail-3": "NOT_RENDERED",
+          "atlas-viewer-favourite": "NOT_RENDERED",
+          "atlas-edit-photo": "NOT_RENDERED",
+          "atlas-share-media": "NOT_RENDERED",
+          "atlas-viewer-trash": "NOT_RENDERED",
+          "atlas-video-controls": "NOT_RENDERED",
+          "atlas-video-play-pause": "NOT_RENDERED",
+          "atlas-video-seek": "NOT_RENDERED",
+          "atlas-photo-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          },
+          "atlas-video-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          }
+        }
+      },
+      "COMPUTED_zone_overlap": {
+        "atlas-photo-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        }
+      }
+    },
+    {
+      "key": "photo\/landscape\/shown",
+      "png": "viewer-142-gesture-photo-landscape-shown.png",
+      "png_sha256": "1463e815194fda33d2727f307ee21daf5e342f024c8051ddf4250c99d37380be",
+      "environment_MEASURED": {
+        "navigation_mode": "2",
+        "navbar_overlays": [
+          "[ ] com.android.internal.systemui.navbar.threebutton",
+          "[ ] com.android.internal.systemui.navbar.twobutton",
+          "[ ] com.android.internal.systemui.navbar.transparent",
+          "[x] com.android.internal.systemui.navbar.gestural"
+        ],
+        "wm_size": "Physical size: 1080x2400\nOverride size: 1080x2340",
+        "wm_density": "Physical density: 420\nOverride density: 450",
+        "api": 35,
+        "device_model": "Android SDK built for x86_64",
+        "emulator": "1"
+      },
+      "MEASURED": {
+        "rotation": 1,
+        "window_px": [
+          2340,
+          1080
+        ],
+        "pixels_per_dp": 2.8125,
+        "density_dpi": 450,
+        "android_insets": {
+          "statusBars": {
+            "px": [
+              0,
+              68,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              24.177778,
+              0,
+              0
+            ]
+          },
+          "navigationBars": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "displayCutout": {
+            "px": [
+              125,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              44.444443,
+              0,
+              0,
+              0
+            ]
+          },
+          "systemGestures": {
+            "px": [
+              84,
+              68,
+              84,
+              90
+            ],
+            "dp": [
+              29.866667,
+              24.177778,
+              29.866667,
+              32
+            ]
+          },
+          "mandatorySystemGestures": {
+            "px": [
+              0,
+              68,
+              0,
+              90
+            ],
+            "dp": [
+              0,
+              24.177778,
+              0,
+              32
+            ]
+          },
+          "tappableElement": {
+            "px": [
+              0,
+              68,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              24.177778,
+              0,
+              0
+            ]
+          },
+          "statusBars_ignoringVisibility": {
+            "px": [
+              0,
+              68,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              24.177778,
+              0,
+              0
+            ]
+          },
+          "navigationBars_ignoringVisibility": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "cutout_rects": [
+            {
+              "px": [
+                0,
+                485,
+                125,
+                600
+              ],
+              "dp": [
+                0,
+                172.44444,
+                44.444443,
+                213.33333
+              ]
+            }
+          ]
+        },
+        "compose_safeDrawing_px": [
+          125,
+          68,
+          0,
+          68
+        ],
+        "compose_statusBars_px": [
+          0,
+          68,
+          0,
+          0
+        ],
+        "compose_navigationBars_px": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "compose_displayCutout_px": [
+          125,
+          0,
+          0,
+          0
+        ],
+        "gesture_exclusion_rects": [],
+        "regions_semantics_bounds_screen": {
+          "atlas-viewer-top-chrome": {
+            "px": [
+              159,
+              91,
+              2306,
+              226
+            ],
+            "dp": [
+              56.533333,
+              32.355556,
+              819.91113,
+              80.35555
+            ],
+            "click": false
+          },
+          "atlas-back": {
+            "px": [
+              181,
+              102,
+              294,
+              215
+            ],
+            "dp": [
+              64.35555,
+              36.266666,
+              104.53333,
+              76.44444
+            ],
+            "click": true
+          },
+          "atlas-viewer-details-open": {
+            "px": [
+              2171,
+              102,
+              2284,
+              215
+            ],
+            "dp": [
+              771.91113,
+              36.266666,
+              812.08887,
+              76.44444
+            ],
+            "click": true
+          },
+          "atlas-viewer-find-person": "NOT_RENDERED",
+          "atlas-viewer-find-similar": "NOT_RENDERED",
+          "atlas-viewer-more": "NOT_RENDERED",
+          "atlas-viewer-bottom-chrome": {
+            "px": [
+              125,
+              798,
+              2340,
+              1012
+            ],
+            "dp": [
+              44.444443,
+              283.73334,
+              832,
+              359.82224
+            ],
+            "click": false
+          },
+          "atlas-filmstrip": {
+            "px": [
+              125,
+              798,
+              2340,
+              956
+            ],
+            "dp": [
+              44.444443,
+              283.73334,
+              832,
+              339.9111
+            ],
+            "click": false
+          },
+          "atlas-thumbnail-0": {
+            "px": [
+              1100,
+              821,
+              1184,
+              934
+            ],
+            "dp": [
+              391.1111,
+              291.9111,
+              420.97778,
+              332.0889
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-1": {
+            "px": [
+              1179,
+              806,
+              1284,
+              948
+            ],
+            "dp": [
+              419.2,
+              286.5778,
+              456.53333,
+              337.06668
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-2": {
+            "px": [
+              1280,
+              821,
+              1364,
+              934
+            ],
+            "dp": [
+              455.1111,
+              291.9111,
+              484.97778,
+              332.0889
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-3": {
+            "px": [
+              1370,
+              821,
+              1454,
+              934
+            ],
+            "dp": [
+              487.1111,
+              291.9111,
+              516.9778,
+              332.0889
+            ],
+            "click": true
+          },
+          "atlas-viewer-favourite": "NOT_RENDERED",
+          "atlas-edit-photo": "NOT_RENDERED",
+          "atlas-share-media": "NOT_RENDERED",
+          "atlas-viewer-trash": "NOT_RENDERED",
+          "atlas-video-controls": "NOT_RENDERED",
+          "atlas-video-play-pause": "NOT_RENDERED",
+          "atlas-video-seek": "NOT_RENDERED",
+          "atlas-photo-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          },
+          "atlas-video-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          }
+        }
+      },
+      "COMPUTED_zone_overlap": {
+        "atlas-viewer-top-chrome": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 50,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-back": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-details-open": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 28,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-bottom-chrome": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 22
+        },
+        "atlas-filmstrip": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-0": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-1": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-2": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-3": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-photo-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        }
+      }
+    },
+    {
+      "key": "video\/portrait\/shown",
+      "png": "viewer-142-gesture-video-portrait-shown.png",
+      "png_sha256": "bc46ec99216149f8dab4100c0d35458f9efced3a0a238454a6bb638bf80ceb5e",
+      "environment_MEASURED": {
+        "navigation_mode": "2",
+        "navbar_overlays": [
+          "[ ] com.android.internal.systemui.navbar.threebutton",
+          "[ ] com.android.internal.systemui.navbar.twobutton",
+          "[ ] com.android.internal.systemui.navbar.transparent",
+          "[x] com.android.internal.systemui.navbar.gestural"
+        ],
+        "wm_size": "Physical size: 1080x2400\nOverride size: 1080x2340",
+        "wm_density": "Physical density: 420\nOverride density: 450",
+        "api": 35,
+        "device_model": "Android SDK built for x86_64",
+        "emulator": "1"
+      },
+      "MEASURED": {
+        "rotation": 0,
+        "window_px": [
+          1080,
+          2340
+        ],
+        "pixels_per_dp": 2.8125,
+        "density_dpi": 450,
+        "android_insets": {
+          "statusBars": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "displayCutout": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "systemGestures": {
+            "px": [
+              84,
+              157,
+              84,
+              90
+            ],
+            "dp": [
+              29.866667,
+              55.822224,
+              29.866667,
+              32
+            ]
+          },
+          "mandatorySystemGestures": {
+            "px": [
+              0,
+              157,
+              0,
+              90
+            ],
+            "dp": [
+              0,
+              55.822224,
+              0,
+              32
+            ]
+          },
+          "tappableElement": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "statusBars_ignoringVisibility": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars_ignoringVisibility": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "cutout_rects": [
+            {
+              "px": [
+                480,
+                0,
+                595,
+                125
+              ],
+              "dp": [
+                170.66667,
+                0,
+                211.55556,
+                44.444443
+              ]
+            }
+          ]
+        },
+        "compose_safeDrawing_px": [
+          0,
+          125,
+          0,
+          68
+        ],
+        "compose_statusBars_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "compose_navigationBars_px": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "compose_displayCutout_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "gesture_exclusion_rects": [
+          {
+            "view": "DefaultTimeBar",
+            "rect": {
+              "px": [
+                0,
+                0,
+                1080,
+                135
+              ],
+              "dp": [
+                0,
+                0,
+                384,
+                48
+              ]
+            }
+          }
+        ],
+        "regions_semantics_bounds_screen": {
+          "atlas-viewer-top-chrome": {
+            "px": [
+              34,
+              148,
+              1046,
+              283
+            ],
+            "dp": [
+              12.088889,
+              52.622223,
+              371.9111,
+              100.62222
+            ],
+            "click": false
+          },
+          "atlas-back": {
+            "px": [
+              56,
+              159,
+              169,
+              272
+            ],
+            "dp": [
+              19.911112,
+              56.533333,
+              60.08889,
+              96.71111
+            ],
+            "click": true
+          },
+          "atlas-viewer-details-open": {
+            "px": [
+              911,
+              159,
+              1024,
+              272
+            ],
+            "dp": [
+              323.9111,
+              56.533333,
+              364.0889,
+              96.71111
+            ],
+            "click": true
+          },
+          "atlas-viewer-find-person": "NOT_RENDERED",
+          "atlas-viewer-find-similar": "NOT_RENDERED",
+          "atlas-viewer-more": "NOT_RENDERED",
+          "atlas-viewer-bottom-chrome": {
+            "px": [
+              0,
+              2058,
+              1080,
+              2272
+            ],
+            "dp": [
+              0,
+              731.73334,
+              384,
+              807.8222
+            ],
+            "click": false
+          },
+          "atlas-filmstrip": {
+            "px": [
+              0,
+              2058,
+              1080,
+              2216
+            ],
+            "dp": [
+              0,
+              731.73334,
+              384,
+              787.91113
+            ],
+            "click": false
+          },
+          "atlas-thumbnail-0": {
+            "px": [
+              318,
+              2081,
+              402,
+              2194
+            ],
+            "dp": [
+              113.066666,
+              739.91113,
+              142.93333,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-1": {
+            "px": [
+              408,
+              2081,
+              492,
+              2194
+            ],
+            "dp": [
+              145.06667,
+              739.91113,
+              174.93333,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-2": {
+            "px": [
+              487,
+              2066,
+              592,
+              2208
+            ],
+            "dp": [
+              173.15555,
+              734.57776,
+              210.48889,
+              785.06665
+            ],
+            "click": true
+          },
+          "atlas-thumbnail-3": {
+            "px": [
+              588,
+              2081,
+              672,
+              2194
+            ],
+            "dp": [
+              209.06667,
+              739.91113,
+              238.93333,
+              780.08887
+            ],
+            "click": true
+          },
+          "atlas-viewer-favourite": "NOT_RENDERED",
+          "atlas-edit-photo": "NOT_RENDERED",
+          "atlas-share-media": "NOT_RENDERED",
+          "atlas-viewer-trash": "NOT_RENDERED",
+          "atlas-video-controls": {
+            "px": [
+              39,
+              1659,
+              1041,
+              1811
+            ],
+            "dp": [
+              13.866667,
+              589.86664,
+              370.13333,
+              643.91113
+            ],
+            "click": false
+          },
+          "atlas-video-play-pause": {
+            "px": [
+              61,
+              1679,
+              174,
+              1792
+            ],
+            "dp": [
+              21.688889,
+              596.9778,
+              61.866665,
+              637.1556
+            ],
+            "click": true
+          },
+          "atlas-video-seek": {
+            "px": [
+              228,
+              1674,
+              964,
+              1798
+            ],
+            "dp": [
+              81.066666,
+              595.2,
+              342.75555,
+              639.2889
+            ],
+            "click": false
+          },
+          "atlas-photo-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          },
+          "atlas-video-surface": {
+            "px": [
+              0,
+              0,
+              1080,
+              2340
+            ],
+            "dp": [
+              0,
+              0,
+              384,
+              832
+            ],
+            "click": true
+          }
+        }
+      },
+      "COMPUTED_zone_overlap": {
+        "atlas-viewer-top-chrome": {
+          "in_left_gesture_zone_px": 50,
+          "in_right_gesture_zone_px": 50,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-back": {
+          "in_left_gesture_zone_px": 28,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-details-open": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 28,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-viewer-bottom-chrome": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 22
+        },
+        "atlas-filmstrip": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-0": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-1": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-2": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-thumbnail-3": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-controls": {
+          "in_left_gesture_zone_px": 45,
+          "in_right_gesture_zone_px": 45,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-play-pause": {
+          "in_left_gesture_zone_px": 23,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-seek": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-photo-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-surface": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 90
+        }
+      }
+    },
+    {
+      "key": "video\/portrait\/hidden",
+      "png": "viewer-142-gesture-video-portrait-hidden.png",
+      "png_sha256": "a95adacec718680a4ac41f5cf92cea5e5fee39c97b76a9b35d309f67dfbb332c",
+      "environment_MEASURED": {
+        "navigation_mode": "2",
+        "navbar_overlays": [
+          "[ ] com.android.internal.systemui.navbar.threebutton",
+          "[ ] com.android.internal.systemui.navbar.twobutton",
+          "[ ] com.android.internal.systemui.navbar.transparent",
+          "[x] com.android.internal.systemui.navbar.gestural"
+        ],
+        "wm_size": "Physical size: 1080x2400\nOverride size: 1080x2340",
+        "wm_density": "Physical density: 420\nOverride density: 450",
+        "api": 35,
+        "device_model": "Android SDK built for x86_64",
+        "emulator": "1"
+      },
+      "MEASURED": {
+        "rotation": 0,
+        "window_px": [
+          1080,
+          2340
+        ],
+        "pixels_per_dp": 2.8125,
+        "density_dpi": 450,
+        "android_insets": {
+          "statusBars": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "navigationBars": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "displayCutout": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "systemGestures": {
+            "px": [
+              84,
+              157,
+              84,
+              90
+            ],
+            "dp": [
+              29.866667,
+              55.822224,
+              29.866667,
+              32
+            ]
+          },
+          "mandatorySystemGestures": {
+            "px": [
+              0,
+              157,
+              0,
+              90
+            ],
+            "dp": [
+              0,
+              55.822224,
+              0,
+              32
+            ]
+          },
+          "tappableElement": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "statusBars_ignoringVisibility": {
+            "px": [
+              0,
+              125,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              44.444443,
+              0,
+              0
+            ]
+          },
+          "navigationBars_ignoringVisibility": {
+            "px": [
+              0,
+              0,
+              0,
+              68
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              24.177778
+            ]
+          },
+          "cutout_rects": [
+            {
+              "px": [
+                480,
+                0,
+                595,
+                125
+              ],
+              "dp": [
+                170.66667,
+                0,
+                211.55556,
+                44.444443
+              ]
+            }
+          ]
+        },
+        "compose_safeDrawing_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "compose_statusBars_px": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "compose_navigationBars_px": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "compose_displayCutout_px": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "gesture_exclusion_rects": [
+          {
+            "view": "DefaultTimeBar",
+            "rect": {
+              "px": [
+                0,
+                0,
+                1080,
+                135
+              ],
+              "dp": [
+                0,
+                0,
+                384,
+                48
+              ]
+            }
+          }
+        ],
+        "regions_semantics_bounds_screen": {
+          "atlas-viewer-top-chrome": "NOT_RENDERED",
+          "atlas-back": "NOT_RENDERED",
+          "atlas-viewer-details-open": "NOT_RENDERED",
+          "atlas-viewer-find-person": "NOT_RENDERED",
+          "atlas-viewer-find-similar": "NOT_RENDERED",
+          "atlas-viewer-more": "NOT_RENDERED",
+          "atlas-viewer-bottom-chrome": "NOT_RENDERED",
+          "atlas-filmstrip": "NOT_RENDERED",
+          "atlas-thumbnail-0": "NOT_RENDERED",
+          "atlas-thumbnail-1": "NOT_RENDERED",
+          "atlas-thumbnail-2": "NOT_RENDERED",
+          "atlas-thumbnail-3": "NOT_RENDERED",
+          "atlas-viewer-favourite": "NOT_RENDERED",
+          "atlas-edit-photo": "NOT_RENDERED",
+          "atlas-share-media": "NOT_RENDERED",
+          "atlas-viewer-trash": "NOT_RENDERED",
+          "atlas-video-controls": "NOT_RENDERED",
+          "atlas-video-play-pause": "NOT_RENDERED",
+          "atlas-video-seek": "NOT_RENDERED",
+          "atlas-photo-surface": {
+            "px": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "dp": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "click": false
+          },
+          "atlas-video-surface": {
+            "px": [
+              0,
+              0,
+              1080,
+              2340
+            ],
+            "dp": [
+              0,
+              0,
+              384,
+              832
+            ],
+            "click": true
+          }
+        }
+      },
+      "COMPUTED_zone_overlap": {
+        "atlas-photo-surface": {
+          "in_left_gesture_zone_px": 0,
+          "in_right_gesture_zone_px": 0,
+          "in_bottom_mandatory_zone_px": 0
+        },
+        "atlas-video-surface": {
+          "in_left_gesture_zone_px": 84,
+          "in_right_gesture_zone_px": 84,
+          "in_bottom_mandatory_zone_px": 90
+        }
+      }
+    }
+  ],
+  "probes": [
+    {
+      "name": "photo\/left-edge-swipe-mid#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 0,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 1,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1233
+    },
+    {
+      "name": "photo\/left-edge-swipe-mid#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 1,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 2,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1117
+    },
+    {
+      "name": "photo\/right-edge-swipe-mid#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 2,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 3,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1116
+    },
+    {
+      "name": "photo\/right-edge-swipe-mid#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 3,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1133
+    },
+    {
+      "name": "photo\/inner-swipe-left-of-centre-to-right#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "1 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 487,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": true,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 1367
+    },
+    {
+      "name": "photo\/inner-swipe-left-of-centre-to-right#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "1 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 487,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": true,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 1634
+    },
+    {
+      "name": "photo\/left-edge-swipe-on-filmstrip#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 4,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 5,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1150
+    },
+    {
+      "name": "photo\/left-edge-swipe-on-filmstrip#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 5,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1116
+    },
+    {
+      "name": "photo\/inner-drag-on-filmstrip#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "4 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 228,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": true,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 1317
+    },
+    {
+      "name": "photo\/inner-drag-on-filmstrip#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "4 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 228,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": true,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 1683
+    },
+    {
+      "name": "photo\/tap-centre-toggles-chrome#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": null,
+        "chrome": false,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": null,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": "UNKNOWN: chrome hidden",
+      "chrome_changed": true,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 3051
+    },
+    {
+      "name": "photo\/tap-centre-toggles-chrome#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": null,
+        "chrome": false,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": null,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": "UNKNOWN: chrome hidden",
+      "chrome_changed": true,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": true,
+      "elapsed_ms": 3066
+    },
+    {
+      "name": "photo\/tap-back-button#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 6,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 7,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1150
+    },
+    {
+      "name": "photo\/tap-back-button#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 7,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 8,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 408,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1000
+    },
+    {
+      "name": "photo\/landscape\/left-edge-swipe-mid#1",
+      "label": "MEASURED",
+      "window_px": [
+        2340,
+        1080
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 8,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 1100,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 9,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 1100,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1133
+    },
+    {
+      "name": "photo\/landscape\/left-edge-swipe-mid#2",
+      "label": "MEASURED",
+      "window_px": [
+        2340,
+        1080
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 9,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 1100,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 10,
+        "counter": "2 of 4",
+        "chrome": true,
+        "seek_fraction": null,
+        "video_playing": false,
+        "thumbnail0_left_px": 1100,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1133
+    },
+    {
+      "name": "video\/left-edge-swipe-on-seek#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 10,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 11,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1183
+    },
+    {
+      "name": "video\/left-edge-swipe-on-seek#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 11,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 12,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1167
+    },
+    {
+      "name": "video\/right-edge-swipe-on-seek#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 12,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 13,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1167
+    },
+    {
+      "name": "video\/right-edge-swipe-on-seek#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 13,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1133
+    },
+    {
+      "name": "video\/inner-drag-on-seek#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.734499990940094,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": true,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1199
+    },
+    {
+      "name": "video\/inner-drag-on-seek#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.734499990940094,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": true,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1200
+    },
+    {
+      "name": "video\/left-edge-swipe-mid#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 14,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 15,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1150
+    },
+    {
+      "name": "video\/left-edge-swipe-mid#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 15,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 16,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 1,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 1133
+    },
+    {
+      "name": "video\/tap-play-pause#1",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 16,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 0.7162500023841858,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 16,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 1,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": 2500,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": true,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 2133
+    },
+    {
+      "name": "video\/tap-play-pause#2",
+      "label": "MEASURED",
+      "window_px": [
+        1080,
+        2340
+      ],
+      "gesture_left_px": 84,
+      "before": {
+        "system_back": 0,
+        "viewer_back": 16,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 1,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "after": {
+        "system_back": 0,
+        "viewer_back": 16,
+        "counter": "3 of 4",
+        "chrome": true,
+        "seek_fraction": 1,
+        "video_playing": false,
+        "thumbnail0_left_px": 318,
+        "viewer_present": true
+      },
+      "effect_within_ms": null,
+      "viewer_onBack_calls": 0,
+      "back_not_consumed_by_viewer": 0,
+      "page_changed": false,
+      "chrome_changed": false,
+      "seek_changed": false,
+      "playing_changed": false,
+      "filmstrip_scrolled": false,
+      "elapsed_ms": 3433
+    }
+  ],
+  "UNKNOWN": [
+    "Physical Galaxy S24+ (One UI) gesture zones and back sensitivity: emulator AOSP SystemUI only",
+    "Home \/ recents swipe from the bottom zone: not injected (it would leave the app under test)",
+    "Predictive-back animation frames: not captured; only the delivered Back is counted",
+    "Media3 AndroidView internal touch handling beyond the Compose semantics tree",
+    "Target #142 layout interactions: target not implemented, proposed\/unverified"
+  ]
+}

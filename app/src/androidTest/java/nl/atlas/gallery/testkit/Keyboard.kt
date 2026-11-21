@@ -290,14 +290,19 @@ internal const val FIXED_KEYBOARD_HEIGHT_SETTING = "atlas_test_keyboard_height_p
  *         .around(S24DisplayRule()).around(compose)
  *
  * [fixedHeightPx] sets the height of [TestKeyboard.Fixed]; null keeps its default.
+ * [methodKeyboards] can select a different keyboard for one method in a journey class,
+ * without changing the renders of its other methods. Selection still precedes Activity setup.
  */
 class KeyboardRule(
     private val keyboard: TestKeyboard = TestKeyboard.None,
-    private val fixedHeightPx: Int? = null
+    private val fixedHeightPx: Int? = null,
+    private val methodKeyboards: Map<String, TestKeyboard> = emptyMap()
 ) : TestRule {
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
-            override fun evaluate() = withTestKeyboard(keyboard, fixedHeightPx) { base.evaluate() }
+            override fun evaluate() = withTestKeyboard(
+                methodKeyboards[description.methodName] ?: keyboard, fixedHeightPx
+            ) { base.evaluate() }
         }
 }
 

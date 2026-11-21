@@ -341,11 +341,17 @@ class Design6QuietStatesEvidenceTest {
         for (theme in listOf(false, true)) {
             val mode = if (theme) "dark" else "light"
             compose.runOnIdle { dark = theme }
-            compose.waitUntil(30_000L) {
-                compose.onAllNodesWithTag("atlas-timeline-grid")
-                    .fetchSemanticsNodes().isNotEmpty()
+            // #693: the same blank-ground race as Month/Year (run 44707919448):
+            // a replan after this wait shows nothing until Compose syncs, so
+            // every look waits for the grid again.
+            val gridShown = {
+                compose.waitUntil(30_000L) {
+                    compose.onAllNodesWithTag("atlas-timeline-grid")
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.waitForIdle()
             }
-            compose.waitForIdle()
+            gridShown()
             compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
             compose.onNodeWithTag("atlas-quiet-title").assertDoesNotExist()
             for (banner in listOf("selected", "access", "Allow", "Manage", "more photos")) {
@@ -353,7 +359,7 @@ class Design6QuietStatesEvidenceTest {
                     compose.onAllNodesWithText(banner, substring = true, ignoreCase = true)
                         .fetchSemanticsNodes().isEmpty())
             }
-            saveUiEvidence("photos-136-partial-access-$mode.png")
+            saveUiEvidence("photos-136-partial-access-$mode.png", gridShown)
         }
     }
 
