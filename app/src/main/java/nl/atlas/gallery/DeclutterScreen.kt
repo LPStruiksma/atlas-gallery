@@ -39,6 +39,7 @@ private fun readableBytes(size: Long): String = cleanupSize(size)
  * resume where saved Keeps end and records new Keeps. Without them it behaves
  * exactly like the plain folder review.
  */
+@androidx.compose.runtime.NonSkippableComposable
 @Composable
 internal fun DeclutterScreen(
     folder: String,
