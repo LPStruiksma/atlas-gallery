@@ -34,7 +34,6 @@ class EditorPreviewSurface(
     private val renderer = HardwareRenderer().apply {
         setSurface(surface)
         isOpaque = false
-        setName("atlas-edit2-preview")
     }
     private val node = RenderNode("atlas-edit2-preview").apply { setPosition(0, 0, width, height) }
     private val gpu: AgslProgram? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) AgslProgram() else null

@@ -76,7 +76,6 @@ class AgslPixelBackend : PixelBackend {
         renderer = HardwareRenderer().apply {
             setSurface(r.surface)
             isOpaque = false
-            setName("atlas-edit2-tiles")
         }
     }
 

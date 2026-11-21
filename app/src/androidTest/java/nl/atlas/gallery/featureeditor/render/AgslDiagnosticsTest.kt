@@ -109,11 +109,11 @@ class AgslDiagnosticsTest {
         }
     }
 
-    private fun drawB(w: Int, h: Int, translate: Boolean, bindInside: Boolean, images: Int, reuse: Boolean, prog: SegmentProgram, region: SourceRegion): Bitmap {
+    private fun drawB(w: Int, h: Int, translate: Boolean, bindInside: Boolean, images: Int, reuse: Boolean, prog: SegmentProgram, region: SourceRegion, name: Boolean = false): Bitmap {
         val agsl = AgslProgram()
         val paint = Paint()
         val reader = RenderTestKit.reader(w, h, images)
-        val r = HardwareRenderer().apply { setSurface(reader.surface); isOpaque = false }
+        val r = HardwareRenderer().apply { setSurface(reader.surface); isOpaque = false; if (name) setName("atlas-edit2-tile") }
         var out: Bitmap? = null
         repeat(if (reuse) 2 else 1) {
             val pre = if (!bindInside) agsl.bind(prog, region, null, PixelSpace.SRGB) else null
@@ -138,9 +138,7 @@ class AgslDiagnosticsTest {
         val pic = RenderTestKit.picture(w, h)
         val prog = SegmentProgram.of(nl.atlas.gallery.featureeditor.engine.RenderPlan.build(nl.atlas.gallery.featureeditor.engine.EditRecipe(w, h)))
         val region = SourceRegion(pic, 0f, 0f, 1f, PixelSpace.SRGB)
-        for (t in listOf(false, true)) for (bi in listOf(false, true)) for (im in listOf(2, 3)) for (re in listOf(false, true)) {
-            RenderTestKit.log("diag3 translate=$t bindInside=$bi images=$im reuse=$re " + firstMismatch(drawB(w, h, t, bi, im, re, prog, region), pic))
-        }
+        RenderTestKit.log("diag3 named " + firstMismatch(drawB(w, h, true, true, 2, true, prog, region, name = true), pic))
         val reader = RenderTestKit.reader(w, h)
         val pv = EditorPreviewSurface(reader.surface, w, h, RenderTestKit.assets())
         pv.render(nl.atlas.gallery.featureeditor.engine.RenderPlan.build(nl.atlas.gallery.featureeditor.engine.EditRecipe(w, h)), BitmapSource(pic))
