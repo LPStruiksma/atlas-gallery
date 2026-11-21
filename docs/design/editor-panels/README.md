@@ -1,5 +1,7 @@
 # EDIT-10 · Atlas editor tool panels — pre-build design brief
 
+**Filters evidence repair (EDIT-15D, #943).** This scoped supplement documents only the Filters panel planning evidence. It must use same-photo synthetic LUT previews (Original first), the approved Quiet Frame v3 held-sphere selection marker, reference-picker recovery states, recipe Copy/Paste availability, and explicit hit-target, focus, keyboard/inset and undo annotations. All frames are proposed synthetic planning evidence, not measured Samsung, Android Compose or S24+ output. The corresponding `filters.svg` and this README must remain aligned; no production UI, engine or shared-shell changes are in scope.
+
 **Unit:** [#728](https://github.com/LPStruiksma/atlas-gallery/issues/728) · **Goal:** [#629](https://github.com/LPStruiksma/atlas-gallery/issues/629) · **Stage:** proposed, independent design preflight pending. **UI: yes** · **Latitude:** fidelity for tool availability, order, semantics and gestures in [EDIT-0](../../editor/PARITY.md), room for appearance under [Quiet Frame v3](../QUIET_FRAME.md). **Needs:** render. **Live check:** S24+ emulator renders and then owner-approved S24+ canary, using synthetic images. **Docs impact:** this directory only.
 
 ## Task, intent and boundary
