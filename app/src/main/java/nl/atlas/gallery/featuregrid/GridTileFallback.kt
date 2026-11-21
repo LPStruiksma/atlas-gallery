@@ -9,7 +9,7 @@ import coil3.memory.MemoryCache
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.featuremedia.MicroThumbnails
 import nl.atlas.gallery.featuremedia.microThumbnailMemoryKey
-import nl.atlas.gallery.presentationCacheKeyOrNull
+import nl.atlas.gallery.presentationCacheKeyPrefixOrNull
 
 /**
  * FLOW-1 (#711): thumbnail request sizes of the other grid levels on this
@@ -39,10 +39,15 @@ internal fun cachedGridTileBitmap(
     context: Context, media: MediaRecord, publicationEpoch: Long, candidatePixels: IntArray
 ): Bitmap? {
     val cache = SingletonImageLoader.get(context).memoryCache
-    if (cache != null) for (pixels in candidatePixels) {
-        val key = media.presentationCacheKeyOrNull(pixels, publicationEpoch) ?: return null
-        val bitmap = (cache[MemoryCache.Key(key)]?.image as? BitmapImage)?.bitmap
-        if (bitmap != null && !bitmap.isRecycled) return bitmap
+    if (cache != null && candidatePixels.isNotEmpty()) {
+        // One item part for every candidate size (same keys as
+        // presentationCacheKeyOrNull, without rebuilding it per size).
+        val prefix = media.presentationCacheKeyPrefixOrNull(publicationEpoch) ?: return null
+        for (pixels in candidatePixels) {
+            if (pixels !in 1..8192) return null
+            val bitmap = (cache[MemoryCache.Key(prefix + pixels)]?.image as? BitmapImage)?.bitmap
+            if (bitmap != null && !bitmap.isRecycled) return bitmap
+        }
     }
     if (!MicroThumbnails.active) return null
     return microThumbnailMemoryKey(media, publicationEpoch)?.let { MicroThumbnails.cached(it) }
