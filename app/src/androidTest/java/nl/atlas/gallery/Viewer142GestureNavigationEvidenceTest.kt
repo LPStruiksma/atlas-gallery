@@ -216,8 +216,7 @@ class Viewer142GestureNavigationEvidenceTest {
             compose.awaitWindowSettled()
 
             // Video page (paused), chrome shown and hidden.
-            compose.awaitScreenStill("filmstrip settled before opening the video")
-            compose.tap(hasTestTag("atlas-thumbnail-2"))
+            selectThumbnail(2)
             awaitPlayer()
             awaitCounter("3 of 4")
             recorder.capture("video/portrait/shown", "viewer-142-gesture-video-portrait-shown.png")
@@ -299,12 +298,20 @@ class Viewer142GestureNavigationEvidenceTest {
             compose.awaitThat("chrome back after probe") { compose.exists(hasTestTag("atlas-filmstrip")) }
         }
         if (counterText() != counter) {
-            // A page change scrolls the filmstrip after the pager settles
-            // (run 44864103905: thumbnail moved 101 px under the pointer).
-            compose.awaitScreenStill("filmstrip settled before reset tap")
-            compose.tap(hasTestTag("atlas-thumbnail-$index"))
+            // Reset is setup, not a measured touch: use the click action.
+            // A real tap on a filmstrip tile right after a page change fails
+            // tap()'s stillness check (runs 44864103905 and 44865393321: the
+            // tile moved 101 px while the pointer was down, also after the
+            // screen held still), so it would end the probe run early.
+            selectThumbnail(index)
             awaitCounter(counter)
         }
+    }
+
+    private fun selectThumbnail(index: Int) {
+        compose.awaitScreenStill("filmstrip settled before selecting tile $index")
+        compose.onNode(hasTestTag("atlas-thumbnail-$index") and hasClickAction())
+            .performSemanticsAction(SemanticsActions.OnClick)
     }
 
     internal class Counters {
