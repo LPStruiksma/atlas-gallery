@@ -30,14 +30,14 @@ object ColourScience {
 
     // D65 RGB-to-XYZ matrices (row-major), from the colour-space primaries.
     private val SRGB_TO_XYZ = doubleArrayOf(
-        0.4123907992659595, 0.357584339383878, 0.1804807884018343,
-        0.21263900587151036, 0.715168678767756, 0.07219231536073371,
-        0.01933081871559185, 0.11919477979462598, 0.9505321522496606,
+        0.4123907992659595, 0.357584339383878, 0.1804807884018343, // guard: allow-public (colour-space constant)
+        0.21263900587151036, 0.715168678767756, 0.07219231536073371, // guard: allow-public (colour-space constant)
+        0.01933081871559185, 0.11919477979462598, 0.9505321522496606, // guard: allow-public (colour-space constant)
     )
     private val P3_TO_XYZ = doubleArrayOf(
-        0.4865709486482162, 0.26566769316909306, 0.1982172852343625,
-        0.2289745640697488, 0.6917385218365064, 0.079286914093745,
-        0.0, 0.04511338185890264, 1.043944368900976,
+        0.4865709486482162, 0.26566769316909306, 0.1982172852343625, // guard: allow-public (colour-space constant)
+        0.2289745640697488, 0.6917385218365064, 0.079286914093745, // guard: allow-public (colour-space constant)
+        0.0, 0.04511338185890264, 1.043944368900976, // guard: allow-public (colour-space constant)
     )
 
     /** Linear sRGB to linear Display P3 (row-major). */

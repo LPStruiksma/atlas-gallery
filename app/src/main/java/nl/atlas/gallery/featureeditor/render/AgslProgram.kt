@@ -113,7 +113,7 @@ uniform float2 uOutSize;
 uniform float uDefRadius;
 uniform float2 uLut;
 
-const float3 LUMA = float3(0.22897457, 0.6917385, 0.07928691);
+const float3 LUMA = float3(0.22897457, 0.6917385, 0.07928691); // guard: allow-public (colour-space constant)
 
 float dec(float e) {
     float a = abs(e);
