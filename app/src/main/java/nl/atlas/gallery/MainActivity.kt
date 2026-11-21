@@ -1592,7 +1592,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         filter: String = "",
         sourceSort: String = "source-order"
     ) {
-        if (source.isEmpty() || !galleryAccessCurrent()) return
+        if (source.isEmpty() || !grants.hasAny ||
+            !publishedGallery.showable(grants) || publishedGallery.epoch < 0L) return
         declutterItems = null
         declutterPersistentScope = null
         declutterSource = source
