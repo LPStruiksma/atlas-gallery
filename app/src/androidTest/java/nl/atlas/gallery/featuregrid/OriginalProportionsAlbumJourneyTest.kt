@@ -13,13 +13,16 @@ import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.displayAspectRatioOrNull
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PixelMap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.captureToImage
+import nl.atlas.gallery.testkit.captureTimeoutViewport
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performTouchInput
@@ -35,6 +38,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.MainActivity
 import nl.atlas.gallery.SyntheticHeaderFixtures
 import nl.atlas.gallery.saveUiEvidence
+import nl.atlas.gallery.uiEvidenceDisplayName
+import nl.atlas.gallery.writeUiEvidenceFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -42,6 +47,7 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import kotlin.math.abs
+import java.io.ByteArrayOutputStream
 
 /**
  * #527 acceptance on the owner's phone geometry. The emulator display is set
@@ -277,9 +283,19 @@ private fun checkVisibleTiles(compose: ComposeTestRule, seen: MutableSet<Int>) {
                 size.width.toDouble() / size.height, real * 0.02)
         }
         val index = nodes.indexOf(node)
-        compose.waitUntil(30_000L) {
-            val pixels = compose.onAllNodes(fixtureTile)[index].captureToImage().toPixelMap()
-            tileIsOneColour(pixels)
+        try {
+            compose.waitUntil(30_000L) {
+                val pixels = compose.onAllNodes(fixtureTile)[index].captureToImage().toPixelMap()
+                tileIsOneColour(pixels)
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            try {
+                captureOneColourTimeout(compose, step)
+            } catch (diagnosticError: Throwable) {
+                timeout.addSuppressed(diagnosticError)
+                android.util.Log.e("ATLAS_RATIO_556", "diagnostic capture failed", diagnosticError)
+            }
+            throw timeout
         }
         seen += step
     }
@@ -292,6 +308,61 @@ private fun checkVisibleTiles(compose: ComposeTestRule, seen: MutableSet<Int>) {
         val used = all.sumOf { it.size.width } + gapPx * (all.size - 1)
         assertEquals("row at $top must span the width", galleryBounds.width, used, 1.5f)
     }
+}
+
+/** #556: preserve the timed-out rendered pixels and their exact chrome/scroll geometry. */
+private fun captureOneColourTimeout(compose: ComposeTestRule, step: Int) {
+    val stableTile = fixtureTile and
+        hasContentDescription("IMG_HEADER_FIXTURE_$step.", substring = true)
+    val tile = compose.onNode(stableTile).fetchSemanticsNode()
+    val gallery = compose.onNodeWithTag("atlas-ratio-gallery").fetchSemanticsNode()
+    val pill = compose.onAllNodes(hasTestTag("atlas-nav-pill"), useUnmergedTree = true)
+        .fetchSemanticsNodes().firstOrNull()
+    val sticky = compose.onAllNodes(hasTestTag("atlas-scrolling-header"), useUnmergedTree = true)
+        .fetchSemanticsNodes().firstOrNull()
+    val axis = gallery.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)
+    val before = axis?.value()
+
+    val tileCapture = compose.onNode(stableTile).captureTimeoutViewport()
+    val galleryCapture = compose.onNodeWithTag("atlas-ratio-gallery").captureTimeoutViewport()
+    saveCapture("ratio-556-timeout-tile-$step.png", tileCapture.asAndroidBitmap())
+    saveCapture("ratio-556-timeout-gallery-$step.png", galleryCapture.asAndroidBitmap())
+
+    // Advance one Compose frame to see whether a fling is still changing scroll offset.
+    compose.mainClock.advanceTimeByFrame()
+    val afterAxis = compose.onNodeWithTag("atlas-ratio-gallery").fetchSemanticsNode()
+        .config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)
+    val after = afterAxis?.value()
+    val pixels = tileCapture.toPixelMap()
+    val mismatch = firstOneColourMismatch(pixels)
+    android.util.Log.e("ATLAS_RATIO_556", "timeout tile=IMG_HEADER_FIXTURE_$step " +
+        "tileBounds=${tile.boundsInRoot} galleryBounds=${gallery.boundsInRoot} " +
+        "pillBounds=${pill?.boundsInRoot ?: "absent"} pillTop=${pill?.boundsInRoot?.top ?: "absent"} " +
+        "stickyDateHeaderBounds=${sticky?.boundsInRoot ?: "absent"} " +
+        "scrollValue=$before scrollMax=${axis?.maxValue()} reverse=${axis?.reverseScrolling} " +
+        "scrollAfterOneFrame=$after flingProgressing=${before != null && after != null && before != after} " +
+        "pixelMismatch=${mismatch ?: "none found in captured tile"}")
+}
+
+private fun saveCapture(name: String, bitmap: android.graphics.Bitmap) {
+    val encoded = ByteArrayOutputStream()
+    check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, encoded))
+    writeUiEvidenceFile(uiEvidenceDisplayName(name), encoded.toByteArray())
+}
+
+/** Reports the first sample rejected by the unchanged [tileIsOneColour] tolerance. */
+private fun firstOneColourMismatch(pixels: PixelMap): String? {
+    val centre = pixels[pixels.width / 2, pixels.height / 2]
+    fun same(c: Color) = centre.alpha >= 0.99f &&
+        abs(c.red - centre.red) < 0.04f && abs(c.green - centre.green) < 0.04f &&
+        abs(c.blue - centre.blue) < 0.04f
+    val xs = (0 until pixels.width step 3) + (pixels.width - 1)
+    val ys = (0 until pixels.height step 3) + (pixels.height - 1)
+    for (x in xs) for (y in ys) {
+        val sampled = pixels[x, y]
+        if (!same(sampled)) return "at=($x,$y) sampled=$sampled centre=$centre"
+    }
+    return null
 }
 
 private fun Rect.isFullyInside(outer: Rect) =

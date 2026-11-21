@@ -23,6 +23,37 @@ internal fun viewerStripPosition(
     return ViewerStripPosition(index, offset)
 }
 
+/** The tap-only strip ease starts at LazyRow's *rendered* first item + offset.
+ * Double precision avoids losing sub-tile accuracy for a 150k-item library;
+ * every frame remains O(1), irrespective of how far the destination is.
+ */
+internal fun viewerTapStripFrame(
+    from: ViewerStripPosition, targetIndex: Int, progress: Float,
+    count: Int, stridePx: Int
+): ViewerStripPosition {
+    require(count > 0 && stridePx > 0)
+    val start = (from.index.toDouble() +
+        from.scrollOffsetPx.coerceAtLeast(0).toDouble() / stridePx)
+        .coerceIn(0.0, (count - 1).toDouble())
+    val destination = targetIndex.coerceIn(0, count - 1).toDouble()
+    val fraction = if (progress.isFinite()) progress.coerceIn(0f, 1f).toDouble() else 1.0
+    val coordinate = start + (destination - start) * fraction
+    val index = floor(coordinate).toInt().coerceIn(0, count - 1)
+    val offset = ((coordinate - index) * stridePx).roundToInt().coerceIn(0, stridePx)
+    return when {
+        index == count - 1 -> ViewerStripPosition(index, 0)
+        offset == stridePx -> ViewerStripPosition(index + 1, 0)
+        else -> ViewerStripPosition(index, offset)
+    }
+}
+
+/** Never animate a scrub completion, edge-page request, or a reduced-motion cut. */
+internal fun viewerShouldEaseStripJump(
+    origin: ViewerJumpOrigin, animationsDisabled: Boolean,
+    from: ViewerStripPosition, targetIndex: Int
+): Boolean = origin == ViewerJumpOrigin.THUMBNAIL && !animationsDisabled &&
+    (from.index != targetIndex || from.scrollOffsetPx != 0)
+
 /**
  * A regular one-finger swipe on an unzoomed photo belongs to HorizontalPager.
  * Compose detectTransformGestures consumes single-finger pans unconditionally
@@ -79,6 +110,20 @@ internal fun viewerZoomGesture(
     val change = scale / oldScale
     val requestedX = oldX + (1f - change) * (dx - oldX) + panX.takeIf { it.isFinite() }.orZero()
     val requestedY = oldY + (1f - change) * (dy - oldY) + panY.takeIf { it.isFinite() }.orZero()
+    return viewerClampedPose(scale, requestedX, requestedY,
+        viewportWidth, viewportHeight, sourceWidth, sourceHeight)
+}
+
+/**
+ * The pose at [scale] nearest the requested translation that shows no blank
+ * space beyond the photo's edges. Unknown source sizes fail closed to zero
+ * panning, exactly as [viewerZoomGesture] always has.
+ */
+private fun viewerClampedPose(
+    scale: Float, requestedX: Float, requestedY: Float,
+    viewportWidth: Int, viewportHeight: Int,
+    sourceWidth: Int, sourceHeight: Int
+): ViewerZoomPosition {
     if (sourceWidth <= 0 || sourceHeight <= 0) return ViewerZoomPosition(scale)
     val fitFactor = min(viewportWidth.toDouble() / sourceWidth, viewportHeight.toDouble() / sourceHeight)
     val fittedW = sourceWidth * fitFactor
@@ -102,6 +147,49 @@ internal fun viewerDoubleTapZoom(
     ViewerZoomPosition()
 } else {
     viewerZoomGesture(pose, 2.5f, 0f, 0f, focalX, focalY,
+        viewportWidth, viewportHeight, sourceWidth, sourceHeight)
+}
+
+/**
+ * FLOW-4 (#713): one frame of the animated double-tap zoom from [from] to
+ * [to], where [fraction] is the already-eased progress (0 = from, 1 = to).
+ *
+ * Scale moves straight from start to end. Translation keeps the photo point
+ * that was under the finger at the tap position, so the zoom pivots on the
+ * tap. When the end pose had to be clamped at a photo edge (a tap near a
+ * corner), the clamp offset is blended in over the animation rather than
+ * applied in one jump. Every frame is also clamped to the bounds of its own
+ * scale, so a new touch can take over from any frame without a snap: the
+ * next [viewerZoomGesture] step starts from a pose that is already legal.
+ */
+internal fun viewerDoubleTapFrame(
+    from: ViewerZoomPosition, to: ViewerZoomPosition,
+    focalX: Float, focalY: Float,
+    viewportWidth: Int, viewportHeight: Int,
+    sourceWidth: Int, sourceHeight: Int,
+    fraction: Float
+): ViewerZoomPosition {
+    val e = fraction.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
+    if (e >= 1f || viewportWidth <= 0 || viewportHeight <= 0) return to
+    if (e <= 0f) return from
+    val s0 = from.scale.takeIf { it.isFinite() && it >= 1f } ?: 1f
+    val s1 = to.scale.takeIf { it.isFinite() && it >= 1f } ?: 1f
+    val t0x = from.translationX.takeIf { it.isFinite() } ?: 0f
+    val t0y = from.translationY.takeIf { it.isFinite() } ?: 0f
+    val t1x = to.translationX.takeIf { it.isFinite() } ?: 0f
+    val t1y = to.translationY.takeIf { it.isFinite() } ?: 0f
+    val dx = focalX.takeIf { it.isFinite() }?.minus(viewportWidth / 2f) ?: 0f
+    val dy = focalY.takeIf { it.isFinite() }?.minus(viewportHeight / 2f) ?: 0f
+    // Photo point under the finger, relative to the viewport centre at 1x.
+    val ux = (dx - t0x) / s0
+    val uy = (dy - t0y) / s0
+    // How far the end pose leaves that point from the finger (edge clamp).
+    val residualX = s1 * ux + t1x - dx
+    val residualY = s1 * uy + t1y - dy
+    val scale = s0 + (s1 - s0) * e
+    return viewerClampedPose(scale,
+        dx - scale * ux + residualX * e,
+        dy - scale * uy + residualY * e,
         viewportWidth, viewportHeight, sourceWidth, sourceHeight)
 }
 
