@@ -876,9 +876,9 @@
 <path d="M47 464l7 7" stroke="#9AA0B8" stroke-width="2"/>
 <text x="65" y="471" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#F2F3F8" font-weight="400" data-base-sp="14" data-font-scale="2">Zoek foto&apos;s</text>
 <rect x="16" y="493" width="352" height="58" rx="24" fill="#3448E0" data-touch="Nav slab 352x58dp"/>
-<rect x="20" y="498" width="146" height="48" rx="20" fill="#FFFFFF" data-touch="Foto&apos;s 146x48dp"/>
+<rect x="20" y="498" width="140" height="48" rx="20" fill="#FFFFFF" data-touch="Foto&apos;s 140x48dp"/>
 <text x="34" y="530" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#3448E0" font-weight="600" data-base-sp="14" data-font-scale="2">Foto&apos;s</text>
-<text x="171" y="530" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#FFFFFF" font-weight="600" letter-spacing="-0.03em" data-base-sp="14" data-font-scale="2">Collecties</text>
+<text x="165" y="530" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#FFFFFF" font-weight="600" letter-spacing="-0.03em" data-base-sp="14" data-font-scale="2">Collecties</text>
 <circle cx="338" cy="522" r="24" fill="#FFFFFF" data-touch="Search sphere; 48x48dp"/>
 <circle cx="338" cy="519" r="9" fill="#3448E0"/>
 <path d="M330 537L338 529L346 537" fill="none" stroke="#3448E0" stroke-width="3.5" stroke-linecap="round"/>
