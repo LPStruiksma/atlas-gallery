@@ -1456,6 +1456,41 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var swapPersonSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
     var swapPersonSession by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerReturnStartNs by remember { mutableLongStateOf(0L) }
+    // USAGE-0 (#173): which screen ID is showing. Dwell seconds per ID only; the tracker
+    // stops while the app is in the background. Nothing here is recorded unless the opt-in is on.
+    val usageScreen = when {
+        settingsOpen -> UsageScreen.D17
+        viewerUri != null -> UsageScreen.D2
+        storiesOpen -> UsageScreen.D15
+        photoDnaOpen -> UsageScreen.D18
+        personFilter != null -> UsageScreen.D8
+        else -> when (tab) {
+            1 -> UsageScreen.D5
+            2 -> UsageScreen.D6
+            3 -> UsageScreen.D7
+            else -> UsageScreen.D1
+        }
+    }
+    val usageLifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(usageScreen) {
+        if (usageScreen == UsageScreen.D17) UsageRecorder.count(UsageAction.A22)
+        UsageRecorder.dwell.enter(usageScreen, android.os.SystemClock.elapsedRealtime())
+    }
+    DisposableEffect(usageLifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            val now = android.os.SystemClock.elapsedRealtime()
+            when (event) {
+                Lifecycle.Event.ON_START -> UsageRecorder.dwell.resume(now)
+                Lifecycle.Event.ON_STOP -> {
+                    UsageRecorder.dwell.pause(now)
+                    UsageRecorder.log()?.flush()
+                }
+                else -> Unit
+            }
+        }
+        usageLifecycle.lifecycle.addObserver(observer)
+        onDispose { usageLifecycle.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(tab, peopleTabStartNs, searchTabStartNs, settingsOpen, viewerUri) {
         if (!settingsOpen && viewerUri == null) {
             val started = when (tab) {
@@ -1909,7 +1944,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     if (previousFrameNs != 0L && frameTimeNanos > previousFrameNs) {
                         val frameMs = (frameTimeNanos - previousFrameNs) / 1_000_000.0
                         PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs)
-                        if (personFilter != null) PerformanceSession.recordActionMs(10, frameMs)
+                        if (personFilter != null) {
+                            PerformanceSession.recordActionMs(10, frameMs, usage = false)
+                            UsageRecorder.scrollFrame(10, frameMs, frameMs > scrollFrameBudgetMs)
+                        }
                     }
                     previousFrameNs = frameTimeNanos
                     choreographer.postFrameCallback(this)
@@ -3337,6 +3375,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 onSelect = { destination ->
                     // Start only an anonymous monotonic tab-entry timer.
                     val entryNs = android.os.SystemClock.elapsedRealtimeNanos()
+                    UsageRecorder.count(UsageAction.A15)
                     if (destination == AtlasDestination.PEOPLE) peopleTabStartNs = entryNs
                     if (destination == AtlasDestination.SEARCH) searchTabStartNs = entryNs
                     // A primary-tab tap always opens that tab's unfiltered entry point.
@@ -3561,6 +3600,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     }
                     settingsOpen -> {
                         val visualStatus = discovery.status?.visual
+                        var usageVersion by remember { mutableIntStateOf(0) }
+                        val usageLog = UsageRecorder.log()
+                        val usageEnabledNow = remember(usageVersion) { usageLog?.isEnabled() == true }
+                        val usageHasDataNow = remember(usageVersion) { usageLog?.hasData() == true }
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,
@@ -3604,6 +3647,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             searchHistoryOn = searchHistoryState.value.enabled,
                             onSearchHistoryOn = { searchHistory.setEnabled(it) },
                             onClearSearchHistory = { searchHistory.clearAll() },
+                            usageEnabled = usageLog?.let { usageEnabledNow },
+                            usageHasData = usageHasDataNow,
+                            onUsageEnabled = { usageLog?.setEnabled(it); usageVersion++ },
+                            onExportUsage = {
+                                usageLog?.let { UsageExportFile.share(context, it) }
+                                    ?: UsageExportFile.Result.NOTHING_RECORDED
+                            },
+                            onClearUsage = { usageLog?.clear(); usageVersion++ },
                             onReadDiagnostics = {
                                 captureAtlasDiagnostics(context, media, grants,
                                     discovery.status, discoveryHost, searchGrant)
