@@ -1,0 +1,170 @@
+{
+  "artifacts": [
+    {
+      "bytes": 4826518,
+      "file": "inference.onnx",
+      "repo": "PaddlePaddle/PP-OCRv5_mobile_det_onnx",
+      "revision": "e6f4fa85f00e168c862bc462aebca69eef9b3d3d",
+      "sha256": "a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d"
+    },
+    {
+      "bytes": 903,
+      "file": "inference.yml",
+      "repo": "PaddlePaddle/PP-OCRv5_mobile_det_onnx",
+      "revision": "e6f4fa85f00e168c862bc462aebca69eef9b3d3d",
+      "sha256": "98069072e1b6b37d727fd9d9f11725faa46d6ea0de012f2ed26caea011c37699"
+    },
+    {
+      "bytes": 8042023,
+      "file": "inference.onnx",
+      "repo": "PaddlePaddle/latin_PP-OCRv5_mobile_rec_onnx",
+      "revision": "89d3a50e2c27e2e7cceeab0e944c25c807d5db4f",
+      "sha256": "7888113072263cb471b93f66dd5e2ad70548dc526fa1ace760d0d973dd121498"
+    },
+    {
+      "bytes": 6817,
+      "file": "inference.yml",
+      "repo": "PaddlePaddle/latin_PP-OCRv5_mobile_rec_onnx",
+      "revision": "89d3a50e2c27e2e7cceeab0e944c25c807d5db4f",
+      "sha256": "0bbe984570f597af3638e50bdf2e8276f3ab26a61966096538b3b0d1849f5c84"
+    },
+    {
+      "bytes": 16076965,
+      "file": "model.onnx",
+      "repo": "Felix92/onnxtr-db-mobilenet-v3-large",
+      "revision": "21338515c12c7f685b8f1022b9babd90a4b9588a",
+      "sha256": "4987e7bdea372559808bd5add85fda10e179dc639696fb489e59a197a25b4c64"
+    },
+    {
+      "bytes": 457,
+      "file": "config.json",
+      "repo": "Felix92/onnxtr-db-mobilenet-v3-large",
+      "revision": "21338515c12c7f685b8f1022b9babd90a4b9588a",
+      "sha256": "2b75da19916844714b169373a4be87486bc5f5836af4e32c35a42c4393a95d44"
+    },
+    {
+      "bytes": 8331378,
+      "file": "model.onnx",
+      "repo": "Felix92/onnxtr-crnn-mobilenet-v3-small",
+      "revision": "96dcb28209d6454213d0197029e8754625ce9d53",
+      "sha256": "bded4d49b3e91dac24591ed4f0af3de4c3baab1f9cc07e8e7dc07c9ba66b3b33"
+    },
+    {
+      "bytes": 638,
+      "file": "config.json",
+      "repo": "Felix92/onnxtr-crnn-mobilenet-v3-small",
+      "revision": "96dcb28209d6454213d0197029e8754625ce9d53",
+      "sha256": "5d23566e934a95b940b512a1457563cc958bd9ff6925086ed9421ecea0fc1747"
+    }
+  ],
+  "corpus": {
+    "image_sizes": [
+      "460x360",
+      "460x400",
+      "460x440",
+      "640x480",
+      "720x340",
+      "720x358",
+      "720x376",
+      "720x394",
+      "720x400",
+      "720x424",
+      "720x448",
+      "720x472",
+      "720x490",
+      "720x520",
+      "720x550",
+      "720x960",
+      "900x230",
+      "900x340",
+      "900x600"
+    ],
+    "images": 240,
+    "manifest_sha256": "0e7cfe1efc5a0bc01c5d364ba9ebe61f0c853ee716d0a59634b5904a740286de",
+    "no_text": 60,
+    "recipe": "ocr0a-synthetic-v1",
+    "seed": 873,
+    "splits": {
+      "dev": 80,
+      "test": 160
+    },
+    "text_positive": 180
+  },
+  "host": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "execution_provider": "CPUExecutionProvider",
+    "gpu": false,
+    "inter_op_threads": 1,
+    "intra_op_threads": 1,
+    "logical_cpus": 4,
+    "platform": "Linux-6.18.44-fc-v726-x86_64-with-glibc2.39",
+    "python": "3.13.18",
+    "ram_kb": 16473744
+  },
+  "latency": {
+    "doctr": {
+      "detector": {
+        "images": 240,
+        "median_ms": 656.5,
+        "n": 240,
+        "p95_ms": 766.7
+      },
+      "empty_predictions": 48,
+      "predictions_sha256": "f98406558c0449edcdc250d5c39a45947773ecce5c0e3a4b7b5fcdb1334b21a6",
+      "recognizer": {
+        "images": 240,
+        "median_ms": 17.4,
+        "n": 240,
+        "p95_ms": 58.5
+      },
+      "total": {
+        "median_ms": 684.1,
+        "n": 240,
+        "p95_ms": 813.0
+      }
+    },
+    "ppocr": {
+      "detector": {
+        "images": 240,
+        "median_ms": 165.5,
+        "n": 240,
+        "p95_ms": 386.8
+      },
+      "empty_predictions": 60,
+      "predictions_sha256": "3c7cf3c12543cb800f1a0bc5c094d61653ad85239235b66b7889ece80be3eea6",
+      "recognizer": {
+        "images": 240,
+        "median_ms": 162.1,
+        "n": 188,
+        "p95_ms": 394.4
+      },
+      "total": {
+        "median_ms": 331.5,
+        "n": 240,
+        "p95_ms": 523.2
+      }
+    }
+  },
+  "packages": {
+    "numpy": "2.5.5",
+    "onnxruntime": "1.32.0",
+    "onnxtr": "0.9.0",
+    "opencv-python": "5.1.0.95",
+    "pillow": "13.0.0",
+    "pyyaml": "6.0.4",
+    "rapidocr-onnxruntime": "1.2.3"
+  },
+  "run": {
+    "commands": [
+      "python3 tools/ocr_bench/fetch_models.py MODELS",
+      "python3 -m tools.ocr_bench.gen_corpus CORPUS --seed 873",
+      "python3 tools/ocr_bench/run_models.py ppocr CORPUS MODELS ppocr.jsonl --threads 1",
+      "python3 tools/ocr_bench/run_models.py doctr CORPUS MODELS doctr.jsonl --threads 1",
+      "python3 -m tools.ocr_bench.evaluate CORPUS/manifest.jsonl X.jsonl [--split dev|test]"
+    ],
+    "detection_forced_on_every_image": true,
+    "prefilter": "none (OCR-0B)",
+    "timed_runs_per_image": 1,
+    "warmup_images_discarded": 5
+  }
+}
