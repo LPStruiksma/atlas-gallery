@@ -357,6 +357,10 @@ class PinchCrossFlowEvidenceTest {
         compose.awaitThat("4 columns shown") {
             compose.onAllNodes(columns(4)).fetchSemanticsNodes().isNotEmpty()
         }
+        // Away from the top bound, so the anchor can stay under the fingers
+        // (at the top the new level is clamped, see pinchAtTheTop…).
+        grid.performTouchInput { swipeUp() }
+        compose.waitForIdle()
         val (focusRoot, local) = focusPoint()
         val tag = tileNear(focusRoot).first
         val pinch = Pinch(local, 260f)
@@ -374,6 +378,8 @@ class PinchCrossFlowEvidenceTest {
         clearDensity()
         show(fixtures(1_500), true, "flow1-reduced")
         awaitColumns(4)
+        grid.performTouchInput { swipeUp() } // away from the top bound
+        compose.waitForIdle()
         val (focusRoot, local) = focusPoint()
         val tag = tileNear(focusRoot).first
         val pinch = Pinch(local, 260f)
