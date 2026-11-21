@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.launch
@@ -119,7 +120,7 @@ class FindSimilarJourneyTest {
 
     /** The host wiring MainActivity uses, reduced to the viewer and the route. */
     @Composable
-    private fun Host(session: FindSimilarSession) {
+    private fun Host(session: FindSimilarSession, screenMedia: List<MediaRecord>? = null) {
         var step by remember { mutableStateOf<FindSimilarStep?>(null) }
         var viewer by remember { mutableStateOf<Pair<List<MediaRecord>, String>?>(gallery to uri(1)) }
         var starts by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
@@ -146,6 +147,7 @@ class FindSimilarJourneyTest {
             },
             onOpenSettings = {},
             onClose = { step = null; session.clear() },
+            screenMedia = screenMedia,
             thumbnail = { null })
     }
 
@@ -172,6 +174,27 @@ class FindSimilarJourneyTest {
         compose.onNodeWithTag("atlas-visual-hit-1").performClick()
         waitFor(hasContentDescription("Video viewer: synthetic-30.mp4"))
         assertEquals(mapOf(uri(30) to 4000L), openedStarts)
+    }
+
+    @Test fun scopedVisualTextSearchKeepsOnlyMatchingScreenHits() {
+        val session = session(Port(index))
+        // The reference may come from the screen; global engine hits still
+        // include non-screen photos and video moments. Neither may leak in.
+        compose.setContent { Host(session, screenMedia = listOf(record(1), record(2))) }
+        waitFor(hasTestTag("atlas-viewer-find-similar"))
+        compose.onNodeWithTag("atlas-viewer-find-similar").performClick()
+        waitFor(hasTestTag("atlas-visual-search-grid"))
+        compose.onNodeWithTag("atlas-visual-hit-0-strong", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("atlas-visual-hit-1").assertDoesNotExist()
+
+        // A nonempty text query must not discard the already-scoped hit.
+        compose.onNodeWithTag("atlas-search-expand").performClick()
+        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("synthetic-2")
+        compose.waitForIdle()
+        waitFor(hasTestTag("atlas-visual-search-grid"))
+        compose.onNodeWithTag("atlas-visual-search-empty").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-visual-hit-0-strong", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("atlas-visual-hit-1").assertDoesNotExist()
     }
 
     @Test fun findSimilarWithTheIndexOffEndsInATypedState() {
