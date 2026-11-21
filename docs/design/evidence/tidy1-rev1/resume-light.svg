@@ -9,7 +9,7 @@
 <text x="344" y="48" font-family="Funnel Sans, sans-serif" font-size="25" font-weight="600" fill="#0E1030" text-anchor="end">⋮</text>
 <text x="18" y="79" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#5A5F7A" text-anchor="start">November 2026 · Album</text>
 <text x="18" y="103" font-family="Funnel Sans, sans-serif" font-size="16" font-weight="700" fill="#2639C9" text-anchor="start">Reviewed 312 of 480</text>
-<text x="342" y="102" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="500" fill="#5A5F7A" text-anchor="end">12 staged</text>
+<text x="342" y="102" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="500" fill="#5A5F7A" text-anchor="end">0 staged</text>
 <rect x="13" y="124" width="334" height="426" rx="8" fill="#070E21" opacity="1"/>
 <circle cx="253.48" cy="239.02" r="46.760000000000005" fill="#8C9BFF" opacity=".75"/>
 <path d="M13 456.28000000000003L119.88 294.4L196.70000000000002 392.38L273.52 243.28000000000003L347 383.86V550H13Z" fill="#3448E0"/>
@@ -17,10 +17,10 @@
 <rect x="0" y="426" width="360" height="330" rx="22" fill="#F2F3F8" opacity="1"/>
 <circle cx="180" cy="446" r="12" fill="#2639C9" stroke="#FFFFFF" stroke-width="1.6"/>
 <text x="180" y="488" font-family="Funnel Sans, sans-serif" font-size="20" font-weight="700" fill="#0E1030" text-anchor="middle">Continue November?</text>
-<text x="180" y="512" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="400" fill="#5A5F7A" text-anchor="middle">312 of 480 reviewed</text>
+<text x="180" y="512" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="400" fill="#5A5F7A" text-anchor="middle">312 saved Keeps of 480</text>
 <rect x="18" y="539" width="324" height="52" rx="22" fill="#2639C9" opacity="1"/>
 <text x="180" y="571" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Resume review</text>
 <rect x="18" y="596" width="324" height="52" rx="22" fill="#F2F3F8" opacity="1"/>
 <text x="180" y="628" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030" text-anchor="middle">Start again</text>
-<text x="180" y="688" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#2639C9" text-anchor="middle">Not now</text>
+<rect x="18" y="658" width="324" height="56" rx="22" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/><text x="180" y="688" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#2639C9" text-anchor="middle">Not now</text>
 <text x="180" y="728" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#5A5F7A" text-anchor="middle">Start again clears Keeps, not photos</text></svg>
