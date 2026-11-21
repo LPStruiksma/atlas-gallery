@@ -118,9 +118,9 @@ class ViewerGpsRedactionTest {
         val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
         val fds = instrumentation.uiAutomation.executeShellCommandRw(
             "content write --uri $uri")
+        // executeShellCommandRw returns [stdout (stderr merged), stdin].
         ParcelFileDescriptor.AutoCloseOutputStream(fds[1]).use { it.write(bytes) }
         ParcelFileDescriptor.AutoCloseInputStream(fds[0]).use { it.readBytes() }
-        ParcelFileDescriptor.AutoCloseInputStream(fds[2]).use { it.readBytes() }
         insertedUri = uri
         return uri
     }
