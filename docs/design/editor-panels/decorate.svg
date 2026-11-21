@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2240" height="3530" viewBox="0 0 2240 3530" role="img" aria-label="EDIT-10 Decorate two full S24 plus light dark 1080 by 2340 wireframes and six smaller layout state variants">
+<svg xmlns="http://www.w3.org/2000/svg" width="2240" height="3530" viewBox="0 0 2240 3530" role="img" style="--qf-light-border:#F2F3F8;--qf-dark-border:#14152A" aria-label="EDIT-10 Decorate two full S24 plus light dark 1080 by 2340 wireframes and six smaller layout state variants">
+<style>rect[stroke="#C3C8DD"]{stroke:#F2F3F8} rect[stroke="#747AA5"]{stroke:#14152A}</style>
 <rect x="0" y="0" width="2240" height="3530" rx="0" fill="#EDF0F7" stroke="none" stroke-width="0"/>
 <text x="23" y="41" fill="#0E1030" font-size="30" font-weight="700" font-family="Funnel Sans, sans-serif" text-anchor="start">EDIT-10 · Decorate · synthetic, design only (not an Android screenshot)</text>
 <text x="20" y="76" fill="#0E1030" font-size="18" font-weight="600" font-family="Funnel Sans, sans-serif" text-anchor="start">LIGHT · 360 × 780 dp schematic at ×3 = 1080 × 2340 px</text>
@@ -21,4 +22,41 @@
 <text x="20" y="3381" fill="#5A5F7A" font-size="18" font-weight="400" font-family="Funnel Sans, sans-serif" text-anchor="start">Illustrative geometry/insets only. Do not use as proof of current One UI, Compose rendering, actual font scaling or S24+ density.</text>
 <text x="20" y="3411" fill="#5A5F7A" font-size="18" font-weight="400" font-family="Funnel Sans, sans-serif" text-anchor="start">See README.md for full state transitions, keyboard focus, TalkBack, 48 dp hit regions, D-unknown bounds, error and recovery contracts.</text>
 <text x="20" y="3441" fill="#5A5F7A" font-size="18" font-weight="400" font-family="Funnel Sans, sans-serif" text-anchor="start">Atlas tokens: Quiet Frame v3; photos, shapes and text are entirely synthetic. Panel: Decorate.</text>
+
+<!-- #939 repair overlay: all geometry below is explicitly schematic/proposed. -->
+<g id="decorate-939-proposed" font-family="Funnel Sans, sans-serif">
+ <rect x="0" y="2460" width="2240" height="1010" fill="#F2F3F8"/>
+ <text x="20" y="2500" fill="#0E1030" font-size="22" font-weight="700">#939 repaired states · schematic/proposed only · not Android, S24+ or measured geometry</text>
+ <text x="20" y="2532" fill="#5A5F7A" font-size="17">Quiet Frame v3 UI tokens only. Synthetic-photo colours are content. Dashed outlines annotate ≥48 dp logical hit regions.</text>
+ <!-- IME is an inset, not panel chrome. -->
+ <g transform="translate(20 2560)">
+  <text y="22" fill="#0E1030" font-size="18" font-weight="700">IME inset</text><rect y="34" width="520" height="850" rx="22" fill="#FFFFFF"/>
+  <rect x="18" y="54" width="484" height="300" rx="8" fill="#BDD6EE"/><path d="M18 285Q145 185 260 275Q380 170 502 260V354H18Z" fill="#598D7C"/>
+  <rect x="112" y="128" width="296" height="92" rx="8" fill="none" stroke="#FFFFFF" stroke-width="3"/><text x="260" y="185" text-anchor="middle" fill="#FFFFFF" font-size="30" font-weight="700">Memory</text>
+  <rect x="90" y="238" width="340" height="64" rx="26" fill="#2639C9"/><text x="260" y="279" text-anchor="middle" fill="#FFFFFF" font-size="23" font-weight="600">Done · ≥48 dp</text>
+  <text x="18" y="386" fill="#0E1030" font-size="19" font-weight="600">Photo + selected text + Done remain above IME</text><text x="18" y="416" fill="#5A5F7A" font-size="18">First Back dismisses IME; second exits text edit</text>
+  <rect y="442" width="520" height="408" fill="#F2F3F8"/><text x="260" y="478" text-anchor="middle" fill="#5A5F7A" font-size="17" font-weight="700">SYSTEM IME INSET · ~500 dp EDGE IS ILLUSTRATIVE</text>
+  <g fill="#FFFFFF"><rect x="30" y="510" width="90" height="56" rx="8"/><rect x="135" y="510" width="90" height="56" rx="8"/><rect x="240" y="510" width="90" height="56" rx="8"/><rect x="345" y="510" width="90" height="56" rx="8"/><rect x="82" y="584" width="90" height="56" rx="8"/><rect x="187" y="584" width="90" height="56" rx="8"/><rect x="292" y="584" width="90" height="56" rx="8"/><rect x="90" y="670" width="340" height="64" rx="8"/></g>
+  <text x="260" y="800" text-anchor="middle" fill="#5A5F7A" font-size="18" font-weight="600">Inset is not panel chrome and is never saved media</text>
+ </g>
+ <!-- Photo is present but there are no decoration layers. -->
+ <g transform="translate(570 2560)">
+  <text y="22" fill="#0E1030" font-size="18" font-weight="700">Photo present · no decoration layers</text><rect y="34" width="520" height="850" rx="22" fill="#FFFFFF"/>
+  <rect x="18" y="54" width="484" height="300" rx="8" fill="#BDD6EE"/><path d="M18 285Q145 185 260 275Q380 170 502 260V354H18Z" fill="#598D7C"/>
+  <text x="260" y="398" text-anchor="middle" fill="#0E1030" font-size="23" font-weight="700">No decoration layers</text><text x="260" y="430" text-anchor="middle" fill="#5A5F7A" font-size="18">The photo remains visible and unchanged.</text>
+  <g font-size="21" font-weight="600" text-anchor="middle"><rect x="35" y="470" width="450" height="72" rx="30" fill="#2639C9"/><text x="260" y="515" fill="#FFFFFF">Add text</text><rect x="35" y="568" width="450" height="72" rx="30" fill="#F2F3F8"/><text x="260" y="613" fill="#0E1030">Add shape</text><rect x="35" y="666" width="450" height="72" rx="30" fill="#F2F3F8"/><text x="260" y="711" fill="#0E1030">Start drawing</text></g>
+  <text x="260" y="800" text-anchor="middle" fill="#5A5F7A" font-size="18" font-weight="600">Safe ≥48 dp actions; content creation commits later</text>
+ </g>
+ <!-- Long, selectable, scrollable layer list. -->
+ <g transform="translate(1120 2560)">
+  <text y="22" fill="#0E1030" font-size="18" font-weight="700">Long layer list</text><rect y="34" width="620" height="850" rx="22" fill="#FFFFFF"/>
+  <rect x="18" y="54" width="584" height="260" rx="8" fill="#BDD6EE"/><path d="M18 245Q155 160 300 235Q450 145 602 225V314H18Z" fill="#598D7C"/>
+  <text x="24" y="354" fill="#0E1030" font-size="21" font-weight="700">Layers · scrollable · selected 3 of 12</text><rect x="580" y="374" width="8" height="262" rx="4" fill="#F2F3F8"/><rect x="580" y="408" width="8" height="80" rx="4" fill="#2639C9"/>
+  <g font-size="18"><rect x="20" y="376" width="540" height="72" rx="18" fill="#F2F3F8"/><text x="42" y="404" fill="#0E1030" font-weight="600">Memory</text><text x="42" y="432" fill="#5A5F7A">Text · reorder ↕</text><rect x="20" y="458" width="540" height="72" rx="18" fill="#2639C9"/><text x="42" y="486" fill="#FFFFFF" font-weight="700">Arrow to summit</text><text x="42" y="514" fill="#DCE1FF">Shape · selected · reorder ↕</text><rect x="20" y="540" width="540" height="72" rx="18" fill="#F2F3F8"/><text x="42" y="568" fill="#0E1030" font-weight="600">Highlight stroke</text><text x="42" y="596" fill="#5A5F7A">Drawing · reorder ↕</text></g>
+  <text x="24" y="660" fill="#2639C9" font-size="17" font-weight="700">Focus: Arrow to summit, Shape, 3 of 12</text>
+  <g font-size="18" font-weight="600" text-anchor="middle"><rect x="20" y="686" width="174" height="72" rx="28" fill="#2639C9"/><text x="107" y="731" fill="#FFFFFF">Forward</text><rect x="213" y="686" width="174" height="72" rx="28" fill="#2639C9"/><text x="300" y="731" fill="#FFFFFF">Back</text><rect x="406" y="686" width="174" height="72" rx="28" fill="#F2F3F8"/><text x="493" y="731" fill="#0E1030">Delete</text></g>
+  <text x="20" y="800" fill="#5A5F7A" font-size="17" font-weight="600">Delete enables shared Undo; Undo restores layer, order + selection</text>
+ </g>
+ <g transform="translate(1770 2560)" fill="#0E1030" font-size="18"><text y="22" font-size="20" font-weight="700">Accessibility</text><text y="74">≥48 dp: every listed tool,</text><text y="104">handle, layer row, reorder,</text><text y="134">Forward/Back, Delete, Done,</text><text y="164">and shared Save.</text><text y="220" font-weight="700">200% font</text><text y="250">Wrap/scroll; preserve photo,</text><text y="280">selection and Done.</text><text y="336" font-weight="700">Focus order</text><text y="366">Shell → photo/handles →</text><text y="396">options/Done → tools/layers.</text><text y="452" font-weight="700">One-handed reach</text><text y="482">Creation and layer actions stay</text><text y="512">in lower deck; Save stays shared.</text><text y="568" font-weight="700">IME geometry</text><text y="598">Actual inset re-fits stage;</text><text y="628">no measured bounds claimed.</text></g>
+</g>
 </svg>
