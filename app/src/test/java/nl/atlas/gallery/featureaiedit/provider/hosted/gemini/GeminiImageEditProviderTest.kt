@@ -412,6 +412,23 @@ class GeminiRecoveryAndCostTest {
         override fun remoteAccepted(handle: nl.atlas.gallery.featureaiedit.provider.RemoteHandle) { accepted++ }
     }
 
+    @Test fun successfulReplyWithoutAnImageMayHaveChargedAndCannotBeRecovered() {
+        val replies = listOf(
+            """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"Here is a description."}]}}]}""",
+            """{"candidates":[{"finishReason":"NO_IMAGE"}]}"""
+        )
+        for (reply in replies) GeminiHarness { FakeResponse.json(reply) }.use { h ->
+            val journal = Journal(allow = true)
+            val failed = h.provider().submit(request(), journal).await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, failed.delivery)
+            assertEquals(1, journal.sends)
+            // Gemini has no lookup, so no id is ever saved: the non-recoverable card with the charge warning.
+            val issue = nl.atlas.gallery.featureaiedit.engine.AiEditIssue.classify(failed, remoteSaved = false)
+            assertEquals(nl.atlas.gallery.featureaiedit.engine.AiEditIssue.UNKNOWN_NONRECOVERABLE, issue)
+            assertTrue(issue!!.mayHaveCharged)
+        }
+    }
+
     @Test fun synchronousProviderHasNoRemoteRecoveryAndNoResume() {
         GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
             val provider = h.provider()
