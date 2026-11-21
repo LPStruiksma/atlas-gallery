@@ -46,13 +46,55 @@ class LicenceAdmission(unittest.TestCase):
     def test_cli_refuses_denied_candidate_before_loading_or_fetching(self):
         with mock.patch.object(cli, "Bench", side_effect=AssertionError("loaded bench")), \
              mock.patch.object(fixtures, "fetch", side_effect=AssertionError("fetched fixture")), \
-             mock.patch.object(cli, "cost", side_effect=AssertionError("cost started")):
+             mock.patch.object(cli, "cost", side_effect=AssertionError("cost started")), \
+             mock.patch.object(cli, "run", side_effect=AssertionError("run started")):
             for args in (["one", "--candidate", "alphaface_256"],
-                         ["fetch"],
-                         ["cost", "--candidates", "inswapper_128,alphaface_256"]):
+                         ["fetch", "--candidates", "inswapper_128,alphaface_256"],
+                         ["cost", "--candidates", "inswapper_128,alphaface_256"],
+                         ["explore", "--candidates", "inswapper_128,alphaface_256"]):
                 with self.subTest(args=args):
                     with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
                         cli.main(args + ["--out", "/tmp/identity-bench-denied"])
+
+    def test_default_commands_only_use_admitted_models(self):
+        self.assertNotIn("alphaface_256", cli.FINALISTS)
+        self.assertNotIn("alphaface_256", cli.ALL_SWAPPERS)
+        self.assertEqual(
+            set(cli.ALL_SWAPPERS),
+            {name for name in pipeline.SWAPPERS
+             if name not in pipeline.LOCAL_MODELS and name in pipeline.BENCH_ALLOWED})
+        for candidate in cli.final_candidates():
+            pipeline.candidate_dependencies(candidate)
+        for name in cli.ALL_SWAPPERS:
+            pipeline.candidate_dependencies(pipeline.Config(name))
+
+        # Check the real selection paths, but never load models or fixtures.
+        with mock.patch.object(cli, "run", return_value={}) as run_stub, \
+             mock.patch.object(cli, "report", return_value="synthetic"):
+            for command in ("run", "screen"):
+                with self.subTest(command=command):
+                    self.assertEqual(cli.main([command, "--out", "unused"]), 0)
+                    selected = run_stub.call_args.args[1]
+                    self.assertTrue(selected)
+                    self.assertTrue(all(c.swapper == "control-none" or
+                                        c.swapper in pipeline.BENCH_ALLOWED for c in selected))
+                    run_stub.reset_mock()
+
+        with mock.patch.object(cli, "cost") as cost_stub:
+            self.assertEqual(cli.main(["cost", "--out", "unused"]), 0)
+            labels = cost_stub.call_args.args[1]
+            self.assertTrue(labels)
+            for label in labels:
+                pipeline.candidate_dependencies(cli.parse_label(label))
+
+        with mock.patch.object(fixtures, "fetch") as fixture_fetch, \
+             mock.patch.object(pipeline, "model_path") as model_path:
+            self.assertEqual(cli.main(["fetch", "--out", "unused"]), 0)
+            requested = [call.args[0] for call in model_path.call_args_list]
+            self.assertEqual(requested, [name for name in pipeline.MODELS
+                                         if name in pipeline.BENCH_ALLOWED])
+            self.assertNotIn("alphaface_256", requested)
+            self.assertEqual(fixture_fetch.call_count, len(fixtures.FILES))
 
     def test_unknown_models_fail_closed(self):
         with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
