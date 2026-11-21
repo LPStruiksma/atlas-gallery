@@ -245,13 +245,20 @@ fun currentSortedCatalogOrNull(
  * gets a fresh sequence so it can cancel an unfinished earlier jump.
  * Indices are scoped strictly to the current immutable viewer list.
  */
-internal data class ViewerJumpIntent(val index: Int, val sequence: Long)
+internal enum class ViewerJumpOrigin { DIRECT, THUMBNAIL }
+
+internal data class ViewerJumpIntent(
+    val index: Int,
+    val sequence: Long,
+    val origin: ViewerJumpOrigin = ViewerJumpOrigin.DIRECT
+)
 
 internal fun nextViewerJumpIntent(
-    previous: ViewerJumpIntent?, index: Int, itemCount: Int
+    previous: ViewerJumpIntent?, index: Int, itemCount: Int,
+    origin: ViewerJumpOrigin = ViewerJumpOrigin.DIRECT
 ): ViewerJumpIntent {
     require(index in 0 until itemCount) { "Selection must be inside current album" }
-    return ViewerJumpIntent(index, (previous?.sequence ?: 0L) + 1L)
+    return ViewerJumpIntent(index, (previous?.sequence ?: 0L) + 1L, origin)
 }
 
 /**

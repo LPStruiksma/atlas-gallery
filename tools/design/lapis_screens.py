@@ -276,6 +276,11 @@ def collections_legacy(s: Screen) -> None:
 VIEWER_ACTIONS = ["Favourite", "Edit", "Share", "Delete", "More"]
 
 
+def filmstrip_gap() -> int:
+    """Gap between 40 dp filmstrip tiles; keeps the centre pitch at exactly 48 dp in whole pixels (#889)."""
+    return px(48) - px(40)
+
+
 def viewer(s: Screen, seed=7, current=3, n=7) -> None:
     s.status_bar(light_icons=True)
     pw = DEVICE_W
@@ -286,7 +291,8 @@ def viewer(s: Screen, seed=7, current=3, n=7) -> None:
     fh = px(52)
     fy = s.bottom - px(12) - px(64) - px(20) - fh
     fw = px(40)
-    total = n * fw + (n - 1) * px(4)
+    gap = filmstrip_gap()  # 8 dp: 40 dp tile + 8 dp gap = 48 dp pitch, so 48 dp effective targets only touch
+    total = n * fw + (n - 1) * gap
     x = (DEVICE_W - total) // 2
     for i in range(n):
         box = (x, fy, x + fw, fy + fh)
@@ -297,7 +303,7 @@ def viewer(s: Screen, seed=7, current=3, n=7) -> None:
             cx = (box[0] + box[2]) / 2
             s.d.ellipse([cx - px(5), fy - px(16), cx + px(5), fy - px(6)], fill=VIEWER_SPHERE)
         s.target(box, "filmstrip item")
-        x += fw + px(4)
+        x += fw + gap
     # action slab (#3448E0)
     sw, sh = px(320), px(64)
     y1 = s.bottom - px(12)

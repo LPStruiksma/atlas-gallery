@@ -88,6 +88,8 @@ internal fun AtlasSettingsScreen(
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
     onClearSearchHistory: () -> Unit = {},
+    /** INSIGHT-1 (#587): opens Library insights; null hides the row. */
+    onLibraryInsights: (() -> Unit)? = null,
     performance: PerformanceAggregates = PerformanceSession.aggregate,
     /** USAGE-0 (#173): null hides the three usage rows (previews and old call sites). */
     usageEnabled: Boolean? = null,
@@ -299,6 +301,11 @@ internal fun AtlasSettingsScreen(
                         }) else null, enabled = usageHasData)
                 }
             }
+        }
+        // #587: below Advanced too, so existing rows keep their place on screen.
+        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
+            SettingsActionRow("Library insights", "atlas-settings-library-insights",
+                onLibraryInsights, "Size by folder, type and year")
         }
         // #427 review: below Advanced, so the existing groups keep their place on screen.
         if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {

@@ -1,0 +1,21 @@
+# FLOW-5 (#714): synthetic dark/light S24+ filmstrip tap timeline, exactly 0/16/65/130/195/260/300 ms.
+# Both theme sequences must be present in the merged emulator evidence.
+viewer-714-dark-tap-000
+viewer-714-dark-tap-016
+viewer-714-dark-tap-065
+viewer-714-dark-tap-130
+viewer-714-dark-tap-195
+viewer-714-dark-tap-260
+viewer-714-dark-tap-300
+viewer-714-light-tap-000
+viewer-714-light-tap-016
+viewer-714-light-tap-065
+viewer-714-light-tap-130
+viewer-714-light-tap-195
+viewer-714-light-tap-260
+viewer-714-light-tap-300
+# #714 in-flight interruption, pager takeover, reverse tap, and reduced-motion bounds.
+viewer-714-interrupt-strip-down
+viewer-714-interrupt-pager-drag
+viewer-714-interrupt-new-tap
+viewer-714-reduced-motion-edge
