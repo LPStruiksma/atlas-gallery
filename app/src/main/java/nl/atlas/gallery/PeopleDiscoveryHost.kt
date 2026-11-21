@@ -2356,6 +2356,29 @@ internal class PeopleDiscoveryHost(
     }
 
     /**
+     * COVER-2: read a named person's effective best shot, even when hidden
+     * from the People-home projection. Both the live Android grant and store
+     * epoch must still match; never cache a face UID beyond that scope.
+     * Blocking; IO only.
+     */
+    fun currentPersonDisplayCover(galleryGrant: String?, person: PersonKey): String? {
+        val epoch = displayEpoch(galleryGrant) ?: return null
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) null
+            else store.personDisplayCover(epoch, person)
+        }
+    }
+
+    /** One authorized batch of effective portraits for the Hidden list. IO only. */
+    fun currentHiddenPersonCovers(epoch: String?): Map<PersonKey, String> {
+        if (epoch == null) return emptyMap()
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) emptyMap()
+            else store.hiddenPersonCovers(epoch)
+        }
+    }
+
+    /**
      * #62: scoped native names backup, distinct from the old V4 path-bearing
      * format. Both calls are blocking and must run on Dispatchers.IO.
      */
