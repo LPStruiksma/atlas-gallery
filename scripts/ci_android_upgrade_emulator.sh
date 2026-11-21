@@ -307,8 +307,18 @@ fi
 # per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   adb logcat -G 16M || true
+  # #920 proof-only: a per-branch marker changes only listener and IME args.
+  arm="$(tr -d '\r\n' < scripts/ci-opt-in/rc5-920-arm)"
+  case "$arm" in OFF|NO-IME-POLL|FULL) ;; *) echo "::error::Bad RC5 arm $arm"; exit 1;; esac
+  stress_listener="$LISTENER"
+  ime_poll=on
+  if [[ "$arm" == "OFF" ]]; then stress_listener=""; fi
+  if [[ "$arm" == "NO-IME-POLL" ]]; then ime_poll=off; fi
+  echo "RC5_920 frozen_source=4a700e4be78850a78cf713095ae7a1908c4c6443 head=$(git rev-parse HEAD) arm=$arm shard=$SHARD_INDEX"
+  sha256sum "$NEW" "$TEST" | sed 's/^/RC5_920 APK_SHA256 /'
   stress_fail=0
   stress_out=/tmp/atlas-stress.txt
+  mkdir -p ui-evidence
   while read -r stress_count stress_target || [[ -n "${stress_count:-}${stress_target:-}" ]]; do
     [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
     if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
@@ -320,15 +330,32 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       adb logcat -c || true
       # </dev/null: adb shell would otherwise read the rest of the list.
       # atlas_listener_selftest turns on AtlasRunListenerSelfTest; no other test reads it.
-      adb shell am instrument -w -r -e listener "$LISTENER" -e atlas_listener_selftest true \
+      start_seconds=$SECONDS
+      adb shell am instrument -w -r -e listener "$stress_listener" -e atlas_rc5_ime_poll "$ime_poll" -e atlas_listener_selftest true \
         -e class "$stress_target" "$RUNNER" > "$stress_out" 2>&1 < /dev/null || true
-      if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
+      duration=$((SECONDS - start_seconds))
+      run_id="$SHARD_INDEX-$arm-${stress_target##*.}-$stress_run"
+      cp "$stress_out" "ui-evidence/rc5-920-$run_id-instrument.txt"
+      timeout 30 adb logcat -d -v time -s ATLAS_BASELINE:V ATLAS_DIAG:V ATLAS_TESTKIT:V ATLAS_TOUCH1:V AtlasSystemWindows:V \
+        > "ui-evidence/rc5-920-$run_id-logcat.txt" || true
+      callbacks="$(grep -c "RC5_CALLBACK mode=" "ui-evidence/rc5-920-$run_id-logcat.txt" || true)"
+      if [[ "$arm" == "OFF" && "$callbacks" != "0" ]]; then
+        echo "::error::OFF listener unexpectedly active: $callbacks callbacks"
+        stress_fail=1
+      elif [[ "$arm" != "OFF" ]]; then
+        if [[ "$callbacks" == "0" ]] || ! grep -Fq "RC5_CALLBACK mode=$arm " "ui-evidence/rc5-920-$run_id-logcat.txt"; then
+          echo "::error::Listener not active in expected mode $arm (callbacks=$callbacks)"
+          stress_fail=1
+        fi
+      fi
+      echo "RC5_920 arm=$arm shard=$SHARD_INDEX class=$stress_target repeat=$stress_run/$stress_count seconds=$duration callbacks=$callbacks"
+      grep -E 'checked [0-9]+ test|ATLAS_DIAG|drift |listener testStarted skipped' "ui-evidence/rc5-920-$run_id-logcat.txt" || true
+      if grep -Eq '^OK \([1-9][0-9]* tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
       else
         echo "STRESS $stress_target run $stress_run/$stress_count: FAIL"
         stress_fail=1
-        grep -E 'INSTRUMENTATION_STATUS: (test|stack)=|^Error in |^Tests run|^FAILURES|AssertionError|Exception' \
-          "$stress_out" | cut -c1-600 | head -60 || true
+        cat "$stress_out"  # Preserve complete failures and teardown signatures.
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
       timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
@@ -337,7 +364,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       echo "::endgroup::"
     done
   done < scripts/ci-opt-in/stress-classes
-  echo "NOTICE: opt-in stress head; full emulator suite skipped on purpose"
+  echo "NOTICE: RC5 #920 disposable proof head, full suite skipped; NEVER MERGE"
   exit "$stress_fail"
 fi
 
