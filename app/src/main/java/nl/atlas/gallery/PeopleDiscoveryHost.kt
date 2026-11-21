@@ -2912,6 +2912,14 @@ internal fun PeopleReviewRoute(
     val current = page?.takeIf {
         loadedVersion == version && it.queue.permissionEpoch == liveEpoch
     }
+    // Display hints are only valid for this exact published review generation.
+    // Never use a stale home cover after a grant or membership change.
+    val coverHints = host.liveHomePeople(liveEpoch)
+        ?.takeIf { it.sourceGeneration == current?.clusters?.sourceGeneration }
+        ?.people?.mapNotNull { (person, data) ->
+            runCatching { NativeFaceObservationId(data.coverFaceUid) }.getOrNull()
+                ?.let { person to it }
+        }?.toMap().orEmpty()
     UnknownFacesReviewScreen(
         queue = current?.queue,
         currentPermissionEpoch = liveEpoch,
@@ -2939,6 +2947,7 @@ internal fun PeopleReviewRoute(
         onClose = onClose,
         onNextPage = current?.nextCursor?.let { next -> { after = next } },
         clusterReview = current?.clusters,
+        coverByPerson = coverHints,
         liveClusterReviewAtAction = { host.liveReview(liveEpoch) },
         onClusterReviewCommand = { command ->
             scope.launch {
