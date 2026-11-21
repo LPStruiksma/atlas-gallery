@@ -76,6 +76,34 @@ class OnnxFaceEmbedder private constructor(
         embedding to quality
     }
 
+    /**
+     * Backfill only: reuse the pinned YuNet landmarks and SFace-aligned crop
+     * but never run SFace inference or overwrite a stored embedding.
+     */
+    fun scoreWithoutEmbedding(bitmap: Bitmap, face: YuNetFace, sourceScale: Float = 1f): FaceQuality =
+        synchronized(lock) {
+            check(!closed && !bitmap.isRecycled) { "Face embedder or bitmap already released" }
+            alignForQuality(bitmap, face)
+            FaceQualityScorer.score(face, bitmap.width, bitmap.height, input,
+                SFaceModel.INPUT_SIZE, sourceScale)
+        }
+
+    /** PERF-4 paired baseline: embed from the same aligned tensor without quality work. */
+    fun embedWithoutQuality(bitmap: Bitmap, face: YuNetFace): SFaceEmbedding = synchronized(lock) {
+        check(!closed && !bitmap.isRecycled) { "Face embedder or bitmap already released" }
+        alignForQuality(bitmap, face)
+        SFaceEmbedding(run(input), SFaceModel.EMBEDDER_VERSION)
+    }
+
+    private fun alignForQuality(bitmap: Bitmap, face: YuNetFace) {
+        val m = SFaceAlignment.similarityTransform(face.landmarks)
+        val window = SFaceAlignment.sourceWindow(m, bitmap.width, bitmap.height)
+        val pixels = if (window == null) IntArray(0) else IntArray(window.width * window.height).also {
+            bitmap.getPixels(it, 0, window.width, window.left, window.top, window.width, window.height)
+        }
+        SFaceAlignment.warpToRgbPlanar(pixels, window, m, input)
+    }
+
     /** Embeds every face of one frame, in order; a face with degenerate landmarks maps to null. */
     fun embedAll(bitmap: Bitmap, faces: List<YuNetFace>): List<SFaceEmbedding?> =
         faces.map { face ->

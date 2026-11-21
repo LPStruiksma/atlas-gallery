@@ -1,15 +1,18 @@
 package nl.atlas.gallery.testkit
 
+import android.graphics.Rect as AndroidRect
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.interactiveUiAutomation
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
@@ -24,6 +27,65 @@ enum class KeyboardAfter {
 }
 
 internal const val TEST_KIT_LOG_TAG = "ATLAS_TESTKIT"
+
+/**
+ * Compose roots are ordered with the Activity first, but a Dialog or Popup
+ * may own window focus (and therefore the IME). Keyboard requests go to that
+ * focused root.
+ */
+private fun ComposeTestRule.keyboardWindow(roots: List<View> = rootViews()): View? =
+    roots.firstOrNull { view -> onMainThread { view.hasWindowFocus() } } ?: roots.firstOrNull()
+
+/**
+ * A window's IME inset is the part of the keyboard that overlaps that window.
+ * A Dialog sits above the keyboard, so its inset stays 0 while the keyboard is
+ * up (#443: LatinIME `mInputShown=true`, dialog root inset 0, "requested by
+ * the window: true"). So the keyboard counts as up when any Compose window
+ * sees an inset, or when the focused window asks for it and the input
+ * method's own window is on screen.
+ */
+private data class KeyboardReading(
+    /** The largest IME inset any of this rule's Compose windows sees, in px. */
+    val inset: Int,
+    /** Whether the focused window asks for the keyboard. */
+    val requested: Boolean,
+    /** Top of the focused window on screen: a Dialog moves when the keyboard opens. */
+    val windowTop: Int
+)
+
+private fun readKeyboard(target: View, roots: List<View>): KeyboardReading {
+    val xy = IntArray(2)
+    target.rootView.getLocationOnScreen(xy)
+    return KeyboardReading(
+        inset = roots.filter { it.isAttachedToWindow }.maxOfOrNull { it.keyboardInset() } ?: 0,
+        requested = target.keyboardRequested(),
+        windowTop = xy[1]
+    )
+}
+
+/** Height on screen of the input method's window in px, 0 when none is listed. */
+private fun inputMethodWindowPx(): Int = runCatching {
+    interactiveUiAutomation().windows
+        .filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+        .maxOfOrNull { w -> AndroidRect().also { w.getBoundsInScreen(it) }.height() } ?: 0
+}.getOrDefault(0)
+
+/**
+ * One log line per keyboard wait: which Compose root the kit picked and what
+ * each root sees, so a red run names the window (#443 strategy route).
+ */
+private fun logKeyboardWindows(step: String, roots: List<View>, picked: View?) {
+    val line = roots.mapIndexed { index, view ->
+        onMainThread {
+            val kind = if (index == 0) "activity" else view.rootView.javaClass.simpleName
+            val mark = if (view === picked) "*" else ""
+            "$mark#$index $kind focus=${view.hasWindowFocus()} ime=${view.keyboardInset()} " +
+                "requested=${view.keyboardRequested()} h=${view.rootView.height}"
+        }
+    }.joinToString("; ")
+    Log.i(TEST_KIT_LOG_TAG, "keyboard windows at $step (${testLine()}): $line; " +
+        "ime window ${inputMethodWindowPx()} px; selected ${selectedInputMethod()}")
+}
 
 /**
  * Types [text] into the node (semantics, not key presses) and leaves the
@@ -41,7 +103,7 @@ fun ComposeTestRule.typeText(
         KeyboardAfter.Hidden -> hideKeyboard(showExpected = true)
         KeyboardAfter.Shown -> {
             // A field that already had focus does not ask for the keyboard again.
-            rootViews().firstOrNull()?.let { view ->
+            keyboardWindow()?.let { view ->
                 onMainThread { view.windowInsetsController?.show(WindowInsets.Type.ime()) }
             }
             awaitKeyboardShown()
@@ -51,7 +113,7 @@ fun ComposeTestRule.typeText(
 
 /** The keyboard's bottom inset in px, as this rule's window sees it now. */
 fun ComposeTestRule.keyboardInsetPx(): Int =
-    rootViews().firstOrNull()?.let { view -> onMainThread { view.keyboardInset() } } ?: 0
+    keyboardWindow()?.let { view -> onMainThread { view.keyboardInset() } } ?: 0
 
 /**
  * Hides the keyboard and returns when its inset has been 0 on every frame
@@ -71,8 +133,10 @@ fun ComposeTestRule.hideKeyboard(
     showExpected: Boolean = false,
     arrivalMs: Long = 3_000L
 ) {
-    val view = rootViews().firstOrNull() ?: return
+    val roots = rootViews()
+    val view = keyboardWindow(roots) ?: return
     val noKeyboard = selectedInputMethod().endsWith(TestKeyboard.None.service)
+    logKeyboardWindows("hideKeyboard", roots, view)
     if (showExpected && !noKeyboard) {
         val until = SystemClock.uptimeMillis() + arrivalMs
         waitUntil(arrivalMs + 5_000L) {
@@ -82,7 +146,7 @@ fun ComposeTestRule.hideKeyboard(
     }
     var asked = 0L
     var zeroSince = 0L
-    var last = -1
+    var last = KeyboardReading(-1, false, 0)
     try {
         awaitThat("the keyboard to be hidden", timeoutMs) {
             val now = SystemClock.uptimeMillis()
@@ -92,9 +156,11 @@ fun ComposeTestRule.hideKeyboard(
                     view.windowInsetsController?.hide(WindowInsets.Type.ime())
                 }
             }
-            val frames = sampleOnFrames { view.keyboardInset() }
+            val frames = sampleOnFrames { readKeyboard(view, roots) }
             last = frames.last()
-            if (frames.any { it != 0 }) {
+            // With TestKeyboard.None nothing is drawn, so only the insets count.
+            val down = frames.all { it.inset == 0 && (noKeyboard || !it.requested) }
+            if (!down) {
                 zeroSince = 0L
                 false
             } else {
@@ -103,7 +169,8 @@ fun ComposeTestRule.hideKeyboard(
             }
         }
     } catch (timeout: AssertionError) {
-        throw AssertionError("${timeout.message}; keyboard inset still $last px", timeout)
+        throw AssertionError("${timeout.message}; keyboard inset still ${last.inset} px, " +
+            "requested by the focused window: ${last.requested}", timeout)
     }
     waitForIdle()
 }
@@ -118,38 +185,49 @@ fun ComposeTestRule.hideKeyboard(
 fun ComposeTestRule.awaitKeyboardShown(
     timeoutMs: Long = 10_000L, stillMs: Long = 300L, productSettleMs: Long = 500L
 ): Int {
-    val view = rootViews().firstOrNull()
+    val roots = rootViews()
+    val view = keyboardWindow(roots)
         ?: throw AssertionError("awaitKeyboardShown(): no Compose window")
+    logKeyboardWindows("awaitKeyboardShown", roots, view)
     val start = SystemClock.uptimeMillis()
-    var last = Int.MIN_VALUE
+    var last = KeyboardReading(Int.MIN_VALUE, false, Int.MIN_VALUE)
+    var lastWindow = 0
     var since = start
     var everUp = false
     var asked = start
     try {
         awaitThat("the keyboard to be shown and still", timeoutMs) {
-            val frames = sampleOnFrames { view.keyboardInset() }
+            val frames = sampleOnFrames { readKeyboard(view, roots) }
+            // Only needed when no Compose window overlaps the keyboard (a Dialog).
+            val window = if (frames.last().inset > 0) 0 else inputMethodWindowPx()
             val now = SystemClock.uptimeMillis()
-            if (!everUp && frames.last() == 0 && now - asked >= 1_000L) {
+            if (!everUp && frames.last().inset == 0 && now - asked >= 1_000L) {
                 asked = now
                 onMainThread { view.windowInsetsController?.show(WindowInsets.Type.ime()) }
             }
-            if (frames.distinct().size != 1 || frames.last() != last) {
+            if (frames.distinct().size != 1 || frames.last() != last || window != lastWindow) {
                 last = frames.last()
+                lastWindow = window
                 since = now
             }
-            if (last > 0) everUp = true
+            val up = last.inset > 0 || (last.requested && lastWindow > 0)
+            if (up) everUp = true
             else if (onMainThread { !view.hasWindowFocus() }) dismissSystemAnrDialog()
-            last > 0 && now - since >= stillMs
+            up && now - since >= stillMs
         }
     } catch (timeout: AssertionError) {
-        val seen = if (everUp) "the keyboard came up but its height kept changing (last $last px)"
-            else "the keyboard never came up (requested by the window: ${view.keyboardRequested()})"
+        val seen = if (everUp) "the keyboard came up but kept moving (last inset " +
+            "${last.inset} px, input method window $lastWindow px, window top ${last.windowTop})"
+            else "the keyboard never came up (requested by the window: ${view.keyboardRequested()}, " +
+                "input method window ${inputMethodWindowPx()} px)"
+        logKeyboardWindows("awaitKeyboardShown timeout", roots, view)
         throw AssertionError("${timeout.message}; $seen", timeout)
     }
-    Log.i(TEST_KIT_LOG_TAG, "keyboard shown inset=$last px after " +
+    val height = if (last.inset > 0) last.inset else lastWindow
+    Log.i(TEST_KIT_LOG_TAG, "keyboard shown inset=${last.inset} px window=$lastWindow px after " +
         "${SystemClock.uptimeMillis() - start} ms")
     advanceVirtualTime(productSettleMs)
-    return last
+    return height
 }
 
 /**
@@ -160,7 +238,8 @@ fun ComposeTestRule.awaitKeyboardShown(
  */
 fun ComposeTestRule.assertAboveKeyboard(matcher: SemanticsMatcher, clearancePx: Int = 0) {
     val node = onNode(matcher).fetchSemanticsNode("assertAboveKeyboard(): no ${matcher.description}")
-    val view = rootViews().first()
+    val view = keyboardWindow()
+        ?: throw AssertionError("assertAboveKeyboard(): no Compose window")
     val (keyboard, windowHeight) = onMainThread { view.keyboardInset() to view.rootView.height }
     val whole = Rect(node.positionInWindow, node.size.toSize())
     val keyboardTop = windowHeight - keyboard
@@ -211,14 +290,19 @@ internal const val FIXED_KEYBOARD_HEIGHT_SETTING = "atlas_test_keyboard_height_p
  *         .around(S24DisplayRule()).around(compose)
  *
  * [fixedHeightPx] sets the height of [TestKeyboard.Fixed]; null keeps its default.
+ * [methodKeyboards] can select a different keyboard for one method in a journey class,
+ * without changing the renders of its other methods. Selection still precedes Activity setup.
  */
 class KeyboardRule(
     private val keyboard: TestKeyboard = TestKeyboard.None,
-    private val fixedHeightPx: Int? = null
+    private val fixedHeightPx: Int? = null,
+    private val methodKeyboards: Map<String, TestKeyboard> = emptyMap()
 ) : TestRule {
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
-            override fun evaluate() = withTestKeyboard(keyboard, fixedHeightPx) { base.evaluate() }
+            override fun evaluate() = withTestKeyboard(
+                methodKeyboards[description.methodName] ?: keyboard, fixedHeightPx
+            ) { base.evaluate() }
         }
 }
 

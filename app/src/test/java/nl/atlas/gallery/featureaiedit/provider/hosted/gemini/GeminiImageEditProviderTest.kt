@@ -204,7 +204,8 @@ class GeminiImageEditProviderTest {
 
     @Test fun httpStatusesMapToTypedFailuresWithoutReplay() {
         val cases = listOf(
-            401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 429 to FailureKind.QUOTA,
+            401 to FailureKind.AUTH, 403 to FailureKind.AUTH, 402 to FailureKind.BILLING,
+            429 to FailureKind.QUOTA,
             500 to FailureKind.SERVER, 503 to FailureKind.SERVER, 400 to FailureKind.INVALID_REQUEST
         )
         for ((status, kind) in cases) {
@@ -212,6 +213,10 @@ class GeminiImageEditProviderTest {
                 val result = outcome(h) as EditOutcome.Failed
                 assertEquals("status $status", kind, result.kind)
                 assertEquals(status >= 500, result.retryable)
+                if (status == 402) {
+                    assertEquals("HTTP_BILLING", result.message)
+                    assertFalse(result.toString().contains("synthetic"))
+                }
                 assertEquals("POST is never replayed", 1, h.server.requests.size)
             }
         }
@@ -272,7 +277,7 @@ class GeminiImageEditProviderTest {
         val huge = SyntheticPng.encode(8, 8) + ByteArray(1_200_000)
         GeminiHarness { FakeResponse.json(successReply(huge)) }.use { h ->
             val result = h.provider(maxReplyBytes = 1_000_000).submit(request()).await()
-            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_SERVER"), result)
+            assertEquals(EditOutcome.Failed(FailureKind.SERVER, false, "HTTP_RESPONSE_TOO_LARGE"), result)
             assertEquals(1, h.server.requests.size)
             assertTrue(h.output.listFiles()!!.isEmpty())
         }
@@ -375,5 +380,25 @@ class GeminiImageEditProviderTest {
             assertTrue(model.aspectRatios.any { it.label == "1:1" })
             assertTrue(model.sizes.first().label == "1K")
         }
+    }
+
+    /** #463: only ids on Google's official model list; preview ids are shut down. */
+    @Test fun catalogUsesStableOfficialModelIds() {
+        assertEquals("gemini-3-pro-image", GeminiModel.PRO.id)
+        assertEquals(
+            listOf("gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-lite-image"),
+            GeminiModel.CATALOG.map { it.id })
+        for (model in GeminiModel.CATALOG) {
+            assertFalse(model.id, model.id.contains("preview"))
+            assertFalse(model.displayName, model.displayName.contains("preview", ignoreCase = true))
+        }
+    }
+
+    /** #463: 1:4, 4:1, 1:8 and 8:1 are documented for 3.1 Flash Image only, not 3 Pro Image. */
+    @Test fun proOffersOnlyItsDocumentedAspectRatios() {
+        assertEquals(
+            listOf("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"),
+            GeminiModel.PRO.aspectRatios.map { it.label })
+        assertTrue(GeminiModel.FLASH.aspectRatios.any { it.label == "1:8" })
     }
 }

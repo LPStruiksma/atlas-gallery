@@ -632,13 +632,14 @@ private fun NewServicePage(
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (type in ProviderAuthType.entries) {
+                    for (type in ProviderAuthType.CUSTOM_SERVER) {
                         FilterChip(selected = type == authType, onClick = { authType = type },
                             modifier = Modifier.testTag("aie-custom-auth-" + type.name),
                             label = { Text(when (type) {
                                 ProviderAuthType.NONE -> "No key"
                                 ProviderAuthType.BEARER -> "Bearer key"
                                 ProviderAuthType.CUSTOM_HEADER -> "Key in header"
+                                ProviderAuthType.KEY_SCHEME -> "fal key"
                             }) })
                     }
                 }

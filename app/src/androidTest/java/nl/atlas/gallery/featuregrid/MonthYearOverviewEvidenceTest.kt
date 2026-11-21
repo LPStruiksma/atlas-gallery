@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,6 +18,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -39,6 +41,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -68,11 +71,22 @@ class MonthYearOverviewEvidenceTest {
         }
     }
 
+    /**
+     * Photo tiles per row in this layout (0 without tiles): headers span the
+     * whole line, tiles are one of at least three columns. The widest row
+     * counts, since a month's last row may be short.
+     */
+    private fun LazyGridLayoutInfo.drawnPhotoColumns(): Int =
+        visibleItemsInfo.filter { it.size.width in 1 until viewportSize.width / 2 }
+            .groupingBy { it.offset.y }.eachCount().values.maxOrNull() ?: 0
+
     @Test fun capturesSevenMonthYearAndOriginalInLightAndDark() {
         val items = inventedPhotos()
         val dark = mutableStateOf(false)
         val ratio = mutableStateOf(false)
         val displayed = AtomicReference<TimelineDisplayedSlots?>()
+        // #570: photo columns in the last draw pass whose grid held tiles.
+        val drawnColumns = AtomicInteger(0)
         compose.setContent {
             val useDark = dark.value
             SideEffect { applyAtlasSystemBars(compose.activity.window, useDark) }
@@ -88,10 +102,18 @@ class MonthYearOverviewEvidenceTest {
                                     catalogueEpoch = 16L
                                 )
                             } else {
+                                val gridState = rememberLazyGridState()
+                                // Like Perf11 (#569): reading layoutInfo while
+                                // drawing redraws this box when the grid lays
+                                // out, so drawnColumns is set by a real frame.
+                                Box(Modifier.fillMaxSize().drawWithContent {
+                                    drawContent()
+                                    drawnColumns.set(gridState.layoutInfo.drawnPhotoColumns())
+                                }) {
                                 AtlasTimelineGallery(
                                     items = items,
                                     sort = TimelineSort.NEWEST,
-                                    gridState = rememberLazyGridState(),
+                                    gridState = gridState,
                                     onOpen = {},
                                     viewKey = "overview-16-${if (useDark) "dark" else "light"}",
                                     catalogueEpoch = 16L,
@@ -102,6 +124,7 @@ class MonthYearOverviewEvidenceTest {
                                             ratio.value = true
                                     }
                                 )
+                                }
                             }
                         }
                     }
@@ -118,7 +141,10 @@ class MonthYearOverviewEvidenceTest {
                     displayed.get()?.timeline?.headers?.isNotEmpty() == true &&
                     displayed.get()?.timeline?.headers?.all {
                         it.header.stableKey.startsWith("header:${bucket.name}:")
-                    } == true
+                    } == true &&
+                    // #570: semantics and slots can be ready while no frame
+                    // has drawn the tiles yet; capture only after one has.
+                    drawnColumns.get() == level.columns
             }
             assertTrue(displayed.get()!!.timeline.grouped)
             compose.waitForIdle()
@@ -141,28 +167,35 @@ class MonthYearOverviewEvidenceTest {
                 // its old slots through AtlasTimelineGallery.onDispose.
             }
             val theme = if (useDark) "dark" else "light"
-            awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
-            saveUiEvidence("zoom-16-$theme-7.png")
+            // #693: each look re-checks the level. A replan after the check
+            // (likely a late viewport change after the S24 resize) leaves the
+            // plain ground on screen until a Compose sync lets it finish.
+            saveUiEvidence("zoom-16-$theme-7.png") {
+                awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
+            }
 
             chooseSmaller()
-            awaitLevel(GridDensity.MONTH, TimelineBucket.MONTH)
-            saveUiEvidence("zoom-16-$theme-12-month.png")
+            saveUiEvidence("zoom-16-$theme-12-month.png") {
+                awaitLevel(GridDensity.MONTH, TimelineBucket.MONTH)
+            }
 
             chooseSmaller()
-            awaitLevel(GridDensity.YEAR, TimelineBucket.YEAR)
             assertEquals(28, GridDensity.YEAR.columns)
-            saveUiEvidence("zoom-16-$theme-28-year.png")
+            saveUiEvidence("zoom-16-$theme-28-year.png") {
+                awaitLevel(GridDensity.YEAR, TimelineBucket.YEAR)
+            }
 
             val actions = compose.onNodeWithTag("atlas-timeline-grid")
                 .fetchSemanticsNode().config[SemanticsActions.CustomActions]
             val original = actions.first { it.label == ORIGINAL_PROPORTIONS_ACTION }
             compose.runOnIdle { assertTrue(original.action()) }
-            compose.waitUntil(30_000L) {
-                compose.onAllNodes(hasTestTag("atlas-ratio-gallery"))
-                    .fetchSemanticsNodes().isNotEmpty()
+            saveUiEvidence("zoom-16-$theme-original.png") {
+                compose.waitUntil(30_000L) {
+                    compose.onAllNodes(hasTestTag("atlas-ratio-gallery"))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.waitForIdle()
             }
-            compose.waitForIdle()
-            saveUiEvidence("zoom-16-$theme-original.png")
         }
     }
 }
