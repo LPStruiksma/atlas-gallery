@@ -504,16 +504,44 @@ COUNTS = [312, 0, 418, 655, 980, 1420, 2210, 1835, 702, 0, 268, 0]
 
 
 def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=True, dense=False,
-                no_geo=False, year="2026", seed=3, grid=False) -> int:
+                no_geo=False, year="2026", seed=3, grid=True, error=False) -> int:
     """The atlas slides down over the grid by ``open_frac`` of its full height. Returns its bottom."""
     counts = counts if counts is not None else COUNTS
-    full_h = px(560) if places else px(260)
+    # Larger font scales push the month grid down so the year/total header
+    # never intrudes into the first row of 58.7 x 80 dp targets (#817).
+    head_shift = px(max(0.0, 12 + 30 * s.font_scale + 10 - 62))
+    full_h = (px(560) if places else px(260)) + head_shift
     h = int(full_h * open_frac)
     y0 = s.top
     if h <= 0:
         return y0
     panel = [0, y0, DEVICE_W, y0 + h]
     s.d.rectangle(panel, fill=s.t["surface"])
+    if error:
+        # C4: metadata failure is an *open atlas* over an intact Pictures grid,
+        # not a full-screen Pictures failure. No stale month/place targets remain.
+        top = y0 + px(18)
+        close_box = [DEVICE_W - px(SIDE) - px(48), top,
+                     DEVICE_W - px(SIDE), top + px(48)]
+        s.text((px(SIDE), top + px(7)), "Atlas", "section")
+        s.d.rounded_rectangle(close_box, radius=px(24), fill=s.t["ground"])
+        s.d.text(((close_box[0] + close_box[2]) / 2, (close_box[1] + close_box[3]) / 2),
+                 "×", font=s.fonts.get("sans", 600, px(20)), fill=s.t["ink"], anchor="mm")
+        s.target(close_box, "close atlas (Back)", actual=True)
+        s.text((px(SIDE), top + px(90)), "Couldn't read dates and places.", "body")
+        s.text((px(SIDE), top + px(138)), "Your pictures are safe. Try again.", "secondary")
+        retry_box = [px(SIDE), top + px(206), DEVICE_W - px(SIDE), top + px(262)]
+        s.d.rounded_rectangle(retry_box, radius=px(18), fill=s.t["brand_fill"])
+        s.d.text(((retry_box[0] + retry_box[2]) / 2, (retry_box[1] + retry_box[3]) / 2),
+                 "Try again", font=s.fonts.get("sans", 600, px(16)),
+                 fill=s.t["on_brand"], anchor="mm")
+        s.target(retry_box, "try atlas again", actual=True, show_size=True)
+        hy = y0 + h - px(12)
+        s.d.rounded_rectangle([DEVICE_W / 2 - px(18), hy - px(2),
+                               DEVICE_W / 2 + px(18), hy + px(2)],
+                              radius=px(2), fill=s.t["ink2"])
+        s.atlas_error = True
+        return y0 + h
     # content is drawn into a clipped layer
     from PIL import Image as _I, ImageDraw as _D
     layer = _I.new("RGBA", (DEVICE_W, full_h), (0, 0, 0, 0))
@@ -521,19 +549,27 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     ld.rectangle([0, 0, DEVICE_W, full_h], fill=s.t["surface"])
     f_t = s.fonts.get("display", 700, px(24) * s.font_scale)
     ld.text((px(SIDE), px(12)), year, font=f_t, fill=s.t["brand_text"])
+    year_bbox = ld.textbbox((px(SIDE), px(12)), year, font=f_t)
     total = sum(counts)
     f_s = s.fonts.get("sans", 400, px(14) * s.font_scale)
     ld.text((DEVICE_W - px(SIDE), px(18)), f"{_nl(total)} photos", font=f_s, fill=s.t["ink2"], anchor="ra")
     # month bars, height ~ count, tallest labelled so the scale reads without ambiguity
     mx = max(counts) or 1
     f_m = s.fonts.get("sans", 600, px(12) * min(s.font_scale, 1.6))
-    per_row = 6 if grid else 12
+    # #817: one 12-column row makes essential taps 29 dp wide. Keep the
+    # 2 x 6, 58.7 x 80 dp layout normative in every open atlas state.
+    if not grid:
+        raise ValueError("L6 single-row 29 dp targets are not accessible")
+    per_row = 6
     bw = (DEVICE_W - px(2 * SIDE)) / per_row
     bx0 = px(SIDE)
-    bar_max = px(44) if grid else px(96)
-    row_bases = [px(118), px(198)] if grid else [px(170)]  # grid rows: 80 dp pitch, boxes touch, never overlap
+    bar_max = px(44)
+    row_bases = [px(118) + head_shift, px(198) + head_shift]  # 80 dp pitch, targets touch but do not overlap
     month_boxes = []
+    month_label_boxes = []
+    current_sphere_box = None
     place_pts: dict[str, tuple[float, float]] = {}
+    label_chips: list = []
     for i, c in enumerate(counts):
         row, col_i = divmod(i, per_row)
         base_y = row_bases[row]
@@ -544,29 +580,68 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
             ld.line([x + px(4), base_y, x + bw - px(4), base_y], fill=s.t["ink2"], width=px(1))
         else:
             ld.rounded_rectangle([x + px(4), base_y - bh, x + bw - px(4), base_y], radius=px(4), fill=colr)
-        short = s.font_scale > 1.4 and not grid
-        ld.text((x + bw / 2, base_y + px(6)), MONTHS[i][:1] if short else MONTHS[i], font=f_m,
+        # Reserve the bottom 36 dp of each 80 dp month target for its label.
+        # At 200% font the old +24 dp target edge bisected glyph descenders.
+        # Measure the *drawn* glyph bounds; move the baseline up as needed
+        # rather than shrinking the label or its accessible hit target.
+        label_x, label_y = x + bw / 2, base_y + px(6)
+        label_bb = ld.textbbox((label_x, label_y), MONTHS[i], font=f_m, anchor="ma")
+        label_bottom = base_y + px(36)
+        if label_bb[3] > label_bottom:
+            label_y -= label_bb[3] - label_bottom
+            label_bb = ld.textbbox((label_x, label_y), MONTHS[i], font=f_m, anchor="ma")
+        if (label_bb[1] < base_y + px(2) or label_bb[0] < x
+                or label_bb[2] > x + bw or label_bb[3] > label_bottom):
+            raise ValueError(f"month label escapes 80 dp target: {MONTHS[i]} {label_bb}")
+        ld.text((label_x, label_y), MONTHS[i], font=f_m,
                 fill=s.t["ink"], anchor="ma")
+        month_label_boxes.append((MONTHS[i], label_bb))
         if i == current:
+            # Held month sphere sits above its bar, but never above its own
+            # 80 dp target: on the tallest month (bh == bar_max) it used to
+            # land on the previous row's label (B9, current=6 covered 'Jan').
             r = px(10)
-            cy = base_y - bh - px(14)
+            cy = max(base_y - bh - px(14), base_y - bar_max + r + px(2))
+            current_sphere_box = (x + bw / 2 - r - px(2), cy - r - px(2), x + bw / 2 + r + px(2), cy + r + px(2))
             ld.ellipse([x + bw / 2 - r - px(2), cy - r - px(2), x + bw / 2 + r + px(2), cy + r + px(2)],
                        fill="#FFFFFF")
             ld.ellipse([x + bw / 2 - r, cy - r, x + bw / 2 + r, cy + r], fill=s.t["brand_fill"])
-        month_boxes.append((x, base_y - bar_max - px(12), x + bw, base_y + px(24)))
-    legend_y = row_bases[-1] + px(30) * min(s.font_scale, 1.6)
-    ld.text((DEVICE_W - px(SIDE), legend_y), f"tallest bar = {_nl(mx)} photos",
-            font=s.fonts.get("sans", 400, px(11) * min(s.font_scale, 1.6)), fill=s.t["ink2"], anchor="ra")
+        month_boxes.append((x, base_y - bar_max, x + bw, base_y + px(36)))
+    # The legend starts below the second row's 36 dp label band: at 100 %
+    # the old +30 dp put 'tallest bar' text inside the Nov/Dec targets.
+    legend_y = row_bases[-1] + max(px(42), px(30) * min(s.font_scale, 1.6))
+    f_legend = s.fonts.get("sans", 400, px(11) * min(s.font_scale, 1.6))
+    legend_text = f"tallest bar = {_nl(mx)} photos"
+    legend_bb = ld.textbbox((DEVICE_W - px(SIDE), legend_y), legend_text, font=f_legend, anchor="ra")
+    ld.text((DEVICE_W - px(SIDE), legend_y), legend_text, font=f_legend, fill=s.t["ink2"], anchor="ra")
     if places:
         my0, my1 = int(legend_y + px(24) * min(s.font_scale, 1.6)), full_h - px(24)
         ld.rounded_rectangle([px(SIDE), my0, DEVICE_W - px(SIDE), my1], radius=px(22), fill=s.t["ground"])
         if no_geo:
-            fb = s.fonts.get("sans", 400, px(15) * s.font_scale)
-            ld.text((px(SIDE) + px(16), my0 + px(24)), "No places yet.", font=fb, fill=s.t["ink"])
-            ld.text((px(SIDE) + px(16), my0 + px(24) + px(22) * s.font_scale),
-                    "Photos with a location will appear here.", font=fs2(s), fill=s.t["ink2"])
-            ld.text((px(SIDE) + px(16), my0 + px(24) + px(44) * s.font_scale),
-                    "Turn on location tags in the Camera app.", font=fs2(s), fill=s.t["ink2"])
+            # Wrap long copy at the chosen font scale. One-line 200% copy
+            # previously escaped the map/card right edge.
+            x = px(SIDE) + px(16)
+            width = DEVICE_W - px(SIDE) - px(16) - x
+            yy = my0 + px(18)
+            for copy, font, color in (
+                ("No places yet.", s.fonts.get("sans", 600, px(15) * s.font_scale), s.t["ink"]),
+                ("Photos with a location will appear here.", fs2(s), s.t["ink2"]),
+                ("Turn on location tags in the Camera app.", fs2(s), s.t["ink2"]),
+            ):
+                line, lines = "", []
+                for word in copy.split():
+                    attempt = (line + " " + word).strip()
+                    if line and ld.textlength(attempt, font=font) > width:
+                        lines.append(line)
+                        line = word
+                    else:
+                        line = attempt
+                if line:
+                    lines.append(line)
+                for part in lines:
+                    ld.text((x, yy), part, font=font, fill=color)
+                    yy += max(px(18), int(px(18) * s.font_scale))
+                yy += px(8)
         else:
             r = random.Random(seed)
             # schematic dots only: no tiles, no coastline, no coordinates
@@ -583,27 +658,48 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 cx, cy = DEVICE_W / 2, (my0 + my1) / 2
                 ld.ellipse([cx - px(30), cy - px(30), cx + px(30), cy + px(30)], fill=s.t["brand_fill"])
                 ld.text((cx, cy), "1.240", font=s.fonts.get("sans", 600, px(14)), fill="#FFFFFF", anchor="mm")
+                # the counted cluster is one tap target (zooms to its places)
+                place_pts["cluster 1.240"] = (cx, cy)
             else:
-                labels = [("Amsterdam", 0.30, 0.35), ("Coast", 0.15, 0.7), ("Mountains", 0.7, 0.6)]
+                labels = [("Amsterdam", 0.30, 0.35), ("Coast", 0.12, 0.84), ("Mountains", 0.7, 0.52)]
                 for name, fx, fy in labels:
                     cx = px(SIDE) + fx * (DEVICE_W - px(2 * SIDE))
                     cy = my0 + fy * (my1 - my0)
                     place_pts[name] = (cx, cy)
                     ld.ellipse([cx - px(9), cy - px(9), cx + px(9), cy + px(9)], fill=s.t["brand_fill"])
                     if cx + px(14) + ld.textlength(name, font=fs2(s)) > DEVICE_W - px(SIDE) - px(8):
-                        ld.text((cx - px(14), cy), name, font=fs2(s), fill=s.t["ink"], anchor="rm")
+                        pos, anc = (cx - px(14), cy), "rm"
                     else:
-                        ld.text((cx + px(14), cy), name, font=fs2(s), fill=s.t["ink"], anchor="lm")
+                        pos, anc = (cx + px(14), cy), "lm"
+                    # Label chip in the map colour so schematic dots never
+                    # run through the text, at any font scale.
+                    bb = ld.textbbox(pos, name, font=fs2(s), anchor=anc)
+                    chip = (bb[0] - px(4), bb[1] - px(2), bb[2] + px(4), bb[3] + px(2))
+                    ld.rounded_rectangle(chip, radius=px(6), fill=s.t["ground"])
+                    ld.text(pos, name, font=fs2(s), fill=s.t["ink"], anchor=anc)
+                    label_chips.append((name, chip))
     crop = layer.crop((0, full_h - h, DEVICE_W, full_h))
     s.img.paste(crop, (0, y0), crop)
     # grab handle (pull up to close)
     hy = y0 + h - px(12)
     s.d.rounded_rectangle([DEVICE_W / 2 - px(18), hy - px(2), DEVICE_W / 2 + px(18), hy + px(2)], radius=px(2),
                           fill=s.t["ink2"])
+    shift_y = y0 - (full_h - h)
+    s.year_bottom = shift_y + year_bbox[3]
+    s.month_label_boxes = [(n, (b[0], shift_y + b[1], b[2], shift_y + b[3]))
+                           for n, b in month_label_boxes]
+    s.legend_box = (legend_bb[0], shift_y + legend_bb[1], legend_bb[2], shift_y + legend_bb[3])
+    s.current_sphere_box = (None if current_sphere_box is None else
+                            (current_sphere_box[0], shift_y + current_sphere_box[1],
+                             current_sphere_box[2], shift_y + current_sphere_box[3]))
+    s.label_chips = [(n, (c[0], shift_y + c[1], c[2], shift_y + c[3])) for n, c in label_chips]
     s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
         for n, (x, yy) in s.place_centers.items():
-            s.target([x - px(9), yy - px(9), x + px(9), yy + px(9)], f"place {n}")
+            # Visible dot is intentionally small; the effective tap target
+            # is 48 dp in both dimensions, including for TalkBack focus.
+            s.target([x - px(24), yy - px(24), x + px(24), yy + px(24)], f"place {n}",
+                     actual=True, show_size=(n in ("Coast", "cluster 1.240")))
         for i, (a, b, c, d_) in enumerate(month_boxes):
             s.target([a, y0 + b, c, y0 + d_], f"month {MONTHS[i]}", actual=True, show_size=(i == 0))
     return y0 + h
