@@ -118,7 +118,7 @@ Per output pixel (centre `x + 0.5, y + 0.5`): inverse-map through the matrix; ou
 - `SourceProvider` supplies the segment's input. `BitmapSource` is an in-memory picture or downsampled preview proxy (its region scale tells the shader). `RegionDecoderSource` decodes only the region a tile needs, subsampled by a power of two when the output is smaller.
 - `SOURCE` raster patches are composited onto the input region through their masks before the pixel pass. After an `OUTPUT` patch, the input is the **base plan rendered region by region** with the patch composited on, so AI results are tiled too and never edited twice.
 - Overlay layers come from `EditorAssets.overlay` (EDIT-9 supplies the text, stroke and shape rasteriser) and are drawn after the pixel pass through the same geometry matrix, uncoloured.
-- Exports are strict: a missing LUT, patch or sticker throws `MissingAssetException` instead of saving a different picture. The preview leaves it out.
+- Exports are strict: a missing LUT, patch or mask, or any overlay layer `EditorAssets.overlay` cannot draw (sticker art or a text, stroke or shape layer with no rasteriser yet), throws `MissingAssetException` instead of saving a different picture. The preview leaves it out on both backends.
 
 ## Tiling
 

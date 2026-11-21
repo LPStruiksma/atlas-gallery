@@ -72,8 +72,8 @@ class PlanRenderer(
 
     /**
      * Renders output pixels [tile] of [plan] from [source] (the decoded photo, any resolution:
-     * a proxy works through its region scale). [strict] refuses a missing LUT or patch instead of
-     * leaving it out: exports are strict, previews are not.
+     * a proxy works through its region scale). [strict] refuses a missing LUT, patch or undrawable
+     * overlay layer instead of leaving it out: exports are strict, previews are not.
      */
     fun renderTile(
         plan: RenderPlan,
@@ -265,11 +265,10 @@ class PlanRenderer(
     /** Draws decoration layers in z-order through the segment's source-to-output matrix. */
     private fun drawOverlays(canvas: Canvas, overlays: RenderStage.Overlays, program: SegmentProgram, tile: IntRect, strict: Boolean) {
         for (layer in overlays.layers) {
+            // Strict (export) refuses any layer it cannot draw, hashed or not: a text, stroke or
+            // shape layer with no rasteriser would otherwise be dropped from a "successful" save.
             val placed = assets.overlay(layer, program.sourceWidth, program.sourceHeight)
-            if (placed == null) {
-                if (strict && layer.contentHash != null) throw MissingAssetException("overlay")
-                continue
-            }
+                ?: if (strict) throw MissingAssetException("${layer.kind.key} overlay") else continue
             val m = Matrix3.translate(-tile.left.toDouble(), -tile.top.toDouble()) * overlays.sourceToOutput * placed.rasterToSource
             canvas.save()
             canvas.concat(Matrix().apply { setValues(m.values().map { it.toFloat() }.toFloatArray()) })
@@ -292,5 +291,5 @@ class PlanRenderer(
     }
 }
 
-/** A hash the recipe names is not in the asset store; exports refuse rather than guess. */
+/** An asset the recipe needs (a hashed LUT, patch or mask, or an overlay rasteriser) is unavailable; exports refuse rather than guess. */
 class MissingAssetException(kind: String) : IllegalStateException("Missing $kind asset for this edit")

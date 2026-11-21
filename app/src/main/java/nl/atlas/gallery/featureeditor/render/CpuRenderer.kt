@@ -39,13 +39,15 @@ object CpuRenderer {
     /**
      * Renders [tile] of [program]'s output from [region] (which must contain
      * `program.sourceRegionFor(tile)`), as premultiplied RGBA bytes encoded in [outputSpace].
+     * A null [lut] leaves the program's filter out (the lenient preview of a missing LUT).
      */
     fun render(program: SegmentProgram, region: RgbaRegion, tile: IntRect, lut: Lut3D?, outputSpace: PixelSpace): ByteArray {
-        require(program.lut == null || lut != null) { "Program needs its LUT" }
         val out = ByteArray(tile.width * tile.height * 4)
         val m = program.outputToSourceFloats
         val adjust = program.adjust
-        val strength = program.lut?.strength?.toFloat() ?: 0f
+        // A missing LUT (lenient preview) renders at zero strength, as the AGSL pass does;
+        // strict exports refuse it earlier, in PlanRenderer.prepare.
+        val strength = if (lut != null) program.lut?.strength?.toFloat() ?: 0f else 0f
         val raw = program.rawValues
         val sampler = Sampler(region, m, raw)
         val c = FloatArray(4)

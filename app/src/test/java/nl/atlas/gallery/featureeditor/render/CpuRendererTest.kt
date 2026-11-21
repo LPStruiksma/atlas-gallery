@@ -75,6 +75,15 @@ class CpuRendererTest {
         assertTrue(RenderFixtures.maxDiff(plain, filtered) > 2)
     }
 
+    @Test fun missingLutRendersWithoutTheFilterLikeTheGpu() {
+        // Lenient preview (API 29-32 CPU fallback): an unavailable LUT is left out, not a crash.
+        val adjust = EditOperation.Adjust("a", AdjustParam.EXPOSURE, 0.3)
+        val (_, withoutFilter) = render(EditRecipe(w, h, listOf(adjust)))
+        val (program, missing) = render(EditRecipe(w, h, listOf(adjust, EditOperation.Filter("f", "warm", null, 0.8))), lut = null)
+        assertTrue("plan keeps its LUT stage", program.lut != null)
+        assertArrayEquals(withoutFilter, missing)
+    }
+
     @Test fun previewSizePlanScalesTheSameRecipe() {
         val (program, out) = render(RenderFixtures.everything(w, h), RenderFixtures.warmLut, maxLongEdge = 40)
         assertEquals(40, maxOf(program.outputWidth, program.outputHeight))
