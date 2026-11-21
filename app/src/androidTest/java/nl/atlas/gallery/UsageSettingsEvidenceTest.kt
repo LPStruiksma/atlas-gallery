@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -157,6 +158,6 @@ class UsageSettingsEvidenceTest {
     }
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertHasNoClick() =
-        assert(androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(
+        this.assert(androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(
             androidx.compose.ui.semantics.SemanticsActions.OnClick))
 }
