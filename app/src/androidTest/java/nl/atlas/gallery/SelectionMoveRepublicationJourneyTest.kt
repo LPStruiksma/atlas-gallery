@@ -79,11 +79,15 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
         openPhotos()
 
         // 1. Copy two originals into the target album (no consent: new rows).
+        step("select(ids[0], ids[1])")
         select(ids[0], ids[1])
+        step("compose.tap(hasTestTag('atlas-selection-more'))")
         compose.tap(hasTestTag("atlas-selection-more"))
         shown(hasTestTag("atlas-selection-copy-to-album"))
+        step("compose.tap(hasTestTag('atlas-selection-copy-to-album'))")
         compose.tap(hasTestTag("atlas-selection-copy-to-album"))
         shown(hasText(fixtures.targetAlbum))
+        step("compose.tap(hasText(fixtures.targetAlbum))")
         compose.tap(hasText(fixtures.targetAlbum))
         compose.awaitThat("two copies in the target", timeoutMs = 60_000L) { fixtures.namesIn(fixtures.targetPath).size == 3 }
         assertEquals(fixtures.fixturePath, fixtures.relativePathOf(ids[0]))
@@ -95,44 +99,60 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
         compose.waitForIdle()
 
         // 2. Select two other originals, then republish BEFORE the picker opens.
+        step("select(ids[2], ids[3])")
         select(ids[2], ids[3])
+        step("republishAndAwait('before-open', expectedAfter = 2) ")
         republishAndAwait("before-open", expectedAfter = 2) { fixtures.insertTrigger() }
         shown(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-reloaded-selection.png')")
         saveUiEvidence("move-783-$theme-reloaded-selection.png")
 
         // Landscape keeps the same two selected through Activity recreation.
+        step("rotateTo(landscape = true)")
         rotateTo(landscape = true)
         shown(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-reloaded-selection-landscape.png')")
         saveUiEvidence("move-783-$theme-reloaded-selection-landscape.png")
+        step("rotateTo(landscape = false)")
         rotateTo(landscape = false)
         shown(hasTestTag("atlas-selection-count") and hasText("2 selected"))
 
         // 3. Open Move to album, then republish WHILE the picker is open.
+        step("openMovePicker()")
         openMovePicker()
+        step("republishAndAwait('picker-open', expectedAfter = 2) ")
         republishAndAwait("picker-open", expectedAfter = 2) { fixtures.insertTrigger() }
         shown(hasTestTag("atlas-album-picker"))
         shown(hasText(fixtures.targetAlbum))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-picker-after-reload.png')")
         saveUiEvidence("move-783-$theme-picker-after-reload.png")
 
         // 4. Tap the target, cancel Android's consent: nothing is written.
+        step("compose.tap(hasText(fixtures.targetAlbum))")
         compose.tap(hasText(fixtures.targetAlbum))
+        // While MediaProvider's window is in front the app has no Compose root:
+        // only exists() (no root required) may look at the app here.
+        step("answerWriteConsent(allow = false) ")
         answerWriteConsent(allow = false) {
-            compose.onAllNodes(hasText("Move canceled · your photos are unchanged"))
-                .fetchSemanticsNodes().isNotEmpty()
+            compose.exists(hasText("Move canceled · your photos are unchanged"))
         }
         shown(hasTestTag("atlas-selection-count") and hasText("2 selected"))
         assertEquals(fixtures.fixturePath, fixtures.relativePathOf(ids[2]))
         assertEquals(fixtures.fixturePath, fixtures.relativePathOf(ids[3]))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-consent-canceled.png')")
         saveUiEvidence("move-783-$theme-consent-canceled.png")
 
         // 5. Again, and allow: exactly ids[2] and ids[3] move into the tapped album.
+        step("openMovePicker()")
         openMovePicker()
         shown(hasText(fixtures.targetAlbum))
+        step("compose.tap(hasText(fixtures.targetAlbum))")
         compose.tap(hasText(fixtures.targetAlbum))
+        step("answerWriteConsent(allow = true) ")
         answerWriteConsent(allow = true) {
             fixtures.relativePathOf(ids[2]) == fixtures.targetPath &&
                 fixtures.relativePathOf(ids[3]) == fixtures.targetPath
@@ -140,6 +160,7 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
         resumed()
         shown(hasText("Moved 2 items to ${fixtures.targetAlbum}"))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-moved.png')")
         saveUiEvidence("move-783-$theme-moved.png")
         assertEquals(fixtures.fixturePath, fixtures.relativePathOf(ids[0]))
         assertEquals(fixtures.fixturePath, fixtures.relativePathOf(ids[1]))
@@ -157,11 +178,16 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
 
         // 1. Two chosen, one disappears while the picker is open: only the
         //    survivor is offered to Android's consent and moved.
+        step("select(ids[0], ids[1])")
         select(ids[0], ids[1])
+        step("openMovePicker()")
         openMovePicker()
+        step("republishAndAwait('one-removed', expectedAfter = 1) ")
         republishAndAwait("one-removed", expectedAfter = 1) { fixtures.delete(ids[1]) }
         shown(hasText(fixtures.targetAlbum))
+        step("compose.tap(hasText(fixtures.targetAlbum))")
         compose.tap(hasText(fixtures.targetAlbum))
+        step("answerWriteConsent(allow = true) ")
         answerWriteConsent(allow = true) { fixtures.relativePathOf(ids[0]) == fixtures.targetPath }
         resumed()
         shown(hasText("Moved 1 item to ${fixtures.targetAlbum}"))
@@ -172,17 +198,23 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
         // 2. Every chosen row disappears while the picker is open: the tap
         //    shows the existing result and asks for no consent at all.
         shown(hasTestTag("atlas-timeline-media-${ids[2]}"))
+        step("select(ids[2])")
         select(ids[2])
+        step("openMovePicker()")
         openMovePicker()
+        step("republishAndAwait('all-removed', expectedAfter = 0) ")
         republishAndAwait("all-removed", expectedAfter = 0) { fixtures.delete(ids[2]) }
         shown(hasText(fixtures.targetAlbum))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-picker-selection-gone.png')")
         saveUiEvidence("move-783-$theme-picker-selection-gone.png")
         val transferStartsBefore = transferLines("start MOVE")
         val consentBefore = transferLines("consent requested")
+        step("compose.tap(hasText(fixtures.targetAlbum))")
         compose.tap(hasText(fixtures.targetAlbum))
         shown(hasText("Selection changed · select again"))
         compose.waitForIdle()
+        step("saveUiEvidence('move-783-theme-selection-changed.png')")
         saveUiEvidence("move-783-$theme-selection-changed.png")
         // The gate runs on the tap itself, before any start or consent line.
         assertEquals("no Move may start", transferStartsBefore, transferLines("start MOVE"))
@@ -193,6 +225,9 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
     }
 
     // --- Steps -------------------------------------------------------------
+
+    /** A marker in logcat (the stress lane prints ATLAS_TESTKIT) to place a failure. */
+    private fun step(name: String) = Log.i(TAG, "step=$name")
 
     private fun openPhotos() {
         shown(hasTestTag("atlas-nav-photos"))
@@ -352,6 +387,10 @@ abstract class SelectionMoveRepublicationJourney(private val dark: Boolean) {
                     SelectionRepublicationSeam.observer = { rebases += it }
                     try {
                         base.evaluate()
+                    } catch (failure: Throwable) {
+                        // The whole stack, under the tag the stress lane prints.
+                        Log.e(TAG, "failed: ${description.methodName}", failure)
+                        throw failure
                     } finally {
                         SelectionRepublicationSeam.observer = null
                         Log.i(TAG, "all rebases=$rebases")
