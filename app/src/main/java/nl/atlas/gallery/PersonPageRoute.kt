@@ -514,13 +514,12 @@ internal fun HiddenPeopleRoute(
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
         needsSplittingCount = hiddenSplitCount,
-        onOpenNeedsSplitting = if (authorized == null || onOpenNeedsSplitting == null) null
-            else {
-                val live = host.liveReview(authorized.permissionEpoch)
-                if (live != null && host.scopeCurrent(live.permissionEpoch)) {
-                    onOpenNeedsSplitting()
-                }
-            },
+        onOpenNeedsSplitting = onOpenNeedsSplitting?.takeIf { authorized != null }?.let { open ->
+            {
+                val live = authorized?.permissionEpoch?.let(host::liveReview)
+                if (live != null && host.scopeCurrent(live.permissionEpoch)) open()
+            }
+        },
         onOpen = { person ->
             val live = authorized?.permissionEpoch?.let(host::liveReview)
             if (live != null && host.scopeCurrent(live.permissionEpoch) &&
