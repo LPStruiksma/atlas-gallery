@@ -58,6 +58,7 @@ TEXT_EM = 0.58       # conservative mean advance per character (Funnel Sans), in
 DATE_SP, DATE_LH = 15.0, 22.0   # v3 body
 PLACE_SP, PLACE_LH = 14.0, 20.0  # v3 secondary
 TIME_SP, TIME_LH = 14.0, 20.0
+ELAPSED = {"0:04": "0:01", "1:23:45": "0:33:30"}  # label at the 40% seek position
 
 SAMPLE = {
     "date": "20 November 2026 at 14:32",   # v3: no middle-dot meta strings
@@ -131,6 +132,27 @@ def selected_marks(out, ring, sphere):
     out(f'<circle cx="{r2(cx)}" cy="{r2(cy)}" r="{SPHERE_D / 2}" fill="{hex_colour(SPHERE)}"/>')
 
 
+def fit_text(text, sp, scale, width):
+    """Truncate with an ellipsis until the 0.58 em estimate fits `width` dp."""
+    if text_w(text, sp, scale) <= width:
+        return text
+    for n in range(len(text) - 1, 0, -1):
+        cand = text[:n].rstrip() + "…"
+        if text_w(cand, sp, scale) <= width:
+            return cand
+    return "…"
+
+
+THUMB_FILLS = ("#FFFFFF", "#000000")  # C3: synthetic white / black thumbnail extremes
+
+
+def thumb_fill(index, current, tone):
+    """White/black alternating neighbours; the selected tile follows the photo tone."""
+    if current:
+        return THUMB_FILLS[0] if tone == "bright" else THUMB_FILLS[1]
+    return THUMB_FILLS[index % 2]
+
+
 def metadata_svg(out, element):
     """Draw the actual sample metadata, never a placeholder rectangle."""
     m = element["box"]
@@ -139,17 +161,31 @@ def metadata_svg(out, element):
         f'width="{r2(m["width"] + 2 * pad_x)}" height="{r2(m["height"] + 2 * pad_y)}" '
         f'rx="6" fill="#000" opacity="{METADATA_SCRIM_ALPHA}"/>')
     cx = (m["left"] + m["right"]) / 2
+    f = element.get("font", 1.0)
+    dsp, psp = DATE_SP * f, PLACE_SP * f
+    avail = m["width"]
     if "2-lines" in element["mode"]:
-        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + DATE_SP)}" text-anchor="middle" '
-            f'fill="{hex_colour(INK)}" font-size="{DATE_SP}">{html.escape(SAMPLE["date"])}</text>')
-        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + DATE_LH + PLACE_SP)}" text-anchor="middle" '
-            f'fill="{hex_colour(INK)}" font-size="{PLACE_SP}">{html.escape(element["display_place"])}</text>')
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + dsp)}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{r2(dsp)}">{html.escape(fit_text(SAMPLE["date"], DATE_SP, f, avail))}</text>')
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + DATE_LH * f + psp)}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{r2(psp)}">{html.escape(fit_text(element["display_place"], PLACE_SP, f, avail))}</text>')
     else:
-        text = SAMPLE["date"] + ((" in " + element["display_place"]) if element["display_place"] else "")
-        if "ellipsized" in element["mode"]:
-            text = SAMPLE["date"] + " in …"
-        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + min(DATE_SP, m["height"] - 2))}" text-anchor="middle" '
-            f'fill="{hex_colour(INK)}" font-size="{DATE_SP}">{html.escape(text)}</text>')
+        place = element["display_place"]
+        text = SAMPLE["date"] + ((" in " + place) if place else "")
+        if text_w(text, DATE_SP, f) > avail:
+            text = SAMPLE["date"] + (" in …" if place else "")
+        text = fit_text(text, DATE_SP, f, avail)
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + dsp)}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{r2(dsp)}">{html.escape(text)}</text>')
+
+
+def video_label_svg(out, element):
+    """Actual elapsed/duration text at TIME_SP x font on a 60% local scrim, centred in its box."""
+    b, f = element["box"], element.get("font", 1.0)
+    out(f'<rect x="{r2(b["left"] - 4)}" y="{r2(b["top"])}" width="{r2(b["width"] + 8)}" height="{r2(b["height"])}" '
+        f'rx="4" fill="#000" opacity="{METADATA_SCRIM_ALPHA}"/>')
+    out(f'<text x="{r2((b["left"] + b["right"]) / 2)}" y="{r2((b["top"] + b["bottom"]) / 2 + TIME_SP * f * 0.35)}" '
+        f'text-anchor="middle" fill="{hex_colour(INK)}" font-size="{r2(TIME_SP * f)}">{html.escape(element["text"])}</text>')
 
 
 def synthetic_media_svg(out, W, H, video=False, tone="bright"):
@@ -277,7 +313,7 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
         mw = min(mw, slot_w)
         cx = W / 2 if mode.startswith("inline") else (sl + W - sr) / 2
         els["metadata"] = {"box": rect(cx - mw / 2, top, cx + mw / 2, top + mh), "mode": mode,
-                           "slot_width": r2(slot_w), "display_place": SAMPLE[place] if place else ""}
+                           "slot_width": r2(slot_w), "display_place": SAMPLE[place] if place else "", "font": font}
         lowest_top = max(lowest_top, top + mh)
     els["scrim"] = {"box": rect(0, 0, W, lowest_top + SCRIM_TAIL), "alpha": SCRIM_ALPHA}
     # Bottom pill
@@ -345,8 +381,8 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
                                                     seek["left"] + 16, (seek["top"] + seek["bottom"]) / 2 + 8),
                              "thumb_at_end": rect(seek["right"] - 16, (seek["top"] + seek["bottom"]) / 2 - 8,
                                                   seek["right"], (seek["top"] + seek["bottom"]) / 2 + 8)}
-        els["video-elapsed"] = {"box": el}
-        els["video-duration"] = {"box": du}
+        els["video-elapsed"] = {"box": el, "text": ELAPSED.get(duration, duration), "font": font}
+        els["video-duration"] = {"box": du, "text": duration, "font": font}
         els["video-gap-to-strip"] = r2(band["top"] - row["bottom"])
         bottom_top = row["top"]
     free = bottom_top - els["scrim"]["box"]["bottom"]
@@ -499,10 +535,10 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
         b = fs["band"]
         a(f'<rect x="{b["left"]}" y="{b["top"]}" width="{b["width"]}" height="{b["height"]}" fill="none" '
           f'stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>')
-        for t in fs["tiles"]:
+        for i, t in enumerate(fs["tiles"]):
             v = t["visible"]
             a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" '
-              f'fill="#8E8E93"/>')
+              f'fill="{thumb_fill(i, t.get("current"), photo)}"/>')
             if t.get("current"):
                 selected_marks(a, t["ring"], t["sphere"])
     if "action-pill" in els:
@@ -525,6 +561,7 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
             bx = els[k]["box"]
             a(f'<rect x="{bx["left"]}" y="{bx["top"]}" width="{bx["width"]}" height="{bx["height"]}" fill="none" '
               f'stroke="#FFD60A" stroke-width="0.6"/>')
+            video_label_svg(a, els[k])
         sb_ = els["filmstrip"]["band"]["top"]
         rb = els["video-row"]["box"]["bottom"]
         x = W - sr - 4
@@ -686,9 +723,9 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
     if "metadata" in els:
         metadata_svg(o.append, els["metadata"])
     if "filmstrip" in els:
-        for t in els["filmstrip"]["tiles"]:
+        for i, t in enumerate(els["filmstrip"]["tiles"]):
             v = t["visible"]
-            o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="#8E8E93"/>')
+            o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="{thumb_fill(i, t.get("current"), tone)}"/>')
             if t.get("current"):
                 selected_marks(o.append, t["ring"], t["sphere"])
         if kw.get("_long"):
@@ -700,6 +737,8 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
         f = kw.get("_seek", 0.4)
         o.append(f'<rect x="{tr["left"]}" y="{tr["top"]}" width="{tr["width"]}" height="4" fill="#ECEDF0" opacity="0.6"/>')
         o.append(f'<circle cx="{r2(tr["left"] + tr["width"] * f)}" cy="{r2(tr["top"] + 2)}" r="8" fill="#ECEDF0"/>')
+        for k in ("video-elapsed", "video-duration"):
+            video_label_svg(o.append, els[k])
         pv = els["video-play"]["visible"]
         o.append(f'<circle cx="{r2((pv["left"] + pv["right"]) / 2)}" cy="{r2((pv["top"] + pv["bottom"]) / 2)}" r="20" fill="{pill}" opacity="{PILL_ALPHA}"/>')
     if kw.get("_reach"):
@@ -758,9 +797,9 @@ def interaction_svg(vp):
         o.append(f'<rect x="{r["left"]}" y="{r["top"]}" width="{r["width"]}" height="{r["height"]}" fill="{col}" opacity="0.35" stroke="{col}"/>')
     # Interaction boards are a render path too: retain the real selected mark
     # rather than implying selection only through the orange touch band.
-    for tile in els["filmstrip"]["tiles"]:
+    for i, tile in enumerate(els["filmstrip"]["tiles"]):
         v = tile["visible"]
-        o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="#8E8E93"/>')
+        o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="{thumb_fill(i, tile.get("current"), "bright")}"/>')
         if tile.get("current"):
             selected_marks(o.append, tile["ring"], tile["sphere"])
     metadata_svg(o.append, els["metadata"])

@@ -20,21 +20,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="8.0" y="161.0" font-size="8.5" font-weight="600" fill="#111318">light · white photo</text>
 <text x="8.0" y="171.0" font-size="7.5" fill="#4A4F59">actual metadata · 60% local scrim</text>
@@ -55,21 +55,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="226.0" y="161.0" font-size="8.5" font-weight="600" fill="#111318">dark · white photo</text>
 <text x="226.0" y="171.0" font-size="7.5" fill="#4A4F59">actual metadata · 60% local scrim</text>
@@ -90,21 +90,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="444.0" y="161.0" font-size="8.5" font-weight="600" fill="#111318">light · black photo</text>
 <text x="444.0" y="171.0" font-size="7.5" fill="#4A4F59">actual metadata · selected keylines</text>
@@ -125,21 +125,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="662.0" y="161.0" font-size="8.5" font-weight="600" fill="#111318">dark · black photo</text>
 <text x="662.0" y="171.0" font-size="7.5" fill="#4A4F59">actual metadata · selected keylines</text>
@@ -162,23 +162,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="304.36" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="8.0" y="303.0" font-size="8.5" font-weight="600" fill="#111318">light · white video</text>
@@ -202,23 +206,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="304.36" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="226.0" y="303.0" font-size="8.5" font-weight="600" fill="#111318">dark · white video</text>
@@ -242,23 +250,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="304.36" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="444.0" y="303.0" font-size="8.5" font-weight="600" fill="#111318">light · black video</text>
@@ -282,23 +294,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="304.36" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="662.0" y="303.0" font-size="8.5" font-weight="600" fill="#111318">dark · black video</text>
@@ -332,21 +348,21 @@
 <rect x="206.22" y="292.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="203.25" y="37.18" width="233.5" height="30.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="56.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="226.0" y="445.0" font-size="8.5" font-weight="600" fill="#111318">no place</text>
 <text x="226.0" y="455.0" font-size="7.5" fill="#4A4F59">date · time only</text>
@@ -364,21 +380,21 @@
 <rect x="56.44" y="32.18" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="444.0" y="32.18" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="206.22" y="292.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="444.0" y="445.0" font-size="8.5" font-weight="600" fill="#111318">no date and place</text>
 <text x="444.0" y="455.0" font-size="7.5" fill="#4A4F59">no metadata row, no placeholder</text>
@@ -397,22 +413,22 @@
 <rect x="444.0" y="32.18" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="206.22" y="292.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="200.0" y="26.18" width="240.0" height="52.0" rx="6" fill="#000" opacity="0.6"/>
-<text x="320.0" y="45.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in …</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<text x="320.0" y="60.18" text-anchor="middle" fill="#F2F3F8" font-size="30.0">20 November…</text>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="662.0" y="445.0" font-size="8.5" font-weight="600" fill="#111318">200% font, long place</text>
 <text x="662.0" y="455.0" font-size="7.5" fill="#4A4F59">2 lines below row</text>
@@ -435,23 +451,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="304.36" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="8.0" y="587.0" font-size="8.5" font-weight="600" fill="#111318">video short 0:04 · playing</text>
@@ -475,23 +495,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="177.28" y="170.0" width="329.88" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="309.23" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="64.84" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="132.86" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:33:30</text>
+<rect x="519.16" y="162.0" width="64.84" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="551.58" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">1:23:45</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="226.0" y="587.0" font-size="8.5" font-weight="600" fill="#111318">video long 1:23:45</text>
@@ -515,23 +539,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="152.92" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="444.0" y="587.0" font-size="8.5" font-weight="600" fill="#111318">video seek start (0%)</text>
@@ -555,23 +583,27 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="152.92" y="170.0" width="378.6" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="531.52" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="120.68" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:01</text>
+<rect x="543.52" y="162.0" width="40.48" height="20.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="563.76" y="176.9" text-anchor="middle" fill="#F2F3F8" font-size="14.0">0:04</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="662.0" y="587.0" font-size="8.5" font-weight="600" fill="#111318">video seek end (100%)</text>
@@ -593,24 +625,28 @@
 <rect x="444.0" y="32.18" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="206.22" y="292.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="200.0" y="26.18" width="240.0" height="52.0" rx="6" fill="#000" opacity="0.6"/>
-<text x="320.0" y="45.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in …</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<text x="320.0" y="60.18" text-anchor="middle" fill="#F2F3F8" font-size="30.0">20 November…</text>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="234.12" y="170.0" width="216.2" height="4" fill="#ECEDF0" opacity="0.6"/>
 <circle cx="320.6" cy="172.0" r="8" fill="#ECEDF0"/>
+<rect x="100.44" y="152.0" width="121.68" height="40.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="161.28" y="181.8" text-anchor="middle" fill="#F2F3F8" font-size="28.0">0:33:30</text>
+<rect x="462.32" y="152.0" width="121.68" height="40.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="523.16" y="181.8" text-anchor="middle" fill="#F2F3F8" font-size="28.0">1:23:45</text>
 <circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
 <text x="8.0" y="729.0" font-size="8.5" font-weight="600" fill="#111318">video 200% font long</text>
@@ -626,21 +662,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="226.0" y="729.0" font-size="8.5" font-weight="600" fill="#111318">pending (decode not ready)</text>
 <text x="226.0" y="739.0" font-size="7.5" fill="#4A4F59">strip thumb as placeholder; chrome shown</text>
@@ -657,21 +693,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 </g>
 <text x="444.0" y="729.0" font-size="8.5" font-weight="600" fill="#111318">unavailable / error</text>
 <text x="444.0" y="739.0" font-size="7.5" fill="#4A4F59">glyph only; back + details live</text>
@@ -692,21 +728,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="44.44" y="208.0" width="24" height="76.0" fill="#000" opacity="0.6"/>
 <rect x="568.0" y="208.0" width="24" height="76.0" fill="#000" opacity="0.6"/>
 </g>
@@ -729,21 +765,21 @@
 <rect x="203.25" y="27.18" width="233.5" height="50.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="320.0" y="46.18" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
 <text x="320.0" y="67.18" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
-<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="296.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="293.72" y="221.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="295.22" y="223.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
 <circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
-<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="344.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="392.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="440.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="488.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="536.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="248.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="200.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="152.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="104.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="56.22" y="224.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect y="240.0" width="640.0" height="120.0" fill="#30D158" opacity="0.30"/>
 <rect y="120.0" width="640.0" height="120.0" fill="#FFD60A" opacity="0.22"/>
 <rect width="640.0" height="120.0" fill="#FF453A" opacity="0.22"/>

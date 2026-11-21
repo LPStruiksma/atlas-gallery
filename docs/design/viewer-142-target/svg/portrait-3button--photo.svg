@@ -32,17 +32,17 @@
 <rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
 <text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="0.0" y="632.0" width="384.0" height="76.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
-<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="97.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="84.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>

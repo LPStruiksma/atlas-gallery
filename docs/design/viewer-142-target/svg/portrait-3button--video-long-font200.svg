@@ -32,20 +32,20 @@
 <rect x="328.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="12.0" y="100.44" width="360.0" height="84.0" fill="#FFFFFF" opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>
 <rect x="4.0" y="96.44" width="376.0" height="92.0" rx="6" fill="#000" opacity="0.6"/>
-<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
-<text x="192.0" y="136.44" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
+<text x="192.0" y="130.44" text-anchor="middle" fill="#F2F3F8" font-size="30.0">20 November 2026 at…</text>
+<text x="192.0" y="172.44" text-anchor="middle" fill="#F2F3F8" font-size="28.0">Utrecht</text>
 <rect x="0.0" y="632.0" width="384.0" height="76.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
-<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
 <rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
 <circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
-<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#000000"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#FFFFFF"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
 <rect x="97.0" y="733.0" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="84.0" y="720.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
@@ -63,7 +63,11 @@
 <circle cx="190.4" cy="596.0" r="8" fill="#ECEDF0"/>
 <rect x="64.0" y="572.0" width="312.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="12.0" y="528.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<rect x="8.0" y="528.0" width="121.68" height="40.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="68.84" y="557.8" text-anchor="middle" fill="#F2F3F8" font-size="28.0">0:33:30</text>
 <rect x="258.32" y="528.0" width="113.68" height="40.0" fill="none" stroke="#FFD60A" stroke-width="0.6"/>
+<rect x="254.32" y="528.0" width="121.68" height="40.0" rx="4" fill="#000" opacity="0.6"/>
+<text x="315.16" y="557.8" text-anchor="middle" fill="#F2F3F8" font-size="28.0">1:23:45</text>
 <line x1="380.0" y1="620.0" x2="380.0" y2="632.0" stroke="#30D158" stroke-width="1.2"/>
 <text x="377.0" y="629.0" text-anchor="end" fill="#30D158" font-size="7">12.0 dp ≥ 8</text>
 </g>

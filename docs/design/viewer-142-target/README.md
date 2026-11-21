@@ -31,6 +31,8 @@ The independent [DESIGN-8 review on #142](https://github.com/LPStruiksma/atlas-g
 * **C3:** the unchanged 2 dp white ring and `#8C9BFF` sphere each have a real 1 dp external black keyline in full-size, mini/state, photo and video render paths. The selected compound mark is at least **21:1** (ring) and **8.25:1** (sphere) across white/black thumbnails.
 * **C1:** shown-chrome 200%-text long-video boards are composed at true 832×384 and 640×360 dp viewport scale from a deterministic synthetic scene (sun, ridges, lighthouse and sailboats), with playback, seek, strip and actions. T3 reports unobstructed media as 739.56×79.82 dp and 547.56×55.82 dp, respectively, five discernible features, 48 dp targets and a 12 dp video-to-strip gap. Hidden chrome remains context only.
 
+* **Review round 1 repairs (#862):** metadata and video elapsed/duration text are drawn at the scenario's font scale (30/28 dp at 200%) and fitted with an ellipsis to the estimated slot width; long-video boards show `0:33:30` / `1:23:45`; filmstrip thumbnails alternate synthetic white and black, and the selected thumbnail follows the white or black photo state, so the keylined ring and sphere are drawn over both extremes. Widths remain a 0.58 em estimate.
+
 These are static proposed-target checks, not runtime or device evidence. The explicit UNKNOWNs below remain gates for an implementation review.
 
 ## Sources
