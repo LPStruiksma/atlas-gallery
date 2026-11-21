@@ -373,16 +373,20 @@ class EditorSaverAndroidTest {
         else automation.grantRuntimePermission(context.packageName, Manifest.permission.READ_EXTERNAL_STORAGE)
         val path = "/sdcard/$folder" + "consent-" + UUID.randomUUID() + ".jpg"
         val payload = jpegBytes(card(32, 24))
-        // The shell, not Atlas, creates the file.
-        shell("mkdir -p /sdcard/$folder")
-        val fds = automation.executeShellCommandRw("sh -c 'cat > $path'")
-        ParcelFileDescriptor.AutoCloseOutputStream(fds[1]).use { it.write(payload) }
-        ParcelFileDescriptor.AutoCloseInputStream(fds[0]).use { it.readBytes() }
+        // The shell, not Atlas, creates the file. UiAutomation splits commands on spaces with no
+        // shell quoting, so stage the bytes in app-specific external storage (readable by the
+        // shell) and copy them with plain arguments.
+        val staged = File(context.getExternalFilesDir(null), "consent-stage-" + UUID.randomUUID() + ".jpg")
+        staged.writeBytes(payload)
+        val mkdir = shell("mkdir -p /sdcard/$folder")
+        val copy = shell("cp ${staged.absolutePath} $path")
+        staged.delete()
+        val listing = shell("ls -l $path")
         val latch = CountDownLatch(1)
         var scanned: Uri? = null
         MediaScannerConnection.scanFile(context, arrayOf(path), arrayOf("image/jpeg")) { _, u -> scanned = u; latch.countDown() }
         assertTrue(latch.await(20, TimeUnit.SECONDS))
-        val uri = need("shell-created photo is in MediaStore", scanned)
+        val uri = need("shell-created photo is in MediaStore (mkdir=$mkdir cp=$copy ls=$listing)", scanned)
         try {
             assertNotEquals(context.packageName, column(uri, MediaStore.Images.Media.OWNER_PACKAGE_NAME))
             val recipe = rotate(32, 24)
