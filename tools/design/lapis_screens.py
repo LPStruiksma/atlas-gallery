@@ -276,6 +276,11 @@ def collections_legacy(s: Screen) -> None:
 VIEWER_ACTIONS = ["Favourite", "Edit", "Share", "Delete", "More"]
 
 
+def filmstrip_gap() -> int:
+    """Gap between 40 dp filmstrip tiles; keeps the centre pitch at exactly 48 dp in whole pixels (#889)."""
+    return px(48) - px(40)
+
+
 def viewer(s: Screen, seed=7, current=3, n=7) -> None:
     s.status_bar(light_icons=True)
     pw = DEVICE_W
@@ -286,7 +291,8 @@ def viewer(s: Screen, seed=7, current=3, n=7) -> None:
     fh = px(52)
     fy = s.bottom - px(12) - px(64) - px(20) - fh
     fw = px(40)
-    total = n * fw + (n - 1) * px(4)
+    gap = filmstrip_gap()  # 8 dp: 40 dp tile + 8 dp gap = 48 dp pitch, so 48 dp effective targets only touch
+    total = n * fw + (n - 1) * gap
     x = (DEVICE_W - total) // 2
     for i in range(n):
         box = (x, fy, x + fw, fy + fh)
@@ -297,7 +303,7 @@ def viewer(s: Screen, seed=7, current=3, n=7) -> None:
             cx = (box[0] + box[2]) / 2
             s.d.ellipse([cx - px(5), fy - px(16), cx + px(5), fy - px(6)], fill=VIEWER_SPHERE)
         s.target(box, "filmstrip item")
-        x += fw + px(4)
+        x += fw + gap
     # action slab (#3448E0)
     sw, sh = px(320), px(64)
     y1 = s.bottom - px(12)
@@ -1134,6 +1140,63 @@ def precision_flow(lays: dict[str, Layout], vp: Viewport, from_kind: str = "mont
     out = {"press": PinchStep(PRECISION_KEY, press, r, r, scroll, scroll, "", from_kind)}
     out["focus"] = pinch(r, press, PRECISION_KEY, small, vp)
     out["back"] = pinch(out["focus"].dst, press, PRECISION_KEY, dense, vp)
+    return out
+
+
+def visible_keys(layout: Layout, scroll: float, vp: Viewport) -> list[int]:
+    """Keys whose tile shows at least one pixel inside the viewport, in library order."""
+    return [k for k, r in layout.rects.items()
+            if to_screen(r, scroll, vp)[3] > vp.top and to_screen(r, scroll, vp)[1] < vp.bottom]
+
+
+def thumb_anchor_key(layout: Layout, scroll: float, vp: Viewport) -> int:
+    """Media key the fast-scroll thumb names (#864): the first visible key in library order, i.e. the first tile
+    (or picture) with a pixel below the top edge of the grid viewport. A month heading belongs to the keys under
+    it, so the label turns to the next month once the previous month's last row has scrolled off the top edge
+    and not while its heading is still on screen. Fallback for an empty viewport: key 0."""
+    vis = visible_keys(layout, scroll, vp)
+    return vis[0] if vis else next(iter(layout.rects))
+
+
+def thumb_month(items: dict[int, Item], layout: Layout, scroll: float, vp: Viewport) -> str:
+    """Three-letter month of the thumb anchor key (``Sep`` for a September key, ``Nov`` for a November one)."""
+    return items[thumb_anchor_key(layout, scroll, vp)].month[:3]
+
+
+def focus_anchor(layout: Layout, scroll: float, vp: Viewport, focused: int | None = None,
+                 viewport_centre_y: float | None = None) -> tuple[int, str]:
+    """Focus key for the Select precisely pill (#864); returns ``(key, rule)``.
+
+    * ``focused`` is an explicit long-press or TalkBack focus key and is still visible: it is kept (``"focused"``).
+    * A stale focus (scrolled out of the viewport) is not eligible; the centre rule below applies.
+    * Otherwise the nearest visible key to the viewport centre wins (``"centre"``); equal distances go to the lower
+      key, the earlier in library order. Selection state never moves the anchor and the pill never selects.
+    """
+    vis = visible_keys(layout, scroll, vp)
+    if focused is not None and focused in vis:
+        return focused, "focused"
+    cx = DEVICE_W / 2
+    cy = (vp.top + vp.bottom) / 2 if viewport_centre_y is None else viewport_centre_y
+    best = min(vis, key=lambda k: (round(_dist(to_screen(layout.rects[k], scroll, vp), (cx, cy)), 6), k))
+    return best, "centre"
+
+
+def return_label(from_kind: str) -> str:
+    """Label of the return pill in the focused SMALL stop: it names the overview it returns to (#864)."""
+    return f"{SQUARE_COLS[from_kind]} columns"
+
+
+def pill_flow(lays: dict[str, Layout], vp: Viewport, from_kind: str, scroll: float,
+              focused: int | None = None) -> dict[str, PinchStep]:
+    """Select precisely pill from MONTH/YEAR at ``scroll``: anchor key by ``focus_anchor``, to SMALL 7, and back.
+    Same geometry rule as ``precision_flow`` (same key and relative height), but no hard-coded key."""
+    dense, small = lays[from_kind], lays["small"]
+    key, rule = focus_anchor(dense, scroll, vp, focused)
+    r = to_screen(dense.rects[key], scroll, vp)
+    press = (round(centre(r)[0]), round(centre(r)[1]))
+    out = {"press": PinchStep(key, press, r, r, scroll, scroll, "", from_kind, {"rule": rule})}
+    out["focus"] = pinch(r, press, key, small, vp)
+    out["back"] = pinch(out["focus"].dst, press, key, dense, vp)
     return out
 
 
