@@ -79,14 +79,59 @@ internal fun DeclutterScreen(
                             confirmingReset = false
                             resume = false
                         },
-                        modifier = Modifier.testTag("atlas-declutter-reset-confirm")
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-reset-confirm")
                     ) { Text("Start again") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { confirmingReset = false }) { Text("Cancel") }
-                }
+                    TextButton(
+                        onClick = { confirmingReset = false },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-reset-cancel")
+                    ) { Text("Cancel") }
+                },
+                modifier = Modifier.testTag("atlas-declutter-reset-dialog")
             )
-        } else {
+        }
+        if (progress.complete) {
+            // Every item is kept: a deliberate finished state, never a resume offer
+            // for a photo that does not exist. Nothing resets without a confirmation.
+            Surface(Modifier.fillMaxSize(), color = AtlasPageColor,
+                contentColor = MaterialTheme.colorScheme.onBackground) {
+                Column(
+                    Modifier.fillMaxSize()
+                        .testTag("atlas-declutter-complete")
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AtlasGalleryHeader(
+                        title = "Declutter",
+                        onBack = onExit,
+                        backDescription = "Back to Gallery"
+                    )
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("All ${progress.total} items reviewed.",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onBackground)
+                            Text("You kept every photo here. Nothing was deleted.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Button(
+                        onClick = onExit,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-complete-back")
+                    ) { Text("Back to album") }
+                    TextButton(
+                        onClick = { confirmingReset = true },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-complete-restart")
+                    ) { Text("Start this review again") }
+                }
+            }
+        } else if (!confirmingReset) {
             AlertDialog(
                 onDismissRequest = onExit,
                 title = { Text("Resume review?") },
@@ -97,25 +142,28 @@ internal fun DeclutterScreen(
                 confirmButton = {
                     TextButton(
                         onClick = { resume = true },
-                        modifier = Modifier.testTag("atlas-declutter-resume")
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("atlas-declutter-resume")
                     ) { Text("Resume review") }
                 },
                 dismissButton = {
                     Row {
                         TextButton(
                             onClick = { confirmingReset = true },
-                            modifier = Modifier.testTag("atlas-declutter-start-again")
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-declutter-start-again")
                         ) { Text("Start again") }
                         TextButton(
                             onClick = onExit,
-                            modifier = Modifier.testTag("atlas-declutter-not-now")
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-declutter-not-now")
                         ) { Text("Not now") }
                     }
                 },
                 modifier = Modifier.testTag("atlas-declutter-resume-dialog")
             )
         }
-        Box(Modifier.fillMaxSize())
+        if (!progress.complete) Box(Modifier.fillMaxSize())
         return
     }
     // `progress` is frozen per source, so new Keeps never reshuffle this deck.

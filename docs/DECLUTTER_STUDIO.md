@@ -98,6 +98,9 @@ signing-safe APK upgrade and backup**.
   *Start again* / *Not now*. Resume reviews only items not kept yet; the line
   *Reviewed n of m* counts Keeps that still match a file in the source. Keeps
   for files that were edited or left the album do not count and trigger nothing.
+- **Completed source.** When every item is kept the screen says *All n items
+  reviewed* with *Back to album* and *Start this review again*; it never resets
+  by itself and never offers a resume with nothing left.
 - **Start again** clears that source's Keeps only after a confirmation.
 - Undo removes the saved Keep of the item it returns to review. The two
   Trash confirmations and the MediaStore re-query are unchanged.

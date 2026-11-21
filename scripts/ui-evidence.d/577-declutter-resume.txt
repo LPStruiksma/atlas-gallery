@@ -1,5 +1,11 @@
-# TIDY-1A (#577) resume journey, light and dark
+# TIDY-1A (#577) resume, reset confirmation, completed source; light, dark, 200% type
 declutter-577-resume-light
 declutter-577-resume-dark
+declutter-577-resume-large
+declutter-577-reset-dark
+declutter-577-reset-light
 declutter-577-deck-dark
 declutter-577-deck-light
+declutter-577-complete-light
+declutter-577-complete-dark
+declutter-577-complete-large
