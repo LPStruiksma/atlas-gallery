@@ -826,7 +826,8 @@ class Gen:
         vis = L.draw_layout(s, items, lays[kind], scroll, vp, selected=selected, outline=outline,
                             placeholders=placeholders)
         if thumb:
-            L.fast_thumb(s, L.thumb_frac(lays[kind], scroll, vp), "Nov", vp.top + L.px(8), s.bottom - L.px(110))
+            L.fast_thumb(s, L.thumb_frac(lays[kind], scroll, vp), L.thumb_month(items, lays[kind], scroll, vp),
+                         vp.top + L.px(8), s.bottom - L.px(110))
         if chrome:
             self.l8_chrome(s, vp)
             s.slab("Pictures")
@@ -931,6 +932,41 @@ class Gen:
         L.anno_card(s, lines, self.l8_card_y(s))
         return s
 
+    def l8_pill_frame(self, kind, st: L.PinchStep, name, selected, lines, *, theme="light", scale=1.0,
+                      pill_text="Select precisely", back=False, tap_pill=False, tap_tile=False, centre=False,
+                      focus=True, tile_target=False):
+        """#864 frame: pill-only entry or its focused SMALL / return stop, with the focus anchor outlined.
+        ``centre`` draws the viewport-centre mark that decided the anchor; ``tap_pill`` rings the pill."""
+        items, lays, vp = self.l8_env(theme, scale)
+        s, vis = self.l8_zoom(kind, st.scroll, theme, scale, selected=selected, outline=st.key)
+        box = L.precision_pill(s, vp.top + L.px(8), pill_text, back=back)
+        if tap_pill:
+            cx, cy = L.centre(box)
+            r = L.px(30)
+            s.d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=L.ANNO, width=L.px(3))
+        if centre:
+            L.crosshair(s, (DEVICE_W / 2, (vp.top + vp.bottom) / 2), "viewport centre")
+        if tile_target:
+            t = vis[st.key]
+            s.target(t, f"key {st.key}", actual=True)
+        if focus:
+            s.focus_order(box, "back to overview" if back else "Select precisely")
+            if tile_target or tap_tile:
+                s.focus_order(vis[st.key], f"key {st.key} tile")
+        L.anno_card(s, lines, self.l8_card_y(s))
+        return s
+
+    def l8_thumb_frame(self, kind, scroll, name, lines, *, theme="light", scale=1.0, selected=None):
+        """#864 frame: a held thumb whose month label comes from the first visible key."""
+        items, lays, vp = self.l8_env(theme, scale)
+        lay = lays[kind]
+        key = L.thumb_anchor_key(lay, scroll, vp)
+        s, vis = self.l8_zoom(kind, scroll, theme, scale, selected=selected, outline=key)
+        L.anno_card(s, [f"{name} · {L.STOP_NAMES[kind]} · scroll {scroll:.0f} px",
+                        f"thumb anchor key {key} = {items[key].month} -> label \"{L.thumb_month(items, lay, scroll, vp)}\""]
+                    + lines, self.l8_card_y(s))
+        return s
+
     L8_SIG_SELECTED = {1: 1, 6: 2, 9: 3}  # top of November, so the month heading is in view; 6 is a video
 
     def l8_month_sig(self, kind, theme, scale, scroll=None, placeholders=False, loading=None):
@@ -946,7 +982,8 @@ class Gen:
                        L.px(26) + 2 * s.line_h("secondary") + L.px(4))
         cvp = L.Viewport(top, vp.bottom)
         L.draw_layout(s, items, lay, scroll, cvp, selected=self.L8_SIG_SELECTED, placeholders=placeholders)
-        L.fast_thumb(s, L.thumb_frac(lay, scroll, cvp), "Nov", cvp.top + L.px(8), s.bottom - L.px(110))
+        L.fast_thumb(s, L.thumb_frac(lay, scroll, cvp), L.thumb_month(items, lay, scroll, cvp),
+                     cvp.top + L.px(8), s.bottom - L.px(110))
         s.d.rectangle([0, 0, DEVICE_W, top], fill=s.t["ground"])
         s.status_bar()
         L.title(s, "Pictures")
@@ -1097,9 +1134,145 @@ class Gen:
         ]
         b.grid("Precision selection from the dense overview (measured, 75 % scale)", prec, cols=4, scale=0.75)
 
+        # ---- #864: truthful thumb month and pill-only precision entry
+        mlay = lays["month"]
+        boundary = mlay.rects[267][3]  # bottom of the last November row (key 267 is the last November key)
+        s_sep_m = mlay.rects[700][1] - 0.5 * vp.h  # a September scroll position
+        s_sep_s = lays["small"].rects[568][1] - 0.4 * vp.h
+        s_sep_y = lays["year"].rects[267][3] + 30  # just past the last November row
+        _i2, lays2d, vp2d = self.l8_env("dark", 2.0)
+        s_sep_d = lays2d["month"].rects[700][1] - 0.5 * vp2d.h
+        thumbs = [
+            Panel("T1", "MONTH, top: Nov", "First visible key is November, so the thumb reads Nov.",
+                  self.l8_thumb_frame("month", 0.0, "T1", ["first visible key is the thumb anchor"])),
+            Panel("T2", "MONTH, last Nov row", f"Scroll {boundary - 60:.0f} px: the last November row is still "
+                  "partly in view, so the label is still Nov.",
+                  self.l8_thumb_frame("month", boundary - 60, "T2", ["tie-break: a partly visible row counts"])),
+            Panel("T3", "MONTH, 120 px later: Sep", f"Scroll {boundary + 60:.0f} px: the first visible key is "
+                  "September; the thumb turns to Sep.",
+                  self.l8_thumb_frame("month", boundary + 60, "T3", ["label turns when the Nov rows have left"])),
+            Panel("T4", "MONTH, mid September", "Not a fixed Nov: the label follows the key at any position.",
+                  self.l8_thumb_frame("month", s_sep_m, "T4", ["same key as the Select precisely frames"])),
+            Panel("T5", "SMALL 7, September", "Same rule at the 7-column stop.",
+                  self.l8_thumb_frame("small", s_sep_s, "T5", ["53 dp tiles, thumb label from key"])),
+            Panel("T6", "YEAR 28, September", "Same rule at 28 columns, where one screen spans several months.",
+                  self.l8_thumb_frame("year", s_sep_y, "T6", ["first visible key sets the month"])),
+            Panel("T7", "MONTH, dark, 200 %", "Label follows the key; the thumb keeps its 46 dp size.",
+                  self.l8_thumb_frame("month", s_sep_d, "T7", ["dark 200 %, thumb 46 dp in a 48 dp target"],
+                                      theme="dark", scale=2.0)),
+        ]
+        b.grid("Fast-scroll thumb label: month of the first visible key (measured, 75 % scale)", thumbs, cols=4,
+               scale=0.75)
+
+        pm = L.pill_flow(lays, vp, "month", s_sep_m)
+        py = L.pill_flow(lays, vp, "year", s_sep_y)
+        s_sel = lays["month"].rects[845][1] - 0.5 * vp.h
+        ps = L.pill_flow(lays, vp, "month", s_sel)
+        ptb = L.pill_flow(lays, vp, "month", s_sel, focused=828)
+        pd = L.pill_flow(lays2d, vp2d, "month", s_sep_d)
+        k_m, k_y, k_s, k_tb, k_d = (x["press"].key for x in (pm, py, ps, ptb, pd))
+        sel3 = dict(L.SELECTED)
+        pill = [
+            Panel("Q1", "MONTH, no selection: tap the pill",
+                  f"Nothing is focused or selected. The pill takes the visible key nearest the viewport centre: "
+                  f"key {k_m}. It does not select.",
+                  self.l8_pill_frame("month", pm["press"], "Q1", None, [
+                      f"Q1 · MONTH 12 · Select precisely · no focus, no selection",
+                      f"anchor = nearest visible key to the centre = {k_m} ({pm['press'].extra['rule']})",
+                      "tie: lower key. Selection stays empty",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q2", "Focused SMALL 7, still unselected",
+                  f"Key {k_m} outlined at {L.fmt_d(pm['focus'].dx)} px in X and "
+                  f"{L.fmt_d(pm['focus'].y_residual)} px height residual. Nothing is selected yet.",
+                  self.l8_pill_frame("small", pm["focus"], "Q2", None, [
+                      f"Q2 · SMALL 7 · key {k_m} focused, not selected",
+                      f"tile {L.fmt_rect(pm['focus'].dst)} = {L.tile_dp(7):.1f} dp: a real >= 48 dp target",
+                      "focus order: 1 pill (back), 2 tile; Back returns",
+                  ], pill_text="12 columns", back=True, tile_target=True)),
+            Panel("Q3", "Select by a real tap", f"The user taps the {L.tile_dp(7):.1f} dp tile: key {k_m} becomes "
+                  "#1. Selecting is the user's tap, never the pill.",
+                  self.l8_pill_frame("small", pm["focus"], "Q3", {k_m: 1}, [
+                      f"Q3 · SMALL 7 · tap on key {k_m} -> selected #1",
+                      f"hit rect {L.fmt_rect(pm['focus'].dst)}, {L.tile_dp(7):.1f} dp",
+                      "announce: \"Photo, 14 Sep, selected, 1 of 1\" (proposal)",
+                  ], pill_text="12 columns", back=True, tile_target=True)),
+            Panel("Q4", "Back to MONTH 12", f"Back or the return pill restores scroll {pm['back'].scroll:.0f} px "
+                  f"(was {pm['press'].scroll:.0f} px) and the selection.",
+                  self.l8_pill_frame("month", pm["back"], "Q4", {k_m: 1}, [
+                      f"Q4 · MONTH 12 · back, key {k_m} selected #1 kept",
+                      f"scroll {pm['back'].scroll:.0f} px = entry scroll {pm['press'].scroll:.0f} px",
+                      "pill is offered again; one Back = one return",
+                  ])),
+            Panel("Q5", "YEAR 28, no selection: tap the pill",
+                  f"Same rule at YEAR: nearest visible key to the viewport centre, key {k_y}; 12 dp tiles stay "
+                  "dense, the 48 dp pill is the target.",
+                  self.l8_pill_frame("year", py["press"], "Q5", None, [
+                      f"Q5 · YEAR 28 · Select precisely · anchor key {k_y}",
+                      f"tile {L.tile_dp(28):.1f} dp: no direct tap; pill >= 48 dp",
+                      "Back returns to YEAR with the same key and height",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q6", "MONTH, prior selection 1-3",
+                  f"Selected keys do not move the anchor. Centre rule: key {k_s}, not a selected key.",
+                  self.l8_pill_frame("month", ps["press"], "Q6", sel3, [
+                      f"Q6 · MONTH 12 · selection 1-3 on keys {', '.join(map(str, sel3))}",
+                      f"anchor = centre rule = key {k_s}; no focus, no auto-select",
+                      "the three selected keys stay selected",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q7", "Focused SMALL, selection kept",
+                  f"Key {k_s} outlined and unselected; spheres 1-3 carry over. Tapping it would add #4.",
+                  self.l8_pill_frame("small", ps["focus"], "Q7", sel3, [
+                      f"Q7 · SMALL 7 · key {k_s} focused, selection 1-3 kept",
+                      f"tile {L.tile_dp(7):.1f} dp tap -> #4; Back restores the overview",
+                      "focus order: 1 pill, 2 tile",
+                  ], pill_text="12 columns", back=True, tile_target=True)),
+            Panel("Q8", "MONTH, TalkBack focus on key 828",
+                  f"An explicit visible focus is kept: key 828, not the centre key {k_s}. Same pill, same flow.",
+                  self.l8_pill_frame("month", ptb["press"], "Q8", sel3, [
+                      f"Q8 · MONTH 12 · TalkBack focus on key {k_tb} (visible)",
+                      f"kept as anchor ({ptb['press'].extra['rule']}); centre rule would pick {k_s}",
+                      "stale focus (off screen): centre rule instead",
+                  ], tap_pill=True)),
+            Panel("Q9", "MONTH, dark, 200 %",
+                  f"Pill grows with the font; centre rule gives key {k_d}. Tiles keep their size.",
+                  self.l8_pill_frame("month", pd["press"], "Q9", None, [
+                      f"Q9 · MONTH 12 · dark 200 % · anchor key {k_d}",
+                      "pill grows to fit, hit rect >= 48 dp",
+                      "no selection; the pill does not select",
+                  ], theme="dark", scale=2.0, tap_pill=True, centre=True)),
+            Panel("Q10", "Focused SMALL, dark, 200 %",
+                  f"Key {k_d} outlined; the 7-column tile is a real {L.tile_dp(7):.1f} dp target; Back pill >= 48 dp.",
+                  self.l8_pill_frame("small", pd["focus"], "Q10", None, [
+                      f"Q10 · SMALL 7 · dark 200 % · key {k_d} focused",
+                      f"tile {L.tile_dp(7):.1f} dp; focus order: 1 pill, 2 tile",
+                      "Back or the return pill restores MONTH",
+                  ], theme="dark", scale=2.0, pill_text="12 columns", back=True, tile_target=True)),
+        ]
+        b.grid("Select precisely with no prior target: deterministic focus key (measured, 75 % scale)", pill,
+               cols=4, scale=0.75)
+        b.table("Rules drawn in T1-T7 and Q1-Q10 (#864)", ["Rule", "Definition", "Frames"], [
+            ["Thumb label", "Month of the first visible media key: the first key in library order with a pixel "
+             "below the top edge of the grid. A heading belongs to the keys under it.", "T1-T7"],
+            ["Month change", f"At MONTH scroll {boundary - 60:.0f} px the last November row is still visible: Nov. "
+             f"At {boundary + 60:.0f} px it has left: Sep. The label turns when the last row of the previous month "
+             "leaves the top edge.", "T2, T3"],
+            ["Pill anchor, nothing focused", "Nearest visible key to the viewport centre (distance to tile centre); "
+             "equal distance goes to the lower key, the earlier in library order. Selection never moves it.",
+             "Q1, Q5, Q6, Q9"],
+            ["Pill anchor, explicit focus", "A long-press or TalkBack focus key that is still visible is kept; "
+             "a stale (off-screen) focus is not eligible and the centre rule applies.", "Q8, P1"],
+            ["Pill result", "Focus to SMALL 7 on that key at the same relative height. The key is outlined and not "
+             "selected; selecting is a tap on the 53 dp tile. Long-press keeps its selecting semantics.",
+             "Q2, Q3, Q7, Q10"],
+            ["Return", "Back or the 12 columns pill: previous overview, scroll anchor and selected keys.", "Q4"],
+            ["Targets", f"Pill >= 48 dp (grows at 200 %); SMALL tile {L.tile_dp(7):.1f} dp; return pill >= 48 dp. "
+             "Dense 12 / 28 tiles are never direct taps.", "Q1-Q10"],
+            ["TalkBack order (proposal)", "1 Select precisely or 12 columns pill, 2 the focused tile, then the "
+             "grid; announcement of the pill names the month of the anchor. Not a device test.", "Q2, Q7, Q10"],
+        ], [0.18, 0.67, 0.15])
+
         panels = [
             Panel("B1", "SMALL zoom, light, 100 %", "7 squares per row, 53 dp tiles. Ordered selection spheres 1-3 "
-                  "with 2 dp white halo, 0:14 video badge, 46 dp \"Nov\" thumb in a 48 dp target.",
+                  "with 2 dp white halo, 0:14 video badge, 46 dp thumb in a 48 dp target (label = month of the first visible key).",
                   self.l8_month_sig("small", "light", 1.0)),
             Panel("B2", "MONTH zoom, light, 100 %", "12 squares per row, 30 dp tiles. Smaller sphere, play glyph, "
                   "Select precisely pill, same thumb.", self.l8_month_sig("month", "light", 1.0)),
@@ -1218,8 +1391,10 @@ class Gen:
                 "the height residual is disclosed instead. No frame claims every stationary pointer stays over "
                 "the same tile or a zero X drift.")
         b.table("Precision selection from MONTH or YEAR", ["Step", "Control", "Result", "Target", "Back"], [
-            ["Enter", "Long-press a dense tile, or the Select precisely pill", f"Focus to SMALL 7 on the same key at "
-             f"the same height; the pressed key is selected", "tile n/a (dense); pill >= 48 dp", "n/a"],
+            ["Enter by long-press", "Long-press a dense tile", f"Focus to SMALL 7 on the same key at the same "
+             f"height; the pressed key is selected", "tile n/a (dense)", "n/a"],
+            ["Enter by pill", "Select precisely pill, no prior target", "Focus to SMALL 7 on the visible key nearest "
+             "the viewport centre (a visible focus key if one exists); nothing is selected", "pill >= 48 dp", "n/a"],
             ["Select", "Tap tiles or spheres in the 7-column view", f"Toggles per-media selection; sphere order "
              f"continues", f"{L.tile_dp(7):.1f} dp tiles, >= 48 dp", "n/a"],
             ["Return", "12 columns pill or system Back", "Back to the overview stop it came from; selection, key "
