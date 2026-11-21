@@ -500,17 +500,34 @@ internal fun HiddenPeopleRoute(
 ) {
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
-    val hidden = remember(state) {
-        state?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
+    val authorized = state?.takeIf { host.scopeCurrent(it.permissionEpoch) }
+    val hidden = remember(authorized) {
+        authorized?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
             hiddenOnly = true) }.orEmpty()
     }
+    // Count is read from the same authorized snapshot as the hidden people;
+    // never put it in ordinary People's overflow or accessibility tree.
+    val hiddenSplitCount = remember(authorized) { needsSplittingLists(authorized).hidden.size }
     HiddenPeopleScreen(
         people = hidden,
-        portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
+        portrait = { PersonFaceImage(host, authorized?.permissionEpoch, it.observations.firstOrNull()) },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
-        onOpenNeedsSplitting = onOpenNeedsSplitting,
-        onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
+        needsSplittingCount = hiddenSplitCount,
+        onOpenNeedsSplitting = if (authorized == null || onOpenNeedsSplitting == null) null
+            else {
+                val live = host.liveReview(authorized.permissionEpoch)
+                if (live != null && host.scopeCurrent(live.permissionEpoch)) {
+                    onOpenNeedsSplitting()
+                }
+            },
+        onOpen = { person ->
+            val live = authorized?.permissionEpoch?.let(host::liveReview)
+            if (live != null && host.scopeCurrent(live.permissionEpoch) &&
+                person.person in live.hidden) {
+                onOpen(NativePersonAlbumRequest(person.person, person.name))
+            }
+        }
     )
 }
 
