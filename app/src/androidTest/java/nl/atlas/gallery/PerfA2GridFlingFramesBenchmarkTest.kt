@@ -2,14 +2,11 @@ package nl.atlas.gallery
 
 import android.content.Context
 import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
-import android.view.FrameMetrics
+import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.Window
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -45,8 +42,10 @@ import kotlin.math.abs
  * PERF-A2A (#547): real MainActivity Pictures-grid fling timing with disposable
  * MediaStore images at 4 and 7 grid columns. Fixture insertion, publication
  * and thumbnail-memory reset happen BEFORE each measured series.
- * Window FrameMetrics records actual window work and vsync stamps; no Compose
- * test-clock advancement is counted as a physical frame.
+ * Frame cadence comes from real Choreographer.FrameCallback timestamps (as in
+ * GridThumbnailFlingBenchmarkTest); the callback re-arms each frame so the
+ * display keeps ticking, and a main-thread stall shows as a long interval. No
+ * Compose test-clock advancement is counted as a physical frame.
  *
  * Emulator-only baseline, not proof of the S24+ <1% over-budget target.
  */
@@ -169,19 +168,17 @@ class PerfA2GridFlingFramesBenchmarkTest {
         val top = origin[1] + bounds.top + bounds.height * .30f
         val bottom = origin[1] + bounds.top + bounds.height * .76f
         val rounds = JSONArray()
-        val durations = ArrayList<Long>()
-        val intervals = ArrayList<Long>()
-        var callbacksDropped = 0
+                val intervals = ArrayList<Long>()
 
         // Five fixed-speed, real-uptime touchscreen throws: two down, two up,
         // one down. Compose synchronization happens only BETWEEN captures.
         for ((index, down) in listOf(true, true, false, false, true).withIndex()) {
-            val sampler = WindowFrames(compose.activity.window)
+            val sampler = ChoreographerFrames(instrumentation)
             var postGestureFrames = false
             val captured = try {
                 sampler.start()
                 injectFling(x, if (down) bottom else top, if (down) top else bottom)
-                // Keep capturing until 12 real post-release window frames,
+                // Keep capturing until 12 real post-release Choreographer frames,
                 // or report that the emulator stopped drawing before then.
                 postGestureFrames = sampler.awaitPostGestureFrames(12, 950L)
                 sampler.stop()
@@ -194,16 +191,16 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 ": before=" + before.scroll + ", after=" + after.scroll,
                 abs(after.scroll - before.scroll) > 1f)
             val sample = summarize(captured)
-            assertTrue("Insufficient window metrics on throw " + (index + 1) +
-                ": callbacks=" + captured.size + ", valid=" + sample.frames.size +
-                ", intervals=" + sample.intervals.size +
-                ", timestamps=" + captured.take(4).map { it.vsyncNs } +
-                ", durations=" + captured.take(4).map { it.durationNs } +
+            assertTrue("Insufficient Choreographer frames on throw " + (index + 1) +
+                ": frames=" + sample.frames + ", intervals=" + sample.intervals.size +
+                ", nonPositive=" + sample.nonPositive +
+                ", timestamps=" + captured.take(4) +
                 ", postRelease12=" + postGestureFrames,
-                sample.frames.size >= 4 && sample.intervals.isNotEmpty())
-            durations.addAll(sample.frames.map { it.durationNs })
+                sample.frames >= 4)
+            assertTrue("No positive frame interval on throw " + (index + 1) +
+                ": frames=" + sample.frames + ", nonPositive=" + sample.nonPositive,
+                sample.intervals.isNotEmpty())
             intervals.addAll(sample.intervals)
-            callbacksDropped += captured.sumOf { it.droppedCallbacks }
             rounds.put(JSONObject()
                 .put("throw", index + 1)
                 .put("direction", if (down) "down_grid" else "up_grid")
@@ -212,12 +209,11 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 .put("tiles_before", before.tiles)
                 .put("tiles_after", after.tiles)
                 .put("scroll_delta_px", rounded(after.scroll - before.scroll))
-                .put("frames", sample.frames.size)
+                .put("frames", sample.frames)
                 .put("frame_callbacks", captured.size)
-                .put("callback_reports_dropped", captured.sumOf { it.droppedCallbacks })
                 .put("nonpositive_vsync_intervals", sample.nonPositive)
                 .put("post_release_12_frames_observed", postGestureFrames)
-                .put("stats", stats(sample.frames.map { it.durationNs }, sample.intervals, budgetNs)))
+                .put("stats", stats(sample.intervals, budgetNs)))
             before = after
         }
 
@@ -225,7 +221,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
         val report = JSONObject()
             .put("unit", "PERF-A2A-547")
             .put("schema", 1)
-            .put("source", "Window FrameMetrics TOTAL_DURATION / VSYNC_TIMESTAMP")
+            .put("source", "Choreographer")
             .put("fixture", "1000 synthetic MediaStore PNGs 96x72, setup outside measurement")
             .put("columns", columns)
             .put("api", Build.VERSION.SDK_INT)
@@ -235,11 +231,10 @@ class PerfA2GridFlingFramesBenchmarkTest {
             .put("refresh_hz", rounded(hz))
             .put("frame_budget_ms", rounded(budgetNs / 1e6))
             .put("flings", rounds.length())
-            .put("callback_reports_dropped", callbacksDropped)
-            .put("missing_cancelled_frames", "not observable; not counted as fast rendered frames")
+            .put("missing_cancelled_frames", "not observable from callback timestamps; long intervals indicate skipped vsyncs")
             .put("warm_cold_caveat", "first pass memory cleared; disk cache and background warmer uncontrolled")
             .put("rounds", rounds)
-            .put("pooled", stats(durations, intervals, budgetNs))
+            .put("pooled", stats(intervals, budgetNs))
         val json = report.toString()
         Log.i("ATLAS_SCALE", "PERF-A2A " + json)
         println("ATLAS_SCALE PERF-A2A " + json)
@@ -293,17 +288,26 @@ class PerfA2GridFlingFramesBenchmarkTest {
         }
     }
 
-    private data class Frame(val vsyncNs: Long, val durationNs: Long, val droppedCallbacks: Int)
-    private class WindowFrames(private val window: Window) : AutoCloseable {
-        private val worker = HandlerThread("perf-a2a-window-frames").apply { start() }
-        private val handler = Handler(worker.looper)
-        private val frames = Collections.synchronizedList(ArrayList<Frame>())
-        private var active = false
+    /** Re-arming Choreographer.FrameCallback; records every frameTimeNanos. */
+    private class ChoreographerFrames(
+        private val instrumentation: android.app.Instrumentation
+    ) : AutoCloseable {
+        private val stamps = Collections.synchronizedList(ArrayList<Long>())
+        @Volatile private var running = false
         @Volatile private var postReleaseLatch: CountDownLatch? = null
-        private val listener = Window.OnFrameMetricsAvailableListener { _, data, dropped ->
-            frames.add(Frame(data.getMetric(FrameMetrics.VSYNC_TIMESTAMP),
-                data.getMetric(FrameMetrics.TOTAL_DURATION), dropped))
-            postReleaseLatch?.countDown()
+        private val stopped = CountDownLatch(1)
+        private val callback = object : Choreographer.FrameCallback {
+            override fun doFrame(frameTimeNanos: Long) {
+                stamps.add(frameTimeNanos)
+                postReleaseLatch?.countDown()
+                if (running) Choreographer.getInstance().postFrameCallback(this)
+                else stopped.countDown()
+            }
+        }
+        fun start() {
+            check(!running)
+            running = true
+            instrumentation.runOnMainSync { Choreographer.getInstance().postFrameCallback(callback) }
         }
         fun awaitPostGestureFrames(count: Int, timeoutMs: Long): Boolean {
             val latch = CountDownLatch(count)
@@ -312,38 +316,28 @@ class PerfA2GridFlingFramesBenchmarkTest {
             postReleaseLatch = null
             return completed
         }
-        fun start() {
-            check(!active)
-            window.addOnFrameMetricsAvailableListener(listener, handler)
-            active = true
-        }
-        fun stop(): List<Frame> {
-            check(active)
-            window.removeOnFrameMetricsAvailableListener(listener)
-            active = false
-            val latch = CountDownLatch(1)
-            check(handler.post { latch.countDown() })
-            check(latch.await(5, TimeUnit.SECONDS)) { "FrameMetrics worker did not drain" }
-            // Listener registration bounds this gesture's sample. Do not compare
-            // rendering VSYNC_TIMESTAMP to JVM System.nanoTime(): an absolute
-            // cross-clock filter can silently discard real emulator callbacks.
-            // Keep only frames with reported metrics in summarize().
-            return synchronized(frames) { frames.toList().sortedBy { it.vsyncNs } }
+        fun stop(): List<Long> {
+            check(running)
+            running = false
+            check(stopped.await(5, TimeUnit.SECONDS)) { "Choreographer callback did not stop" }
+            return synchronized(stamps) { stamps.toList() }
         }
         override fun close() {
-            if (active) window.removeOnFrameMetricsAvailableListener(listener)
-            worker.quitSafely()
-            worker.join(3_000L)
+            if (running) {
+                running = false
+                instrumentation.runOnMainSync {
+                    Choreographer.getInstance().removeFrameCallback(callback)
+                }
+            }
         }
     }
 
-    private data class Sample(val frames: List<Frame>, val intervals: List<Long>,
-        val nonPositive: Int)
+    private data class Sample(val frames: Int, val intervals: List<Long>, val nonPositive: Int)
 
-    private fun summarize(source: List<Frame>): Sample {
-        val valid = source.filter { it.vsyncNs > 0 && it.durationNs > 0 }
-        val gaps = valid.zipWithNext().map { (a, b) -> b.vsyncNs - a.vsyncNs }
-        return Sample(valid, gaps.filter { it > 0 }, gaps.count { it <= 0 })
+    private fun summarize(stamps: List<Long>): Sample {
+        val valid = stamps.filter { it > 0 }
+        val gaps = valid.zipWithNext().map { (a, b) -> b - a }
+        return Sample(valid.size, gaps.filter { it > 0 }, gaps.count { it <= 0 })
     }
 
     private companion object {
@@ -357,30 +351,20 @@ class PerfA2GridFlingFramesBenchmarkTest {
             val sorted = nums.sorted()
             return sorted[((sorted.size - 1) * p + 50) / 100] / 1e6
         }
-        // Duration jank and vsync gaps are separate. A long gap does not
-        // establish whether a frame was missing, cancelled or not requested.
-        fun stats(durations: List<Long>, intervals: List<Long>, budgetNs: Double): JSONObject {
-            val valid = durations.filter { it > 0L }
-            return JSONObject()
-                .put("rendered_frames", valid.size)
+        // Frame-to-frame Choreographer intervals. A long gap means skipped
+        // vsyncs (main thread or display stall), not a classified cause.
+        fun stats(intervals: List<Long>, budgetNs: Double): JSONObject =
+            JSONObject()
                 .put("interval_samples", intervals.size)
-                .put("render_p50_ms", rounded(percentileNs(valid, 50)))
-                .put("render_p95_ms", rounded(percentileNs(valid, 95)))
                 .put("interval_p50_ms", rounded(percentileNs(intervals, 50)))
                 .put("interval_p95_ms", rounded(percentileNs(intervals, 95)))
-                .put("over_budget_frames", valid.count { it > budgetNs })
-                .put("over_budget_pct", if (valid.isEmpty()) -1.0 else
-                    rounded(100.0 * valid.count { it > budgetNs } / valid.size))
-                .put("intervals_over_budget", intervals.count { it > budgetNs })
+                .put("over_budget_intervals", intervals.count { it > budgetNs })
+                .put("over_budget_pct", if (intervals.isEmpty()) -1.0 else
+                    rounded(100.0 * intervals.count { it > budgetNs } / intervals.size))
                 .put("intervals_gt_2_refresh", intervals.count { it > budgetNs * 2 })
-                .put("render_budget_bins", JSONObject()
-                    .put("within_budget", valid.count { it <= budgetNs })
-                    .put("one_to_two_budgets", valid.count { it > budgetNs && it <= 2 * budgetNs })
-                    .put("over_two_budgets", valid.count { it > 2 * budgetNs }))
                 .put("interval_budget_bins", JSONObject()
                     .put("within_budget", intervals.count { it <= budgetNs })
                     .put("one_to_two_budgets", intervals.count { it > budgetNs && it <= 2 * budgetNs })
                     .put("over_two_budgets", intervals.count { it > 2 * budgetNs }))
-        }
     }
 }
