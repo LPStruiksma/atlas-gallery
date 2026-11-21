@@ -75,7 +75,7 @@ object GuestEntry {
     fun offeredInViewer(candidate: GuestCandidate): Boolean =
         !candidate.isVideo && isImageUri(candidate.uri)
 
-    /** A MediaStore image row URI, e.g. content://media/external/images/media/42. */
+    /** A MediaStore image row URI: the media authority and an images/media/<id> path. */
     fun isImageUri(uri: String): Boolean =
         uri.startsWith("content://media/") && uri.contains("/images/") && GuestRecordCodec.safeText(uri)
 }
