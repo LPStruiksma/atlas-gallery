@@ -1,4 +1,5 @@
 # Issue #573 · BENCH-2 Phase A: another app opens an item in ATLAS (A1 single item, A2 neighbours and video).
+# Phase B adds the system "Open with" chooser listing ATLAS (external-573-chooser-light).
 # Galaxy S24+ 1080x2340; generated media only. The viewer keeps its black
 # ground in both phone themes; light/dark shots prove that and the error copy.
 external-573-view-light
@@ -12,3 +13,4 @@ external-573-neighbours-light
 external-573-neighbours-dark
 external-573-video-light
 external-573-video-dark
+external-573-chooser-light

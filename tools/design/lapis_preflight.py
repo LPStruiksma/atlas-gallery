@@ -41,6 +41,47 @@ OUT = REPO / "docs/design/lapis/preflight"
 VERIFIED = "2026-11-21"
 ISSUE = "https://github.com/LPStruiksma/atlas-gallery/issues/"
 
+L7_TRANSITION_HEAD = ["Transition", "Screen / host", "Query: owner and value", "Scope", "Focus / IME",
+                      "Back goes to", "Kept or discarded"]
+L7_TRANSITION_W = [0.13, 0.13, 0.15, 0.1, 0.14, 0.14, 0.21]
+L7_TRANSITIONS = [
+    ["1 Search collapsed", "Pictures, Collections, person, album, Declutter", "Local to the screen; empty",
+     "This screen", "Sphere in the slab (48 dp); no IME", "Previous screen, as today", "All screen state kept"],
+    ["2 Scoped query with keyboard", "Same screen under the bar", "Local to the screen; typed text, e.g. 'bike'",
+     "This screen (selected)", "Field focused at once (Quiet Frame v3); IME open", "Back 1 (below)",
+     "Scroll, selection and any staged choices kept"],
+    ["3 IME hidden by Back", "Same screen, bar still open", "Local; value kept", "This screen",
+     "IME hidden; focus stays in the bar", "Back 2 (below)", "Everything kept"],
+    ["4 Bar collapsed by Back", "Same screen", "Local; cleared when the bar closes (FIND-5: close clears the query)",
+     "This screen", "Back on the sphere; no IME", "Previous screen on the next Back", "Scroll and selection kept; query discarded"],
+    ["5 Whole library, empty query", "Existing Search tab (tab 3) opens; person / album route is replaced",
+     "Search tab owns it; blank", "Whole library (Search tab's own facets)", "Bar closed, IME released",
+     "See 8", "Local query discarded; screen state per rows 9-11"],
+    ["6 Whole library, with a query", "Same as 5", "Local query 'bike' is NOT carried; Search tab starts blank",
+     "Whole library", "Bar closed, IME released; the board does not claim a focus state in the Search tab",
+     "See 8", "Query discarded on purpose; nothing shown in place"],
+    ["7 Arrival in global Search", "Search tab, schematic B5", "Search tab; blank", "Whole library",
+     "As the existing Search tab; not restyled here", "Search tab's back stack", "Search tab unchanged by L7"],
+    ["8 Back from global Search", "Search tab", "Search tab; discarded", "-", "IME hidden first, as today",
+     "Search tab's normal back stack; the closed scoped route is not reopened",
+     "Person / album route stays closed (replaced by the handoff)"],
+    ["9 Person route, Whole library", "Person screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8",
+     "Route replaced. Whether an active selection is warned is not visible in the code read for this sheet: "
+     "#660 must keep it or confirm; no silent discard is sanctioned"],
+    ["10 Album route, Whole library", "Album screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8", "Same rule as 9"],
+    ["11 Declutter, Whole library", "Declutter closes (closeDeclutter), Search tab opens",
+     "Local; discarded", "Whole library", "As 5", "As 8",
+     "With staged choices: existing confirmation 'Search whole library?' (Stay / Search library) says they are "
+     "cleared and nothing moves to Trash. Nothing staged: straight through. No Trash is ever submitted"],
+]
+L7_TRANSITION_NOTE = ("Source: MainActivity onScopeChange LIBRARY branch (personFilter, album and overviewQuery "
+                      "cleared, tab = 3) and DeclutterScreen's leave confirmation, read on main at the Dev claim; "
+                      "FIND-5 D-search-tab and Back order. Consistent with #804's Stories handoff as a reference "
+                      "only; not a new implementation claim. Synthetic evidence, not device behaviour: S24+ runtime "
+                      "checks (light/dark, 100 % / 200 %, TalkBack, IME) remain a separate pre-merge obligation.")
+
 # Public sources opened and checked on VERIFIED; the quoted observation is what the page says.
 REF = {
     "navbar": ("Android Developers, Compose Navigation bar",
@@ -227,7 +268,8 @@ class Gen:
         f1 = self.scr(viewer=True)
         L.viewer(f1)
         panels.append(Panel("F1", "Viewer", "Black ground, actions on the #3448E0 slab, current filmstrip item "
-                            "with a #8C9BFF sphere and 2 dp white ring.", f1))
+                            "with a #8C9BFF sphere and 2 dp white ring. Seven 40 dp tiles, 8 dp gaps: 48 dp pitch, so the "
+                            "seven 48 dp effective targets touch but never overlap.", f1))
         g1 = self.scr()
         g1.status_bar()
         yy = L.title(g1, "Pictures")
@@ -669,12 +711,33 @@ class Gen:
         L.search_bar(s, sb[1], query, keyboard, scope, items=items, thumbs=thumbs, entries=entries)
         return s
 
+    def l7_handoff(self, theme="light", scale=1.0):
+        """Arrival frame after Whole library (#824): the existing Search tab, blank query, no keyboard.
+        Schematic only; the Search tab itself is unchanged and is not redrawn in detail."""
+        s = self.scr(theme, scale)
+        s.status_bar()
+        y = L.title(s, "Search")
+        x0, x1 = L.px(16), DEVICE_W - L.px(16)
+        bar_h = max(L.px(52), s.line_h("body") + L.px(24))
+        s.rrect([x0, y, x1, y + bar_h], 24, fill=s.t["surface"])
+        s.magnifier((x0 + L.px(26), y + bar_h / 2), L.px(8), s.t["ink2"])
+        s.d.text((x0 + L.px(48), y + bar_h / 2), "Search photos, people, places", font=s.font("body"),
+                 fill=s.t["ink2"], anchor="lm")
+        s.target([x0, y, x1, y + bar_h], "Search field")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(28)),
+               "existing Search tab (tab 3), query blank, keyboard released; layout unchanged")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(64)),
+               "L7 bar closed; scoped person / album route replaced")
+        s.gesture_bar()
+        return s
+
     def l7(self) -> Board:
         b = Board(self.fonts, "brand-l7-search")
         b.header("BRAND-L7 · Search under the thumb",
                  "The search sphere grows into a full-width AtlasSearch bar right above the slab.",
-                 self.facts(660, "Host: only placement changes. The shared AtlasSearch host and back end (#175) "
-                            "stay; L7 moves the entry to the slab sphere and the panel above the slab."))
+                 self.facts(660, "Host: placement and focus-on-open change. The shared AtlasSearch host, back end (#175) "
+                            "and the Whole library handoff stay as on main (#824): Whole library leaves this bar "
+                            "and opens the existing Search tab with a blank query."))
         a1 = self.l7_open(items=self.SUGG, entries=True)
         a1.focus_order((L.px(60), a1.slab_box[1] - L.px(70)), "Search field")
         a2 = self.l7_open("dark", 2.0, items=self.SUGG, entries=True)
@@ -702,11 +765,10 @@ class Gen:
                             "keyboard.", self.l7_open(query="bik", thumbs=True,
                                                       items=[("Suggestion", "bike"), ("Place", "Bike trip album"),
                                                              ("Person", "Bike club"), ("More", "Search 'bik'")])))
-        panels.append(Panel("B5", "Whole library", "Switching scope keeps the query and the keyboard.",
-                            self.l7_open(query="bike", scope="Whole library",
-                                         items=[("Suggestion", "bike"), ("Suggestion", "bike 2019"),
-                                                ("More", "Search 'bike' everywhere")])))
-        s = self.l7_open(query="bike", scope="Whole library", keyboard=False)
+        panels.append(Panel("B5", "Whole library: handoff", "Choosing Whole library closes this bar, releases the "
+                            "keyboard, clears the local query and opens the existing Search tab with a blank "
+                            "query. Nothing is shown in place (#824).", self.l7_handoff()))
+        s = self.l7_open(query="bike", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "86 pictures for 'bike'", "section")
@@ -718,7 +780,8 @@ class Gen:
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         L.message(s, s.top + L.px(24), "No pictures match 'bike 2019' on this screen.",
                   "Try fewer words, or search your whole library.", "Search whole library")
-        panels.append(Panel("B7", "No results", "One sentence, one next step.", s))
+        panels.append(Panel("B7", "No results", "One sentence, one next step. 'Search whole library' is the same "
+                            "handoff as the Whole library chip: the query is not carried over.", s))
         s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
@@ -744,21 +807,21 @@ class Gen:
                             "place.", self.l7_open(base="Collections", query="tr",
                                                    items=[("Suggestion", "Trash"), ("Suggestion", "Trip to the "
                                                                                     "coast")])))
-        panels.append(Panel("B13", "Large library, 200 %, keyboard", "Whole library at 200 % with the "
+        panels.append(Panel("B13", "Large library, 200 %, keyboard", "This screen at 200 % with the "
                             "keyboard: chips wrap, the suggestion list scrolls inside the panel (count noted).",
-                            self.l7_open("dark", 2.0, query="beach", scope="Whole library", entries=True,
+                            self.l7_open("dark", 2.0, query="beach", entries=True,
                                          items=[("Suggestion", "beach"), ("Suggestion", "beach 2019"),
                                                 ("Suggestion", "beach with Noor"), ("Place", "Coast"),
-                                                ("More", "Search 'beach' everywhere")])))
-        s = self.l7_open(query="beach", scope="Whole library", keyboard=False)
+                                                ("More", "More search options")])))
+        s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "12.840 pictures for 'beach'", "section")
         L.square_grid(s, s.top + L.px(48), top - L.px(96), cols=6, seed=17, header="August 2026",
                       headers_every=18, month_names=["July 2025", "August 2019"])
         L.fast_thumb(s, 0.55, "2019", s.top + L.px(56), top - L.px(60))
-        panels.append(Panel("B14", "Large library results", "12.840 results load page by page; the held-sphere "
-                            "thumb jumps through the result years. Bar and query stay.", s))
+        panels.append(Panel("B14", "Large library results", "12.840 results on this screen load page by page; the "
+                            "held-sphere thumb jumps through the result years. Bar and query stay.", s))
         s = self.scr()
         L.pictures(s)
         y0s = s.slab_box[1]
@@ -785,12 +848,16 @@ class Gen:
             ["Traversal", "Field › scope chips › suggestions top to bottom › close › slab", "Focus starts in the "
              "field (it opens with the keyboard)"],
         ], [0.18, 0.5, 0.32])
+        b.table("Search state transitions (#824)", L7_TRANSITION_HEAD, L7_TRANSITIONS, L7_TRANSITION_W,
+                L7_TRANSITION_NOTE)
         b.table("Reference decisions", DECISION_HEAD, [
             ref_row("searchbar", "Adapted: suggestions and results stack upward from the bar so they stay above "
                     "the keyboard and near the thumb, instead of below a top bar."),
-            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus (the keyboard opens with it, "
-                    "per Quiet Frame v3). Kept: the This screen / Whole library chips, query handoff and the "
-                    "two-step Back."),
+            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus when it opens (L7 opening, "
+                    "Quiet Frame v3); FIND-5 opens non-focused. Kept, unchanged: the This screen / Whole library "
+                    "chips, the two-step Back and the Whole library handoff of main (close scope, release focus, "
+                    "clear the local query, open the Search tab blank). Focus-on-open does not change the scope "
+                    "handoff; a retained-query in-place library mode would need its own reviewed UI change."),
         ], DECISION_W, DECISION_NOTE)
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")

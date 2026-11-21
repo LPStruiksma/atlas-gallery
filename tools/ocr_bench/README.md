@@ -15,7 +15,11 @@ The scorer rejects duplicate, missing, or extra IDs. Results contain pooled `cer
 1. Acquire each candidate's detector, recognizer and dictionary only after the report's three-part licence gate. Do not add them to Git.
 2. Freeze SHA-256, byte size, source URL, opset, quantization method, runtime/providers, threads, warmups/runs, image dimensions, CPU/OS/RAM and corpus licence/counts in a run manifest.
 3. Run the candidate's documented ONNX inference entry point over every manifest row, including no-text images, and write prediction JSONL. Time decode, detection and recognition separately with a monotonic clock; report median and p95 after at least five warmups.
-4. Score with `python3 -m tools.ocr_bench.evaluate manifest.jsonl predictions.jsonl --output result.json`.
+4. Score with `python3 -m tools.ocr_bench.evaluate manifest.jsonl predictions.jsonl --output result.json` (add `--split dev|test` to score one split). CER/WER are pooled over text-positive images only; text on a no-text image is `false_text`, never CER insertions.
 5. Run scoring/input-integrity checks with `python3 -m unittest tools.ocr_bench.test_metrics`.
 
 For the prefilter experiment, predeclare a threshold on a development split, run it before OCR on the locked test split, and report bytes read, latency, skip rate and **false skips among text-positive images** separately from scorer-level empty predictions. A safe candidate is a 64×64 grayscale Sobel edge-density threshold; it is not admissible unless recall is measured. Store only manifests, aggregate results and redistributable generated fixtures.
+
+## OCR-0A: real-model run (#873)
+
+`requirements-ocr.txt` pins the benchmark-only packages. `fetch_models.py` downloads the pinned PP-OCRv5 and docTR/OnnxTR ONNX files and verifies SHA-256; `gen_corpus.py` renders the deterministic EN/NL corpus; `run_models.py ppocr|doctr` runs real inference and writes prediction JSONL with per-stage timings; `run_manifest.py` records host, versions and hashes. Recorded outputs: `docs/visual-search/results/ocr0a/`. `test_corpus.py` skips without Pillow.
