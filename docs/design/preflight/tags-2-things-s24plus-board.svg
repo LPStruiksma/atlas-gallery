@@ -3,7 +3,7 @@
 <desc id="desc">Twelve annotated 384 by 832 dp Atlas screen sketches, each equivalent to 1080 by 2340 px at 2.8125 px per dp. Light/dark, navigation, Things, result facets, loading, partial, empty, error, huge list and large-font keyboard state. Synthetic vector image proxies, not app screenshots.</desc>
 <rect width="1810" height="2800" fill="#E4E6EC"/>
 <text x="38" y="30" fill="#0E1030" font-family="system-ui" font-size="18" font-weight="700">TAGS-2 / Things / synthetic pre-build frames</text>
-<text x="38" y="50" fill="#5A5F7A" font-family="system-ui" font-size="10">384 × 832 dp per frame · 1080 × 2340 px equivalent · 24 dp top/bottom assumed, NOT device measurements · no real media</text>
+<text x="38" y="50" fill="#5A5F7A" font-family="system-ui" font-size="10">384 × 832 dp per frame · 1080 × 2340 px equivalent · 24 dp top/bottom assumed, NOT device measurements · L fontScale 2.0 / provisional IME · no real media</text>
 <defs>
 <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#92BCD5"/><stop offset="1" stop-color="#D6E2EB"/></linearGradient>
 <linearGradient id="p2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#83A99F"/><stop offset="1" stop-color="#E6D6A5"/></linearGradient>
@@ -18,7 +18,7 @@
 <text x="314" y="17" font-family="'Funnel Sans',system-ui,sans-serif" font-size="10" fill="#0E1030" font-weight="500" >●  ▰  ▰</text>
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
-<text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" >Collections</text>
+<text x="16" y="72" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Collections</text>
 <rect x="16" y="102" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="136" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Albums</text>
 <text x="28" y="159" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >1.240 photos</text>
@@ -147,7 +147,7 @@
 <text x="314" y="17" font-family="'Funnel Sans',system-ui,sans-serif" font-size="10" fill="#0E1030" font-weight="500" >●  ▰  ▰</text>
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
-<text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" >Collections</text>
+<text x="16" y="72" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Collections</text>
 <rect x="16" y="117" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="151" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Stories</text>
 <text x="28" y="174" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >12 stories</text>
@@ -260,7 +260,7 @@
 <text x="314" y="17" font-family="'Funnel Sans',system-ui,sans-serif" font-size="10" fill="#0E1030" font-weight="500" >●  ▰  ▰</text>
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
-<text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" >Search</text>
+<text x="16" y="72" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Search</text>
 <text x="16" y="116" font-family="'Funnel Sans',system-ui,sans-serif" font-size="17" fill="#0E1030" font-weight="600" >Browse without typing</text>
 <rect x="16" y="138" width="352" height="122" rx="18" fill="#F2F3F8" />
 <text x="28" y="170" font-family="'Funnel Sans',system-ui,sans-serif" font-size="21" fill="#0E1030" font-weight="700" >Things</text>
@@ -329,7 +329,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#0E1030" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#2639C9" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <rect x="16" y="96" width="352" height="54" rx="22" fill="#F2F3F8" />
 <circle cx="41" cy="122" r="9" fill="none" stroke="#5A5F7A" stroke-width="2"/>
 <path d="M47 129l7 7" stroke="#5A5F7A" stroke-width="2"/>
@@ -447,7 +447,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#0E1030" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#2639C9" font-weight="700" >Results</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Results</text>
 <text x="20" y="108" font-family="'Funnel Sans',system-ui,sans-serif" font-size="14" fill="#5A5F7A" font-weight="400" >Sort: Newest first  ▾</text>
 <rect x="16" y="127" width="137" height="48" rx="22" fill="#2639C9" />
 <circle cx="31" cy="149" r="8" fill="#2639C9" stroke="#FFFFFF" stroke-width="2"/>
@@ -513,7 +513,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#000000" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#F2F3F8" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#F2F3F8" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#8C9BFF" font-weight="700" >Results</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#8C9BFF" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Results</text>
 <text x="20" y="108" font-family="'Funnel Sans',system-ui,sans-serif" font-size="14" fill="#9AA0B8" font-weight="400" >Sort: Newest first  ▾</text>
 <rect x="16" y="127" width="137" height="48" rx="22" fill="#3448E0" />
 <circle cx="31" cy="149" r="8" fill="#3448E0" stroke="#FFFFFF" stroke-width="2"/>
@@ -579,7 +579,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#0E1030" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#2639C9" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <circle cx="150" cy="317" r="24" fill="#2639C9" />
 <path d="M119 355 Q150 275 182 355" fill="none" stroke="#2639C9" stroke-width="2.5"/>
 <text x="188" y="320" font-family="'Funnel Sans',system-ui,sans-serif" font-size="18" fill="#0E1030" font-weight="600" >Finding things…</text>
@@ -601,7 +601,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#000000" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#F2F3F8" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#F2F3F8" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#8C9BFF" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#8C9BFF" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <text x="16" y="114" font-family="'Funnel Sans',system-ui,sans-serif" font-size="14" fill="#9AA0B8" font-weight="400" >Photos found so far</text>
 <rect x="16" y="139" width="352" height="86" rx="10" fill="#000000" />
 <text x="28" y="173" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Dog</text>
@@ -685,7 +685,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#0E1030" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#2639C9" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <text x="30" y="298" font-family="'Funnel Sans',system-ui,sans-serif" font-size="22" fill="#0E1030" font-weight="700" >No things found yet.</text>
 <text x="30" y="328" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#5A5F7A" font-weight="400" >Browse Pictures instead.</text>
 <rect x="30" y="359" width="180" height="54" rx="22" fill="#2639C9" />
@@ -707,7 +707,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#000000" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#F2F3F8" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#F2F3F8" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#8C9BFF" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#8C9BFF" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <text x="24" y="274" font-family="'Funnel Sans',system-ui,sans-serif" font-size="21" fill="#F2F3F8" font-weight="700" >Things aren't available</text>
 <text x="24" y="304" font-family="'Funnel Sans',system-ui,sans-serif" font-size="18" fill="#F2F3F8" font-weight="400" >right now. Try again.</text>
 <rect x="24" y="342" width="135" height="54" rx="22" fill="#3448E0" />
@@ -731,7 +731,7 @@
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#FFFFFF" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#0E1030" />
 <text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#0E1030" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#2639C9" font-weight="700" >Things</text>
+<text x="62" y="70" font-family="'Funnel Display',system-ui,sans-serif" font-size="38" fill="#2639C9" font-weight="700" letter-spacing="-0.03em" data-line-height-sp="44" >Things</text>
 <rect x="16" y="95" width="352" height="54" rx="22" fill="#F2F3F8" />
 <circle cx="41" cy="121" r="9" fill="none" stroke="#5A5F7A" stroke-width="2"/>
 <path d="M47 128l7 7" stroke="#5A5F7A" stroke-width="2"/>
@@ -840,72 +840,73 @@
 <circle cx="299" cy="767" r="9" fill="#2639C9" />
 <path d="M291 785L299 777L307 785" fill="none" stroke="#2639C9" stroke-width="3.5" stroke-linecap="round"/>
 </g>
-<text x="1364" y="1900" font-family="'Funnel Sans',system-ui,sans-serif" font-size="15" fill="#0E1030" font-weight="700" >L / 200% font + IME / long Dutch</text>
+<text x="1364" y="1900" font-family="'Funnel Sans',system-ui,sans-serif" font-size="15" fill="#0E1030" font-weight="700" >L / echte 2× tekst + IME / NL</text>
 <g transform="translate(1364,1912)">
+<!-- L: 200% fontScale in dp geometry: 38/44sp screen token => 76/88 units; all interactive targets >=48dp; keyboard height provisional. -->
 <rect x="0" y="0" width="384" height="832" rx="24" fill="#000000" />
 <rect x="0" y="0" width="384" height="24" rx="0" fill="#14152A" />
 <text x="18" y="17" font-family="'Funnel Sans',system-ui,sans-serif" font-size="11" fill="#F2F3F8" font-weight="600" >09:41</text>
 <text x="314" y="17" font-family="'Funnel Sans',system-ui,sans-serif" font-size="10" fill="#F2F3F8" font-weight="500" >●  ▰  ▰</text>
 <rect x="0" y="808" width="384" height="24" rx="0" fill="#000000" />
 <rect x="144" y="820" width="96" height="4" rx="2" fill="#F2F3F8" />
-<text x="16" y="72" font-family="'Funnel Sans',system-ui,sans-serif" font-size="29" fill="#F2F3F8" font-weight="600" >‹</text>
-<text x="62" y="70" font-family="'Funnel Sans',system-ui,sans-serif" font-size="32" fill="#8C9BFF" font-weight="700" >Results</text>
-<text x="15" y="113" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Bereik</text>
-<rect x="16" y="127" width="155" height="48" rx="22" fill="#3448E0" />
-<circle cx="31" cy="149" r="8" fill="#3448E0" stroke="#FFFFFF" stroke-width="2"/>
-<text x="45" y="154" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#FFFFFF" font-weight="600" >Dit scherm</text>
-<rect x="178" y="127" width="190" height="48" rx="22" fill="#14152A" />
-<text x="192" y="154" font-family="'Funnel Sans',system-ui,sans-serif" font-size="15" fill="#F2F3F8" font-weight="600" >Hele bibliotheek</text>
-<text x="16" y="208" font-family="'Funnel Sans',system-ui,sans-serif" font-size="18" fill="#F2F3F8" font-weight="600" >Dingen</text>
-<rect x="16" y="221" width="144" height="48" rx="22" fill="#3448E0" />
-<circle cx="31" cy="243" r="8" fill="#3448E0" stroke="#FFFFFF" stroke-width="2"/>
-<text x="45" y="248" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#FFFFFF" font-weight="600" >Fiets ×</text>
-<rect x="170" y="221" width="151" height="48" rx="22" fill="#14152A" />
-<text x="184" y="248" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Bloemen</text>
-<rect x="16" y="279" width="112" height="110" rx="8" fill="url(#p2)" />
-<path d="M16 359.3 Q46.24 329.6 67.52000000000001 359.3 Q96.64 323 128 359.3V389H16Z" fill="#4C8B77" opacity=".7"/>
-<circle cx="101.12" cy="303.2" r="8.96" fill="#FFF5D4" />
-<rect x="130" y="279" width="112" height="110" rx="8" fill="url(#p3)" />
-<path d="M130 359.3 Q160.24 329.6 181.52 359.3 Q210.64 323 242 359.3V389H130Z" fill="#8C759C" opacity=".7"/>
-<circle cx="215.12" cy="303.2" r="8.96" fill="#FFF5D4" />
-<rect x="244" y="279" width="124" height="110" rx="8" fill="url(#p4)" />
-<path d="M244 359.3 Q277.48 329.6 301.04 359.3 Q333.28 323 368 359.3V389H244Z" fill="#507FA6" opacity=".7"/>
-<circle cx="338.24" cy="303.2" r="9.92" fill="#FFF5D4" />
-<rect x="0" y="503" width="384" height="305" rx="0" fill="#24273A" />
-<rect x="10" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="57" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="104" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="151" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="198" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="245" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="292" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="339" y="518" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="10" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="57" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="104" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="151" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="198" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="245" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="292" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="339" y="576" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="10" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="57" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="104" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="151" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="198" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="245" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="292" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="339" y="634" width="40" height="46" rx="5" fill="#14152A" />
-<rect x="16" y="388" width="352" height="54" rx="22" fill="#14152A" />
-<circle cx="41" cy="414" r="9" fill="none" stroke="#9AA0B8" stroke-width="2"/>
-<path d="M47 421l7 7" stroke="#9AA0B8" stroke-width="2"/>
-<text x="65" y="419" font-family="'Funnel Sans',system-ui,sans-serif" font-size="14" fill="#9AA0B8" font-weight="400" >Zoek foto's</text>
-<rect x="55" y="444" width="274" height="58" rx="24" fill="#3448E0" />
-<rect x="63" y="451" width="86" height="44" rx="20" fill="#FFFFFF" />
-<text x="83" y="478" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#3448E0" font-weight="600" >Pictures</text>
-<text x="160" y="478" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#FFFFFF" font-weight="600" >Collections</text>
-<circle cx="299" cy="473" r="24" fill="#FFFFFF" />
-<circle cx="299" cy="469" r="9" fill="#3448E0" />
-<path d="M291 487L299 479L307 487" fill="none" stroke="#3448E0" stroke-width="3.5" stroke-linecap="round"/>
+<rect x="8" y="38" width="52" height="92" rx="4" fill="#14152A" opacity="0.12" data-touch="Back; 52x92dp"/>
+<text x="18" y="113" font-family="'Funnel Sans',system-ui,sans-serif" font-size="52" fill="#F2F3F8" font-weight="600" aria-label="Terug">‹</text>
+<text x="66" y="116" font-family="'Funnel Display',system-ui,sans-serif" font-size="76" fill="#8C9BFF" font-weight="700" letter-spacing="-0.03em" data-base-sp="38" data-font-scale="2" data-line-height-sp="88">Results</text>
+<text x="16" y="151" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#F2F3F8" font-weight="600" data-base-sp="14" data-font-scale="2">Bereik</text>
+<rect x="16" y="160" width="162" height="91" rx="22" fill="#3448E0" data-touch="Scope this screen; 162x91dp"/>
+<circle cx="32" cy="185" r="9" fill="#3448E0" stroke="#FFFFFF" stroke-width="2"/>
+<text x="44" y="201" font-family="'Funnel Sans',system-ui,sans-serif" font-size="26" fill="#FFFFFF" font-weight="600" data-base-sp="13" data-font-scale="2">Dit</text>
+<text x="44" y="232" font-family="'Funnel Sans',system-ui,sans-serif" font-size="26" fill="#FFFFFF" font-weight="600" data-base-sp="13" data-font-scale="2">scherm</text>
+<rect x="184" y="160" width="184" height="91" rx="22" fill="#14152A" data-touch="Scope whole library; 184x91dp"/>
+<text x="196" y="201" font-family="'Funnel Sans',system-ui,sans-serif" font-size="26" fill="#F2F3F8" font-weight="600" data-base-sp="13" data-font-scale="2">Hele</text>
+<text x="196" y="232" font-family="'Funnel Sans',system-ui,sans-serif" font-size="26" fill="#F2F3F8" font-weight="600" data-base-sp="13" data-font-scale="2">bibliotheek</text>
+<text x="16" y="290" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#F2F3F8" font-weight="600" data-base-sp="14" data-font-scale="2">Dingen</text>
+<rect x="16" y="300" width="352" height="66" rx="22" fill="#3448E0" data-touch="Thing selected; 352x66dp"/>
+<circle cx="38" cy="333" r="10" fill="#3448E0" stroke="#FFFFFF" stroke-width="2"/>
+<text x="60" y="342" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#FFFFFF" font-weight="600" data-base-sp="14" data-font-scale="2">Fiets</text>
+<path d="M298 312V354" fill="none" stroke="#DCE1FF" stroke-width="1.5"/>
+<rect x="300" y="307" width="68" height="54" rx="12" fill="#3448E0" data-touch="Remove Thing; 68x54dp"/>
+<text x="322" y="343" font-family="'Funnel Sans',system-ui,sans-serif" font-size="34" fill="#FFFFFF" font-weight="400" aria-label="Verwijder filter Fiets">×</text>
+<rect x="16" y="375" width="352" height="52" rx="12" fill="#14152A" data-state="Actionable empty outcome"/>
+<text x="26" y="407" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#F2F3F8" font-weight="400" data-base-sp="12" data-font-scale="2">Geen resultaat</text>
+<rect x="238" y="377" width="130" height="48" rx="12" fill="#3448E0" data-touch="Clear filter; 130x48dp"/>
+<text x="247" y="408" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#FFFFFF" font-weight="600" data-base-sp="12" data-font-scale="2">Wis filter</text>
+<rect x="16" y="434" width="352" height="54" rx="22" fill="#14152A" data-touch="Query; 352x54dp"/>
+<circle cx="41" cy="458" r="9" fill="none" stroke="#9AA0B8" stroke-width="2"/>
+<path d="M47 464l7 7" stroke="#9AA0B8" stroke-width="2"/>
+<text x="65" y="471" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#F2F3F8" font-weight="400" data-base-sp="14" data-font-scale="2">Zoek foto&apos;s</text>
+<rect x="16" y="493" width="352" height="58" rx="24" fill="#3448E0" data-touch="Nav slab 352x58dp"/>
+<rect x="20" y="498" width="146" height="48" rx="20" fill="#FFFFFF" data-touch="Foto&apos;s 146x48dp"/>
+<text x="34" y="530" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#3448E0" font-weight="600" data-base-sp="14" data-font-scale="2">Foto&apos;s</text>
+<text x="171" y="530" font-family="'Funnel Sans',system-ui,sans-serif" font-size="28" fill="#FFFFFF" font-weight="600" letter-spacing="-0.03em" data-base-sp="14" data-font-scale="2">Collecties</text>
+<circle cx="338" cy="522" r="24" fill="#FFFFFF" data-touch="Search sphere; 48x48dp"/>
+<circle cx="338" cy="519" r="9" fill="#3448E0"/>
+<path d="M330 537L338 529L346 537" fill="none" stroke="#3448E0" stroke-width="3.5" stroke-linecap="round"/>
+<rect x="0" y="555" width="384" height="253" rx="0" fill="#24273A" data-ime="Provisional top=555dp bottom=808dp; runtime UNMEASURED"/>
+<rect x="10" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="57" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="104" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="151" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="198" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="245" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="292" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="339" y="568" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="10" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="57" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="104" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="151" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="198" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="245" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="292" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="339" y="631" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="10" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="57" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="104" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="151" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="198" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="245" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="292" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<rect x="339" y="694" width="40" height="48" rx="5" fill="#14152A" data-keyboard-proxy="true"/>
+<text x="16" y="789" font-family="'Funnel Sans',system-ui,sans-serif" font-size="17" fill="#F2F3F8" font-weight="400" data-synthetic="true">IME schets — hoogte voorlopig</text>
 </g>
 <text x="38" y="2782" font-family="system-ui" font-size="11" fill="#5A5F7A">STATIC DESIGN ONLY · no inference of actual Samsung layout or Android implementation · system-bar/IME heights are provisional · photo proxies are synthetic vector scenes</text></svg>
