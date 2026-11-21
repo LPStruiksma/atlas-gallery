@@ -2,3 +2,5 @@
 553-details-people
 553-details-add-name
 553-details-people-named
+parity-24-viewer-details-people-dark
+parity-24-viewer-details-people-light
