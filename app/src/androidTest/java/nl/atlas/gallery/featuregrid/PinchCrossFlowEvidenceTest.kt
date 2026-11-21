@@ -378,11 +378,12 @@ class PinchCrossFlowEvidenceTest {
         val tag = tileNear(focusRoot).first
         val pinch = Pinch(local, 260f)
         pinch.to(.75f)
-        compose.mainClock.autoAdvance = false
         pinch.release()
-        compose.mainClock.advanceTimeBy(32L)
-        compose.mainClock.autoAdvance = true
         grid.assert(columns(7))
+        // A cut: nothing is left of the pinch layers once the release is handled.
+        assertTrue("no pinch layer after a reduced-motion release", compose.onAllNodes(
+            SemanticsMatcher.expectValue(SemanticsProperties.TestTag, "atlas-pinch-cross-layer"),
+            useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
         saveUiEvidence("flow1-reduced-settled-7.png")
         assertAnchoredAndStill(tag, focusRoot, "reduced-motion commit 4->7")
     }
