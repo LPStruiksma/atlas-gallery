@@ -1175,6 +1175,11 @@ def focus_anchor(layout: Layout, scroll: float, vp: Viewport, focused: int | Non
     return best, "centre"
 
 
+def return_label(from_kind: str) -> str:
+    """Label of the return pill in the focused SMALL stop: it names the overview it returns to (#864)."""
+    return f"{SQUARE_COLS[from_kind]} columns"
+
+
 def pill_flow(lays: dict[str, Layout], vp: Viewport, from_kind: str, scroll: float,
               focused: int | None = None) -> dict[str, PinchStep]:
     """Select precisely pill from MONTH/YEAR at ``scroll``: anchor key by ``focus_anchor``, to SMALL 7, and back.

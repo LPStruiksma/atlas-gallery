@@ -1194,14 +1194,14 @@ class Gen:
                       f"Q2 · SMALL 7 · key {k_m} focused, not selected",
                       f"tile {L.fmt_rect(pm['focus'].dst)} = {L.tile_dp(7):.1f} dp: a real >= 48 dp target",
                       "focus order: 1 pill (back), 2 tile; Back returns",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
             Panel("Q3", "Select by a real tap", f"The user taps the {L.tile_dp(7):.1f} dp tile: key {k_m} becomes "
                   "#1. Selecting is the user's tap, never the pill.",
                   self.l8_pill_frame("small", pm["focus"], "Q3", {k_m: 1}, [
                       f"Q3 · SMALL 7 · tap on key {k_m} -> selected #1",
                       f"hit rect {L.fmt_rect(pm['focus'].dst)}, {L.tile_dp(7):.1f} dp",
                       "announce: \"Photo, 14 Sep, selected, 1 of 1\" (proposal)",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
             Panel("Q4", "Back to MONTH 12", f"Back or the return pill restores scroll {pm['back'].scroll:.0f} px "
                   f"(was {pm['press'].scroll:.0f} px) and the selection.",
                   self.l8_pill_frame("month", pm["back"], "Q4", {k_m: 1}, [
@@ -1230,7 +1230,7 @@ class Gen:
                       f"Q7 · SMALL 7 · key {k_s} focused, selection 1-3 kept",
                       f"tile {L.tile_dp(7):.1f} dp tap -> #4; Back restores the overview",
                       "focus order: 1 pill, 2 tile",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
             Panel("Q8", "MONTH, TalkBack focus on key 828",
                   f"An explicit visible focus is kept: key 828, not the centre key {k_s}. Same pill, same flow.",
                   self.l8_pill_frame("month", ptb["press"], "Q8", sel3, [
@@ -1251,7 +1251,7 @@ class Gen:
                       f"Q10 · SMALL 7 · dark 200 % · key {k_d} focused",
                       f"tile {L.tile_dp(7):.1f} dp; focus order: 1 pill, 2 tile",
                       "Back or the return pill restores MONTH",
-                  ], theme="dark", scale=2.0, pill_text="12 columns", back=True, tile_target=True)),
+                  ], theme="dark", scale=2.0, pill_text=L.return_label("month"), back=True, tile_target=True)),
             Panel("Q11", "YEAR to SMALL 7, still unselected",
                   f"Key {k_y} outlined at {L.fmt_d(py['focus'].dx)} px in X, {L.fmt_d(py['focus'].y_residual)} px "
                   "height residual. Nothing is selected yet.",
@@ -1259,14 +1259,14 @@ class Gen:
                       f"Q11 · SMALL 7 · from YEAR · key {k_y} focused, not selected",
                       f"tile {L.tile_dp(7):.1f} dp: a real >= 48 dp target; pill hit >= 48 dp",
                       "focus order: 1 pill (back), 2 tile",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
             Panel("Q12", "YEAR path: select by a real tap",
                   f"The tap on the {L.tile_dp(7):.1f} dp tile selects key {k_y} as #1; the pill never does.",
                   self.l8_pill_frame("small", py["focus"], "Q12", {k_y: 1}, [
                       f"Q12 · SMALL 7 · tap on key {k_y} -> selected #1",
                       f"hit rect {L.fmt_rect(py['focus'].dst)}",
                       "announce: \"Photo, selected, 1 of 1\" (proposal)",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
             Panel("Q13", "Back to YEAR 28",
                   f"Return restores scroll {py['back'].scroll:.0f} px (entry {py['press'].scroll:.0f} px) and "
                   "the selection.",
@@ -1288,7 +1288,7 @@ class Gen:
                       f"Q15 · SMALL 7 · from YEAR · key {k_ys} focused, selection 1-3 kept",
                       f"tile {L.tile_dp(7):.1f} dp tap -> #4; Back restores YEAR",
                       "focus order: 1 pill, 2 tile",
-                  ], pill_text="12 columns", back=True, tile_target=True)),
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
             Panel("Q16", "YEAR, dark, 200 %, prior selection",
                   f"Pill grows with the font; centre rule gives key {k_yd}. Selection 1-3 stays.",
                   self.l8_pill_frame("year", pyd["press"], "Q16", sel3, [
@@ -1303,7 +1303,7 @@ class Gen:
                       f"Q17 · SMALL 7 · from YEAR · dark 200 % · key {k_yd}",
                       f"tile {L.tile_dp(7):.1f} dp; focus order: 1 pill, 2 tile",
                       "Back or the return pill restores YEAR",
-                  ], theme="dark", scale=2.0, pill_text="12 columns", back=True, tile_target=True)),
+                  ], theme="dark", scale=2.0, pill_text=L.return_label("year"), back=True, tile_target=True)),
         ]
         b.grid("Select precisely with no prior target: deterministic focus key (measured, 75 % scale)", pill,
                cols=4, scale=0.75)
@@ -1321,10 +1321,10 @@ class Gen:
             ["Pill result", "Focus to SMALL 7 on that key at the same relative height. The key is outlined and not "
              "selected; selecting is a tap on the 53 dp tile. Long-press keeps its selecting semantics.",
              "Q2, Q3, Q7, Q10, Q11, Q12, Q15, Q17"],
-            ["Return", "Back or the 12 columns pill: previous overview, scroll anchor and selected keys.", "Q4, Q13"],
+            ["Return", "Back or the return pill (12 columns from MONTH, 28 columns from YEAR): previous overview, scroll anchor and selected keys.", "Q4, Q13"],
             ["Targets", f"Pill >= 48 dp (grows at 200 %); SMALL tile {L.tile_dp(7):.1f} dp; return pill >= 48 dp. "
              "Dense 12 / 28 tiles are never direct taps.", "Q1-Q17"],
-            ["TalkBack order (proposal)", "1 Select precisely or 12 columns pill, 2 the focused tile, then the "
+            ["TalkBack order (proposal)", "1 Select precisely or the return pill, 2 the focused tile, then the "
              "grid; announcement of the pill names the month of the anchor. Not a device test.", "Q2, Q7, Q10, Q11, Q15, Q17"],
         ], [0.18, 0.67, 0.15])
 
@@ -1455,7 +1455,7 @@ class Gen:
              "the viewport centre (a visible focus key if one exists); nothing is selected", "pill >= 48 dp", "n/a"],
             ["Select", "Tap tiles or spheres in the 7-column view", f"Toggles per-media selection; sphere order "
              f"continues", f"{L.tile_dp(7):.1f} dp tiles, >= 48 dp", "n/a"],
-            ["Return", "12 columns pill or system Back", "Back to the overview stop it came from; selection, key "
+            ["Return", "Return pill (12 columns from MONTH, 28 columns from YEAR) or system Back", "Back to the overview stop it came from; selection, key "
              "and height continue", "pill >= 48 dp; system Back", "one Back = one return"],
             ["TalkBack", "Dense tile nodes keep their label and expose Select and Select precisely actions",
              "The same selection state; no 48 dp touch is needed because activation targets the node",

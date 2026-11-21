@@ -398,6 +398,17 @@ class ThumbLabelAndPillFocus(unittest.TestCase):
             for k in L.SELECTED:
                 self.assertIn(k, vis, (step, k))
 
+    def test_return_pill_names_the_overview_it_returns_to(self):
+        self.assertEqual(L.return_label("month"), "12 columns")
+        self.assertEqual(L.return_label("year"), "28 columns")
+        src = (Path(__file__).resolve().parents[1] / "lapis_preflight.py").read_text()
+        i, j = src.index('Panel("Q11"'), src.index('b.grid("Select precisely with no prior target')
+        year_origin, month_origin = src[i:j], src[src.index('Panel("Q2"'):src.index('Panel("Q11"')]
+        self.assertNotIn("12 columns", year_origin)
+        self.assertEqual(year_origin.count('L.return_label("year")'), 4)
+        self.assertNotIn('return_label("year")', month_origin)
+        self.assertEqual(month_origin.count('L.return_label("month")'), 4)
+
     def test_p5_no_longer_conflates_long_press_with_the_pill(self):
         src = (Path(__file__).resolve().parents[1] / "lapis_preflight.py").read_text()
         self.assertNotIn("long-press or the pill", src)
