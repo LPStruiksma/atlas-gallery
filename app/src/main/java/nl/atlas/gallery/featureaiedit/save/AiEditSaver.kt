@@ -166,7 +166,18 @@ internal class AiEditSaver(
      * _AI_n name is not a safe recovery identity: another app-owned insert
      * can legitimately have that name before the URI is recorded.
      */
+    /** A file candidate must be a regular file inside this app's private cache or files folder. */
+    private fun checkCandidateLocation(uri: Uri) {
+        if (uri.scheme != "file") return
+        val file = java.io.File(requireNotNull(uri.path) { "Candidate has no path" }).canonicalFile
+        val roots = listOf(context.cacheDir, context.filesDir).map { it.canonicalFile }
+        check(file.isFile && roots.any { file.path.startsWith(it.path + java.io.File.separator) }) {
+            "Candidate is not an app-private file"
+        }
+    }
+
     private fun saveBlocking(candidate: AiEditCandidate): AiEditSaveResult {
+        checkCandidateLocation(candidate.candidateUri)
         recoverInterruptedSaves()
         val source = sourceFacts(candidate.originalUri)
         val name = AiEditNaming.next(source.name, candidate.format, existingNames(source))

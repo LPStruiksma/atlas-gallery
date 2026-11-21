@@ -9,6 +9,15 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import androidx.activity.ComponentActivity
+import android.util.Log
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.onMainThread
+import nl.atlas.gallery.testkit.rootViews
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -370,10 +379,46 @@ class ViewerInteractionTest {
         saveUiEvidence("viewer-509-after-scrub.png")
     }
 
+    /**
+     * #781: do not gesture into a Compose tree until its Activity is RESUMED,
+     * the root view is attached, and the pager has actually composed. The
+     * previous failure was "No compose hierarchies found" in shard 1.
+     * Record lifecycle/root transitions, including the last state on timeout.
+     */
+    private fun awaitSwipeViewerReady() {
+        var previous = ""
+        try {
+            rule.awaitThat("resumed viewer Activity, attached Compose root, and pager") {
+                val resumed = onMainThread {
+                    ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(Stage.RESUMED)
+                        .any { it is ComponentActivity }
+                }
+                val roots = rule.rootViews()
+                val attached = roots.any { view ->
+                    onMainThread { view.isAttachedToWindow && view.width > 0 && view.height > 0 }
+                }
+                val pager = rule.exists(hasTestTag("atlas-main-pager"))
+                val state = "resumed=$resumed roots=${roots.size} attached=$attached pager=$pager"
+                if (state != previous) {
+                    Log.i("ATLAS_EVIDENCE", "viewer-781 first-compose $state")
+                    previous = state
+                }
+                resumed && attached && pager
+            }
+        } catch (failure: AssertionError) {
+            throw AssertionError("${failure.message}; last lifecycle/Compose-root state: $previous", failure)
+        }
+        rule.awaitWindowSettled()
+        rule.onNodeWithTag("atlas-main-pager").assertIsDisplayed()
+        rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("11 of 64")
+    }
+
     /** #509 (Lukas 2026-11-10): Samsung's swipe up on a photo shows its details. */
     @Test fun swipeUpOnPhotoOpensDetails() {
         val media = fixtures()
         rule.setContent { AtlasEvidenceHarness(edgeToEdge = true) { GalleryViewer(media, media[10].uri) {} } }
+        awaitSwipeViewerReady()
         rule.onNodeWithTag("atlas-main-pager").performTouchInput {
             swipeUp(startY = height * .75f, endY = height * .35f, durationMillis = 250)
         }

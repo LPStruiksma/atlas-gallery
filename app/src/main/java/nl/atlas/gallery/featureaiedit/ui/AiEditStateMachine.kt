@@ -1,5 +1,7 @@
 package nl.atlas.gallery.featureaiedit.ui
 
+import nl.atlas.gallery.featureaiedit.engine.AiEditIssue
+
 /**
  * No Android, IO, Compose, provider, or wall-clock dependency. The UI drives this reducer with
  * explicit events; a late job cannot change the state after Cancel or a newer Generate.
@@ -27,7 +29,21 @@ data class AiEditUiState(
     val selectedId: String? = null,
     val branchParentId: String? = null,
     val refusalCode: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** The selected service's own name, e.g. "Google Gemini" (#431). Null for the offline mock. */
+    val serviceName: String? = null,
+    /** Model label for the chip, e.g. "Nano Banana 2". */
+    val modelName: String? = null,
+    /** Which state card is shown (#431 rev 4 D); null while composing, working or on a result. */
+    val issue: AiEditIssue? = null,
+    /** The service's own reason for a decline, if it gave one. */
+    val issueDetail: String? = null,
+    /** Working: true until the paid request starts ("Sending photo…"), then "Editing with …". */
+    val sending: Boolean = false,
+    /** Durable flag mirror: the paid request may have been sent for the current attempt. */
+    val submitSent: Boolean = false,
+    /** Working with a remote progress fraction the service actually reported. */
+    val determinate: Boolean = false
 ) {
     val selectedCandidate: AiEditWorkingCandidate?
         get() = candidates.firstOrNull { it.id == selectedId }
@@ -42,16 +58,25 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
         if (state.phase in setOf(AiEditPhase.Generating, AiEditPhase.Accepting, AiEditPhase.Saved)) return false
         state = state.copy(
             phase = AiEditPhase.Composing, prompt = prompt.take(16_384),
-            progress = null, refusalCode = null, error = null
+            progress = null, refusalCode = null, error = null,
+            issue = null, issueDetail = null, sending = false, submitSent = false
         )
         return true
     }
 
-    /** Provider changes never dispatch work. The user must tap Generate again. */
-    fun chooseProvider(id: String): Boolean {
-        if (id != "atlas-synthetic-mock" || state.phase in
+    /**
+     * Provider changes never dispatch work. The user must tap Generate again. Only ids in
+     * [available] (configured, supported services) can be chosen; never an inferred fallback.
+     */
+    fun chooseProvider(
+        id: String,
+        available: Set<String> = setOf("atlas-synthetic-mock"),
+        serviceName: String? = state.serviceName,
+        modelName: String? = state.modelName
+    ): Boolean {
+        if (id !in available || state.phase in
             setOf(AiEditPhase.Generating, AiEditPhase.Accepting, AiEditPhase.Saved)) return false
-        state = state.copy(providerId = id)
+        state = state.copy(providerId = id, serviceName = serviceName, modelName = modelName)
         return true
     }
 
@@ -79,8 +104,53 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
             state.prompt.isBlank() || state.generation == Long.MAX_VALUE) return null
         val token = state.generation + 1
         state = state.copy(phase = AiEditPhase.Generating, generation = token,
-            progress = 0f, refusalCode = null, error = null)
+            progress = 0f, refusalCode = null, error = null, issue = null, issueDetail = null,
+            sending = true, submitSent = false, determinate = false)
         return token
+    }
+
+    /**
+     * Check again, or reopening after process death with a saved remote id: Working again for the
+     * same request, with no new submit. Allowed only from a recoverable outcome-unknown state or
+     * straight after restore.
+     */
+    fun resume(): Long? {
+        val allowed = state.issue == AiEditIssue.UNKNOWN_RECOVERABLE || state.phase in
+            setOf(AiEditPhase.Idle, AiEditPhase.Composing)
+        if (!allowed || state.generation == Long.MAX_VALUE) return null
+        val token = state.generation + 1
+        state = state.copy(phase = AiEditPhase.Generating, generation = token, progress = null,
+            refusalCode = null, error = null, issue = null, issueDetail = null,
+            sending = false, submitSent = true, determinate = false)
+        return token
+    }
+
+    /** The paid request is about to start: from here on it may have been sent. */
+    fun markSent(token: Long): Boolean {
+        if (!current(token)) return false
+        state = state.copy(sending = false, submitSent = true)
+        return true
+    }
+
+    /** A classified outcome (#431 rev 4 D, addendum A2–A4). Cancel goes through [cancel]. */
+    fun onIssue(token: Long, issue: AiEditIssue, detail: String? = null): Boolean {
+        if (!current(token) || issue == AiEditIssue.CANCELLED) return false
+        val refused = issue.isDecline
+        state = state.copy(
+            phase = if (refused) AiEditPhase.Refused else AiEditPhase.Failed,
+            progress = null, sending = false, issue = issue,
+            issueDetail = detail?.take(160), refusalCode = if (refused) "declined" else null,
+            error = null
+        )
+        return true
+    }
+
+    /** Outcome unknown shown directly, e.g. after process death with nothing to look up. */
+    fun showIssue(issue: AiEditIssue): Boolean {
+        if (state.phase in setOf(AiEditPhase.Generating, AiEditPhase.Accepting, AiEditPhase.Saved)) return false
+        state = state.copy(phase = AiEditPhase.Failed, progress = null, sending = false,
+            issue = issue, issueDetail = null, error = null, submitSent = issue.mayHaveCharged)
+        return true
     }
 
     private fun current(token: Long) =
@@ -88,7 +158,8 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
 
     fun onProgress(token: Long, fraction: Float?): Boolean {
         if (!current(token)) return false
-        state = state.copy(progress = fraction?.takeIf { it.isFinite() }?.coerceIn(0f, 1f))
+        val value = fraction?.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
+        state = state.copy(progress = value)
         return true
     }
 
@@ -98,9 +169,9 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
                 it.providerId != state.providerId || it.prompt != state.prompt } ||
             produced.map { it.id }.distinct().size != produced.size ||
             produced.any { next -> state.candidates.any { it.id == next.id } }) return false
-        state = state.copy(phase = AiEditPhase.Result, progress = null,
+        state = state.copy(phase = AiEditPhase.Result, progress = null, sending = false,
             candidates = state.candidates + produced, selectedId = produced.first().id,
-            branchParentId = produced.first().id)
+            branchParentId = produced.first().id, issue = null, issueDetail = null)
         return true
     }
 
@@ -121,7 +192,7 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
 
     fun cancel(): Boolean {
         if (state.phase != AiEditPhase.Generating) return false
-        state = state.copy(phase = AiEditPhase.Cancelled, progress = null)
+        state = state.copy(phase = AiEditPhase.Cancelled, progress = null, sending = false)
         return true
     }
 
@@ -134,7 +205,8 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
 
     fun saveFailed(): Boolean {
         if (state.phase != AiEditPhase.Accepting) return false
-        state = state.copy(phase = AiEditPhase.Failed,
+        // Back to the result, so the preview and Save copy stay: the edit is still here (#431).
+        state = state.copy(phase = AiEditPhase.Result,
             error = "Could not save a new copy. The original is unchanged.")
         return true
     }
