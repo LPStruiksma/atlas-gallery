@@ -493,7 +493,10 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 no_geo=False, year="2026", seed=3, grid=True) -> int:
     """The atlas slides down over the grid by ``open_frac`` of its full height. Returns its bottom."""
     counts = counts if counts is not None else COUNTS
-    full_h = px(560) if places else px(260)
+    # Larger font scales push the month grid down so the year/total header
+    # never intrudes into the first row of 58.7 x 80 dp targets (#817).
+    head_shift = px(max(0.0, 12 + 30 * s.font_scale + 10 - 62))
+    full_h = (px(560) if places else px(260)) + head_shift
     h = int(full_h * open_frac)
     y0 = s.top
     if h <= 0:
@@ -507,6 +510,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     ld.rectangle([0, 0, DEVICE_W, full_h], fill=s.t["surface"])
     f_t = s.fonts.get("display", 700, px(24) * s.font_scale)
     ld.text((px(SIDE), px(12)), year, font=f_t, fill=s.t["brand_text"])
+    year_bbox = ld.textbbox((px(SIDE), px(12)), year, font=f_t)
     total = sum(counts)
     f_s = s.fonts.get("sans", 400, px(14) * s.font_scale)
     ld.text((DEVICE_W - px(SIDE), px(18)), f"{_nl(total)} photos", font=f_s, fill=s.t["ink2"], anchor="ra")
@@ -521,9 +525,10 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     bw = (DEVICE_W - px(2 * SIDE)) / per_row
     bx0 = px(SIDE)
     bar_max = px(44)
-    row_bases = [px(118), px(198)]  # 80 dp pitch, targets touch but do not overlap
+    row_bases = [px(118) + head_shift, px(198) + head_shift]  # 80 dp pitch, targets touch but do not overlap
     month_boxes = []
     place_pts: dict[str, tuple[float, float]] = {}
+    label_chips: list = []
     for i, c in enumerate(counts):
         row, col_i = divmod(i, per_row)
         base_y = row_bases[row]
@@ -593,22 +598,32 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 # the counted cluster is one tap target (zooms to its places)
                 place_pts["cluster 1.240"] = (cx, cy)
             else:
-                labels = [("Amsterdam", 0.30, 0.35), ("Coast", 0.15, 0.7), ("Mountains", 0.7, 0.6)]
+                labels = [("Amsterdam", 0.30, 0.35), ("Coast", 0.12, 0.84), ("Mountains", 0.7, 0.52)]
                 for name, fx, fy in labels:
                     cx = px(SIDE) + fx * (DEVICE_W - px(2 * SIDE))
                     cy = my0 + fy * (my1 - my0)
                     place_pts[name] = (cx, cy)
                     ld.ellipse([cx - px(9), cy - px(9), cx + px(9), cy + px(9)], fill=s.t["brand_fill"])
                     if cx + px(14) + ld.textlength(name, font=fs2(s)) > DEVICE_W - px(SIDE) - px(8):
-                        ld.text((cx - px(14), cy), name, font=fs2(s), fill=s.t["ink"], anchor="rm")
+                        pos, anc = (cx - px(14), cy), "rm"
                     else:
-                        ld.text((cx + px(14), cy), name, font=fs2(s), fill=s.t["ink"], anchor="lm")
+                        pos, anc = (cx + px(14), cy), "lm"
+                    # Label chip in the map colour so schematic dots never
+                    # run through the text, at any font scale.
+                    bb = ld.textbbox(pos, name, font=fs2(s), anchor=anc)
+                    chip = (bb[0] - px(4), bb[1] - px(2), bb[2] + px(4), bb[3] + px(2))
+                    ld.rounded_rectangle(chip, radius=px(6), fill=s.t["ground"])
+                    ld.text(pos, name, font=fs2(s), fill=s.t["ink"], anchor=anc)
+                    label_chips.append((name, chip))
     crop = layer.crop((0, full_h - h, DEVICE_W, full_h))
     s.img.paste(crop, (0, y0), crop)
     # grab handle (pull up to close)
     hy = y0 + h - px(12)
     s.d.rounded_rectangle([DEVICE_W / 2 - px(18), hy - px(2), DEVICE_W / 2 + px(18), hy + px(2)], radius=px(2),
                           fill=s.t["ink2"])
+    shift_y = y0 - (full_h - h)
+    s.year_bottom = shift_y + year_bbox[3]
+    s.label_chips = [(n, (c[0], shift_y + c[1], c[2], shift_y + c[3])) for n, c in label_chips]
     s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
         for n, (x, yy) in s.place_centers.items():

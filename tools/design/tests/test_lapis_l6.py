@@ -73,6 +73,23 @@ class L6PrimaryMonthTargets(unittest.TestCase):
             self.assertFalse(any(t.label.startswith("place ") for t in
                                  self.gen.l6_frame(theme, scale, frac=1.0, no_geo=True).targets))
 
+    def test_200_percent_text_clears_targets_and_labels_do_not_collide(self):
+        for theme, scale in (("light", 1.0), ("dark", 2.0)):
+            frame = self.gen.l6_frame(theme, scale, frac=1.0)
+            months = [t for t in frame.targets if t.label.startswith("month ")]
+            self.assertEqual(len(months), 12)
+            first_row_top = min(t.box[1] for t in months)
+            self.assertLessEqual(frame.year_bottom, first_row_top,
+                                 "year/total text must stay above the month targets")
+            chips = frame.label_chips
+            self.assertEqual(len(chips), 3)
+            for i, (_, a) in enumerate(chips):
+                self.assertGreaterEqual(a[0], 0)
+                self.assertLessEqual(a[2], frame.img.width)
+                for _, b in chips[i + 1:]:
+                    self.assertTrue(a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1],
+                                    "place labels overlap")
+
     def test_dense_cluster_is_one_48dp_target(self):
         for theme, scale in (("light", 1.0), ("dark", 2.0)):
             frame = self.gen.l6_frame(theme, scale, frac=1.0, dense=True)
