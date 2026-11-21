@@ -198,7 +198,8 @@ internal fun SamePersonQueueRoute(
             loaded = people == null ||
                 (listDone && resolved == answers.size && cursor?.state === state),
             skippedSome = found.any { question ->
-                skipSnapshot?.let { samePersonSkipFingerprint(it, question) } in skipped
+                val token = skipSnapshot?.let { samePersonSkipFingerprint(it, question) }
+                token != null && token in skipped
             },
             onShowSkipped = {
                 epoch?.let { skipPreferences.clear(it); skipped = emptySet() }
