@@ -703,8 +703,12 @@ class FaceIndexStore(
         val people = only ?: db.rawQuery("SELECT person_key FROM people_home", null).use { c ->
             buildSet { while (c.moveToNext()) add(c.getString(0)) }
         }
-        val candidates = autoCoverCandidates(db, version,
-            if (people.size == 1) people.first() else null)
+        val candidates = if (only == null) autoCoverCandidates(db, version)
+            else buildMap {
+                // Quality-only work affects at most one source's faces. Never
+                // scan every named member when that source touched 2+ people.
+                for (person in people) putAll(autoCoverCandidates(db, version, person))
+            }
         for (person in people) {
             val prior = autoCoverHint(db, person)
             val selected = BestShotSelector.choose(candidates[person].orEmpty(), prior)?.faceUid
