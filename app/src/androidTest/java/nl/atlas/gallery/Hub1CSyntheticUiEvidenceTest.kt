@@ -23,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.NativePersonAlbum
 import nl.atlas.gallery.featurepeopleui.NeedsSplittingRow
 import nl.atlas.gallery.featurepeopleui.PersonPageTarget
 import nl.atlas.gallery.featurepeopleui.SamePersonQueueItem
@@ -184,6 +185,33 @@ class Hub1CSyntheticUiEvidenceTest {
         compose.onNodeWithText("People review not available").assertIsDisplayed()
         compose.onNodeWithTag("atlas-needs-splitting-row").assertDoesNotExist()
         saveUiEvidence("hub1c-needs-splitting-revoked.png")
+    }
+
+    @Test fun hiddenHasItsOwnCountedFilterBelowSearch() {
+        val hiddenPerson = NativePersonAlbum(
+            PersonKey("native-synthetic-hidden"),
+            "Fictional hidden person",
+            listOf(face(20)), listOf("synthetic-media")
+        )
+        var opened = false
+        compose.setContent {
+            AtlasEvidenceHarness {
+                HiddenPeopleScreen(
+                    people = listOf(hiddenPerson),
+                    portrait = { syntheticPortrait() },
+                    onBack = {},
+                    onOpen = {},
+                    onOpenNeedsSplitting = { opened = true },
+                    needsSplittingCount = 1
+                )
+            }
+        }
+        compose.onNodeWithTag("atlas-people-hidden").assertIsDisplayed()
+        compose.onNodeWithText("Fictional hidden person").assertIsDisplayed()
+        compose.onNodeWithText("Needs splitting (1)").assertIsDisplayed()
+        saveUiEvidence("hub1c-hidden-scoped-filter.png")
+        compose.onNodeWithTag("atlas-hidden-needs-splitting-open").performClick()
+        assertTrue(opened)
     }
 
     @androidx.compose.runtime.Composable
