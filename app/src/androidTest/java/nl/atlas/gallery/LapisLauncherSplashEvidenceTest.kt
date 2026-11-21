@@ -443,94 +443,107 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
 
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
 
+    /**
+     * Saves the very frame in which the installed icon was seen, twice in a row at the same
+     * place (run 44858363133: the light test found the icon, then the launcher, recreated for
+     * the night-mode change, closed its app list before a second screenshot was taken).
+     */
     @Test
     fun installedIconInEmulatorLauncherAppList() {
-        var bounds: android.graphics.Rect? = null
+        quietFor(10_000L)
+        var frame: Bitmap? = null
         var tries = 0
-        while (bounds == null && tries < 4) {
+        while (frame == null && tries < 4) {
             tries++
             nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
-            idle()
+            quietFor(5_000L)
             // Open the app list: a swipe up on the workspace, or the all-apps key on alternate tries.
             if (tries % 2 == 1) nl.atlas.gallery.testkit.testShell("input swipe 540 1900 540 500 300")
             else nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_ALL_APPS")
-            idle()
-            bounds = awaitAtlasInLauncher(8_000L)
+            quietFor(5_000L)
+            frame = awaitStableIcon(8_000L)
         }
-        val found = requireNotNull(bounds) {
-            "ATLAS not shown in the emulator launcher's app list after $tries tries; ${describeFocus()}"
+        val shot = requireNotNull(frame) {
+            "ATLAS icon not seen in the emulator launcher after $tries tries ($lastScan); ${describeFocus()}"
         }
-        android.util.Log.i("ATLAS_LAPIS", "launcher ATLAS item at $found (dark=$dark)")
-        saveUiEvidence("lapis656-real-launcher-${if (dark) "dark" else "light"}.png")
+        uiEvidenceProblem(shot)?.let { problem ->
+            shot.recycle()
+            error("Launcher frame $problem")
+        }
+        saveBitmapEvidence("lapis656-real-launcher-${if (dark) "dark" else "light"}", shot)
         nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
     }
 
-    private fun idle() {
-        runCatching { instrumentation.uiAutomation.waitForIdle(300L, 3_000L) }
-    }
-
-    /**
-     * Where the installed ATLAS icon shows in the launcher: an accessibility item labelled
-     * ATLAS, or else (CI run 44853835743: the launcher window was not in the accessibility
-     * window list) the icon itself, found on the real screen as a launcher-icon-sized patch of
-     * Lapis ground with the white mark inside it. No other app on the emulator uses Lapis.
-     */
-    private fun awaitAtlasInLauncher(timeoutMs: Long): android.graphics.Rect? {
-        val own = instrumentation.targetContext.packageName
-        val deadline = SystemClock.uptimeMillis() + timeoutMs
-        while (SystemClock.uptimeMillis() < deadline) {
-            val root = instrumentation.uiAutomation.rootInActiveWindow
-            if (root != null && root.packageName?.toString() != own) {
-                for (node in root.findAccessibilityNodeInfosByText("ATLAS")) {
-                    val label = node.text?.toString() ?: node.contentDescription?.toString()
-                    if (label != "ATLAS" || !node.isVisibleToUser) continue
-                    val r = android.graphics.Rect().also { node.getBoundsInScreen(it) }
-                    if (!r.isEmpty && r.top >= 0 && r.bottom <= UI_EVIDENCE_HEIGHT) return r
-                }
-            }
-            lapisIconOnScreen()?.let { return it }
-            idle()
-        }
-        android.util.Log.i("ATLAS_LAPIS", "no ATLAS icon on screen: $lastScan")
-        return null
+    private fun quietFor(timeoutMs: Long) {
+        runCatching { instrumentation.uiAutomation.waitForIdle(500L, timeoutMs) }
     }
 
     private var lastScan = "no scan"
 
-    private fun lapisIconOnScreen(): android.graphics.Rect? {
+    /** A frame with the icon at the same place as in the frame before it, or null. */
+    private fun awaitStableIcon(timeoutMs: Long): Bitmap? {
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        var previous: android.graphics.Rect? = null
+        while (SystemClock.uptimeMillis() < deadline) {
+            val frame = screenshot() ?: continue
+            val box = lapisIcon(frame)
+            if (box != null && previous != null && near(box, previous)) {
+                android.util.Log.i("ATLAS_LAPIS", "launcher icon at $box (dark=$dark)")
+                return frame
+            }
+            frame.recycle()
+            previous = box
+            quietFor(1_000L)
+        }
+        android.util.Log.i("ATLAS_LAPIS", "no stable launcher icon: $lastScan")
+        return null
+    }
+
+    private fun near(a: android.graphics.Rect, b: android.graphics.Rect) =
+        abs(a.left - b.left) <= 6 && abs(a.top - b.top) <= 6 && abs(a.right - b.right) <= 6 && abs(a.bottom - b.bottom) <= 6
+
+    private fun screenshot(): Bitmap? {
         val shot = instrumentation.uiAutomation.takeScreenshot() ?: return null
-        val frame = if (shot.config == Bitmap.Config.HARDWARE) {
+        return if (shot.config == Bitmap.Config.HARDWARE) {
             shot.copy(Bitmap.Config.ARGB_8888, false).also { shot.recycle() }
         } else shot
-        try {
-            val step = 3
-            var count = 0
-            var white = 0
-            var left = Int.MAX_VALUE; var top = Int.MAX_VALUE; var right = -1; var bottom = -1
-            for (y in 0 until frame.height step step) for (x in 0 until frame.width step step) {
-                val c = frame.getPixel(x, y)
-                if (abs(Color.red(c) - Color.red(LAPIS)) <= 14 && abs(Color.green(c) - Color.green(LAPIS)) <= 14 &&
-                    abs(Color.blue(c) - Color.blue(LAPIS)) <= 14) {
-                    count++
-                    left = minOf(left, x); top = minOf(top, y); right = maxOf(right, x); bottom = maxOf(bottom, y)
-                }
+    }
+
+    /**
+     * The installed icon on the real screen: a square, mostly filled, launcher-icon-sized patch
+     * of exact Lapis ground with the white mark in its centre. No other emulator app uses Lapis.
+     * (The launcher window is not in the accessibility window list on the CI image.)
+     */
+    private fun lapisIcon(frame: Bitmap): android.graphics.Rect? {
+        val step = 2
+        var count = 0
+        var left = Int.MAX_VALUE
+        var top = Int.MAX_VALUE
+        var right = -1
+        var bottom = -1
+        for (y in 0 until frame.height step step) for (x in 0 until frame.width step step) {
+            val c = frame.getPixel(x, y)
+            if (abs(Color.red(c) - Color.red(LAPIS)) <= 6 && abs(Color.green(c) - Color.green(LAPIS)) <= 6 &&
+                abs(Color.blue(c) - Color.blue(LAPIS)) <= 6) {
+                count++
+                left = minOf(left, x); top = minOf(top, y); right = maxOf(right, x); bottom = maxOf(bottom, y)
             }
-            if (count == 0) { lastScan = "no Lapis pixels"; return null }
-            val box = android.graphics.Rect(left, top, right + 1, bottom + 1)
-            for (y in box.top until box.bottom step step) for (x in box.left until box.right step step) {
-                val c = frame.getPixel(x, y)
-                if (Color.red(c) > 235 && Color.green(c) > 235 && Color.blue(c) > 235) white++
-            }
-            val density = instrumentation.targetContext.resources.displayMetrics.density
-            val minSide = (30 * density).toInt()
-            val maxSide = (90 * density).toInt()
-            lastScan = "Lapis box $box, $count Lapis and $white white samples"
-            val iconSized = box.width() in minSide..maxSide && box.height() in minSide..maxSide
-            val filled = count * step * step >= box.width() * box.height() / 3
-            return if (iconSized && filled && white > 10) box else null
-        } finally {
-            frame.recycle()
         }
+        if (count == 0) { lastScan = "no Lapis pixels"; return null }
+        val box = android.graphics.Rect(left, top, right + 1, bottom + 1)
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        val sideOk = box.width() in (30 * density).toInt()..(90 * density).toInt() &&
+            box.height() in (30 * density).toInt()..(90 * density).toInt()
+        val square = box.width() * 4 >= box.height() * 3 && box.height() * 4 >= box.width() * 3
+        val filled = count * step * step * 2 >= box.width() * box.height()
+        var white = 0
+        val inner = android.graphics.Rect(box).apply { inset(box.width() / 4, box.height() / 5) }
+        for (y in inner.top until inner.bottom step step) for (x in inner.left until inner.right step step) {
+            val c = frame.getPixel(x, y)
+            if (Color.red(c) > 235 && Color.green(c) > 235 && Color.blue(c) > 235) white++
+        }
+        lastScan = "Lapis box $box, $count Lapis and $white white samples, side=$sideOk square=$square filled=$filled"
+        return if (sideOk && square && filled && white > 20) box else null
     }
 }
 
