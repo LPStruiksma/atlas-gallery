@@ -39,10 +39,10 @@
       "file": "brand-l5-collections.png",
       "size": [
         3480,
-        9269
+        9855
       ],
-      "sha256": "5f4256040fcfa805a480c011f8d0b4d295453dbba4943aae1634eefc2035e0ec",
-      "device_frames": 13,
+      "sha256": "d983460011e32d35f6dfd4447709a345765b6427704cc43ce3aa9c23ec8e6cf4",
+      "device_frames": 17,
       "device_frame_px": [
         1080,
         2340
@@ -55,6 +55,10 @@
         "C1",
         "C2",
         "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
         "D1",
         "D2",
         "D3",
