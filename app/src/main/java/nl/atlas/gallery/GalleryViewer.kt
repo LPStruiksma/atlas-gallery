@@ -265,8 +265,9 @@ private fun GalleryViewerSnapshot(
     var controlledScrollDepth by remember { mutableIntStateOf(0) }
     var currentZoom by remember { mutableFloatStateOf(1f) }
     val latestZoom by rememberUpdatedState(currentZoom)
-    // One cancelable explicit selection channel for thumbnail taps and the
-    // end of a filmstrip scrub. A new immutable album snapshot resets it.
+    // One cancelable explicit selection channel, with a source flag so a
+    // thumbnail tap eases only the strip; scrub/edge selections stay instant.
+    // A new immutable album snapshot resets it.
     var selectionRequest by remember(CatalogSourceKey(items)) {
         mutableStateOf<ViewerJumpIntent?>(null)
     }
@@ -372,16 +373,36 @@ private fun GalleryViewerSnapshot(
     // One cancelable explicit navigation consumer. Null signals are retained
     // to cancel obsolete selection if a newer filmstrip swipe starts, rather
     // than leaving an old tap job running after that gesture.
-    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items)) {
+    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items), stripStridePx) {
         snapshotFlow { selectionRequest }.collectLatest { request ->
             if (request == null || request.index !in items.indices)
                 return@collectLatest
             controlledScrollDepth = acquireViewerScrollLease(controlledScrollDepth)
             try {
+                // The photo/selected semantics land first. Only the strip moves
+                // through frames; never animate through intervening photos.
                 if (pagerState.currentPage != request.index) {
                     timingProbe?.selectionRequested(request.index)
                     pagerState.scrollToPage(request.index)
                 }
+                val from = ViewerStripPosition(
+                    stripState.firstVisibleItemIndex, stripState.firstVisibleItemScrollOffset)
+                if (viewerShouldEaseStripJump(request.origin,
+                        AtlasMotion.animationsDisabled(context), from, request.index)) {
+                    // A second tap cancels collectLatest, then reads the actually
+                    // rendered position. requestScrollToItem is measure-safe and O(1):
+                    // no per-frame pager recomposition or intermediate image decode.
+                    animate(0f, 1f, animationSpec = tween(
+                        durationMillis = AtlasMotion.FILMSTRIP_TAP_MS,
+                        easing = AtlasMotion.FilmstripTapEase
+                    )) { fraction, _ ->
+                        val frame = viewerTapStripFrame(from, request.index,
+                            fraction, items.size, stripStridePx)
+                        stripState.requestScrollToItem(frame.index, frame.scrollOffsetPx)
+                    }
+                }
+                // A final exact alignment is harmless after the t=260 ms frame.
+                // Direct scrub/edge requests, and remove-animations, only take this path.
                 stripState.scrollToItem(request.index)
             } finally {
                 controlledScrollDepth = releaseViewerScrollLease(controlledScrollDepth)
@@ -784,6 +805,15 @@ private fun GalleryViewerSnapshot(
             userScrollEnabled = currentZoom <= 1.01f && !stripState.isScrollInProgress &&
                 !detailsShown,
             modifier = Modifier.fillMaxSize().testTag("atlas-main-pager")
+                // Take ownership as soon as a finger touches the photo; a real
+                // swipe must never compete with an in-flight tap-strip animation.
+                .pointerInput(pagerState) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false,
+                            pass = PointerEventPass.Initial)
+                        selectionRequest = null
+                    }
+                }
                 // #509 (Lukas 2026-11-10 00:02Z): like Samsung, swipe up on an
                 // unzoomed photo opens its details; swipe down closes the
                 // viewer (parity research VIEW:V22, V27). A zoomed photo's own pan
@@ -957,6 +987,16 @@ private fun GalleryViewerSnapshot(
                     horizontalArrangement = Arrangement.spacedBy(STRIP_TILE_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxSize().testTag("atlas-filmstrip")
+                        // Cancel even during the held pre-touch-slop phase.
+                        // The down isn't consumed: LazyRow drag/fling and tile
+                        // click still own their normal gesture handlers.
+                        .pointerInput(stripState) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial)
+                                selectionRequest = null
+                            }
+                        }
                 ) {
                     // Positional keys avoid writing private MediaStore URIs to
                     // LazyRow saveable-state keys. A different catalogue
@@ -982,7 +1022,8 @@ private fun GalleryViewerSnapshot(
                             }
                             .clickable(role = Role.Button) {
                                 selectionRequest = nextViewerJumpIntent(
-                                    selectionRequest, index, items.size)
+                                    selectionRequest, index, items.size,
+                                    ViewerJumpOrigin.THUMBNAIL)
                             }) {
                             MediaPreview(
                                 // The parent already announces Photo/Video N of M
