@@ -23,6 +23,37 @@ internal fun viewerStripPosition(
     return ViewerStripPosition(index, offset)
 }
 
+/** The tap-only strip ease starts at LazyRow's *rendered* first item + offset.
+ * Double precision avoids losing sub-tile accuracy for a 150k-item library;
+ * every frame remains O(1), irrespective of how far the destination is.
+ */
+internal fun viewerTapStripFrame(
+    from: ViewerStripPosition, targetIndex: Int, progress: Float,
+    count: Int, stridePx: Int
+): ViewerStripPosition {
+    require(count > 0 && stridePx > 0)
+    val start = (from.index.toDouble() +
+        from.scrollOffsetPx.coerceAtLeast(0).toDouble() / stridePx)
+        .coerceIn(0.0, (count - 1).toDouble())
+    val destination = targetIndex.coerceIn(0, count - 1).toDouble()
+    val fraction = if (progress.isFinite()) progress.coerceIn(0f, 1f).toDouble() else 1.0
+    val coordinate = start + (destination - start) * fraction
+    val index = floor(coordinate).toInt().coerceIn(0, count - 1)
+    val offset = ((coordinate - index) * stridePx).roundToInt().coerceIn(0, stridePx)
+    return when {
+        index == count - 1 -> ViewerStripPosition(index, 0)
+        offset == stridePx -> ViewerStripPosition(index + 1, 0)
+        else -> ViewerStripPosition(index, offset)
+    }
+}
+
+/** Never animate a scrub completion, edge-page request, or a reduced-motion cut. */
+internal fun viewerShouldEaseStripJump(
+    origin: ViewerJumpOrigin, animationsDisabled: Boolean,
+    from: ViewerStripPosition, targetIndex: Int
+): Boolean = origin == ViewerJumpOrigin.THUMBNAIL && !animationsDisabled &&
+    (from.index != targetIndex || from.scrollOffsetPx != 0)
+
 /**
  * A regular one-finger swipe on an unzoomed photo belongs to HorizontalPager.
  * Compose detectTransformGestures consumes single-finger pans unconditionally
