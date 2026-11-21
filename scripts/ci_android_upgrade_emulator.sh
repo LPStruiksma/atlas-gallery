@@ -320,8 +320,12 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       adb logcat -c || true
       # </dev/null: adb shell would otherwise read the rest of the list.
       # atlas_listener_selftest turns on AtlasRunListenerSelfTest; no other test reads it.
+      # #870 A/B arm 'on': only difference between arms is -e listener.
+      stress_t0=$SECONDS
       adb shell am instrument -w -r -e listener "$LISTENER" -e atlas_listener_selftest true \
         -e class "$stress_target" "$RUNNER" > "$stress_out" 2>&1 < /dev/null || true
+      stress_secs=$((SECONDS - stress_t0))
+      echo "AB870 arm=on shard=$SHARD_INDEX target=$stress_target run=$stress_run secs=$stress_secs $(grep -E '^(OK|Tests run)' "$stress_out" | tail -1)"
       if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
       else
