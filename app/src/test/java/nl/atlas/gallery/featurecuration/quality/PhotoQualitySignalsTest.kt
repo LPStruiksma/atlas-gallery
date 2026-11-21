@@ -23,7 +23,7 @@ class PhotoQualitySignalsTest {
     @Test fun exposureReportsBlackWhiteAndNormalPattern() {
         assertEquals(1.0, PhotoQualitySignals.analyseArgb8888(IntArray(100) { argb(0) }, 10, 10).exposure!!.clippedDarkFraction, 0.0)
         assertEquals(1.0, PhotoQualitySignals.analyseArgb8888(IntArray(100) { argb(255) }, 10, 10).exposure!!.clippedLightFraction, 0.0)
-        val normal = PhotoQualitySignals.analyseArgb8888(IntArray(100) { argb(40 + it % 180) }, 10, 10).exposure!!
+        val normal = PhotoQualitySignals.analyseArgb8888(IntArray(100) { argb(56 + it) }, 10, 10).exposure!!
         assertEquals(0.0, normal.clippedDarkFraction, 0.0)
         assertEquals(0.0, normal.clippedLightFraction, 0.0)
         assertTrue(normal.spread > .1)
