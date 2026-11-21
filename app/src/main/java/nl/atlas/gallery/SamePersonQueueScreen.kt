@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -58,6 +59,8 @@ import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewCommand
 import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepeopleui.samePersonQueueMixedSides
+import nl.atlas.gallery.featurepeopleui.samePersonSkipFingerprint
+import nl.atlas.gallery.featurepeopleui.SamePersonSkipPreferences
 import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
 import nl.atlas.gallery.featurepeopleui.PersonPageTarget
 import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
@@ -91,12 +94,17 @@ internal fun SamePersonQueueRoute(
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
     val epoch = state?.permissionEpoch
+    val context = LocalContext.current
+    val skipPreferences = remember(context) { SamePersonSkipPreferences.forApp(context) }
     var cursor by remember { mutableStateOf(state?.let(SamePersonQueueMemo::cursor)) }
     // How many of this screen's answers [cursor]'s snapshot already holds.
     var cursorSeq by remember { mutableIntStateOf(0) }
     var found by remember { mutableStateOf(cursor?.items.orEmpty()) }
     var listDone by remember { mutableStateOf(cursor?.done == true) }
-    var skipped by remember { mutableStateOf(emptySet<String>()) }
+    // Restored for the currently authorized grant before rendering questions.
+    var skipped by remember(epoch) {
+        mutableStateOf(epoch?.let(skipPreferences::read).orEmpty())
+    }
     var mixedBusy by remember { mutableStateOf(false) }
     var undoBusy by remember { mutableStateOf(false) }
     var lastMixedGeneration by remember { mutableStateOf<String?>(null) }
@@ -104,10 +112,14 @@ internal fun SamePersonQueueRoute(
     // Every answer of this screen in tap order; the first `resolved` are committed (or refused).
     var answers by remember { mutableStateOf(emptyList<SamePersonQueueAnswer>()) }
     var resolved by remember { mutableIntStateOf(0) }
-    val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion) {
+    val skipSnapshot = cursor?.state?.takeIf { it.permissionEpoch == epoch }
+    val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion, skipSnapshot) {
         val notInList = answers.drop(cursorSeq)
-        found.filter { item -> item.key !in skipped && item.key != lastMixedQuestion &&
-            notInList.none { it.hides(item) } }
+        found.filter { item ->
+            val token = skipSnapshot?.let { samePersonSkipFingerprint(it, item) }
+            token != null && token !in skipped && item.key != lastMixedQuestion &&
+                notInList.none { it.hides(item) }
+        }
     }
     val item = visible.firstOrNull()
     var markSubject by remember(item?.key) { mutableStateOf(false) }
@@ -185,7 +197,12 @@ internal fun SamePersonQueueRoute(
             open = open,
             loaded = people == null ||
                 (listDone && resolved == answers.size && cursor?.state === state),
-            skippedSome = found.any { it.key in skipped },
+            skippedSome = found.any { question ->
+                skipSnapshot?.let { samePersonSkipFingerprint(it, question) } in skipped
+            },
+            onShowSkipped = {
+                epoch?.let { skipPreferences.clear(it); skipped = emptySet() }
+            },
             markSubject = markSubject,
             markOther = markOther,
             actionBusy = mixedBusy || undoBusy,
@@ -228,7 +245,15 @@ internal fun SamePersonQueueRoute(
                     SamePersonQueueCommits.submit(host, answer) { resolved++ }
                 }
             },
-            onSkip = { item?.let { skipped = skipped + it.key } },
+            onSkip = {
+                val asked = item
+                val token = if (asked != null) skipSnapshot?.let {
+                    samePersonSkipFingerprint(it, asked)
+                } else null
+                if (epoch != null && token != null && !mixedBusy && !undoBusy) {
+                    skipped = skipPreferences.add(epoch, token)
+                }
+            },
             onClose = onClose
         )
     }
@@ -340,6 +365,7 @@ internal fun SamePersonQueueScreen(
     open: Int,
     loaded: Boolean,
     skippedSome: Boolean,
+    onShowSkipped: () -> Unit,
     markSubject: Boolean,
     markOther: Boolean,
     actionBusy: Boolean,
@@ -405,12 +431,18 @@ internal fun SamePersonQueueScreen(
                     }
                     !loaded -> CircularProgressIndicator(
                         Modifier.size(32.dp).testTag("atlas-same-queue-loading"))
-                    else -> Text(
-                        if (skippedSome) "You skipped the rest. Close and open again to see them."
-                        else "No open questions.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(32.dp).testTag("atlas-same-queue-empty"))
+                    else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (skippedSome) "No unskipped questions."
+                            else "No open questions.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(32.dp).testTag("atlas-same-queue-empty"))
+                        if (skippedSome) TextButton(onClick = onShowSkipped,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-same-queue-show-skipped")) {
+                            Text("Show skipped")
+                        }
+                    }
                 }
             }
             if (item != null) Row(
