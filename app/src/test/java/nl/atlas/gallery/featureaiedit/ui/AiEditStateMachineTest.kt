@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featureaiedit.ui
 
+import nl.atlas.gallery.featureaiedit.engine.AiEditIssue
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -126,5 +127,74 @@ class AiEditStateMachineTest {
         assertEquals(AiEditPhase.Composing, restored.state.phase)
         assertTrue(restored.state.candidates.isEmpty())
         assertNull(restored.state.selectedCandidate)
+    }
+
+    @Test fun sendingThenSentThenIssueCarriesTheChargeRisk() {
+        val (machine, token) = generating()
+        assertTrue(machine.state.sending)
+        assertFalse(machine.state.submitSent)
+        assertTrue(machine.markSent(token))
+        assertFalse(machine.state.sending)
+        assertTrue(machine.state.submitSent)
+        assertFalse(machine.markSent(token + 1))
+        assertTrue(machine.onIssue(token, AiEditIssue.RATE_LIMITED))
+        assertEquals(AiEditPhase.Failed, machine.state.phase)
+        assertEquals(AiEditIssue.RATE_LIMITED, machine.state.issue)
+        assertFalse("a late duplicate cannot overwrite the card", machine.onIssue(token, AiEditIssue.FAILED))
+    }
+
+    @Test fun declineIsARefusalCardAndCancelIsNeverACard() {
+        val (machine, token) = generating()
+        assertFalse(machine.onIssue(token, AiEditIssue.CANCELLED))
+        assertTrue(machine.onIssue(token, AiEditIssue.DECLINED, "x".repeat(400)))
+        assertEquals(AiEditPhase.Refused, machine.state.phase)
+        assertEquals(160, machine.state.issueDetail!!.length)
+    }
+
+    @Test fun checkAgainResumesOnlyFromRecoverableUnknownWithoutANewPrompt() {
+        val (machine, token) = generating()
+        assertTrue(machine.onIssue(token, AiEditIssue.UNKNOWN_CANNOT_CHECK))
+        assertNull("can't check means no lookup", machine.resume())
+        assertTrue(machine.showIssue(AiEditIssue.UNKNOWN_RECOVERABLE))
+        val lookup = requireNotNull(machine.resume())
+        assertTrue(lookup > token)
+        assertEquals(AiEditPhase.Generating, machine.state.phase)
+        assertTrue("a lookup is about an already sent request", machine.state.submitSent)
+        assertEquals("Brighten the sky", machine.state.prompt)
+        assertTrue(machine.onResult(lookup, listOf(candidate())))
+        assertNull(machine.state.issue)
+    }
+
+    @Test fun composeAndGenerateClearTheLastCard() {
+        val (machine, token) = generating()
+        assertTrue(machine.onIssue(token, AiEditIssue.OFFLINE))
+        assertTrue(machine.compose("Brighten the sky"))
+        assertNull(machine.state.issue)
+        requireNotNull(machine.generate())
+        assertNull(machine.state.issue)
+        assertTrue(machine.state.sending)
+    }
+
+    @Test fun aFailedSaveKeepsTheResultSoSaveCopyCanBeTriedAgain() {
+        val (machine, token) = generating()
+        assertTrue(machine.onResult(token, listOf(candidate())))
+        assertNotNull(machine.beginAccept())
+        assertTrue(machine.saveFailed())
+        assertEquals(AiEditPhase.Result, machine.state.phase)
+        assertEquals("c1", machine.state.selectedId)
+        assertTrue(machine.state.error!!.contains("original is unchanged"))
+        assertNotNull(machine.beginAccept())
+        assertNull(machine.state.error)
+        assertTrue(machine.saved())
+    }
+
+    @Test fun serviceChoiceCarriesItsNameAndIsLockedWhileWorking() {
+        val machine = AiEditStateMachine()
+        assertTrue(machine.chooseProvider("p-fal", setOf("p-fal"), "fal.ai", "Qwen Image Edit"))
+        assertEquals("fal.ai", machine.state.serviceName)
+        assertEquals("Qwen Image Edit", machine.state.modelName)
+        assertTrue(machine.compose("Brighten the sky"))
+        requireNotNull(machine.generate())
+        assertFalse(machine.chooseProvider("p-fal", setOf("p-fal"), "fal.ai", null))
     }
 }

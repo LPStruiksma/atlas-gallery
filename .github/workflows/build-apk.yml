@@ -132,7 +132,8 @@ jobs:
     name: emulator-ui shard ${{ matrix.shard }}
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # Shard 0 (341 tests plus the upgrade phases) ran 37-40+ min and was cancelled at 40 with 0 failures; 50 leaves headroom.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
