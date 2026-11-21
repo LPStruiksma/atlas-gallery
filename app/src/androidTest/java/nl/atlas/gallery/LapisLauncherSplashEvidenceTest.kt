@@ -124,7 +124,7 @@ class LapisLauncherResourcesTest {
 /** The launcher sheets and the API 29-30 starting window, drawn by Android from the shipped resources. */
 @RunWith(AndroidJUnit4::class)
 class LapisLauncherSheetEvidenceTest {
-    @get:Rule val display = S24DisplayRule()
+    @get:Rule val display: org.junit.rules.TestRule = S24DisplayRule()
 
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
