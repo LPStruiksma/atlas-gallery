@@ -22,5 +22,5 @@
 <text x="180" y="571" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Resume review</text>
 <rect x="18" y="596" width="324" height="52" rx="22" fill="#14152A" opacity="1"/>
 <text x="180" y="628" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#F2F3F8" text-anchor="middle">Start again</text>
-<text x="180" y="688" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#8C9BFF" text-anchor="middle">Not now</text>
+<rect x="18" y="658" width="324" height="56" rx="22" fill="#14152A" stroke="#9AA0B8" stroke-width="0.5"/><text x="180" y="688" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#8C9BFF" text-anchor="middle">Not now</text>
 <text x="180" y="728" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#9AA0B8" text-anchor="middle">Start again clears Keeps, not photos</text></svg>
