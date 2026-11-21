@@ -105,12 +105,16 @@ class AgslPixelBackend : PixelBackend {
                 val wrapped = requireNotNull(Bitmap.wrapHardwareBuffer(buffer, RenderBitmaps.colorSpace(outputSpace))) {
                     "Cannot wrap the tile buffer"
                 }
-                val full = wrapped.copy(Bitmap.Config.ARGB_8888, tile.width == width && tile.height == height)
+                // Read back immutably first: on the API 35 emulator a direct HARDWARE -> mutable
+                // copy came back fully transparent (diagnosed for #632), the immutable copy does not.
+                val readBack = wrapped.copy(Bitmap.Config.ARGB_8888, false)
                 wrapped.recycle()
-                if (tile.width == width && tile.height == height) return full
-                val cropped = Bitmap.createBitmap(full, 0, 0, tile.width, tile.height).copy(Bitmap.Config.ARGB_8888, true)
-                full.recycle()
-                return cropped
+                val cropped = if (tile.width == width && tile.height == height) readBack
+                else Bitmap.createBitmap(readBack, 0, 0, tile.width, tile.height)
+                val out = cropped.copy(Bitmap.Config.ARGB_8888, true)
+                if (cropped !== readBack) cropped.recycle()
+                readBack.recycle()
+                return out
             } finally {
                 buffer.close()
             }

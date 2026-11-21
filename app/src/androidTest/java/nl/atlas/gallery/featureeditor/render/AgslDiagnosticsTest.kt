@@ -17,17 +17,26 @@ import org.junit.runner.RunWith
 /** TEMP diagnostics for #632 (removed before review). */
 @RunWith(AndroidJUnit4::class)
 class AgslDiagnosticsTest {
-    private fun draw(shader: Shader, w: Int = 8, h: Int = 8): Bitmap {
+    private fun draw(shader: Shader, w: Int = 8, h: Int = 8, name: Boolean = false, clip: Boolean = false, mutable: Boolean = false, wait: Boolean = true): Bitmap {
         val reader = RenderTestKit.reader(w, h)
-        val r = HardwareRenderer().apply { setSurface(reader.surface); isOpaque = false }
+        val r = HardwareRenderer().apply { setSurface(reader.surface); isOpaque = false; if (name) setName("x") }
         val node = RenderNode("d").apply { setPosition(0, 0, w, h) }
         val c = node.beginRecording(w, h)
         c.drawColor(0, PorterDuff.Mode.CLEAR)
+        if (clip) c.clipRect(0, 0, w, h)
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply { this.shader = shader })
         node.endRecording()
         r.setContentRoot(node)
-        r.createRenderRequest().setWaitForPresent(true).syncAndDraw()
-        val b = RenderTestKit.readLatest(reader, PixelSpace.SRGB)
+        r.createRenderRequest().setWaitForPresent(wait).syncAndDraw()
+        val b = if (!mutable) RenderTestKit.readLatest(reader, PixelSpace.SRGB) else {
+            var img = reader.acquireLatestImage()
+            val t0 = android.os.SystemClock.uptimeMillis()
+            while (img == null && android.os.SystemClock.uptimeMillis() - t0 < 3000) img = reader.acquireLatestImage()
+            val hb = img!!.hardwareBuffer!!
+            val wb = Bitmap.wrapHardwareBuffer(hb, RenderBitmaps.colorSpace(PixelSpace.SRGB))!!
+            val out = wb.copy(Bitmap.Config.ARGB_8888, true)
+            hb.close(); img.close(); out
+        }
         r.destroy(); reader.close()
         return b
     }
@@ -79,7 +88,7 @@ class AgslDiagnosticsTest {
 
     @Test fun probeSizes() {
         assumeTrue(Build.VERSION.SDK_INT >= 33)
-        for ((w, h) in listOf(8 to 8, 64 to 64, 240 to 160, 256 to 160)) {
+        for ((w, h) in listOf(8 to 8, 240 to 160)) {
             val pic = RenderTestKit.picture(w, h)
             val pass = RuntimeShader("uniform shader s; half4 main(float2 p){return s.eval(p);}")
             pass.setInputBuffer("s", BitmapShader(pic, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { filterMode = BitmapShader.FILTER_MODE_NEAREST })
@@ -90,6 +99,11 @@ class AgslDiagnosticsTest {
             val g = AgslPixelBackend().use { it.render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB) }
             val c = CpuPixelBackend().render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB)
             RenderTestKit.log("diag2 ${w}x$h gpu_vs_src " + firstMismatch(g, pic) + " cpu_vs_src " + firstMismatch(c, pic) + " gpuconf=${g.config} ${g.width}x${g.height}")
+            val sh = AgslProgram().bind(prog, region, null, PixelSpace.SRGB)
+            RenderTestKit.log("diag2 ${w}x$h named " + firstMismatch(draw(sh, w, h, name = true), pic))
+            RenderTestKit.log("diag2 ${w}x$h clipped " + firstMismatch(draw(sh, w, h, clip = true), pic))
+            RenderTestKit.log("diag2 ${w}x$h mutable " + firstMismatch(draw(sh, w, h, mutable = true), pic))
+            RenderTestKit.log("diag2 ${w}x$h nowait " + firstMismatch(draw(sh, w, h, wait = false), pic))
             val direct = draw(AgslProgram().bind(prog, region, null, PixelSpace.SRGB), w, h)
             RenderTestKit.log("diag2 ${w}x$h direct_vs_src " + firstMismatch(direct, pic))
         }
