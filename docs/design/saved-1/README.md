@@ -51,7 +51,7 @@ Render labelled **light/dark pairs** for all A–G, with at least **two 1080 × 
 
 ## Deliverable and validation ledger
 
-- [`saved-1-search-albums.png`](saved-1-search-albums.png): the board, 3480 × 10976 px, 256-colour PNG. Two full-scale 1080 × 2340 frames (A light at 100%, B1 dark at 200%) and 28 half-size frames: every panel A–G in light and dark (A, B1 duplicate name, B2 failed save, C, D1 saved album with menu, D2 remove confirmation, E1 Include/Exclude, E2 zero matches, F1 add to album, F2 after add, G1 indexing, G2 Retry, G3 200% long name with 10k+, G4 RTL with TalkBack order and reduced motion).
+- [`saved-1-search-albums.png`](saved-1-search-albums.png): the board, 3480 × 10976 px, 256-colour PNG. Two full-scale 1080 × 2340 frames (A light at 100%, B1 dark at 200%) and 30 half-size frames: every panel A–G in light and dark (A, B1 duplicate name, B2 failed save, C1 Albums then Saved searches, C2 scrolled to Unsorted, D1 saved album with menu, D2 remove confirmation, E1 Include/Exclude/Remove, E2 zero matches, F1 add to album, F2 after add, G1 indexing, G2 Retry, G3 200% long name with 10k+, G4 RTL with TalkBack order and reduced motion).
 - [`manifest.json`](manifest.json): dimensions, SHA-256, per-frame theme, type scale and every touch target with its dp size, Funnel font hashes, Pillow version, reference decisions.
 - `tools/design/saved1_board.py` (generator, reuses the Lapis kit read-only), `tools/design/saved1_check.py`, `tools/design/tests/test_saved1_board.py`.
 

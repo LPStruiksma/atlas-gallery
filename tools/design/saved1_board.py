@@ -297,23 +297,39 @@ class Gen:
     def b_fail(self, theme="light", scale=1.0) -> Screen:
         return self.b(theme, scale, "failed")
 
-    # C: Collections with Unsorted, saved searches (real shape strips), 1-2 assets and 0 assets
-    def c(self, theme="light", scale=1.0) -> Screen:
+    # C: Collections > Albums: ordinary albums, then the Saved searches heading and rows, then Unsorted.
+    # The list is long, so it is shown at two scroll positions (C1 top, C2 scrolled down).
+    def _collections(self, theme, scale, rows, heading_before=None, scrolled=False) -> Screen:
         s = self.scr(theme, scale)
         s.status_bar()
         y = L.title(s, "Collections")
-        rows = [
-            ("Unsorted", "In no album you manage · 1,204 photos", L.STRIP_RATIOS[0], 21, None),
-            ("Mountains 2026", "Saved search · 184 photos", L.STRIP_RATIOS[1], 31, None),
-            ("2025 without screenshots", "Saved search · 2 photos", L.STRIP_RATIOS[2][:2], 41, None),
-            ("Night walks", "Saved search · 0 photos", None, 0, "No photos match yet. New ones that fit appear here."),
-            ("Family trips", "Album · 38 photos", L.STRIP_RATIOS[3], 51, None),
-        ]
-        for name, line2, ratios, seed, empty in rows:
+        for item in rows:
+            if item == "heading":
+                s.text((px(16), y + px(4)), "Saved searches", "section")
+                y += s.line_h("section") + px(12)
+                continue
+            name, line2, ratios, seed, empty = item
             y = L.collection_row(s, y, name, line2, ratios, seed, empty_text=empty)
         s.slab("Collections")
+        if scrolled:
+            card(s, ["List scrolled down: the Saved searches heading is above."])
         s.gesture_bar()
         return s
+
+    def c1(self, theme="light", scale=1.0) -> Screen:
+        return self._collections(theme, scale, [
+            ("Family trips", "Album · 38 photos", L.STRIP_RATIOS[3], 51, None),
+            ("Alps hikes", "Album · 112 photos", L.STRIP_RATIOS[0], 61, None),
+            "heading",
+            ("Mountains 2026", "Saved search · 184 photos", L.STRIP_RATIOS[1], 31, None),
+        ])
+
+    def c2(self, theme="light", scale=1.0) -> Screen:
+        return self._collections(theme, scale, [
+            ("2025 without screenshots", "Saved search · 2 photos", L.STRIP_RATIOS[2][:2], 41, None),
+            ("Night walks", "Saved search · 0 photos", None, 0, "No photos match yet. New ones that fit appear here."),
+            ("Unsorted", "In no album you manage · 1,204 photos", L.STRIP_RATIOS[0], 21, None),
+        ], scrolled=True)
 
     # D: saved album grid with Sort, shared Search; overflow with edit / rename / remove
     def _saved_header(self, s, sub="Saved search · 184 photos"):
@@ -379,10 +395,10 @@ class Gen:
         s.rrect([side, y0, DEVICE_W - side, y1], 22, fill=s.t["surface"])
         chip_block(s, side + px(8), y0 + px(6), avail, chips)
         rh = max(px(48), s.line_h("body") + px(16))
-        menu(s, DEVICE_W - side, y0 - px(8) - 3 * rh - px(16), ["Type: Screenshots", "Include", "Exclude"],
+        menu(s, DEVICE_W - side, y0 - px(8) - 4 * rh - px(16), ["Type: Screenshots", "Include", "Exclude", "Remove"],
              highlight=2)
         L.anno_card(s, ["OR inside a family, AND across families,", "then subtract every excluded set (Not: chip)."],
-                    y0 - px(8) - 3 * rh - px(24))
+                    y0 - px(8) - 4 * rh - px(24))
         s.gesture_bar()
         return s
 
@@ -394,7 +410,7 @@ class Gen:
         y = L.message(s, yb + px(24), "No photos match.", "You asked for Alps and excluded Alps. Nothing can fit both.",
                       button="Clear exclusion")
         s.slab("Pictures")
-        card(s, ["Zero matches is a result, not an error.", "Save as album is off until something matches."])
+        card(s, ["Zero matches is a result, not an error.", "An empty result can still be saved as an album."])
         s.gesture_bar()
         return s
 
@@ -536,11 +552,12 @@ FRAMES = [
     ("B1", "B", "Save: duplicate", "Name taken: the sheet stays, query and name kept, Save off.", "b_dup", 1.0),
     ("B2", "B", "Save: failed", "Save failed: nothing lost, Retry and Cancel stay reachable.", "b_fail",
      1.0),
-    ("C", "C", "Collections", "Unsorted pinned, saved searches with real-shape strips; 2 photos and 0 photos.", "c",
-     1.0),
+    ("C1", "C", "Albums, Saved searches", "Albums first, then the Saved searches heading and rows with real-shape strips.",
+     "c1", 1.0),
+    ("C2", "C", "Saved searches, Unsorted", "Scrolled: 2 photos, 0 photos (row stays), then Unsorted last.", "c2", 1.0),
     ("D1", "D", "Saved album", "Standard grid, Sort, shared Search. Overflow: edit, rename, remove.", "d1", 1.0),
     ("D2", "D", "Remove album", "Confirmation says media is not deleted; the photos stay visible.", "d2", 1.0),
-    ("E1", "E", "Include/Exclude", "Facet menu; Exclude makes a Not: chip. OR in a family, AND across.", "e1", 1.0),
+    ("E1", "E", "Include/Exclude", "Facet menu: Include, Exclude, Remove. Exclude makes a Not: chip. OR in a family, AND across.", "e1", 1.0),
     ("E2", "E", "Zero matches", "Contradictory filters: zero is a result, Clear exclusion is one tap.", "e2", 1.0),
     ("F1", "F", "Add to album", "Two photos selected; the sheet says they leave Unsorted, files stay.",
      "f1", 1.0),
@@ -614,8 +631,8 @@ def build(fonts: Fonts):
             [["Within one family", "OR: Place Alps OR Place Tirol", "E1"],
              ["Across families", "AND: (Alps OR Tirol) AND Year 2026", "E1"],
              ["Exclude", "Subtract the union of every excluded set; shown as Not: chips", "A, E1, E2"],
-             ["Contradiction", "Zero matches with Clear exclusion; save action off", "E2"],
-             ["Unsorted", "Photos in no user-managed album, whatever camera folder holds the file", "C, F1, F2"],
+             ["Contradiction", "Zero matches with Clear exclusion; Save as album stays available (empty result is saveable)", "E2"],
+             ["Unsorted", "Photos in no user-managed album, whatever camera folder holds the file", "C2, F1, F2"],
              ["Add to album", "Leaves Unsorted; the file is not moved or copied", "F1, F2"],
              ["Remove saved album", "Removes the saved search only; no media is deleted", "D2"]],
             [0.22, 0.58, 0.20])

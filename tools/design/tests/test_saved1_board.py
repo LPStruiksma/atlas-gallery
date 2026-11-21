@@ -33,6 +33,11 @@ class Semantics(unittest.TestCase):
     def test_contradiction_is_zero_matches(self):
         self.assertEqual(self.ids({"place": {"Alps"}}, {("place", "Alps")}), [])
 
+    def test_camera_folder_alone_is_still_unsorted(self):
+        photo = {"id": 9, "tags": set(), "folder": "DCIM/Camera"}
+        self.assertEqual([i["id"] for i in S.unsorted([photo], {})], [9])
+        self.assertEqual(S.unsorted([photo], {"Camera roll (folder view)": set()}), [photo])
+
     def test_unsorted_is_membership_in_no_manual_album(self):
         albums = {"Family trips": {2}, "Alps hikes": {2, 3}}
         self.assertEqual([i["id"] for i in S.unsorted(LIB, albums)], [1, 4])
@@ -71,7 +76,7 @@ class Board(unittest.TestCase):
     def test_required_actions_are_present_as_targets(self):
         labels = {t["label"] for f in self.frames for t in f["targets"]}
         for needed in ("Save as album", "Retry", "Clear exclusion", "Remove saved album", "Cancel", "Undo",
-                       "Exclude", "Include", "Not: Screenshots"):
+                       "Exclude", "Include", "Remove", "Not: Screenshots"):
             self.assertIn(needed, labels)
 
     def test_generation_is_deterministic(self):

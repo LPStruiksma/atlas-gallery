@@ -942,14 +942,14 @@
       ]
     },
     {
-      "code": "C light",
-      "title": "Collections",
+      "code": "C1 light",
+      "title": "Albums, Saved searches",
       "theme": "light",
       "type_scale_percent": 100,
       "scale_on_board": "50%",
       "targets": [
         {
-          "label": "Unsorted",
+          "label": "Family trips",
           "box_px": [
             0,
             245,
@@ -962,7 +962,7 @@
           ]
         },
         {
-          "label": "Mountains 2026",
+          "label": "Alps hikes",
           "box_px": [
             0,
             649,
@@ -975,38 +975,12 @@
           ]
         },
         {
-          "label": "2025 without screenshots",
+          "label": "Mountains 2026",
           "box_px": [
             0,
-            1053,
+            1155,
             1080,
-            1435
-          ],
-          "size_dp": [
-            384,
-            136
-          ]
-        },
-        {
-          "label": "Night walks",
-          "box_px": [
-            0,
-            1457,
-            1080,
-            1839
-          ],
-          "size_dp": [
-            384,
-            136
-          ]
-        },
-        {
-          "label": "Family trips",
-          "box_px": [
-            0,
-            1861,
-            1080,
-            2243
+            1537
           ],
           "size_dp": [
             384,
@@ -1055,14 +1029,14 @@
       ]
     },
     {
-      "code": "C dark",
-      "title": "Collections",
+      "code": "C1 dark",
+      "title": "Albums, Saved searches",
       "theme": "dark",
       "type_scale_percent": 100,
       "scale_on_board": "50%",
       "targets": [
         {
-          "label": "Unsorted",
+          "label": "Family trips",
           "box_px": [
             0,
             245,
@@ -1075,7 +1049,7 @@
           ]
         },
         {
-          "label": "Mountains 2026",
+          "label": "Alps hikes",
           "box_px": [
             0,
             649,
@@ -1088,7 +1062,94 @@
           ]
         },
         {
+          "label": "Mountains 2026",
+          "box_px": [
+            0,
+            1155,
+            1080,
+            1537
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C2 light",
+      "title": "Saved searches, Unsorted",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
           "label": "2025 without screenshots",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Night walks",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
           "box_px": [
             0,
             1053,
@@ -1101,12 +1162,60 @@
           ]
         },
         {
-          "label": "Night walks",
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C2 dark",
+      "title": "Saved searches, Unsorted",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "2025 without screenshots",
           "box_px": [
             0,
-            1457,
+            245,
             1080,
-            1839
+            627
           ],
           "size_dp": [
             384,
@@ -1114,12 +1223,25 @@
           ]
         },
         {
-          "label": "Family trips",
+          "label": "Night walks",
           "box_px": [
             0,
-            1861,
+            649,
             1080,
-            2243
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            1053,
+            1080,
+            1435
           ],
           "size_dp": [
             384,
@@ -1747,6 +1869,19 @@
           "label": "Type: Screenshots",
           "box_px": [
             327,
+            790,
+            1047,
+            925
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Include",
+          "box_px": [
+            327,
             925,
             1047,
             1060
@@ -1757,7 +1892,7 @@
           ]
         },
         {
-          "label": "Include",
+          "label": "Exclude",
           "box_px": [
             327,
             1060,
@@ -1770,7 +1905,7 @@
           ]
         },
         {
-          "label": "Exclude",
+          "label": "Remove",
           "box_px": [
             327,
             1195,
@@ -1912,6 +2047,19 @@
           "label": "Type: Screenshots",
           "box_px": [
             327,
+            790,
+            1047,
+            925
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Include",
+          "box_px": [
+            327,
             925,
             1047,
             1060
@@ -1922,7 +2070,7 @@
           ]
         },
         {
-          "label": "Include",
+          "label": "Exclude",
           "box_px": [
             327,
             1060,
@@ -1935,7 +2083,7 @@
           ]
         },
         {
-          "label": "Exclude",
+          "label": "Remove",
           "box_px": [
             327,
             1195,
@@ -2945,8 +3093,8 @@
   "pillow": "12.3.0",
   "python": "3.13.18",
   "determinism": "no time, randomness (seeded), locale or network inputs; PNG = 256-colour palette",
-  "sha256": "186eecd8bd82aaf0611baa96135327d9a451f36e756f2a2d1d079167fd7f97fe",
-  "byte_size": 1398080,
+  "sha256": "8bf7b27f49a41d34ebf80f26c652297dc4f1308d846905cf886f7c12ab886f9b",
+  "byte_size": 1433928,
   "references_checked": "2026-11-21",
   "reference_decisions": [
     {
