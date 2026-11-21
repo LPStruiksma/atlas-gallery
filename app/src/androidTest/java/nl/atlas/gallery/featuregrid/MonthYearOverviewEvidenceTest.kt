@@ -167,28 +167,35 @@ class MonthYearOverviewEvidenceTest {
                 // its old slots through AtlasTimelineGallery.onDispose.
             }
             val theme = if (useDark) "dark" else "light"
-            awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
-            saveUiEvidence("zoom-16-$theme-7.png")
+            // #693: each look re-checks the level. A replan after the check
+            // (likely a late viewport change after the S24 resize) leaves the
+            // plain ground on screen until a Compose sync lets it finish.
+            saveUiEvidence("zoom-16-$theme-7.png") {
+                awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
+            }
 
             chooseSmaller()
-            awaitLevel(GridDensity.MONTH, TimelineBucket.MONTH)
-            saveUiEvidence("zoom-16-$theme-12-month.png")
+            saveUiEvidence("zoom-16-$theme-12-month.png") {
+                awaitLevel(GridDensity.MONTH, TimelineBucket.MONTH)
+            }
 
             chooseSmaller()
-            awaitLevel(GridDensity.YEAR, TimelineBucket.YEAR)
             assertEquals(28, GridDensity.YEAR.columns)
-            saveUiEvidence("zoom-16-$theme-28-year.png")
+            saveUiEvidence("zoom-16-$theme-28-year.png") {
+                awaitLevel(GridDensity.YEAR, TimelineBucket.YEAR)
+            }
 
             val actions = compose.onNodeWithTag("atlas-timeline-grid")
                 .fetchSemanticsNode().config[SemanticsActions.CustomActions]
             val original = actions.first { it.label == ORIGINAL_PROPORTIONS_ACTION }
             compose.runOnIdle { assertTrue(original.action()) }
-            compose.waitUntil(30_000L) {
-                compose.onAllNodes(hasTestTag("atlas-ratio-gallery"))
-                    .fetchSemanticsNodes().isNotEmpty()
+            saveUiEvidence("zoom-16-$theme-original.png") {
+                compose.waitUntil(30_000L) {
+                    compose.onAllNodes(hasTestTag("atlas-ratio-gallery"))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.waitForIdle()
             }
-            compose.waitForIdle()
-            saveUiEvidence("zoom-16-$theme-original.png")
         }
     }
 }
