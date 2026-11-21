@@ -29,7 +29,7 @@ class RecipeJsonTest {
 
     @Test fun headerCarriesSchemaNameAndVersion() {
         val json = RecipeJson.encode(EditRecipe(10, 20))
-        assertEquals("""{"schema":"atlas.edit-recipe","version":1,"source":{"width":10,"height":20},"operations":[]}""", json)
+        assertEquals("""{"schema":"atlas.edit-recipe","version":2,"source":{"width":10,"height":20},"operations":[]}""", json)
     }
 
     @Test fun numbersAreCanonical() {
@@ -48,7 +48,7 @@ class RecipeJsonTest {
     }
 
     @Test fun newerSchemaIsRefused() {
-        val json = RecipeJson.encode(EditRecipe(10, 10)).replace("\"version\":1", "\"version\":2")
+        val json = RecipeJson.encode(EditRecipe(10, 10)).replace("\"version\":2", "\"version\":3")
         assertFormatError { RecipeJson.decode(json) }
     }
 
@@ -63,7 +63,7 @@ class RecipeJsonTest {
             }
             old - "ops" + ("operations" to ops) + ("version" to 1L)
         }
-        val recipe = RecipeJson.decode(v0, listOf(migration))
+        val recipe = RecipeJson.decode(v0, listOf(migration) + RecipeJson.MIGRATIONS)
         assertEquals(EditRecipe(30, 20, listOf(EditOperation.Straighten("x", 2.5))), recipe)
         // Without the hook, the old file is refused rather than misread.
         assertFormatError { RecipeJson.decode(v0) }
