@@ -156,8 +156,8 @@ class SplitPreviewScreenTest {
         val states = listOf(
             Triple("empty", SplitPreviewUiModel(emptyList(), emptyList()), false),
             Triple("one-group", model(1), false),
-            Triple("review-light", model(2, 1), false),
-            Triple("review-dark", model(2, 1), true),
+            Triple("light", model(2, 1), false),
+            Triple("dark", model(2, 1), true),
             Triple("long-review-light", model(3, 2), false),
             Triple("long-review-dark", model(3, 2), true)
         )
