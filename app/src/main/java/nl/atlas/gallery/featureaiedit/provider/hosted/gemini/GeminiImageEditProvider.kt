@@ -183,8 +183,9 @@ class GeminiImageEditProvider(
         return when (val parsed = GeminiWire.parseReply(root)) {
             is GeminiReply.Malformed -> EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_REPLY")
             is GeminiReply.Blocked -> EditOutcome.Refused(parsed.code, parsed.description)
-            // Gemini answered and finished without an image: a definite answer, not a lost request.
-            is GeminiReply.NoImage -> EditOutcome.Failed(FailureKind.UNKNOWN, parsed.retryable, parsed.code, Delivery.ANSWERED)
+            // A 2xx without an image (text only, NO_IMAGE, MAX_TOKENS) is not a definite refusal: Gemini
+            // processed the request and may have billed it, so it stays uncertain (addendum A3).
+            is GeminiReply.NoImage -> EditOutcome.Failed(FailureKind.UNKNOWN, parsed.retryable, parsed.code, Delivery.UNCERTAIN)
             is GeminiReply.Image -> {
                 val target = results.newDownloadTarget(jobId, 0)
                 val decoded = when (val data = parsed.data) {
