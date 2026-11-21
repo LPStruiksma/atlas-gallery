@@ -74,10 +74,15 @@ class ViewerGpsRedactionTest {
         val observed = runBlocking { PlatformViewerMetadataReader.read(target, record) }
         assertNotNull("the reader must still open the foreign-owned image (READ_MEDIA_IMAGES held)," +
             " owner=$owner api=${Build.VERSION.SDK_INT}", observed)
-        // The outcome PLACES-0 is after: coordinates are absent for ATLAS.
-        assertNull("latitude expected redacted; observed ${observed!!.latitude} owner=$owner " +
-            "api=${Build.VERSION.SDK_INT} build=${Build.FINGERPRINT}", observed.latitude)
-        assertNull("longitude expected redacted; observed ${observed.longitude}", observed.longitude)
+        // The outcome PLACES-0 is after: the fixture's coordinate never reaches ATLAS.
+        // Observed on API 35: the platform zeroes the GPS values, so the reader reports
+        // 0.0/0.0 ("Null Island") rather than null. Accept null or exactly zero, never the fixture.
+        val detail = "lat=${observed!!.latitude} lon=${observed.longitude} owner=$owner " +
+            "api=${Build.VERSION.SDK_INT} build=${Build.FINGERPRINT}"
+        assertTrue("latitude must be redacted (null or 0.0); observed $detail",
+            observed.latitude == null || observed.latitude == 0.0)
+        assertTrue("longitude must be redacted (null or 0.0); observed $detail",
+            observed.longitude == null || observed.longitude == 0.0)
         // Other EXIF stays readable, proving the redaction is selective, not a failed read.
         assertEquals("AtlasPlaces0", observed.cameraMake)
 
