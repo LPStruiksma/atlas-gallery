@@ -38,7 +38,7 @@ Each goal's live Plan stays its single record. Each listed goal carries a 2026-1
 - **Auto-add versus false merges.** #95/#51 treat false merges as especially harmful, and the owner wants as much automatic adding as the evidence supports. Calibrated error and coverage curves plus the full correction loop decide this, not a fixed cutoff.
 - **No censorship versus other limits.** This is unchanged: Android grants, hidden albums, law, licences and provider rules still apply.
 - **Older goal wording.** #120 (“Samsung-faithful design”), #629 (Quiet Frame/#628 references) and #183 (historical standalone-editor journeys) are read under OWNER_INTENT and Lapis v3: Samsung behaviour, Lapis form, one central editor. This rewrites no approved decision.
-- **Holds stay typed.** #94 (tokenizer redistribution rights, #217), #96/#168 (HUB and transaction chain) and #51 (owner re-measure after #31/#39) keep their `Blocked-by` holds. R1 does not lift a hold. It only marks those chains as release-relevant.
+- **Holds stay typed.** #94 (route-2 tokenizer download-verify-cache build under #217; Lukas approved route 2 on 2026-11-21 18:26Z, so rights no longer block), #96/#168 (HUB and transaction chain) and #51 (owner re-measure after #31/#39) keep their `Blocked-by` holds. R1 does not lift a hold. It only marks those chains as release-relevant.
 - **“Complete parity”** is claimed only after an independent feature matrix, real behaviour tests and recorded exceptions. The 61-row audit in [PARITY_ROUND3_FEATURES](PARITY_ROUND3_FEATURES.md) is a source status, not proof.
 
 ## Two ambitions, one app
