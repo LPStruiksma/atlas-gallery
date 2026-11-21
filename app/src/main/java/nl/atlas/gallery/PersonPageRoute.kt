@@ -339,6 +339,13 @@ internal fun NativePersonAlbumRoute(
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
         PersonFaceImage(host, cropEpoch, face)
     }
+    // Reuse the canonical person cover on rename/merge choice cards too.
+    // An unnamed group (or a hidden person absent from home) stays on its
+    // existing stable face fallback; there are no new thumbnail surfaces.
+    fun albumPortrait(album: NativePersonAlbum): NativeFaceObservationId? =
+        people?.people?.get(album.person)?.coverFaceUid
+            ?.let { uid -> album.observations.firstOrNull { it.localHex == uid } }
+            ?: album.observations.firstOrNull()
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
@@ -367,7 +374,7 @@ internal fun NativePersonAlbumRoute(
             PersonNameDialog(
                 initial = facts?.name.orEmpty(),
                 suggestions = { typed -> nameSuggestions(state, request.target, typed) },
-                suggestionPortrait = { portrait(it.observations.firstOrNull()) },
+                suggestionPortrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onSave = { typed ->
                     val live = epoch?.let { host.liveReview(it) }
@@ -388,7 +395,7 @@ internal fun NativePersonAlbumRoute(
         mergePicker = {
             PersonMergePicker(
                 people = mergeCandidates(state, request.target),
-                portrait = { portrait(it.observations.firstOrNull()) },
+                portrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onPick = { dialog = PersonPageDialog.ConfirmMerge(it) }
             )
