@@ -281,7 +281,9 @@ class FalImageEditProvider(
                 ?: return EditOutcome.Failed(FailureKind.UNKNOWN, false, "MALFORMED_RESULT")
         }
         val described = result["images"].arr()?.mapNotNull { it.obj() }.orEmpty()
-        if (described.isEmpty()) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_IMAGE", Delivery.ANSWERED)
+        // After acceptance an empty result doesn't prove fal never ran or billed the edit (rev 4):
+        // it stays uncertain so the editor keeps the may-have-charged warning.
+        if (described.isEmpty()) return EditOutcome.Failed(FailureKind.UNKNOWN, false, "NO_IMAGE", Delivery.UNCERTAIN)
         val flagged = result["has_nsfw_concepts"].arr()
         // fal's safety checker returns flagged images as black frames: a refusal, never a success.
         if (flagged != null && described.indices.any { flagged.getOrNull(it).bool() == true })

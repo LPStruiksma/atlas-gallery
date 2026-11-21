@@ -439,6 +439,24 @@ class FalRecoveryTest {
         }
     }
 
+    @Test fun completedWithNoImagesIsUncertainAndKeepsTheChargeWarning() {
+        FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"),
+            result = { FakeResponse.json("""{"images":[],"has_nsfw_concepts":[],"seed":1}""") })).use { h ->
+            val journal = RecordingJournal()
+            val failed = h.provider().submit(request(), journal).await(maxPolls = 200) as EditOutcome.Failed
+            assertEquals("NO_IMAGE", failed.message)
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, failed.delivery)
+            assertEquals(listOf("beforeSend", "accepted"), journal.events)
+            assertEquals(1, h.calls("POST").size)
+            // With the saved id this is the recoverable outcome-unknown card, never a free "couldn't make it".
+            val issue = nl.atlas.gallery.featureaiedit.engine.AiEditIssue.classify(failed, remoteSaved = true)
+            assertEquals(nl.atlas.gallery.featureaiedit.engine.AiEditIssue.UNKNOWN_RECOVERABLE, issue)
+            assertTrue(issue!!.mayHaveCharged)
+            assertEquals(nl.atlas.gallery.featureaiedit.engine.AiEditIssue.UNKNOWN_NONRECOVERABLE,
+                nl.atlas.gallery.featureaiedit.engine.AiEditIssue.classify(failed, remoteSaved = false))
+        }
+    }
+
     @Test fun failureAfterAcceptanceIsUncertainEvenForAnsweredStatus() {
         FalHarness(FakeFalQueue(statuses = listOf("COMPLETED"), result = { FakeResponse.json("{}", 402) })).use { h ->
             val failed = h.provider().submit(request(), RecordingJournal()).await(maxPolls = 200) as EditOutcome.Failed
