@@ -5,9 +5,9 @@
 | Sheet | Unit | Device frames |
 |---|---|---|
 | [brand-l4-navigation.png](brand-l4-navigation.png) | L4 slab and held sphere | 20 |
-| [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 12 |
-| [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 16 |
-| [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 14 |
+| [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
+| [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
+| [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
 | [brand-l8-justified.png](brand-l8-justified.png) | L8 justified day rows | 16 |
 
 Each sheet opens with two full-scale 1080 × 2340 frames (light 100 % and dark 200 %), then labelled state panels (the same full frames at 50 %), then tables: a dated **source → observed convention → Atlas adaptation/deviation** row set, and the unit's copy, TalkBack, tap-path, gesture or layout rules. [manifest.json](manifest.json) records every sheet's size, SHA-256, panel codes, font hashes and Pillow version.
@@ -27,7 +27,7 @@ The annotation layer is magenta `#E0007A`, outside the palette: dashed box = eff
 
 ## Open design questions the sheets surface
 
-1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 dp targets; the sheet recommends it. Decide at re-preflight.
+1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 × 80 dp targets that touch but do not overlap (unit-tested); the sheet recommends it. Decide at re-preflight.
 2. **L4 slab at 200 % font:** the pills widen instead of truncating, so the search sphere no longer fits and detaches above the slab's right end (A2). A proposal, not part of Quiet Frame v3 yet.
 3. **L7 auto-focus:** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused field. The two-step Back and the This screen / Whole library chips are kept.
 4. **L5 two-tap reach:** recent people and albums get their own rows; any of 500 people is Collections, then search (2 taps plus typing) or 3 taps via People and pets.

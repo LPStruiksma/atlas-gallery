@@ -43,6 +43,22 @@ class Tokens(unittest.TestCase):
         self.assertEqual(TOKENS["dark"]["brand_fill"], "#3448E0")
 
 
+class AtlasTargets(unittest.TestCase):
+    def test_two_by_six_month_targets_do_not_overlap_and_meet_48dp(self):
+        from lapis_kit import FontSource, Fonts, Screen
+        import lapis_screens as L
+        s = Screen(Fonts(FontSource(None, True)))
+        L.atlas_panel(s, 1.0, grid=True)
+        boxes = [t.box for t in s.targets if t.label.startswith("month ")]
+        self.assertEqual(len(boxes), 12)
+        for i, a in enumerate(boxes):
+            self.assertGreaterEqual(min(a[2] - a[0], a[3] - a[1]), px(48) - 1)
+            for b in boxes[i + 1:]:
+                overlap_w = min(a[2], b[2]) - max(a[0], b[0])
+                overlap_h = min(a[3], b[3]) - max(a[1], b[1])
+                self.assertFalse(overlap_w > 1 and overlap_h > 1, (a, b))
+
+
 class Render(unittest.TestCase):
     def test_every_sheet_renders_with_full_device_frames(self):
         with tempfile.TemporaryDirectory() as tmp:

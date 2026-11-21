@@ -6,7 +6,7 @@
         3480,
         8462
       ],
-      "sha256": "b4a6cb3e9a25af76d0ded8540bfd6a20e31a0800276d7fbd710bec31e9655899",
+      "sha256": "acc6fe11f2654d7790ed00d65fa3fd21083c58a46e35f9fce804c0a66e73de79",
       "device_frames": 20,
       "device_frame_px": [
         1080,
@@ -39,10 +39,10 @@
       "file": "brand-l5-collections.png",
       "size": [
         3480,
-        7090
+        9269
       ],
-      "sha256": "5701b17eb5aef1a1e3e531ebf27aadfdd926545d075b569ea8368bf111b8bdb9",
-      "device_frames": 12,
+      "sha256": "cfc4503cfd23e6842ff5d0bcbb940bd6165e674b5960b1e187ef9f15deac516d",
+      "device_frames": 13,
       "device_frame_px": [
         1080,
         2340
@@ -57,6 +57,7 @@
         "C3",
         "D1",
         "D2",
+        "D3",
         "E1",
         "E2",
         "E3"
@@ -66,10 +67,10 @@
       "file": "brand-l6-atlas.png",
       "size": [
         3480,
-        8309
+        8338
       ],
-      "sha256": "bdc6def1111b96aabd92edabc381b24874d78a433f32ee44350101c9561bda4e",
-      "device_frames": 16,
+      "sha256": "7dd9975cca0f6dd3616ed184c9647a52ac9ec12a40e1f8cf219842273698c9d1",
+      "device_frames": 18,
       "device_frame_px": [
         1080,
         2340
@@ -83,6 +84,8 @@
         "B4",
         "B5",
         "B6",
+        "B7",
+        "B8",
         "C1",
         "C2",
         "C3",
@@ -97,10 +100,10 @@
       "file": "brand-l7-search.png",
       "size": [
         3480,
-        7008
+        8381
       ],
-      "sha256": "468f713adfb8bddf9d8b436d3daee1284003a055145adfdaea49c387fdbb6d90",
-      "device_frames": 14,
+      "sha256": "b53577b97c5a15db793e6a7cc023c2a2a79a9b38a74bcf46aee48b6c4ca00cf2",
+      "device_frames": 18,
       "device_frame_px": [
         1080,
         2340
@@ -119,7 +122,11 @@
         "B9",
         "B10",
         "B11",
-        "B12"
+        "B12",
+        "B13",
+        "B14",
+        "B15",
+        "B16"
       ]
     },
     "l8": {

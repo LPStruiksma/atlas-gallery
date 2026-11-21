@@ -9,6 +9,7 @@ from lapis_kit import (
     ANNO,
     DEVICE_W,
     VIEWER_SLAB,
+    dashed_rect,
     VIEWER_SPHERE,
     Screen,
     justified_rows,
@@ -516,8 +517,9 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     bw = (DEVICE_W - px(2 * SIDE)) / per_row
     bx0 = px(SIDE)
     bar_max = px(44) if grid else px(96)
-    row_bases = [px(118), px(190)] if grid else [px(170)]
+    row_bases = [px(118), px(198)] if grid else [px(170)]  # grid rows: 80 dp pitch, boxes touch, never overlap
     month_boxes = []
+    place_pts: dict[str, tuple[float, float]] = {}
     for i, c in enumerate(counts):
         row, col_i = divmod(i, per_row)
         base_y = row_bases[row]
@@ -572,6 +574,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 for name, fx, fy in labels:
                     cx = px(SIDE) + fx * (DEVICE_W - px(2 * SIDE))
                     cy = my0 + fy * (my1 - my0)
+                    place_pts[name] = (cx, cy)
                     ld.ellipse([cx - px(9), cy - px(9), cx + px(9), cy + px(9)], fill=s.t["brand_fill"])
                     if cx + px(14) + ld.textlength(name, font=fs2(s)) > DEVICE_W - px(SIDE) - px(8):
                         ld.text((cx - px(14), cy), name, font=fs2(s), fill=s.t["ink"], anchor="rm")
@@ -583,7 +586,10 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     hy = y0 + h - px(12)
     s.d.rounded_rectangle([DEVICE_W / 2 - px(18), hy - px(2), DEVICE_W / 2 + px(18), hy + px(2)], radius=px(2),
                           fill=s.t["ink2"])
+    s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
+        for n, (x, yy) in s.place_centers.items():
+            s.target([x - px(9), yy - px(9), x + px(9), yy + px(9)], f"place {n}")
         for i, (a, b, c, d_) in enumerate(month_boxes):
             s.target([a, y0 + b, c, y0 + d_], f"month {MONTHS[i]}", actual=True, show_size=(i == 0))
     return y0 + h

@@ -427,6 +427,19 @@ class Gen:
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Collections")
+        y = L.collection_row(s, y, "Videos", "45 videos, latest 13 November 2026", L.STRIP_RATIOS[3], 121)
+        y = L.collection_row(s, y, "Recent", "Added in the last 30 days, 318 photos", L.STRIP_RATIOS[0], 131)
+        y = L.collection_row(s, y, "Categories", "Screenshots, documents, food and 9 more", L.STRIP_RATIOS[2],
+                             141)
+        y = L.collection_row(s, y, "Shared albums", "3 shared albums, latest 10 November 2026",
+                             L.STRIP_RATIOS[1], 151)
+        s.slab("Collections")
+        s.gesture_bar()
+        panels.append(Panel("D3", "Further down the list", "Videos, Recent, Categories (screenshots and the "
+                            "rest) and Shared albums keep their own rows; each opens today's screen.", s))
+        s = self.scr()
+        s.status_bar()
+        y = L.title(s, "Collections")
         y = L.collection_row(s, y, "Cleanup suggestions", "312 similar photos and 40 large videos",
                              L.STRIP_RATIOS[2], 101)
         y = L.collection_row(s, y, "Trash", "14 items, removed for good after 30 days", L.STRIP_RATIOS[1], 111)
@@ -465,6 +478,24 @@ class Gen:
             ["A place or trip", "2", "Collections › place row; or Pictures › atlas place (L6)."],
             ["Back", "1 per level", "System Back returns along the same path; nothing is intercepted."],
         ], [0.25, 0.12, 0.63])
+        b.table("Destination parity (every former entry keeps a row)", ["Destination", "Row and order",
+                                                                         "Opens", "Shown in"], [
+            ["Albums", "1 · count and latest date", "Existing Albums screen", "A1, C2"],
+            ["People and pets", "2 · recent people as own rows, then the section row", "Existing People screen "
+             "and person page", "A1, C2, C3, D1, D2"],
+            ["Places", "3", "Existing Places screen; also the L6 atlas", "A1"],
+            ["Stories", "4", "Existing Stories screen", "A1"],
+            ["Favourites", "5", "Existing Favourites view", "A1"],
+            ["Videos", "6", "Existing Videos view", "D3"],
+            ["Recent", "7", "Existing Recent view", "D3"],
+            ["Categories, incl. Screenshots", "8 · one row, sub-categories inside", "Existing category screens",
+             "D3"],
+            ["Shared albums", "9", "Existing Shared albums screen", "D3"],
+            ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "10-13 · end of list",
+             "Existing screens; Hidden asks to unlock first", "E1"],
+        ], [0.24, 0.28, 0.3, 0.18], "Two taps to the row's screen from any screen with the slab (Collections, then "
+           "the row); rows below the fold need a scroll, not an extra tap. Sort and scoped search per #175 still "
+           "apply inside each destination.")
         b.table("Reference decisions", DECISION_HEAD, [
             ref_row("people", "Deviation: no circles. People rows show name, count, latest date and a strip of real "
                     "photos, as Quiet Frame v3 requires; the person screen behind the row is unchanged."),
@@ -528,6 +559,26 @@ class Gen:
         panels.append(Panel("B5", "Push up to close", "Reverse gesture; the atlas tracks the finger back up.",
                             self.l6_frame(frac=0.35, finger=-L.px(90))))
         panels.append(Panel("B6", "Closed after first use", "Hint gone for good.", self.l6_frame(frac=0)))
+        p7 = self.l6_frame(frac=1.0)
+        cx, cy = p7.place_centers["Coast"]
+        L.finger(p7, (cx, cy), None, "tap 'Coast'")
+        panels.append(Panel("B7", "Tap a place", "Tap 1 opens the atlas (pull or sphere); tap 2 on a place dot "
+                            "(48 dp target). TalkBack: the 'Coast, 1.408 photos' row in D1 does the same.", p7))
+        p8 = self.scr()
+        p8.status_bar()
+        yy = L.title(p8, "Coast", "1.408 photos, July and August 2026")
+        f = p8.font("nav")
+        w = p8.d.textlength("Clear place", font=f) + L.px(28)
+        cb = [L.px(L.SIDE), yy, L.px(L.SIDE) + w, yy + L.px(40)]
+        p8.rrect(cb, 24, fill=p8.t["surface"])
+        p8.d.text(((cb[0] + cb[2]) / 2, (cb[1] + cb[3]) / 2), "Clear place", font=f, fill=p8.t["ink"], anchor="mm")
+        p8.target(cb, "Clear place")
+        L.square_grid(p8, yy + L.px(56), p8.bottom, seed=14, header="August 2026")
+        p8.note((DEVICE_W - L.px(8), yy + L.px(14)), "Back or Clear returns to all Pictures at the same spot")
+        p8.slab("Pictures")
+        p8.gesture_bar()
+        panels.append(Panel("B8", "Place in the grid", "Pictures shows only that place, newest first. Back or "
+                            "'Clear place' restores the full grid and scroll position.", p8))
         panels.append(Panel("C1", "Year with empty months", "Empty months draw a baseline only, never a fake "
                             "bar.", self.l6_frame(frac=1.0, year="2019", counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0,
                                                                                     15, 0], current=6)))
@@ -547,8 +598,8 @@ class Gen:
         panels.append(Panel("C5", "Large library", "Bars scale to the tallest month; totals use full counts.",
                             self.l6_frame(frac=1.0, counts=[9120, 8400, 11020, 12804, 15500, 18210, 22340, 21900,
                                                              13000, 7800, 6100, 2718])))
-        panels.append(Panel("C6", "Alternative: 2 x 6 months", "Two rows of six give 58 dp wide month targets; "
-                            "recommended if one-row bars stay below 48 dp.", self.l6_frame(frac=1.0, grid=True)))
+        panels.append(Panel("C6", "Alternative: 2 x 6 months", "Two rows of six: 58 x 80 dp month targets, rows "
+                            "touch but never overlap. Recommended over 29 dp one-row bars.", self.l6_frame(frac=1.0, grid=True)))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Atlas", "TalkBack list view")
@@ -581,7 +632,7 @@ class Gen:
         b.table("Gesture precedence", ["Situation", "What a downward drag does", "Alternative"], [
             ["Grid scrolled to the top", "Opens the atlas, finger-tracked", "Tap the month sphere"],
             ["Grid scrolled down", "Scrolls the grid up (nested scroll first)", "Tap the month sphere"],
-            ["Atlas open", "Upward drag closes; taps on bars and places jump", "System Back closes"],
+            ["Atlas open", "Upward drag closes; a month tap jumps, a place tap filters (B4, B7-B8)", "System Back closes"],
             ["TalkBack on", "Two-finger scroll as usual", "Atlas button = month sphere; lists (D1)"],
         ], [0.25, 0.42, 0.33])
         b.table("Reference decisions", DECISION_HEAD, [
@@ -691,6 +742,36 @@ class Gen:
                             "place.", self.l7_open(base="Collections", query="tr",
                                                    items=[("Suggestion", "Trash"), ("Suggestion", "Trip to the "
                                                                                     "coast")])))
+        panels.append(Panel("B13", "Large library, 200 %, keyboard", "Whole library at 200 % with the "
+                            "keyboard: chips wrap, the suggestion list scrolls inside the panel (count noted).",
+                            self.l7_open("dark", 2.0, query="beach", scope="Whole library", entries=True,
+                                         items=[("Suggestion", "beach"), ("Suggestion", "beach 2019"),
+                                                ("Suggestion", "beach with Noor"), ("Place", "Coast"),
+                                                ("More", "Search 'beach' everywhere")])))
+        s = self.l7_open(query="beach", scope="Whole library", keyboard=False)
+        top = s.panel_top - L.px(8)
+        s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
+        s.text((L.px(L.SIDE), s.top + L.px(12)), "12.840 pictures for 'beach'", "section")
+        L.square_grid(s, s.top + L.px(48), top - L.px(96), cols=6, seed=17, header="August 2026",
+                      headers_every=18, month_names=["July 2025", "August 2019"])
+        L.fast_thumb(s, 0.55, "2019", s.top + L.px(56), top - L.px(60))
+        panels.append(Panel("B14", "Large library results", "12.840 results load page by page; the held-sphere "
+                            "thumb jumps through the result years. Bar and query stay.", s))
+        s = self.scr()
+        L.pictures(s)
+        y0s = s.slab_box[1]
+        for frac in (0.3, 0.65):
+            x0 = DEVICE_W - L.px(8) - (DEVICE_W - L.px(16)) * frac
+            L.dashed_rect(s.d, (x0, y0s - L.px(68), DEVICE_W - L.px(8), y0s - L.px(16)), L.ANNO, L.px(1.5), L.px(5))
+        s.rrect([L.px(8), y0s - L.px(68), DEVICE_W - L.px(8), y0s - L.px(16)], 24, outline=s.t["brand_fill"],
+                width=L.px(2))
+        s.note((DEVICE_W - L.px(8), y0s - L.px(90)), "0 ms sphere, 70 ms, 140 ms dashed; 200 ms solid")
+        panels.append(Panel("B15", "Motion on", "The bar grows leftwards from the sphere over 200 ms "
+                            "(dashed stills), then the keyboard rises.", s))
+        s = self.l7_open(items=self.SUGG, entries=True)
+        s.note((DEVICE_W - L.px(8), s.top + L.px(4)), "Remove animations on: this frame follows the tap directly")
+        panels.append(Panel("B16", "Remove animations on", "Tap the sphere and the next frame is the full bar, "
+                            "panel and keyboard; collapse is a cut too.", s))
         b.grid("Flow and states", panels)
         b.table("Copy and TalkBack (proposed)", ["Element", "Text", "TalkBack"], [
             ["Query hint", "Search photos, people, places", "'Search, edit box'"],
