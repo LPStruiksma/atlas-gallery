@@ -25,6 +25,7 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.testShell
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -322,23 +323,37 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
     @Test
     fun coldStartShowsStaticLapisSplash() {
         val name = "lapis656-splash-${if (dark) "dark" else "light"}"
-        var captured: Bitmap? = null
-        var attempts = 0
-        val seen = mutableListOf<String>()
-        while (captured == null && attempts < 3) {
-            attempts++
-            val (frame, note) = launchAndCatchSplash()
-            captured = frame
-            seen += note
+        val context = instrumentation.targetContext
+        testShell("am force-stop ${context.packageName}")
+        awaitSystemIdle("system windows before MainActivity cold start")
+
+        val (captured, note) = try {
+            launchAndCatchSplash()
+        } finally {
             finishMainActivities()
         }
         val frame = requireNotNull(captured) {
-            "No Lapis splash frame with legible system-bar glyphs in $attempts launches of MainActivity " +
-                "(${seen.joinToString("; ")}); ${describeFocus()}"
+            "No Lapis splash frame with legible system-bar glyphs in one forced cold start " +
+                "($note); ${describeFocus()}"
         }
         saveBitmapEvidence(name, frame)
     }
 
+    /**
+     * Let Launcher/System UI finish the task transition. The lifecycle monitor can report that
+     * MainActivity is gone while Quickstep is still handling its window transition.
+     */
+    private fun awaitSystemIdle(stage: String) {
+        try {
+            interactiveUiAutomation().waitForIdle(500L, 10_000L)
+        } catch (timeout: java.util.concurrent.TimeoutException) {
+            throw AssertionError("$stage did not reach system-window idle; ${describeFocus()}", timeout)
+        }
+        val focus = describeFocus()
+        check(!focus.contains("responding", ignoreCase = true)) {
+            "$stage found a system ANR before the next launch; $focus"
+        }
+    }
     /**
      * Launches MainActivity and returns the first frame that is the Lapis splash with legible
      * (near-white) navigation-bar glyphs, or null and what it saw instead (#763 review: the
@@ -428,7 +443,10 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
                     }
                 }
             }
-            if (open == 0) return
+            if (open == 0) {
+                awaitSystemIdle("system windows after MainActivity finished")
+                return
+            }
             instrumentation.waitForIdleSync()
         }
     }
