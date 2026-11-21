@@ -300,7 +300,8 @@ internal class AtlasSwapPersonHost(
     private val models = IdentityModelStore(app.noBackupFilesDir,
         // Downloads run from the IDS-19 installer (#619); this host never fetches.
         ModelFetcher { _, _ -> throw IOException("Model download is not available here") })
-    val engine: IdentityEditEngine by lazy { LocalFaceSwapEngine(app, HyperSwapNetwork.engineConfig(models)) }
+    val engine: IdentityEditEngine by lazy { LocalFaceSwapEngine(app, HyperSwapNetwork.engineConfig(models,
+        segmenterFactory = { nl.atlas.gallery.featureidentity.local.MultiClassFaceSegmenter.fromAssets(app.assets) })) }
     private val recents = app.getSharedPreferences("atlas_swap_person_recents", Context.MODE_PRIVATE)
     private var detected: List<TargetFaceCandidate>? = null
     private val picks = HashMap<String, Pick>()
