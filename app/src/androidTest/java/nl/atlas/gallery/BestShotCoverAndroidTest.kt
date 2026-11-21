@@ -13,6 +13,7 @@ import nl.atlas.gallery.featureface.onnx.SFaceModel
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
+import nl.atlas.gallery.featurepeopleui.personPageFacts
 import nl.atlas.gallery.featurepeopleui.reviewPeopleCluster
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
@@ -164,17 +165,29 @@ class BestShotCoverAndroidTest {
             assertEquals(bySource.getValue(3),
                 store.personDisplayCover("epoch-H", person))
 
+            // Opening the Hidden row must use the same ranked member in the
+            // person header, rather than PersonPageFacts' lowest-UID fallback.
             val album = requireNotNull(store.peopleReview("epoch-H"))
-            val faces = album.clusters.reviews.confirmed.keys
-                .sortedBy { it.localHex }
-            assertEquals(bySource.getValue(3),
-                hiddenPortraitFace(faces, store.hiddenPersonCovers("epoch-H")[person])?.localHex)
+            val state = PeopleClusterReviewState("epoch-H", album.generation,
+                album.clusters, album.names, hidden = album.hidden)
+            val opening = NativePersonAlbumRequest(person, "Cover person")
+            val facts = requireNotNull(personPageFacts(state, opening.target))
+            assertTrue(facts.hidden)
+            assertEquals(bySource.getValue(3), hiddenPortraitFace(
+                facts.faces, store.hiddenPersonCovers("epoch-H")[person])?.localHex)
+            assertEquals(bySource.getValue(3), personPagePortraitFace(
+                facts.faces, null, store.personDisplayCover("epoch-H", person), null)?.localHex)
+            assertNull(store.personDisplayCover("stale-epoch", person))
+            assertTrue(store.hiddenPersonCovers("stale-epoch").isEmpty())
 
             assertTrue(store.setPersonCoverOverride("epoch-H", person, bySource.getValue(1)))
             assertEquals(bySource.getValue(1),
                 store.hiddenPersonCovers("epoch-H")[person])
             assertEquals(bySource.getValue(1),
                 store.personDisplayCover("epoch-H", person))
+            assertEquals(bySource.getValue(1), personPagePortraitFace(
+                facts.faces, bySource.getValue(1),
+                store.personDisplayCover("epoch-H", person), null)?.localHex)
             assertTrue(store.setPersonCoverOverride("epoch-H", person, null))
             assertEquals(bySource.getValue(3),
                 store.hiddenPersonCovers("epoch-H")[person])
