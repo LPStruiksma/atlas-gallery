@@ -7,16 +7,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featureface.NativeFaceObservationId
@@ -211,6 +216,35 @@ class Hub1CSyntheticUiEvidenceTest {
         saveUiEvidence("hub1c-hidden-scoped-filter.png")
         compose.onNodeWithTag("atlas-hidden-needs-splitting-open").performClick()
         assertTrue(opened)
+    }
+
+    @Test fun largeTextKeepsMixedChoicesAccessible() {
+        val asked = question()
+        compose.setContent {
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(baseDensity.density, 1.3f)) {
+                AtlasEvidenceHarness(edgeToEdge = true) {
+                    SamePersonQueueScreen(
+                        item = asked, open = 1, loaded = true, skippedSome = false,
+                        onShowSkipped = {}, markSubject = false, markOther = false,
+                        actionBusy = false, canUndoMixed = false,
+                        onToggleSubject = {}, onToggleOther = {}, onMarkMixed = {},
+                        onUndoMixed = {}, face = { syntheticPortrait() },
+                        onAnswer = {}, onSkip = {}, onClose = {}
+                    )
+                }
+            }
+        }
+        for (tag in listOf("atlas-same-queue-subject-mixed",
+            "atlas-same-queue-other-mixed")) {
+            compose.onNodeWithTag(tag).assertIsDisplayed()
+                .assertHasClickAction().assertHeightIsAtLeast(48.dp)
+        }
+        for (tag in listOf("atlas-same-queue-no", "atlas-same-queue-skip",
+            "atlas-same-queue-yes")) {
+            compose.onNodeWithTag(tag).assertIsDisplayed().assertHasClickAction()
+        }
+        saveUiEvidence("hub1c-large-text-130.png")
     }
 
     @androidx.compose.runtime.Composable
