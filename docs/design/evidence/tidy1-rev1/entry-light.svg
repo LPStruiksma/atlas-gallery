@@ -56,11 +56,15 @@
 <circle cx="292.57" cy="443.46" r="13.72" fill="#8C9BFF" opacity=".75"/>
 <path d="M238 493.44L272.24 456.2L296.85 478.74L321.46000000000004 444.44L345 476.78V515H238Z" fill="#3448E0"/>
 <path d="M238 505.2L286.15 483.64L345 500.3V515H238Z" fill="#2639C9"/>
-<rect x="115" y="105" width="232" height="150" rx="17" fill="#F2F3F8" opacity="1"/>
-<text x="130" y="135" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030" text-anchor="start">Month actions</text>
-<text x="130" y="168" font-family="Funnel Sans, sans-serif" font-size="15" font-weight="700" fill="#2639C9" text-anchor="start">Review in Declutter</text>
-<text x="130" y="194" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#0E1030" text-anchor="start">Select photos</text>
-<text x="130" y="220" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#0E1030" text-anchor="start">Sort by size</text>
+<rect x="115" y="105" width="232" height="204" rx="17" fill="#F2F3F8"/>
+<text x="130" y="136" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030">Month actions</text>
+<rect x="121" y="151" width="220" height="48" rx="8" fill="#DDE3FF" stroke="#5A5F7A" stroke-width="0.5"/>
+<text x="130" y="181" font-family="Funnel Sans, sans-serif" font-size="15" font-weight="700" fill="#2639C9">Review in Declutter</text>
+<rect x="121" y="203" width="220" height="48" rx="8" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/>
+<text x="130" y="233" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#0E1030">Select photos</text>
+<rect x="121" y="255" width="220" height="48" rx="8" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/>
+<text x="130" y="285" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#0E1030">Sort by size</text>
+<text x="16" y="540" font-family="Funnel Sans, sans-serif" font-size="11" fill="#5A5F7A">Each menu row: 48 dp tap target</text>
 <text x="16" y="557" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#5A5F7A" text-anchor="start">Same menu action in:</text>
 <text x="16" y="580" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="600" fill="#0E1030" text-anchor="start">Albums · Search results · Photo DNA</text>
 <rect x="48" y="677" width="264" height="60" rx="24" fill="#2639C9" opacity="1"/>
