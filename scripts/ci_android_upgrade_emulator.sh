@@ -520,6 +520,9 @@ run_perf_a1_cached_frame() (
         match_seen=1
       fi
       echo "ATLAS_PERF_A1 sample mode=cold index=$i pid=$pid outcome=no_completed_cached_frame cached_draw=$draw_seen vsync_match=$match_seen refreshed=$refreshed emulator=$model api=$api head=$head"
+      # At most four snapshots from this exact PID; diagnostic lines cannot
+      # satisfy the completed-frame requirement or enter latency aggregates.
+      printf '%s\n' "$capture" | grep "^event=frame_diag pid=$pid " | tail -4 || true
       echo "::error::PERF-A1A has no attributable completed cached grid frame"; exit 1;
     fi
     [[ "$logged_pid" == "$pid" && "$(adb shell pidof "$pkg" | tr -d '\r')" == "$pid" ]] || {

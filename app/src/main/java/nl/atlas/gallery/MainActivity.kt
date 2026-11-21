@@ -388,55 +388,114 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     private var mode = "cold"
     private var reported = false
     private var stopped = false
-    // Keep a bounded ledger of eligible Photos draw vsyncs. A dropped frame
-    // cannot permanently consume the one chance to witness a completed grid.
+    private var closed = false
+    // Each candidate is the exact Choreographer frame which drew the eligible
+    // Photos subtree. No guessed nearest-vsync match is accepted.
     private val witnessedFrames = java.util.LinkedHashMap<Long, Boolean>()
     private val choreographer = android.view.Choreographer.getInstance()
+    private val diagnosticHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var currentFrameVsyncNs = -1L
-    private var closed = false
-    // The callback executes before traversal on each Choreographer frame. The
-    // subsequent Photos draw can thus attest to this specific vsync; only
-    // matching completed Window FrameMetrics may be reported as a sample.
+    private var diagnosticGeneration = 0
+    private var diagnosticsScheduled = false
+    private var eligibleDraws = 0
+    private var cachedDraws = 0
+    private var choreographerCallbacks = 0
+    private var metricsCallbacks = 0
+    private var exactMatches = 0
+    private var evictions = 0
+    private var droppedMetrics = 0L
+    private var maxLedger = 0
+    private var invalidCompletions = 0
+    private var nearestMismatchAbsNs = Long.MAX_VALUE
+    private var nearestMismatchSignedNs = 0L
+    private var originElapsedNs =
+        android.os.Process.getStartElapsedRealtime() * 1_000_000L
+    private var refreshReported = false
+    private var cachedDrawLogged = false
+    private var cachedMatchLogged = false
+
+    // At most four numeric snapshots for a PID that has an eligible draw but
+    // no completed-frame proof. Retain evidence even when FrameMetrics arrives
+    // late; never print an image name, URI or path, or emit per-frame spam.
+    private fun scheduleDiagnostics() {
+        if (diagnosticsScheduled) return
+        diagnosticsScheduled = true
+        val generation = diagnosticGeneration
+        for (delayMs in listOf(1_500L, 6_000L, 20_000L, 65_000L)) {
+            diagnosticHandler.postDelayed({
+                if (generation == diagnosticGeneration && !closed && !stopped && !reported) {
+                    val deltaSeen = nearestMismatchAbsNs != Long.MAX_VALUE
+                    Log.i("ATLAS_PERF_A1",
+                        "event=frame_diag pid=${android.os.Process.myPid()} mode=$mode " +
+                        "eligible_draws=$eligibleDraws cached_draws=$cachedDraws " +
+                        "choreo_cb=$choreographerCallbacks metric_cb=$metricsCallbacks " +
+                        "ledger=${witnessedFrames.size} max_ledger=$maxLedger evicted=$evictions " +
+                        "exact=$exactMatches metric_dropped=$droppedMetrics " +
+                        "delta_seen=${if (deltaSeen) 1 else 0} " +
+                        "nearest_delta_ns=${if (deltaSeen) nearestMismatchSignedNs else 0L} " +
+                        "invalid_completion=$invalidCompletions")
+                }
+            }, delayMs)
+        }
+    }
+
     private val frameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (closed || stopped || reported) return
+            choreographerCallbacks++
             currentFrameVsyncNs = frameTimeNanos
             choreographer.postFrameCallback(this)
         }
     }
-    private var originElapsedNs =
-        android.os.Process.getStartElapsedRealtime() * 1_000_000L
-    private var refreshReported = false
-    // Diagnostic events run only in the marked emulator benchmark. They
-    // distinguish an absent cached draw from a dropped/mismatched frame metric.
-    // Neither event is accepted as a completed rendered frame by the host.
-    private var cachedDrawLogged = false
-    private var cachedMatchLogged = false
-    private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, _ ->
-        // A draw only qualifies if this completed frame has the very same vsync.
-        // Other window frames, missed vsyncs and non-cached cold grids are not proof.
-        val cached = witnessedFrames.remove(
-            frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP))
-        if (!reported && !stopped && cached != null) {
-            if (cached && !cachedMatchLogged) {
-                cachedMatchLogged = true
-                Log.i("ATLAS_PERF_A1",
-                    "event=vsync_match pid=${android.os.Process.myPid()}")
+    private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, dropped ->
+        if (!closed && !stopped && !reported) {
+            metricsCallbacks++
+            if (dropped > 0) droppedMetrics += dropped.toLong()
+            val actualVsyncNs = frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP)
+            val cached = witnessedFrames.remove(actualVsyncNs)
+            if (cached != null) {
+                exactMatches++
+                if (cached && !cachedMatchLogged) {
+                    cachedMatchLogged = true
+                    Log.i("ATLAS_PERF_A1",
+                        "event=vsync_match pid=${android.os.Process.myPid()}")
+                }
+            } else {
+                // Diagnostic only. A close timestamp is NEVER accepted as a
+                // completed grid frame. Compare against all bounded outstanding
+                // draws to distinguish clock mismatch from absent callbacks.
+                for (drawVsyncNs in witnessedFrames.keys) {
+                    val signed = drawVsyncNs - actualVsyncNs
+                    val absolute = if (signed == Long.MIN_VALUE) Long.MAX_VALUE
+                        else kotlin.math.abs(signed)
+                    if (absolute < nearestMismatchAbsNs) {
+                        nearestMismatchAbsNs = absolute
+                        nearestMismatchSignedNs = signed
+                    }
+                }
             }
-            val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
-            val completedNs = frame.getMetric(android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP) + totalNs
-            val nowNs = System.nanoTime()
-            val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
-            val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
-            if (totalNs > 0L && elapsedNs > 0L && elapsedNs < 15_000_000_000L &&
-                (mode == "warm" || cached)) {
-                reported = true
-                witnessedFrames.clear()
-                choreographer.removeFrameCallback(frameCallback)
-                Log.i("ATLAS_PERF_A1",
-                    "mode=$mode pid=${android.os.Process.myPid()} " +
-                    "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
-                    "cached=${if (cached) 1 else 0} draw=grid frame=completed")
+            if (cached != null) {
+                val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
+                val intendedNs = frame.getMetric(
+                    android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP)
+                val completedNs = intendedNs + totalNs
+                val nowNs = System.nanoTime()
+                val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
+                val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
+                if (totalNs > 0L && intendedNs > 0L &&
+                    elapsedNs > 0L && elapsedNs < 15_000_000_000L &&
+                    (mode == "warm" || cached)) {
+                    reported = true
+                    witnessedFrames.clear()
+                    choreographer.removeFrameCallback(frameCallback)
+                    diagnosticHandler.removeCallbacksAndMessages(null)
+                    Log.i("ATLAS_PERF_A1",
+                        "mode=$mode pid=${android.os.Process.myPid()} " +
+                        "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
+                        "cached=${if (cached) 1 else 0} draw=grid frame=completed")
+                } else {
+                    invalidCompletions++
+                }
             }
         }
     }
@@ -449,6 +508,8 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     val isWarm: Boolean get() = mode == "warm"
     fun noteDraw(cached: Boolean) {
         if (reported || stopped || closed || (mode == "cold" && !cached)) return
+        eligibleDraws++
+        if (cached) cachedDraws++
         val vsync = currentFrameVsyncNs
         if (vsync > 0L && !witnessedFrames.containsKey(vsync)) {
             if (cached && !cachedDrawLogged) {
@@ -456,13 +517,19 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
                 Log.i("ATLAS_PERF_A1",
                     "event=cached_draw pid=${android.os.Process.myPid()}")
             }
-            // FrameMetrics delivery can lag or a frame can be dropped. Retain
-            // several drawn candidates, but never accept a non-matching one.
+            scheduleDiagnostics()
+            // Only evict when needed. Diagnostics record whether a delayed
+            // FrameMetrics callback lost its witness from this bounded ledger.
             if (witnessedFrames.size >= 120) {
                 val oldest = witnessedFrames.keys.iterator()
-                if (oldest.hasNext()) { oldest.next(); oldest.remove() }
+                if (oldest.hasNext()) {
+                    oldest.next()
+                    oldest.remove()
+                    evictions++
+                }
             }
             witnessedFrames[vsync] = cached
+            if (witnessedFrames.size > maxLedger) maxLedger = witnessedFrames.size
         }
     }
     fun refreshed() {
@@ -473,6 +540,9 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     }
     fun onStopped() {
         stopped = true
+        diagnosticGeneration++
+        diagnosticHandler.removeCallbacksAndMessages(null)
+        diagnosticsScheduled = false
         witnessedFrames.clear()
         choreographer.removeFrameCallback(frameCallback)
     }
@@ -486,16 +556,29 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         reported = false
         cachedDrawLogged = false
         cachedMatchLogged = false
+        eligibleDraws = 0
+        cachedDraws = 0
+        choreographerCallbacks = 0
+        metricsCallbacks = 0
+        exactMatches = 0
+        evictions = 0
+        droppedMetrics = 0L
+        maxLedger = 0
+        invalidCompletions = 0
+        nearestMismatchAbsNs = Long.MAX_VALUE
+        nearestMismatchSignedNs = 0L
+        diagnosticsScheduled = false
         choreographer.postFrameCallback(frameCallback)
     }
     fun close() {
         closed = true
+        diagnosticGeneration++
+        diagnosticHandler.removeCallbacksAndMessages(null)
         witnessedFrames.clear()
         choreographer.removeFrameCallback(frameCallback)
         window.removeOnFrameMetricsAvailableListener(listener)
     }
 }
-
 class MainActivity : ComponentActivity() {
     // BENCH-2 (#573): what the starting (or newest) intent asks for. Re-read from
     // getIntent() on every recreation; the caller's URI is never saved anywhere.
