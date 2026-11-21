@@ -18,7 +18,10 @@ import nl.atlas.gallery.featurevisual.store.VisualVectorWrite
 import nl.atlas.gallery.featurevisual.tags.TagMatrix
 import nl.atlas.gallery.featurevisual.tags.TagMatrixCodec
 import nl.atlas.gallery.featurevisual.tags.TagScorer
+import nl.atlas.gallery.featurevisual.tags.TagHit
+import nl.atlas.gallery.featurevisual.tags.store.TagRowKey
 import nl.atlas.gallery.featurevisual.tags.store.TagScope
+import nl.atlas.gallery.featurevisual.tags.store.TaggedRow
 import nl.atlas.gallery.featurevisual.tags.store.TagSweepStop
 import nl.atlas.gallery.featurevisual.tags.store.TaggingIndexPort
 import nl.atlas.gallery.featurevisual.tags.store.VisualTagHook
@@ -158,6 +161,37 @@ class VisualTagBackfillAndroidTest {
                     println(line)
                     assertTrue("bounded storage: $line", perItemBytes < 400)
                 }
+            }
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    /** Review #764: the scope is applied before any limit, beyond 50k global matches. */
+    @Test fun scopedTagQueryFindsMatchesPastFiftyThousandBetterOnesAndLibraryHonoursLimit() {
+        val base = InstrumentationRegistry.getInstrumentation().targetContext
+        val dir = File(base.cacheDir, "atlas-tags1-scope-" + UUID.randomUUID()).also { check(it.mkdirs()) }
+        try {
+            VisualTagStore(dbContext(dir)).use { store ->
+                val n = 50_010
+                fun key(i: Int) = "content://synthetic/scope/%06d".format(i)
+                // Margin falls with i: item 0 is the best "dog", item n-1 the worst.
+                (0 until n).chunked(5_000).forEach { chunk ->
+                    store.putRows(chunk.map { i ->
+                        TaggedRow(TagRowKey(key(i), TagRowKey.IMAGE_FRAME), "r1",
+                            listOf(TagHit("dog", 0.5f, 0.4f - i * 1e-6f)))
+                    })
+                }
+                val worst = key(n - 1)
+                assertEquals(listOf(worst),
+                    store.mediaForTag("dog", TagScope.Media(setOf(worst, "content://synthetic/scope/none")), 10))
+                // A scope larger than one SQL chunk: the best three of it, in order.
+                val scope = (n - 1_200 until n).map(::key).toSet()
+                assertEquals((n - 1_200 until n - 1_197).map(::key),
+                    store.mediaForTag("dog", TagScope.Media(scope), 3))
+                assertEquals(n, store.mediaForTag("dog", TagScope.Library, 60_000).size)
+                assertEquals((0 until 10).map(::key), store.mediaForTag("dog", TagScope.Library, 10))
+                assertEquals(emptyList<String>(), store.mediaForTag("cat", TagScope.Library, 10))
             }
         } finally {
             dir.deleteRecursively()

@@ -25,8 +25,8 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
     companion object {
         const val DB_NAME = "atlas_visual_tags.db"
         const val SCHEMA_VERSION = 1
-        /** Rows read for one mediaForTag before scope filtering. */
-        const val MAX_TAG_ROWS = 50_000
+        /** Scope keys per mediaForTag query (SQLite's bound-parameter limit is 999 before 3.32). */
+        const val SCOPE_CHUNK = 500
         private const val AFTER = "(media_key>? OR (media_key=? AND frame_ms>?))"
         private const val UPTO = "(media_key<? OR (media_key=? AND frame_ms<=?))"
     }
@@ -201,22 +201,35 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
         }
     }
 
+    /**
+     * The scope is applied in SQL before any limit: a [TagScope.Media] scope
+     * is looked up in chunks of [SCOPE_CHUNK] keys (each chunk's own top
+     * [limit]), then merged, so a scoped match is found however many better
+     * matches lie outside the scope. [TagScope.Library] honours [limit] as is.
+     */
     @Synchronized override fun mediaForTag(tagId: String, scope: TagScope, limit: Int): List<String> {
         require(limit >= 1)
         val keys = (scope as? TagScope.Media)?.keys
         if (keys != null && keys.isEmpty()) return emptyList()
-        return readableDatabase.rawQuery("""SELECT i.media_key, MAX(h.margin) m FROM hits h
-            JOIN items i ON i.id=h.item
-            WHERE h.tag=(SELECT id FROM tags WHERE tag_id=?)
-            GROUP BY i.media_key ORDER BY m DESC, i.media_key LIMIT ?""",
-            arrayOf(tagId, MAX_TAG_ROWS.toString())).use { c ->
-            val out = ArrayList<String>()
-            while (out.size < limit && c.moveToNext()) {
-                val key = c.getString(0)
-                if (keys == null || key in keys) out += key
+        val db = readableDatabase
+        val tag = db.rawQuery("SELECT id FROM tags WHERE tag_id=?", arrayOf(tagId))
+            .use { if (it.moveToFirst()) it.getLong(0) else null } ?: return emptyList()
+        fun query(filter: List<String>?): List<Pair<String, Float>> {
+            val inClause = filter?.let { " AND i.media_key IN (" + it.joinToString(",") { "?" } + ")" } ?: ""
+            val args = buildList { add(tag.toString()); filter?.let { addAll(it) }; add(limit.toString()) }
+            return db.rawQuery("""SELECT i.media_key, MAX(h.margin) m FROM hits h
+                JOIN items i ON i.id=h.item
+                WHERE h.tag=?$inClause
+                GROUP BY i.media_key ORDER BY m DESC, i.media_key LIMIT ?""", args.toTypedArray()).use { c ->
+                val out = ArrayList<Pair<String, Float>>()
+                while (c.moveToNext()) out += c.getString(0) to c.getFloat(1)
+                out
             }
-            out
         }
+        if (keys == null) return query(null).map { it.first }
+        return keys.sorted().chunked(SCOPE_CHUNK).flatMap { query(it) }
+            .sortedWith(compareByDescending<Pair<String, Float>> { it.second }.thenBy { it.first })
+            .take(limit).map { it.first }
     }
 
     @Synchronized override fun counts(): TagStoreCounts {
