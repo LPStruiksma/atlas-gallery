@@ -97,11 +97,12 @@ class OverviewSourceUnionTest {
     }
 
     @Test fun peopleUnionOriginAlsoTracksPeopleSources() {
-        val people = listOf<Any>()
+        // Distinct list objects: an empty listOf() is one shared singleton.
+        val people = listOf<Any>("Fictional Ada")
         val origin = OverviewUnionOrigin("People", authorized, 7L, "2:a", "7",
             peopleSource = people, nativeGeneration = "g1")
         assertTrue(origin.isCurrent(authorized, 7L, "2:a", "7", people, "g1"))
-        assertFalse(origin.isCurrent(authorized, 7L, "2:a", "7", listOf<Any>(), "g1"))
+        assertFalse(origin.isCurrent(authorized, 7L, "2:a", "7", listOf<Any>("Fictional Ada"), "g1"))
         assertFalse(origin.isCurrent(authorized, 7L, "2:a", "7", people, "g2"))
         assertFalse(origin.isCurrent(authorized, 7L, "2:a", "7", people, null))
     }
