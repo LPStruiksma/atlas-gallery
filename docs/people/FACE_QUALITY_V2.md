@@ -76,11 +76,14 @@ An automatic hint never replaces the separately persisted COVER-3 manual
 override, which wins while it still resolves to a present named-person member.
 
 The People home projection is updated transactionally with publication and
-manual identity review. Quality-only backfill recomputes *only affected*
-people in the same guarded SQLite transaction without changing the identity
-review revision; the host invalidates its cached home projection on a
-successful quality-only write. The live fallback path rechecks model, source
-revision, processed state, membership and grant before using a cover.
+manual identity review. Hidden named people remain **excluded** from People
+home, but their derived automatic winner is refreshed under the same rules
+and is used in the Hidden list and the hidden person's header. COVER-3 manual
+choices still win there. Quality-only backfill recomputes *only affected*
+people (visible or hidden) in the same guarded SQLite transaction without
+changing the identity review revision; the host invalidates its cached home
+projection on a successful quality-only write. The live fallback path rechecks
+model, source revision, processed state, membership and grant before using a cover.
 Video cover crops continue to use the existing `frame_ms`-aware,
 grant-scoped crop cache. No expression/aesthetics model or attractiveness
 score is added.
