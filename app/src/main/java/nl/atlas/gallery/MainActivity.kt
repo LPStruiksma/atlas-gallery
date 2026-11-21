@@ -224,6 +224,9 @@ import nl.atlas.gallery.featuresearch.SearchSuggestionSource
 import nl.atlas.gallery.featuresearch.planLocalSearchSuggestions
 import nl.atlas.gallery.featuresearch.SearchPerson
 import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
+import nl.atlas.gallery.featurepeopleui.PersonPageTarget
+import nl.atlas.gallery.featurepeopleui.needsSplittingLists
+import nl.atlas.gallery.featurepeopleui.SamePersonSkipPreferences
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeopleui.peopleHomeAlbumsForGrant
 import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
@@ -1356,6 +1359,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
     var hiddenPeopleOpen by rememberSaveable { mutableStateOf(false) }
+    var needsSplittingOpen by rememberSaveable { mutableStateOf(false) }
+    var hiddenNeedsSplittingOpen by rememberSaveable { mutableStateOf(false) }
     // #643: People maintenance tools live in Settings.
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
@@ -4133,6 +4138,38 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // #551: a merge or first name follows the surviving person.
                                 onRetarget = { nativePersonAlbum = it }
                             )
+                        } else if (needsSplittingOpen || hiddenNeedsSplittingOpen) {
+                            val hiddenOnly = hiddenNeedsSplittingOpen
+                            BackHandler {
+                                needsSplittingOpen = false
+                                hiddenNeedsSplittingOpen = false
+                            }
+                            NeedsSplittingRoute(
+                                host = discoveryHost,
+                                people = discovery.status?.people,
+                                hiddenOnly = hiddenOnly,
+                                onBack = {
+                                    needsSplittingOpen = false
+                                    hiddenNeedsSplittingOpen = false
+                                },
+                                onOpen = { target ->
+                                    val epoch = discovery.status?.people?.permissionEpoch
+                                    val live = discoveryHost.liveReview(epoch)
+                                    val latest = needsSplittingLists(live)
+                                    val authorized = if (hiddenOnly) latest.hidden else latest.visible
+                                    if (live != null && discoveryHost.scopeCurrent(live.permissionEpoch) &&
+                                        authorized.any { it.target == target }) {
+                                        when (target) {
+                                            is PersonPageTarget.Named -> live.names[target.person]?.let {
+                                                nativePersonAlbum = NativePersonAlbumRequest(target, it)
+                                            }
+                                            is PersonPageTarget.Unnamed -> peopleReviewOpen = true
+                                        }
+                                    }
+                                    needsSplittingOpen = false
+                                    hiddenNeedsSplittingOpen = false
+                                }
+                            )
                         } else if (hiddenPeopleOpen) {
                             BackHandler { hiddenPeopleOpen = false }
                             HiddenPeopleRoute(
@@ -4140,7 +4177,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 people = discovery.status?.people,
                                 onBack = { hiddenPeopleOpen = false },
                                 onOpen = { nativePersonAlbum = it },
-                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 }
+                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 },
+                                onOpenNeedsSplitting = { hiddenNeedsSplittingOpen = true }
                             )
                         } else if (people.isNotEmpty() && permittedCovers == null) {
                             Text("Matching your reviewed People to accessible photos…",
@@ -4154,6 +4192,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             // People actions only; the visual index, People numbers,
                             // photo details and the V4 import sit in Settings.
                             var samePersonQueueOpen by remember { mutableStateOf(false) }
+                            val splitVersion by discoveryHost.changes.collectAsState()
+                            val splitState = rememberReviewState(
+                                discoveryHost, splitVersion, discovery.status?.people)
+                            val visibleSplits = remember(splitState) {
+                                needsSplittingLists(splitState?.takeIf {
+                                    discoveryHost.scopeCurrent(it.permissionEpoch)
+                                }).visible.size
+                            }
                             val peopleMenu = listOf(
                                 // #584: Samsung's People ⋮ → Hidden; Show this person
                                 // on a hidden person's page brings it back.
@@ -4161,7 +4207,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     onClick = { hiddenPeopleOpen = true }),
                                 // #580: every open "Same person?" question in a row.
                                 AtlasHeaderMenuItem("Same person?", "atlas-people-same-open",
-                                    onClick = { samePersonQueueOpen = true }))
+                                    onClick = { samePersonQueueOpen = true }),
+                                AtlasHeaderMenuItem("Needs splitting ($visibleSplits)",
+                                    "atlas-people-needs-splitting-open",
+                                    onClick = { needsSplittingOpen = true }),
+                                AtlasHeaderMenuItem("Show skipped", "atlas-people-show-skipped",
+                                    onClick = {
+                                        val live = discoveryHost.liveReview(
+                                            discovery.status?.people?.permissionEpoch)
+                                        if (live != null && discoveryHost.scopeCurrent(live.permissionEpoch)) {
+                                            SamePersonSkipPreferences.forApp(context)
+                                                .clear(live.permissionEpoch)
+                                            samePersonQueueOpen = true
+                                        }
+                                    }))
                             if (samePersonQueueOpen) SamePersonQueueRoute(
                                 discoveryHost, discovery.status?.people) {
                                 samePersonQueueOpen = false
