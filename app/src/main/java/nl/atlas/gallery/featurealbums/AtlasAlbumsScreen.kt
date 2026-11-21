@@ -320,6 +320,8 @@ fun AtlasAlbumsScreen(
     onOpenPhotoDna: (() -> Unit)? = null,
     /** Samsung's "Hide albums" screen (#568, parity research GRID:A7). */
     onOpenHideAlbums: (() -> Unit)? = null,
+    /** HIDE-1 (#585): the Hidden collection of hidden media items. */
+    onOpenHidden: (() -> Unit)? = null,
     /** Explicit whole-library search belongs to the host Search destination. */
     onSearchWholeLibrary: (() -> Unit)? = null,
     /**
@@ -345,6 +347,8 @@ fun AtlasAlbumsScreen(
                     "Photo DNA", "atlas-albums-menu-photo-dna", onClick = onOpenPhotoDna))
                 if (onOpenHideAlbums != null) add(AtlasHeaderMenuItem(
                     "Hide albums", "atlas-albums-menu-hide", onClick = onOpenHideAlbums))
+                if (onOpenHidden != null) add(AtlasHeaderMenuItem(
+                    "Hidden", "atlas-albums-menu-hidden", onClick = onOpenHidden))
             },
             actions = {
                 AtlasSearch(query = searchText, onQueryChange = { searchText = it },

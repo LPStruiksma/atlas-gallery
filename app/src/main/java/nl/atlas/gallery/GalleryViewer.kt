@@ -164,6 +164,10 @@ fun GalleryViewer(
     // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
+    // HIDE-1 (#585): More → Hide (or Unhide when [hiddenMode]); null hides it.
+    // Only a stored key changes; the file is never touched. Library access only.
+    onHideToggle: ((MediaRecord) -> Unit)? = null,
+    hiddenMode: Boolean = false,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -174,7 +178,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, onHideToggle, hiddenMode, onBack)
     }
 }
 
@@ -195,6 +199,8 @@ private fun GalleryViewerSnapshot(
     photoPeople: ViewerPhotoPeople?,
     swapPerson: ViewerSwapPerson?,
     access: ViewerAccess,
+    onHideToggle: ((MediaRecord) -> Unit)?,
+    hiddenMode: Boolean,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -904,15 +910,17 @@ private fun GalleryViewerSnapshot(
                     Icon(Icons.Outlined.ImageSearch, "Find similar", tint = Color.White)
                 }
                 // AI Edit is inside the viewer overflow, never another permanent pencil.
-                if (onAiEdit != null && !current.isVideo &&
-                    PhotoEditorHandoff.eligible(current)) Box {
+                val aiEditShown = onAiEdit != null && !current.isVideo &&
+                    PhotoEditorHandoff.eligible(current)
+                val hideShown = onHideToggle != null && access == ViewerAccess.LIBRARY
+                if (aiEditShown || hideShown) Box {
                     IconButton(onClick = { aiEditMenuOpen = true },
                         modifier = Modifier.testTag("atlas-viewer-more")) {
                         Icon(Icons.Filled.MoreVert, "More photo actions", tint = Color.White)
                     }
                     DropdownMenu(expanded = aiEditMenuOpen,
                         onDismissRequest = { aiEditMenuOpen = false }) {
-                        DropdownMenuItem(
+                        if (aiEditShown && onAiEdit != null) DropdownMenuItem(
                             text = { Text("AI Edit") },
                             modifier = Modifier.testTag("atlas-viewer-ai-edit"),
                             onClick = { aiEditMenuOpen = false; onAiEdit(current) })
@@ -923,10 +931,15 @@ private fun GalleryViewerSnapshot(
                             value = false
                             value = swapPort?.eligible?.invoke(current) == true
                         }
-                        if (swapPort != null && swapOk) DropdownMenuItem(
+                        if (aiEditShown && swapPort != null && swapOk) DropdownMenuItem(
                             text = { Text("Swap person") },
                             modifier = Modifier.testTag("atlas-viewer-swap-person"),
                             onClick = { aiEditMenuOpen = false; swapPort.open(current) })
+                        if (hideShown && onHideToggle != null) DropdownMenuItem(
+                            text = { Text(if (hiddenMode) "Unhide" else "Hide") },
+                            modifier = Modifier.testTag(
+                                if (hiddenMode) "atlas-viewer-unhide" else "atlas-viewer-hide"),
+                            onClick = { aiEditMenuOpen = false; onHideToggle(current) })
                     }
                 }
                 if (access.details) IconButton(
