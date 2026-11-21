@@ -4,9 +4,9 @@
       "file": "brand-l4-navigation.png",
       "size": [
         3480,
-        8462
+        8520
       ],
-      "sha256": "e5de2a7ffb5fffb041fdefdcd06a63ec6c98fd9b657165cf8a2fab694e887e81",
+      "sha256": "97e3836dbaf6f9e43f95bc23c48b3445073c888ffb363a1dc7055a17647e3e7a",
       "device_frames": 20,
       "device_frame_px": [
         1080,
@@ -103,9 +103,9 @@
       "file": "brand-l7-search.png",
       "size": [
         3480,
-        8381
+        9904
       ],
-      "sha256": "23162bc526e3ebbd67378b6516df39befd1630401525c46e7261b49b39bdc3b4",
+      "sha256": "573289249ead1da922e2977706eaea84c09b3b254fdb85f78b1f2b3a3faa25b7",
       "device_frames": 18,
       "device_frame_px": [
         1080,
@@ -136,10 +136,10 @@
       "file": "brand-l8-justified.png",
       "size": [
         3480,
-        27339
+        41717
       ],
-      "sha256": "b89889b13df1f6a3a2b0b6e6b2fd7473655430a08e76c62e2757494c7455534c",
-      "device_frames": 43,
+      "sha256": "6a2671cc1f537406986f365ee2636c314511d482ebc9fae634a8aa111473fb12",
+      "device_frames": 67,
       "device_frame_px": [
         1080,
         2340
@@ -175,6 +175,30 @@
         "P4",
         "P5",
         "P6",
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6",
+        "Q7",
+        "Q8",
+        "Q9",
+        "Q10",
+        "Q11",
+        "Q12",
+        "Q13",
+        "Q14",
+        "Q15",
+        "Q16",
+        "Q17",
         "B1",
         "B2",
         "B3",

@@ -1,0 +1,60 @@
+{
+ "_comment": "Few-shot examples for model prompts. Disjoint from queries.json by construction (checked in tests).",
+ "examples": [
+  {
+   "text": "hiking photos from last year",
+   "expected": {
+    "intent": "filter",
+    "tags": [],
+    "unresolved": [
+     "hiking"
+    ],
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31"
+   }
+  },
+  {
+   "text": "Sam with the cat in Utrecht",
+   "expected": {
+    "intent": "filter",
+    "people": [
+     "Sam"
+    ],
+    "tags": [
+     "cat"
+    ],
+    "place": "Utrecht"
+   }
+  },
+  {
+   "text": "video's zonder mensen",
+   "expected": {
+    "intent": "filter",
+    "media": "video",
+    "exclude_tags": [
+     "people"
+    ]
+   }
+  },
+  {
+   "text": "Noor op het strand in juli 2024",
+   "expected": {
+    "intent": "filter",
+    "people": [
+     "Noor"
+    ],
+    "tags": [
+     "beach"
+    ],
+    "date_from": "2024-07-01",
+    "date_to": "2024-07-31"
+   }
+  },
+  {
+   "text": "What is the capital of France?",
+   "expected": {
+    "intent": "unsupported"
+   }
+  }
+ ]
+}
