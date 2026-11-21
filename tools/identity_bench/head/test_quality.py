@@ -263,13 +263,27 @@ class Scale(unittest.TestCase):
         c = make_cohort()
         rows = make_rows(c)
         for r in rows[:count]:
-            r["result_head_span"] = m(100.0 * (1 + err))
+            r["result_head_span"] = m(100.0 + err * 100.0 if isinstance(err, float) and err != 0.10 else 110.0)
         return gate(q.evaluate(c, rows), "scale")
 
     def test_boundary_median_at_ten_percent_passes(self):
         g = self.with_error(0.10)
         self.assertEqual(g["status"], q.PASS)
         self.assertAlmostEqual(g["median_abs_rel_error"], 0.10)
+
+    def test_no_tolerance_above_the_frozen_cutoff(self):
+        for span in (110.00000005, 110.000000000001, 110.00000000000001):
+            c = make_cohort()
+            rows = make_rows(c)
+            for r in rows:
+                r["result_head_span"] = m(span)
+            self.assertEqual(gate(q.evaluate(c, rows), "scale")["status"], q.FAIL, span)
+        c = make_cohort()
+        rows = make_rows(c)
+        for r in rows:
+            r["target_head_span"] = m(10.0)
+            r["result_head_span"] = m(11.0)  # exactly 0.10
+        self.assertEqual(gate(q.evaluate(c, rows), "scale")["status"], q.PASS)
 
     def test_just_above_ten_percent_fails(self):
         self.assertEqual(self.with_error(0.101)["status"], q.FAIL)
@@ -540,6 +554,74 @@ class ReviewFindings(unittest.TestCase):
     def test_row_pose_tag_must_match_the_locked_cohort(self):
         self.row_fails_closed(lambda r: r.update(pose_tag="frontal" if r["pose_tag"] != "frontal" else "profile"),
                               "pose_tag")
+
+
+class Malformed(unittest.TestCase):
+    """Unhashable or wrongly typed JSON values must give a report, never an exception (Review #841)."""
+    BAD = ([], {}, [1], {"a": 1}, None, 7, 1.5, True, "", "  ")
+
+    def assert_closed(self, c, rows):
+        r = q.evaluate(c, rows)  # must not raise
+        self.assertIn(r["verdict"], (q.PASS, q.FAIL, q.INSUFFICIENT))
+        json.dumps(r)
+        q.render_text(r)
+        return r
+
+    def assert_not_pass(self, c, rows):
+        r = self.assert_closed(c, rows)
+        self.assertNotEqual(r["verdict"], q.PASS)
+        return r
+
+    def test_bad_cohort_pair_fields(self):
+        for key in ("pair_id", "target_id", "reference_id", "baseline_id", "engine", "pose_tag", "seed",
+                    "hair_shape", "model_sha256", "adapter_sha256", "fence_hash", "licence"):
+            for bad in self.BAD:
+                c = make_cohort()
+                c["pairs"][2][key] = bad
+                # hair_shape is a coverage tag: one untagged pair leaves 3 distinct shapes elsewhere
+                check = self.assert_closed if key == "hair_shape" else self.assert_not_pass
+                check(c, make_rows(make_cohort()))
+
+    def test_bad_row_fields(self):
+        keys = list(make_row(make_cohort()["pairs"][0]))
+        for key in keys:
+            for bad in self.BAD:
+                c = make_cohort()
+                rows = make_rows(c)
+                rows[2][key] = bad
+                r = self.assert_closed(c, rows)
+                if key in ("pair_id", "target_id", "reference_id", "engine", "seed", "model_sha256", "adapter_sha256",
+                           "pose_tag", "baseline_id", "licence_evidence", "output_mask_hash", "outside_fence",
+                           "hair_votes", "seam_votes", "identity", "classification", "target_pose_preserved"):
+                    self.assertNotEqual(r["verdict"], q.PASS, (key, bad))
+
+    def test_bad_nested_values(self):
+        for key in ("classification", "outside_fence", "hair_votes", "seam_votes", "identity", "licence_evidence",
+                    "target_head_span", "claimed_success"):
+            for inner in self.BAD:
+                c = make_cohort()
+                rows = make_rows(c)
+                rows[2][key] = {"status": "measured", "method": "x", "value": inner}
+                self.assert_closed(c, rows)
+                rows[2][key] = {"status": inner, "method": inner, "reason": inner}
+                self.assert_closed(c, rows)
+
+    def test_list_or_dict_ids_in_votes_identity_and_rows(self):
+        c = make_cohort()
+        rows = make_rows(c)
+        rows[1]["hair_votes"] = m([{"judge": [], "vote": "candidate", "presented_first": "baseline"},
+                                   {"judge": {}, "vote": "candidate", "presented_first": "baseline"}])
+        rows[2]["identity"] = m([{"source": [], "profile_capable": True, "outcome": "preserved"},
+                                 {"source": [], "profile_capable": True, "outcome": "preserved"}])
+        rows[3]["pair_id"] = []
+        rows[4]["pair_id"] = {"x": 1}
+        r = self.assert_not_pass(c, rows)
+        self.assertEqual(r["verdict"], q.INSUFFICIENT)
+
+    def test_garbage_top_level_shapes(self):
+        for cohort in (None, [], "x", 3, {"pairs": [[], {}, None, "x"]}, {"pairs": [{"pair_id": []}] * 25}):
+            for rows in (None, {}, [[]], [{"pair_id": []}], "x"):
+                self.assert_closed(cohort, rows)
 
 
 class Frozen(unittest.TestCase):

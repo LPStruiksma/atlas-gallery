@@ -19,6 +19,7 @@ import json
 import math
 import re
 import statistics
+from fractions import Fraction
 import sys
 from collections import Counter
 
@@ -30,6 +31,7 @@ MIN_PROFILE_PAIRS = 4
 MIN_HAIR_SHAPES = 2
 WHOLE_HEAD_POSE_MIN = 0.90
 SCALE_MEDIAN_MAX = 0.10
+_SCALE_CUTOFF = Fraction(1, 10)  # the same frozen cutoff, exact; no tolerance is added
 JUDGE_PREFER_MIN = 0.70
 EXPECTED_JUDGES = 2
 
@@ -117,10 +119,11 @@ def check_cohort(cohort):
     ids = [p.get("pair_id") if isinstance(p, dict) else None for p in pairs]
     if not all(_text(i) for i in ids):
         problems.append("a pair has no pair_id")
-    dup = [i for i, n in Counter(ids).items() if n > 1]
+    dup = [i for i, n in Counter(i for i in ids if _text(i)).items() if n > 1]  # hash only validated strings
     if dup:
         problems.append(f"duplicate pair_id: {sorted(map(str, dup))}")
-    combos = Counter((p.get("target_id"), p.get("reference_id")) for p in pairs if isinstance(p, dict))
+    combos = Counter((p["target_id"], p["reference_id"]) for p in pairs
+                     if isinstance(p, dict) and _text(p.get("target_id")) and _text(p.get("reference_id")))
     if any(n > 1 for n in combos.values()):
         problems.append("the same target/reference combination is repeated; repeats are not new pairs")
     engines = set()
@@ -143,7 +146,7 @@ def check_cohort(cohort):
         if not (isinstance(lic, dict) and lic.get("cleared") is True and _text(lic.get("source"))
                 and _text(lic.get("licence")) and _text(lic.get("permitted_use"))):
             problems.append(f"{pid}: licence evidence missing, incomplete or not cleared")
-        engines.add((p.get("engine"), json.dumps(p.get("model_sha256"), sort_keys=True),
+        engines.add((json.dumps(p.get("engine"), sort_keys=True), json.dumps(p.get("model_sha256"), sort_keys=True),
                      json.dumps(p.get("adapter_sha256"), sort_keys=True)))
     if len(engines) > 1:
         problems.append("candidate engine/model/adapter is not one locked value across the cohort")
@@ -184,11 +187,11 @@ def _index_rows(cohort_pairs, rows):
     by_id, extra = {}, []
     for r in rows if isinstance(rows, list) else []:
         pid = r.get("pair_id") if isinstance(r, dict) else None
-        planned = {p.get("pair_id") for p in cohort_pairs if isinstance(p, dict)}
-        if pid in planned and pid not in by_id:
+        planned = {p.get("pair_id") for p in cohort_pairs if isinstance(p, dict) and _text(p.get("pair_id"))}
+        if _text(pid) and pid in planned and pid not in by_id:
             by_id[pid] = r
         else:
-            extra.append(pid)  # unplanned, duplicate or id-less row: contradicts the frozen cohort
+            extra.append(pid if _text(pid) else repr(pid))  # unplanned, duplicate or id-less row: contradicts the frozen cohort
     return by_id, extra
 
 
@@ -258,15 +261,15 @@ def gate_scale(pairs, by_id):
         ts, tv = measured(r, "target_head_span")
         rs, rv = measured(r, "result_head_span")
         if ts == "ok" and rs == "ok" and _num(tv) and _num(rv) and tv > 0 and rv >= 0:
-            errs.append(abs(rv - tv) / tv)
+            errs.append(abs(Fraction(rv) - Fraction(tv)) / Fraction(tv))  # exact: no float rounding at the cutoff
         else:
             incomplete.append(p["pair_id"])
-    median = statistics.median(errs) if errs else None
+    median = statistics.median(errs) if errs else None  # exact Fraction; compared with the frozen cutoff as-is
     if incomplete or median is None:
         status = INSUFFICIENT
     else:
-        status = PASS if median <= SCALE_MEDIAN_MAX + 1e-9 else FAIL
-    return _gate("scale", status, median_abs_rel_error=median, threshold=SCALE_MEDIAN_MAX,
+        status = PASS if median <= _SCALE_CUTOFF else FAIL
+    return _gate("scale", status, median_abs_rel_error=None if median is None else float(median), threshold=SCALE_MEDIAN_MAX,
                  measured=len(errs), denominator=len(pairs), incomplete=incomplete)
 
 
@@ -333,7 +336,7 @@ def gate_identity(pairs, by_id):
         sources = [x.get("source") if isinstance(x, dict) else None for x in v]
         good = [x for x in v if isinstance(x, dict) and _text(x.get("source")) and x.get("profile_capable") is True
                 and x.get("outcome") in ("preserved", "not_preserved")]
-        if len({x["source"] for x in good}) < 2 or len(set(sources)) != len(sources):
+        if len({x["source"] for x in good}) < 2 or len({x for x in sources if _text(x)}) != len(sources):
             incomplete.append(p["pair_id"])  # unscorable profile, abstention, or not two independent sources
             continue
         if len({x["outcome"] for x in good}) > 1:
