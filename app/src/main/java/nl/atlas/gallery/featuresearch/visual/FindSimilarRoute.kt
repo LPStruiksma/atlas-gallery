@@ -3,6 +3,7 @@ package nl.atlas.gallery.featuresearch.visual
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import nl.atlas.gallery.featuresearch.scopeRankedHits
 import nl.atlas.gallery.CatalogSourceKey
 import nl.atlas.gallery.featurevisual.search.VisualSearchUiState
 import nl.atlas.gallery.featuresearch.face.FaceReferenceChooser
+import nl.atlas.gallery.featuresearch.face.screenScopeLine
 import nl.atlas.gallery.featurevisual.search.VisualSearchResultsScreen
 
 /** Where Find similar is; the host keeps it in memory only, never in saved state. */
@@ -76,6 +78,8 @@ fun FindSimilarRoute(
     facetPeople: List<PersonEntry> = emptyList(),
     onSearchWholeLibrary: (() -> Unit)? = null,
     screenMedia: List<MediaRecord>? = null,
+    /** FIND-2 F: the Albums/People list the source is a union of, for its literal return. */
+    screenLabel: String? = null,
     thumbnail: suspend (MediaRecord) -> ImageBitmap?
 ) {
     val scope = rememberCoroutineScope()
@@ -141,10 +145,21 @@ fun FindSimilarRoute(
                     val scopedUi = if (results != null && shownHits != null)
                         VisualSearchUiState.Results(results.shown.copy(hits = shownHits.map { it.hit }))
                         else ui
-                    if (screenMedia != null && results != null) TextButton(
-                        onClick = { screenSort = !screenSort },
-                        modifier = Modifier.testTag("atlas-similar-screen-sort")) {
-                        Text(if (screenSort) "Best matches" else "Screen sort")
+                    if (screenMedia != null) Text(screenScopeLine(true, screenLabel, ""),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            .testTag("atlas-similar-scope-line"))
+                    if (screenMedia != null && results != null) Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = { screenSort = !screenSort },
+                            modifier = Modifier.testTag("atlas-similar-screen-sort")) {
+                            Text(if (screenSort) "Best matches" else "Screen sort")
+                        }
+                        if (screenLabel != null) TextButton(onClick = onClose,
+                            modifier = Modifier.testTag("atlas-similar-return-origin")) {
+                            Text("Back to $screenLabel")
+                        }
                     }
                     VisualSearchResultsScreen(
                         state = scopedUi,

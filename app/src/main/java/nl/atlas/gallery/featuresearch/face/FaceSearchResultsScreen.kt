@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
@@ -98,7 +99,9 @@ fun FaceSearchRoute(
     onClose: () -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
     onSearchWholeLibrary: (() -> Unit)? = null,
-    screenMedia: List<MediaRecord>? = null
+    screenMedia: List<MediaRecord>? = null,
+    /** FIND-2 F: the Albums/People list the source is a union of, for its literal return. */
+    screenLabel: String? = null
 ) {
     val scope = rememberCoroutineScope()
     val close by rememberUpdatedState(onClose)
@@ -166,7 +169,7 @@ fun FaceSearchRoute(
                     },
                     onOpenAlbum = onOpenAlbum, onOpenPeople = onOpenPeople, onBack = resultsBack,
                     facetPeople = facetPeople, onSearchWholeLibrary = onSearchWholeLibrary,
-                    screenMedia = screenMedia)
+                    screenMedia = screenMedia, screenLabel = screenLabel, onReturnToOrigin = onClose)
             }
         }
     }
@@ -235,7 +238,7 @@ fun FaceReferenceChooser(
         val list = images
         when {
             list == null -> Busy("Loading your photos…")
-            list.isEmpty() -> Text("No photos to choose from.", Modifier.padding(20.dp))
+            list.isEmpty() -> Text("No photos to search in this screen.", Modifier.padding(20.dp).testTag("atlas-reference-chooser-empty"))
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(104.dp),
                 modifier = Modifier.weight(1f),
@@ -284,7 +287,9 @@ fun FaceSearchResultsScreen(
     onBack: () -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
     onSearchWholeLibrary: (() -> Unit)? = null,
-    screenMedia: List<MediaRecord>? = null
+    screenMedia: List<MediaRecord>? = null,
+    screenLabel: String? = null,
+    onReturnToOrigin: () -> Unit = onBack
 ) {
     var searchText by remember { mutableStateOf("") }
     var screenSort by remember(screenMedia?.let(::CatalogSourceKey)) { mutableStateOf(false) }
@@ -318,7 +323,8 @@ fun FaceSearchResultsScreen(
             facetPeople, results.epoch, searchText, AtlasSearchScope.THIS_SCREEN)
     }
     Column(Modifier.fillMaxSize().testTag("atlas-face-results")) {
-        Header("Search by face", if (screenMedia == null) "Matches found on this device, best first" else "Matches in this screen")
+        Header("Search by face", screenScopeLine(screenMedia != null, screenLabel,
+            "Matches found on this device, best first"))
         if (screenMedia != null && results != null) TextButton(
             onClick = { screenSort = !screenSort },
             modifier = Modifier.testTag("atlas-face-screen-sort")) {
@@ -333,10 +339,23 @@ fun FaceSearchResultsScreen(
                 Modifier.weight(1f), screenSort, allowPersonAlbum = screenMedia == null)
             else -> Box(Modifier.weight(1f)) { StateScreen(state, onOpenPeople, onBack) }
         }
-        TextButton(onClick = onBack, modifier = Modifier.testTag("atlas-face-search-back")) {
-            Text("Back")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onBack, modifier = Modifier.testTag("atlas-face-search-back")) {
+                Text(if (screenMedia != null) "Back to face picker" else "Back")
+            }
+            if (screenLabel != null) TextButton(onClick = onReturnToOrigin,
+                modifier = Modifier.testTag("atlas-face-search-return-origin")) {
+                Text("Back to $screenLabel")
+            }
         }
     }
+}
+
+/** FIND-2: the results' scope line names the list a union came from. */
+internal fun screenScopeLine(scoped: Boolean, screenLabel: String?, unscoped: String): String = when {
+    !scoped -> unscoped
+    screenLabel == null -> "Matches in this screen"
+    else -> "Matches in these ${screenLabel.lowercase()}"
 }
 
 @Composable

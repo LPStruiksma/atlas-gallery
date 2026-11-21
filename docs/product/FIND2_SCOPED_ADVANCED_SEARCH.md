@@ -12,9 +12,16 @@ Issue: [#181](https://github.com/LPStruiksma/atlas-gallery/issues/181). Approved
 - The global Search tab continues to own whole-library exploration. An explicit **Whole library** choice leaves the current overview instead of treating it as the source of the same scoped query.
 - The existing face and visual models own ranking, confidence labels and optional pose emphasis. FIND-2 does not introduce another model, index or content suppression rule.
 
-## Work still required before Review
+## Albums and People lists (F)
 
-1. Integrate the non-media **Albums** and **People** overview list headers. Define the authorized represented-media union for each displayed set on a worker, with explicit return navigation to the origin list. Current header-only wiring does **not** cover these screens.
+- The Albums and People list headers offer **By face** and **By image** in the same AtlasSearch tool slots. The list's own name filter (and the Albums photo/video filter) decides which entries count; the chips are disabled when the list shows nothing.
+- `albumsOverviewUnion` keeps the shown albums' media by exact volume and relative path; `peopleOverviewUnion` keeps imported reviewed people's confirmed paths through the person-album authorization and native people's host-resolved URIs. Both draw only from the current grant's sorted publication, in its order (so Screen sort is the gallery sort). Unnamed face groups never count.
+- The union is built on a worker (native URIs on IO) and is used only if grant, gallery epoch, route, the sorted publication and (for People) the People sources are unchanged when it lands (`OverviewUnionOrigin`). Any later change closes the advanced search, as for the other headers.
+- Results say "Matches in these albums/people" and offer a literal **Back to Albums/People**; the list's query and open tray survive the round trip (host-held, never saved state).
+
+## Work still required
+
+1. ~~Albums and People list unions~~ (above).
 2. Connect **Filters** (date/person/folder) to the same immutable screen source and preserve search, filter and Screen sort membership. No fully functioning scoped facet panel has landed on this draft.
 3. Offer an alternative face reference from **People**, photo reference from the phone picker (without widening result scope), and recoverable no-face/index-off/empty states. Review controls and callback contracts with the actual active grant.
 4. Add synthetic JVM authorization/permission-epoch regressions, demonstrate ranking equals the engine's restricted query for both face and visual streams, and verify video moments and pose-sort membership.
