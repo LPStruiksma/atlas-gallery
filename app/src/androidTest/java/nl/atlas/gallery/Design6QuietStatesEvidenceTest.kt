@@ -60,7 +60,6 @@ import org.junit.runner.RunWith
  * state. These are not MainActivity permission or MediaStore integration tests.
  * Each screenshot uses the owner's 1080x2340 display rule. No personal data.
  */
-@RunWith(AndroidJUnit4::class)
 private data class Design6InsetEvidence(
     val layoutAtUptimeMs: Long,
     val windowBoundsPx: String,
@@ -98,6 +97,7 @@ private fun ComposeTestRule.captureInsetEvidence(
     }
 }
 
+@RunWith(AndroidJUnit4::class)
 class Design6QuietStatesEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain =
