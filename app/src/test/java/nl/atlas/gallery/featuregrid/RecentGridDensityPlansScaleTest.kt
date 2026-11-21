@@ -132,4 +132,18 @@ class RecentGridDensityPlansScaleTest {
             }
         }
     }
+
+    /** FLOW-1: committing 4 → 7 then planning month must keep 4 (the pinch-back neighbour). */
+    @Test fun protectedNeighboursSurviveAPrefetchEviction() {
+        val cache = RecentGridDensityPlans<Plan>(3)
+        cache.putCompleted(GridDensity.MEDIUM, plan(GridDensity.MEDIUM))
+        cache.putCompleted(GridDensity.LARGE, plan(GridDensity.LARGE))
+        cache.putCompleted(GridDensity.SMALL, plan(GridDensity.SMALL))
+        cache.get(GridDensity.SMALL)
+        val near = setOf(GridDensity.MEDIUM, GridDensity.SMALL, GridDensity.MONTH)
+        cache.putCompleted(GridDensity.MONTH, plan(GridDensity.MONTH), near)
+        assertNull(cache.peek(GridDensity.LARGE))
+        for (level in near) assertNotNull(level.name, cache.peek(level))
+        assertEquals(3, cache.retainedCount())
+    }
 }

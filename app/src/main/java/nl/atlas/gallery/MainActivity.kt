@@ -4472,8 +4472,16 @@ private fun GridTilePreview(
             SingletonImageLoader.get(context).memoryCache?.get(MemoryCache.Key(key)) != null
         } == true
     }
-    val microKey = remember(media, publicationEpoch, sharpCached) {
-        if (sharpCached || !MicroThumbnails.active) null
+    // FLOW-1 (#711): while this level's own size decodes, show a copy the
+    // other pinch level already decoded, so a level change never blinks grey.
+    val fallbackPixels = nl.atlas.gallery.featuregrid.LocalGridTileFallbackPixels.current
+    val fallback = remember(media, publicationEpoch, sharpCached, fallbackPixels) {
+        if (sharpCached || fallbackPixels == null) null
+        else nl.atlas.gallery.featuregrid.cachedGridTileBitmap(context, media, publicationEpoch,
+            fallbackPixels.filter { it != pixels }.toIntArray())
+    }
+    val microKey = remember(media, publicationEpoch, sharpCached, fallback) {
+        if (sharpCached || fallback != null || !MicroThumbnails.active) null
         else microThumbnailMemoryKey(media, publicationEpoch)
     }
     var micro by remember(microKey) { mutableStateOf(microKey?.let { MicroThumbnails.cached(it) }) }
@@ -4497,7 +4505,7 @@ private fun GridTilePreview(
         SideEffect { probe.record(media.uri, isMicroLayer = true, hasImage = micro != null) }
     }
     Box(modifier) {
-        val shown = micro
+        val shown = fallback ?: micro
         if (shown != null) {
             val image = remember(shown) { shown.asImageBitmap() }
             Image(image, contentDescription = null, contentScale = scale,
