@@ -8,7 +8,7 @@ package nl.atlas.gallery
  * a URI, media name, bitmap, decode bytes, or device data. This is a request
  * trace, NOT a claim that Coil's internal decoder work is instrumented.
  */
-internal class ViewerFilmstripMotionProbe {
+class ViewerFilmstripMotionProbe {
     data class Snapshot(
         val stripFrames: Int,
         val pageCompositions: Map<Int, Int>,
