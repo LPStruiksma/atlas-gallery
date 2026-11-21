@@ -2,6 +2,10 @@ package nl.atlas.gallery
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.shape.RoundedCornerShape
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,7 +91,15 @@ internal data class PersonPageUi(
     val items: List<MediaRecord>?,
     val hidden: Boolean,
     /** Offered only for a named person (an unknown group has no stable key to hide). */
-    val mayHide: Boolean
+    val mayHide: Boolean,
+    /** YEARS-1 (#586): the person is ignored; ⋮ then offers "Stop ignoring this person". */
+    val ignored: Boolean = false,
+    /** YEARS-1 (#586): the optional birth date shown by ⋮ as Set or Edit. */
+    val hasBirthDate: Boolean = false,
+    /** YEARS-1 (#586): Ignore and birth date are offered only for a named person. */
+    val mayIgnore: Boolean = false,
+    /** YEARS-1 (#586): up to three photo URIs of the "Through the years" row (empty: no row). */
+    val yearsPreview: List<String> = emptyList()
 )
 
 /** The modal step the page is in; one at a time, like Samsung. */
@@ -95,6 +107,9 @@ internal sealed interface PersonPageDialog {
     data object EditName : PersonPageDialog
     data object MergePicker : PersonPageDialog
     data class ConfirmMerge(val into: NativePersonAlbum) : PersonPageDialog
+
+    /** YEARS-1 (#586): the optional local birth date. */
+    data object BirthDate : PersonPageDialog
 }
 
 /**
@@ -122,6 +137,12 @@ internal fun PersonPageScreen(
     nameDialog: @Composable () -> Unit,
     mergePicker: @Composable () -> Unit,
     onHide: (Boolean) -> Unit,
+    /** YEARS-1 (#586): ignore (true) or stop ignoring (false) this person. */
+    onIgnore: (Boolean) -> Unit = {},
+    /** YEARS-1 (#586): the birth date editor, drawn while [PersonPageDialog.BirthDate]. */
+    birthDialog: @Composable () -> Unit = {},
+    /** YEARS-1 (#586): opens this person's Through the years Story; null hides the row. */
+    onYears: (() -> Unit)? = null,
     selectedUris: Set<String>?,
     onSelectionChange: (Set<String>?) -> Unit,
     /** Null when the current selection cannot be removed (none or every photo). */
@@ -154,6 +175,16 @@ internal fun PersonPageScreen(
         if (ui.mayHide) add(AtlasHeaderMenuItem(
             if (ui.hidden) "Show this person" else "Hide this person",
             "atlas-person-hide", onClick = { onHide(!ui.hidden) }))
+        // YEARS-1 (#586): the birth date is optional and local; Ignore is its own state,
+        // separate from Hide (which stays searchable).
+        if (ui.mayIgnore) {
+            add(AtlasHeaderMenuItem(
+                if (ui.hasBirthDate) "Edit birth date" else "Set birth date",
+                "atlas-person-birth-date", onClick = { onDialog(PersonPageDialog.BirthDate) }))
+            add(AtlasHeaderMenuItem(
+                if (ui.ignored) "Stop ignoring this person" else "Ignore this person",
+                "atlas-person-ignore", onClick = { onIgnore(!ui.ignored) }))
+        }
     }
     // Real-ratio rows (#527) are a zoom stop of this page, not a separate route.
     var originalProportions by rememberSaveable(opening) { mutableStateOf(false) }
@@ -173,6 +204,9 @@ internal fun PersonPageScreen(
                 PersonHeader(ui, title, items, portrait,
                     onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }),
                     compact = compactSelectionHeader)
+                if (!selecting && onYears != null && ui.yearsPreview.isNotEmpty()) {
+                    YearsRow(ui.yearsPreview, onYears)
+                }
                 if (!selecting) samePerson?.invoke()
             }
         }
@@ -257,6 +291,7 @@ internal fun PersonPageScreen(
         PersonPageDialog.EditName -> nameDialog()
         PersonPageDialog.MergePicker -> mergePicker()
         is PersonPageDialog.ConfirmMerge -> confirmMerge(step.into)
+        PersonPageDialog.BirthDate -> birthDialog()
         null -> Unit
     }
 }
@@ -273,6 +308,34 @@ private fun SelectionBar(count: Int, onClose: () -> Unit) {
         Text(if (count == 0) "Select items" else "$count selected",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.testTag("atlas-person-select-count"))
+    }
+}
+
+/**
+ * YEARS-1 (#586): one row under the header that opens the person's Through
+ * the years Story in the existing Stories player: a short strip of their real
+ * photos (kept in their own proportions on a quiet ground) and the plain label.
+ */
+@Composable
+private fun YearsRow(preview: List<String>, onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            .clickable(role = Role.Button, onClick = onOpen)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .testTag("atlas-person-years"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Through the years", style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        preview.take(3).forEach { uri ->
+            AsyncImage(
+                model = android.net.Uri.parse(uri), contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            )
+        }
     }
 }
 
@@ -531,13 +594,17 @@ internal fun HiddenPeopleScreen(
     portrait: @Composable (NativePersonAlbum) -> Unit,
     onBack: () -> Unit,
     onOpen: (NativePersonAlbum) -> Unit,
-    onSearchWholeLibrary: (() -> Unit)? = null
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    /** YEARS-1 (#586): the same list serves People ⋮ → Ignored people. */
+    title: String = "Hidden",
+    emptyText: String = "No hidden people",
+    tagPrefix: String = "atlas-people-hidden"
 ) {
     var searchText by remember { mutableStateOf("") }
     val visiblePeople = scopedNamedMatches(people, searchText) { it.name }
     // AtlasGalleryHeader already clears the status bar here (People's own inset).
-    Column(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-people-hidden")) {
-        AtlasGalleryHeader(title = "Hidden", onBack = onBack, actions = {
+    Column(Modifier.fillMaxSize().background(DeepBg).testTag(tagPrefix)) {
+        AtlasGalleryHeader(title = title, onBack = onBack, actions = {
             AtlasSearch(query = searchText, onQueryChange = { searchText = it },
                 historyScope = SearchHistoryScope.PEOPLE,
                 onScopeChange = { scope ->
@@ -546,7 +613,7 @@ internal fun HiddenPeopleScreen(
         })
         if (visiblePeople.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(if (searchText.isBlank()) "No hidden people" else "No matching people",
+                Text(if (searchText.isBlank()) emptyText else "No matching people",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             return@Column
@@ -556,7 +623,7 @@ internal fun HiddenPeopleScreen(
                 Row(
                     Modifier.fillMaxWidth().clickable { onOpen(person) }
                         .padding(horizontal = 20.dp, vertical = 10.dp)
-                        .testTag("atlas-people-hidden-person"),
+                        .testTag(tagPrefix + "-person"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -570,5 +637,67 @@ internal fun HiddenPeopleScreen(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             }
         }
+    }
+}
+
+/**
+ * YEARS-1 (#586): the optional birth date of a person, stored only on this
+ * device. Typed entry first (the platform date input), with the calendar one
+ * tap away. No default date; a date after today or before 1900 cannot be
+ * chosen. Cancel keeps the previous value; Clear removes it.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun PersonBirthDateDialog(
+    initial: java.time.LocalDate?,
+    today: java.time.LocalDate,
+    onDismiss: () -> Unit,
+    onSave: (java.time.LocalDate) -> Unit,
+    onClear: () -> Unit
+) {
+    fun toMillis(d: java.time.LocalDate) =
+        d.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+    val todayMillis = toMillis(today)
+    val state = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = initial?.let(::toMillis),
+        initialDisplayMode = androidx.compose.material3.DisplayMode.Input,
+        yearRange = 1900..today.year,
+        selectableDates = object : androidx.compose.material3.SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMillis
+            override fun isSelectableYear(year: Int) = year in 1900..today.year
+        }
+    )
+    val chosen = state.selectedDateMillis?.let {
+        java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+    }
+    val valid = chosen != null &&
+        nl.atlas.gallery.featurestories.YearsStoryPlanner.validBirthDate(chosen, today)
+    androidx.compose.material3.DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { chosen?.let(onSave) }, enabled = valid,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-person-birth-save")) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Row {
+                if (initial != null) TextButton(onClick = onClear,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-person-birth-clear")) {
+                    Text("Clear birth date")
+                }
+                TextButton(onClick = onDismiss,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-person-birth-cancel")) {
+                    Text("Cancel")
+                }
+            }
+        },
+        modifier = Modifier.testTag("atlas-person-birth-dialog")
+    ) {
+        androidx.compose.material3.DatePicker(
+            state = state,
+            title = { Text("Birth date", Modifier.padding(start = 24.dp, top = 16.dp)) },
+            showModeToggle = true
+        )
     }
 }

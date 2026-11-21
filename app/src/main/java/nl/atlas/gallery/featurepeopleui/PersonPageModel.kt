@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featurepeopleui
 
+import java.time.LocalDate
 import java.util.Locale
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
@@ -32,7 +33,11 @@ data class PersonPageFacts(
      * #580: how many of [faces] (the last ones) the engine added on its own.
      * They can be removed like the others; at least one confirmed face stays.
      */
-    val addedFaces: Int = 0
+    val addedFaces: Int = 0,
+    /** YEARS-1 (#586): the person is ignored (a stronger flag than [hidden]). */
+    val ignored: Boolean = false,
+    /** YEARS-1 (#586): the optional birth date the user typed, never guessed. */
+    val birthDate: LocalDate? = null
 ) {
     /** The header portrait: the first face, as on the People grid. */
     val coverFace: NativeFaceObservationId? get() = faces.firstOrNull()
@@ -53,7 +58,8 @@ fun personPageFacts(state: PeopleClusterReviewState?, target: PersonPageTarget):
             val added = state.clusters.matched.entries.filter { it.value.person == target.person }
                 .map { it.key }.sortedBy { it.localHex }
             if (faces.isEmpty()) null
-            else PersonPageFacts(target, name, faces + added, target.person in state.hidden, added.size)
+            else PersonPageFacts(target, name, faces + added, target.person in state.hidden, added.size,
+                target.person in state.ignored, state.birthDates[target.person])
         }
         is PersonPageTarget.Unnamed -> {
             val cluster = state.clusters.unknownClusters.firstOrNull { it.id == target.cluster }
@@ -205,7 +211,7 @@ fun samePersonQuestion(
 ): SamePersonQuestion? {
     if (state == null) return null
     if (target is PersonPageTarget.Named) {
-        if (target.person !in state.names) return null
+        if (target.person !in state.names || target.person in state.ignored) return null
         val asked = SamePersonHypotheses.forPeople(state.clusters, setOf(target.person), limit = 1)
             .firstOrNull() ?: return null
         return SamePersonQuestion(asked.group, asked.groupFaces, asked.group.anchor)

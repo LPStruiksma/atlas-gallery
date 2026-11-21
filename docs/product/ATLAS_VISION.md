@@ -42,7 +42,7 @@ Status: **Shipped** (on main, tested, in a release) · **Partial** (works but in
 | **Text in photos** | **Research** | OCR-0 [#575](https://github.com/LPStruiksma/atlas-gallery/issues/575) defines a private EN/NL benchmark and index contract; no model or result ships | ONNX accuracy, latency, licences and redistribution remain unverified; see [`OCR_0_FEASIBILITY.md`](../visual-search/OCR_0_FEASIBILITY.md) |
 | Photo DNA | Partial | Exact byte groups, perceptual near-duplicates, manual trash review | Crops, edits and exposures lineage, conservative keeper suggestions (`tools/photo_lineage` research) |
 | **AI Edit (user-initiated generative editing)** | **In build** | Approved product direction [#183](https://github.com/LPStruiksma/atlas-gallery/issues/183) and [architecture](../ai-edit/ARCHITECTURE.md); the editor runs Google Gemini and fal.ai with your own key ([#431](https://github.com/LPStruiksma/atlas-gallery/issues/431)); ordinary system Edit remains | First edit on the phone with a real key, model picker in Settings, custom server in the editor. **Not yet confirmed on a phone** |
-| Stories | Partial | On this day, month recap, favourites, inline video, opens over Albums | Event and trip detection, people-themed Stories |
+| Stories | Partial | On this day, month recap, favourites, inline video, opens over Albums; a named person's Through the years Story (2 years × 4 photos, optional birth date for ages) and Ignore this person (#586) | Event and trip detection, other people-themed Stories |
 | Places and maps | Missing | GPS shown in viewer details only | Map, journeys, residences |
 | Life Graph / Memory Atlas | Research | — | See vision B |
 | Family Archive link | Research | Separate tenant (`family-archive`) | See vision F |

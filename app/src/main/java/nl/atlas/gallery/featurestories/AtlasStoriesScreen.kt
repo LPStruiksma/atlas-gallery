@@ -233,6 +233,17 @@ fun rememberStoryPlaybackState(deck: StoryDeck? = null): StoryPlaybackState {
 }
 
 /**
+ * Same as [rememberStoryPlaybackState] for a host whose deck is only known after
+ * the state exists (people Stories join the deck later). [deck] is read when a
+ * save happens, so it must return the deck the screen actually renders.
+ */
+@Composable
+fun rememberStoryPlaybackStateFor(deck: () -> StoryDeck?): StoryPlaybackState {
+    val currentDeck by rememberUpdatedState(deck)
+    return rememberSaveable(saver = storyPlaybackSaver { currentDeck() }) { StoryPlaybackState() }
+}
+
+/**
  * Independent, read-only Samsung-style Stories surface. Lane I owns nav + grant renewal;
  * it must pass the current epoch/revision (not a cached value) every time they change.
  * No media mutation, auto-upload, story music, or hidden album access.
@@ -412,9 +423,13 @@ private fun StoryPlayback(
                     }
                 )
             } else {
+                val frameCaption = story.frameCaptions.getOrNull(index)
                 AsyncImage(
                     model = Uri.parse(item.uri),
-                    contentDescription = "Moment " + (index + 1) + " of " + story.items.size,
+                    contentDescription = if (frameCaption != null) {
+                        story.title + ", " + frameCaption + ", moment " + (index + 1) +
+                            " of " + story.items.size
+                    } else "Moment " + (index + 1) + " of " + story.items.size,
                     contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()
                 )
             }
@@ -446,6 +461,14 @@ private fun StoryPlayback(
                         Icon(Icons.Filled.Close, contentDescription = "Close story", tint = Color.White)
                     }
                 }
+            }
+            // YEARS-1 (#586): the year or age of this frame, plain text on the black stage.
+            story.frameCaptions.getOrNull(index)?.let { caption ->
+                Text(caption, style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White, maxLines = 1,
+                    modifier = Modifier.align(Alignment.BottomStart)
+                        .padding(start = 16.dp, bottom = 84.dp)
+                        .testTag("atlas-story-frame-caption"))
             }
             Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.68f)).padding(10.dp),

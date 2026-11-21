@@ -142,7 +142,11 @@ internal fun NativePersonAlbumRoute(
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     facetPeople: List<PersonEntry> = emptyList(),
     onSearchWholeLibrary: (() -> Unit)? = null,
-    onRetarget: (NativePersonAlbumRequest) -> Unit = {}
+    onRetarget: (NativePersonAlbumRequest) -> Unit = {},
+    /** YEARS-1 (#586): open this person's Through the years Story. */
+    onOpenYears: (PersonKey) -> Unit = {},
+    /** YEARS-1 (#586): the person was ignored (true, with Undo) or restored (false). */
+    onIgnoredChanged: (name: String, person: PersonKey, ignored: Boolean) -> Unit = { _, _, _ -> }
 ) {
     val version by host.changes.collectAsState()
     val close by rememberUpdatedState(onBack)
@@ -339,6 +343,29 @@ internal fun NativePersonAlbumRoute(
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
         PersonFaceImage(host, cropEpoch, face)
     }
+    // YEARS-1 (#586): the Through the years row appears only for a named,
+    // un-ignored person who qualifies (2 years x 4 photos); same planner as Stories.
+    val birthDate = facts?.birthDate
+    val yearsFrames by produceState<List<nl.atlas.gallery.featurestories.YearsFrame>>(
+        emptyList(), CatalogSourceKey(sorted), galleryGrant, quickPerson, birthDate,
+        facts?.ignored, version) {
+        value = emptyList()
+        if (quickPerson == null || galleryGrant == null || facts?.ignored == true) {
+            return@produceState
+        }
+        value = withContext(Dispatchers.IO) {
+            val worker = currentCoroutineContext()
+            personYearsFrames(host, galleryGrant, quickPerson, sorted, birthDate,
+                System.currentTimeMillis(), java.time.ZoneId.systemDefault()) {
+                worker.ensureActive()
+            }
+        }
+    }
+    val yearsPreview = remember(yearsFrames) {
+        if (yearsFrames.isEmpty()) emptyList()
+        else listOf(yearsFrames.first().uri, yearsFrames[yearsFrames.size / 2].uri,
+            yearsFrames.last().uri).distinct()
+    }
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
@@ -346,7 +373,11 @@ internal fun NativePersonAlbumRoute(
             // narrows this person's already-authorized list.
             items = if (media == null) visibleMedia else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
-            mayHide = request.target is PersonPageTarget.Named
+            mayHide = request.target is PersonPageTarget.Named,
+            ignored = facts?.ignored == true,
+            hasBirthDate = facts?.birthDate != null,
+            mayIgnore = request.target is PersonPageTarget.Named && facts != null,
+            yearsPreview = yearsPreview
         ),
         gridState = gridState,
         catalogueEpoch = catalogueEpoch,
@@ -403,6 +434,41 @@ internal fun NativePersonAlbumRoute(
                 // Samsung returns to People once a person is hidden.
                 if (hide) close()
             }
+        },
+        onIgnore = { ignore ->
+            val person = request.person
+            val shown = facts?.name ?: request.name
+            if (person != null) scope.launch {
+                val ok = withContext(Dispatchers.IO) { host.setPersonIgnored(galleryGrant, person, ignore) }
+                if (ok) {
+                    onIgnoredChanged(shown, person, ignore)
+                    // Back to the list the person was reached from, with one Undo.
+                    close()
+                }
+            }
+        },
+        birthDialog = {
+            val person = request.person
+            PersonBirthDateDialog(
+                initial = birthDate,
+                today = java.time.LocalDate.now(),
+                onDismiss = { dialog = null },
+                onSave = { date ->
+                    dialog = null
+                    if (person != null) scope.launch {
+                        withContext(Dispatchers.IO) { host.setPersonBirthDate(galleryGrant, person, date) }
+                    }
+                },
+                onClear = {
+                    dialog = null
+                    if (person != null) scope.launch {
+                        withContext(Dispatchers.IO) { host.setPersonBirthDate(galleryGrant, person, null) }
+                    }
+                }
+            )
+        },
+        onYears = request.person?.takeIf { yearsFrames.isNotEmpty() }?.let { person ->
+            { onOpenYears(person) }
         },
         selectedUris = actionableSelected,
         onSelectionChange = {
@@ -509,6 +575,38 @@ internal fun HiddenPeopleRoute(
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
+    )
+}
+
+/**
+ * YEARS-1 (#586): People ⋮ → Ignored people. Ignored named people leave People
+ * and every suggestion; this list is the one way back. Tapping a person opens
+ * its page, where ⋮ → Stop ignoring this person restores it. Hidden people
+ * stay in their own list.
+ */
+@Composable
+internal fun IgnoredPeopleRoute(
+    host: PeopleDiscoveryHost,
+    people: PeopleHomeSummary?,
+    onBack: () -> Unit,
+    onOpen: (NativePersonAlbumRequest) -> Unit,
+    onSearchWholeLibrary: (() -> Unit)? = null
+) {
+    val version by host.changes.collectAsState()
+    val state = rememberReviewState(host, version, people)
+    val ignored = remember(state) {
+        state?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
+            includeHidden = true, ignoredOnly = true) }.orEmpty()
+    }
+    HiddenPeopleScreen(
+        people = ignored,
+        portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
+        onBack = onBack,
+        onSearchWholeLibrary = onSearchWholeLibrary,
+        onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) },
+        title = "Ignored people",
+        emptyText = "No ignored people.",
+        tagPrefix = "atlas-people-ignored"
     )
 }
 

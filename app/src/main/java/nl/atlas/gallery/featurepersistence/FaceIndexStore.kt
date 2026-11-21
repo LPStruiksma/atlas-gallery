@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.SystemClock
 import android.util.Log
+import java.time.LocalDate
 import java.util.UUID
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -37,6 +38,11 @@ import nl.atlas.gallery.featureface.search.PersonMatchInputs
  * both branches are integrated. ALL calls belong on one background IO worker.
  */
 data class IndexedMedia(val key: String, val revision: String)
+
+/** YEARS-1 (#586): a person's media with its confirmation and best face quality. */
+data class IndexedYearsMedia(
+    val key: String, val revision: String, val confirmed: Boolean, val quality: Float?
+)
 data class IndexedFaceBox(val left: Float, val top: Float, val right: Float, val bottom: Float) {
     init {
         require(listOf(left, top, right, bottom).all { it.isFinite() && it in 0f..1f })
@@ -303,6 +309,7 @@ class FaceIndexStore(
         super.onOpen(db)
         createClusterGeneration(db)
         createPeopleHidden(db)
+        createPeoplePrivacyTables(db)
         ensureVideoColumns(db)
         ensureQualityColumns(db)
         createPeopleHomeTables(db)
@@ -449,6 +456,71 @@ class FaceIndexStore(
     private fun createPeopleHidden(db: SQLiteDatabase) {
         db.execSQL("""CREATE TABLE IF NOT EXISTS people_hidden(
             person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256))""")
+    }
+
+    /**
+     * YEARS-1 (#586): two further additive, name-keyed tables, created on every
+     * open without a [SCHEMA_VERSION] bump like `people_hidden`. A plain revert
+     * opens the same file and ignores them. Neither is face-keyed, so a model
+     * change, rescan or re-cluster never drops them (like names).
+     *
+     * `people_ignored` is its own flag, separate from `people_hidden`: Hide
+     * keeps a person searchable, Ignore also removes them from suggestions,
+     * the Same person? queue and automatic Stories. `people_birth_dates` holds
+     * an optional civil date the user typed, never a guessed one.
+     */
+    private fun createPeoplePrivacyTables(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_ignored(
+            person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256))""")
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_birth_dates(
+            person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256),
+            year INTEGER NOT NULL CHECK(year BETWEEN 1900 AND 9999),
+            month INTEGER NOT NULL CHECK(month BETWEEN 1 AND 12),
+            day INTEGER NOT NULL CHECK(day BETWEEN 1 AND 31))""")
+    }
+
+    /** The ignored people. Plain read: the flag is not tied to a face scope. */
+    fun ignoredPeople(): Set<PersonKey> {
+        meteredStatements++
+        return readableDatabase.rawQuery("SELECT person_key FROM people_ignored", null).use { c ->
+            buildSet { while (c.moveToNext()) { meteredRowsRead++; add(PersonKey(c.getString(0))) } }
+        }
+    }
+
+    /** Set or clear the ignore flag of a named person; idempotent. */
+    fun setPersonIgnored(person: PersonKey, ignored: Boolean) {
+        write { db ->
+            if (ignored) db.insertWithOnConflict("people_ignored", null,
+                ContentValues().apply { put("person_key", person.value) },
+                SQLiteDatabase.CONFLICT_IGNORE)
+            else db.delete("people_ignored", "person_key=?", arrayOf(person.value))
+        }
+    }
+
+    /** Optional birth dates the user entered, by person. */
+    fun personBirthDates(): Map<PersonKey, LocalDate> {
+        meteredStatements++
+        return readableDatabase.rawQuery(
+            "SELECT person_key,year,month,day FROM people_birth_dates", null).use { c ->
+            buildMap {
+                while (c.moveToNext()) {
+                    meteredRowsRead++
+                    runCatching { LocalDate.of(c.getInt(1), c.getInt(2), c.getInt(3)) }
+                        .getOrNull()?.let { put(PersonKey(c.getString(0)), it) }
+                }
+            }
+        }
+    }
+
+    /** Save ([date] non-null) or clear a person's birth date. */
+    fun setPersonBirthDate(person: PersonKey, date: LocalDate?) {
+        write { db ->
+            if (date == null) db.delete("people_birth_dates", "person_key=?", arrayOf(person.value))
+            else db.insertWithOnConflict("people_birth_dates", null, ContentValues().apply {
+                put("person_key", person.value)
+                put("year", date.year); put("month", date.monthValue); put("day", date.dayOfMonth)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+        }
     }
 
     /**
@@ -2376,6 +2448,48 @@ class FaceIndexStore(
                     while (c.moveToNext()) {
                         meteredRowsRead++
                         add(IndexedMedia(c.getString(0), c.getString(1)))
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * YEARS-1 (#586): one row per processed media that holds a confirmed face
+     * of [person], or a face the engine added above its confidence floor
+     * (`people_matched`), with whether any face was confirmed and the best
+     * stored face-quality score (null when none was computed). Keys only; the
+     * host resolves each through its live grant. Empty while revoked.
+     */
+    fun personYearsMedia(epoch: String, person: PersonKey,
+                         limit: Int = 50_000): List<IndexedYearsMedia> {
+        require(limit in 1..200_000) { "Person years limit must be 1..200000" }
+        return authorizedEmbeddingRead(epoch, emptyList()) { db, version ->
+            meteredStatements++
+            db.rawQuery("""SELECT media_key,revision,MAX(confirmed),MAX(q) FROM (
+                    SELECT c.media_key AS media_key,c.revision AS revision,1 AS confirmed,
+                        f.quality_score AS q
+                    FROM people_confirmed p
+                    JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
+                    JOIN faces f ON f.face_uid=p.face_uid
+                    JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                        AND c.revision=e.source_revision
+                    WHERE p.person_key=?2
+                    UNION ALL
+                    SELECT c.media_key,c.revision,0,f.quality_score
+                    FROM people_matched pm
+                    JOIN embeddings e ON e.face_uid=pm.face_uid AND e.model_version=?1
+                    JOIN faces f ON f.face_uid=pm.face_uid
+                    JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                        AND c.revision=e.source_revision
+                    WHERE pm.person_key=?2)
+                GROUP BY media_key,revision ORDER BY media_key LIMIT ?3""",
+                arrayOf(version, person.value, limit.toString())).use { c ->
+                buildList {
+                    while (c.moveToNext()) {
+                        meteredRowsRead++
+                        add(IndexedYearsMedia(c.getString(0), c.getString(1), c.getInt(2) == 1,
+                            if (c.isNull(3)) null else c.getFloat(3)))
                     }
                 }
             }
