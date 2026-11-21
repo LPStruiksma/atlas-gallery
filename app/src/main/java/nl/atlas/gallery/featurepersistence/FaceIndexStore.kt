@@ -211,6 +211,32 @@ class FaceIndexStore(
          * cover stays a confirmed face, so a person needs one to be listed.
          * Bound argument ?1: the active embedder model version.
          */
+        /** HIDE-1 (#585): hidden keys bound per statement (SQLite's old limit is 999). */
+        private const val HIDDEN_KEY_CHUNK = 400
+
+        /**
+         * Every present, processed, current-model face of a named person, as the
+         * People home aggregate counts them. Bound argument ?1: embedder version.
+         */
+        private const val PERSON_FACE_ROWS = """
+            SELECT p.person_key AS person_key,p.face_uid AS face_uid,
+                c.media_key AS media_key,COALESCE(c.taken_ms,0) AS taken_ms,
+                CASE WHEN f.frame_ms IS NOT NULL THEN 1 ELSE 0 END AS is_video,
+                1 AS confirmed
+            FROM people_confirmed p
+            CROSS JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
+            CROSS JOIN faces f ON f.face_uid=e.face_uid
+            CROSS JOIN catalog c ON c.media_key=f.media_key
+                AND c.state='processed' AND c.revision=e.source_revision
+            UNION ALL
+            SELECT pm.person_key,pm.face_uid,c.media_key,COALESCE(c.taken_ms,0),
+                CASE WHEN f.frame_ms IS NOT NULL THEN 1 ELSE 0 END,0
+            FROM people_matched pm
+            CROSS JOIN embeddings e ON e.face_uid=pm.face_uid AND e.model_version=?1
+            CROSS JOIN faces f ON f.face_uid=e.face_uid
+            CROSS JOIN catalog c ON c.media_key=f.media_key
+                AND c.state='processed' AND c.revision=e.source_revision"""
+
         private const val PEOPLE_HOME_SELECT = """SELECT n.person_key,n.name,
                 COUNT(p.face_uid) + (SELECT COUNT(*) FROM people_matched pm
                     CROSS JOIN embeddings me ON me.face_uid=pm.face_uid AND me.model_version=?1
@@ -2127,7 +2153,11 @@ class FaceIndexStore(
      * authorized transaction. #39: served while new faces wait for
      * publication (see [servable]), so People never empties during a scan.
      */
-    fun peopleHome(epoch: String): StoredPeopleHome? =
+    fun peopleHome(
+        epoch: String,
+        /** HIDE-1 (#585): canonical media keys of hidden items; counts and covers skip them. */
+        hiddenMediaKeys: Set<String> = emptySet()
+    ): StoredPeopleHome? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             if (!servable(db)) return@authorizedEmbeddingRead null
             val revision = reviewRevision(db)
@@ -2201,8 +2231,70 @@ class FaceIndexStore(
                 ORDER BY n DESC, anchor_uid LIMIT $PEOPLE_HOME_MAX_GROUPS""", null).use { c ->
                 while (c.moveToNext()) unnamed += StoredUnnamedGroup(c.getString(0), c.getInt(1))
             }
-            StoredPeopleHome(PeopleReviewRecords.generation(revision), people, unnamed)
+            if (hiddenMediaKeys.isEmpty()) {
+                StoredPeopleHome(PeopleReviewRecords.generation(revision), people, unnamed)
+            } else {
+                val (visiblePeople, visibleUnnamed) =
+                    withoutHiddenMedia(db, version, people, unnamed, hiddenMediaKeys)
+                StoredPeopleHome(PeopleReviewRecords.generation(revision), visiblePeople,
+                    visibleUnnamed)
+            }
         }
+
+    /**
+     * HIDE-1 (#585): drop hidden media from a People home read. Only people and
+     * groups that actually own a hidden face are re-counted (one query each),
+     * so the common case costs a few chunked lookups over the hidden keys.
+     */
+    private fun withoutHiddenMedia(
+        db: SQLiteDatabase, version: String,
+        people: LinkedHashMap<PersonKey, StoredPersonSummary>,
+        unnamed: List<StoredUnnamedGroup>,
+        hidden: Set<String>
+    ): Pair<LinkedHashMap<PersonKey, StoredPersonSummary>, List<StoredUnnamedGroup>> {
+        val impacted = HashSet<String>()
+        val hiddenMembers = HashMap<String, Int>()
+        val hiddenAnchors = HashSet<String>()
+        for (chunk in hidden.chunked(HIDDEN_KEY_CHUNK)) {
+            val marks = chunk.indices.joinToString(",") { "?${it + 2}" }
+            val args = arrayOf(version, *chunk.toTypedArray())
+            meteredStatements++
+            db.rawQuery("SELECT DISTINCT person_key FROM ($PERSON_FACE_ROWS) " +
+                "WHERE media_key IN ($marks)", args).use { c ->
+                while (c.moveToNext()) impacted += c.getString(0)
+            }
+            val plain = chunk.indices.joinToString(",") { "?" }
+            meteredStatements++
+            db.rawQuery("""SELECT m.anchor_uid,COUNT(*) FROM cluster_members m
+                JOIN faces f ON f.face_uid=m.face_uid WHERE f.media_key IN ($plain)
+                GROUP BY m.anchor_uid""", chunk.toTypedArray()).use { c ->
+                while (c.moveToNext()) {
+                    hiddenMembers.merge(c.getString(0), c.getInt(1), Int::plus)
+                }
+            }
+            meteredStatements++
+            db.rawQuery("""SELECT DISTINCT m.anchor_uid FROM cluster_members m
+                JOIN faces f ON f.face_uid=m.anchor_uid WHERE f.media_key IN ($plain)""",
+                chunk.toTypedArray()).use { c ->
+                while (c.moveToNext()) hiddenAnchors += c.getString(0)
+            }
+        }
+        val out = LinkedHashMap<PersonKey, StoredPersonSummary>()
+        for ((person, summary) in people) {
+            if (person.value !in impacted) { out[person] = summary; continue }
+            val faces = ArrayList<PeopleHomeHidden.PersonFace>()
+            meteredStatements++
+            db.rawQuery("""SELECT face_uid,media_key,taken_ms,is_video,confirmed
+                FROM ($PERSON_FACE_ROWS) WHERE person_key=?2""",
+                arrayOf(version, person.value)).use { c ->
+                while (c.moveToNext()) faces += PeopleHomeHidden.PersonFace(
+                    c.getString(0), c.getString(1), c.getLong(2), c.getInt(3) == 1,
+                    c.getInt(4) == 1)
+            }
+            PeopleHomeHidden.summarize(summary, faces, hidden)?.let { out[person] = it }
+        }
+        return out to PeopleHomeHidden.unnamed(unnamed, hiddenMembers, hiddenAnchors)
+    }
 
     /**
      * Rewrite `people_home` for the revision [db] now holds. Called inside the

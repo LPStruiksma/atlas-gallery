@@ -1,6 +1,8 @@
 package nl.atlas.gallery
 
 import nl.atlas.gallery.featurepersistence.PeopleSafBackupIO
+import nl.atlas.gallery.featurepersistence.HiddenMedia
+import nl.atlas.gallery.featurepersistence.HiddenMediaStore
 import nl.atlas.gallery.featurepersistence.NativePeopleNamesPreview
 
 import android.Manifest
@@ -77,6 +79,7 @@ import nl.atlas.gallery.featuremedia.microWarmCharging
 import nl.atlas.gallery.featuremedia.microThumbnailDiskKey
 import nl.atlas.gallery.featuremedia.ThumbnailPipeline
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +131,7 @@ import nl.atlas.gallery.featurealbums.AtlasAlbumsScreen
 import nl.atlas.gallery.featurealbums.AlbumPickerScreen
 import nl.atlas.gallery.featurealbums.HiddenAlbums
 import nl.atlas.gallery.featurealbums.HideAlbumsScreen
+import nl.atlas.gallery.featurealbums.HiddenMediaScreen
 import nl.atlas.gallery.featurestories.AtlasStoriesScreen
 import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
@@ -172,6 +176,8 @@ import nl.atlas.gallery.featureorganization.AlbumTransferResult
 import nl.atlas.gallery.featureorganization.AlbumTransferTarget
 import nl.atlas.gallery.featureorganization.MediaStoreAlbumTransfer
 import nl.atlas.gallery.featureorganization.SelectionMoreAction
+import nl.atlas.gallery.featureorganization.HiddenUndoMessages
+import nl.atlas.gallery.featureorganization.HiddenUndoSnackbarHost
 import nl.atlas.gallery.featureorganization.SelectionResultDuration
 import nl.atlas.gallery.featureorganization.SelectionResultMessages
 import nl.atlas.gallery.featureorganization.SelectionResultSnackbarHost
@@ -1099,7 +1105,31 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // preparation. #505: the last published (or cached) catalogue stays on
     // screen while a background scan refreshes it; only full access loss
     // empties it. Android enforces what can actually be read.
-    val media = publishedGallery.displayItems(grants)
+    val allMedia = publishedGallery.displayItems(grants)
+    // HIDE-1 (#585): the Hidden set is read BEFORE any ordinary list is
+    // published. Unread or unreadable means "unknown", which shows nothing
+    // rather than revealing hidden media; the read is retried, never guessed.
+    val hiddenStore = remember { HiddenMediaStore(context.applicationContext) }
+    var hiddenKeys by remember { mutableStateOf<Set<String>?>(null) }
+    LaunchedEffect(hiddenStore) {
+        var attempt = 0
+        while (hiddenKeys == null) {
+            hiddenKeys = withContext(Dispatchers.IO) { hiddenStore.readOrNull() }
+            if (hiddenKeys == null) {
+                if (attempt++ == 0) Toast.makeText(context,
+                    "Couldn't load hidden items. Try again.", Toast.LENGTH_SHORT).show()
+                delay(2_000L)
+            }
+        }
+    }
+    // This is the ONLY catalogue every ordinary surface derives from (timeline,
+    // albums, all search, People covers, Stories, Photo DNA, Declutter), so the
+    // one shared filter is applied exactly here. Identity is preserved when
+    // nothing is hidden (callers compare catalogue references).
+    val media = remember(CatalogSourceKey(allMedia), hiddenKeys) {
+        val hidden = hiddenKeys
+        if (hidden == null) emptyList() else HiddenMedia.visible(allMedia, hidden)
+    }
     // #555: ATLAS keeps its own micro thumbnails only under full media access
     // (they are deleted otherwise), and fills them newest-first in the
     // background for the current authorized catalogue, never a cached one.
@@ -1214,6 +1244,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         mutableStateOf(HiddenAlbums.decode(albumOrderStore.getString("hidden", null)))
     }
     var hideAlbumsOpen by rememberSaveable { mutableStateOf(false) }
+    // HIDE-1 (#585): the Hidden collection route, and whether the open viewer
+    // belongs to it (More then offers Unhide instead of Hide).
+    var hiddenOpen by rememberSaveable { mutableStateOf(false) }
+    var hiddenViewer by remember { mutableStateOf(false) }
+    val hiddenItems: List<MediaRecord>? = remember(CatalogSourceKey(allMedia), hiddenKeys, hiddenOpen) {
+        val hidden = hiddenKeys
+        if (!hiddenOpen || hidden == null) null
+        else HiddenMedia.hiddenOnly(allMedia, hidden).sortedByDescending { it.takenAtMillis }
+    }
     fun toggleHiddenAlbum(album: AlbumBucketKey) {
         hiddenAlbums = HiddenAlbums.toggled(hiddenAlbums, album)
         albumOrderStore.edit().putString("hidden", HiddenAlbums.encode(hiddenAlbums)).apply()
@@ -1264,7 +1303,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         val publishedNow = vm.publishedInventory.value
         if (publishedNow.epoch != publishedGallery.epoch ||
             !publishedNow.showable(actual)) return null
-        return publishedNow.displayItems(actual).takeIf { it === media }
+        // HIDE-1: [media] is the filtered view of the published list, so compare
+        // the unfiltered source identity, then hand back the filtered [media].
+        return media.takeIf { publishedNow.displayItems(actual) === allMedia }
     }
     val mediaSortPrefs = remember(context) {
         context.applicationContext.getSharedPreferences("atlas_media_sort", android.content.Context.MODE_PRIVATE)
@@ -1396,7 +1437,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // outside the People tab so that a revoked or changed grant reaches a
     // running scan even while another tab is shown. Nothing starts here.
     val discoveryHost = remember(context) { PeopleDiscoveryHost.forApp(context) }
-    val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, media)
+    // The face index prunes media missing from its inventory, so it must see the
+    // UNFILTERED catalogue: hiding must never delete face data. Hidden photos are
+    // filtered from every People surface that derives from [media].
+    val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, allMedia)
+    // HIDE-1 (#585): People home counts and covers skip hidden media; the face
+    // index keeps scanning the unfiltered inventory (`allMedia`) above.
+    LaunchedEffect(discoveryHost, CatalogSourceKey(allMedia), hiddenKeys) {
+        val hidden = hiddenKeys
+        discoveryHost.setHiddenMedia(if (hidden == null) null else withContext(Dispatchers.Default) {
+            hiddenFaceMediaKeys(HiddenMedia.hiddenOnly(allMedia, hidden))
+        })
+    }
     val diagnosticPeople = discovery.status?.ui
     LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
         diagnosticPeople?.eligible) {
@@ -2350,6 +2402,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
         viewerUri = null
         viewerItems = null
+        hiddenViewer = false
         viewerAccessEpoch = -1L
         sharedPhotoOrigin = null
         lastSettledViewerUri = null
@@ -2665,6 +2718,65 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 selectionResults.show("Couldn't verify selected files. Nothing was trashed.")
             } finally {
                 if (!launched) batchOperating = false
+            }
+        }
+    }
+    // HIDE-1 (#585): one atomic, serialized write of a key set. Nothing on disk
+    // changes. [onResult] runs on the main thread after the durable write.
+    val hiddenResults = remember { HiddenUndoMessages() }
+    val hiddenWriteLock = remember { kotlinx.coroutines.sync.Mutex() }
+    fun changeHidden(
+        records: List<MediaRecord>, hide: Boolean, onResult: (Boolean) -> Unit = {}
+    ) {
+        val keys = records.map { HiddenMedia.keyOf(it) }.distinct()
+        if (keys.isEmpty() || hiddenKeys == null) { onResult(false); return }
+        atlasScope.launch {
+            val ok = hiddenWriteLock.withLock {
+                withContext(Dispatchers.IO) {
+                    if (hide) hiddenStore.hide(keys) else hiddenStore.unhide(keys)
+                }
+            }
+            if (!ok) {
+                // Whole operation rolled back; the in-memory set is unchanged.
+                selectionResults.show(
+                    if (hide) "Couldn't hide items. Try again." else "Couldn't unhide items. Try again.",
+                    SelectionResultDuration.SHORT)
+                onResult(false)
+                return@launch
+            }
+            hiddenKeys = hiddenKeys?.let {
+                if (hide) HiddenMedia.withHidden(it, keys) else HiddenMedia.withoutHidden(it, keys)
+            }
+            val what = if (keys.size == 1) (if (records.first().isVideo) "Video" else "Photo")
+                else "${keys.size} items"
+            hiddenResults.show(what + if (hide) " hidden" else " unhidden") {
+                changeHidden(records, !hide)
+            }
+            onResult(true)
+        }
+    }
+    fun hideBatch() {
+        val selection = batchSelection ?: return
+        if (batchOperating ||
+            !selection.isCurrentFor(visible, publishedGallery.epoch, galleryAccessCurrent())) return
+        val source = visible
+        batchOperating = true
+        atlasScope.launch {
+            try {
+                val records = withContext(Dispatchers.Default) {
+                    val worker = currentCoroutineContext()
+                    resolveBatchSelection(selection, source) { worker.ensureActive() }
+                }
+                if (records == null || batchSelection !== selection) {
+                    selectionResults.show("Selected files changed. Select again; nothing was hidden.")
+                } else {
+                    changeHidden(records, hide = true) { ok ->
+                        // A failed write keeps the selection so the user can retry.
+                        if (ok) { batchSelection = null; pendingSelectionRestore = null }
+                    }
+                }
+            } finally {
+                batchOperating = false
             }
         }
     }
@@ -3163,6 +3275,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     val currentUri = viewerUri?.takeIf { viewerAllowed }
     if (contextItems != null && currentUri != null) {
+      // HIDE-1 (#585): the viewer replaces the Scaffold, so its Hide/Unhide
+      // result and Undo are drawn here, above the filmstrip.
+      Box(Modifier.fillMaxSize()) {
       // #662: the viewer stays dark whatever the phone's setting, as on Samsung.
       AtlasDarkRoute {
         SharedPhotoMotionLayer(
@@ -3191,6 +3306,21 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 vm.refresh()
             },
             onAiEdit = { photo -> openAiEdit(photo) },
+            onHideToggle = { photo ->
+                changeHidden(listOf(photo), hide = !hiddenViewer) { ok ->
+                    if (ok) {
+                        // Leave the viewer on the nearest remaining item, never a
+                        // blank page where the changed item was.
+                        val index = contextItems.indexOfFirst { it.uri == photo.uri }
+                        val rest = contextItems.filterNot { it.uri == photo.uri }
+                        if (rest.isEmpty()) closeViewer() else {
+                            viewerItems = rest
+                            viewerUri = rest[index.coerceIn(0, rest.lastIndex)].uri
+                        }
+                    }
+                }
+            },
+            hiddenMode = hiddenViewer,
             swapPerson = viewerSwapPerson,
             onEdit = { photo ->
                 val launchResult = PhotoEditorHandoff.launch(context, photo)
@@ -3294,6 +3424,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         )
         }
+      }
+      HiddenUndoSnackbarHost(hiddenResults,
+          Modifier.align(Alignment.BottomCenter).padding(bottom = 188.dp))
       }
         return
     }
@@ -3429,7 +3562,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // #365: Scaffold puts this slot on top of the measured bottom bar, so the
         // result follows whichever pill is visible (selection or nav) and stays
         // above the system navigation bar when neither is shown.
-        snackbarHost = { SelectionResultSnackbarHost(selectionResults) },
+        snackbarHost = {
+            Column {
+                SelectionResultSnackbarHost(selectionResults)
+                HiddenUndoSnackbarHost(hiddenResults)
+            }
+        },
         bottomBar = {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
@@ -3480,7 +3618,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         SelectionMoreAction("Move to album", "atlas-selection-move-to-album") {
                             albumPicker = AlbumTransferMode.MOVE
                         }
-                    ) else emptyList())
+                    ) else emptyList()) + listOf(
+                        // HIDE-1 (#585): hide from every ordinary surface; files stay put.
+                        SelectionMoreAction("Hide", "atlas-selection-hide") { hideBatch() }
+                    )
                 )
             } else CompositionLocalProvider(LocalAtlasTabBackdrop provides tabBackdrop) {
                 AtlasGalleryNavigation(
@@ -3508,6 +3649,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     storyPlayback.position = null
                     photoDnaOpen = false
                     hideAlbumsOpen = false
+                    hiddenOpen = false
                     personFilter = null
                     nativePersonAlbum = null
                     hiddenPeopleOpen = false
@@ -4048,6 +4190,21 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             }
                         }
                     }
+                    tab == 1 && hiddenOpen -> {
+                        HiddenMediaScreen(
+                            items = hiddenItems,
+                            onOpen = { record ->
+                                // The viewer opens the Hidden list itself; More offers Unhide.
+                                hiddenViewer = true
+                                openViewer(hiddenItems.orEmpty(), record.uri)
+                            },
+                            onUnhide = { records -> changeHidden(records, hide = false) },
+                            onClose = { hiddenOpen = false },
+                            tileRenderer = { record, modifier ->
+                                MediaPreview(record, modifier, ContentScale.Crop, 256)
+                            }
+                        )
+                    }
                     tab == 1 && hideAlbumsOpen -> {
                         HideAlbumsScreen(
                             albums = if (albumsLoading) null else allAlbums,
@@ -4133,6 +4290,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             onOpenStories = { storiesOpen = true },
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
+                            onOpenHidden = { hiddenOpen = true },
+                            hiddenCount = hiddenKeys?.let { allMedia.size - media.size },
                             onSearchWholeLibrary = { tab = 3 },
                             onOpenAlbum = { route ->
                                 album = route.relativePath
