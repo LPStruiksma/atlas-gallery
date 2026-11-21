@@ -26,7 +26,7 @@ Each linked SVG is **1080 × 2340 px, viewBox 0 0 360 780 dp**, drawn with nomin
 
 | User state | Light frame | Dark frame | Measurable layout / behavior |
 | --- | --- | --- | --- |
-| Month overflow entry (rev 2 selection palette) | [Entry light](evidence/tidy1-rev1/entry-light.svg) | [Entry dark](evidence/tidy1-rev1/entry-dark.svg) | Three 220 × 48 dp menu rows at x121 y151/203/255. Selected row brand-fill + on-brand, not `#DDE3FF` / `#1E2750`; back, top and nav targets remain 48 dp or larger in implementation |
+| Month overflow entry (rev 2 selection palette) | [Entry light](evidence/tidy1-rev1/entry-light.svg) | [Entry dark](evidence/tidy1-rev1/entry-dark.svg) | Three 220 × 48 dp menu rows at x121 y151/203/255. Selected row brand-fill + on-brand, not the rejected custom tinted highlights; back, top and nav targets remain 48 dp or larger in implementation |
 | Normal deck with Undo / Review staged | [Deck light](evidence/tidy1-rev1/deck-light.svg) | [Deck dark](evidence/tidy1-rev1/deck-dark.svg) | Photo dominates; x12 y549 w90 h48 Undo; x194 y549 w154 h48 Review staged; three main actions y613 h52; stage is reversible |
 | Resume / Start again | [Resume light](evidence/tidy1-rev1/resume-light.svg) | [Resume dark](evidence/tidy1-rev1/resume-dark.svg) | Resume and Start again y539/596 h52; Not now x18 y658 w324 h56; Start again opens **separate reset confirmation** below |
 | Similar comparison | [Compare light](evidence/tidy1-rev1/compare-light.svg) | [Compare dark](evidence/tidy1-rev1/compare-dark.svg) | Keep selected/both, Stage selected, reset zoom/pan; quality suggestion only with verified score or explicit No suggestion |
