@@ -184,6 +184,7 @@ suspend fun runPeopleScanBatch(
     } catch (_: java.io.IOException) {
         return null // provider disappeared; no stale retry
     } finally {
+        PerformanceSession.sampleHeap()
         session.close()
     }
 }
