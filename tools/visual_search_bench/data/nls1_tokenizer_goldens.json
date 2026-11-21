@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED",
+  "blocking_reasons": [
+    "The pinned upstream download could not be reached from the evidence environment, so its bytes and SHA-256 were not independently verified.",
+    "Without verified tokenizer bytes and SentencePiece execution, no token-ID vectors can be truthfully recorded."
+  ],
+  "expected_tokenizer_sha256": "6969e64047744a44bb3abfb5c50f8de0f7ed8b571d5444426ef931f651d1a0ef",
+  "cases": []
+}

@@ -39,38 +39,38 @@
 
 ### T3. Per-scenario checks (every viewport × scenario)
 
-| Viewport | Scenario | Metadata mode | Free media band dp | Video gap to strip dp (≥8) | Hit collisions | Outside safe | Over cutout | <44 dp (non-tile) | Over back-gesture zone | In mandatory zone | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| portrait-3button | photo | below-row-1-line | 493.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-font200 | below-row-2-lines | 431.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp) |
-| portrait-3button | photo-font200-longplace | below-row-2-lines | 431.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 552.16 dp) |
-| portrait-3button | photo-no-place | below-row-1-line | 493.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-no-date | none (no date) | 519.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | photo-1-top-action | inline-2-lines | 519.56 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-short | below-row-1-line | 433.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-long | below-row-1-line | 433.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| portrait-3button | video-long-font200 | below-row-2-lines | 327.56 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp); video time labels move above the seek bar (font 2.0, 1:23:45) |
-| portrait-3button | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
-| landscape-3button | photo | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-font200 | inline-1-line-ellipsized | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
-| landscape-3button | photo-font200-longplace | inline-1-line-ellipsized | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 1096.2 dp) |
-| landscape-3button | photo-no-place | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-no-date | none (no date) | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | photo-1-top-action | inline-1-line | 139.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-short | inline-1-line | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-long | inline-1-line | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-3button | video-long-font200 | inline-1-line-ellipsized | 79.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
-| landscape-3button | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
-| landscape-narrow-computed | photo | inline-2-lines | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-font200 | inline-1-line-ellipsized | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
-| landscape-narrow-computed | photo-font200-longplace | inline-1-line-ellipsized | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 1096.2 dp) |
-| landscape-narrow-computed | photo-no-place | inline-1-line | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-no-date | none (no date) | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | photo-1-top-action | inline-1-line | 115.82 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-short | inline-2-lines | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-long | inline-2-lines | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
-| landscape-narrow-computed | video-long-font200 | inline-1-line-ellipsized | 55.82 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
-| landscape-narrow-computed | hidden | — | full screen | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
+| Viewport | Scenario | Metadata mode | Unobstructed media W×H / area dp² | Features | Video gap to strip dp (≥8) | Hit collisions | Outside safe | Over cutout | <44 dp (non-tile) | Over back-gesture zone | In mandatory zone | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| portrait-3button | photo | below-row-1-line | 384.0×493.56 / 189527.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-font200 | below-row-2-lines | 384.0×431.56 / 165719.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp) |
+| portrait-3button | photo-font200-longplace | below-row-2-lines | 384.0×431.56 / 165719.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 552.16 dp) |
+| portrait-3button | photo-no-place | below-row-1-line | 384.0×493.56 / 189527.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-no-date | none (no date) | 384.0×519.56 / 199511.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | photo-1-top-action | inline-2-lines | 384.0×519.56 / 199511.04 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-short | below-row-1-line | 384.0×433.56 / 166487.04 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-long | below-row-1-line | 384.0×433.56 / 166487.04 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| portrait-3button | video-long-font200 | below-row-2-lines | 384.0×327.56 / 125783.04 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | metadata ellipsized at 360.0 dp (estimate 435.0 dp); video time labels move above the seek bar (font 2.0, 1:23:45) |
+| portrait-3button | hidden | — | full screen | context | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
+| landscape-3button | photo | inline-1-line | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-font200 | inline-1-line-ellipsized | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
+| landscape-3button | photo-font200-longplace | inline-1-line-ellipsized | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 1096.2 dp) |
+| landscape-3button | photo-no-place | inline-1-line | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-no-date | none (no date) | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | photo-1-top-action | inline-1-line | 739.56×139.82 / 103405.28 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-short | inline-1-line | 739.56×79.82 / 59031.68 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-long | inline-1-line | 739.56×79.82 / 59031.68 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-3button | video-long-font200 | inline-1-line-ellipsized | 739.56×79.82 / 59031.68 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 416.0 dp (estimate 626.4 dp) |
+| landscape-3button | hidden | — | full screen | context | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
+| landscape-narrow-computed | photo | inline-2-lines | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-font200 | inline-1-line-ellipsized | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
+| landscape-narrow-computed | photo-font200-longplace | inline-1-line-ellipsized | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 1096.2 dp) |
+| landscape-narrow-computed | photo-no-place | inline-1-line | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-no-date | none (no date) | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | photo-1-top-action | inline-1-line | 547.56×115.82 / 63418.4 | 5 | — | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-short | inline-2-lines | 547.56×55.82 / 30564.8 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-long | inline-2-lines | 547.56×55.82 / 30564.8 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 |  |
+| landscape-narrow-computed | video-long-font200 | inline-1-line-ellipsized | 547.56×55.82 / 30564.8 | 5 | 12.0 | 0 | 0 | 0 | 0 | n/a (3-button) | 0 | landscape metadata ellipsized inline at 224.0 dp (estimate 626.4 dp) |
+| landscape-narrow-computed | hidden | — | full screen | context | — | — | — | — | — | — | — | Chrome hidden: media only; status and navigation bars hidden with it. |
 
 ### T5. One-handed reach (video, chrome shown; centre y of each hit)
 
@@ -103,8 +103,12 @@
 
 ### T4. Legibility (WCAG contrast ratios, computed)
 
-| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline |
-|---|---|---|---|---|---|---|---|---|
-| bright photo (white worst case) | 2.2 | 5.18 | 8.63 | 6.67 | 6.67 | 2.55 | 1.0 | 21.0 |
-| dark photo (black) | 18.95 | 18.95 | 16.84 | 6.67 | 3.15 | 8.25 | 21.0 | 21.0 |
+Explicit IEC sRGB linearization: `c/12.92` at `c <= 0.04045`, otherwise `((c+0.055)/1.055)^2.4`; luminance uses 0.2126/0.7152/0.0722. Selected-mark contrast is the stronger visible member of each adjacent fill/keyline pair; worst cases are reported below.
+
+| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline | Sphere + black keyline |
+|---|---|---|---|---|---|---|---|---|---|
+| bright photo (white worst case) | 2.2 | 5.18 | 8.63 | 6.67 | 6.67 | 2.55 | 1.0 | 21.0 | 21.0 |
+| dark photo (black) | 18.95 | 18.95 | 16.84 | 6.67 | 3.15 | 8.25 | 21.0 | 21.0 | 8.25 |
+
+Worst metadata contrast on the required 60% local scrim: **5.18:1** (PASS ≥ 4.5:1). Worst selected ring/keyline: **21.0:1**; worst sphere/keyline: **8.25:1**.
 

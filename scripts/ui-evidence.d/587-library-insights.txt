@@ -1,0 +1,28 @@
+# INSIGHT-1 #587: production Library insights composables, synthetic numbers.
+# 1080x2340 S24+ emulator captures in both themes, verified by ci_ui_evidence.sh.
+insights-587-first-light
+insights-587-first-dark
+insights-587-types-light
+insights-587-types-dark
+insights-587-years-light
+insights-587-years-dark
+insights-587-all-folders-light
+insights-587-all-folders-dark
+insights-587-checking-light
+insights-587-checking-dark
+insights-587-empty-light
+insights-587-empty-dark
+insights-587-updating-light
+insights-587-updating-dark
+insights-587-error-last-known-light
+insights-587-error-last-known-dark
+insights-587-error-light
+insights-587-error-dark
+insights-587-duplicates-light
+insights-587-duplicates-dark
+insights-587-huge-light
+insights-587-huge-dark
+insights-587-font130-light
+insights-587-font130-dark
+insights-587-font200-light
+insights-587-font200-dark

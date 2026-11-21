@@ -359,27 +359,30 @@ class Screen:
             self.text((cx, cy), label, label_role, fill=label_fill or self.t["on_brand"], anchor="mm", scale=False)
 
     def slab(self, active="Pictures", y_bottom=None, search=True, places=("Pictures", "Collections")):
-        """Short centred lapis slab: two places + search sphere. Returns the slab box.
+        """Short centred lapis slab: two places + search sphere, always ONE slab. Returns its box.
 
-        Pills grow with the label at the user's font scale. When pills + sphere no longer fit
-        the 384 dp width (around 175-200 % font), the search sphere detaches and floats above
-        the slab's right end (a proposal the board flags for review)."""
+        Pills grow with the label at the user's font scale (20 dp side padding, 104 dp minimum).
+        If pills + sphere still exceed the 384 dp width minus a 16 dp margin, the sphere moves to a
+        second row inside the same slab; it never detaches. Every pill and the sphere get their own
+        effective target (>= 48 x 48 dp, 4 dp apart); the boxes are kept in ``slab_targets``."""
         f = self.fonts.get("sans", 600, px(14) * self.font_scale)
         pill_h = max(px(48), int(px(20) * self.font_scale) + px(16))
-        widths = [max(px(104), int(self.d.textlength(n, font=f)) + px(28)) for n in places]
-        inner = sum(widths) + px(4) * (len(widths) - 1) + px(8) * 2
-        sphere_w = px(48) + px(8) if search else 0
-        detached = search and inner + sphere_w > DEVICE_W - px(16)
-        sw = inner + (0 if detached or not search else sphere_w)
-        sh = pill_h + px(16)
+        widths = [max(px(104), int(self.d.textlength(n, font=f)) + px(20)) for n in places]
+        gap, pad = px(4), px(8)
+        inner = sum(widths) + gap * (len(widths) - 1) + pad * 2
+        sphere_w = px(48) + pad if search else 0
+        wrapped = bool(search and inner + sphere_w > DEVICE_W - px(16))
+        sw = inner + (0 if wrapped or not search else sphere_w)
+        sh = pad * 2 + pill_h + ((gap + px(48)) if wrapped else 0)
         y1 = (y_bottom or self.bottom) - px(12)
         y0 = y1 - sh
         x0 = (DEVICE_W - sw) // 2
         x1 = x0 + sw
         self.rrect([x0, y0, x1, y1], 24, fill=self.t["brand_fill"])
-        cy = (y0 + y1) // 2
-        bx0 = x0 + px(8)
+        cy = y0 + pad + pill_h // 2
+        bx0 = x0 + pad
         on_pill = "#2639C9"
+        boxes = {}
         for name, w in zip(places, widths):
             box = [bx0, cy - pill_h // 2, bx0 + w, cy + pill_h // 2]
             if name == active:
@@ -389,21 +392,20 @@ class Screen:
                 col = self.t["on_brand"]
             self.d.text(((box[0] + box[2]) / 2, cy), name, font=f, fill=col, anchor="mm")
             self.target(box, name)
-            bx0 += w + px(4)
+            boxes[name] = tuple(box)
+            bx0 += w + gap
         if search:
-            if detached:
-                scx, scy = x1 - px(28), y0 - px(12) - px(28)
-                self.d.ellipse([scx - px(28), scy - px(28), scx + px(28), scy + px(28)], fill=self.t["brand_fill"])
-                self.magnifier((scx, scy), px(10), "#FFFFFF")
-                self.target([scx - px(28), scy - px(28), scx + px(28), scy + px(28)], "Search")
-                self.note((DEVICE_W - px(8), scy + px(32)), "search sphere detaches above slab when pills fill the width")
+            if wrapped:
+                scx, scy = (x0 + x1) // 2, y1 - pad - px(24)
             else:
-                scx, scy = x1 - px(8) - px(24), cy
-                self.d.ellipse([scx - px(24), scy - px(24), scx + px(24), scy + px(24)], fill="#FFFFFF")
-                self.magnifier((scx, scy), px(9), on_pill)
-                self.target([scx - px(24), scy - px(24), scx + px(24), scy + px(24)], "Search")
+                scx, scy = x1 - pad - px(24), cy
+            self.d.ellipse([scx - px(24), scy - px(24), scx + px(24), scy + px(24)], fill="#FFFFFF")
+            self.magnifier((scx, scy), px(9), on_pill)
+            self.target([scx - px(24), scy - px(24), scx + px(24), scy + px(24)], "Search")
+            boxes["Search"] = (scx - px(24), scy - px(24), scx + px(24), scy + px(24))
         self.slab_box = (x0, y0, x1, y1)
-        self.slab_detached = bool(detached)
+        self.slab_targets = boxes
+        self.slab_wrapped = wrapped
         return (x0, y0, x1, y1)
 
     def magnifier(self, c, r, col):
