@@ -73,7 +73,12 @@ interface UsageStore {
 class UsageLog(
     private val store: UsageStore,
     private val clock: UsageClock,
-    private val flushIntervalMs: Long = 15_000
+    private val flushIntervalMs: Long = 15_000,
+    /**
+     * Called around switching recording on/off and on Clear. `true` (before turning off):
+     * credit the time measured so far. `false` (after turning on, or after Clear): drop it.
+     */
+    private val onBoundary: (creditElapsed: Boolean) -> Unit = {}
 ) {
     private val days = HashMap<Int, UsageDay>()
     private val dirty = HashSet<Int>()
@@ -84,8 +89,9 @@ class UsageLog(
     @Synchronized fun isEnabled(): Boolean = store.isEnabled()
 
     @Synchronized fun setEnabled(on: Boolean) {
-        if (!on) flushLocked()
+        if (!on) { onBoundary(true); flushLocked() }
         store.setEnabled(on)
+        if (on) onBoundary(false)
     }
 
     /** True when at least one day holds a non-empty aggregate (including today's partial day). */
@@ -151,6 +157,7 @@ class UsageLog(
     @Synchronized fun clear() {
         days.clear(); dirty.clear(); loaded = true
         store.clear()
+        onBoundary(false)
     }
 
     /** Serialised export of every retained day, or null when nothing is recorded. */
@@ -201,6 +208,16 @@ class UsageLog(
     }
 }
 
+/**
+ * Which usage action a scrolling grid counts for: only the Pictures grid is A2 and only a
+ * person's photos are A10 (#119). Search results, albums and everything else count for neither.
+ */
+fun usageScrollAction(tab: Int, personOpen: Boolean, albumOpen: Boolean): UsageAction? = when {
+    personOpen -> UsageAction.A10
+    tab == 0 && !albumOpen -> UsageAction.A2
+    else -> null
+}
+
 internal object UsageDates {
     fun minusDays(ymd: Int, days: Int): Int {
         val d = LocalDate.of(ymd / 10000, ymd / 100 % 100, ymd % 100).minusDays(days.toLong())
@@ -224,6 +241,10 @@ class UsageDwellTracker(private val sink: (UsageScreen, Long) -> Unit) {
         screen = next; sinceMs = nowMs; running = next != null
         carryMs = 0
     }
+    /** Credits the time measured so far and keeps timing from now. */
+    @Synchronized fun checkpoint(nowMs: Long) { settle(nowMs) }
+    /** Drops the time measured so far on this screen and starts a fresh interval now. */
+    @Synchronized fun reset(nowMs: Long) { carryMs = 0; sinceMs = nowMs }
     @Synchronized fun pause(nowMs: Long) { settle(nowMs); running = false }
     @Synchronized fun resume(nowMs: Long) { if (screen != null && !running) { running = true; sinceMs = nowMs } }
 

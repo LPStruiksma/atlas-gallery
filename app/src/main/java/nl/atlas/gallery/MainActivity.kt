@@ -1943,7 +1943,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 override fun doFrame(frameTimeNanos: Long) {
                     if (previousFrameNs != 0L && frameTimeNanos > previousFrameNs) {
                         val frameMs = (frameTimeNanos - previousFrameNs) / 1_000_000.0
-                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs)
+                        // Usage counts only the grid actually scrolled (#119: A2 Pictures, A10 person).
+                        val usageAction = usageScrollAction(tab, personFilter != null, album != null)
+                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs,
+                            usageA2 = usageAction == UsageAction.A2)
                         if (personFilter != null) {
                             PerformanceSession.recordActionMs(10, frameMs, usage = false)
                             UsageRecorder.scrollFrame(10, frameMs, frameMs > scrollFrameBudgetMs)
@@ -3601,9 +3604,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     settingsOpen -> {
                         val visualStatus = discovery.status?.visual
                         var usageVersion by remember { mutableIntStateOf(0) }
-                        val usageLog = UsageRecorder.log()
-                        val usageEnabledNow = remember(usageVersion) { usageLog?.isEnabled() == true }
-                        val usageHasDataNow = remember(usageVersion) { usageLog?.hasData() == true }
+                        // Reading readyVersion makes Settings recompose when the log finishes loading.
+                        val usageReady = UsageRecorder.readyVersion
+                        val usageLog = remember(usageReady) { UsageRecorder.log() }
+                        val usageEnabledNow = remember(usageVersion, usageLog) { usageLog?.isEnabled() == true }
+                        val usageHasDataNow = remember(usageVersion, usageLog) { usageLog?.hasData() == true }
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             scanPhase = discovery.status?.ui?.phase,

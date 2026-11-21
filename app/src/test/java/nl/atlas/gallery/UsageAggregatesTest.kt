@@ -141,4 +141,52 @@ class UsageAggregatesTest {
         assertEquals(22, UsageAction.entries.size); assertEquals(19, UsageScreen.entries.size)
         assertEquals(UsageAction.A22, UsageAction.fromNumber(22)); assertNull(UsageAction.fromNumber(23))
     }
+
+    // -- review #890 findings ----------------------------------------------------------
+    private class Wired(enabled: Boolean) {
+        val clock = FakeClock(); val store = MemoryStore(enabled)
+        lateinit var tracker: UsageDwellTracker
+        val log = UsageLog(store, clock, flushIntervalMs = 0) { credit ->
+            if (credit) tracker.checkpoint(clock.ms) else tracker.reset(clock.ms)
+        }
+        init { tracker = UsageDwellTracker { s, sec -> log.dwell(s, sec) } }
+        fun at(seconds: Long) { clock.ms = seconds * 1000 }
+        fun d17(): Long = Regex("\"D17\":([0-9]+)").find(log.exportJson() ?: "")?.groupValues?.get(1)?.toLong() ?: 0
+    }
+
+    @Test fun timeBeforeOptInIsNotCredited() {
+        val w = Wired(false)
+        w.at(0); w.tracker.enter(UsageScreen.D17, 0)
+        w.at(100); w.log.setEnabled(true)          // OFF -> ON after 100 s in Settings
+        w.at(110); w.tracker.enter(UsageScreen.D1, w.clock.ms)   // leave
+        assertEquals(10L, w.d17())
+    }
+
+    @Test fun timeBeforeClearIsNotWrittenBack() {
+        val w = Wired(true)
+        w.at(0); w.tracker.enter(UsageScreen.D17, 0)
+        w.at(60); w.log.count(UsageAction.A22); w.log.clear()   // Clear after 60 s
+        w.at(65); w.tracker.enter(UsageScreen.D1, w.clock.ms)
+        assertEquals(5L, w.d17())
+    }
+
+    @Test fun turningOffCreditsTimeUpToThatMomentOnly() {
+        val w = Wired(true)
+        w.at(0); w.tracker.enter(UsageScreen.D17, 0)
+        w.at(30); w.log.setEnabled(false)
+        w.at(500); w.tracker.enter(UsageScreen.D1, w.clock.ms)
+        assertEquals(30L, w.d17())
+        w.at(600); w.log.setEnabled(true); w.at(604); w.tracker.pause(w.clock.ms)
+        assertEquals(30L, w.d17())                       // nothing from the off period
+        assertTrue(w.log.exportJson()!!.contains("\"D1\":4"))  // only the 4 s after it was turned on again
+    }
+
+    @Test fun scrollCountsOnlyTheGridActuallyScrolled() {
+        assertEquals(UsageAction.A2, usageScrollAction(tab = 0, personOpen = false, albumOpen = false))
+        assertNull(usageScrollAction(tab = 3, personOpen = false, albumOpen = false))  // Search
+        assertNull(usageScrollAction(tab = 1, personOpen = false, albumOpen = false))  // Albums
+        assertNull(usageScrollAction(tab = 0, personOpen = false, albumOpen = true))   // an album
+        assertEquals(UsageAction.A10, usageScrollAction(tab = 2, personOpen = true, albumOpen = false))
+        assertEquals(UsageAction.A10, usageScrollAction(tab = 0, personOpen = true, albumOpen = false))
+    }
 }

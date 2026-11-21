@@ -100,13 +100,13 @@ internal object PerformanceSession {
     }
 
     /** Only while a grid is actively scrolling; consecutive Compose/Choreographer frames. */
-    fun recordGridFrame(frameMs: Double, budgetMs: Double) {
+    fun recordGridFrame(frameMs: Double, budgetMs: Double, usageA2: Boolean = true) {
         if (!frameMs.isFinite() || frameMs <= 0.0 ||
             !budgetMs.isFinite() || budgetMs <= 0.0) return
         if (aggregate.record("grid_frame_ms", frameMs)) {
             aggregate.record("grid_frame_over_budget", if (frameMs > budgetMs) 1.0 else 0.0)
             recordActionMs(2, frameMs, usage = false)
-            UsageRecorder.scrollFrame(2, frameMs, frameMs > budgetMs)
+            if (usageA2) UsageRecorder.scrollFrame(2, frameMs, frameMs > budgetMs)
         }
     }
 

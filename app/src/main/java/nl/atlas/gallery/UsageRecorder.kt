@@ -3,6 +3,8 @@ package nl.atlas.gallery
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import java.io.File
 import java.time.LocalDate
@@ -42,6 +44,9 @@ internal class UsagePrefsStore(context: Context) : UsageStore {
 /** Process-wide recorder. Off until the user turns on "Record usage for tuning". */
 internal object UsageRecorder {
     @Volatile private var instance: UsageLog? = null
+    /** Compose-observable: bumps once the log has loaded, so Settings shows the rows and real state. */
+    var readyVersion by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
     val dwell = UsageDwellTracker { screen, seconds -> instance?.dwell(screen, seconds) }
 
     /**
@@ -56,7 +61,12 @@ internal object UsageRecorder {
                 if (instance == null) {
                     val store = UsagePrefsStore(app)
                     store.isEnabled() // forces the preferences file to load here, not on Main
-                    instance = UsageLog(store, SystemUsageClock)
+                    instance = UsageLog(store, SystemUsageClock,
+                        onBoundary = { credit ->
+                            if (credit) dwell.checkpoint(SystemUsageClock.nowMs())
+                            else dwell.reset(SystemUsageClock.nowMs())
+                        })
+                    readyVersion++
                 }
             }
         }, "atlas-usage-init").start()
