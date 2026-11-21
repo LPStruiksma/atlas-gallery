@@ -99,3 +99,29 @@ Entry → local Erase (Brush/Tap selection), Shadow, Reflection, Portrait blur, 
 4. **Acceptance to close #728:** independent `Type: design-preflight` PASS naming this PR/head and the state evidence. Implementation and successful S24+ performance are **downstream** goals; no claim of passing them here.
 
 **Frame legend:** the dark rectangles/photos and colored geometric subjects are fully synthetic, created only for design inspection. The strokes, circles and colors in the *photo* depict test content, not new UI tokens. The neutral stage shows a deliberately simplified image (not a Samsung screenshot). The SVGs are scalable, not proof of the running app.
+
+## EDIT-15D Filters evidence contract (#943)
+
+Every Filters frame and supplement card in `filters.svg` is **proposed synthetic planning evidence**. It is not a measurement, screenshot, or claim about Samsung, Android Compose, or an S24+ device. The light and dark native planning frames remain 360 × 780 dp rendered at ×3; the recovery cards are consistently scaled annotations, not device frames.
+
+### Preview and selection contract
+
+The preview film holds one synthetic landscape crop constant across **Original, Lapis, Soft, and Warm**. Original is first. The three looks are planning fixtures passed through the renderer's actual encoded-sRGB 3D-LUT path: clamp into the LUT cube, trilinear sample, restore the out-of-cube residual, mix by strength, decode, and return to Display P3 (`Lut3D.apply`). The artwork approximates those transforms for SVG inspection; it is not a pixel export from the renderer and does not invent a shipped preset catalogue. Any future render proof must bind each named look to a real `.cube` asset/hash.
+
+Selection uses Quiet Frame v3's held-sphere signature: a light-theme `brand-fill` `#2639C9` or dark-theme `brand-fill` `#3448E0` sphere on the selected thumbnail corner with a **2 dp white halo**. There is no rectangular lapis selection outline. The strength handle uses the same token-backed sphere vocabulary; the selected look remains visible while strength changes.
+
+### Filters-only state and interaction matrix
+
+| SVG state | Visible contract | Cancel, corruption, history and focus |
+|---|---|---|
+| Light + dark base frames | Same-photo Original/Lapis/Soft/Warm thumbnails; Original first; selected Lapis held sphere; Strength and Reset; working photo remains primary | Focus: Back → Undo → Redo → Compare → Save → working photo → From photo → preview film → Strength/Reset → overflow → category slab. Every actionable logical region is ≥48 dp even where the glyph is smaller. |
+| Reference picker open | Compact working-photo anchor above a system/scoped reference grid; top/bottom system insets stay reserved | Focus enters Back, photo context, grid, then Cancel. Cancel returns focus to **From photo**, changes no pixels/recipe/Undo position, and creates no history entry. |
+| Empty reference library | “No photos available for a reference filter” and Back to Filters; working-photo anchor remains | Back is ≥48 dp and returns to From photo without changing the edit or Undo. |
+| Large / scrolling library | Grid scrolls independently; position/count is announced; chosen reference stays reachable and uses a held sphere | Keyboard/TalkBack movement follows visual order and never strands focus offscreen. No thin lapis outline. |
+| Picker cancelled | Explicit unchanged-filter/strength annotation with retained working-photo anchor | No recipe operation and no Undo entry. If an IME is present, Back dismisses it first; focus then resumes at From photo/overflow with insets clear. |
+| Corrupt reference | Decode message and primary **Choose another photo** action; current working photo persists | No LUT, recipe operation, pixel change, or Undo entry. Choose another photo reopens the picker; Back returns to unchanged Filters. |
+| Recipe overflow | ≥48 dp overflow trigger, Copy recipe, and visibly disabled **Paste unavailable** with compatibility reason | Copy changes only the clipboard. Paste becomes available only for a compatible Atlas tone/filter recipe; applying a pasted preview creates one Undoable operation, never a new Save path. Focus: overflow → Copy → Paste → dismiss. |
+
+**Keyboard, IME, and inset rule:** picker/search/name fields resize the photo stage above the IME; the keyboard is never saved media. Back dismisses IME, then the focused picker/edit. Status, cutout, navigation, and gesture insets contain no target. At 200% text, actions wrap/scroll rather than shrink, while a meaningful working-photo anchor and the ≥48 dp completion/cancel actions remain visible.
+
+**No-change / Undo rule:** reference-picker cancel, empty exit, and corrupt decode restore the same selected LUT and strength and do not append history. A successful new custom filter remains a preview until Apply; Apply appends exactly one reversible recipe operation, and global Undo returns the preceding selection/strength. Copy never adds history; compatible Paste adds one operation only when applied.
