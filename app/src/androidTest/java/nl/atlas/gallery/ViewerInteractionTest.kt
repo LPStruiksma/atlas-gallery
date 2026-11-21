@@ -22,6 +22,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
+import android.provider.Settings
 
 /** Works with isolated synthetic metadata; never requires the user's photos. */
 @RunWith(AndroidJUnit4::class)
@@ -467,8 +468,40 @@ class ViewerInteractionTest {
         it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-thumbnail-") == true
     }
 
+    /**
+     * The CI emulator boots with disable-animations=true for deterministic gesture tests.
+     * Enable animator duration for this motion-only timeline; otherwise the production
+     * reduced-motion path correctly cuts to the destination and no ease can be captured.
+     * Restore the original global scale even if an assertion fails.
+     * Synthetic emulator instrumentation only: never a real user's phone.
+     */
+    private fun withSystemAnimationsEnabled(block: () -> Unit) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val resolver = instrumentation.targetContext.contentResolver
+        val previous = Settings.Global.getFloat(
+            resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        fun setScale(scale: Float) {
+            val automation = instrumentation.uiAutomation
+            automation.adoptShellPermissionIdentity(android.Manifest.permission.WRITE_SECURE_SETTINGS)
+            try {
+                check(Settings.Global.putFloat(
+                    resolver, Settings.Global.ANIMATOR_DURATION_SCALE, scale)) {
+                    "Unable to configure isolated emulator animator duration scale"
+                }
+            } finally {
+                automation.dropShellPermissionIdentity()
+            }
+        }
+        setScale(1f)
+        try {
+            block()
+        } finally {
+            setScale(previous)
+        }
+    }
+
     /** FLOW-5 (#714): emulator captures are synthetic, not physical S24+ observations. */
-    private fun captureThumbnailTapTimeline(dark: Boolean) {
+    private fun captureThumbnailTapTimeline(dark: Boolean) = withSystemAnimationsEnabled {
         val media = fixtures()
         rule.setContent {
             AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
