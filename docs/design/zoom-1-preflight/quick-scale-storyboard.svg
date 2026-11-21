@@ -2,17 +2,17 @@
 <title id="t">ZOOM-1 quick-scale gesture storyboard, S24+ profile 1080x2340 px</title>
 <desc id="d">Eight simulated frames of a one-finger double-tap-and-drag zoom. Simulated, not measured on a device. Coordinates are real px on a 1080x2340 screen; frames drawn at 20 percent.</desc>
 <style>text{font-family:sans-serif;fill:#0E1030}.s{font-size:11px}.h{font-size:14px;font-weight:700}.p{fill:#2639C9}.c{fill:#F2F3F8}@media (prefers-color-scheme:dark){text{fill:#F2F3F8}.c{fill:#14152A}}</style>
-<text x="24" y="28" class="h">ZOOM-1 storyboard · S24+ profile 1080×2340 px (density 3.0, 24 px = 8 dp touch slop) · SIMULATED, not measured</text>
-<text x="24" y="48" class="s">Frames at 20 %. Pale lapis = photo, black = viewer ground, orange dot = first tap, blue ring = held finger, filled blue = moving finger, dashed = 24 px slop. Proposals are marked PROPOSAL; nothing here is Samsung evidence.</text>
+<text x="24" y="28" class="h">ZOOM-1 storyboard · S24+ profile 1080×2340 px (profile 2.8125 px/dp = 384×832 dp, 8 dp slop = 22.5 px, per Strategy brief rev 1) · SIMULATED, not measured</text>
+<text x="24" y="48" class="s">Frames at 20 %. Pale lapis = photo, black = viewer ground, orange dot = first tap, blue ring = held finger, filled blue = moving finger, dashed = 22.5 px slop. Proposals are marked PROPOSAL; nothing here is Samsung evidence.</text>
 <g transform="translate(24.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="21.6" y="117.0" width="172.8" height="234.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="108.0" cy="240.0" r="5" fill="#FF9F1C"/>
+<circle cx="108.0" cy="234.0" r="5" fill="#FF9F1C"/>
 </g>
 <text x="24.0" y="556" class="h">F1 first tap</text>
-<text x="24.0" y="572.0" class="s">Down+up #1 at (540,1200),</text>
-<text x="24.0" y="585.0" class="s">t=0. Up within 24 px slop,</text>
-<text x="24.0" y="598.0" class="s">&lt;300 ms press.</text>
+<text x="24.0" y="572.0" class="s">Down+up #1 at (540,1170),</text>
+<text x="24.0" y="585.0" class="s">t=0. Up within 22.5 px</text>
+<text x="24.0" y="598.0" class="s">slop, &lt;300 ms press.</text>
 <text x="24.0" y="611.0" class="s"></text>
 <text x="24.0" y="624.0" class="s">Observed in code: single</text>
 <text x="24.0" y="637.0" class="s">tap waits 300 ms for a</text>
@@ -21,30 +21,31 @@
 <g transform="translate(264.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="21.6" y="117.0" width="172.8" height="234.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="108.0" cy="240.0" r="5" fill="#FF9F1C"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="108.0" cy="234.0" r="5" fill="#FF9F1C"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
 </g>
 <text x="264.0" y="556" class="h">F2 second down</text>
-<text x="264.0" y="572.0" class="s">Down #2 at (552,1212),</text>
+<text x="264.0" y="572.0" class="s">Down #2 at (552,1182),</text>
 <text x="264.0" y="585.0" class="s">t≤300 ms after up #1; 17</text>
-<text x="264.0" y="598.0" class="s">px from #1 (≤ 24 px slop).</text>
-<text x="264.0" y="611.0" class="s"></text>
-<text x="264.0" y="624.0" class="s">Held within slop: nothing</text>
-<text x="264.0" y="637.0" class="s">moves, no chrome toggle</text>
-<text x="264.0" y="650.0" class="s">yet. PROPOSAL: arm quick-</text>
-<text x="264.0" y="663.0" class="s">scale; stay inert.</text>
+<text x="264.0" y="598.0" class="s">px from #1 (≤ 22.5 px</text>
+<text x="264.0" y="611.0" class="s">slop).</text>
+<text x="264.0" y="624.0" class="s"></text>
+<text x="264.0" y="637.0" class="s">Held within slop: nothing</text>
+<text x="264.0" y="650.0" class="s">moves, no chrome toggle</text>
+<text x="264.0" y="663.0" class="s">yet. PROPOSAL: arm quick-</text>
+<text x="264.0" y="676.0" class="s">scale; stay inert.</text>
 <g transform="translate(504.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="21.6" y="117.0" width="172.8" height="234.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
-<circle cx="110.8" cy="248.0" r="7" fill="#3448E0" stroke="#fff"/>
-<line x1="110.4" y1="242.4" x2="110.8" y2="248.0" stroke="#fff" stroke-dasharray="3 3"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="110.8" cy="242.0" r="7" fill="#3448E0" stroke="#fff"/>
+<line x1="110.4" y1="236.4" x2="110.8" y2="242.0" stroke="#fff" stroke-dasharray="3 3"/>
 </g>
 <text x="504.0" y="556" class="h">F3 activation</text>
 <text x="504.0" y="572.0" class="s">Travel from down #2</text>
-<text x="504.0" y="585.0" class="s">reaches |dy|≥24 px,</text>
-<text x="504.0" y="598.0" class="s">|dy|&gt;1.4·|dx| (e.g.</text>
-<text x="504.0" y="611.0" class="s">(554,1240)).</text>
+<text x="504.0" y="585.0" class="s">reaches |dy|≥22.5 px,</text>
+<text x="504.0" y="598.0" class="s">|dy|≥1.4·|dx| (e.g.</text>
+<text x="504.0" y="611.0" class="s">(554,1210)).</text>
 <text x="504.0" y="624.0" class="s"></text>
 <text x="504.0" y="637.0" class="s">PROPOSAL: quick-scale</text>
 <text x="504.0" y="650.0" class="s">activates; claims gesture;</text>
@@ -53,33 +54,34 @@
 <g transform="translate(744.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="0.0" y="0.0" width="216.0" height="468.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
-<circle cx="110.8" cy="359.4" r="7" fill="#3448E0" stroke="#fff"/>
-<line x1="110.4" y1="242.4" x2="110.8" y2="359.4" stroke="#fff" stroke-dasharray="3 3"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="110.8" cy="101.4" r="7" fill="#3448E0" stroke="#fff"/>
+<line x1="110.4" y1="236.4" x2="110.8" y2="101.4" stroke="#fff" stroke-dasharray="3 3"/>
 </g>
-<text x="744.0" y="556" class="h">F4 drag down</text>
-<text x="744.0" y="572.0" class="s">Finger at (554,1797):</text>
-<text x="744.0" y="585.0" class="s">dy=+585 px. Scale =</text>
-<text x="744.0" y="598.0" class="s">1.0·2^(585/585)=2.0, pivot</text>
-<text x="744.0" y="611.0" class="s">(552,1212).</text>
+<text x="744.0" y="556" class="h">F4 drag up</text>
+<text x="744.0" y="572.0" class="s">Finger at (554,507): net</text>
+<text x="744.0" y="585.0" class="s">dy=−675 px (240 dp). Scale</text>
+<text x="744.0" y="598.0" class="s">= 1.0·2^(240/240)=2.0,</text>
+<text x="744.0" y="611.0" class="s">pivot P=(540,1170).</text>
 <text x="744.0" y="624.0" class="s"></text>
-<text x="744.0" y="637.0" class="s">PROPOSAL (rate</text>
-<text x="744.0" y="650.0" class="s">unverified): 1 doubling</text>
-<text x="744.0" y="663.0" class="s">per 585 px (¼ of 2340).</text>
-<text x="744.0" y="676.0" class="s">Clamped to ≤5.0 (16.0</text>
-<text x="744.0" y="689.0" class="s">tiled).</text>
+<text x="744.0" y="637.0" class="s">Strategy brief rev 1: up =</text>
+<text x="744.0" y="650.0" class="s">zoom in, scale=start·2^(−n</text>
+<text x="744.0" y="663.0" class="s">etDyDp/240), 675 px per</text>
+<text x="744.0" y="676.0" class="s">doubling (ATLAS proposal,</text>
+<text x="744.0" y="689.0" class="s">not observed). Clamp to</text>
+<text x="744.0" y="702.0" class="s">current [1,5] (16 tiled).</text>
 <g transform="translate(984.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="21.6" y="117.0" width="172.8" height="234.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
-<circle cx="110.8" cy="125.4" r="7" fill="#3448E0" stroke="#fff"/>
-<line x1="110.4" y1="242.4" x2="110.8" y2="125.4" stroke="#fff" stroke-dasharray="3 3"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="110.8" cy="371.4" r="7" fill="#3448E0" stroke="#fff"/>
+<line x1="110.4" y1="236.4" x2="110.8" y2="371.4" stroke="#fff" stroke-dasharray="3 3"/>
 </g>
-<text x="984.0" y="556" class="h">F5 drag up</text>
+<text x="984.0" y="556" class="h">F5 drag down</text>
 <text x="984.0" y="572.0" class="s">From F4 finger returns to</text>
-<text x="984.0" y="585.0" class="s">y=1212 and on to y=627:</text>
+<text x="984.0" y="585.0" class="s">y=1182 and on to y=1857:</text>
 <text x="984.0" y="598.0" class="s">scale 2.0→1.0→0.5, floored</text>
-<text x="984.0" y="611.0" class="s">at 1.0.</text>
+<text x="984.0" y="611.0" class="s">at 1.0 (currentMin).</text>
 <text x="984.0" y="624.0" class="s"></text>
 <text x="984.0" y="637.0" class="s">PROPOSAL: floor 1.0 (fit);</text>
 <text x="984.0" y="650.0" class="s">no zoom-out below fit; fit</text>
@@ -88,12 +90,12 @@
 <g transform="translate(1224.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="0.0" y="0.0" width="216.0" height="468.0" fill="#8C9BFF" opacity=".55"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
-<circle cx="110.8" cy="359.4" r="7" fill="#3448E0" stroke="#fff"/>
-<line x1="110.4" y1="242.4" x2="110.8" y2="359.4" stroke="#fff" stroke-dasharray="3 3"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="110.8" cy="101.4" r="7" fill="#3448E0" stroke="#fff"/>
+<line x1="110.4" y1="236.4" x2="110.8" y2="101.4" stroke="#fff" stroke-dasharray="3 3"/>
 </g>
 <text x="1224.0" y="556" class="h">F6 release</text>
-<text x="1224.0" y="572.0" class="s">Finger up at (554,1797),</text>
+<text x="1224.0" y="572.0" class="s">Finger up at (554,507),</text>
 <text x="1224.0" y="585.0" class="s">scale 2.0.</text>
 <text x="1224.0" y="598.0" class="s"></text>
 <text x="1224.0" y="611.0" class="s">PROPOSAL: keep level, no</text>
@@ -103,10 +105,10 @@
 <g transform="translate(1464.0,70)">
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="0.0" y="46.8" width="216.0" height="374.4" fill="#8C9BFF" opacity=".55"/>
-<circle cx="110.4" cy="242.4" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="242.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
-<circle cx="110.8" cy="300.0" r="7" fill="#3448E0" stroke="#fff"/>
+<circle cx="110.4" cy="236.4" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="110.4" cy="236.4" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="110.8" cy="180.0" r="7" fill="#3448E0" stroke="#fff"/>
 <circle cx="40.0" cy="180.0" r="7" fill="#3448E0" stroke="#fff"/>
-<line x1="110.4" y1="242.4" x2="110.8" y2="300.0" stroke="#fff" stroke-dasharray="3 3"/>
+<line x1="110.4" y1="236.4" x2="110.8" y2="180.0" stroke="#fff" stroke-dasharray="3 3"/>
 </g>
 <text x="1464.0" y="556" class="h">F7 cancel / takeover</text>
 <text x="1464.0" y="572.0" class="s">Second finger down during</text>
@@ -121,7 +123,7 @@
 <rect width="216.0" height="468.0" rx="10" fill="#000"/>
 <rect x="0.0" y="0.0" width="216.0" height="468.0" fill="#8C9BFF" opacity=".55"/>
 <circle cx="210.0" cy="460.0" r="5" fill="#FF9F1C"/>
-<circle cx="210.0" cy="460.0" r="4.8" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="210.0" cy="460.0" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
+<circle cx="210.0" cy="460.0" r="4.5" fill="none" stroke="#fff" stroke-dasharray="2 2"/><circle cx="210.0" cy="460.0" r="7" fill="none" stroke="#3448E0" stroke-width="2"/>
 </g>
 <text x="1704.0" y="556" class="h">F8 corner focal clamp</text>
 <text x="1704.0" y="572.0" class="s">Taps at (1050,2300), 30 px</text>
