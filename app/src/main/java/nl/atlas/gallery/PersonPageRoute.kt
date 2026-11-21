@@ -36,8 +36,8 @@ import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
 import nl.atlas.gallery.featurepeopleui.SamePersonQuestion
 import nl.atlas.gallery.featurepeopleui.mergeAction
 import nl.atlas.gallery.featurepeopleui.mergeCandidates
-import nl.atlas.gallery.featurepeopleui.nameSuggestions
 import nl.atlas.gallery.featurepeopleui.needsSplittingLists
+import nl.atlas.gallery.featurepeopleui.nameSuggestions
 import nl.atlas.gallery.featurepeopleui.peopleAlbumsForGrant
 import nl.atlas.gallery.featurepeopleui.personNaming
 import nl.atlas.gallery.featurepeopleui.personPageFacts
@@ -115,6 +115,21 @@ internal fun encodePersonSelectionForRotation(
     activeSelectionFence == selectionFence) {
     selectionFence + live.sorted()
 } else emptyList()
+
+/**
+ * Choose only a currently listed member for a named-person portrait. Both
+ * Hidden list and the person header consume this same deterministic fallback.
+ */
+internal fun personPagePortraitFace(
+    faces: List<NativeFaceObservationId>?,
+    manualUid: String?,
+    currentUid: String?,
+    homeCover: NativeFaceObservationId?
+): NativeFaceObservationId? =
+    manualUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: currentUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: homeCover?.takeIf { faces == null || it in faces }
+        ?: faces?.firstOrNull()
 
 /**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
@@ -204,6 +219,14 @@ internal fun NativePersonAlbumRoute(
     val chosenCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
         value = request.person?.let { person ->
             withContext(Dispatchers.IO) { host.currentPersonCover(galleryGrant, person) }
+        }
+    }
+    // People home intentionally excludes hidden people. Resolve their current
+    // default from the store, with the same grant/model/member fences as home.
+    val displayCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
+        value = null
+        value = request.person?.let { person ->
+            withContext(Dispatchers.IO) { host.currentPersonDisplayCover(galleryGrant, person) }
         }
     }
     val scope = rememberCoroutineScope()
@@ -340,6 +363,12 @@ internal fun NativePersonAlbumRoute(
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
         PersonFaceImage(host, cropEpoch, face)
     }
+    // Reuse the canonical person cover on rename/merge choice cards too.
+    // An unnamed group without a canonical summary keeps its stable fallback.
+    fun albumPortrait(album: NativePersonAlbum): NativeFaceObservationId? =
+        people?.people?.get(album.person)?.coverFaceUid
+            ?.let { uid -> album.observations.firstOrNull { it.localHex == uid } }
+            ?: album.observations.firstOrNull()
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
@@ -354,9 +383,7 @@ internal fun NativePersonAlbumRoute(
         searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
         portrait = { portrait(
-            chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
-                ?: summaryCover?.takeIf { faces == null || it in faces }
-                ?: facts?.coverFace) },
+            personPagePortraitFace(faces, chosenCover, displayCover, summaryCover)) },
         onBack = onBack,
         onOpen = { record ->
             visibleMedia?.takeIf { shown -> shown.any { it.uri == record.uri } }
@@ -368,7 +395,7 @@ internal fun NativePersonAlbumRoute(
             PersonNameDialog(
                 initial = facts?.name.orEmpty(),
                 suggestions = { typed -> nameSuggestions(state, request.target, typed) },
-                suggestionPortrait = { portrait(it.observations.firstOrNull()) },
+                suggestionPortrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onSave = { typed ->
                     val live = epoch?.let { host.liveReview(it) }
@@ -389,7 +416,7 @@ internal fun NativePersonAlbumRoute(
         mergePicker = {
             PersonMergePicker(
                 people = mergeCandidates(state, request.target),
-                portrait = { portrait(it.observations.firstOrNull()) },
+                portrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onPick = { dialog = PersonPageDialog.ConfirmMerge(it) }
             )
@@ -486,6 +513,12 @@ internal fun PersonFaceImage(host: PeopleDiscoveryHost, epoch: String?, face: Na
     } else PersonPortraitFallback()
 }
 
+/** Use a current authorized winner only while it is in this person's live face list. */
+internal fun hiddenPortraitFace(
+    faces: List<NativeFaceObservationId>, selectedUid: String?
+): NativeFaceObservationId? =
+    personPagePortraitFace(faces, null, selectedUid, null)
+
 /**
  * People ⋮ → Hidden: the hidden named people of the live snapshot. Tapping
  * one opens its page through [onOpen].
@@ -506,12 +539,21 @@ internal fun HiddenPeopleRoute(
         authorized?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
             hiddenOnly = true) }.orEmpty()
     }
-    // Count is read from the same authorized snapshot as the hidden people;
-    // never put it in ordinary People's overflow or accessibility tree.
+    // This count stays in the authorized Hidden view; it is never put in People.
     val hiddenSplitCount = remember(authorized) { needsSplittingLists(authorized).hidden.size }
+    val hiddenCovers by produceState<Map<PersonKey, String>>(emptyMap(), version, authorized) {
+        // Reset on a scope change; never reuse a portrait from an old grant.
+        value = emptyMap()
+        value = withContext(Dispatchers.IO) {
+            host.currentHiddenPersonCovers(authorized?.permissionEpoch)
+        }
+    }
     HiddenPeopleScreen(
         people = hidden,
-        portrait = { PersonFaceImage(host, authorized?.permissionEpoch, it.observations.firstOrNull()) },
+        portrait = { album ->
+            PersonFaceImage(host, authorized?.permissionEpoch,
+                hiddenPortraitFace(album.observations, hiddenCovers[album.person]))
+        },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
         needsSplittingCount = hiddenSplitCount,

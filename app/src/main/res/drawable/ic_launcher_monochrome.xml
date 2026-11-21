@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ATLAS launcher icon monochrome layer for Android 13+ themed icons; the launcher tints it.
-     An "A" for ATLAS with a person in its frame: People sit at the heart of the gallery.
-     All content stays inside the 66dp adaptive-icon safe zone (centre 54,54). -->
+<!-- BRAND-L3 (#656): Lapis Atlas held-sphere mark, monochrome layer for Android 13+ themed icons; the launcher tints this one tone.
+     Source geometry on the 108 dp canvas: sphere centre (54,40) r 15; chevron M30 84L54 60L78 84,
+     stroke 8, round caps and joins. The whole mark, strokes included, is scaled by 0.77 about the
+     centre (54,54): the farthest stroked point is (sqrt(24^2+30^2)+4) x 0.77 = 32.66 dp from the
+     centre, inside the r 33 adaptive-icon safe circle. Static: no animation. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M33,77L54,31L75,77"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M54,58.8m-5.8,0a5.8,5.8 0,1 1,11.6 0a5.8,5.8 0,1 1,-11.6 0" />
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M44,77A10,9.5 0,0 1,64 77Z" />
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.77"
+        android:scaleY="0.77">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M54,40m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+        <path
+            android:pathData="M30,84L54,60L78,84"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
 </vector>
