@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +58,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -80,10 +83,14 @@ import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
 import nl.atlas.gallery.featureaiedit.settings.LocalProviderRegistry
 import nl.atlas.gallery.featureaiedit.settings.ProviderCredentialVault
 import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.math.cos
 import kotlin.math.sin
 
 private const val PREFERENCES = "atlas-ai-edit"
+private val AiEditSuggestions = listOf("Remove object", "Clean background", "Fix lighting", "Change sky", "Restore photo")
 
 /**
  * Quiet Frame v3 colours for the editor (docs/design/QUIET_FRAME.md). The viewer ground stays black
@@ -104,7 +111,8 @@ internal data class AiEditExtras(
     val sizeNotice: String? = null,
     val gate: AiEditGate? = null,
     val showHoldHint: Boolean = true,
-    val toast: String? = null
+    val toast: String? = null,
+    val recentPrompts: List<String> = emptyList()
 )
 
 /** User actions of the stateless body. */
@@ -125,7 +133,8 @@ internal class AiEditActions(
     val onGateOpenService: () -> Unit = {},
     val onHintSeen: () -> Unit = {},
     val onView: () -> Unit = {},
-    val onToastShown: () -> Unit = {}
+    val onToastShown: () -> Unit = {},
+    val onClearHistory: () -> Unit = {}
 )
 
 /**
@@ -153,6 +162,14 @@ internal fun AiEditScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var hintSeen by remember { mutableStateOf(preferences.getBoolean("holdHintSeen", false)) }
     var savedUri by remember { mutableStateOf<Uri?>(null) }
+    val promptHistory = remember(app) {
+        AiEditPromptHistory(File(app.noBackupFilesDir, AI_EDIT_PROMPT_HISTORY_FILE))
+    }
+    var recentPrompts by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Successful generations are recorded by the ViewModel, before candidate state is published.
+    LaunchedEffect(app, vm.ui.candidates.map { it.id }) {
+        recentPrompts = withContext(Dispatchers.IO) { promptHistory.entries() }
+    }
     LaunchedEffect(sessionId, settingsOpen) { if (!settingsOpen) vm.initialize(environment, sourceUri) }
     var confirmDiscard by remember { mutableStateOf(false) }
     fun back() {
@@ -175,7 +192,7 @@ internal fun AiEditScreen(
     }
     AiEditScreenContent(
         state = vm.ui,
-        extras = AiEditExtras(vm.services, vm.costLine, vm.sizeNotice, vm.gate, !hintSeen, vm.toast),
+        extras = AiEditExtras(vm.services, vm.costLine, vm.sizeNotice, vm.gate, !hintSeen, vm.toast, recentPrompts),
         originalUri = sourceUri,
         selectedCandidateUri = selectedUri,
         candidateUri = { item -> runCatching { Uri.fromFile(store.candidateFile(item.fileName)) }.getOrNull() },
@@ -208,7 +225,10 @@ internal fun AiEditScreen(
             onGateOpenService = { open(profileKind?.let { AiEditServices.pricingUrl(it) }) },
             onHintSeen = { hintSeen = true; preferences.edit().putBoolean("holdHintSeen", true).apply() },
             onView = { savedUri?.let { onExit() } },
-            onToastShown = vm::dismissToast
+            onToastShown = vm::dismissToast,
+            onClearHistory = {
+                if (promptHistory.clear()) recentPrompts = emptyList()
+            }
         )
     )
     if (settingsOpen) AiEditSettingsDialog(onClose = { settingsOpen = false })
@@ -243,6 +263,10 @@ internal fun AiEditScreenContent(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showOriginal by remember { mutableStateOf(false) }
+    var suggestionsOpen by remember { mutableStateOf(false) }
+    var recentOpen by remember { mutableStateOf(false) }
+    var confirmClearHistory by remember { mutableStateOf(false) }
+    val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val hasPreview = selectedCandidateUri != null && state.phase in
         setOf(AiEditPhase.Result, AiEditPhase.Accepting, AiEditPhase.Saved)
     val service = state.serviceName ?: "the service"
@@ -350,6 +374,35 @@ internal fun AiEditScreenContent(
                         .background(AiEditColors.Surface, RoundedCornerShape(22.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp).testTag("atlas-ai-edit-failed"))
             }
+            // Static text only: a chip changes the editable prompt but never triggers Generate.
+            // Hide while the IME is open to keep the photo and action row unobstructed.
+            if (!imeOpen && state.phase in setOf(
+                    AiEditPhase.Idle, AiEditPhase.Composing, AiEditPhase.Cancelled)) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().testTag("atlas-ai-edit-suggestions"),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(AiEditSuggestions.take(2)) { suggestion ->
+                        TextButton(
+                            onClick = { actions.onPromptChanged(suggestion) },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-ai-edit-suggestion-${AiEditSuggestions.indexOf(suggestion)}")
+                        ) { Text(suggestion, style = Secondary, color = AiEditColors.Ink) }
+                    }
+                    item {
+                        TextButton(onClick = { suggestionsOpen = true },
+                            modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-more-suggestions")) {
+                            Text("More suggestions", style = Secondary, color = AiEditColors.Ink)
+                        }
+                    }
+                    item {
+                        TextButton(onClick = { recentOpen = true },
+                            modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-recent")) {
+                            Text("Recent", style = Secondary, color = AiEditColors.Ink)
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.size(8.dp))
             Slab {
                 when {
@@ -431,6 +484,65 @@ internal fun AiEditScreenContent(
         }
     }
     extras.gate?.let { GateDialog(it, service, actions) }
+    if (suggestionsOpen) AlertDialog(
+        onDismissRequest = { suggestionsOpen = false },
+        title = { Text("Suggestions") },
+        text = {
+            Column(Modifier.heightIn(max = 360.dp)) {
+                AiEditSuggestions.forEachIndexed { index, suggestion ->
+                    TextButton(onClick = {
+                        suggestionsOpen = false
+                        actions.onPromptChanged(suggestion)
+                    }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag("atlas-ai-edit-suggestion-sheet-${index}")) {
+                        Text(suggestion)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { suggestionsOpen = false }) { Text("Close") } },
+        modifier = Modifier.testTag("atlas-ai-edit-suggestion-sheet")
+    )
+    if (recentOpen) AlertDialog(
+        onDismissRequest = { recentOpen = false },
+        title = { Text("Recent prompts") },
+        text = {
+            if (extras.recentPrompts.isEmpty()) Text("No recent prompts")
+            else LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                items(extras.recentPrompts) { prompt ->
+                    TextButton(onClick = {
+                        recentOpen = false
+                        actions.onPromptChanged(prompt)
+                    }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text(prompt, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { recentOpen = false }) { Text("Close") } },
+        dismissButton = {
+            TextButton(onClick = { recentOpen = false; confirmClearHistory = true },
+                enabled = extras.recentPrompts.isNotEmpty(),
+                modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-clear-history")) {
+                Text("Clear history")
+            }
+        },
+        modifier = Modifier.testTag("atlas-ai-edit-history-sheet")
+    )
+    if (confirmClearHistory) AlertDialog(
+        onDismissRequest = { confirmClearHistory = false },
+        title = { Text("Clear recent prompts?") },
+        text = { Text("This only removes prompts stored on this device.") },
+        confirmButton = {
+            TextButton(onClick = {
+                actions.onClearHistory()
+                confirmClearHistory = false
+            }, modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-clear-confirm")) {
+                Text("Clear")
+            }
+        },
+        dismissButton = { TextButton(onClick = { confirmClearHistory = false }) { Text("Cancel") } }
+    )
 }
 
 @Composable
