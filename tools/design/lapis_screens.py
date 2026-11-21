@@ -498,7 +498,7 @@ COUNTS = [312, 0, 418, 655, 980, 1420, 2210, 1835, 702, 0, 268, 0]
 
 
 def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=True, dense=False,
-                no_geo=False, year="2026", seed=3, grid=True) -> int:
+                no_geo=False, year="2026", seed=3, grid=True, error=False) -> int:
     """The atlas slides down over the grid by ``open_frac`` of its full height. Returns its bottom."""
     counts = counts if counts is not None else COUNTS
     # Larger font scales push the month grid down so the year/total header
@@ -511,6 +511,31 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
         return y0
     panel = [0, y0, DEVICE_W, y0 + h]
     s.d.rectangle(panel, fill=s.t["surface"])
+    if error:
+        # C4: metadata failure is an *open atlas* over an intact Pictures grid,
+        # not a full-screen Pictures failure. No stale month/place targets remain.
+        top = y0 + px(18)
+        close_box = [DEVICE_W - px(SIDE) - px(48), top,
+                     DEVICE_W - px(SIDE), top + px(48)]
+        s.text((px(SIDE), top + px(7)), "Atlas", "section")
+        s.d.rounded_rectangle(close_box, radius=px(24), fill=s.t["ground"])
+        s.d.text(((close_box[0] + close_box[2]) / 2, (close_box[1] + close_box[3]) / 2),
+                 "×", font=s.fonts.get("sans", 600, px(20)), fill=s.t["ink"], anchor="mm")
+        s.target(close_box, "close atlas (Back)", actual=True)
+        s.text((px(SIDE), top + px(90)), "Couldn't read dates and places.", "body")
+        s.text((px(SIDE), top + px(138)), "Your pictures are safe. Try again.", "secondary")
+        retry_box = [px(SIDE), top + px(206), DEVICE_W - px(SIDE), top + px(262)]
+        s.d.rounded_rectangle(retry_box, radius=px(18), fill=s.t["brand_fill"])
+        s.d.text(((retry_box[0] + retry_box[2]) / 2, (retry_box[1] + retry_box[3]) / 2),
+                 "Try again", font=s.fonts.get("sans", 600, px(16)),
+                 fill=s.t["on_brand"], anchor="mm")
+        s.target(retry_box, "try atlas again", actual=True, show_size=True)
+        hy = y0 + h - px(12)
+        s.d.rounded_rectangle([DEVICE_W / 2 - px(18), hy - px(2),
+                               DEVICE_W / 2 + px(18), hy + px(2)],
+                              radius=px(2), fill=s.t["ink2"])
+        s.atlas_error = True
+        return y0 + h
     # content is drawn into a clipped layer
     from PIL import Image as _I, ImageDraw as _D
     layer = _I.new("RGBA", (DEVICE_W, full_h), (0, 0, 0, 0))
@@ -535,6 +560,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     bar_max = px(44)
     row_bases = [px(118) + head_shift, px(198) + head_shift]  # 80 dp pitch, targets touch but do not overlap
     month_boxes = []
+    month_label_boxes = []
     place_pts: dict[str, tuple[float, float]] = {}
     label_chips: list = []
     for i, c in enumerate(counts):
@@ -547,15 +573,29 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
             ld.line([x + px(4), base_y, x + bw - px(4), base_y], fill=s.t["ink2"], width=px(1))
         else:
             ld.rounded_rectangle([x + px(4), base_y - bh, x + bw - px(4), base_y], radius=px(4), fill=colr)
-        ld.text((x + bw / 2, base_y + px(6)), MONTHS[i], font=f_m,
+        # Reserve the bottom 36 dp of each 80 dp month target for its label.
+        # At 200% font the old +24 dp target edge bisected glyph descenders.
+        # Measure the *drawn* glyph bounds; move the baseline up as needed
+        # rather than shrinking the label or its accessible hit target.
+        label_x, label_y = x + bw / 2, base_y + px(6)
+        label_bb = ld.textbbox((label_x, label_y), MONTHS[i], font=f_m, anchor="ma")
+        label_bottom = base_y + px(36)
+        if label_bb[3] > label_bottom:
+            label_y -= label_bb[3] - label_bottom
+            label_bb = ld.textbbox((label_x, label_y), MONTHS[i], font=f_m, anchor="ma")
+        if (label_bb[1] < base_y + px(2) or label_bb[0] < x
+                or label_bb[2] > x + bw or label_bb[3] > label_bottom):
+            raise ValueError(f"month label escapes 80 dp target: {MONTHS[i]} {label_bb}")
+        ld.text((label_x, label_y), MONTHS[i], font=f_m,
                 fill=s.t["ink"], anchor="ma")
+        month_label_boxes.append((MONTHS[i], label_bb))
         if i == current:
             r = px(10)
             cy = base_y - bh - px(14)
             ld.ellipse([x + bw / 2 - r - px(2), cy - r - px(2), x + bw / 2 + r + px(2), cy + r + px(2)],
                        fill="#FFFFFF")
             ld.ellipse([x + bw / 2 - r, cy - r, x + bw / 2 + r, cy + r], fill=s.t["brand_fill"])
-        month_boxes.append((x, base_y - bar_max - px(12), x + bw, base_y + px(24)))
+        month_boxes.append((x, base_y - bar_max, x + bw, base_y + px(36)))
     legend_y = row_bases[-1] + px(30) * min(s.font_scale, 1.6)
     ld.text((DEVICE_W - px(SIDE), legend_y), f"tallest bar = {_nl(mx)} photos",
             font=s.fonts.get("sans", 400, px(11) * min(s.font_scale, 1.6)), fill=s.t["ink2"], anchor="ra")
@@ -631,6 +671,8 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                           fill=s.t["ink2"])
     shift_y = y0 - (full_h - h)
     s.year_bottom = shift_y + year_bbox[3]
+    s.month_label_boxes = [(n, (b[0], shift_y + b[1], b[2], shift_y + b[3]))
+                           for n, b in month_label_boxes]
     s.label_chips = [(n, (c[0], shift_y + c[1], c[2], shift_y + c[3])) for n, c in label_chips]
     s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
