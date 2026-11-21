@@ -1,66 +1,56 @@
-# SORT-1 · design preflight revision 2 (48 dp geometry correction) · 2026-11-21
+# SORT-1 · design preflight revision 3 (SORT-1D)
 
-**Stage:** synthetic annotated wireframes for independent pre-build review; **not** current-app screenshots or permission to implement. Work unit [#177](https://github.com/LPStruiksma/atlas-gallery/issues/177), goal [#175](https://github.com/LPStruiksma/atlas-gallery/issues/175). This addresses the [prior preflight evidence gap](https://github.com/LPStruiksma/atlas-gallery/issues/177#issuecomment-7055940757). No Kotlin, UI, tests or protected files were changed.
+**Status: synthetic proposals only.** These drawings are **not** current Android UI, S24+ device screenshots, Samsung captures, permission to implement, or evidence of a running emulator. [Repair #869](https://github.com/LPStruiksma/atlas-gallery/issues/869) addresses findings [#4, #6, #8](https://github.com/LPStruiksma/atlas-gallery/issues/177#issuecomment-7056795151) on [parent design preflight #177](https://github.com/LPStruiksma/atlas-gallery/issues/177) under [goal #175](https://github.com/LPStruiksma/atlas-gallery/issues/175). No app or protected paths changed.
 
-**Owner words:** “all pages where an overview of media is shown we should be able to sort”; the five keys are date created, date modified, file name, size and random. **Not this:** new global Search behavior, additional universal keys, extra navigation/chrome, changing Trash semantics or Same person? decision logic. Latitude: fidelity. UI: yes. Needs: run:android, render. Docs impact: update #175 audit and parity evidence **after** implementation.
+## Exact contract and distinction from revision 2
 
-## Primary action and geometry
+Live-main [`MediaSortSheet`](../../app/src/main/java/nl/atlas/gallery/PhotosHeader.kt) has **five** standard full-row radio choices, each `heightIn(min = 52.dp)`: Date created, Date modified, File name, Size, Random. Search results and Find similar (including face results) prepend **Relevance** as the initial **sixth** key. Direction-supporting date/name/size choices render two **vertical** selectable 52dp radio rows, labelled **Ascending** and **Descending**. Relevance has **no direction or shuffle**; Random has a **Shuffle again** 52dp button, not direction. The 52dp selectable **region** is each entire row, not a small label. Revision 2's repaired sixth-row clipping and >=48dp hit areas remain preserved; its erroneous schematic horizontal Newest/Oldest buttons are superseded.
 
-The person sees the relevant photo/face grid, taps a single Sort icon, and chooses a key/direction without losing grid scope or current query. The corresponding screen's choice is saved and restored independently, not borrowed from another album/person/search. For search-like result sets **Relevance is the initial sixth choice**; those six choices never leak to albums or Trash. The selected key has a prominent lapis radio dot; changed result order is applied after explicit choice, not on opening or dismissing the sheet.
+The sheet appears over a still-visible scoped grid, without losing selected media or the existing search query. Sort persists independently per host, query changes reset only Search/Find similar to Relevance, and Back/drag/scrim dismiss without applying another choice. A new key or direction updates only that scope's order; stable ties and Random seeds are implementation obligations, not observed behavior.
 
-Each SVG declares exactly **1080 × 2340 px** with a **360 × 780 dp illustrative viewBox** (density 3 for layout illustration only). Insets in the drawing: 24 dp status/toolbar region and 23 dp bottom gesture area; actual S24+ system insets/density must be measured by Android renders later. Top bar starts at 24 dp; back 48 dp, context title, existing in-screen search affordance where applicable and **one** 52 dp sort target at x295–347 dp. The drawn “≡” is a **wireframe stand-in for the actual existing sort icon**, not a new production glyph. Grid begins at y109 dp (search at y165 after retained query); photo cells are synthetic illustrations and have 2–4 dp gaps. Sheet top is **y359 dp for five keys** and **y315 dp for six keys**, preserving the photo-grid context above the modal while making room for all option rows. Each standard-size radio choice occupies its own **48 dp high, 330 dp wide** row rectangle; adjacent row hit regions touch but never overlap. The full six-key Random radio and label stay inside the clipped option area. Direction buttons also have 48 dp high rectangles, ending above the bottom gesture inset. The visible top portion of the photo grid remains legible behind the scrim. Sheet supports drag/back/scrim dismissal without changing selection.
+## 24 inspectable light/dark drawings
 
-Sheet: “Sort by”, radio options Date created / Date modified / File name / Size / Random, plus Relevance **only** for Search, Find similar and face search. Keep SORT-0's direction/shuffle semantics, stable ties and per-screen persistence. **Caution:** direction row in these visuals is schematic; implementation must use SORT-0's actual direction labels/default and not blindly reproduce “Newest/Oldest” for file name, size, relevance or random. Show relevant ascending/descending vocabulary; Random exposes seed/shuffle-again. Relevance is not an arbitrary ascending/descending sort. The main comparison in Review is whether the key affordance, retained grid and selected state are legible, not whether the schematic row is verbatim production copy.
+Actual linked SVG **pictures**, not descriptions-only. They declare 1080×2340 px with illustrative 360×780 dp viewBox (3 illustrative px per dp, **not** measured density). Every depicted screen title uses **Funnel Display 700, 38/44 sp, −0.03em, brand-text**; other copy Funnel Sans. These browser SVGs cannot embed protected/personal fonts and use a sans-serif fallback when Funnel is missing; **no pixel-exact text metrics** are asserted.
 
-## Exact schematic geometry audit (Review repair)
-
-| State | Sheet top | Option viewport (inclusive start, exclusive end) | Row regions | Last row end | Direction controls |
-| --- | ---: | --- | --- | ---: | --- |
-| Five keys, 100% text | 359 dp | y416–665 dp | y418–658 dp, 5 × 48 dp | 658 dp | y694–742 dp, 48 dp high |
-| Six keys, 100% text | 315 dp | y372–666 dp | y374–662 dp, 6 × 48 dp | 662 dp | y694–742 dp, 48 dp high |
-| Five keys, 200% text | 300 dp | y357–711 dp | 68 dp row pitch, 65 dp highlighted row | Last label baseline y670 dp | Below the scroll viewport; user scrolls |
-
-The 100% templates show 48 dp touch rectangles around **every** radio row (not just the selected row). Both themes retain a legible selected radio; in the six-choice templates the sixth **Random** row is completely visible without scrolling or cutting its radio/label. There is at least 19 dp between the normal-scale option viewport and the direction divider at y685 dp, and 15 dp between the direction buttons and the navigation inset starting at y757 dp. The 200% variant intentionally demonstrates vertical scrolling rather than pretending all controls fit at once; actual focus traversal, scrolling, hit tests and TalkBack still require implementation-stage Android proof. This repairs the [PR #822 review findings](https://github.com/LPStruiksma/atlas-gallery/pull/822#issuecomment-7056288373) in **synthetic evidence only**.
-
-## Evidence: directly inspectable S24+ SVGs
-
-| Surface/state | 1080 × 2340 synthetic light/dark wireframes | Contract demonstrated |
-| --- | --- | --- |
-| Album detail | [Light](evidence/sort1-rev2/album-light.svg) · [Dark](evidence/sort1-rev2/album-dark.svg) | Five standard keys, independently saved per screen |
-| Folder detail | [Light](evidence/sort1-rev2/folder-light.svg) · [Dark](evidence/sort1-rev2/folder-dark.svg) | Five standard keys, independently saved per screen |
-| Person detail | [Light](evidence/sort1-rev2/person-light.svg) · [Dark](evidence/sort1-rev2/person-dark.svg) | Five standard keys, independently saved per screen |
-| Search results | [Light](evidence/sort1-rev2/search-light.svg) · [Dark](evidence/sort1-rev2/search-dark.svg) | Relevance default + five standard keys; query/filter retained |
-| Search empty | [Light](evidence/sort1-rev2/search-empty-light.svg) · [Dark](evidence/sort1-rev2/search-empty-dark.svg) | No results, query persists beneath Relevance-default sheet |
-| Find similar | [Light](evidence/sort1-rev2/similar-light.svg) · [Dark](evidence/sort1-rev2/similar-dark.svg) | Relevance default + five standard keys; query/filter retained |
-| Stories grid | [Light](evidence/sort1-rev2/stories-light.svg) · [Dark](evidence/sort1-rev2/stories-dark.svg) | Five standard keys, independently saved per screen |
-| Trash / Declutter | [Light](evidence/sort1-rev2/trash-light.svg) · [Dark](evidence/sort1-rev2/trash-dark.svg) | Five standard keys, independently saved per screen |
-| 200% text scale | [Light](evidence/sort1-rev2/font200-light.svg) · [Dark](evidence/sort1-rev2/font200-dark.svg) | 200% text: clipped-to-scroll sheet, larger hit rows |
-| Search IME | [Light](evidence/sort1-rev2/keyboard-light.svg) · [Dark](evidence/sort1-rev2/keyboard-dark.svg) | IME visible, sort reachable (sheet reopens on IME dismissal) |
-
-**Panel notes:** Album and folder remain within their source; person replaces hard-coded newest with saved choice; Stories sort reorders the current story/photo overview without changing story playback; Trash/Declutter sorting does not mutate pending trash selections, permissions or operations; in Search and Find similar the result ranking is preserved until a non-Relevance key is chosen. Face search uses the Search/Find similar template (its host still needs a dedicated exact-head render). The #170 Same person? expanded grid is **not present yet**: see its held [unit](https://github.com/LPStruiksma/atlas-gallery/issues/170); do not invent a screenshot or change its Yes/No/Undo mechanics. Once #170 merges, add an actual expanded-grid wireframe to the coverage inventory before its Dev slice.
-
-**Accessibility/states:** all tappable controls >=48 dp; per-key radio + spoken selected state; no new top banner; Back closes the sheet before leaving screen; 200% font allows vertical sheet scrolling and keeps the current choice discoverable; the IME frame shows that query and Sort coexist, **then keyboard dismisses on Sort open** rather than piling an unreadable sheet atop the keyboard. Sheet reentry restores query and chosen sort. For empty results, keep query and plain fallback, never show fabricated media. Loading (held-sphere on arc + count), error/retry, revoked media grants, 250k media, landscape, RTL, long locales and TalkBack traversal remain **implementation-stage verification obligations**, not claimed as rendered proof by these static sketches. Direction controls must stay reachable after scrolling at 200%; critical photos and sort entry must stay above IME where feasible. Grids must be lazily ranked, permission-scoped and deterministically tie-broken; a query change resets only that results scope to Relevance as specified in the brief.
-
-## Reference decision record (inspected documentation, not source screenshot)
-
-| Job/context | Observed evidence | ATLAS proposal | Deliberate deviation / unknown |
+| Host or state | Light | Dark | Visual contract |
 | --- | --- | --- | --- |
-| Bounded sort choice over media grid | [Android official ModalBottomSheet guide](https://developer.android.com/develop/ui/compose/components/bottom-sheets), checked 2026-11-21: modal content and dismiss request; sheet-state API | Reuse SORT-0 MediaSortSheet over visible scoped grid | Exact Samsung placement/size not established by that guide. Actual S24+ overlap and Android version/insets unmeasured. |
-| Query and results under a reachable search affordance | [Android official SearchBar guide](https://developer.android.com/develop/ui/compose/components/search-bar), checked 2026-11-21: query input, expansion and results content | Keep ATLAS query when opening Sort, avoid duplicate full global Search | ATLAS's Quiet Frame search sphere owns navigation; schematic in-context magnifier is not a new global search tab. Material SearchBar is documented as experimental; not a claim about current app layout. |
-| Brand and parity authority | [Quiet Frame v3](QUIET_FRAME.md), [Samsung parity spec](../product/SAMSUNG_PARITY_SPEC.md), [#175 audit](https://github.com/LPStruiksma/atlas-gallery/issues/175) | Brand-text titles, one lapis fill token, white/black ground, mist sheet, Funnel type; real-shape photo surfaces and held-sphere *only for selected media/loading*. Radio keys are selection within the sheet | Parity includes behavior and five keys plus size; Samsung's visual navigation is **not** authority for ATLAS chrome. Samsung placement not visually verified in this revision. |
-| Private Samsung static analysis | Private read-only [atlas-native Samsung research](https://github.com/LPStruiksma/atlas-native/blob/main/docs/research/samsung-rea/report/samsung-gallery-findings-v2.md) records a static, not device-run, parity study of version 15.9.00.45 | Comparator/keys use independent ATLAS implementation | The static archive is **not** a screen capture, so do not present it as evidence of Samsung sheet layout or copy protected assets. |
+| Album · Date created / Descending | [Open](evidence/sort1-rev3/album-date-light.svg) | [Open](evidence/sort1-rev3/album-date-dark.svg) | Five full key rows and two stacked directions |
+| Folder · File name / Ascending | [Open](evidence/sort1-rev3/folder-name-light.svg) | [Open](evidence/sort1-rev3/folder-name-dark.svg) | Independent filename choice |
+| Person · Size / Descending | [Open](evidence/sort1-rev3/person-size-light.svg) | [Open](evidence/sort1-rev3/person-size-dark.svg) | Person scope and selected direction |
+| Search results · Relevance | [Open](evidence/sort1-rev3/search-relevance-light.svg) | [Open](evidence/sort1-rev3/search-relevance-dark.svg) | Six complete keys, query retained, no direction |
+| Find similar · Relevance | [Open](evidence/sort1-rev3/similar-relevance-light.svg) | [Open](evidence/sort1-rev3/similar-relevance-dark.svg) | Results-only initial choice, context retained |
+| Stories · Random | [Open](evidence/sort1-rev3/stories-random-light.svg) | [Open](evidence/sort1-rev3/stories-random-dark.svg) | Shuffle again without direction |
+| Trash/Declutter · Size | [Open](evidence/sort1-rev3/trash-size-light.svg) | [Open](evidence/sort1-rev3/trash-size-dark.svg) | Current trash selection/actions unchanged |
+| Search empty | [Open](evidence/sort1-rev3/search-empty-light.svg) | [Open](evidence/sort1-rev3/search-empty-dark.svg) | Empty results and query retained |
+| Four missing states | [Open](evidence/sort1-rev3/state-matrix-light.svg) | [Open](evidence/sort1-rev3/state-matrix-dark.svg) | **Pictured** loading sphere/progress, error/retry, revoked permission, progressive 250k grid |
+| Search IME sequence | [Open](evidence/sort1-rev3/ime-transition-light.svg) | [Open](evidence/sort1-rev3/ime-transition-dark.svg) | **Pictured** keyboard visible → dismissed → Sort/Relevance, query `canal` retained |
+| 200% terminal direction | [Open](evidence/sort1-rev3/font200-direction-light.svg) | [Open](evidence/sort1-rev3/font200-direction-dark.svg) | Last keys, both 72dp direction rows after scrolling |
+| 200% terminal shuffle | [Open](evidence/sort1-rev3/font200-shuffle-light.svg) | [Open](evidence/sort1-rev3/font200-shuffle-dark.svg) | Last Random row, reachable 72dp Shuffle again |
 
-**Quiet Frame mapping:** ground = #FFFFFF/#000000; mist = #F2F3F8/#14152A; ink = #0E1030/#F2F3F8; muted = #5A5F7A/#9AA0B8; brand fill = #2639C9/#3448E0; brand text = #2639C9/#8C9BFF. Use Funnel Display for large titles and Funnel Sans elsewhere; drawn SVGs request Funnel Sans with fallback and do not embed font files. The held sphere remains a selection marker on media tiles and a loading marker: sheet radios are conventional radio indicators, **not** invented photo selection tokens. No extra bottom place or decorative colours.
+All media thumbnails are generated neutral shapes, never actual photos. The held sphere represents **media selection/loading**; the sort choices use conventional radio indicators, not an invented held-sphere control.
 
-## Implementation handoff after independent design verdict
+## Geometry and accessibility proposal
 
-1. **Slice A:** album/folder/person detail sort with persisted per-screen keys; protect scope and person navigation.
-2. **Slice B:** Search, Find similar, face-search results with sixth Relevance default, stable ties and query scope.
-3. **Slice C:** Stories, Trash/Declutter with non-destructive sort and selection retention.
-4. **Conditional D:** only after #170 exists, its expanded “Same person?” grid.
+| Item | Declared geometry and intent | Pending Android validation |
+| --- | --- | --- |
+| Canvas / insets | 360×780 illustrative dp; top 24dp and gesture y757–780 (23dp), not runtime insets | Real `WindowInsets`, density, keyboard overlap, landscape |
+| Sort and normal rows | Sort 52×52dp. Five keys y310–570, 52dp each; vertical direction rows y616–720, 52dp each | Compose click bounds, focused radio semantics, Back and scrim |
+| Results-only sixth row | Relevance plus five options y364–676, each complete and non-overlapping | TalkBack focus, long labels/RTL and scroll after IME |
+| 200% scrolled terminal | `data-scroll-offset-dp=240`; end-of-scroll visible 72dp direction or Shuffle controls above bottom gesture | Real fontScale=2.0, swipe/focus order, one-hand reach |
+| Fallible states | Pictured loading with count/held sphere, actionable retry/permission, incremental 250k grid | Permission re-grant, actual large library and error states |
 
-**Touches (check main and file ownership again per slice):** featurealbums/detail host; PersonPageScreen/Route; result grid in MainActivity + AtlasFeatureGrid; featurestories/AtlasStoriesScreen; DeclutterScreen; shared PhotosHeader MediaSortSheet and per-screen preferences; relevant JVM/static tests. #658 Collections navigation is a disjoint concern, avoid concurrent MainActivity writer collisions. Protected paths: none planned.
+The 200% frames show **after scrolling**, not an impossible claim that the whole sheet fits without scrolling. The IME frames show keyboard **dismissed before sheet opening**, not both overlaid. Large translations, RTL, high contrast, rotation and focus testing remain implementation-stage work.
 
-**Proof at Dev:** all enumerated overview hosts have a real sort entry with a static coverage test (not a mere regex hit); selection persisted per-screen and scoped; relevance default + change/reset JVM assertions; stable ties/permission filtering; actual Android 1080×2340 S24+ sheet-open screenshots **for every actual surface**, both light/dark, empty/loading/error/large scale/IME; exact-head CI and independent Review. These SVGs do **not** satisfy that later render gate. No Node/Android emulator tests were run in this Strategy seat.
+## Per-host adaptation versus reference
 
-**Next:** independent pre-build Design preflight to score #1–#6 and #8 on these *specific visual proposals*, with any missing actual source/layout or states explicitly identified. Dev only after Design PASS.
+| Existing host | Proposed placement, content retention and persistence | Dismissal / accessibility |
+| --- | --- | --- |
+| Album, Folder, Person | One 52dp Sort action in the current scoped header; grid stays visible; distinct saved choice per host | Back/scrim/drag dismiss, selected radio announcement, five keys then direction |
+| Search, Find similar, face search | Sort in the **results context**, preserving Quiet Frame search sphere and query; no duplicate global search control | IME dismisses before sort; six results-only options; new query resets only that result scope |
+| Stories | Sort affects overview order, not playback | Random offers Shuffle again; selection stays |
+| Trash / Declutter | Sort only affects presentation, not recover/delete/permission actions | Pending selection and Back behavior retained |
+| Same person? [#170](https://github.com/LPStruiksma/atlas-gallery/issues/170) | **Conditional after expanded grid exists**; no fabricated new host frame | Keep Yes/No/Undo and add its design proof later |
+
+Official [Android ModalBottomSheet guidance](https://developer.android.com/develop/ui/compose/components/bottom-sheets) describes modal and dismissal conventions; official [SearchBar guidance](https://developer.android.com/develop/ui/compose/components/search-bar) describes query/IME interaction. Neither is an observed Samsung device screenshot. [Quiet Frame v3](QUIET_FRAME.md) is the visual authority: white/black ground, mist #F2F3F8/#14152A, lapis solid fill #2639C9/#3448E0, brand-text #2639C9/#8C9BFF. A static Samsung 15.9.00.45 research report does **not** establish exact Samsung placement. These are documented ATLAS adaptations, not claims of a copied or observed screen.
+
+**Traceability:** finding #4 → selected date/name/size, Random and Relevance key-conditioned frames; #6 → empty/fallback, keyboard sequence and both scrolled 200% end states; #8 → title attributes and fallback limitations on every SVG. [Generator](evidence/sort1-rev3/generate.mjs) and [Python audit](evidence/sort1-rev3/audit.py) check structural geometry and coverage, **not** device UX. The evidence PR needs exact-head CI and separate Review. Then #177 needs an **independent issue-level Design PASS against merged evidence** before any production implementation can start.

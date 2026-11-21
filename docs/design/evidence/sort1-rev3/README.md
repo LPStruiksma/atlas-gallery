@@ -1,11 +1,13 @@
-# SORT-1D revision 3 working evidence
+# SORT-1D revision 3 · inspectable synthetic evidence
 
-This directory is the **proposed synthetic design evidence** workspace for [SORT-1D #869](https://github.com/LPStruiksma/atlas-gallery/issues/869). It is **not** a device capture, Android implementation, or approved design preflight.
+**24 SVG proposals, light/dark, synthetic only.** They are not current app/device/Samsung screenshots, contain no personal media or font files and do not grant preflight approval. Use the [preflight matrix](../../SORT1_PREFLIGHT.md) to open each pictured state.
 
-Source of truth:
-- [Issue #869 repair brief](https://github.com/LPStruiksma/atlas-gallery/issues/869) (preflight findings #4, #6, #8).
-- `docs/design/SORT1_PREFLIGHT.md` revision 2 and `docs/design/evidence/sort1-rev2/`: retain the repaired six-key / 48 dp minimum geometry, replace schematic direction controls.
-- `app/src/main/java/nl/atlas/gallery/PhotosHeader.kt` `MediaSortSheet` on `main`: options are `heightIn(min = 52.dp)` radio rows; direction-selected keys expose two vertically stacked >=52 dp radio rows labelled Ascending and Descending; Relevance hides direction and Random exposes Shuffle again.
-- `docs/design/QUIET_FRAME.md` v3: screen titles Funnel Display 700, 38/44 sp, -0.03em in brand-text; other copy Funnel Sans.
+Deterministic regenerate and structural audit (standard libraries only):
 
-Expected committed output: the revised preflight page, directly inspectable light/dark SVG proposals and a deterministic coordinate/coverage audit. Any claim about visual fidelity must distinguish illustrative dp viewBox layout from sp typography and actual measured Android output. No fonts, personal images, Kotlin, app resources or permission changes.
+```sh
+node docs/design/evidence/sort1-rev3/generate.mjs
+node docs/design/evidence/sort1-rev3/generate.mjs --check
+python3 docs/design/evidence/sort1-rev3/audit.py
+```
+
+The audit checks XML and inventory, 1080×2340/360×780 geometry, title font declarations, five/six key counts, 52dp full-row targets, vertical direction, Random shuffle, selected states, safe insets, terminal 200% scroll and pictured missing/IME states. This is **not** an Android, S24+, TalkBack or exact-font-metrics validation.
