@@ -95,7 +95,7 @@ The train label file is 2.7 GB; filtering it to the vocabulary's classes while s
 
 | Path | What |
 |---|---|
-| `featurevisual/tags/store/VisualTagStore.kt` | App-private SQLite `atlas_visual_tags.db` (the app sets `allowBackup=false`). `items(media_key, frame_ms, revision)` per scored photo (frame -1) or video moment, `hits(media_key, frame_ms, tag_id, margin)` cascade-deleted with it, index `hits(tag_id, margin)`, `meta` with the fence and sweep position. |
+| `featurevisual/tags/store/VisualTagStore.kt` | App-private SQLite `atlas_visual_tags.db` (the app sets `allowBackup=false`). `items(id, media_key, frame_ms, revision)` per scored photo (frame -1) or video moment, `hits(item, tag, margin)` by item rowid and a `tags` dictionary id (a hit costs a few bytes, not a repeated media key), cascade-deleted with the item, index `hits(tag, margin)`, `meta` with the fence and sweep position. |
 | `featurevisual/tags/store/VisualTagger.kt` | `tagPublished` (incremental), `sweepStep` (backfill and reconcile), `TaggingIndexPort` (the scan hook), the `VisualTagStorePort` contract with `tagsFor(mediaKey, revision?)` and `mediaForTag(tagId, scope)`. |
 | `featurevisual/tags/store/VisualTagHook.kt` | What the worker holds: opens the matrix asset and the database lazily on the worker thread, never at app start; a failure turns tagging off for the process and never touches the visual index. |
 

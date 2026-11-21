@@ -11,7 +11,9 @@ import android.database.sqlite.SQLiteOpenHelper
  * `atlas_visual_index.db` (never backed up: derived data, rebuilt by the
  * sweep). One `items` row per scored photo or video moment, keyed like the
  * visual index (media key, frame; -1 for a photo) with the revision it was
- * scored at; its tags in `hits`, cascade-deleted with it. `meta` holds the
+ * scored at; its tags in `hits` by item rowid and a small `tags` dictionary
+ * id (so a hit costs a few bytes, not a repeated media key), cascade-deleted
+ * with the item. `meta` holds the
  * fence (`TagMatrix.fence`, which includes the vector version) and the sweep
  * position. A new fence deletes everything.
  *
@@ -43,15 +45,16 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
             fence TEXT, sweep_key TEXT, sweep_frame INTEGER, sweep_done_at INTEGER)""")
         db.execSQL("INSERT INTO meta(singleton) VALUES(1)")
         db.execSQL("""CREATE TABLE items(
+            id INTEGER PRIMARY KEY,
             media_key TEXT NOT NULL, frame_ms INTEGER NOT NULL, revision TEXT NOT NULL,
-            PRIMARY KEY(media_key,frame_ms)) WITHOUT ROWID""")
+            UNIQUE(media_key,frame_ms))""")
+        db.execSQL("CREATE TABLE tags(id INTEGER PRIMARY KEY, tag_id TEXT NOT NULL UNIQUE)")
         db.execSQL("""CREATE TABLE hits(
-            media_key TEXT NOT NULL, frame_ms INTEGER NOT NULL, tag_id TEXT NOT NULL,
+            item INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+            tag INTEGER NOT NULL REFERENCES tags(id),
             margin REAL NOT NULL,
-            PRIMARY KEY(media_key,frame_ms,tag_id),
-            FOREIGN KEY(media_key,frame_ms) REFERENCES items(media_key,frame_ms)
-                ON DELETE CASCADE) WITHOUT ROWID""")
-        db.execSQL("CREATE INDEX hits_by_tag ON hits(tag_id,margin)")
+            PRIMARY KEY(item,tag)) WITHOUT ROWID""")
+        db.execSQL("CREATE INDEX hits_by_tag ON hits(tag,margin)")
     }
 
     /** Derived data with no upgrade path yet: refuse instead of guessing. */
@@ -122,18 +125,24 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
             }
     }
 
+    private val tagIds = HashMap<String, Long>()
+
+    private fun tagId(db: SQLiteDatabase, id: String): Long = tagIds.getOrPut(id) {
+        db.rawQuery("SELECT id FROM tags WHERE tag_id=?", arrayOf(id)).use { if (it.moveToFirst()) it.getLong(0) else null }
+            ?: db.insertOrThrow("tags", null, ContentValues().apply { put("tag_id", id) })
+    }
+
     private fun upsert(db: SQLiteDatabase, rows: List<TaggedRow>) {
         for (row in rows) {
             val keyArgs = arrayOf(row.key.mediaKey, row.key.frameMs.toString())
             // Replacing the item cascades its old hits away.
             db.delete("items", "media_key=? AND frame_ms=?", keyArgs)
-            db.insertOrThrow("items", null, ContentValues().apply {
+            val item = db.insertOrThrow("items", null, ContentValues().apply {
                 put("media_key", row.key.mediaKey); put("frame_ms", row.key.frameMs); put("revision", row.revision)
             })
             for (hit in row.hits) {
                 db.insertOrThrow("hits", null, ContentValues().apply {
-                    put("media_key", row.key.mediaKey); put("frame_ms", row.key.frameMs)
-                    put("tag_id", hit.id); put("margin", hit.margin)
+                    put("item", item); put("tag", tagId(db, hit.id)); put("margin", hit.margin)
                 })
             }
         }
@@ -180,10 +189,10 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
     }
 
     @Synchronized override fun tagsFor(mediaKey: String, revision: String?): List<StoredTag> {
-        val sql = """SELECT h.tag_id, MAX(h.margin) m FROM hits h JOIN items i
-            ON i.media_key=h.media_key AND i.frame_ms=h.frame_ms
-            WHERE h.media_key=?${if (revision != null) " AND i.revision=?" else ""}
-            GROUP BY h.tag_id ORDER BY m DESC, h.tag_id"""
+        val sql = """SELECT t.tag_id, MAX(h.margin) m FROM items i JOIN hits h ON h.item=i.id
+            JOIN tags t ON t.id=h.tag
+            WHERE i.media_key=?${if (revision != null) " AND i.revision=?" else ""}
+            GROUP BY t.tag_id ORDER BY m DESC, t.tag_id"""
         val args = if (revision != null) arrayOf(mediaKey, revision) else arrayOf(mediaKey)
         return readableDatabase.rawQuery(sql, args).use { c ->
             val out = ArrayList<StoredTag>()
@@ -196,8 +205,10 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
         require(limit >= 1)
         val keys = (scope as? TagScope.Media)?.keys
         if (keys != null && keys.isEmpty()) return emptyList()
-        return readableDatabase.rawQuery("""SELECT media_key, MAX(margin) m FROM hits WHERE tag_id=?
-            GROUP BY media_key ORDER BY m DESC, media_key LIMIT ?""",
+        return readableDatabase.rawQuery("""SELECT i.media_key, MAX(h.margin) m FROM hits h
+            JOIN items i ON i.id=h.item
+            WHERE h.tag=(SELECT id FROM tags WHERE tag_id=?)
+            GROUP BY i.media_key ORDER BY m DESC, i.media_key LIMIT ?""",
             arrayOf(tagId, MAX_TAG_ROWS.toString())).use { c ->
             val out = ArrayList<String>()
             while (out.size < limit && c.moveToNext()) {
@@ -214,7 +225,7 @@ class VisualTagStore(context: Context, name: String = DB_NAME) :
         return TagStoreCounts(
             rows = count("SELECT COUNT(*) FROM items"),
             hits = count("SELECT COUNT(*) FROM hits"),
-            taggedMedia = count("SELECT COUNT(DISTINCT media_key) FROM hits"),
+            taggedMedia = count("SELECT COUNT(DISTINCT i.media_key) FROM hits h JOIN items i ON i.id=h.item"),
         )
     }
 
