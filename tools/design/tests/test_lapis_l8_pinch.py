@@ -277,6 +277,165 @@ class Precision(unittest.TestCase):
         self.assertGreater(big[3] - big[1], small[3] - small[1])
 
 
+class ThumbLabelAndPillFocus(unittest.TestCase):
+    """#864: the thumb month follows the key, and Select precisely picks a deterministic focus key."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.items, cls.lays, cls.vp = env()
+
+    def test_label_is_the_month_of_the_first_visible_key_at_every_stop_and_position(self):
+        seen = set()
+        for kind in ("small", "month", "year"):
+            lay = self.lays[kind]
+            for frac in [i / 40 for i in range(41)]:
+                scroll = L.max_scroll(lay, self.vp) * frac
+                first = next(k for k, r in lay.rects.items() if L.to_screen(r, scroll, self.vp)[3] > self.vp.top)
+                self.assertEqual(L.thumb_anchor_key(lay, scroll, self.vp), first)
+                label = L.thumb_month(self.items, lay, scroll, self.vp)
+                self.assertEqual(label, self.items[first].month[:3])
+                seen.add(label)
+        self.assertTrue({"Nov", "Sep", "Aug"} <= seen, seen)
+
+    def test_a_september_key_never_reads_nov_and_a_november_key_never_reads_sep(self):
+        for kind in ("small", "month", "year"):
+            lay = self.lays[kind]
+            for key, want in ((0, "Nov"), (267, "Nov"), (268, "Sep"), (568, "Sep"), (828, "Sep"), (969, "Sep")):
+                scroll = max(0.0, min(L.max_scroll(lay, self.vp), lay.rects[key][1]))
+                got = L.thumb_month(self.items, lay, scroll, self.vp)
+                if L.thumb_anchor_key(lay, scroll, self.vp) == key:
+                    self.assertEqual(got, want, (kind, key))
+
+    def test_month_change_tie_break_is_the_top_edge(self):
+        lay = self.lays["month"]
+        boundary = lay.rects[267][3]  # bottom of the last November row
+        self.assertEqual(L.thumb_month(self.items, lay, boundary - 60, self.vp), "Nov")
+        self.assertEqual(L.thumb_month(self.items, lay, boundary - 1, self.vp), "Nov")
+        self.assertEqual(L.thumb_month(self.items, lay, boundary + 60, self.vp), "Sep")
+        # the September heading is visible while a partly visible November row still names the label
+        hdr = next(y for y, label in lay.headers if label.startswith("September"))
+        self.assertLess(hdr, boundary + lay.header_h)
+        self.assertEqual(L.thumb_month(self.items, lay, hdr - 40, self.vp), "Nov")
+
+    def test_pill_anchor_is_the_visible_key_nearest_the_viewport_centre(self):
+        for kind in ("month", "year"):
+            lay = self.lays[kind]
+            scroll = lay.rects[700][1] - 0.5 * self.vp.h
+            key, rule = L.focus_anchor(lay, scroll, self.vp)
+            self.assertEqual(rule, "centre")
+            cx, cy = DEVICE_W / 2, (self.vp.top + self.vp.bottom) / 2
+            dists = {k: L._dist(L.to_screen(lay.rects[k], scroll, self.vp), (cx, cy))
+                     for k in L.visible_keys(lay, scroll, self.vp)}
+            self.assertEqual(dists[key], min(dists.values()))
+            # not a constant: other scroll positions give other keys
+            other, _ = L.focus_anchor(lay, scroll + 3 * self.vp.h, self.vp)
+            self.assertNotEqual(key, other)
+            self.assertNotEqual(key, L.PRECISION_KEY)
+
+    def test_equal_distance_goes_to_the_lower_key(self):
+        lay = self.lays["month"]
+        # keys at month positions 5 and 6 of a row sit symmetrically about x = 540 px
+        k = next(k for k in range(268, 900) if (k - 268) % 12 == 5)
+        r = lay.rects[k]
+        scroll = r[1] - 0.5 * self.vp.h
+        centre_y = L.to_screen(r, scroll, self.vp)[1] / 2 + L.to_screen(r, scroll, self.vp)[3] / 2
+        key, _ = L.focus_anchor(lay, scroll, self.vp, viewport_centre_y=centre_y)
+        self.assertEqual(key, k)
+        a, b = (L._dist(L.to_screen(lay.rects[x], scroll, self.vp), (DEVICE_W / 2, centre_y)) for x in (k, k + 1))
+        self.assertAlmostEqual(a, b, places=6)
+
+    def test_explicit_visible_focus_is_kept_and_a_stale_focus_is_not(self):
+        lay = self.lays["month"]
+        scroll = lay.rects[845][1] - 0.5 * self.vp.h
+        centre_key, _ = L.focus_anchor(lay, scroll, self.vp)
+        self.assertEqual(L.focus_anchor(lay, scroll, self.vp, focused=828), (828, "focused"))
+        self.assertNotEqual(centre_key, 828)
+        self.assertEqual(L.focus_anchor(lay, scroll, self.vp, focused=4000), (centre_key, "centre"))
+        self.assertEqual(L.focus_anchor(lay, scroll, self.vp, focused=0), (centre_key, "centre"))
+
+    def test_pill_flow_is_reversible_keeps_height_and_never_selects(self):
+        for kind in ("month", "year"):
+            lay = self.lays[kind]
+            for scroll in (lay.rects[700][1] - 0.5 * self.vp.h, lay.rects[267][3] + 30, lay.rects[845][1] - 0.5 * self.vp.h):
+                pf = L.pill_flow(self.lays, self.vp, kind, scroll)
+                self.assertEqual(len({pf[n].key for n in pf}), 1)
+                self.assertEqual(pf["press"].key, L.focus_anchor(lay, scroll, self.vp)[0])
+                self.assertEqual(pf["focus"].kind, "small")
+                self.assertEqual(pf["focus"].clamped, "")
+                self.assertAlmostEqual(pf["focus"].y_residual, 0.0, delta=0.5)
+                self.assertAlmostEqual(pf["back"].scroll, pf["press"].scroll, delta=0.5)
+                # the focused tile is a >= 48 dp square target
+                w = (pf["focus"].dst[2] - pf["focus"].dst[0]) / DENSITY
+                self.assertGreaterEqual(w, L.MIN_TARGET_DP)
+
+    def test_prior_selected_keys_do_not_move_the_anchor_and_stay_visible_in_the_frames(self):
+        lay = self.lays["month"]
+        scroll = lay.rects[845][1] - 0.5 * self.vp.h
+        pf = L.pill_flow(self.lays, self.vp, "month", scroll)
+        self.assertNotIn(pf["press"].key, L.SELECTED)
+        for step, kind in (("press", "month"), ("focus", "small"), ("back", "month")):
+            vis = L.visible_keys(self.lays[kind], pf[step].scroll, self.vp)
+            for k in L.SELECTED:
+                self.assertIn(k, vis, (step, k))
+
+    def test_year_pill_flow_with_and_without_selection_and_in_dark_200(self):
+        for scale in (1.0, 2.0):
+            items, lays, vp = env(scale)
+            lay = lays["year"]
+            for scroll in (lay.rects[267][3] + 30, lay.rects[845][1] - 0.5 * vp.h):
+                pf = L.pill_flow(lays, vp, "year", scroll)
+                self.assertEqual(pf["press"].extra["rule"], "centre")
+                self.assertEqual(pf["focus"].kind, "small")
+                self.assertEqual(pf["back"].kind, "year")
+                self.assertAlmostEqual(pf["back"].scroll, pf["press"].scroll, delta=0.5)
+                self.assertAlmostEqual(pf["focus"].y_residual, 0.0, delta=0.5)
+        items, lays, vp = env()
+        scroll = lays["year"].rects[845][1] - 0.5 * vp.h
+        pf = L.pill_flow(lays, vp, "year", scroll)
+        self.assertNotIn(pf["press"].key, L.SELECTED)
+        for step, kind in (("press", "year"), ("focus", "small"), ("back", "year")):
+            vis = L.visible_keys(lays[kind], pf[step].scroll, vp)
+            for k in L.SELECTED:
+                self.assertIn(k, vis, (step, k))
+
+    def test_return_pill_names_the_overview_it_returns_to(self):
+        self.assertEqual(L.return_label("month"), "12 columns")
+        self.assertEqual(L.return_label("year"), "28 columns")
+        src = (Path(__file__).resolve().parents[1] / "lapis_preflight.py").read_text()
+        i, j = src.index('Panel("Q11"'), src.index('b.grid("Select precisely with no prior target')
+        year_origin, month_origin = src[i:j], src[src.index('Panel("Q2"'):src.index('Panel("Q11"')]
+        self.assertNotIn("12 columns", year_origin)
+        self.assertEqual(year_origin.count('L.return_label("year")'), 4)
+        self.assertNotIn('return_label("year")', month_origin)
+        self.assertEqual(month_origin.count('L.return_label("month")'), 4)
+
+    def test_p5_no_longer_conflates_long_press_with_the_pill(self):
+        src = (Path(__file__).resolve().parents[1] / "lapis_preflight.py").read_text()
+        self.assertNotIn("long-press or the pill", src)
+
+    def test_dark_200_percent_geometry_gives_a_valid_anchor(self):
+        items, lays, vp = env(2.0)
+        lay = lays["month"]
+        scroll = lay.rects[700][1] - 0.5 * vp.h
+        pf = L.pill_flow(lays, vp, "month", scroll)
+        self.assertEqual(pf["press"].key, L.focus_anchor(lay, scroll, vp)[0])
+        self.assertEqual(L.thumb_month(items, lay, scroll, vp), items[L.thumb_anchor_key(lay, scroll, vp)].month[:3])
+
+    def test_sheet_declares_the_new_panels(self):
+        import json
+        man = json.loads((REPO / "docs/design/lapis/preflight/manifest.json").read_text())
+        codes = man["boards"]["l8"]["panels"]
+        for c in [f"T{i}" for i in range(1, 8)] + [f"Q{i}" for i in range(1, 18)]:
+            self.assertIn(c, codes)
+
+    def test_readme_quotes_the_boundary_scrolls(self):
+        lay = self.lays["month"]
+        boundary = lay.rects[267][3]
+        text = (REPO / "docs/design/lapis/preflight/README.md").read_text()
+        self.assertIn(f"{boundary - 60:.0f} px", text)
+        self.assertIn(f"{boundary + 60:.0f} px", text)
+
+
 class Readme(unittest.TestCase):
     def test_readme_quotes_the_measured_values(self):
         items, lays, vp = env()

@@ -41,6 +41,47 @@ OUT = REPO / "docs/design/lapis/preflight"
 VERIFIED = "2026-11-21"
 ISSUE = "https://github.com/LPStruiksma/atlas-gallery/issues/"
 
+L7_TRANSITION_HEAD = ["Transition", "Screen / host", "Query: owner and value", "Scope", "Focus / IME",
+                      "Back goes to", "Kept or discarded"]
+L7_TRANSITION_W = [0.13, 0.13, 0.15, 0.1, 0.14, 0.14, 0.21]
+L7_TRANSITIONS = [
+    ["1 Search collapsed", "Pictures, Collections, person, album, Declutter", "Local to the screen; empty",
+     "This screen", "Sphere in the slab (48 dp); no IME", "Previous screen, as today", "All screen state kept"],
+    ["2 Scoped query with keyboard", "Same screen under the bar", "Local to the screen; typed text, e.g. 'bike'",
+     "This screen (selected)", "Field focused at once (Quiet Frame v3); IME open", "Back 1 (below)",
+     "Scroll, selection and any staged choices kept"],
+    ["3 IME hidden by Back", "Same screen, bar still open", "Local; value kept", "This screen",
+     "IME hidden; focus stays in the bar", "Back 2 (below)", "Everything kept"],
+    ["4 Bar collapsed by Back", "Same screen", "Local; cleared when the bar closes (FIND-5: close clears the query)",
+     "This screen", "Back on the sphere; no IME", "Previous screen on the next Back", "Scroll and selection kept; query discarded"],
+    ["5 Whole library, empty query", "Existing Search tab (tab 3) opens; person / album route is replaced",
+     "Search tab owns it; blank", "Whole library (Search tab's own facets)", "Bar closed, IME released",
+     "See 8", "Local query discarded; screen state per rows 9-11"],
+    ["6 Whole library, with a query", "Same as 5", "Local query 'bike' is NOT carried; Search tab starts blank",
+     "Whole library", "Bar closed, IME released; the board does not claim a focus state in the Search tab",
+     "See 8", "Query discarded on purpose; nothing shown in place"],
+    ["7 Arrival in global Search", "Search tab, schematic B5", "Search tab; blank", "Whole library",
+     "As the existing Search tab; not restyled here", "Search tab's back stack", "Search tab unchanged by L7"],
+    ["8 Back from global Search", "Search tab", "Search tab; discarded", "-", "IME hidden first, as today",
+     "Search tab's normal back stack; the closed scoped route is not reopened",
+     "Person / album route stays closed (replaced by the handoff)"],
+    ["9 Person route, Whole library", "Person screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8",
+     "Route replaced. Whether an active selection is warned is not visible in the code read for this sheet: "
+     "#660 must keep it or confirm; no silent discard is sanctioned"],
+    ["10 Album route, Whole library", "Album screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8", "Same rule as 9"],
+    ["11 Declutter, Whole library", "Declutter closes (closeDeclutter), Search tab opens",
+     "Local; discarded", "Whole library", "As 5", "As 8",
+     "With staged choices: existing confirmation 'Search whole library?' (Stay / Search library) says they are "
+     "cleared and nothing moves to Trash. Nothing staged: straight through. No Trash is ever submitted"],
+]
+L7_TRANSITION_NOTE = ("Source: MainActivity onScopeChange LIBRARY branch (personFilter, album and overviewQuery "
+                      "cleared, tab = 3) and DeclutterScreen's leave confirmation, read on main at the Dev claim; "
+                      "FIND-5 D-search-tab and Back order. Consistent with #804's Stories handoff as a reference "
+                      "only; not a new implementation claim. Synthetic evidence, not device behaviour: S24+ runtime "
+                      "checks (light/dark, 100 % / 200 %, TalkBack, IME) remain a separate pre-merge obligation.")
+
 # Public sources opened and checked on VERIFIED; the quoted observation is what the page says.
 REF = {
     "navbar": ("Android Developers, Compose Navigation bar",
@@ -227,7 +268,8 @@ class Gen:
         f1 = self.scr(viewer=True)
         L.viewer(f1)
         panels.append(Panel("F1", "Viewer", "Black ground, actions on the #3448E0 slab, current filmstrip item "
-                            "with a #8C9BFF sphere and 2 dp white ring.", f1))
+                            "with a #8C9BFF sphere and 2 dp white ring. Seven 40 dp tiles, 8 dp gaps: 48 dp pitch, so the "
+                            "seven 48 dp effective targets touch but never overlap.", f1))
         g1 = self.scr()
         g1.status_bar()
         yy = L.title(g1, "Pictures")
@@ -669,12 +711,33 @@ class Gen:
         L.search_bar(s, sb[1], query, keyboard, scope, items=items, thumbs=thumbs, entries=entries)
         return s
 
+    def l7_handoff(self, theme="light", scale=1.0):
+        """Arrival frame after Whole library (#824): the existing Search tab, blank query, no keyboard.
+        Schematic only; the Search tab itself is unchanged and is not redrawn in detail."""
+        s = self.scr(theme, scale)
+        s.status_bar()
+        y = L.title(s, "Search")
+        x0, x1 = L.px(16), DEVICE_W - L.px(16)
+        bar_h = max(L.px(52), s.line_h("body") + L.px(24))
+        s.rrect([x0, y, x1, y + bar_h], 24, fill=s.t["surface"])
+        s.magnifier((x0 + L.px(26), y + bar_h / 2), L.px(8), s.t["ink2"])
+        s.d.text((x0 + L.px(48), y + bar_h / 2), "Search photos, people, places", font=s.font("body"),
+                 fill=s.t["ink2"], anchor="lm")
+        s.target([x0, y, x1, y + bar_h], "Search field")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(28)),
+               "existing Search tab (tab 3), query blank, keyboard released; layout unchanged")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(64)),
+               "L7 bar closed; scoped person / album route replaced")
+        s.gesture_bar()
+        return s
+
     def l7(self) -> Board:
         b = Board(self.fonts, "brand-l7-search")
         b.header("BRAND-L7 · Search under the thumb",
                  "The search sphere grows into a full-width AtlasSearch bar right above the slab.",
-                 self.facts(660, "Host: only placement changes. The shared AtlasSearch host and back end (#175) "
-                            "stay; L7 moves the entry to the slab sphere and the panel above the slab."))
+                 self.facts(660, "Host: placement and focus-on-open change. The shared AtlasSearch host, back end (#175) "
+                            "and the Whole library handoff stay as on main (#824): Whole library leaves this bar "
+                            "and opens the existing Search tab with a blank query."))
         a1 = self.l7_open(items=self.SUGG, entries=True)
         a1.focus_order((L.px(60), a1.slab_box[1] - L.px(70)), "Search field")
         a2 = self.l7_open("dark", 2.0, items=self.SUGG, entries=True)
@@ -702,11 +765,10 @@ class Gen:
                             "keyboard.", self.l7_open(query="bik", thumbs=True,
                                                       items=[("Suggestion", "bike"), ("Place", "Bike trip album"),
                                                              ("Person", "Bike club"), ("More", "Search 'bik'")])))
-        panels.append(Panel("B5", "Whole library", "Switching scope keeps the query and the keyboard.",
-                            self.l7_open(query="bike", scope="Whole library",
-                                         items=[("Suggestion", "bike"), ("Suggestion", "bike 2019"),
-                                                ("More", "Search 'bike' everywhere")])))
-        s = self.l7_open(query="bike", scope="Whole library", keyboard=False)
+        panels.append(Panel("B5", "Whole library: handoff", "Choosing Whole library closes this bar, releases the "
+                            "keyboard, clears the local query and opens the existing Search tab with a blank "
+                            "query. Nothing is shown in place (#824).", self.l7_handoff()))
+        s = self.l7_open(query="bike", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "86 pictures for 'bike'", "section")
@@ -718,7 +780,8 @@ class Gen:
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         L.message(s, s.top + L.px(24), "No pictures match 'bike 2019' on this screen.",
                   "Try fewer words, or search your whole library.", "Search whole library")
-        panels.append(Panel("B7", "No results", "One sentence, one next step.", s))
+        panels.append(Panel("B7", "No results", "One sentence, one next step. 'Search whole library' is the same "
+                            "handoff as the Whole library chip: the query is not carried over.", s))
         s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
@@ -744,21 +807,21 @@ class Gen:
                             "place.", self.l7_open(base="Collections", query="tr",
                                                    items=[("Suggestion", "Trash"), ("Suggestion", "Trip to the "
                                                                                     "coast")])))
-        panels.append(Panel("B13", "Large library, 200 %, keyboard", "Whole library at 200 % with the "
+        panels.append(Panel("B13", "Large library, 200 %, keyboard", "This screen at 200 % with the "
                             "keyboard: chips wrap, the suggestion list scrolls inside the panel (count noted).",
-                            self.l7_open("dark", 2.0, query="beach", scope="Whole library", entries=True,
+                            self.l7_open("dark", 2.0, query="beach", entries=True,
                                          items=[("Suggestion", "beach"), ("Suggestion", "beach 2019"),
                                                 ("Suggestion", "beach with Noor"), ("Place", "Coast"),
-                                                ("More", "Search 'beach' everywhere")])))
-        s = self.l7_open(query="beach", scope="Whole library", keyboard=False)
+                                                ("More", "More search options")])))
+        s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "12.840 pictures for 'beach'", "section")
         L.square_grid(s, s.top + L.px(48), top - L.px(96), cols=6, seed=17, header="August 2026",
                       headers_every=18, month_names=["July 2025", "August 2019"])
         L.fast_thumb(s, 0.55, "2019", s.top + L.px(56), top - L.px(60))
-        panels.append(Panel("B14", "Large library results", "12.840 results load page by page; the held-sphere "
-                            "thumb jumps through the result years. Bar and query stay.", s))
+        panels.append(Panel("B14", "Large library results", "12.840 results on this screen load page by page; the "
+                            "held-sphere thumb jumps through the result years. Bar and query stay.", s))
         s = self.scr()
         L.pictures(s)
         y0s = s.slab_box[1]
@@ -785,12 +848,16 @@ class Gen:
             ["Traversal", "Field › scope chips › suggestions top to bottom › close › slab", "Focus starts in the "
              "field (it opens with the keyboard)"],
         ], [0.18, 0.5, 0.32])
+        b.table("Search state transitions (#824)", L7_TRANSITION_HEAD, L7_TRANSITIONS, L7_TRANSITION_W,
+                L7_TRANSITION_NOTE)
         b.table("Reference decisions", DECISION_HEAD, [
             ref_row("searchbar", "Adapted: suggestions and results stack upward from the bar so they stay above "
                     "the keyboard and near the thumb, instead of below a top bar."),
-            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus (the keyboard opens with it, "
-                    "per Quiet Frame v3). Kept: the This screen / Whole library chips, query handoff and the "
-                    "two-step Back."),
+            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus when it opens (L7 opening, "
+                    "Quiet Frame v3); FIND-5 opens non-focused. Kept, unchanged: the This screen / Whole library "
+                    "chips, the two-step Back and the Whole library handoff of main (close scope, release focus, "
+                    "clear the local query, open the Search tab blank). Focus-on-open does not change the scope "
+                    "handoff; a retained-query in-place library mode would need its own reviewed UI change."),
         ], DECISION_W, DECISION_NOTE)
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")
@@ -827,7 +894,8 @@ class Gen:
         vis = L.draw_layout(s, items, lays[kind], scroll, vp, selected=selected, outline=outline,
                             placeholders=placeholders)
         if thumb:
-            L.fast_thumb(s, L.thumb_frac(lays[kind], scroll, vp), "Nov", vp.top + L.px(8), s.bottom - L.px(110))
+            L.fast_thumb(s, L.thumb_frac(lays[kind], scroll, vp), L.thumb_month(items, lays[kind], scroll, vp),
+                         vp.top + L.px(8), s.bottom - L.px(110))
         if chrome:
             self.l8_chrome(s, vp)
             s.slab("Pictures")
@@ -932,6 +1000,41 @@ class Gen:
         L.anno_card(s, lines, self.l8_card_y(s))
         return s
 
+    def l8_pill_frame(self, kind, st: L.PinchStep, name, selected, lines, *, theme="light", scale=1.0,
+                      pill_text="Select precisely", back=False, tap_pill=False, tap_tile=False, centre=False,
+                      focus=True, tile_target=False):
+        """#864 frame: pill-only entry or its focused SMALL / return stop, with the focus anchor outlined.
+        ``centre`` draws the viewport-centre mark that decided the anchor; ``tap_pill`` rings the pill."""
+        items, lays, vp = self.l8_env(theme, scale)
+        s, vis = self.l8_zoom(kind, st.scroll, theme, scale, selected=selected, outline=st.key)
+        box = L.precision_pill(s, vp.top + L.px(8), pill_text, back=back)
+        if tap_pill:
+            cx, cy = L.centre(box)
+            r = L.px(30)
+            s.d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=L.ANNO, width=L.px(3))
+        if centre:
+            L.crosshair(s, (DEVICE_W / 2, (vp.top + vp.bottom) / 2), "viewport centre")
+        if tile_target:
+            t = vis[st.key]
+            s.target(t, f"key {st.key}", actual=True)
+        if focus:
+            s.focus_order(box, "back to overview" if back else "Select precisely")
+            if tile_target or tap_tile:
+                s.focus_order(vis[st.key], f"key {st.key} tile")
+        L.anno_card(s, lines, self.l8_card_y(s))
+        return s
+
+    def l8_thumb_frame(self, kind, scroll, name, lines, *, theme="light", scale=1.0, selected=None):
+        """#864 frame: a held thumb whose month label comes from the first visible key."""
+        items, lays, vp = self.l8_env(theme, scale)
+        lay = lays[kind]
+        key = L.thumb_anchor_key(lay, scroll, vp)
+        s, vis = self.l8_zoom(kind, scroll, theme, scale, selected=selected, outline=key)
+        L.anno_card(s, [f"{name} · {L.STOP_NAMES[kind]} · scroll {scroll:.0f} px",
+                        f"thumb anchor key {key} = {items[key].month} -> label \"{L.thumb_month(items, lay, scroll, vp)}\""]
+                    + lines, self.l8_card_y(s))
+        return s
+
     L8_SIG_SELECTED = {1: 1, 6: 2, 9: 3}  # top of November, so the month heading is in view; 6 is a video
 
     def l8_month_sig(self, kind, theme, scale, scroll=None, placeholders=False, loading=None):
@@ -947,7 +1050,8 @@ class Gen:
                        L.px(26) + 2 * s.line_h("secondary") + L.px(4))
         cvp = L.Viewport(top, vp.bottom)
         L.draw_layout(s, items, lay, scroll, cvp, selected=self.L8_SIG_SELECTED, placeholders=placeholders)
-        L.fast_thumb(s, L.thumb_frac(lay, scroll, cvp), "Nov", cvp.top + L.px(8), s.bottom - L.px(110))
+        L.fast_thumb(s, L.thumb_frac(lay, scroll, cvp), L.thumb_month(items, lay, scroll, cvp),
+                     cvp.top + L.px(8), s.bottom - L.px(110))
         s.d.rectangle([0, 0, DEVICE_W, top], fill=s.t["ground"])
         s.status_bar()
         L.title(s, "Pictures")
@@ -1083,9 +1187,9 @@ class Gen:
                       "selection 1-5 intact; Select precisely is offered again",
                   ], pill="Select precisely")),
             Panel("P5", "YEAR 28: same pathway", f"Tile {L.tile_dp(28):.1f} dp. Spheres are visible but tiles are "
-                  "not tap targets; the pill opens the focused 7-column view.",
+                  "not tap targets; a long-press selects and focuses (the pill path is Q5, Q11-Q17).",
                   self.l8_precision("year", pyear["press"], "P5", psel, [
-                      "P5 · YEAR 28 · long-press or the pill jumps straight to SMALL 7",
+                      "P5 · YEAR 28 · long-press on key %d jumps to SMALL 7" % pk,
                       f"tile {L.tile_dp(28):.1f} dp: dense, no direct tap; the 48 dp pill is the target",
                       "the zoom Back returns to YEAR with the same key and height",
                   ], pill="Select precisely", press=True)),
@@ -1098,9 +1202,202 @@ class Gen:
         ]
         b.grid("Precision selection from the dense overview (measured, 75 % scale)", prec, cols=4, scale=0.75)
 
+        # ---- #864: truthful thumb month and pill-only precision entry
+        mlay = lays["month"]
+        boundary = mlay.rects[267][3]  # bottom of the last November row (key 267 is the last November key)
+        s_sep_m = mlay.rects[700][1] - 0.5 * vp.h  # a September scroll position
+        s_sep_s = lays["small"].rects[568][1] - 0.4 * vp.h
+        s_sep_y = lays["year"].rects[267][3] + 30  # just past the last November row
+        _i2, lays2d, vp2d = self.l8_env("dark", 2.0)
+        s_sep_d = lays2d["month"].rects[700][1] - 0.5 * vp2d.h
+        thumbs = [
+            Panel("T1", "MONTH, top: Nov", "First visible key is November, so the thumb reads Nov.",
+                  self.l8_thumb_frame("month", 0.0, "T1", ["first visible key is the thumb anchor"])),
+            Panel("T2", "MONTH, last Nov row", f"Scroll {boundary - 60:.0f} px: the last November row is still "
+                  "partly in view, so the label is still Nov.",
+                  self.l8_thumb_frame("month", boundary - 60, "T2", ["tie-break: a partly visible row counts"])),
+            Panel("T3", "MONTH, 120 px later: Sep", f"Scroll {boundary + 60:.0f} px: the first visible key is "
+                  "September; the thumb turns to Sep.",
+                  self.l8_thumb_frame("month", boundary + 60, "T3", ["label turns when the Nov rows have left"])),
+            Panel("T4", "MONTH, mid September", "Not a fixed Nov: the label follows the key at any position.",
+                  self.l8_thumb_frame("month", s_sep_m, "T4", ["same key as the Select precisely frames"])),
+            Panel("T5", "SMALL 7, September", "Same rule at the 7-column stop.",
+                  self.l8_thumb_frame("small", s_sep_s, "T5", ["53 dp tiles, thumb label from key"])),
+            Panel("T6", "YEAR 28, September", "Same rule at 28 columns, where one screen spans several months.",
+                  self.l8_thumb_frame("year", s_sep_y, "T6", ["first visible key sets the month"])),
+            Panel("T7", "MONTH, dark, 200 %", "Label follows the key; the thumb keeps its 46 dp size.",
+                  self.l8_thumb_frame("month", s_sep_d, "T7", ["dark 200 %, thumb 46 dp in a 48 dp target"],
+                                      theme="dark", scale=2.0)),
+        ]
+        b.grid("Fast-scroll thumb label: month of the first visible key (measured, 75 % scale)", thumbs, cols=4,
+               scale=0.75)
+
+        pm = L.pill_flow(lays, vp, "month", s_sep_m)
+        py = L.pill_flow(lays, vp, "year", s_sep_y)
+        s_sel = lays["month"].rects[845][1] - 0.5 * vp.h
+        ps = L.pill_flow(lays, vp, "month", s_sel)
+        ptb = L.pill_flow(lays, vp, "month", s_sel, focused=828)
+        pd = L.pill_flow(lays2d, vp2d, "month", s_sep_d)
+        s_sel_y = lays["year"].rects[845][1] - 0.5 * vp.h
+        pys = L.pill_flow(lays, vp, "year", s_sel_y)
+        s_sep_yd = lays2d["year"].rects[845][1] - 0.5 * vp2d.h
+        pyd = L.pill_flow(lays2d, vp2d, "year", s_sep_yd)
+        k_m, k_y, k_s, k_tb, k_d = (x["press"].key for x in (pm, py, ps, ptb, pd))
+        k_ys, k_yd = pys["press"].key, pyd["press"].key
+        sel3 = dict(L.SELECTED)
+        pill = [
+            Panel("Q1", "MONTH, no selection: tap the pill",
+                  f"Nothing is focused or selected. The pill takes the visible key nearest the viewport centre: "
+                  f"key {k_m}. It does not select.",
+                  self.l8_pill_frame("month", pm["press"], "Q1", None, [
+                      f"Q1 · MONTH 12 · Select precisely · no focus, no selection",
+                      f"anchor = nearest visible key to the centre = {k_m} ({pm['press'].extra['rule']})",
+                      "tie: lower key. Selection stays empty",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q2", "Focused SMALL 7, still unselected",
+                  f"Key {k_m} outlined at {L.fmt_d(pm['focus'].dx)} px in X and "
+                  f"{L.fmt_d(pm['focus'].y_residual)} px height residual. Nothing is selected yet.",
+                  self.l8_pill_frame("small", pm["focus"], "Q2", None, [
+                      f"Q2 · SMALL 7 · key {k_m} focused, not selected",
+                      f"tile {L.fmt_rect(pm['focus'].dst)} = {L.tile_dp(7):.1f} dp: a real >= 48 dp target",
+                      "focus order: 1 pill (back), 2 tile; Back returns",
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
+            Panel("Q3", "Select by a real tap", f"The user taps the {L.tile_dp(7):.1f} dp tile: key {k_m} becomes "
+                  "#1. Selecting is the user's tap, never the pill.",
+                  self.l8_pill_frame("small", pm["focus"], "Q3", {k_m: 1}, [
+                      f"Q3 · SMALL 7 · tap on key {k_m} -> selected #1",
+                      f"hit rect {L.fmt_rect(pm['focus'].dst)}, {L.tile_dp(7):.1f} dp",
+                      "announce: \"Photo, 14 Sep, selected, 1 of 1\" (proposal)",
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
+            Panel("Q4", "Back to MONTH 12", f"Back or the return pill restores scroll {pm['back'].scroll:.0f} px "
+                  f"(was {pm['press'].scroll:.0f} px) and the selection.",
+                  self.l8_pill_frame("month", pm["back"], "Q4", {k_m: 1}, [
+                      f"Q4 · MONTH 12 · back, key {k_m} selected #1 kept",
+                      f"scroll {pm['back'].scroll:.0f} px = entry scroll {pm['press'].scroll:.0f} px",
+                      "pill is offered again; one Back = one return",
+                  ])),
+            Panel("Q5", "YEAR 28, no selection: tap the pill",
+                  f"Same rule at YEAR: nearest visible key to the viewport centre, key {k_y}; 12 dp tiles stay "
+                  "dense, the 48 dp pill is the target.",
+                  self.l8_pill_frame("year", py["press"], "Q5", None, [
+                      f"Q5 · YEAR 28 · Select precisely · anchor key {k_y}",
+                      f"tile {L.tile_dp(28):.1f} dp: no direct tap; pill >= 48 dp",
+                      "Back returns to YEAR with the same key and height",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q6", "MONTH, prior selection 1-3",
+                  f"Selected keys do not move the anchor. Centre rule: key {k_s}, not a selected key.",
+                  self.l8_pill_frame("month", ps["press"], "Q6", sel3, [
+                      f"Q6 · MONTH 12 · selection 1-3 on keys {', '.join(map(str, sel3))}",
+                      f"anchor = centre rule = key {k_s}; no focus, no auto-select",
+                      "the three selected keys stay selected",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q7", "Focused SMALL, selection kept",
+                  f"Key {k_s} outlined and unselected; spheres 1-3 carry over. Tapping it would add #4.",
+                  self.l8_pill_frame("small", ps["focus"], "Q7", sel3, [
+                      f"Q7 · SMALL 7 · key {k_s} focused, selection 1-3 kept",
+                      f"tile {L.tile_dp(7):.1f} dp tap -> #4; Back restores the overview",
+                      "focus order: 1 pill, 2 tile",
+                  ], pill_text=L.return_label("month"), back=True, tile_target=True)),
+            Panel("Q8", "MONTH, TalkBack focus on key 828",
+                  f"An explicit visible focus is kept: key 828, not the centre key {k_s}. Same pill, same flow.",
+                  self.l8_pill_frame("month", ptb["press"], "Q8", sel3, [
+                      f"Q8 · MONTH 12 · TalkBack focus on key {k_tb} (visible)",
+                      f"kept as anchor ({ptb['press'].extra['rule']}); centre rule would pick {k_s}",
+                      "stale focus (off screen): centre rule instead",
+                  ], tap_pill=True)),
+            Panel("Q9", "MONTH, dark, 200 %",
+                  f"Pill grows with the font; centre rule gives key {k_d}. Tiles keep their size.",
+                  self.l8_pill_frame("month", pd["press"], "Q9", None, [
+                      f"Q9 · MONTH 12 · dark 200 % · anchor key {k_d}",
+                      "pill grows to fit, hit rect >= 48 dp",
+                      "no selection; the pill does not select",
+                  ], theme="dark", scale=2.0, tap_pill=True, centre=True)),
+            Panel("Q10", "Focused SMALL, dark, 200 %",
+                  f"Key {k_d} outlined; the 7-column tile is a real {L.tile_dp(7):.1f} dp target; Back pill >= 48 dp.",
+                  self.l8_pill_frame("small", pd["focus"], "Q10", None, [
+                      f"Q10 · SMALL 7 · dark 200 % · key {k_d} focused",
+                      f"tile {L.tile_dp(7):.1f} dp; focus order: 1 pill, 2 tile",
+                      "Back or the return pill restores MONTH",
+                  ], theme="dark", scale=2.0, pill_text=L.return_label("month"), back=True, tile_target=True)),
+            Panel("Q11", "YEAR to SMALL 7, still unselected",
+                  f"Key {k_y} outlined at {L.fmt_d(py['focus'].dx)} px in X, {L.fmt_d(py['focus'].y_residual)} px "
+                  "height residual. Nothing is selected yet.",
+                  self.l8_pill_frame("small", py["focus"], "Q11", None, [
+                      f"Q11 · SMALL 7 · from YEAR · key {k_y} focused, not selected",
+                      f"tile {L.tile_dp(7):.1f} dp: a real >= 48 dp target; pill hit >= 48 dp",
+                      "focus order: 1 pill (back), 2 tile",
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
+            Panel("Q12", "YEAR path: select by a real tap",
+                  f"The tap on the {L.tile_dp(7):.1f} dp tile selects key {k_y} as #1; the pill never does.",
+                  self.l8_pill_frame("small", py["focus"], "Q12", {k_y: 1}, [
+                      f"Q12 · SMALL 7 · tap on key {k_y} -> selected #1",
+                      f"hit rect {L.fmt_rect(py['focus'].dst)}",
+                      "announce: \"Photo, selected, 1 of 1\" (proposal)",
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
+            Panel("Q13", "Back to YEAR 28",
+                  f"Return restores scroll {py['back'].scroll:.0f} px (entry {py['press'].scroll:.0f} px) and "
+                  "the selection.",
+                  self.l8_pill_frame("year", py["back"], "Q13", {k_y: 1}, [
+                      f"Q13 · YEAR 28 · back, key {k_y} selected #1 kept",
+                      f"scroll {py['back'].scroll:.0f} px = entry scroll {py['press'].scroll:.0f} px",
+                      "pill offered again; one Back = one return",
+                  ])),
+            Panel("Q14", "YEAR, prior selection 1-3",
+                  f"Selected keys do not move the anchor. Centre rule: key {k_ys}, not a selected key.",
+                  self.l8_pill_frame("year", pys["press"], "Q14", sel3, [
+                      f"Q14 · YEAR 28 · selection 1-3 on keys {', '.join(map(str, sel3))}",
+                      f"anchor = centre rule = key {k_ys}; no focus, no auto-select",
+                      "the three selected keys stay selected",
+                  ], tap_pill=True, centre=True)),
+            Panel("Q15", "YEAR to SMALL 7, selection kept",
+                  f"Key {k_ys} outlined and unselected; spheres 1-3 carry over. A tap would add #4.",
+                  self.l8_pill_frame("small", pys["focus"], "Q15", sel3, [
+                      f"Q15 · SMALL 7 · from YEAR · key {k_ys} focused, selection 1-3 kept",
+                      f"tile {L.tile_dp(7):.1f} dp tap -> #4; Back restores YEAR",
+                      "focus order: 1 pill, 2 tile",
+                  ], pill_text=L.return_label("year"), back=True, tile_target=True)),
+            Panel("Q16", "YEAR, dark, 200 %, prior selection",
+                  f"Pill grows with the font; centre rule gives key {k_yd}. Selection 1-3 stays.",
+                  self.l8_pill_frame("year", pyd["press"], "Q16", sel3, [
+                      f"Q16 · YEAR 28 · dark 200 % · anchor key {k_yd}",
+                      "pill grows to fit, hit rect >= 48 dp",
+                      "selection 1-3 intact; the pill does not select",
+                  ], theme="dark", scale=2.0, tap_pill=True, centre=True)),
+            Panel("Q17", "YEAR to SMALL 7, dark, 200 %",
+                  f"Key {k_yd} outlined; the 7-column tile is a real {L.tile_dp(7):.1f} dp target; Back pill "
+                  ">= 48 dp.",
+                  self.l8_pill_frame("small", pyd["focus"], "Q17", sel3, [
+                      f"Q17 · SMALL 7 · from YEAR · dark 200 % · key {k_yd}",
+                      f"tile {L.tile_dp(7):.1f} dp; focus order: 1 pill, 2 tile",
+                      "Back or the return pill restores YEAR",
+                  ], theme="dark", scale=2.0, pill_text=L.return_label("year"), back=True, tile_target=True)),
+        ]
+        b.grid("Select precisely with no prior target: deterministic focus key (measured, 75 % scale)", pill,
+               cols=4, scale=0.75)
+        b.table("Rules drawn in T1-T7 and Q1-Q17 (#864)", ["Rule", "Definition", "Frames"], [
+            ["Thumb label", "Month of the first visible media key: the first key in library order with a pixel "
+             "below the top edge of the grid. A heading belongs to the keys under it.", "T1-T7"],
+            ["Month change", f"At MONTH scroll {boundary - 60:.0f} px the last November row is still visible: Nov. "
+             f"At {boundary + 60:.0f} px it has left: Sep. The label turns when the last row of the previous month "
+             "leaves the top edge.", "T2, T3"],
+            ["Pill anchor, nothing focused", "Nearest visible key to the viewport centre (distance to tile centre); "
+             "equal distance goes to the lower key, the earlier in library order. Selection never moves it.",
+             "Q1, Q5, Q6, Q9, Q14, Q16"],
+            ["Pill anchor, explicit focus", "A long-press or TalkBack focus key that is still visible is kept; "
+             "a stale (off-screen) focus is not eligible and the centre rule applies.", "Q8, P1"],
+            ["Pill result", "Focus to SMALL 7 on that key at the same relative height. The key is outlined and not "
+             "selected; selecting is a tap on the 53 dp tile. Long-press keeps its selecting semantics.",
+             "Q2, Q3, Q7, Q10, Q11, Q12, Q15, Q17"],
+            ["Return", "Back or the return pill (12 columns from MONTH, 28 columns from YEAR): previous overview, scroll anchor and selected keys.", "Q4, Q13"],
+            ["Targets", f"Pill >= 48 dp (grows at 200 %); SMALL tile {L.tile_dp(7):.1f} dp; return pill >= 48 dp. "
+             "Dense 12 / 28 tiles are never direct taps.", "Q1-Q17"],
+            ["TalkBack order (proposal)", "1 Select precisely or the return pill, 2 the focused tile, then the "
+             "grid; announcement of the pill names the month of the anchor. Not a device test.", "Q2, Q7, Q10, Q11, Q15, Q17"],
+        ], [0.18, 0.67, 0.15])
+
         panels = [
             Panel("B1", "SMALL zoom, light, 100 %", "7 squares per row, 53 dp tiles. Ordered selection spheres 1-3 "
-                  "with 2 dp white halo, 0:14 video badge, 46 dp \"Nov\" thumb in a 48 dp target.",
+                  "with 2 dp white halo, 0:14 video badge, 46 dp thumb in a 48 dp target (label = month of the first visible key).",
                   self.l8_month_sig("small", "light", 1.0)),
             Panel("B2", "MONTH zoom, light, 100 %", "12 squares per row, 30 dp tiles. Smaller sphere, play glyph, "
                   "Select precisely pill, same thumb.", self.l8_month_sig("month", "light", 1.0)),
@@ -1219,11 +1516,13 @@ class Gen:
                 "the height residual is disclosed instead. No frame claims every stationary pointer stays over "
                 "the same tile or a zero X drift.")
         b.table("Precision selection from MONTH or YEAR", ["Step", "Control", "Result", "Target", "Back"], [
-            ["Enter", "Long-press a dense tile, or the Select precisely pill", f"Focus to SMALL 7 on the same key at "
-             f"the same height; the pressed key is selected", "tile n/a (dense); pill >= 48 dp", "n/a"],
+            ["Enter by long-press", "Long-press a dense tile", f"Focus to SMALL 7 on the same key at the same "
+             f"height; the pressed key is selected", "tile n/a (dense)", "n/a"],
+            ["Enter by pill", "Select precisely pill, no prior target", "Focus to SMALL 7 on the visible key nearest "
+             "the viewport centre (a visible focus key if one exists); nothing is selected", "pill >= 48 dp", "n/a"],
             ["Select", "Tap tiles or spheres in the 7-column view", f"Toggles per-media selection; sphere order "
              f"continues", f"{L.tile_dp(7):.1f} dp tiles, >= 48 dp", "n/a"],
-            ["Return", "12 columns pill or system Back", "Back to the overview stop it came from; selection, key "
+            ["Return", "Return pill (12 columns from MONTH, 28 columns from YEAR) or system Back", "Back to the overview stop it came from; selection, key "
              "and height continue", "pill >= 48 dp; system Back", "one Back = one return"],
             ["TalkBack", "Dense tile nodes keep their label and expose Select and Select precisely actions",
              "The same selection state; no 48 dp touch is needed because activation targets the node",
