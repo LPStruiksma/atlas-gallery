@@ -190,7 +190,7 @@ internal fun SamePersonQueueRoute(
         maxOf(0, n - (answers.size - at) - if (pendingMarked) 1 else 0)
     } ?: 0
     val canUndoMixed = skipSnapshot != null && lastMixedGeneration != null &&
-        state?.sourceGeneration == lastMixedGeneration && state.undoHistory.isNotEmpty() &&
+        state?.sourceGeneration == lastMixedGeneration && (state?.undoHistory?.isNotEmpty() == true) &&
         !mixedBusy && !undoBusy && resolved == answers.size
     Dialog(onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
