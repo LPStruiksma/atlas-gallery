@@ -532,16 +532,14 @@ internal fun HiddenPeopleScreen(
     onBack: () -> Unit,
     onOpen: (NativePersonAlbum) -> Unit,
     onSearchWholeLibrary: (() -> Unit)? = null,
-    onOpenNeedsSplitting: (() -> Unit)? = null
+    onOpenNeedsSplitting: (() -> Unit)? = null,
+    needsSplittingCount: Int = 0
 ) {
     var searchText by remember { mutableStateOf("") }
     val visiblePeople = scopedNamedMatches(people, searchText) { it.name }
     // AtlasGalleryHeader already clears the status bar here (People's own inset).
     Column(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-people-hidden")) {
         AtlasGalleryHeader(title = "Hidden", onBack = onBack,
-            menuItems = if (onOpenNeedsSplitting != null) listOf(
-                AtlasHeaderMenuItem("Needs splitting", "atlas-hidden-needs-splitting-open",
-                    onClick = onOpenNeedsSplitting)) else emptyList(),
             actions = {
             AtlasSearch(query = searchText, onQueryChange = { searchText = it },
                 historyScope = SearchHistoryScope.PEOPLE,
@@ -549,6 +547,14 @@ internal fun HiddenPeopleScreen(
                     if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
                 })
         })
+        if (onOpenNeedsSplitting != null) {
+            // The count is intentionally local to Hidden, never ordinary People.
+            TextButton(
+                onClick = onOpenNeedsSplitting,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag("atlas-hidden-needs-splitting-open")
+            ) { Text("Needs splitting ($needsSplittingCount)") }
+        }
         if (visiblePeople.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(if (searchText.isBlank()) "No hidden people" else "No matching people",
