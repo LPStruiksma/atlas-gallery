@@ -4163,7 +4163,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             is PersonPageTarget.Named -> live.names[target.person]?.let {
                                                 nativePersonAlbum = NativePersonAlbumRequest(target, it)
                                             }
-                                            is PersonPageTarget.Unnamed -> peopleReviewOpen = true
+                                            is PersonPageTarget.Unnamed ->
+                                                nativePersonAlbum = NativePersonAlbumRequest(
+                                                    target, "Unnamed group")
                                         }
                                     }
                                     needsSplittingOpen = false
