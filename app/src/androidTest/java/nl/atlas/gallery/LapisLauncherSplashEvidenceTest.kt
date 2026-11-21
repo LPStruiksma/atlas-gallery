@@ -451,7 +451,10 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
             tries++
             nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
             idle()
-            nl.atlas.gallery.testkit.testShell("input swipe 540 1900 540 500 300")
+            // Open the app list: a swipe up on the workspace, or the all-apps key on alternate tries.
+            if (tries % 2 == 1) nl.atlas.gallery.testkit.testShell("input swipe 540 1900 540 500 300")
+            else nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_ALL_APPS")
+            idle()
             bounds = awaitAtlasInLauncher(8_000L)
         }
         val found = requireNotNull(bounds) {
@@ -466,7 +469,12 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
         runCatching { instrumentation.uiAutomation.waitForIdle(300L, 3_000L) }
     }
 
-    /** Bounds of a fully on-screen launcher item labelled ATLAS, outside this app's own windows. */
+    /**
+     * Where the installed ATLAS icon shows in the launcher: an accessibility item labelled
+     * ATLAS, or else (CI run 44853835743: the launcher window was not in the accessibility
+     * window list) the icon itself, found on the real screen as a launcher-icon-sized patch of
+     * Lapis ground with the white mark inside it. No other app on the emulator uses Lapis.
+     */
     private fun awaitAtlasInLauncher(timeoutMs: Long): android.graphics.Rect? {
         val own = instrumentation.targetContext.packageName
         val deadline = SystemClock.uptimeMillis() + timeoutMs
@@ -480,9 +488,49 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
                     if (!r.isEmpty && r.top >= 0 && r.bottom <= UI_EVIDENCE_HEIGHT) return r
                 }
             }
+            lapisIconOnScreen()?.let { return it }
             idle()
         }
+        android.util.Log.i("ATLAS_LAPIS", "no ATLAS icon on screen: $lastScan")
         return null
+    }
+
+    private var lastScan = "no scan"
+
+    private fun lapisIconOnScreen(): android.graphics.Rect? {
+        val shot = instrumentation.uiAutomation.takeScreenshot() ?: return null
+        val frame = if (shot.config == Bitmap.Config.HARDWARE) {
+            shot.copy(Bitmap.Config.ARGB_8888, false).also { shot.recycle() }
+        } else shot
+        try {
+            val step = 3
+            var count = 0
+            var white = 0
+            var left = Int.MAX_VALUE; var top = Int.MAX_VALUE; var right = -1; var bottom = -1
+            for (y in 0 until frame.height step step) for (x in 0 until frame.width step step) {
+                val c = frame.getPixel(x, y)
+                if (abs(Color.red(c) - Color.red(LAPIS)) <= 14 && abs(Color.green(c) - Color.green(LAPIS)) <= 14 &&
+                    abs(Color.blue(c) - Color.blue(LAPIS)) <= 14) {
+                    count++
+                    left = minOf(left, x); top = minOf(top, y); right = maxOf(right, x); bottom = maxOf(bottom, y)
+                }
+            }
+            if (count == 0) { lastScan = "no Lapis pixels"; return null }
+            val box = android.graphics.Rect(left, top, right + 1, bottom + 1)
+            for (y in box.top until box.bottom step step) for (x in box.left until box.right step step) {
+                val c = frame.getPixel(x, y)
+                if (Color.red(c) > 235 && Color.green(c) > 235 && Color.blue(c) > 235) white++
+            }
+            val density = instrumentation.targetContext.resources.displayMetrics.density
+            val minSide = (30 * density).toInt()
+            val maxSide = (90 * density).toInt()
+            lastScan = "Lapis box $box, $count Lapis and $white white samples"
+            val iconSized = box.width() in minSide..maxSide && box.height() in minSide..maxSide
+            val filled = count * step * step >= box.width() * box.height() / 3
+            return if (iconSized && filled && white > 10) box else null
+        } finally {
+            frame.recycle()
+        }
     }
 }
 
