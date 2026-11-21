@@ -1,6 +1,6 @@
 # L5 Collections route and reference audit — #819
 
-Status: **pre-build proposal; not Android proof**. The L5 PNG and manifest were regenerated (17 frames, pinned Funnel fonts, `--check` PASS) and inspected at full size. The dark/200% shared slab remains governed by [L4 correction #816](https://github.com/LPStruiksma/atlas-gallery/issues/816), not by this L5 proposal. Re-review #658 only after that integration and artifact verification.
+Status: **pre-build proposal; not Android proof**. The L5 PNG and manifest were regenerated (17 frames, pinned Funnel fonts, `--check` PASS) and inspected at full size. The dark/200% shared slab remains governed by [L4 correction #816](https://github.com/LPStruiksma/atlas-gallery/issues/816), not by this L5 proposal. The L4 slab correction is already on main (#859), so #658 can be re-reviewed once this PR merges.
 
 ## Scope and counted tap paths
 
@@ -33,10 +33,14 @@ This deliberately does not credit the private Round 3 board with observed behavi
 ## Safe 200% composition — acceptance contract
 
 - 384×832 dp / 1080×2340 px synthetic S24+ proposal; assumed status 29 dp, gesture 16 dp and test IME 324 dp, **not** device measurements.
-- A2 dark/200% draws only complete recent rows before navigation, leaving the rest scrollable instead of clipping a photo strip under controls. The shared L4 fix #816 must place **Pictures, Collections and search in one centred slab** at the same scale; the current floating sphere is **not** a safe accepted fallback.
-- D2 dark/200% shows one direct scoped Lotte result and a keyboard. Verify each named/result target ≥48×48 dp and verify panel, row, slab, IME and insets are disjoint. The added Python geometry tests check row-to-slab clearance and result/IME bounds; a second exact-head render and pixel inspection are still needed.
+- A2 dark/200% draws only complete recent rows before navigation, leaving the rest scrollable instead of clipping a photo strip under controls. The shared L4 fix #816 places **Pictures, Collections and search in one centred slab** at the same scale; the current floating sphere is **not** a safe accepted fallback.
+- D2 dark/200% shows one direct scoped Lotte result and a keyboard. Verify each named/result target ≥48×48 dp and verify panel, row, slab, IME and insets are disjoint. The added Python geometry tests check row-to-slab clearance and result/IME bounds; the regenerated sheet was inspected at full size (see Verification).
 - Synthetic gradients and fictional labels only; no real faces, personal photos or geodata. No Android navigation, TalkBack, keyboard or font behavior is claimed from this evidence.
 
-## Required finishing work before Review
+## Verification and remaining limits
 
-Regenerate L5 PNG with the same documented Funnel fonts/Pillow version; update `manifest.json` (SHA, dimensions, C1–C7 panels and frame count), update the preflight README (including stale universal two-tap and old A2 copy), run `python3 tools/design/lapis_preflight.py --check` and `python3 -m unittest discover -s tools/design/tests`; inspect actual A1/A2/C1–C7/D2 pixels and coordinate with #816's merged L4 slab correction. Only then route #819 to Review and #658 to independent pre-build re-preflight after this repair merges.
+- Sheet regenerated at this branch with the BRAND-L2 Funnel fonts (sha256 as in `manifest.json`), 17 frames. `python3 tools/design/lapis_preflight.py --check --font-dir <funnel dir>` passes for L4-L8; `python3 -m unittest discover -s tools/design/tests` passes (10 tests, DejaVu fallback font).
+- Full-size inspection found the arrow glyph missing from the Funnel fonts (tofu boxes in the tap tables) and clipped A1/A2 captions; both are fixed with regression tests. The destination-parity table now lists the named rows before the categories.
+- Not drawn: Places, Stories and Favourites rows appear only by scrolling. D2 omits the search button because the field is the active control, as on the L7 sheet.
+- No repository workflow runs the design generator; the only Python workflow on this tree covers `tools/editor_models`, so its skipped job is not evidence. Head-specific command output is posted on the PR.
+- Synthetic evidence only: no Android, TalkBack, keyboard or device claim.

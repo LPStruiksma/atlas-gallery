@@ -577,18 +577,20 @@ class Gen:
         ], [0.27, 0.14, 0.59])
         b.table("Destination parity (every former entry keeps a row)", ["Destination", "Row and order",
                                                                          "Opens", "Shown in"], [
-            ["Albums", "1 · count and latest date", "Existing Albums screen", "A1, C2"],
-            ["People and pets", "2 · recent people as own rows, then the section row", "Existing People screen "
-             "and person page", "A1, C2, C3, D1, D2"],
-            ["Places", "3", "Existing Places screen; also the L6 atlas", "A1"],
-            ["Stories", "4", "Existing Stories screen", "A1"],
-            ["Favourites", "5", "Existing Favourites view", "A1"],
-            ["Videos", "6", "Existing Videos view", "D3"],
-            ["Recent", "7", "Existing Recent view", "D3"],
-            ["Categories, incl. Screenshots", "8 · one row, sub-categories inside", "Existing category screens",
+            ["Noor, Coastal weekend, Dunes trip (named recent rows)", "1-3 · direct rows, before the categories",
+             "Person page, album, place/trip detail", "A1, A2, C1-C7"],
+            ["Albums", "4 · category: count and latest date", "Existing Albums screen", "A1, C2, E2"],
+            ["People and pets", "5 · category: section row after the named rows", "Existing People screen "
+             "and person page", "E2, D1, D2"],
+            ["Places", "6 · category", "Existing Places screen; also the L6 atlas", "Scroll; not drawn"],
+            ["Stories", "7 · category", "Existing Stories screen", "Scroll; not drawn"],
+            ["Favourites", "8 · category", "Existing Favourites view", "Scroll; not drawn"],
+            ["Videos", "9", "Existing Videos view", "D3"],
+            ["Recent", "10", "Existing Recent view", "D3"],
+            ["Categories, incl. Screenshots", "11 · one row, sub-categories inside", "Existing category screens",
              "D3"],
-            ["Shared albums", "9", "Existing Shared albums screen", "D3"],
-            ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "10-13 · end of list",
+            ["Shared albums", "12", "Existing Shared albums screen", "D3"],
+            ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "13-16 · end of list",
              "Existing screens; Hidden asks to unlock first", "E1"],
         ], [0.24, 0.28, 0.3, 0.18], "Only visible named/recent members are two-tap direct "
            "destinations. Category rows open landings, not a specific off-screen member; search "

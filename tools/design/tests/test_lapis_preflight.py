@@ -115,6 +115,14 @@ class L5GlyphsAndCaptions(unittest.TestCase):
         self.assertTrue(src)
         self.assertNotIn("\u2192", src)
 
+    def test_parity_table_lists_named_rows_before_categories(self):
+        import inspect
+        for obj in vars(lapis_preflight).values():
+            if isinstance(obj, type) and hasattr(obj, "l5"):
+                src = inspect.getsource(obj.l5)
+        self.assertLess(src.index('"1-3 \u00b7 direct rows'), src.index('["Albums", "4 '))
+        self.assertNotIn('["Albums", "1 ', src)
+
     def test_l5_hero_captions_fit_two_lines(self):
         import inspect
         for obj in vars(lapis_preflight).values():
