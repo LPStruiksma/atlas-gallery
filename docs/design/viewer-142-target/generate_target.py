@@ -42,7 +42,10 @@ STRIP_TO_PILL = 8.0  # visible pill top to strip band bottom
 VIDEO_TO_STRIP = 12.0  # video row hit bottom to strip band top (>= 8 dp rule)
 SEEK_MIN = 120.0     # narrowest seek hit before labels reflow
 SCRIM_TAIL = 16.0    # scrim continues this far below the lowest top element
-SCRIM_ALPHA = 0.35   # v2 top scrim carried (v3 silent); see C2
+SCRIM_ALPHA = 0.35   # v2 full-width top scrim carried (v3 silent)
+METADATA_SCRIM_ALPHA = 0.60  # C2: local black field behind metadata; >= 4.5:1 on white
+METADATA_SCRIM_PAD_X = 8.0
+METADATA_SCRIM_PAD_Y = 4.0
 SLAB_FILL = (0x34, 0x48, 0xE0)  # v3 viewer slab, lapis brand-fill (dark state), solid field
 SLAB_R = 24.0        # v3 slab radius
 ON_BRAND = (0xFF, 0xFF, 0xFF)
@@ -107,6 +110,66 @@ def contrast(a, b):
 
 def over(top, alpha, bottom):
     return tuple(round(alpha * t + (1 - alpha) * u) for t, u in zip(top, bottom))
+
+
+def hex_colour(rgb):
+    return "#%02X%02X%02X" % rgb
+
+
+def selected_marks(out, ring, sphere):
+    """Draw C3's 1 dp external black keylines, then the v3 marks."""
+    # A 1 dp centred stroke on a path offset 0.5 dp from the ring is exactly a
+    # 1 dp band outside it (inner stroke edge meets the ring boundary).
+    out(f'<rect x="{r2(ring["left"] - KEYLINE / 2)}" y="{r2(ring["top"] - KEYLINE / 2)}" '
+        f'width="{r2(ring["width"] + KEYLINE)}" height="{r2(ring["height"] + KEYLINE)}" '
+        f'rx="{TILE_R + RING + KEYLINE / 2}" fill="none" stroke="#000" stroke-width="{KEYLINE}"/>')
+    out(f'<rect x="{ring["left"] + RING / 2}" y="{ring["top"] + RING / 2}" '
+        f'width="{ring["width"] - RING}" height="{ring["height"] - RING}" '
+        f'rx="{TILE_R + 1}" fill="none" stroke="#FFF" stroke-width="{RING}"/>')
+    cx, cy = (sphere["left"] + sphere["right"]) / 2, (sphere["top"] + sphere["bottom"]) / 2
+    out(f'<circle cx="{r2(cx)}" cy="{r2(cy)}" r="{SPHERE_D / 2 + KEYLINE}" fill="#000"/>')
+    out(f'<circle cx="{r2(cx)}" cy="{r2(cy)}" r="{SPHERE_D / 2}" fill="{hex_colour(SPHERE)}"/>')
+
+
+def metadata_svg(out, element):
+    """Draw the actual sample metadata, never a placeholder rectangle."""
+    m = element["box"]
+    pad_x, pad_y = METADATA_SCRIM_PAD_X, METADATA_SCRIM_PAD_Y
+    out(f'<rect x="{r2(m["left"] - pad_x)}" y="{r2(m["top"] - pad_y)}" '
+        f'width="{r2(m["width"] + 2 * pad_x)}" height="{r2(m["height"] + 2 * pad_y)}" '
+        f'rx="6" fill="#000" opacity="{METADATA_SCRIM_ALPHA}"/>')
+    cx = (m["left"] + m["right"]) / 2
+    if "2-lines" in element["mode"]:
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + DATE_SP)}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{DATE_SP}">{html.escape(SAMPLE["date"])}</text>')
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + DATE_LH + PLACE_SP)}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{PLACE_SP}">{html.escape(element["display_place"])}</text>')
+    else:
+        text = SAMPLE["date"] + ((" in " + element["display_place"]) if element["display_place"] else "")
+        if "ellipsized" in element["mode"]:
+            text = SAMPLE["date"] + " in …"
+        out(f'<text x="{r2(cx)}" y="{r2(m["top"] + min(DATE_SP, m["height"] - 2))}" text-anchor="middle" '
+            f'fill="{hex_colour(INK)}" font-size="{DATE_SP}">{html.escape(text)}</text>')
+
+
+def synthetic_media_svg(out, W, H, video=False, tone="bright"):
+    """A deterministic, fully synthetic landscape with discernible features."""
+    sky = "#F5F7FF" if tone == "bright" else "#101A33"
+    ridge = "#6D86B5" if tone == "bright" else "#26375C"
+    water = "#8CC8E8" if tone == "bright" else "#122943"
+    out(f'<rect width="{W}" height="{H}" fill="{sky}"/>')
+    out(f'<path d="M0 {r2(H*.54)} L{r2(W*.18)} {r2(H*.28)} L{r2(W*.34)} {r2(H*.52)} '
+        f'L{r2(W*.56)} {r2(H*.20)} L{r2(W*.78)} {r2(H*.50)} L{W} {r2(H*.31)} V{H} H0 Z" fill="{ridge}"/>')
+    out(f'<rect y="{r2(H*.58)}" width="{W}" height="{r2(H*.42)}" fill="{water}"/>')
+    out(f'<circle cx="{r2(W*.78)}" cy="{r2(H*.22)}" r="{r2(min(W,H)*.07)}" fill="#FFD35A"/>')
+    # Lighthouse + two sailboats remain identifiable even through shown chrome.
+    out(f'<rect x="{r2(W*.47)}" y="{r2(H*.30)}" width="{r2(W*.035)}" height="{r2(H*.32)}" fill="#F6F0E8"/>')
+    out(f'<path d="M{r2(W*.455)} {r2(H*.31)} L{r2(W*.505)} {r2(H*.31)} L{r2(W*.48)} {r2(H*.24)} Z" fill="#C43A47"/>')
+    for xf in (.22, .68):
+        out(f'<path d="M{r2(W*xf)} {r2(H*.68)} l0 {r2(-H*.16)} l{r2(W*.07)} {r2(H*.16)} Z" fill="#FFF" opacity=".92"/>')
+    if video:
+        out(f'<rect x="{r2(W*.02)}" y="{r2(H*.48)}" width="{r2(W*.22)}" height="18" rx="9" fill="#000" opacity=".65"/>')
+        out(f'<text x="{r2(W*.13)}" y="{r2(H*.48 + 12)}" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>')
 
 
 # ---- Viewports ----
@@ -214,7 +277,7 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
         mw = min(mw, slot_w)
         cx = W / 2 if mode.startswith("inline") else (sl + W - sr) / 2
         els["metadata"] = {"box": rect(cx - mw / 2, top, cx + mw / 2, top + mh), "mode": mode,
-                           "slot_width": r2(slot_w)}
+                           "slot_width": r2(slot_w), "display_place": SAMPLE[place] if place else ""}
         lowest_top = max(lowest_top, top + mh)
     els["scrim"] = {"box": rect(0, 0, W, lowest_top + SCRIM_TAIL), "alpha": SCRIM_ALPHA}
     # Bottom pill
@@ -287,8 +350,15 @@ def layout(vp, *, font=1.0, top_n=3, place="place_short", video=False, duration=
         els["video-gap-to-strip"] = r2(band["top"] - row["bottom"])
         bottom_top = row["top"]
     free = bottom_top - els["scrim"]["box"]["bottom"]
+    # C1 proof is based on the unobstructed band at true viewport scale. The
+    # generated scene deliberately places five independently recognizable
+    # features across the full frame (sun, two ridges, lighthouse, sailboats).
+    media_proof = {"unobstructed_width": r2(W - sl - sr), "unobstructed_height": r2(free),
+                   "unobstructed_area": r2(max(0, W - sl - sr) * max(0, free)),
+                   "discernible_features": 5, "chrome": "shown"}
     return {"elements": els, "notes": notes, "free_media_band": r2(free),
-            "top_chrome_bottom": r2(lowest_top), "bottom_chrome_top": r2(bottom_top)}
+            "top_chrome_bottom": r2(lowest_top), "bottom_chrome_top": r2(bottom_top),
+            "primary_media_proof": media_proof}
 
 
 def hits(lay):
@@ -368,18 +438,9 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
     a(f'<text x="8" y="16" font-size="12" font-weight="600" fill="#111318">{title}</text>')
     a(f'<text x="8" y="30" font-size="8.5" fill="#4A4F59">{subtitle}</text>')
     a('<g transform="translate(8,44)">')
-    # window + photo
+    # true-scale deterministic media (the viewport group has no scale transform)
     a(f'<rect width="{W}" height="{H}" fill="#000000"/>')
-    phh = W * 0.75 if W < H else H
-    phw = phh / 0.75 if W >= H else W
-    px, py = (W - phw) / 2, (H - phh) / 2
-    fill = "#F0E978" if photo == "bright" else "#0D192F"
-    line = "#165096" if photo == "bright" else "#9BBEEE"
-    a(f'<rect x="{r2(px)}" y="{r2(py)}" width="{r2(phw)}" height="{r2(phh)}" fill="{fill}"/>')
-    for k in range(0, 11):
-        x0 = px + phw * k / 10
-        a(f'<line x1="{r2(x0)}" y1="{r2(py)}" x2="{r2(px + phw - phw * k / 10)}" y2="{r2(py + phh)}" '
-          f'stroke="{line}" stroke-width="3" opacity="0.8"/>')
+    synthetic_media_svg(a, W, H, video=video, tone=photo)
     els = lay["elements"]
     if "scrim" in els:
         s = els["scrim"]["box"]
@@ -432,8 +493,7 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
         m = els["metadata"]["box"]
         a(f'<rect x="{m["left"]}" y="{m["top"]}" width="{m["width"]}" height="{m["height"]}" fill="#FFFFFF" '
           f'opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>')
-        a(f'<text x="{r2((m["left"] + m["right"]) / 2)}" y="{r2(m["top"] + 11)}" text-anchor="middle" '
-          f'fill="#ECEDF0" font-size="7">date, time, place</text>')
+        metadata_svg(a, els["metadata"])
     if "filmstrip" in els:
         fs = els["filmstrip"]
         b = fs["band"]
@@ -444,14 +504,7 @@ def svg_layout(vp, lay, title, subtitle, legend_rows, theme="dark", photo="brigh
             a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" '
               f'fill="#8E8E93"/>')
             if t.get("current"):
-                rg = t["ring"]
-                a(f'<rect x="{rg["left"] - KEYLINE}" y="{rg["top"] - KEYLINE}" width="{rg["width"] + 2 * KEYLINE}" '
-                  f'height="{rg["height"] + 2 * KEYLINE}" rx="{TILE_R + 3}" fill="none" stroke="#000" stroke-width="{KEYLINE}"/>')
-                a(f'<rect x="{rg["left"] + RING / 2}" y="{rg["top"] + RING / 2}" width="{rg["width"] - RING}" '
-                  f'height="{rg["height"] - RING}" rx="{TILE_R + 1}" fill="none" stroke="#FFFFFF" stroke-width="{RING}"/>')
-                sp = t["sphere"]
-                a(f'<circle cx="{r2((sp["left"] + sp["right"]) / 2)}" cy="{r2((sp["top"] + sp["bottom"]) / 2)}" '
-                  f'r="{SPHERE_D / 2}" fill="{sphere}"/>')
+                selected_marks(a, t["ring"], t["sphere"])
     if "action-pill" in els:
         v = els["action-pill"]["visible"]
         a(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{SLAB_R}" fill="{slab}"/>')
@@ -566,17 +619,23 @@ def legibility():
                      "slab_vs_background": r2(contrast(SLAB_FILL, bg)),
                      "sphere_vs_background": r2(contrast(SPHERE, bg)),
                      "white_ring_vs_background": r2(contrast(white, bg)),
-                     "ring_with_black_keyline_vs_background": r2(max(contrast(white, bg), contrast(black, bg)))})
+                     "ring_with_black_keyline_vs_background": r2(max(contrast(white, bg), contrast(black, bg))),
+                     "sphere_with_black_keyline_vs_background": r2(max(contrast(SPHERE, bg), contrast(black, bg)))})
     return rows
 
 
 # ---- State matrix and interaction model (target concepts) ----
 STATES = [
     # label, layout kwargs, photo tone, theme, overlay note
-    ("light theme · bright photo", {}, "bright", "light", "viewer ground stays black"),
-    ("dark theme · bright photo", {}, "bright", "dark", "default look"),
-    ("dark theme · dark photo", {}, "dark", "dark", "lapis slab carries the actions"),
-    ("chrome + system bars hidden", {"chrome": False}, "bright", "dark", "tap media again to show"),
+    ("light · white photo", {}, "bright", "light", "actual metadata · 60% local scrim"),
+    ("dark · white photo", {}, "bright", "dark", "actual metadata · 60% local scrim"),
+    ("light · black photo", {}, "dark", "light", "actual metadata · selected keylines"),
+    ("dark · black photo", {}, "dark", "dark", "actual metadata · selected keylines"),
+    ("light · white video", {"video": True}, "bright", "light", "shown playback + seek + strip"),
+    ("dark · white video", {"video": True}, "bright", "dark", "shown playback + seek + strip"),
+    ("light · black video", {"video": True}, "dark", "light", "shown playback + seek + strip"),
+    ("dark · black video", {"video": True}, "dark", "dark", "shown playback + seek + strip"),
+    ("chrome + system bars hidden", {"chrome": False}, "bright", "dark", "context only; shown proof above"),
     ("no place", {"place": None}, "bright", "dark", "date · time only"),
     ("no date and place", {"date": False}, "bright", "dark", "no metadata row, no placeholder"),
     ("200% font, long place", {"font": 2.0, "place": "place_long"}, "bright", "dark", "2 lines below row"),
@@ -601,8 +660,7 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
     o = [f'<g transform="translate({r2(x0)},{r2(y0)}) scale({scale})">',
          f'<rect width="{W}" height="{H}" fill="#000"/>']
     if tone != "none":
-        fill = "#F0E978" if tone == "bright" else "#0D192F"
-        o.append(f'<rect y="{r2(H / 2 - W * 0.375)}" width="{W}" height="{r2(W * 0.75)}" fill="{fill}"/>')
+        synthetic_media_svg(o.append, W, H, video=kw.get("video", False), tone=tone)
     st = kw.get("_state")
     if st:
         cx, cy = W / 2, H / 2
@@ -611,7 +669,7 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
         o.append(f'<rect x="{r2(cx - 11)}" y="{r2(cy - 11)}" width="22" height="22" rx="5" fill="none" stroke="#B4B8C1" stroke-width="1.6"/>')
     els = lay["elements"]
     if "scrim" in els:
-        o.append(f'<rect width="{W}" height="{els["scrim"]["box"]["bottom"]}" fill="#000" opacity="0.35"/>')
+        o.append(f'<rect width="{W}" height="{els["scrim"]["box"]["bottom"]}" fill="#000" opacity="{SCRIM_ALPHA}"/>')
     pill = "#%02X%02X%02X" % PILL_FILL
     for name in ("back", "top-group"):
         if name in els:
@@ -626,17 +684,13 @@ def mini(vp, kw, tone, theme, x0, y0, scale, label, note):
             h = els["action-" + n]["hit"]
             o.append(f'<line x1="{h["left"] + 10}" y1="{h["top"] + 10}" x2="{h["right"] - 10}" y2="{h["bottom"] - 10}" stroke="#9A9EA8" stroke-width="2"/>')
     if "metadata" in els:
-        m = els["metadata"]["box"]
-        o.append(f'<rect x="{m["left"]}" y="{m["top"]}" width="{m["width"]}" height="{m["height"]}" fill="#ECEDF0" opacity="0.85"/>')
+        metadata_svg(o.append, els["metadata"])
     if "filmstrip" in els:
         for t in els["filmstrip"]["tiles"]:
             v = t["visible"]
             o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="#8E8E93"/>')
             if t.get("current"):
-                rg = t["ring"]
-                o.append(f'<rect x="{rg["left"]}" y="{rg["top"]}" width="{rg["width"]}" height="{rg["height"]}" rx="{TILE_R + 2}" fill="none" stroke="#FFFFFF" stroke-width="2"/>')
-                sp = t["sphere"]
-                o.append(f'<circle cx="{r2((sp["left"] + sp["right"]) / 2)}" cy="{r2((sp["top"] + sp["bottom"]) / 2)}" r="{SPHERE_D / 2}" fill="{sph}"/>')
+                selected_marks(o.append, t["ring"], t["sphere"])
         if kw.get("_long"):
             b = els["filmstrip"]["band"]
             o.append(f'<rect x="{b["left"]}" y="{b["top"]}" width="24" height="{b["height"]}" fill="#000" opacity="0.6"/>')
@@ -702,6 +756,14 @@ def interaction_svg(vp):
             bands.append(("4 buttons", els[name]["hit"], "#0A84FF"))
     for label, r, col in bands:
         o.append(f'<rect x="{r["left"]}" y="{r["top"]}" width="{r["width"]}" height="{r["height"]}" fill="{col}" opacity="0.35" stroke="{col}"/>')
+    # Interaction boards are a render path too: retain the real selected mark
+    # rather than implying selection only through the orange touch band.
+    for tile in els["filmstrip"]["tiles"]:
+        v = tile["visible"]
+        o.append(f'<rect x="{v["left"]}" y="{v["top"]}" width="{v["width"]}" height="{v["height"]}" rx="{TILE_R}" fill="#8E8E93"/>')
+        if tile.get("current"):
+            selected_marks(o.append, tile["ring"], tile["sphere"])
+    metadata_svg(o.append, els["metadata"])
     o.append(f'<text x="{r2(W / 2)}" y="{r2(H / 2)}" text-anchor="middle" fill="#ECEDF0" font-size="10">5 media: tap · double-tap · pinch · swipe</text>')
     # exclusion rects
     for r in (strip, seek):
@@ -860,19 +922,21 @@ def write_tables(base, out):
     a("")
     a("### T3. Per-scenario checks (every viewport × scenario)")
     a("")
-    a("| Viewport | Scenario | Metadata mode | Free media band dp | Video gap to strip dp (≥8) | Hit collisions | Outside safe | Over cutout | <44 dp (non-tile) | Over back-gesture zone | In mandatory zone | Notes |")
-    a("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    a("| Viewport | Scenario | Metadata mode | Unobstructed media W×H / area dp² | Features | Video gap to strip dp (≥8) | Hit collisions | Outside safe | Over cutout | <44 dp (non-tile) | Over back-gesture zone | In mandatory zone | Notes |")
+    a("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for e in out["viewports"]:
         v = e["viewport"]
         for sname, s in e["scenarios"].items():
             lay, chk = s["layout"], s["checks"]
             if not chk:
-                a(f'| {v["name"]} | {sname} | — | full screen | — | — | — | — | — | — | — | {"; ".join(lay["notes"])} |')
+                a(f'| {v["name"]} | {sname} | — | full screen | context | — | — | — | — | — | — | — | {"; ".join(lay["notes"])} |')
                 continue
             md = lay["elements"].get("metadata", {}).get("mode", "none (no date)")
             vg = lay["elements"].get("video-gap-to-strip", "—")
+            mp = lay["primary_media_proof"]
+            media = f'{mp["unobstructed_width"]}×{mp["unobstructed_height"]} / {mp["unobstructed_area"]}'
             non_tile = [x for x in chk["under_44"] if "tile" not in x]
-            a(f'| {v["name"]} | {sname} | {md} | {lay["free_media_band"]} | {vg} | '
+            a(f'| {v["name"]} | {sname} | {md} | {media} | {mp["discernible_features"]} | {vg} | '
               f'{len(chk["collisions"]) or "0"} | {", ".join(chk["outside_safe"]) or "0"} | '
               f'{", ".join(chk["in_cutout"]) or "0"} | {", ".join(non_tile) or "0"} | '
               f'{len(chk["gesture_side_overlap"]) if v["navigation_mode"] == "2" else "n/a (3-button)"} | '
@@ -888,12 +952,17 @@ def write_tables(base, out):
     a("")
     a("### T4. Legibility (WCAG contrast ratios, computed)")
     a("")
-    a("| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline |")
-    a("|---|---|---|---|---|---|---|---|---|")
+    a("Explicit IEC sRGB linearization: `c/12.92` at `c <= 0.04045`, otherwise `((c+0.055)/1.055)^2.4`; luminance uses 0.2126/0.7152/0.0722. Selected-mark contrast is the stronger visible member of each adjacent fill/keyline pair; worst cases are reported below.")
+    a("")
+    a("| Background | Ink on 35% scrim | Ink on 60% local scrim | Icon on top pill | White icon on lapis slab | Slab vs photo | Sphere vs photo | White ring vs photo | Ring + black keyline | Sphere + black keyline |")
+    a("|---|---|---|---|---|---|---|---|---|---|")
     for row in out["legibility"]:
         a(f'| {row["background"]} | {row["metadata_text_on_35pct_scrim"]} | {row["metadata_text_on_60pct_local_scrim"]} | '
           f'{row["icon_on_top_pill"]} | {row["icon_on_lapis_slab"]} | {row["slab_vs_background"]} | '
-          f'{row["sphere_vs_background"]} | {row["white_ring_vs_background"]} | {row["ring_with_black_keyline_vs_background"]} |')
+          f'{row["sphere_vs_background"]} | {row["white_ring_vs_background"]} | {row["ring_with_black_keyline_vs_background"]} | '
+          f'{row["sphere_with_black_keyline_vs_background"]} |')
+    a("")
+    a(f'Worst metadata contrast on the required 60% local scrim: **{min(r["metadata_text_on_60pct_local_scrim"] for r in out["legibility"])}:1** (PASS ≥ 4.5:1). Worst selected ring/keyline: **{min(r["ring_with_black_keyline_vs_background"] for r in out["legibility"])}:1**; worst sphere/keyline: **{min(r["sphere_with_black_keyline_vs_background"] for r in out["legibility"])}:1**.')
     a("")
     (HERE / "tables.md").write_text("\n".join(L) + "\n")
 

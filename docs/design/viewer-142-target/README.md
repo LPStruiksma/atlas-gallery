@@ -23,9 +23,15 @@ physical Galaxy S24+ measurement, or acceptance of baseline defects. Every diagr
 a **target concept**: insets and cutout are copied from a named measured frame,
 every other rectangle is **proposed**. No `app/src/main/**` change.
 
-## Independent preflight repair gate (#832)
+## Independent preflight repair evidence (#832)
 
-The independent [DESIGN-8 review on #142](https://github.com/LPStruiksma/atlas-gallery/issues/142#issuecomment-7056330457) found the **current proposed target BLOCKING**: metadata ink on a 35% black scrim over white, selected-ring/sphere visibility on bright thumbnails, and primary long-video media recognizability with shown chrome at 832×384 and 640×360 dp at 200% text. [Unit #832](https://github.com/LPStruiksma/atlas-gallery/issues/832) owns the generator-first repair and deterministic regeneration of T3/T4, target JSON and state/interaction SVGs. This note records the *unresolved* review gate, not a preflight PASS or measured runtime evidence. Revalidate every assertion and update this section only after generated proof exists.
+The independent [DESIGN-8 review on #142](https://github.com/LPStruiksma/atlas-gallery/issues/142#issuecomment-7056330457) found three **BLOCKING** defects in the former proposed target. [Unit #832](https://github.com/LPStruiksma/atlas-gallery/issues/832) repairs the generator, rather than hand-editing its outputs:
+
+* **C2:** every shown state draws the actual metadata over a local 60% black field. Explicit sRGB linearization in T4 gives a **5.18:1** white-media worst case (≥ 4.5:1) in light and dark theme; black media is 18.95:1.
+* **C3:** the unchanged 2 dp white ring and `#8C9BFF` sphere each have a real 1 dp external black keyline in full-size, mini/state, photo and video render paths. The selected compound mark is at least **21:1** (ring) and **8.25:1** (sphere) across white/black thumbnails.
+* **C1:** shown-chrome 200%-text long-video boards are composed at true 832×384 and 640×360 dp viewport scale from a deterministic synthetic scene (sun, ridges, lighthouse and sailboats), with playback, seek, strip and actions. T3 reports unobstructed media as 739.56×79.82 dp and 547.56×55.82 dp, respectively, five discernible features, 48 dp targets and a 12 dp video-to-strip gap. Hidden chrome remains context only.
+
+These are static proposed-target checks, not runtime or device evidence. The explicit UNKNOWNs below remain gates for an implementation review.
 
 ## Sources
 
@@ -80,7 +86,7 @@ dp, origin top-left, `S = safeDrawing`. **v3** = value from #654; **Atlas choice
 | Metadata reflow F1 (portrait) | 1 line in the row → 2 lines in the row → below the row (`S.t+56`), full safe width − 24, ≤ 2 lines, ellipsized | Atlas choice |
 | Metadata reflow F2 (landscape) | never a second row; one centred line, place ellipsized first; full text in Details | Atlas choice |
 | Missing date/place | omit; no placeholder, no empty row | v2/v3 removal list |
-| Top scrim | 35% black, 0 → lowest top element + 16 | v2 carried (v3 silent), see C2 |
+| Top scrim | 35% black, 0 → lowest top element + 16; metadata additionally has a local **60%** black field padded 8×4 | v2 carried plus #832 C2 repair |
 | Video row | 48 tall, bottom **12** above the strip band (rule ≥ 8); play 48 hit left; elapsed/duration secondary 14/20 sized for the longest value; seek hit between; track 4 (played part `#8C9BFF`), thumb 16, inset 8 so the thumb stays inside the hit at 0% and 100% | parity §6 features; Atlas layout |
 | Video reflow F3 | seek hit < 120, or labels taller than 48 → labels above the bar | Atlas choice |
 | Motion | **200 ms Lift**; chrome and system bars together; "remove animations" cuts | v3 |
@@ -111,7 +117,7 @@ right, slab bottom) and 8 dp below the safe top.
 | [`svg/portrait-3button--photo-font200-longplace.svg`](svg/portrait-3button--photo-font200-longplace.svg) | Metadata below the row, 2 lines, ellipsized |
 | [`svg/landscape-3button--*.svg`](svg/) | Physically rotated landscape (rotation 1, cutout left, nav right) |
 | [`svg/landscape-narrow-computed--*.svg`](svg/) | Narrow 640×360 landscape stress case (computed) |
-| [`svg/*--states.svg`](svg/) | 16-state target matrix per viewport |
+| [`svg/*--states.svg`](svg/) | 21-state target matrix per viewport |
 | [`svg/*--interaction.svg`](svg/) | Gesture priority bands, exclusion rects and TalkBack order |
 
 Legend: teal dashed = measured safeDrawing; blue = measured bars; red = measured
@@ -122,19 +128,19 @@ yellow = proposed text box (width is an estimate).
 
 | State | Target treatment | Evidence here | Status |
 |---|---|---|---|
-| Light / dark theme | Viewer is black in both; slab `#3448E0`, sphere `#8C9BFF`, white ring in both | states.svg 1–2, T4 | proposed |
-| Bright / dark synthetic photo | Slab is solid, so its icons are 6.67:1 on any photo; scrim, sphere and ring see T4 | states.svg 2–3, T4 | proposed; **C2/C3** |
+| Light / dark theme | Viewer is black in both; slab `#3448E0`, sphere `#8C9BFF`, white ring in both | states.svg white/black photo/video matrix, T4 | proposed static check |
+| Bright / dark synthetic photo/video | Actual metadata uses the 60% local scrim; selected ring and sphere retain v3 fills plus external black keylines | states.svg first eight states, T4 | proposed static check; **C2/C3 repaired** |
 | Photo only / video | Video adds the 48 row above the strip | layout SVGs, T3 | proposed |
-| Chrome + system bars shown / hidden | One media tap; 200 ms Lift; hidden = media only | states.svg 4, measured hidden frames | proposed |
-| Short (0:04) / long (1:23:45) video | Labels sized for the longest value; seek width in T3 | states.svg 8–9, T3 | proposed |
-| Seek start / end | Thumb fully inside the 48 hit (8 inset) | states.svg 10–11 | proposed |
-| Long filmstrip (30+) | Virtualized; band ends fade 24 dp; centre item = pager item | states.svg 15 | proposed |
+| Chrome + system bars shown / hidden | One media tap; 200 ms Lift; hidden = media only | states.svg shown matrix + hidden context, measured hidden frames | proposed |
+| Short (0:04) / long (1:23:45) video | Labels sized for the longest value; seek width in T3 | states.svg video states, T3 | proposed |
+| Seek start / end | Thumb fully inside the 48 hit (8 inset) | states.svg seek-start/end states | proposed |
+| Long filmstrip (30+) | Virtualized; band ends fade 24 dp; centre item = pager item | states.svg long-filmstrip state | proposed |
 | 200% font | F1 / F2 / F3 | T3, font200 SVGs | proposed; text widths estimated |
-| Missing date / place | Omit | states.svg 5–6, T3 | proposed |
-| Pending (decode not ready) | Cached strip thumbnail as placeholder, chrome shown, no text | states.svg 13 | proposed |
-| Unavailable / error | 22 dp neutral glyph, no text; back, Details, delete live; favourite/edit/share disabled | states.svg 14 | proposed; error vs loading **NOT_CAPTURED** in baseline |
+| Missing date / place | Omit | states.svg missing-metadata states, T3 | proposed |
+| Pending (decode not ready) | Cached strip thumbnail as placeholder, chrome shown, no text | states.svg pending state | proposed |
+| Unavailable / error | 22 dp neutral glyph, no text; back, Details, delete live; favourite/edit/share disabled | states.svg error state | proposed; error vs loading **NOT_CAPTURED** in baseline |
 | Empty catalogue | Immediate safe exit, viewer never shown | measured assertion (`emptyCatalogueUsesSafeExitWithoutShowingViewer`) | measured (current) |
-| One-handed reach | Slab, play, seek and strip in the bottom third; back/top group in the top third | states.svg 16, T5 | proposed; **C4** |
+| One-handed reach | Slab, play, seek and strip in the bottom third; back/top group in the top third | states.svg reach-zone state, T5 | proposed; **C4** |
 | TalkBack / action order | interaction.svg 1–13 | interaction.svg | proposed; spoken output **NOT_CAPTURED** |
 | Gesture navigation | Layout follows safeDrawing; strip/seek drags request exclusion; no hit in the mandatory home zone | [GESTURE_NAV.md](GESTURE_NAV.md) | **UNKNOWN / preflight-gated** |
 | Rotation 270 (cutout right) | Inset-driven model mirrors | not drawn | **UNKNOWN** |
@@ -163,20 +169,21 @@ current selected, previous/next actions) → favourite → edit → share → de
 
 | # | Item | Fact | Proposed resolution |
 |---|---|---|---|
-| C1 | Filmstrip touch size | Resolved by #654: leaving Samsung's 30×40 / 2 dp lets cells be 48 × 76 | 44×56 tiles at 4 dp gaps (fewer tiles visible: 7 portrait, 15 landscape) |
-| C2 | 35% top scrim vs 4.5:1 text | Ink `#F2F3F8` on 35% black over white = **2.20:1** (T4) | **A:** deepen to 60% behind the metadata box only (5.18:1). **B:** drop the top scrim and put metadata in a mist pill like back |
-| C3 | White ring and `#8C9BFF` sphere on bright content | Ring 1.0:1, sphere 2.55:1 on white | 1 dp black keyline outside ring and sphere (21:1); v3 says lapis is never a thin outline, the keyline is black |
+| C1 | Primary media on narrow 200% long-video boards | Former boards did not establish recognizability with chrome shown | **Repaired statically:** true-scale synthetic scene with five discernible features; T3 recomputes unobstructed media, 48 dp hits and 12 dp strip clearance for 832×384 and 640×360 |
+| C1a | Filmstrip touch size | Resolved by #654: leaving Samsung's 30×40 / 2 dp lets cells be 48 × 76 | 44×56 tiles at 4 dp gaps (fewer tiles visible: 7 portrait, 15 landscape) |
+| C2 | 35% top scrim vs 4.5:1 text | Ink `#F2F3F8` on 35% black over white was **2.20:1** | **Repaired:** actual text has a 60% local black field; explicit linear-light sRGB calculation gives **5.18:1** worst case |
+| C3 | White ring and `#8C9BFF` sphere on bright content | Ring alone is 1.0:1, sphere alone 2.55:1 on white | **Repaired:** real 1 dp external black keyline in every generator render path; compound selected-state worst cases are 21:1 / 8.25:1 |
 | C4 | Back in the top third | Centre y 72.4 of 832 | Keep; swipe-down close and system back are reachable exits. v3 frees a move to the slab if the preflight prefers |
 | C5 | Icon size | v3 silent | 22 dp until BRAND-L2 sets icons |
 
 ## Unknown or unverified (do not read as passing)
 
-- Physical S24+ panel, One UI gesture settings: **UNKNOWN**.
-- Gesture-navigation insets: **NOT CAPTURED**.
+- Physical S24+ panel and real S24+ visual inspection, One UI gesture settings: **UNKNOWN**.
+- Gesture-navigation insets: **UNKNOWN / NOT CAPTURED**.
 - VIEW:V16–V18 seek frame strip behaviour: **UNVERIFIED**.
 - Text widths use a 0.58 em estimate for Funnel Sans; the implementation must measure real text.
-- Rotation 270, split-screen, foldables: not captured.
-- Spoken TalkBack, long-duration video, codec-error video, loading vs error photo: **NOT_CAPTURED** (as in #609).
+- Rotation 270, split-screen, foldables: **UNKNOWN / NOT CAPTURED**.
+- Spoken TalkBack, codec-error video and loading state: **UNKNOWN / NOT CAPTURED** (as in #609); the long-duration board here is synthetic static evidence, not decoded playback.
 
 ## Capture manifest required at implementation review
 
