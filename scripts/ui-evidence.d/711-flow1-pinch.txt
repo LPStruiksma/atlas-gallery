@@ -47,3 +47,7 @@ flow1-plain-light-in-settling
 flow1-plain-light-in-settled-7
 flow1-plain-dark-out-50
 flow1-plain-dark-revert-settled-7
+flow1-moving-in-75
+flow1-moving-settled-7
+flow1-plain-moving-in-75
+flow1-plain-moving-settled-7

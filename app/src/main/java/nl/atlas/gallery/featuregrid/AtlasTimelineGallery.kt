@@ -148,6 +148,8 @@ private class CrossPinch(
 ) {
     /** Release animation running: further samples are ignored. Main thread only. */
     var settling: Boolean = false
+    /** Where the new level opens when the fingers moved the photo; null = the unmoved target. */
+    var commitTarget: TimelineScrollTarget? = null
 }
 
 /** Another level of a [CrossPinch], laid out as it would be scrolled with the anchor under the focus. */
@@ -317,6 +319,9 @@ fun AtlasTimelineGallery(
     // a derived level pair, so a gesture frame never recomposes the grid.
     var cross by remember { mutableStateOf<CrossPinch?>(null) }
     val crossPosition = remember { mutableFloatStateOf(0f) }
+    // How far the fingers' centre has moved since the pinch began: the photo
+    // under them follows it. Read only while drawing (no recomposition).
+    val crossShift = remember { mutableStateOf(Offset.Zero) }
     val crossJob = remember { arrayOfNulls<Job>(1) }
     // Bumped when a neighbouring level's plan lands in the cache.
     var plansVersion by remember { mutableIntStateOf(0) }
@@ -655,13 +660,13 @@ fun AtlasTimelineGallery(
                         .filter { it in 0..CROSS_MAX_LEVEL }.map(::levelPixels)
                         .filter { it != previewPixels }.distinct().toIntArray()
                 }
-                fun ghostFor(c: CrossPinch, level: Int): CrossGhost? {
+                fun ghostFor(c: CrossPinch, level: Int, focusY: Float = c.focus.y): CrossGhost? {
                     val d = GridDensity.entries.getOrNull(level) ?: return null
                     val plan = recentPlans.peek(d)?.takeIf { matchingPlanFor(it, d) } ?: return null
                     if (c.anchorIndex !in items.indices) return null
                     val g = plan.geometry
                     val target = runCatching {
-                        g.targetMedia(c.anchorIndex, c.fractionY, c.focus.y - c.topPaddingPx)
+                        g.targetMedia(c.anchorIndex, c.fractionY, focusY - c.topPaddingPx)
                     }.getOrNull() ?: return null
                     val scrollTop = g.scrollTopFor(target)
                     val columns = composeGridColumnSlots(contentWidthPx, gapPx, d.columns)
@@ -704,6 +709,7 @@ fun AtlasTimelineGallery(
                 }
                 fun poseAt(c: CrossPinch, level: Int, v: Float): LayerPose {
                     val anchorNow = crossAnchorAt(crossFrame(v, CROSS_MAX_LEVEL), { restRect(c, it) }, c.focus)
+                        .translate(crossShift.value)
                     return poseOnto(restRect(c, level), anchorNow)
                 }
                 val liveOnTop by remember(crossNow, ghosts) {
@@ -738,8 +744,9 @@ fun AtlasTimelineGallery(
                         val level = GridDensity.entries[target]
                         val ghost = ghostFor(c, target)
                         if (ghost != null) {
-                            // The new grid opens exactly where its pinch layer was drawn.
-                            commitScroll = level to ghost.target
+                            // The new grid opens exactly where its pinch layer was drawn,
+                            // including where the fingers moved it.
+                            commitScroll = level to (c.commitTarget ?: ghost.target)
                         } else {
                             pending = PendingTimelineFocus(sourceKey, c.anchorKey, c.anchorIndex,
                                 c.fractionY, c.focus.y - c.topPaddingPx)
@@ -754,17 +761,36 @@ fun AtlasTimelineGallery(
                     c.settling = true
                     val from = crossPosition.floatValue
                     val to = target.toFloat()
+                    // The photo stays where the fingers left it, as far as the new
+                    // level's rows allow: columns are fixed (x settles back) and
+                    // the library's ends clamp the scroll.
+                    val shiftFrom = crossShift.value
+                    var shiftTo = Offset.Zero
+                    c.commitTarget = null
+                    if (target != c.baseLevel && shiftFrom != Offset.Zero) {
+                        val at = ghostFor(c, target)
+                        val moved = ghostFor(c, target, c.focus.y + shiftFrom.y)
+                        if (at != null && moved != null) {
+                            shiftTo = Offset(0f, moved.anchor.top - at.anchor.top)
+                            c.commitTarget = moved.target
+                        }
+                    }
                     val ms = if (reduceMotion) 0 else crossSettleMillis(from, to,
                         nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MS,
-                        nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MIN_MS)
+                        nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MIN_MS).let {
+                        if (it == 0 && shiftFrom != shiftTo)
+                            nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MIN_MS else it
+                    }
                     crossJob[0]?.cancel()
                     crossJob[0] = frameScope.launch {
-                        if (ms > 0) animate(from, to, animationSpec = androidx.compose.animation.core.tween(ms,
-                            easing = nl.atlas.gallery.featuredesign.AtlasMotion.SineInOut80)) { v, _ ->
-                            crossPosition.floatValue = v
+                        if (ms > 0) animate(0f, 1f, animationSpec = androidx.compose.animation.core.tween(ms,
+                            easing = nl.atlas.gallery.featuredesign.AtlasMotion.SineInOut80)) { t, _ ->
+                            crossPosition.floatValue = from + (to - from) * t
+                            crossShift.value = androidx.compose.ui.geometry.lerp(shiftFrom, shiftTo, t)
                         }
                         crossPosition.floatValue = to
-                        if (cross === c) finishCross(c, target)
+                        crossShift.value = shiftTo
+                        if (cross === c) { finishCross(c, target); crossShift.value = Offset.Zero }
                     }
                 }
                 // TalkBack "Larger tiles" / "Smaller tiles": the same anchored,
@@ -775,6 +801,7 @@ fun AtlasTimelineGallery(
                     val c = beginCross(Offset(info.viewportSize.width / 2f,
                         info.viewportSize.height / 2f)) ?: return@choose false
                     crossPosition.floatValue = c.baseLevel.toFloat()
+                    crossShift.value = Offset.Zero
                     cross = c
                     settleCross(next.ordinal)
                     true
@@ -820,10 +847,12 @@ fun AtlasTimelineGallery(
                             if (cross == null && crossJob[0]?.isActive != true) {
                                 cross = beginCross(focusPoint)?.also {
                                     crossPosition.floatValue = it.baseLevel.toFloat()
+                                    crossShift.value = Offset.Zero
                                 }
                             }
                             val c = cross
                             if (c != null && !c.settling) {
+                                crossShift.value = focusPoint - c.focus
                                 val before = kotlin.math.floor(crossPosition.floatValue)
                                 val v = c.baseLevel + progress
                                 crossPosition.floatValue = v
@@ -845,6 +874,7 @@ fun AtlasTimelineGallery(
                                 }
                                 crossJob[0]?.cancel()
                                 cross = null
+                                crossShift.value = Offset.Zero
                                 // The existing ratio destination owns its own lazy state
                                 // and metadata. No 150k source rescan on the UI thread.
                                 requestOriginal(focusPoint.x, focusPoint.y, ready)

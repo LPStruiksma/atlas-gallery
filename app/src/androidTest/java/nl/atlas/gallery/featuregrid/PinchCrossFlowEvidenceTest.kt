@@ -257,6 +257,46 @@ class PinchCrossFlowEvidenceTest {
         saveUiEvidence("flow1-dark-multi-settled-28.png")
     }
 
+    /**
+     * Review 3: the fingers' centre moves while their span changes; the photo
+     * follows it and the committed level keeps it under the final centre.
+     */
+    @Test fun pinchFollowsMovingFingers() = withAnimatorScale("1") {
+        clearDensity()
+        show(fixtures(1_500), true, "flow1-moving")
+        awaitColumns(4)
+        // Well clear of the top: the fingers end lower than they started.
+        repeat(3) { grid.performTouchInput { swipeUp() }; compose.waitForIdle() }
+        compose.awaitNeighboursPlanned()
+        val g = grid.fetchSemanticsNode().boundsInRoot
+        val (tag, before) = tileNear(Offset(g.left + g.width * .7f, g.top + g.height * .4f))
+        val start = before.center - g.topLeft
+        val fractionY = (start.y - (before.top - g.top)) / before.height
+        val delta = Offset(40f, 160f)
+        val from = 260f
+        grid.performTouchInput { down(0, start - Offset(from, 0f)); down(1, start + Offset(from, 0f)) }
+        val steps = 12
+        val target = from * 1.5f.pow(-.75f)
+        for (i in 1..steps) {
+            val s = from + (target - from) * i / steps
+            val c = start + delta * (i.toFloat() / steps)
+            grid.performTouchInput { moveTo(0, c - Offset(s, 0f)); moveTo(1, c + Offset(s, 0f)) }
+        }
+        compose.waitForIdle()
+        saveUiEvidence("flow1-moving-in-75.png")
+        grid.performTouchInput { up(0); up(1) }
+        compose.waitForIdle()
+        grid.assert(columns(7))
+        saveUiEvidence("flow1-moving-settled-7.png")
+        val settled = checkNotNull(boundsOf(tag)) { "anchor photo $tag not shown after a moving pinch" }
+        val endY = g.top + start.y + delta.y
+        assertEquals("the same point of the photo sits under the fingers' final centre",
+            endY, settled.top + fractionY * settled.height, 2f)
+        compose.advanceVirtualTime(1_000L)
+        compose.awaitScreenStill("moving pinch one second after the settle")
+        assertEquals("late vertical jump", settled.top, checkNotNull(boundsOf(tag)).top, 1f)
+    }
+
     @Test fun pinchAtTheTopOfTheLibraryNeverOverscrolls() {
         clearDensity()
         show(fixtures(1_500), true, "flow1-top")

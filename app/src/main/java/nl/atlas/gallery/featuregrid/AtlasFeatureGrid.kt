@@ -177,6 +177,9 @@ fun AtlasFeatureGrid(
     // (UniformGridLevel), so no level has to be planned first.
     var cross by remember(sourceEpoch, viewKey) { mutableStateOf<PlainCross?>(null) }
     val crossPosition = remember { mutableFloatStateOf(0f) }
+    // How far the fingers' centre has moved since the pinch began: the photo
+    // under them follows it. Read only while drawing (no recomposition).
+    val crossShift = remember { mutableStateOf(Offset.Zero) }
     val crossJob = remember { arrayOfNulls<Job>(1) }
     var commitScroll by remember { mutableStateOf<Pair<GridDensity, TimelineScrollTarget>?>(null) }
     val reduceMotion = remember(context) { AtlasMotion.animationsDisabled(context) }
@@ -309,10 +312,10 @@ fun AtlasFeatureGrid(
                     .filter { it in 0..PLAIN_CROSS_MAX_LEVEL }.map(::levelPixels)
                     .filter { it != previewPixels }.distinct().toIntArray()
             }
-            fun ghostFor(c: PlainCross, level: Int): PlainGhost? {
+            fun ghostFor(c: PlainCross, level: Int, focusY: Float = c.focus.y): PlainGhost? {
                 if (c.anchorIndex !in items.indices || level !in 0..PLAIN_CROSS_MAX_LEVEL) return null
                 val g = levelGeometry(level)
-                val target = runCatching { g.target(c.anchorIndex, c.fractionY, c.focus.y) }
+                val target = runCatching { g.target(c.anchorIndex, c.fractionY, focusY) }
                     .getOrNull() ?: return null
                 val top = g.scrollTopFor(target)
                 return PlainGhost(target, g.visibleCells(top), g.anchorRect(c.anchorIndex, top))
@@ -351,6 +354,7 @@ fun AtlasFeatureGrid(
             }
             fun poseAt(c: PlainCross, level: Int, v: Float): LayerPose {
                 val anchorNow = crossAnchorAt(crossFrame(v, PLAIN_CROSS_MAX_LEVEL), { restRect(c, it) }, c.focus)
+                    .translate(crossShift.value)
                 return poseOnto(restRect(c, level), anchorNow)
             }
             val liveOnTop by remember(crossNow, ghosts) {
@@ -384,9 +388,10 @@ fun AtlasFeatureGrid(
                 val level = GridDensity.entries[target]
                 val ghost = ghostFor(c, target)
                 if (ghost != null && items.getOrNull(c.anchorIndex)?.uri == c.anchorKey) {
-                    // The new grid opens exactly where its pinch layer was drawn.
+                    // The new grid opens exactly where its pinch layer was drawn,
+                    // including where the fingers moved it.
                     pendingAnchor = null
-                    commitScroll = level to ghost.target
+                    commitScroll = level to (c.commitTarget ?: ghost.target)
                     density = level
                 } else chooseDensity(level, c.focus)
             }
@@ -395,15 +400,32 @@ fun AtlasFeatureGrid(
                 c.settling = true
                 val from = crossPosition.floatValue
                 val to = target.toFloat()
+                // The photo stays where the fingers left it, as far as the new
+                // level's rows allow: columns are fixed (x settles back) and
+                // the library's ends clamp the scroll.
+                val shiftFrom = crossShift.value
+                var shiftTo = Offset.Zero
+                c.commitTarget = null
+                if (target != c.baseLevel && shiftFrom != Offset.Zero) {
+                    val at = ghostFor(c, target)
+                    val moved = ghostFor(c, target, c.focus.y + shiftFrom.y)
+                    if (at != null && moved != null) {
+                        shiftTo = Offset(0f, moved.anchor.top - at.anchor.top)
+                        c.commitTarget = moved.target
+                    }
+                }
                 val ms = if (reduceMotion) 0 else crossSettleMillis(from, to,
                     AtlasMotion.PINCH_SETTLE_MS, AtlasMotion.PINCH_SETTLE_MIN_MS)
+                    .let { if (it == 0 && shiftFrom != shiftTo) AtlasMotion.PINCH_SETTLE_MIN_MS else it }
                 crossJob[0]?.cancel()
                 crossJob[0] = frameScope.launch {
-                    if (ms > 0) animate(from, to, animationSpec = tween(ms, easing = AtlasMotion.SineInOut80)) { v, _ ->
-                        crossPosition.floatValue = v
+                    if (ms > 0) animate(0f, 1f, animationSpec = tween(ms, easing = AtlasMotion.SineInOut80)) { t, _ ->
+                        crossPosition.floatValue = from + (to - from) * t
+                        crossShift.value = androidx.compose.ui.geometry.lerp(shiftFrom, shiftTo, t)
                     }
                     crossPosition.floatValue = to
-                    if (cross === c) finishCross(c, target)
+                    crossShift.value = shiftTo
+                    if (cross === c) { finishCross(c, target); crossShift.value = Offset.Zero }
                 }
             }
             // TalkBack "Larger/Smaller tiles" and the View as chips: the same
@@ -414,6 +436,7 @@ fun AtlasFeatureGrid(
                 val c = beginCross(Offset(info.viewportSize.width / 2f,
                     info.viewportSize.height / 2f)) ?: return@choose false
                 crossPosition.floatValue = c.baseLevel.toFloat()
+                crossShift.value = Offset.Zero
                 cross = c
                 settleCross(next.ordinal)
                 true
@@ -448,10 +471,14 @@ fun AtlasFeatureGrid(
                     allowOriginal = originalCurrent != null, allowOverview = false)
             }, onProgress = { progress, focusPoint ->
                 if (cross == null && crossJob[0]?.isActive != true) {
-                    cross = beginCross(focusPoint)?.also { crossPosition.floatValue = it.baseLevel.toFloat() }
+                    cross = beginCross(focusPoint)?.also {
+                        crossPosition.floatValue = it.baseLevel.toFloat()
+                        crossShift.value = Offset.Zero
+                    }
                 }
                 val c = cross
                 if (c != null && !c.settling) {
+                    crossShift.value = focusPoint - c.focus
                     val before = kotlin.math.floor(crossPosition.floatValue)
                     val v = c.baseLevel + progress
                     crossPosition.floatValue = v
@@ -471,6 +498,7 @@ fun AtlasFeatureGrid(
                     }
                     crossJob[0]?.cancel()
                     cross = null
+                    crossShift.value = Offset.Zero
                     requestOriginal(focus)
                 } else next.squareDensityOrNull()?.let {
                     if (cross != null) settleCross(it.ordinal) else chooseDensity(it, focus)
@@ -576,6 +604,8 @@ private class PlainCross(
 ) {
     /** Release animation running: further samples are ignored. Main thread only. */
     var settling: Boolean = false
+    /** Where the new level opens when the fingers moved the photo; null = the unmoved target. */
+    var commitTarget: TimelineScrollTarget? = null
 }
 
 private class PlainGhost(val target: TimelineScrollTarget, val cells: List<CrossCell>, val anchor: Rect)
