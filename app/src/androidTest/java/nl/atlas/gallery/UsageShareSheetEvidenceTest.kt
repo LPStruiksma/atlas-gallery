@@ -56,7 +56,7 @@ class UsageShareSheetEvidenceTest {
         }
         try {
             compose.awaitThat("the share sheet to list the synthetic recipient", timeoutMs = 20_000L) {
-                sheetHas("Test recipient")
+                sheetHas("Test recipient") && sheetHas("Test recipient two")
             }
         } catch (e: AssertionError) {
             // Facts for the next fix: what the system did with the chooser intent.
