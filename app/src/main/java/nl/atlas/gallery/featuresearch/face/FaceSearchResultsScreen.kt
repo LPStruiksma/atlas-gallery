@@ -329,7 +329,7 @@ fun FaceSearchResultsScreen(
             })
         when (state) {
             is FaceSearchState.Results -> ResultsGrid(state, visibleRecords, onOpen, onOpenAlbum,
-                Modifier.weight(1f), screenSort)
+                Modifier.weight(1f), screenSort, allowPersonAlbum = screenMedia == null)
             else -> Box(Modifier.weight(1f)) { StateScreen(state, onOpenPeople, onBack) }
         }
         TextButton(onClick = onBack, modifier = Modifier.testTag("atlas-face-search-back")) {
@@ -399,7 +399,8 @@ private fun ResultsGrid(
     onOpen: (List<MediaRecord>, MediaRecord) -> Unit,
     onOpenAlbum: (PersonKey, String) -> Unit,
     modifier: Modifier,
-    screenSort: Boolean = false
+    screenSort: Boolean = false,
+    allowPersonAlbum: Boolean = true
 ) {
     if (visibleRecords == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -424,7 +425,7 @@ private fun ResultsGrid(
     ) {
         val person = state.person
         val name = state.personName
-        if (person != null && name != null) {
+        if (allowPersonAlbum && person != null && name != null) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Button(onClick = { onOpenAlbum(person, name) },
                     modifier = Modifier.fillMaxWidth().testTag("atlas-face-results-album")) {
