@@ -31,7 +31,7 @@ export const FRAMES = [
   'S5-one-handed', 'S6-playback',
 ];
 export const TARGET_FRAMES = [
-  'T1-collapsed', 'T2-typing-ime', 'T3-bottom-results', 'T4-no-match-ime', 'T5-no-match-rest',
+  'T1-collapsed', 'T2-typing-ime', 'T3-bottom-results', 'T3b-bottom-results-ime', 'T4-no-match-ime', 'T5-no-match-rest',
   'T6-handoff', 'T7-landscape-ime', 'T8-arrival', 'T9-back',
   'TS1-no-stories', 'TS2-planning', 'TS3-stale-permission', 'TS4-playback-exit',
 ];
@@ -92,11 +92,15 @@ if (doTarget) {
     if (m.minTargetDp < 48 - 0.5) fail(m, `touch target ${m.minTargetDp} dp < 48`);
     if (m.chipLabelsClipped) fail(m, 'a scope chip label is clipped');
     if (m.chipsInsidePanel === false) fail(m, 'a scope chip leaves the panel');
-    if (m.panelBelowHeader === false) fail(m, 'search panel covers the header (Back unreachable)');
+    if (m.panelBelowHeader === false && m.frame !== 'T3b-bottom-results-ime') fail(m, 'search panel covers the header (Back unreachable)');
     if (m.emptyFits === false) fail(m, 'empty-state text does not fit the free region');
     if (m.slabInsideScreen === false) fail(m, 'slab leaves the screen');
     if (m.titleFits === false) fail(m, 'screen title does not fit on one line');
     if (m.slabBottomAboveInsetDp !== undefined && Math.abs(m.slabBottomAboveInsetDp - 12) > 0.5) fail(m, `slab is ${m.slabBottomAboveInsetDp} dp above the inset, expected 12`);
+    // T3b: IME raised at the end of the same results. Viable at 100 % only with slab hidden and header scrolled away;
+    // at 200 % it is measured infeasible, and the check pins that so the README cannot claim otherwise.
+    if (m.frame === 'T3b-bottom-results-ime' && m.scale === 1 && !m.lastTileWhollyClear) fail(m, `100 % IME-raised end of results not clear (${m.lastTileClearAboveStackDp} dp)`);
+    if (m.frame === 'T3b-bottom-results-ime' && m.scale === 2 && m.lastTileWhollyClear) fail(m, '200 % IME-raised layout unexpectedly fits: update the README claim');
     if (m.frame === 'T3-bottom-results' && !m.lastTileWhollyClear) fail(m, `last tile not wholly clear (${m.lastTileClearAboveStackDp} dp above the stack)`);
     if (m.frame === 'T1-collapsed' && m.scale === 2 && Math.abs(m.slabWidthDp - 359) > 1) fail(m, `slab ${m.slabWidthDp} dp wide, L4 audit says 359`);
     if (m.scale === 2 && m.panelHeightDp !== undefined && m.chipRows < 2 && !m.land) fail(m, 'chips did not wrap at 200 %');

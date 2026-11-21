@@ -7,7 +7,7 @@ Owner words: “all places where one can search, one has access to the full suit
 | Set | What it is | Where |
 |---|---|---|
 | **Current main** | What ships today: legacy four-tab pill, header search icon, `AtlasSearch` popup. Each frame carries the label “CURRENT MAIN (legacy shell, not the target)”. Not an identity-compliant design. | [`frames/`](frames/) (14 frames × light/dark, 1.7× font in S4), contact sheets [light](contact-sheet-light.png) · [dark](contact-sheet-dark.png) |
-| **Proposed target** | Quiet Frame v3 composition: two-place slab with search sphere (L4), search bar above the slab (L7), shared `AtlasSearch` scope chips. Each frame carries “PROPOSED TARGET”. Not on `main`; shipping it needs L4 #657 and L7 #660 first. | [`frames/target/`](frames/target/) (13 frames × 100 % / 200 % × light/dark = 52 PNGs, plus `metrics.json`), contact sheets [light](contact-sheet-target-light.png) · [dark](contact-sheet-target-dark.png) |
+| **Proposed target** | Quiet Frame v3 composition: two-place slab with search sphere (L4), search bar above the slab (L7), shared `AtlasSearch` scope chips. Each frame carries “PROPOSED TARGET”. Not on `main`; shipping it needs L4 #657 and L7 #660 first. | [`frames/target/`](frames/target/) (14 frames × 100 % / 200 % × light/dark = 56 PNGs, plus `metrics.json`), contact sheets [light](contact-sheet-target-light.png) · [dark](contact-sheet-target-dark.png) |
 
 Frame size: every portrait frame is exactly 1080 × 2340 px (384 × 832 dp at 2.8125), landscape 2340 × 1080. Annotation colour: orange = numbered badges, dashed 48 dp touch targets and assumed insets; green = measured clearance; dark label = frame code; hatched dashed band = where the IME would be (when hidden).
 
@@ -16,18 +16,21 @@ Frame size: every portrait frame is exactly 1080 × 2340 px (384 × 832 dp at 2.
 | Preflight finding | Repair here | Evidence |
 |---|---|---|
 | **6 · 200 % scope control clipped** (`Whole library` cut off in a non-wrapping 360 dp row) | Target: the scope chips live in the L7 panel (352 dp inner width) and **wrap to a second row** when they do not fit; each chip is at least 48 dp tall, label never clipped, selected state kept. Measured: 1 row at 100 %, 2 rows at 200 %, zero clipped labels. Current-main S4 stays as the **documented defect** (still clipped at 1.7×), because `AtlasSearch` on `main` is unchanged. | `T2`, `T3`, `T4`, `T6` at 200 %; `metrics.json` `chipRows`, `chipLabelsClipped`; [S4](frames/S4-large-text-light.png) |
-| **6 · IME hides the last match** | Measured finding below: with the IME up there is **no room** for a whole tile, so the repair is a rule, not padding alone: results get bottom content padding equal to the whole bottom stack, **and the first drag on the results hides the IME** (bar and query stay). `T3` shows the end of the results with the last tile wholly clear. | `T2` vs `T3`; `metrics.json` `resultRegionDp`, `lastTileClearAboveStackDp` |
+| **6 · IME hides the last match** | **Partly repaired; one acceptance detail is infeasible and routed to Strategy** (see below). The same query (`e`, 5 of 6 stories, three rows) is used in T2, T3, T3b, T6 and TS4. With the IME up the last tile cannot be wholly above the bottom stack at 200 %; at 100 % it can only if the slab is hidden and the header scrolled away (T3b). Without the IME the last tile is 8 dp above the bar at both scales (T3). | `T2`, `T3`, `T3b`; `metrics.json` `lastTileClearAboveStackDp`, `lastTileWhollyClear` |
 | **8 · legacy shell contradicts Quiet Frame v3** | Target frames use the approved slab + sphere + bar composition; legacy frames are labelled as current main only. Hand-off semantics from #824 are kept. | All `T*` frames |
 
-### IME capacity (measured, 384 × 832 dp, IME 324 dp + 16 dp gesture inset, assumed)
+### IME capacity (measured, 384 × 832 dp, IME 324 dp + 16 dp gesture inset, assumed; query `e`)
 
-| Font | Bar panel | Slab | Free for results above the stack | One Story tile | Consequence |
-|---|---|---|---|---|---|
-| 100 % | 122 dp (one chip row) | 64 dp, rides the IME like L7 A1 | **195 dp** | 284 dp | A whole tile cannot fit; first row cover and title are visible (T2). |
-| 200 % | 204 dp (two chip rows) | 71 dp | **98 dp** | 372 dp | Only the top of the first cover (T2). Back and the bar stay reachable; the panel does not cover the header (checked). |
-| Landscape 100 % / 200 % | 68 / 84 dp (one row) | hidden | **44 / 20 dp** | n/a | Results are effectively behind the IME; they return when the IME hides (T7). |
+| Layout (IME raised) | Free for results | One Story tile | Last tile wholly above the stack? |
+|---|---|---|---|
+| 100 %, slab rides the IME (L7 A1), header visible (T2) | 195 dp | 268 dp | **No** |
+| 100 %, slab hidden, header scrolled away, scrolled to the end (**T3b**) | 335 dp | 268 dp | **Yes**, 8 dp clear |
+| 200 %, slab rides the IME, header visible (T2) | 98 dp | 340 dp | **No** |
+| 200 %, slab hidden, header scrolled away, scrolled to the end (**T3b**) | 253 dp | 340 dp | **No**: infeasible even with everything else hidden |
+| Landscape 100 % / 200 % (T7) | 44 / 20 dp | 268 / 340 dp | **No** |
+| IME hidden by the first drag, scrolled to the end (**T3**) | 519 dp (100 %) / 422 dp (200 %) | 268 / 340 dp | **Yes**, 8 dp clear at both scales |
 
-So “the last matching tile above the IME” is delivered by the **IME-dismiss-on-drag rule** plus bottom content padding: at rest after a drag (IME hidden) the last tile is **8 dp above the bar** at both scales (T3: 100 % region 519 dp, 200 % region 422 dp). Tapping the field again raises the IME over the lower part; it does not move the bar, and the next drag hides it again. **Implementation prerequisite for #804, not asserted as done:** Stories must (1) set content padding to the measured stack height + 8 dp, (2) hide the IME on results drag, (3) keep the 8 dp padding when the IME is hidden by the Search key or Back.
+**Finding.** #872 asks to prove the final matching tile can move wholly above the portrait IME. Measured, that is achievable at 100 % only by hiding the slab (a deviation from L7 A1, where the slab rides the IME) and scrolling the header away (Back then relies on the system gesture), and it is **infeasible at 200 %** at any layout, because the IME (340 dp), the wrapped bar panel (204 dp) and one 340 dp tile exceed the 832 dp screen. This is therefore **not claimed as met**. Proposed requirement for #804, pending a Strategy or owner decision on the acceptance wording: (1) content padding = bottom stack + 8 dp; (2) the first drag on the results hides the IME while the bar and query stay (T3, viable at both scales); (3) the same padding when the IME is hidden by the Search key or Back; (4) optionally the T3b layout at 100 %. Tapping the field again raises the IME over the lower part and the next drag hides it. No frame here pretends the IME-raised 200 % case works.
 
 ### Adaptation decisions (source → observed/proposed)
 
@@ -44,8 +47,8 @@ So “the last matching tile above the IME” is delivered by the **IME-dismiss-
 | State | Frame | Query owner and value | Scope | Focus / IME | Back goes to | Kept or discarded |
 |---|---|---|---|---|---|---|
 | Collapsed | T1 | none | n/a | none | closes Stories (#457) | deck, scroll |
-| Bar open, typing | T2 | Stories-local, “summer” | This screen | field focused, IME up | hides the IME | deck unchanged, never widened |
-| After drag | T3 | same | This screen | field unfocused, IME hidden | closes the bar and clears the query | scroll position kept |
+| Bar open, typing | T2 | Stories-local, “e” | This screen | field focused, IME up | hides the IME | deck unchanged, never widened |
+| After drag | T3 (IME hidden), T3b (IME raised, 100 % only) | same, “e” | This screen | field unfocused, IME hidden | closes the bar and clears the query | scroll position kept |
 | No match, IME up | T4 | “beach” | This screen | IME up | hides the IME | the Whole library chip is the one-tap action |
 | No match, IME hidden | T5 | “beach” | This screen | IME hidden (Search key) | closes the bar | button **Search whole library** repeats the chip |
 | Whole library tapped | T6 | cleared | Library | IME released, focus leaves | n/a | Stories exits; query and bar discarded; playback restore cleared |
@@ -75,7 +78,7 @@ node docs/design/stories-search-175/render/render.mjs --target     # target set 
 node docs/design/stories-search-175/render/render.mjs --check      # measures every target frame, asserts the rules, compares metrics.json
 python3 docs/design/stories-search-175/render/contact_sheet_target.py docs/design/stories-search-175/frames/target light docs/design/stories-search-175/contact-sheet-target-light.png 0.25
 ```
-`--check` asserts: every touch target at least 48 dp, no clipped chip label, chips inside the panel, panel never covers the header, slab inside the screen and 12 dp above the inset, slab 359 dp wide at 200 % (L4), chips wrap at 200 %, empty-state text fits, the last tile in T3 is wholly clear, and `metrics.json` equals a fresh measurement. Committed PNGs are reduced to 256 colours with Pillow.
+`--check` asserts: every touch target at least 48 dp, no clipped chip label, chips inside the panel, panel never covers the header, slab inside the screen and 12 dp above the inset, slab 359 dp wide at 200 % (L4), chips wrap at 200 %, empty-state text fits, the last tile in T3 is wholly clear, T3b fits at 100 % and is pinned as not fitting at 200 %, and `metrics.json` equals a fresh measurement. Committed PNGs are reduced to 256 colours with Pillow.
 
 ---
 
@@ -86,6 +89,7 @@ python3 docs/design/stories-search-175/render/contact_sheet_target.py docs/desig
 | 1 / 2 / 3 | T1 | Search sphere (48 dp, in the slab) / Back 48 dp / Stories grid unchanged |
 | 4 / 5 | T2 | Scope chips (both 48 dp+) / field with Close, focused |
 | 6 | T3 | Final matching tile is 8 dp above the bar (green band), IME hidden by the drag |
+| 18 | T3b | Same results and query with the IME raised: slab hidden, header scrolled away; fits at 100 % only |
 | 7 | T4 | No-match copy sits in the free region; chip is the action |
 | 8 | T5 | **Search whole library** button, 48 dp |
 | 9 | T6 | Tap on Whole library: the handoff |

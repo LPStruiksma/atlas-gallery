@@ -141,7 +141,7 @@ const header=(title='Stories')=>`<div class="header" id="hdr" style="top:${ST}px
 const tile=([t,c,m,u],q,k)=>`<div class="tile"><div class="cover">${art(k)}<div class="lab">${m} moments</div></div><div class="tt">${hl(t,q)}</div><div class="cp">${hl(c,q)}</div>${u?`<div class="ms">${u} items unavailable</div>`:''}</div>`;
 const tiles=(list,q)=>list.map(s=>tile(s,q,STORIES.indexOf(s))).join('');
 // results region: .wrap is clipped between the header and `bottom`; inner grid anchored at the top (scroll 0) or the end (scrolled to the end)
-const results=(list,q,mode='start')=>`<div class="wrap" id="wrap" style="top:${ST+HH}px;bottom:0"><div class="grid" id="grid" style="${mode==='end'?'bottom:0':'top:0'}">${tiles(list,q)}</div></div>`;
+const results=(list,q,mode='start')=>`<div class="wrap" id="wrap" style="top:${F==='T3b-bottom-results-ime'?ST:ST+HH}px;bottom:0"><div class="grid" id="grid" style="${mode==='end'?'bottom:0':'top:0'}">${tiles(list,q)}</div></div>`;
 function slab(active='Collections',sphere=true){
   return `<div class="slab" id="slab">${['Pictures','Collections'].map((n,i)=>`<div class="pill ${n===active?'on':''}" style="width:${PILLW[i]}px" data-t="${n}">${n}</div>`).join('')}${sphere?`<div class="sphere" id="sphere">${I.search}</div>`:''}</div>`;
 }
@@ -153,11 +153,11 @@ function panel(o={}){
   const note=o.note?`<div class="row note" id="note">${o.note}</div>`:'';
   return `<div class="panel" id="panel">${note}${recents}${chips(o.lib)}<div class="qbar ${o.focus?'focus':''}" id="qbar" data-t="Search field">${I.search}${body}${x}</div></div>`;
 }
-function ime(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="ime" id="ime" style="height:${IMEH+NB}px">${LAND?'':'<div class="sug"><span>summer</span><span>sum</span><span>sunny</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
+function ime(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="ime" id="ime" style="height:${IMEH+NB}px">${LAND?'':'<div class="sug"><span>e</span><span>en</span><span>ev</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
 const under=()=>NB?`<div class="navbar" id="navbar" style="height:${NB}px"><i></i></div>`:'';
 // ---- frames ------------------------------------------------------------------------------------
 let main='', stackHtml='', tag='', hasIme=false, noStack=false;
-const Q='summer';
+const Q='e'; // one query for T2, T3, T3b, T6, T7 and TS4: 5 of 6 stories match, so the results are 3 rows long
 switch(F){
 case 'T1-collapsed': // Stories, search sphere at rest in the L4 slab
   main=header()+results(STORIES,'','start'); stackHtml=slab('Collections',true)+under();
@@ -166,8 +166,11 @@ case 'T2-typing-ime': // IME up, query typed, first result row only
   hasIme=true; main=header()+results(match(Q),Q,'start'); stackHtml=panel({q:Q,focus:true})+slab('Collections',false)+ime();
   tag='T2 · Target: bar + chips above the slab on the IME; only this deck is filtered'; break;
 case 'T3-bottom-results': // IME dismissed by dragging the results; scrolled to the end
-  main=header()+results(match('20'),'20','end'); stackHtml=panel({q:'20',focus:false})+slab('Collections',false)+under();
+  main=header()+results(match(Q),Q,'end'); stackHtml=panel({q:Q,focus:false})+slab('Collections',false)+under();
   tag='T3 · Target: drag hid the IME, bar stays; last matching tile wholly clear'; break;
+case 'T3b-bottom-results-ime': // same query and end of results, IME raised: only viable with slab hidden and the header scrolled away
+  hasIme=true; main=results(match(Q),Q,'end'); stackHtml=panel({q:Q,focus:true})+ime();
+  tag='T3b · Target: IME raised, end of results (slab hidden, header scrolled away)'; break;
 case 'T4-no-match-ime':
   hasIme=true; main=header()+`<div id="emptyslot"></div>`; stackHtml=panel({q:'beach',focus:true})+slab('Collections',false)+ime();
   tag='T4 · Target: no match, IME up. The Whole library chip is the one-tap action'; break;
@@ -208,9 +211,10 @@ else if(F==='TS2-planning') body+=`<div class="empty" id="empty" style="top:${ST
 body+=`<div class="stack" id="stack">${stackHtml}</div>`;
 R.innerHTML=body.replace(/<div id="emptyslot"><\/div>/,'');
 const $=id=>document.getElementById(id), rect=e=>e&&e.getBoundingClientRect();
+const HB=F==='T3b-bottom-results-ime'?ST:ST+HH;
 const stack=$('stack'), overlayTop=rect(stack).top; M.overlayTopDp=+overlayTop.toFixed(1);
-if(F==='T3-bottom-results')$('wrap').style.bottom=(H-overlayTop+8)+'px'; // contentPadding = bottom stack + 8 dp
-const HB=ST+HH, gridRegion=()=>({top:HB,bottom:overlayTop});
+if(F==='T3-bottom-results'||F==='T3b-bottom-results-ime')$('wrap').style.bottom=(H-overlayTop+8)+'px'; // contentPadding = bottom stack + 8 dp
+const  gridRegion=()=>({top:HB,bottom:overlayTop});
 // no-match / empty-state text sits in the free region above the stack
 if(F==='T4-no-match-ime'||F==='T5-no-match-rest'){
   const free=overlayTop-HB;
@@ -226,7 +230,7 @@ const rr=e=>{const r=rect(e);return {l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.w
 const targets=[...document.querySelectorAll('[data-t],#back,#sphere,.pill,.chip')].filter(e=>e.id!=='note');
 M.targets=targets.map(e=>{const r=rr(e);return {name:e.dataset.t||e.id||e.textContent.trim().slice(0,24),w:+r.w.toFixed(1),h:+r.h.toFixed(1)}});
 M.minTargetDp=Math.min(...M.targets.map(t=>Math.min(t.w,t.h)));
-if($('chiprow')){const c=rr($('chiprow')), ps=rr($('panel'));M.chipRows=new Set([...document.querySelectorAll('.chip')].map(e=>Math.round(rr(e).t))).size;M.chipsInsidePanel=[...document.querySelectorAll('.chip')].every(e=>rr(e).r<=ps.r-8+1&&rr(e).l>=ps.l);M.chipLabelsClipped=[...document.querySelectorAll('.chip')].some(e=>e.scrollWidth>e.clientWidth+1);M.panelTopDp=+ps.t.toFixed(1);M.panelBelowHeader=ps.t>=ST+HH-0.5;M.panelHeightDp=+ps.h.toFixed(1);M.panelWidthDp=+ps.w.toFixed(1);}
+if($('chiprow')){const c=rr($('chiprow')), ps=rr($('panel'));M.chipRows=new Set([...document.querySelectorAll('.chip')].map(e=>Math.round(rr(e).t))).size;M.chipsInsidePanel=[...document.querySelectorAll('.chip')].every(e=>rr(e).r<=ps.r-8+1&&rr(e).l>=ps.l);M.chipLabelsClipped=[...document.querySelectorAll('.chip')].some(e=>e.scrollWidth>e.clientWidth+1);M.panelTopDp=+ps.t.toFixed(1);M.panelBelowHeader=ps.t>=HB-0.5;M.panelHeightDp=+ps.h.toFixed(1);M.panelWidthDp=+ps.w.toFixed(1);}
 if($('slab')){const s=rr($('slab'));M.slabWidthDp=+s.w.toFixed(1);M.slabTopDp=+s.t.toFixed(1);M.slabHeightDp=+s.h.toFixed(1);M.slabBottomAboveInsetDp=+((H-NB-(hasIme?IMEH:0))-s.b).toFixed(1);M.slabInsideScreen=s.l>=0&&s.r<=W;}
 if($('qbar')){const b=rr($('qbar'));M.qbarHeightDp=+b.h.toFixed(1);}
 // results clearance: wholly visible tiles between the header and the bottom stack
@@ -261,6 +265,8 @@ case 'T2-typing-ime': tgt($('qbar'));tgt($('close'));document.querySelectorAll('
 case 'T3-bottom-results': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));
   clearBand(rr(document.querySelectorAll('.tile')[document.querySelectorAll('.tile').length-1]).b,overlayTop,`${M.lastTileClearAboveStackDp.toFixed(0)} dp`,W-90,W);
   imeZone('IME returns here only if the field is tapped');badge(6,W-40,HB+10);break;
+case 'T3b-bottom-results-ime': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));
+  {const t=document.querySelectorAll('.tile');const lb=rr(t[t.length-1]).b;clearBand(lb,overlayTop,`${M.lastTileClearAboveStackDp.toFixed(0)} dp`,W-90,W);}badge(18,W-40,ST+6);break;
 case 'T4-no-match-ime': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));badge(7,rr($('nmtxt')).l-30,rr($('nmtxt')).t);imeZone('IME 324 dp');break;
 case 'T5-no-match-rest': tgt($('nmbtn'));document.querySelectorAll('.chip').forEach(tgt);badge(8,rr($('nmbtn')).r-6,rr($('nmbtn')).t-8);imeZone('IME hidden');break;
 case 'T6-handoff':{const c=rr($('libchip'));document.body.insertAdjacentHTML('beforeend',`<div class="ripple" style="left:${c.l+c.w/2-40}px;top:${c.t+c.h/2-40}px;width:80px;height:80px"></div>`);tgt($('libchip'));badge(9,c.r-6,c.t-10);
