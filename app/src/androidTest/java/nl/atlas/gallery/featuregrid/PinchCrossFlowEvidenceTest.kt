@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.AtlasEvidenceHarness
+import nl.atlas.gallery.LocalGalleryPublicationEpoch
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.benchmark.BenchmarkReport
@@ -90,7 +93,7 @@ class PinchCrossFlowEvidenceTest {
     private fun show(items: List<MediaRecord>, dark: Boolean = true, viewKey: String,
         selected: Set<String>? = null) {
         compose.setContent {
-            AtlasEvidenceHarness(dark = dark) {
+            CachedThumbnailEvidence(dark = dark) {
                 AtlasTimelineGallery(
                     items = items,
                     sort = TimelineSort.NEWEST,
@@ -512,10 +515,26 @@ class PinchCrossFlowEvidenceTest {
                 else Uri.fromFile(file).buildUpon().fragment("$i").build().toString()
             // Nine photos a day, newest first: day headers interleave like a camera roll.
             MediaRecord(i.toLong(), uri, "Flow $i", "DCIM/ATLAS-TEST/", 1_000L + i,
-                1_700_000_000_000L - (i / 9) * 86_400_000L, false)
+                1_700_000_000_000L - (i / 9) * 86_400_000L, false,
+                providerVersion = SYNTHETIC_PROVIDER_VERSION, generationModified = 1L)
         }
     }
 }
+
+/**
+ * Synthetic records carry a provider revision and the screen a publication
+ * epoch, as MediaStore rows and MainActivity do. Without them the app never
+ * memory-caches a thumbnail (an unknown revision may not reuse a decode), so
+ * the pinch layer, which only draws memory-cached tiles, would render empty
+ * here while it shows photos on a phone.
+ */
+internal const val SYNTHETIC_PROVIDER_VERSION = "synthetic-711"
+
+@Composable
+internal fun CachedThumbnailEvidence(dark: Boolean = true, content: @Composable () -> Unit) =
+    AtlasEvidenceHarness(dark = dark) {
+        CompositionLocalProvider(LocalGalleryPublicationEpoch provides 711L, content = content)
+    }
 
 /** Neighbouring levels are planned after a short idle pause, off the main thread. */
 private fun ComposeTestRule.awaitNeighboursPlanned(timeoutMs: Long = 30_000L) = awaitThat(
@@ -547,10 +566,11 @@ class PinchCrossFlowLandscapeEvidenceTest {
                 bitmap.recycle()
             }
             MediaRecord(i.toLong(), Uri.fromFile(image).toString(), "Land $i", "DCIM/ATLAS-TEST/",
-                1_000L + i, 1_700_000_000_000L - (i / 9) * 86_400_000L, false)
+                1_000L + i, 1_700_000_000_000L - (i / 9) * 86_400_000L, false,
+                providerVersion = SYNTHETIC_PROVIDER_VERSION, generationModified = 1L)
         }
         compose.setContent {
-            AtlasEvidenceHarness {
+            CachedThumbnailEvidence {
                 AtlasTimelineGallery(items = items, sort = TimelineSort.NEWEST,
                     gridState = rememberLazyGridState(), onOpen = {}, modifier = Modifier.fillMaxSize(),
                     viewKey = "flow1-land", catalogueEpoch = 12L)

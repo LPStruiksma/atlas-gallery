@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import nl.atlas.gallery.AtlasEvidenceHarness
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.benchmark.BenchmarkReport
@@ -76,7 +75,7 @@ class PlainGridPinchFlowEvidenceTest {
             .getSharedPreferences("atlas_featuregrid_density", Context.MODE_PRIVATE).edit().clear().commit()
         val items = fixtures(600)
         compose.setContent {
-            AtlasEvidenceHarness(dark = dark) {
+            CachedThumbnailEvidence(dark = dark) {
                 AtlasFeatureGrid(items = items, state = rememberLazyGridState().also { state = it }, busy = false,
                     onOpen = {}, modifier = Modifier.fillMaxSize(), viewKey = viewKey,
                     catalogueEpoch = 21L, showViewAs = showViewAs)
@@ -173,8 +172,8 @@ class PlainGridPinchFlowEvidenceTest {
         assertEquals("handover: anchor size vs its pinch layer", drawn.width, settled.width, 1f)
 
         // Handover frame pair: the last pinch-layer frame against the first
-        // real-grid frame, inside the grid. Reported, not asserted: the
-        // layer is drawn from the memory cache, the grid from its own decode.
+        // real-grid frame, inside the grid. The layer is drawn from the memory
+        // cache and the grid from its own decode, so a small difference is fine.
         val diff = if (lastOverlay != null && firstGrid != null)
             frameDiff(lastOverlay, firstGrid, g) else null
         val report = JSONObject().put("unit", "711-plain-handover").put("theme", theme)
@@ -187,6 +186,10 @@ class PlainGridPinchFlowEvidenceTest {
         println("${BenchmarkReport.TAG} 711-plain-handover json $report")
         Log.i(BenchmarkReport.TAG, "711-plain-handover json $report")
         lastOverlay?.recycle(); firstGrid?.recycle()
+        // The pinch layer draws the same photos the new grid opens with: an
+        // empty (grey) layer or a shifted grid differs on most pixels.
+        assertTrue("handover frames captured: $report", diff != null)
+        assertTrue("handover frame pair close (mean channel diff < 40): $report", diff!!.first < 40.0)
 
         compose.advanceVirtualTime(1_000L)
         compose.awaitScreenStill("plain grid one second after the settle")
@@ -256,7 +259,8 @@ class PlainGridPinchFlowEvidenceTest {
                 bitmap.recycle()
             }
             MediaRecord(i.toLong(), Uri.fromFile(image).toString(), "Plain $i", "DCIM/ATLAS-TEST/",
-                1_000L + i, 1_700_000_000_000L - i * 3_600_000L, false)
+                1_000L + i, 1_700_000_000_000L - i * 3_600_000L, false,
+                providerVersion = SYNTHETIC_PROVIDER_VERSION, generationModified = 1L)
         }
     }
 }
