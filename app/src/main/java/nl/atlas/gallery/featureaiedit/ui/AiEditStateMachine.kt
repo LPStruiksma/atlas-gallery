@@ -205,7 +205,8 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
 
     fun saveFailed(): Boolean {
         if (state.phase != AiEditPhase.Accepting) return false
-        state = state.copy(phase = AiEditPhase.Failed,
+        // Back to the result, so the preview and Save copy stay: the edit is still here (#431).
+        state = state.copy(phase = AiEditPhase.Result,
             error = "Could not save a new copy. The original is unchanged.")
         return true
     }

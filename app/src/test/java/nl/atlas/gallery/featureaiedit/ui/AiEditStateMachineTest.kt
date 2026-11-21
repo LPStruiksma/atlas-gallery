@@ -175,6 +175,19 @@ class AiEditStateMachineTest {
         assertTrue(machine.state.sending)
     }
 
+    @Test fun aFailedSaveKeepsTheResultSoSaveCopyCanBeTriedAgain() {
+        val (machine, token) = generating()
+        assertTrue(machine.onResult(token, listOf(candidate())))
+        assertNotNull(machine.beginAccept())
+        assertTrue(machine.saveFailed())
+        assertEquals(AiEditPhase.Result, machine.state.phase)
+        assertEquals("c1", machine.state.selectedId)
+        assertTrue(machine.state.error!!.contains("original is unchanged"))
+        assertNotNull(machine.beginAccept())
+        assertNull(machine.state.error)
+        assertTrue(machine.saved())
+    }
+
     @Test fun serviceChoiceCarriesItsNameAndIsLockedWhileWorking() {
         val machine = AiEditStateMachine()
         assertTrue(machine.chooseProvider("p-fal", setOf("p-fal"), "fal.ai", "Qwen Image Edit"))

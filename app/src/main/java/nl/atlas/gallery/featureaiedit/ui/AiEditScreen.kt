@@ -344,7 +344,7 @@ internal fun AiEditScreenContent(
                     Text(card.title, style = Nav, color = AiEditColors.Ink)
                     Text(card.detail, style = Secondary, color = AiEditColors.InkSecondary)
                 }
-            } else if (state.phase == AiEditPhase.Failed && state.error != null) {
+            } else if (state.phase in setOf(AiEditPhase.Failed, AiEditPhase.Result) && state.error != null) {
                 Text(state.error, style = Secondary, color = AiEditColors.Ink,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                         .background(AiEditColors.Surface, RoundedCornerShape(22.dp))
