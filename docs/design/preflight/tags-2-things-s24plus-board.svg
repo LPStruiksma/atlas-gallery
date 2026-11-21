@@ -22,112 +22,112 @@
 <rect x="16" y="102" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="136" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Albums</text>
 <text x="28" y="159" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >1.240 photos</text>
-<rect x="220" y="116" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="116" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 149.57999999999998 Q228.1 137.16 233.8 149.57999999999998 Q241.6 134.4 250 149.57999999999998V162H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="126.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="122" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="122" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 151.2 Q259.48 140.4 264.04 151.2 Q270.28 138 277 151.2V162H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="130.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="116" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="116" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 149.57999999999998 Q289.18 137.16 295.64 149.57999999999998 Q304.48 134.4 314 149.57999999999998V162H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="126.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="122" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="122" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 151.2 Q325.37 140.4 331.26 151.2 Q339.32 138 348 151.2V162H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="130.8" r="3" fill="#FFF5D4" />
 <text x="351" y="153" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="193" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="227" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >People and pets</text>
 <text x="28" y="250" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >28 groups</text>
-<rect x="220" y="207" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="207" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 240.57999999999998 Q228.1 228.16 233.8 240.57999999999998 Q241.6 225.4 250 240.57999999999998V253H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="217.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="213" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="213" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 242.2 Q259.48 231.4 264.04 242.2 Q270.28 229 277 242.2V253H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="221.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="207" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="207" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 240.57999999999998 Q289.18 228.16 295.64 240.57999999999998 Q304.48 225.4 314 240.57999999999998V253H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="217.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="213" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="213" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 242.2 Q325.37 231.4 331.26 242.2 Q339.32 229 348 242.2V253H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="221.8" r="3" fill="#FFF5D4" />
 <text x="351" y="244" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="284" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="318" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Places</text>
 <text x="28" y="341" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >16 places</text>
-<rect x="220" y="298" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="298" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 331.58 Q228.1 319.16 233.8 331.58 Q241.6 316.4 250 331.58V344H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="308.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="304" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="304" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 333.2 Q259.48 322.4 264.04 333.2 Q270.28 320 277 333.2V344H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="312.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="298" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="298" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 331.58 Q289.18 319.16 295.64 331.58 Q304.48 316.4 314 331.58V344H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="308.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="304" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="304" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 333.2 Q325.37 322.4 331.26 333.2 Q339.32 320 348 333.2V344H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="312.8" r="3" fill="#FFF5D4" />
 <text x="351" y="335" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="375" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="409" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Stories</text>
 <text x="28" y="432" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >12 stories</text>
-<rect x="220" y="389" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="389" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 422.58 Q228.1 410.16 233.8 422.58 Q241.6 407.4 250 422.58V435H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="399.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="395" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="395" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 424.2 Q259.48 413.4 264.04 424.2 Q270.28 411 277 424.2V435H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="403.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="389" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="389" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 422.58 Q289.18 410.16 295.64 422.58 Q304.48 407.4 314 422.58V435H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="399.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="395" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="395" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 424.2 Q325.37 413.4 331.26 424.2 Q339.32 411 348 424.2V435H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="403.8" r="3" fill="#FFF5D4" />
 <text x="351" y="426" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="466" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="500" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Favourites</text>
 <text x="28" y="523" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >203 photos</text>
-<rect x="220" y="480" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="480" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 513.58 Q228.1 501.16 233.8 513.58 Q241.6 498.4 250 513.58V526H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="490.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="486" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="486" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 515.2 Q259.48 504.4 264.04 515.2 Q270.28 502 277 515.2V526H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="494.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="480" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="480" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 513.58 Q289.18 501.16 295.64 513.58 Q304.48 498.4 314 513.58V526H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="490.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="486" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="486" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 515.2 Q325.37 504.4 331.26 515.2 Q339.32 502 348 515.2V526H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="494.8" r="3" fill="#FFF5D4" />
 <text x="351" y="517" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="557" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="591" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Videos</text>
 <text x="28" y="614" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >47 videos</text>
-<rect x="220" y="571" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="571" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 604.58 Q228.1 592.16 233.8 604.58 Q241.6 589.4 250 604.58V617H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="581.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="577" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="577" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 606.2 Q259.48 595.4 264.04 606.2 Q270.28 593 277 606.2V617H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="585.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="571" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="571" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 604.58 Q289.18 592.16 295.64 604.58 Q304.48 589.4 314 604.58V617H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="581.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="577" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="577" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 606.2 Q325.37 595.4 331.26 606.2 Q339.32 593 348 606.2V617H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="585.8" r="3" fill="#FFF5D4" />
 <text x="351" y="608" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="648" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="682" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Screenshots</text>
 <text x="28" y="705" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >59 photos</text>
-<rect x="220" y="662" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="662" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 695.58 Q228.1 683.16 233.8 695.58 Q241.6 680.4 250 695.58V708H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="672.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="668" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="668" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 697.2 Q259.48 686.4 264.04 697.2 Q270.28 684 277 697.2V708H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="676.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="662" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="662" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 695.58 Q289.18 683.16 295.64 695.58 Q304.48 680.4 314 695.58V708H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="672.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="668" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="668" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 697.2 Q325.37 686.4 331.26 697.2 Q339.32 684 348 697.2V708H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="676.8" r="3" fill="#FFF5D4" />
 <text x="351" y="699" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
@@ -151,96 +151,96 @@
 <rect x="16" y="117" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="151" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Stories</text>
 <text x="28" y="174" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >12 stories</text>
-<rect x="220" y="131" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="131" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 164.57999999999998 Q228.1 152.16 233.8 164.57999999999998 Q241.6 149.4 250 164.57999999999998V177H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="141.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="137" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="137" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 166.2 Q259.48 155.4 264.04 166.2 Q270.28 153 277 166.2V177H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="145.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="131" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="131" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 164.57999999999998 Q289.18 152.16 295.64 164.57999999999998 Q304.48 149.4 314 164.57999999999998V177H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="141.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="137" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="137" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 166.2 Q325.37 155.4 331.26 166.2 Q339.32 153 348 166.2V177H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="145.8" r="3" fill="#FFF5D4" />
 <text x="351" y="168" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="218" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="252" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Favourites</text>
 <text x="28" y="275" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >203 photos</text>
-<rect x="220" y="232" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="232" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 265.58 Q228.1 253.16 233.8 265.58 Q241.6 250.4 250 265.58V278H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="242.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="238" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="238" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 267.2 Q259.48 256.4 264.04 267.2 Q270.28 254 277 267.2V278H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="246.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="232" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="232" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 265.58 Q289.18 253.16 295.64 265.58 Q304.48 250.4 314 265.58V278H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="242.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="238" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="238" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 267.2 Q325.37 256.4 331.26 267.2 Q339.32 254 348 267.2V278H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="246.8" r="3" fill="#FFF5D4" />
 <text x="351" y="269" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="319" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="353" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Videos</text>
 <text x="28" y="376" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >47 videos</text>
-<rect x="220" y="333" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="333" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 366.58 Q228.1 354.16 233.8 366.58 Q241.6 351.4 250 366.58V379H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="343.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="339" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="339" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 368.2 Q259.48 357.4 264.04 368.2 Q270.28 355 277 368.2V379H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="347.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="333" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="333" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 366.58 Q289.18 354.16 295.64 366.58 Q304.48 351.4 314 366.58V379H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="343.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="339" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="339" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 368.2 Q325.37 357.4 331.26 368.2 Q339.32 355 348 368.2V379H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="347.8" r="3" fill="#FFF5D4" />
 <text x="351" y="370" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="420" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="454" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Screenshots</text>
 <text x="28" y="477" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >59 photos</text>
-<rect x="220" y="434" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="434" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 467.58 Q228.1 455.16 233.8 467.58 Q241.6 452.4 250 467.58V480H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="444.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="440" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="440" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 469.2 Q259.48 458.4 264.04 469.2 Q270.28 456 277 469.2V480H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="448.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="434" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="434" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 467.58 Q289.18 455.16 295.64 467.58 Q304.48 452.4 314 467.58V480H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="444.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="440" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="440" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 469.2 Q325.37 458.4 331.26 469.2 Q339.32 456 348 469.2V480H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="448.8" r="3" fill="#FFF5D4" />
 <text x="351" y="471" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="521" width="352" height="86" rx="10" fill="#F2F3F8" />
 <text x="28" y="555" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Things</text>
 <text x="28" y="578" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >842 media found so far</text>
-<rect x="220" y="535" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="535" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 568.58 Q228.1 556.16 233.8 568.58 Q241.6 553.4 250 568.58V581H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="545.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="541" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="541" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 570.2 Q259.48 559.4 264.04 570.2 Q270.28 557 277 570.2V581H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="549.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="535" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="535" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 568.58 Q289.18 556.16 295.64 568.58 Q304.48 553.4 314 568.58V581H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="545.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="541" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="541" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 570.2 Q325.37 559.4 331.26 570.2 Q339.32 557 348 570.2V581H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="549.8" r="3" fill="#FFF5D4" />
 <text x="351" y="572" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="622" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="656" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Shared albums</text>
 <text x="28" y="679" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >3 albums</text>
-<rect x="220" y="636" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="636" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 669.58 Q228.1 657.16 233.8 669.58 Q241.6 654.4 250 669.58V682H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="646.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="642" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="642" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 671.2 Q259.48 660.4 264.04 671.2 Q270.28 658 277 671.2V682H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="650.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="636" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="636" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 669.58 Q289.18 657.16 295.64 669.58 Q304.48 654.4 314 669.58V682H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="646.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="642" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="642" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 671.2 Q325.37 660.4 331.26 671.2 Q339.32 658 348 671.2V682H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="650.8" r="3" fill="#FFF5D4" />
 <text x="351" y="673" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
@@ -265,16 +265,16 @@
 <rect x="16" y="138" width="352" height="122" rx="18" fill="#F2F3F8" />
 <text x="28" y="170" font-family="'Funnel Sans',system-ui,sans-serif" font-size="21" fill="#0E1030" font-weight="700" >Things</text>
 <text x="28" y="194" font-family="'Funnel Sans',system-ui,sans-serif" font-size="12" fill="#5A5F7A" font-weight="400" >Browse photos by what is in them</text>
-<rect x="220" y="162" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="162" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 195.57999999999998 Q228.1 183.16 233.8 195.57999999999998 Q241.6 180.4 250 195.57999999999998V208H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="172.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="168" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="168" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 197.2 Q259.48 186.4 264.04 197.2 Q270.28 184 277 197.2V208H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="176.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="162" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="162" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 195.57999999999998 Q289.18 183.16 295.64 195.57999999999998 Q304.48 180.4 314 195.57999999999998V208H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="172.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="168" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="168" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 197.2 Q325.37 186.4 331.26 197.2 Q339.32 184 348 197.2V208H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="176.8" r="3" fill="#FFF5D4" />
 <text x="346" y="229" font-family="'Funnel Sans',system-ui,sans-serif" font-size="22" fill="#5A5F7A" font-weight="400" >›</text>
@@ -337,96 +337,96 @@
 <rect x="16" y="163" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="197" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Dog</text>
 <text x="28" y="220" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >219 photos</text>
-<rect x="220" y="177" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="177" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 210.57999999999998 Q228.1 198.16 233.8 210.57999999999998 Q241.6 195.4 250 210.57999999999998V223H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="187.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="183" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="183" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 212.2 Q259.48 201.4 264.04 212.2 Q270.28 199 277 212.2V223H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="191.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="177" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="177" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 210.57999999999998 Q289.18 198.16 295.64 210.57999999999998 Q304.48 195.4 314 210.57999999999998V223H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="187.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="183" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="183" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 212.2 Q325.37 201.4 331.26 212.2 Q339.32 199 348 212.2V223H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="191.8" r="3" fill="#FFF5D4" />
 <text x="351" y="214" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="254" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="288" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Beach</text>
 <text x="28" y="311" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >135 photos</text>
-<rect x="220" y="268" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="268" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 301.58 Q228.1 289.16 233.8 301.58 Q241.6 286.4 250 301.58V314H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="278.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="274" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="274" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 303.2 Q259.48 292.4 264.04 303.2 Q270.28 290 277 303.2V314H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="282.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="268" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="268" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 301.58 Q289.18 289.16 295.64 301.58 Q304.48 286.4 314 301.58V314H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="278.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="274" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="274" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 303.2 Q325.37 292.4 331.26 303.2 Q339.32 290 348 303.2V314H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="282.8" r="3" fill="#FFF5D4" />
 <text x="351" y="305" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="345" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="379" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Pizza</text>
 <text x="28" y="402" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >68 photos</text>
-<rect x="220" y="359" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="359" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 392.58 Q228.1 380.16 233.8 392.58 Q241.6 377.4 250 392.58V405H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="369.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="365" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="365" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 394.2 Q259.48 383.4 264.04 394.2 Q270.28 381 277 394.2V405H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="373.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="359" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="359" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 392.58 Q289.18 380.16 295.64 392.58 Q304.48 377.4 314 392.58V405H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="369.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="365" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="365" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 394.2 Q325.37 383.4 331.26 394.2 Q339.32 381 348 394.2V405H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="373.8" r="3" fill="#FFF5D4" />
 <text x="351" y="396" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="436" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="470" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Bicycle</text>
 <text x="28" y="493" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >55 photos</text>
-<rect x="220" y="450" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="450" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 483.58 Q228.1 471.16 233.8 483.58 Q241.6 468.4 250 483.58V496H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="460.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="456" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="456" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 485.2 Q259.48 474.4 264.04 485.2 Q270.28 472 277 485.2V496H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="464.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="450" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="450" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 483.58 Q289.18 471.16 295.64 483.58 Q304.48 468.4 314 483.58V496H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="460.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="456" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="456" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 485.2 Q325.37 474.4 331.26 485.2 Q339.32 472 348 485.2V496H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="464.8" r="3" fill="#FFF5D4" />
 <text x="351" y="487" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="527" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="561" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Flowers</text>
 <text x="28" y="584" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >43 photos</text>
-<rect x="220" y="541" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="541" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 574.58 Q228.1 562.16 233.8 574.58 Q241.6 559.4 250 574.58V587H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="551.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="547" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="547" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 576.2 Q259.48 565.4 264.04 576.2 Q270.28 563 277 576.2V587H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="555.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="541" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="541" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 574.58 Q289.18 562.16 295.64 574.58 Q304.48 559.4 314 574.58V587H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="551.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="547" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="547" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 576.2 Q325.37 565.4 331.26 576.2 Q339.32 563 348 576.2V587H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="555.8" r="3" fill="#FFF5D4" />
 <text x="351" y="578" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="618" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="652" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Bird</text>
 <text x="28" y="675" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >31 photos</text>
-<rect x="220" y="632" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="632" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 665.58 Q228.1 653.16 233.8 665.58 Q241.6 650.4 250 665.58V678H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="642.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="638" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="638" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 667.2 Q259.48 656.4 264.04 667.2 Q270.28 654 277 667.2V678H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="646.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="632" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="632" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 665.58 Q289.18 653.16 295.64 665.58 Q304.48 650.4 314 665.58V678H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="642.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="638" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="638" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 667.2 Q325.37 656.4 331.26 667.2 Q339.32 654 348 667.2V678H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="646.8" r="3" fill="#FFF5D4" />
 <text x="351" y="669" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
@@ -460,40 +460,40 @@
 <text x="119" y="205" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#FFFFFF" font-weight="600" >Dog ×</text>
 <rect x="189" y="178" width="84" height="48" rx="22" fill="#F2F3F8" />
 <text x="203" y="205" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#0E1030" font-weight="600" >Beach</text>
-<rect x="16" y="248" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="16" y="248" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M16 335.6 Q47.32 303.2 69.36 335.6 Q99.52 296 132 335.6V368H16Z" fill="#5A8896" opacity=".7"/>
 <circle cx="104.16" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="248" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="134" y="248" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M134 335.6 Q165.32 303.2 187.36 335.6 Q217.51999999999998 296 250 335.6V368H134Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="222.16" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="248" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="252" y="248" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M252 335.6 Q283.32 303.2 305.36 335.6 Q335.52 296 368 335.6V368H252Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.15999999999997" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="370" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="16" y="370" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M16 457.6 Q47.32 425.2 69.36 457.6 Q99.52 418 132 457.6V490H16Z" fill="#507FA6" opacity=".7"/>
 <circle cx="104.16" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="370" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="134" y="370" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M134 457.6 Q165.32 425.2 187.36 457.6 Q217.51999999999998 418 250 457.6V490H134Z" fill="#5A8896" opacity=".7"/>
 <circle cx="222.16" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="370" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="252" y="370" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M252 457.6 Q283.32 425.2 305.36 457.6 Q335.52 418 368 457.6V490H252Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.15999999999997" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="492" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="16" y="492" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M16 579.6 Q47.32 547.2 69.36 579.6 Q99.52 540 132 579.6V612H16Z" fill="#8C759C" opacity=".7"/>
 <circle cx="104.16" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="492" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="134" y="492" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M134 579.6 Q165.32 547.2 187.36 579.6 Q217.51999999999998 540 250 579.6V612H134Z" fill="#507FA6" opacity=".7"/>
 <circle cx="222.16" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="492" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="252" y="492" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M252 579.6 Q283.32 547.2 305.36 579.6 Q335.52 540 368 579.6V612H252Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.15999999999997" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="614" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="16" y="614" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M16 701.6 Q47.32 669.2 69.36 701.6 Q99.52 662 132 701.6V734H16Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="104.16" cy="640.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="614" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="134" y="614" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M134 701.6 Q165.32 669.2 187.36 701.6 Q217.51999999999998 662 250 701.6V734H134Z" fill="#8C759C" opacity=".7"/>
 <circle cx="222.16" cy="640.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="614" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="252" y="614" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M252 701.6 Q283.32 669.2 305.36 701.6 Q335.52 662 368 701.6V734H252Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.15999999999997" cy="640.4" r="9.28" fill="#FFF5D4" />
 <rect x="55" y="742" width="274" height="58" rx="24" fill="#2639C9" />
@@ -526,40 +526,40 @@
 <text x="119" y="205" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#FFFFFF" font-weight="600" >Dog ×</text>
 <rect x="189" y="178" width="83" height="48" rx="22" fill="#14152A" />
 <text x="203" y="205" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#F2F3F8" font-weight="600" >Pizza</text>
-<rect x="16" y="248" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="16" y="248" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M16 335.6 Q47.32 303.2 69.36 335.6 Q99.52 296 132 335.6V368H16Z" fill="#5A8896" opacity=".7"/>
 <circle cx="104.16" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="248" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="134" y="248" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M134 335.6 Q165.32 303.2 187.36 335.6 Q217.51999999999998 296 250 335.6V368H134Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="222.16" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="248" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="252" y="248" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M252 335.6 Q283.32 303.2 305.36 335.6 Q335.52 296 368 335.6V368H252Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.15999999999997" cy="274.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="370" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="16" y="370" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M16 457.6 Q47.32 425.2 69.36 457.6 Q99.52 418 132 457.6V490H16Z" fill="#507FA6" opacity=".7"/>
 <circle cx="104.16" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="370" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="134" y="370" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M134 457.6 Q165.32 425.2 187.36 457.6 Q217.51999999999998 418 250 457.6V490H134Z" fill="#5A8896" opacity=".7"/>
 <circle cx="222.16" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="370" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="252" y="370" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M252 457.6 Q283.32 425.2 305.36 457.6 Q335.52 418 368 457.6V490H252Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.15999999999997" cy="396.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="492" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="16" y="492" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M16 579.6 Q47.32 547.2 69.36 579.6 Q99.52 540 132 579.6V612H16Z" fill="#8C759C" opacity=".7"/>
 <circle cx="104.16" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="492" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="134" y="492" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M134 579.6 Q165.32 547.2 187.36 579.6 Q217.51999999999998 540 250 579.6V612H134Z" fill="#507FA6" opacity=".7"/>
 <circle cx="222.16" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="492" width="116" height="120" rx="6" fill="url(#p1)" />
+<rect x="252" y="492" width="116" height="120" rx="8" fill="url(#p1)" />
 <path d="M252 579.6 Q283.32 547.2 305.36 579.6 Q335.52 540 368 579.6V612H252Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.15999999999997" cy="518.4" r="9.28" fill="#FFF5D4" />
-<rect x="16" y="614" width="116" height="120" rx="6" fill="url(#p2)" />
+<rect x="16" y="614" width="116" height="120" rx="8" fill="url(#p2)" />
 <path d="M16 701.6 Q47.32 669.2 69.36 701.6 Q99.52 662 132 701.6V734H16Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="104.16" cy="640.4" r="9.28" fill="#FFF5D4" />
-<rect x="134" y="614" width="116" height="120" rx="6" fill="url(#p3)" />
+<rect x="134" y="614" width="116" height="120" rx="8" fill="url(#p3)" />
 <path d="M134 701.6 Q165.32 669.2 187.36 701.6 Q217.51999999999998 662 250 701.6V734H134Z" fill="#8C759C" opacity=".7"/>
 <circle cx="222.16" cy="640.4" r="9.28" fill="#FFF5D4" />
-<rect x="252" y="614" width="116" height="120" rx="6" fill="url(#p4)" />
+<rect x="252" y="614" width="116" height="120" rx="8" fill="url(#p4)" />
 <path d="M252 701.6 Q283.32 669.2 305.36 701.6 Q335.52 662 368 701.6V734H252Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.15999999999997" cy="640.4" r="9.28" fill="#FFF5D4" />
 <rect x="55" y="742" width="274" height="58" rx="24" fill="#3448E0" />
@@ -606,64 +606,64 @@
 <rect x="16" y="139" width="352" height="86" rx="10" fill="#000000" />
 <text x="28" y="173" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Dog</text>
 <text x="28" y="196" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#9AA0B8" font-weight="400" >31 so far</text>
-<rect x="220" y="153" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="153" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 186.57999999999998 Q228.1 174.16 233.8 186.57999999999998 Q241.6 171.4 250 186.57999999999998V199H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="163.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="159" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="159" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 188.2 Q259.48 177.4 264.04 188.2 Q270.28 175 277 188.2V199H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="167.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="153" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="153" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 186.57999999999998 Q289.18 174.16 295.64 186.57999999999998 Q304.48 171.4 314 186.57999999999998V199H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="163.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="159" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="159" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 188.2 Q325.37 177.4 331.26 188.2 Q339.32 175 348 188.2V199H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="167.8" r="3" fill="#FFF5D4" />
 <text x="351" y="190" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#9AA0B8" font-weight="400" >›</text>
 <rect x="16" y="241" width="352" height="86" rx="10" fill="#000000" />
 <text x="28" y="275" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Beach</text>
 <text x="28" y="298" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#9AA0B8" font-weight="400" >19 so far</text>
-<rect x="220" y="255" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="255" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 288.58 Q228.1 276.16 233.8 288.58 Q241.6 273.4 250 288.58V301H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="265.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="261" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="261" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 290.2 Q259.48 279.4 264.04 290.2 Q270.28 277 277 290.2V301H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="269.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="255" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="255" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 288.58 Q289.18 276.16 295.64 288.58 Q304.48 273.4 314 288.58V301H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="265.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="261" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="261" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 290.2 Q325.37 279.4 331.26 290.2 Q339.32 277 348 290.2V301H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="269.8" r="3" fill="#FFF5D4" />
 <text x="351" y="292" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#9AA0B8" font-weight="400" >›</text>
 <rect x="16" y="343" width="352" height="86" rx="10" fill="#000000" />
 <text x="28" y="377" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Bicycle</text>
 <text x="28" y="400" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#9AA0B8" font-weight="400" >4 so far</text>
-<rect x="220" y="357" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="357" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 390.58 Q228.1 378.16 233.8 390.58 Q241.6 375.4 250 390.58V403H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="367.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="363" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="363" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 392.2 Q259.48 381.4 264.04 392.2 Q270.28 379 277 392.2V403H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="371.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="357" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="357" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 390.58 Q289.18 378.16 295.64 390.58 Q304.48 375.4 314 390.58V403H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="367.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="363" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="363" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 392.2 Q325.37 381.4 331.26 392.2 Q339.32 379 348 392.2V403H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="371.8" r="3" fill="#FFF5D4" />
 <text x="351" y="394" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#9AA0B8" font-weight="400" >›</text>
 <rect x="16" y="445" width="352" height="86" rx="10" fill="#000000" />
 <text x="28" y="479" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Flowers</text>
 <text x="28" y="502" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#9AA0B8" font-weight="400" >2 so far</text>
-<rect x="220" y="459" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="459" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 492.58 Q228.1 480.16 233.8 492.58 Q241.6 477.4 250 492.58V505H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="469.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="465" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="465" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 494.2 Q259.48 483.4 264.04 494.2 Q270.28 481 277 494.2V505H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="473.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="459" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="459" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 492.58 Q289.18 480.16 295.64 492.58 Q304.48 477.4 314 492.58V505H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="469.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="465" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="465" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 494.2 Q325.37 483.4 331.26 494.2 Q339.32 481 348 494.2V505H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="473.8" r="3" fill="#FFF5D4" />
 <text x="351" y="496" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#9AA0B8" font-weight="400" >›</text>
@@ -739,96 +739,96 @@
 <rect x="16" y="164" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="198" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Dog</text>
 <text x="28" y="221" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >219 photos</text>
-<rect x="220" y="178" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="178" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 211.57999999999998 Q228.1 199.16 233.8 211.57999999999998 Q241.6 196.4 250 211.57999999999998V224H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="188.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="184" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="184" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 213.2 Q259.48 202.4 264.04 213.2 Q270.28 200 277 213.2V224H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="192.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="178" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="178" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 211.57999999999998 Q289.18 199.16 295.64 211.57999999999998 Q304.48 196.4 314 211.57999999999998V224H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="188.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="184" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="184" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 213.2 Q325.37 202.4 331.26 213.2 Q339.32 200 348 213.2V224H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="192.8" r="3" fill="#FFF5D4" />
 <text x="351" y="215" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="255" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="289" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Beach</text>
 <text x="28" y="312" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >135 photos</text>
-<rect x="220" y="269" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="269" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 302.58 Q228.1 290.16 233.8 302.58 Q241.6 287.4 250 302.58V315H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="279.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="275" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="275" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 304.2 Q259.48 293.4 264.04 304.2 Q270.28 291 277 304.2V315H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="283.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="269" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="269" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 302.58 Q289.18 290.16 295.64 302.58 Q304.48 287.4 314 302.58V315H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="279.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="275" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="275" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 304.2 Q325.37 293.4 331.26 304.2 Q339.32 291 348 304.2V315H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="283.8" r="3" fill="#FFF5D4" />
 <text x="351" y="306" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="346" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="380" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Pizza</text>
 <text x="28" y="403" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >68 photos</text>
-<rect x="220" y="360" width="30" height="46" rx="6" fill="url(#p2)" />
+<rect x="220" y="360" width="30" height="46" rx="8" fill="url(#p2)" />
 <path d="M220 393.58 Q228.1 381.16 233.8 393.58 Q241.6 378.4 250 393.58V406H220Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="242.8" cy="370.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="366" width="24" height="40" rx="6" fill="url(#p3)" />
+<rect x="253" y="366" width="24" height="40" rx="8" fill="url(#p3)" />
 <path d="M253 395.2 Q259.48 384.4 264.04 395.2 Q270.28 382 277 395.2V406H253Z" fill="#8C759C" opacity=".7"/>
 <circle cx="271.24" cy="374.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="360" width="34" height="46" rx="6" fill="url(#p4)" />
+<rect x="280" y="360" width="34" height="46" rx="8" fill="url(#p4)" />
 <path d="M280 393.58 Q289.18 381.16 295.64 393.58 Q304.48 378.4 314 393.58V406H280Z" fill="#507FA6" opacity=".7"/>
 <circle cx="305.84" cy="370.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="366" width="31" height="40" rx="6" fill="url(#p1)" />
+<rect x="317" y="366" width="31" height="40" rx="8" fill="url(#p1)" />
 <path d="M317 395.2 Q325.37 384.4 331.26 395.2 Q339.32 382 348 395.2V406H317Z" fill="#5A8896" opacity=".7"/>
 <circle cx="340.56" cy="374.8" r="3" fill="#FFF5D4" />
 <text x="351" y="397" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="437" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="471" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Bicycle</text>
 <text x="28" y="494" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >55 photos</text>
-<rect x="220" y="451" width="30" height="46" rx="6" fill="url(#p3)" />
+<rect x="220" y="451" width="30" height="46" rx="8" fill="url(#p3)" />
 <path d="M220 484.58 Q228.1 472.16 233.8 484.58 Q241.6 469.4 250 484.58V497H220Z" fill="#8C759C" opacity=".7"/>
 <circle cx="242.8" cy="461.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="457" width="24" height="40" rx="6" fill="url(#p4)" />
+<rect x="253" y="457" width="24" height="40" rx="8" fill="url(#p4)" />
 <path d="M253 486.2 Q259.48 475.4 264.04 486.2 Q270.28 473 277 486.2V497H253Z" fill="#507FA6" opacity=".7"/>
 <circle cx="271.24" cy="465.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="451" width="34" height="46" rx="6" fill="url(#p1)" />
+<rect x="280" y="451" width="34" height="46" rx="8" fill="url(#p1)" />
 <path d="M280 484.58 Q289.18 472.16 295.64 484.58 Q304.48 469.4 314 484.58V497H280Z" fill="#5A8896" opacity=".7"/>
 <circle cx="305.84" cy="461.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="457" width="31" height="40" rx="6" fill="url(#p2)" />
+<rect x="317" y="457" width="31" height="40" rx="8" fill="url(#p2)" />
 <path d="M317 486.2 Q325.37 475.4 331.26 486.2 Q339.32 473 348 486.2V497H317Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="340.56" cy="465.8" r="3" fill="#FFF5D4" />
 <text x="351" y="488" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="528" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="562" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Flowers</text>
 <text x="28" y="585" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >43 photos</text>
-<rect x="220" y="542" width="30" height="46" rx="6" fill="url(#p4)" />
+<rect x="220" y="542" width="30" height="46" rx="8" fill="url(#p4)" />
 <path d="M220 575.58 Q228.1 563.16 233.8 575.58 Q241.6 560.4 250 575.58V588H220Z" fill="#507FA6" opacity=".7"/>
 <circle cx="242.8" cy="552.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="548" width="24" height="40" rx="6" fill="url(#p1)" />
+<rect x="253" y="548" width="24" height="40" rx="8" fill="url(#p1)" />
 <path d="M253 577.2 Q259.48 566.4 264.04 577.2 Q270.28 564 277 577.2V588H253Z" fill="#5A8896" opacity=".7"/>
 <circle cx="271.24" cy="556.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="542" width="34" height="46" rx="6" fill="url(#p2)" />
+<rect x="280" y="542" width="34" height="46" rx="8" fill="url(#p2)" />
 <path d="M280 575.58 Q289.18 563.16 295.64 575.58 Q304.48 560.4 314 575.58V588H280Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="305.84" cy="552.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="548" width="31" height="40" rx="6" fill="url(#p3)" />
+<rect x="317" y="548" width="31" height="40" rx="8" fill="url(#p3)" />
 <path d="M317 577.2 Q325.37 566.4 331.26 577.2 Q339.32 564 348 577.2V588H317Z" fill="#8C759C" opacity=".7"/>
 <circle cx="340.56" cy="556.8" r="3" fill="#FFF5D4" />
 <text x="351" y="579" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
 <rect x="16" y="619" width="352" height="86" rx="10" fill="#FFFFFF" />
 <text x="28" y="653" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#0E1030" font-weight="600" >Bird</text>
 <text x="28" y="676" font-family="'Funnel Sans',system-ui,sans-serif" font-size="13" fill="#5A5F7A" font-weight="400" >31 photos</text>
-<rect x="220" y="633" width="30" height="46" rx="6" fill="url(#p1)" />
+<rect x="220" y="633" width="30" height="46" rx="8" fill="url(#p1)" />
 <path d="M220 666.58 Q228.1 654.16 233.8 666.58 Q241.6 651.4 250 666.58V679H220Z" fill="#5A8896" opacity=".7"/>
 <circle cx="242.8" cy="643.12" r="3" fill="#FFF5D4" />
-<rect x="253" y="639" width="24" height="40" rx="6" fill="url(#p2)" />
+<rect x="253" y="639" width="24" height="40" rx="8" fill="url(#p2)" />
 <path d="M253 668.2 Q259.48 657.4 264.04 668.2 Q270.28 655 277 668.2V679H253Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="271.24" cy="647.8" r="3" fill="#FFF5D4" />
-<rect x="280" y="633" width="34" height="46" rx="6" fill="url(#p3)" />
+<rect x="280" y="633" width="34" height="46" rx="8" fill="url(#p3)" />
 <path d="M280 666.58 Q289.18 654.16 295.64 666.58 Q304.48 651.4 314 666.58V679H280Z" fill="#8C759C" opacity=".7"/>
 <circle cx="305.84" cy="643.12" r="3" fill="#FFF5D4" />
-<rect x="317" y="639" width="31" height="40" rx="6" fill="url(#p4)" />
+<rect x="317" y="639" width="31" height="40" rx="8" fill="url(#p4)" />
 <path d="M317 668.2 Q325.37 657.4 331.26 668.2 Q339.32 655 348 668.2V679H317Z" fill="#507FA6" opacity=".7"/>
 <circle cx="340.56" cy="647.8" r="3" fill="#FFF5D4" />
 <text x="351" y="670" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#5A5F7A" font-weight="400" >›</text>
@@ -862,13 +862,13 @@
 <text x="45" y="248" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#FFFFFF" font-weight="600" >Fiets ×</text>
 <rect x="170" y="221" width="151" height="48" rx="22" fill="#14152A" />
 <text x="184" y="248" font-family="'Funnel Sans',system-ui,sans-serif" font-size="16" fill="#F2F3F8" font-weight="600" >Bloemen</text>
-<rect x="16" y="279" width="112" height="110" rx="6" fill="url(#p2)" />
+<rect x="16" y="279" width="112" height="110" rx="8" fill="url(#p2)" />
 <path d="M16 359.3 Q46.24 329.6 67.52000000000001 359.3 Q96.64 323 128 359.3V389H16Z" fill="#4C8B77" opacity=".7"/>
 <circle cx="101.12" cy="303.2" r="8.96" fill="#FFF5D4" />
-<rect x="130" y="279" width="112" height="110" rx="6" fill="url(#p3)" />
+<rect x="130" y="279" width="112" height="110" rx="8" fill="url(#p3)" />
 <path d="M130 359.3 Q160.24 329.6 181.52 359.3 Q210.64 323 242 359.3V389H130Z" fill="#8C759C" opacity=".7"/>
 <circle cx="215.12" cy="303.2" r="8.96" fill="#FFF5D4" />
-<rect x="244" y="279" width="124" height="110" rx="6" fill="url(#p4)" />
+<rect x="244" y="279" width="124" height="110" rx="8" fill="url(#p4)" />
 <path d="M244 359.3 Q277.48 329.6 301.04 359.3 Q333.28 323 368 359.3V389H244Z" fill="#507FA6" opacity=".7"/>
 <circle cx="338.24" cy="303.2" r="9.92" fill="#FFF5D4" />
 <rect x="0" y="503" width="384" height="305" rx="0" fill="#24273A" />
