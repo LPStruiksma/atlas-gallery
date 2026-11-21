@@ -38,8 +38,13 @@ def sentencepiece_processor(model: Path) -> Any:
     return module.SentencePieceProcessor(model_file=str(model))
 
 
+def ascii_lower(text: str) -> str:
+    """Match NLS-0 text_tower.ascii_lower / tf.strings.lower (ASCII only)."""
+    return "".join(chr(ord(char) + 32) if "A" <= char <= "Z" else char for char in text)
+
+
 def encode(processor: Any, text: str) -> tuple[list[int], dict[str, Any]]:
-    normalized = text.lower()
+    normalized = ascii_lower(text)
     unpadded = list(processor.encode(normalized, out_type=int, add_bos=False, add_eos=False))
     eos_id, pad_id = processor.eos_id(), processor.pad_id()
     if eos_id < 0 or pad_id < 0:
@@ -102,9 +107,104 @@ def validate(document: dict[str, Any]) -> list[str]:
                 errors.append(f"{case.get('name')}: EOS is not sticky")
             if any(value != pad_id for value in ids[length:]):
                 errors.append(f"{case.get('name')}: padding is not exclusively on the right")
-        if case.get("normalized_text") != case.get("text", "").lower():
+        if case.get("normalized_text") != ascii_lower(case.get("text", "")):
             errors.append(f"{case.get('name')}: lowercase normalization mismatch")
     return errors
+
+
+def self_test() -> bool:
+    """Offline contract regression tests; do not require tokenizer bytes or numpy."""
+    from copy import deepcopy
+    import unittest
+
+    class StubProcessor:
+        def __init__(self) -> None:
+            self.seen: list[str] = []
+
+        def eos_id(self) -> int:
+            return 1
+
+        def pad_id(self) -> int:
+            return 0
+
+        def encode(self, value: str, *, out_type: type, add_bos: bool, add_eos: bool) -> list[int]:
+            if out_type is not int or add_bos or add_eos:
+                raise ValueError("generator must use integer IDs without BOS or automatic EOS")
+            self.seen.append(value)
+            if value.startswith("token000 "):
+                return list(range(2, LENGTH + 8))
+            return [] if value == "" else [4, 5]
+
+    class ContractTests(unittest.TestCase):
+        def test_ascii_only_normalization(self) -> None:
+            self.assertEqual(ascii_lower("Een KERK, ÉÉN Café"), "een kerk, ÉÉn café")
+            self.assertEqual(ascii_lower("CAFÉ, IJsvogel 👋"), "cafÉ, ijsvogel 👋")
+
+        def test_short_input_eos_and_right_padding(self) -> None:
+            processor = StubProcessor()
+            ids, semantics = encode(processor, "A Red Bicycle")
+            self.assertEqual(processor.seen, ["a red bicycle"])
+            self.assertEqual(ids[:4], [4, 5, 1, 0])
+            self.assertEqual(len(ids), LENGTH)
+            self.assertEqual(ids[3:], [0] * (LENGTH - 3))
+            self.assertEqual(semantics["content_length_including_eos"], 3)
+            self.assertFalse(semantics["truncated"])
+            self.assertTrue(semantics["eos_is_sticky"])
+            self.assertTrue(semantics["right_padding_only"])
+
+        def test_unicode_parity_and_empty_query(self) -> None:
+            processor = StubProcessor()
+            unicode_ids, unicode_meta = encode(processor, "CAFÉ, ÉÉN Foto 👋")
+            self.assertEqual(processor.seen, ["cafÉ, ÉÉn foto 👋"])
+            self.assertEqual(unicode_ids[:3], [4, 5, 1])
+            self.assertEqual(unicode_meta["normalized_text"], "cafÉ, ÉÉn foto 👋")
+            ids, meta = encode(processor, "")
+            self.assertEqual(ids, [1] + [0] * (LENGTH - 1))
+            self.assertEqual(meta["content_length_including_eos"], 1)
+
+        def test_long_query_keeps_eos_at_position_64(self) -> None:
+            processor = StubProcessor()
+            long_text = dict(CASES)["truncate_sticky_eos"]
+            ids, meta = encode(processor, long_text)
+            self.assertEqual(ids, list(range(2, LENGTH + 1)) + [1])
+            self.assertEqual(len(ids), LENGTH)
+            self.assertTrue(meta["truncated"])
+            self.assertTrue(meta["eos_is_sticky"])
+            self.assertEqual(meta["content_length_including_eos"], LENGTH)
+
+        def test_validation_accepts_contract_and_rejects_corruption(self) -> None:
+            processor = StubProcessor()
+            cases = []
+            for name, text in CASES:
+                ids, meta = encode(processor, text)
+                cases.append({"name": name, "text": text, "token_ids": ids, **meta})
+            document = {
+                "schema_version": 1,
+                "status": "verified",
+                "tokenizer": {"sha256": EXPECTED_SHA256, "eos_id": 1, "pad_id": 0},
+                "cases": cases,
+            }
+            self.assertEqual(validate(document), [])
+            self.assertIn("BLOCKED", validate({"status": "BLOCKED"})[0])
+
+            bad = deepcopy(document)
+            bad["cases"][2]["normalized_text"] = bad["cases"][2]["text"].lower()
+            self.assertIn("lowercase normalization mismatch", " ".join(validate(bad)))
+            bad = deepcopy(document)
+            bad["cases"][0]["token_ids"][2] = 8
+            self.assertIn("EOS is not sticky", " ".join(validate(bad)))
+            bad = deepcopy(document)
+            bad["cases"][0]["token_ids"][-1] = 8
+            self.assertIn("padding is not exclusively on the right", " ".join(validate(bad)))
+            bad = deepcopy(document)
+            bad["tokenizer"]["sha256"] = "wrong"
+            self.assertIn("wrong tokenizer SHA-256", " ".join(validate(bad)))
+            bad = deepcopy(document)
+            bad["cases"].pop()
+            self.assertIn("case set is incomplete", " ".join(validate(bad)))
+
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ContractTests)
+    return unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful()
 
 
 def main() -> int:
@@ -112,9 +212,12 @@ def main() -> int:
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--generate", action="store_true", help="write verified vectors")
     action.add_argument("--check", action="store_true", help="validate committed vectors")
+    action.add_argument("--self-test", action="store_true", help="run offline mock-backed contract regression tests")
     parser.add_argument("--model", type=Path, help="external gemma_tokenizer.model")
     parser.add_argument("--output", type=Path, default=DEFAULT_GOLDENS)
     args = parser.parse_args()
+    if args.self_test:
+        return 0 if self_test() else 1
     if args.generate:
         if args.model is None:
             parser.error("--generate requires --model")
