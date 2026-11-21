@@ -204,7 +204,9 @@ fun AtlasTimelineGallery(
     header: (@Composable () -> Unit)? = null,
     /** Tests and screenshots: keep the fast-scroll handle shown and grabbable. */
     fastScrollAlwaysShown: Boolean = false,
-    mediaSort: nl.atlas.gallery.MediaSort? = null
+    mediaSort: nl.atlas.gallery.MediaSort? = null,
+    /** Launch the exact source-ordered range behind a displayed month header. */
+    onDeclutterMonth: ((TimelineSlot.Header, List<MediaRecord>) -> Unit)? = null
 ) {
     val context = LocalContext.current
     // #435: application context reuses the file StartupPreferenceWarmup loaded off Main.
@@ -739,22 +741,38 @@ fun AtlasTimelineGallery(
                         when (slot) {
                             is TimelineSlot.Header -> {
                                 val selectingNow = selectedMediaUris != null && onSelectionChange != null
+                                val reviewableMonth = !selectingNow && onDeclutterMonth != null &&
+                                    slot.stableKey.startsWith("header:MONTH:")
                                 // T6: the circle fills by itself once every item is selected.
                                 val groupChecked = selectingNow && groupFullySelected(
                                     slot.firstMediaIndex, slot.mediaCount,
                                     selectedMediaUris.orEmpty()) { items.getOrNull(it)?.uri }
                                 Row(
                                     Modifier.fillMaxWidth().height(with(localDensity) { headerHeightPx.toDp() })
-                                        .then(if (selectingNow) Modifier.clickable(
-                                            role = Role.Checkbox,
-                                            onClickLabel = if (groupChecked) "Deselect ${slot.label}"
-                                                else "Select ${slot.label}"
-                                        ) {
-                                            val current = selectionCurrent ?: return@clickable
-                                            selectionChangeCurrent?.invoke(toggleGroup(
-                                                slot.firstMediaIndex, slot.mediaCount, current
-                                            ) { items.getOrNull(it)?.uri })
-                                        }.semantics { selected = groupChecked } else Modifier)
+                                        .then(when {
+                                            selectingNow -> Modifier.clickable(
+                                                role = Role.Checkbox,
+                                                onClickLabel = if (groupChecked) "Deselect ${slot.label}"
+                                                    else "Select ${slot.label}"
+                                            ) {
+                                                val current = selectionCurrent ?: return@clickable
+                                                selectionChangeCurrent?.invoke(toggleGroup(
+                                                    slot.firstMediaIndex, slot.mediaCount, current
+                                                ) { items.getOrNull(it)?.uri })
+                                            }.semantics { selected = groupChecked }
+                                            reviewableMonth -> Modifier.clickable(
+                                                role = Role.Button,
+                                                onClickLabel = "Review ${slot.label} with Declutter"
+                                            ) {
+                                                val end = slot.firstMediaIndex + slot.mediaCount
+                                                if (slot.firstMediaIndex >= 0 && slot.mediaCount > 0 &&
+                                                    end <= items.size) {
+                                                    onDeclutterMonth?.invoke(
+                                                        slot, items.subList(slot.firstMediaIndex, end))
+                                                }
+                                            }
+                                            else -> Modifier
+                                        })
                                         .padding(start = 8.dp)
                                         .testTag("atlas-timeline-header-${slot.stableKey}"),
                                     verticalAlignment = Alignment.CenterVertically
@@ -763,7 +781,13 @@ fun AtlasTimelineGallery(
                                         SelectionCheckCircle(groupChecked, size = 20, onPage = true)
                                         Spacer(Modifier.width(8.dp))
                                     }
-                                    Text(slot.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(slot.label, modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.titleSmall)
+                                    if (reviewableMonth) {
+                                        Text("Review", modifier = Modifier.padding(horizontal = 12.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.labelLarge)
+                                    }
                                 }
                             }
                             is TimelineSlot.Media -> {

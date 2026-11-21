@@ -1256,6 +1256,7 @@ internal fun PhotoDnaRoute(
     verifying: Boolean,
     onBack: () -> Unit,
     onOpenPhoto: (String) -> Unit,
+    onDeclutterSource: (String, List<MediaRecord>) -> Unit = { _, _ -> },
     onReviewRequested: (CurationReviewRequest) -> Unit,
     modifier: Modifier = Modifier,
     accessible: Boolean = true,
@@ -1407,6 +1408,12 @@ internal fun PhotoDnaRoute(
                     }
                 },
                 onReviewRequested = { if (!verifying) onReviewRequested(it) },
+                onDeclutterSource = { sourceId, uris ->
+                    val records = uris.mapNotNull { shown.records[it] }
+                    if (records.size == uris.size && records.isNotEmpty()) {
+                        onDeclutterSource("${shown.plan.scopeEpoch}:$sourceId", records)
+                    }
+                },
                 // A visual pair only opens a photo; it never stages anything.
                 onComparePair = { onOpenPhoto(it.left.uri) },
                 modifier = Modifier.weight(1f),
