@@ -37,7 +37,10 @@ class GenerateLutsTest(unittest.TestCase):
             expected = generate(generated)
             self.assertEqual({p.name for p in generated.iterdir()},
                              {p.name for p in committed.iterdir()})
-            self.assertEqual(expected, json.loads((committed / "catalogue.json").read_text()))
+            # Compare the serialized catalogue shape: dataclass tuples become JSON lists,
+            # and JSON does not preserve the distinction between 0 and 0.0.
+            expected_json = json.loads(json.dumps(expected))
+            self.assertEqual(expected_json, json.loads((committed / "catalogue.json").read_text()))
             for look in LOOKS:
                 filename = look.id + ".lut"
                 self.assertEqual((generated / filename).read_bytes(),
