@@ -230,10 +230,11 @@ internal fun SamePersonQueueRoute(
                 val liveEpoch = epoch
                 if (generation != null && liveEpoch != null && canUndoMixed) {
                     undoBusy = true
-                    SamePersonQueueCommits.undoMixed(host, liveEpoch, generation) { success ->
+                    SamePersonQueueCommits.undoMixed(host, liveEpoch, generation) { _ ->
                         undoBusy = false
+                        // Even a refused Undo must not leave a queue question hidden.
                         lastMixedGeneration = null
-                        if (success) lastMixedQuestion = null
+                        lastMixedQuestion = null
                     }
                 }
             },
