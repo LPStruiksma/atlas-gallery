@@ -78,11 +78,11 @@ class SplitPreviewR2ContractTest {
     @Test fun loadingAndErrorExposeSafeCancelAndHostRetryOnly() {
         var retried = 0
         var cancelled = 0
-        var status by androidx.compose.runtime.mutableStateOf(SplitPreviewStatus.LOADING)
+        val status = androidx.compose.runtime.mutableStateOf(SplitPreviewStatus.LOADING)
         compose.setContent {
             MaterialTheme {
                 SplitPreviewScreen(
-                    model = preview(2).copy(status = status),
+                    model = preview(2).copy(status = status.value),
                     onAccept = { error("No Accept while pending") },
                     onAdjust = {}, onCancel = { cancelled++ },
                     onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> },
@@ -92,7 +92,7 @@ class SplitPreviewR2ContractTest {
         }
         compose.onNodeWithText("Finding groups").assertExists()
         compose.onNodeWithTag("split-preview-accept").assertDoesNotExist()
-        compose.runOnIdle { status = SplitPreviewStatus.ERROR }
+        compose.runOnIdle { status.value = SplitPreviewStatus.ERROR }
         compose.onNodeWithText("Couldn't load suggested groups.").assertExists()
         compose.onNodeWithTag("split-preview-retry").performClick()
         compose.onNodeWithTag("split-preview-cancel").performClick()
