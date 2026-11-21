@@ -351,20 +351,26 @@ class PerfA2GridFlingFramesBenchmarkTest {
             val sorted = nums.sorted()
             return sorted[((sorted.size - 1) * p + 50) / 100] / 1e6
         }
-        // Frame-to-frame Choreographer intervals. A long gap means skipped
-        // vsyncs (main thread or display stall), not a classified cause.
-        fun stats(intervals: List<Long>, budgetNs: Double): JSONObject =
-            JSONObject()
+        // Frame-to-frame Choreographer intervals. Vsync timestamps are rounded
+        // to ns, so an interval is "over budget" only when it exceeds 1.5 x the
+        // refresh period, i.e. at least one vsync was skipped. A long gap means
+        // skipped vsyncs (main thread or display stall), not a classified cause.
+        fun stats(intervals: List<Long>, budgetNs: Double): JSONObject {
+            val skip1 = budgetNs * 1.5
+            val skip2 = budgetNs * 2.5
+            val over = intervals.count { it > skip1 }
+            return JSONObject()
                 .put("interval_samples", intervals.size)
                 .put("interval_p50_ms", rounded(percentileNs(intervals, 50)))
                 .put("interval_p95_ms", rounded(percentileNs(intervals, 95)))
-                .put("over_budget_intervals", intervals.count { it > budgetNs })
+                .put("over_budget_threshold_ms", rounded(skip1 / 1e6))
+                .put("over_budget_intervals", over)
                 .put("over_budget_pct", if (intervals.isEmpty()) -1.0 else
-                    rounded(100.0 * intervals.count { it > budgetNs } / intervals.size))
-                .put("intervals_gt_2_refresh", intervals.count { it > budgetNs * 2 })
+                    rounded(100.0 * over / intervals.size))
                 .put("interval_budget_bins", JSONObject()
-                    .put("within_budget", intervals.count { it <= budgetNs })
-                    .put("one_to_two_budgets", intervals.count { it > budgetNs && it <= 2 * budgetNs })
-                    .put("over_two_budgets", intervals.count { it > 2 * budgetNs }))
+                    .put("on_time", intervals.count { it <= skip1 })
+                    .put("one_vsync_skipped", intervals.count { it > skip1 && it <= skip2 })
+                    .put("two_or_more_skipped", intervals.count { it > skip2 }))
+        }
     }
 }
