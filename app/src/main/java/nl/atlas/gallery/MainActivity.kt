@@ -576,6 +576,27 @@ internal fun rememberAsyncSortedCatalog(
 /** Logcat tag for #568 Copy/Move: stages and exception class names, never paths. */
 internal const val TRANSFER_LOG = "ATLAS_TRANSFER"
 
+/** #783: one decision of the batch-selection rebase after a catalogue republication. */
+internal data class SelectionRebase(
+    val epoch: Long,
+    val before: Int,
+    val after: Int,
+    /** True while the republished list is still an unsettled async placeholder. */
+    val deferred: Boolean
+)
+
+/**
+ * #783 test seam: how a catalogue republication reaches the batch selection.
+ * Production never sets [observer]. Instrumented tests use it to wait for one
+ * exact republication (a MediaStore change they made, or [GalleryViewModel.refresh])
+ * at a chosen moment, e.g. while the Move picker is open, and to prove that no
+ * rebase dropped selected items onto a placeholder list. Main thread only;
+ * it carries counts and epochs, never media identity.
+ */
+internal object SelectionRepublicationSeam {
+    @Volatile var observer: ((SelectionRebase) -> Unit)? = null
+}
+
 /**
  * #568: Photos without hidden albums. Nothing hidden is the same list at
  * zero cost; otherwise one cancellable pass on the Default pool, published
@@ -1935,7 +1956,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // still in the newly published list stay selected, the rest drop out.
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch, tab,
         originalProportions, timelineEnabled, personFilter, albumRoute,
-        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending) {
+        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending,
+        scopedPending) {
         val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
             personFilter != null || !grants.hasAny ||
             !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
@@ -1951,13 +1973,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 pendingSelectionRestore = null
             } else if (selection.source !== visible ||
                 selection.epoch != publishedGallery.epoch) {
+                // #783: right after a republication the async sort, hidden-album
+                // filter or scoped search shows an EMPTY placeholder for a frame
+                // or more. Rebasing onto it kept no URI, so a reload while the
+                // Move picker was up left "Select items" (0) and the target tap
+                // did nothing. Keep the selection on its own list until the new
+                // scope has settled; this effect runs again when it has.
+                if (sortPending || albumSelectionPending || scopedPending) {
+                    SelectionRepublicationSeam.observer?.invoke(SelectionRebase(
+                        publishedGallery.epoch, selection.count, selection.count, deferred = true))
+                    return@LaunchedEffect
+                }
                 val rebased = withContext(Dispatchers.Default) {
                     val worker = currentCoroutineContext()
                     selection.rebasedOnto(visible, publishedGallery.epoch) {
                         worker.ensureActive()
                     }
                 }
-                if (batchSelection === selection) batchSelection = rebased
+                if (batchSelection === selection) {
+                    batchSelection = rebased
+                    SelectionRepublicationSeam.observer?.invoke(SelectionRebase(
+                        publishedGallery.epoch, selection.count, rebased.count, deferred = false))
+                }
             }
         } else {
             val saved = pendingSelectionRestore ?: return@LaunchedEffect
