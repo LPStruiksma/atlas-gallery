@@ -155,10 +155,12 @@ def main() -> None:
     for row in manifest[: args.warmup]:  # warm-up passes are discarded
         run(str(args.corpus / row["path"]))
     out, totals = [], []
+    tidy = lambda words: [{**w, "score": round(w["score"], 3), "box": [round(v) for v in w["box"]]}
+                          for w in words]  # integer pixels: long decimals trip the public-text guard
     for row in manifest:
         words, det_ms, rec_ms, total_ms = run(str(args.corpus / row["path"]))
         text = " ".join(w["text"] for w in words)  # each library's native reading order
-        out.append({"id": row["id"], "text": text, "words": words, "latency_ms": round(total_ms, 3),
+        out.append({"id": row["id"], "text": text, "words": tidy(words), "latency_ms": round(total_ms, 3),
                     "detector_ms": round(det_ms, 3), "recognizer_ms": round(rec_ms, 3)})
         totals.append(total_ms)
     args.output.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out), encoding="utf-8")

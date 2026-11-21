@@ -109,7 +109,7 @@
         "p95_ms": 823.7
       },
       "empty_predictions": 48,
-      "predictions_sha256": "d56ecd5f4d3925a82bda19f403ce9e3eef9af567b21ea24b740dcbcba3f95a1c",
+      "predictions_sha256": "37af09f2ab510f4060104908bbca408ac1969410db40930a15557fa9821de074",
       "recognizer": {
         "median_ms": 15.8,
         "n": 240,
@@ -128,7 +128,7 @@
         "p95_ms": 215.9
       },
       "empty_predictions": 60,
-      "predictions_sha256": "290c82ac712103bbc8e081f7bb53a79baa20a2a6eace712a6dade9e1283cb513",
+      "predictions_sha256": "d6472f9f75b2ceaa4de1b6b45fe3629e3e51481fd45874f39b24c28baa521ef2",
       "recognizer": {
         "median_ms": 178.4,
         "n": 180,
@@ -159,6 +159,7 @@
       "python3 -m tools.ocr_bench.evaluate CORPUS/manifest.jsonl X.jsonl [--split dev|test]"
     ],
     "detection_forced_on_every_image": true,
+    "predictions_postprocessing": "boxes rounded to integer px, scores to 3 decimals (as run_models.py now does)",
     "prefilter": "none (OCR-0B)",
     "timed_runs_per_image": 1,
     "warmup_images_discarded": 5
