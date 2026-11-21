@@ -73,8 +73,10 @@ import nl.atlas.gallery.featurepeopleui.samePersonQueueStillAsks
  * #580 People ⋮ → Same person?: every open question of the library, one at a
  * time, the one that would move the most faces first. Yes and No are the
  * answers a person's page sends (same reducer, same atomic commit through
- * [PeopleDiscoveryHost.review]); Skip only moves on and is forgotten when the
- * screen closes. Nothing is joined without an answer.
+ * [PeopleDiscoveryHost.review]); Skip is stored as a grant-scoped opaque
+ * membership fingerprint preference and survives closing or relaunching the
+ * screen until a membership change or Show skipped reset. Nothing is joined
+ * without an answer.
  *
  * PERF: the list is read through a [SamePersonQueueCursor], so the first
  * question shows once the largest groups are scored, and the rest of the
