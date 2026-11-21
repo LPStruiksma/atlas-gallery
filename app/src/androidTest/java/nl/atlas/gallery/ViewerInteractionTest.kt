@@ -509,6 +509,7 @@ class ViewerInteractionTest {
             }
         }
         rule.waitForIdle()
+        awaitViewerDrawn()
         rule.mainClock.autoAdvance = false
         try {
             fun distanceFromCentre(): Float {
@@ -520,6 +521,7 @@ class ViewerInteractionTest {
             }
 
             val theme = if (dark) "dark" else "light"
+            saveUiEvidence("viewer-714-$theme-tap-000.png")
             rule.onNodeWithTag("atlas-thumbnail-13").performClick()
             // Advance one UI frame for the selection effect. A thumbnail
             // request does NOT animate pages 11 and 12 to reach page 13.
