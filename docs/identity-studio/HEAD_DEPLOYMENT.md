@@ -20,3 +20,24 @@ An admitted workflow must consume the target photograph, a *predeclared explicit
 | User-advertised whole-head capability | UNAVAILABLE |
 
 No GPU/model inference, adapter provenance check, paid compute or private-media transfer is authorized or reported by this document. Only exact-head CI results and a separately linked, independently reviewable benchmark may change the above evidence statuses.
+
+## Implemented admission scaffold
+
+The server now recognizes the separately named `flux2-head` backend. It is an
+unavailable-by-default admission scaffold, not evidence that an adapter exists
+or that a head swap succeeded. Configuration requires independent, affirmative
+licence, provenance, safeguards and IDS-12A acceptance gates plus exact hashes
+for the original-host model, encoder, runtime, adapter and API workflow. Those
+artifacts are absent here, their facts remain **NOT VERIFIED**, and the real 20+
+pair benchmark remains **NOT MEASURED**. Consequently no production deployment
+may currently set all gates true or advertise `full_head`.
+
+When and only when those facts are independently established, startup and each
+request recheck all artifact bytes. The admitted graph must bind target, mask,
+reference(s), instruction, seed and the configured adapter; requests must give a
+bounded explicit crop and cannot select a network provider or adapter. Only one
+metadata-free PNG exactly matching the crop can succeed, with artifact-hash,
+seed and crop lineage. Any missing, changed, mismatched or unverified evidence,
+invalid input, provider/workflow failure, refusal or cancellation fails without
+a result. BFS remains tier D / benchmark-only unless its provenance is separately
+verified under the same rules.
