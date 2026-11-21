@@ -43,6 +43,17 @@ class LicenceAdmission(unittest.TestCase):
             with self.assertRaisesRegex(PermissionError, r"LICENCES\.md.*author permission"):
                 pipeline.model_path("alphaface_256")
 
+    def test_cli_refuses_denied_candidate_before_loading_or_fetching(self):
+        with mock.patch.object(cli, "Bench", side_effect=AssertionError("loaded bench")), \
+             mock.patch.object(fixtures, "fetch", side_effect=AssertionError("fetched fixture")), \
+             mock.patch.object(cli, "cost", side_effect=AssertionError("cost started")):
+            for args in (["one", "--candidate", "alphaface_256"],
+                         ["fetch"],
+                         ["cost", "--candidates", "inswapper_128,alphaface_256"]):
+                with self.subTest(args=args):
+                    with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+                        cli.main(args + ["--out", "/tmp/identity-bench-denied"])
+
     def test_unknown_models_fail_closed(self):
         with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
             pipeline.require_bench_model("new_unreviewed_model")

@@ -523,6 +523,9 @@ def main(argv=None) -> int:
         print(fixtures.manifest_source(fixtures.select()))
         return 0
     if args.command == "fetch":
+        # Preflight the whole requested model set before fetching any fixtures.
+        for name in pipeline.MODELS:
+            pipeline.require_bench_model(name)
         for file_id in fixtures.FILES:
             fixtures.fetch(file_id)
         for name in pipeline.MODELS:
@@ -533,19 +536,24 @@ def main(argv=None) -> int:
         print(json.dumps(cost_one(args.label)))
         return 0
     if args.command == "cost":
-        cost(out, args.candidates.split(",") if args.candidates else
-             list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
+        labels = (args.candidates.split(",") if args.candidates else
+                  list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
+        # No earlier candidate may download weights before a later one is refused.
+        for label in labels:
+            parse_label(label)
+        cost(out, labels)
         return 0
     if args.command == "report":
         with open(os.path.join(out if args.out else os.path.join(pipeline.cache_dir(), "runs", "run"), "results.json")) as f:
             print(report(json.load(f)))
         return 0
     if args.command == "one":
+        # Bench(out) loads the research judge; reject bad candidates first.
+        config = parse_label(args.candidate)
         bench = Bench(out)
         target = next(t for t in fixtures.TARGETS + fixtures.DEV_TARGETS if t.id == args.target)
         identity = args.identity or fixtures.IDENTITIES[0]
         gallery = bench.gallery(list(fixtures.IDENTITIES) + list(fixtures.RENDERED), fixtures.DISTRACTORS)
-        config = parse_label(args.candidate)
         row = bench.measure(target, identity, config, gallery, keep_image=True)
         if "_image" in row:
             print("output:", bench.save(row, target, config))
