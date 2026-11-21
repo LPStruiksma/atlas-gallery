@@ -125,7 +125,7 @@ Each shard runs three things in order, and each leaves its own lines in the job 
    ATLAS_BASELINE drift keyboard 912px, top app nl.atlas.gallery (baseline com.google.android.apps.nexuslauncher) left by nl.atlas.gallery.SomeTest#someMethod
    ```
 
-   The keyboard goes first (Back), then Back for a non-ATLAS app on top, then animator scale, night mode and display size and density are restored. `restore incomplete: …` names what could not be put back (a rotation, for one). At the end, `summary <class> left drift <n> time(s)` lists the classes that broke rule 7. Fix the test named after `left by`, not the one that failed next.
+   A system "isn't responding" dialog (Quickstep on the CI emulator) is answered with Wait first and logged as `drift system 'isn't responding' dialog`. Then the keyboard goes (Back), then Back for a non-ATLAS app on top, then animator scale, night mode and display size and density are restored. `restore incomplete: …` names what could not be put back (a rotation, for one). At the end, `summary <class> left drift <n> time(s)` lists the classes that broke rule 7. Fix the test named after `left by`, not the one that failed next.
 3. **Failure state.** Every failing test gets one `ATLAS_DIAG <Class#method> <describeDevice()>` line: keyboard, display, animator scale, night mode, focused window and top activity at the moment of failure, without a diagnostic branch.
 
 After the suite the script prints the `ATLAS_BASELINE` and `ATLAS_DIAG` lines in one group, next to `ATLAS_PERF10`. So for a red shard: read the failing test's own message, then its `ATLAS_DIAG` line, then any drift line just before it.

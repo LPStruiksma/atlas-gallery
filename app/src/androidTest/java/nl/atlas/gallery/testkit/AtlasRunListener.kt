@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.Display
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.clearSystemAnrDialogs
 import nl.atlas.gallery.interactiveUiAutomation
 import org.junit.runner.Description
 import org.junit.runner.Result
@@ -68,6 +69,16 @@ class AtlasRunListener : RunListener() {
 
     private fun checkBaseline() {
         val base = baseline ?: DeviceBaseline.baseline().also { baseline = it }
+        // A system "isn't responding" dialog (Quickstep on the CI emulator)
+        // takes focus from every test after it: run 44856398928 shard 0 lost
+        // ExternalPickerJourneyTest to one. Press Wait before the test starts.
+        if (DeviceBaseline.systemAnrDialogShown()) {
+            val cleared = runCatching { clearSystemAnrDialogs(attempts = 2) }.getOrDefault(0)
+            Log.w(BASELINE_LOG_TAG, "drift system 'isn't responding' dialog (cleared $cleared) " +
+                "left by $previousTest")
+            val owner = previousTest.substringBefore('#')
+            driftByClass[owner] = (driftByClass[owner] ?: 0) + 1
+        }
         val drift = settleAndCompare(base)
         if (drift.isNotEmpty()) {
             Log.w(BASELINE_LOG_TAG, "drift ${drift.joinToString(", ") { it.what }} " +
@@ -275,6 +286,14 @@ internal data class DeviceBaseline(
                 .filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 .maxOfOrNull { window -> Rect().also { window.getBoundsInScreen(it) }.height() } ?: 0
         }.getOrDefault(0)
+
+        /** Whether a system "isn't responding" dialog is on screen, by window title only. */
+        fun systemAnrDialogShown(): Boolean = runCatching {
+            interactiveUiAutomation().windows.any { window ->
+                window.type == AccessibilityWindowInfo.TYPE_SYSTEM &&
+                    window.title?.toString()?.contains("isn't responding", ignoreCase = true) == true
+            }
+        }.getOrDefault(false)
 
         /** The package of the active application window, or null when unknown. */
         fun topPackage(): String? = runCatching {
