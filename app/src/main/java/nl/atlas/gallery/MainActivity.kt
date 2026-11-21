@@ -2610,8 +2610,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
     }
     fun transferBatch(mode: AlbumTransferMode, target: AlbumTransferTarget) {
-        val selection = batchSelection ?: return
-        if (Build.VERSION.SDK_INT < 30 || batchOperating || selection.count == 0) return
+        if (Build.VERSION.SDK_INT < 30 || batchOperating) return
+        // #783: the target tap must never be a silent no-op. A catalogue
+        // reload while the picker was up can leave no selection (or one rebased
+        // to zero items); say so with the existing snackbar and do nothing else.
+        val selection = batchSelection
+        if (selection == null || selection.count == 0) {
+            selectionResults.show("Selection changed · select again")
+            return
+        }
         // The picker is a separate screen: a library reload while it was open
         // (e.g. after a previous copy) re-publishes the list and rebases the
         // selection a moment later. Resolve against the selection's own list
