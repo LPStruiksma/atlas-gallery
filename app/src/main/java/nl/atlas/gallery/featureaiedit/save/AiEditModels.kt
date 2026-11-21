@@ -63,7 +63,9 @@ data class AiEditCandidate(
 ) {
     init {
         require(originalUri.scheme == "content" && originalUri.authority == "media")
-        require(candidateUri.scheme == "content")
+        // The editor's working files are app-private files; AiEditSaver checks the path is inside
+        // the app's own cache or files folder before reading one (#431).
+        require(candidateUri.scheme == "content" || candidateUri.scheme == "file")
         require(originalUri != candidateUri) { "Do not re-encode the original in-place" }
         require(originalRevision.isNotBlank() && originalRevision.length <= 256)
         require(provider.isNotBlank() && provider.length <= 128)
