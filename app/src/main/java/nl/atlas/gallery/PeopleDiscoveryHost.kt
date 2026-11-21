@@ -116,6 +116,7 @@ import nl.atlas.gallery.featurevisual.onnx.SiglipImageEmbedder
 import nl.atlas.gallery.featurevisual.onnx.SiglipModel
 import nl.atlas.gallery.featurevisual.search.StoreVisualVectorSource
 import nl.atlas.gallery.featurevisual.search.VisualVectorSource
+import nl.atlas.gallery.featurevisual.store.VisualIndexProgress
 import nl.atlas.gallery.featurevisual.store.VisualIndexStore
 import nl.atlas.gallery.featurevisual.store.VisualMedia
 import nl.atlas.gallery.featurepeopleui.DetectedFaceReviewCandidate
@@ -638,6 +639,8 @@ internal class PeopleDiscoveryHost(
         const val MAX_PUBLICATION_RETRIES = 3
         /** #580: parts of [FaceIndexStore.MAX_PUBLICATION_FACES] one regroup runs at once. */
         const val MAX_REGROUP_PARTS = 64
+        /** #703: scope moves one read may follow (each is a committed successor). */
+        const val VISUAL_READ_ATTEMPTS = 4
 
         @Volatile private var app: PeopleDiscoveryHost? = null
 
@@ -1988,9 +1991,13 @@ internal class PeopleDiscoveryHost(
                 display, 0, 0, 0,
                 nativeDetectorInstalled = true, realStartActionAvailable = photoGrantCurrent()
             ), display)
+            // #703: the host's current face scope (another gallery grant
+            // until this publication carries it over) keeps its visual counts.
             return PeopleDiscoveryStatus(ui, display,
                 PeopleActionAvailability(mayStartScan = ui.phase == FaceDiscoveryPhase.READY),
-                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
+                visual = visualStatus(snap.scope?.takeIf { snap.optedIn }?.epoch,
+                    mayEnableHere = false),
+                peoplePending = keptCatalogueRestoring(snap))
         }
         // The cluster writer may hold SQLite for a long publication part.
         // Report its actual live stage without waiting for a DB read or
@@ -1999,11 +2006,11 @@ internal class PeopleDiscoveryHost(
         if (!snap.paused && groupingEpoch == scoped.epoch && photoGrantCurrent()) {
             val ui = FaceDiscoveryUiState(FaceDiscoveryPhase.GROUPING,
                 observedPermissionEpoch = display)
-            val visualOn = synchronized(lock) { visualOptedIn }
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
                 people = liveHomePeople(scoped.epoch),
-                visual = if (visualStore != null)
-                    VisualIndexStatus(enabled = visualOn, mayEnable = false) else null,
+                // #703: store counts of the authorized visual epoch (a separate
+                // database from the cluster writer's), never offering the switch.
+                visual = visualStatus(scoped.epoch, mayEnableHere = false),
                 provenance = scoped.provenance)
         }
         // If the worker has already held the old scope for a new publication,
@@ -2013,7 +2020,8 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
+                visual = visualStatus(scoped.epoch, mayEnableHere = false),
+                peoplePending = keptCatalogueRestoring(snap))
         }
         val progress = store.progress(scoped.epoch)
         val counts = store.reviewCounts(scoped.epoch)
@@ -2025,7 +2033,8 @@ internal class PeopleDiscoveryHost(
                 scopedEpochReadable = false, workerHold = null),
                 observedPermissionEpoch = display)
             return PeopleDiscoveryStatus(ui, display, PeopleActionAvailability(),
-                visual = visualStatus(null), peoplePending = keptCatalogueRestoring(snap))
+                visual = visualStatus(scoped.epoch, mayEnableHere = false),
+                peoplePending = keptCatalogueRestoring(snap))
         }
         val hold = conditions(scoped.epoch).holdReason()
         if (hold == FaceScanPhase.PERMISSION_REQUIRED) {
@@ -2081,8 +2090,12 @@ internal class PeopleDiscoveryHost(
         return StoreVisualVectorSource(store, visual.epoch, visualModelVersion)
     }
 
-    /** The visual index panel's facts for the live face scope [faceEpoch]. */
-    fun visualStatus(faceEpoch: String?): VisualIndexStatus? {
+    /**
+     * The visual index panel's facts for the live face scope [faceEpoch].
+     * [mayEnableHere] false: a People status branch that never offers the
+     * switch (restoring, swap window, grouping) but still shows the counts.
+     */
+    fun visualStatus(faceEpoch: String?, mayEnableHere: Boolean = true): VisualIndexStatus? {
         val store = visualStore ?: return null
         val enabled: Boolean
         val failure: String?
@@ -2094,34 +2107,75 @@ internal class PeopleDiscoveryHost(
             kept = visualDataKept
             running = optedIn && faceEpoch != null && scope?.epoch == faceEpoch
         }
-        val visual = visualScope?.takeIf {
-            enabled && faceEpoch != null && (it.faceEpoch == faceEpoch ||
+        val read = if (enabled && failure == null && faceEpoch != null)
+            authorizedVisualProgress(store, faceEpoch) else null
+        val mayDelete = !enabled && (kept || try { visualModelCopyExists() }
+            catch (_: RuntimeException) { false })
+        return VisualIndexStatus(
+            enabled = enabled,
+            mayEnable = mayEnableHere && running && faceEpoch != null && scopeCurrent(faceEpoch),
+            done = read?.second?.done, total = read?.second?.total,
+            skipped = read?.second?.skipped ?: 0,
+            leftOut = read?.first?.leftOutPhotos ?: 0,
+            mayDelete = mayDelete, failure = failure
+        )
+    }
+
+    /** The visual scope that may serve counts to a read bound to [faceEpoch], or null. */
+    private fun authorizedVisualScope(faceEpoch: String): VisualScope? =
+        visualScope?.takeIf {
+            it.faceEpoch == faceEpoch ||
                 // #684: the store committed the staged face epoch; the host
                 // swaps to it next and keeps this visual scope's counts.
                 (faceEpoch == stagingEpoch && it.faceEpoch == liveEpoch) ||
                 // #699: a read still bound to the face epoch the swap just
                 // replaced keeps the counts that now serve its successor.
                 (faceEpoch == restagedFrom && it.faceEpoch == liveEpoch &&
-                    restageReadGap(faceEpoch)))
+                    restageReadGap(faceEpoch))
         }
-        val progress = visual?.let {
-            try {
-                store.progress(it.epoch)
+
+    /** Live photo grant, visual opt-in and no visual failure: counts may show. */
+    private fun visualCountsAuthorized(): Boolean =
+        synchronized(lock) { visualOptedIn && visualFailure == null } && photoGrantCurrent()
+
+    /**
+     * #703: the visual counts for [faceEpoch], always a store read made now
+     * of a visual epoch the host authorizes now (its [visualScope], or the
+     * [committingVisual] successor for the same face scope), under the live
+     * grant, opt-in and no-failure checks before and after the read. Nothing
+     * is cached here. When the store no longer serves the scope that was
+     * read but the host has moved to its successor in between (the successor
+     * committed, became [visualScope] and cleared [committingVisual] between
+     * this read's scope and store reads), the read follows it; a scope that
+     * did not move means the store holds no counts, a legitimate not-ready
+     * state (a first-ever catalogue, a concurrent full restage).
+     */
+    private fun authorizedVisualProgress(
+        store: VisualIndexStore, faceEpoch: String
+    ): Pair<VisualScope, VisualIndexProgress>? {
+        var previous: VisualScope? = null
+        repeat(VISUAL_READ_ATTEMPTS) {
+            val visual = authorizedVisualScope(faceEpoch) ?: return null
+            if (visual === previous) return null // nothing moved: no counts in the store
+            previous = visual
+            if (!visualCountsAuthorized()) return null
+            val read = try {
+                store.progress(visual.epoch)?.let { visual to it }
                     // #699: the successor for the same face scope committed
                     // between these two reads; its counts are the readable ones.
-                    ?: committingVisual?.takeIf { next -> next.faceEpoch == it.faceEpoch }
-                        ?.let { next -> store.progress(next.epoch) }
-            } catch (_: SQLException) { null }
+                    ?: committingVisual?.takeIf { next -> next.faceEpoch == visual.faceEpoch }
+                        ?.let { next -> store.progress(next.epoch)?.let { next to it } }
+            } catch (_: SQLException) { return null }
+            if (read == null) return@repeat // the scope may have moved on; re-read it
+            // The authorization must still hold after the read: a revoke,
+            // opt-out or failure that landed during it shows nothing, and a
+            // successor that replaced the read epoch meanwhile is read instead.
+            val stillServed = visualScope?.epoch == read.first.epoch ||
+                committingVisual?.epoch == read.first.epoch
+            if (!stillServed) return@repeat
+            return if (visualCountsAuthorized()) read else null
         }
-        val mayDelete = !enabled && (kept || try { visualModelCopyExists() }
-            catch (_: RuntimeException) { false })
-        return VisualIndexStatus(
-            enabled = enabled,
-            mayEnable = running && faceEpoch != null && scopeCurrent(faceEpoch),
-            done = progress?.done, total = progress?.total, skipped = progress?.skipped ?: 0,
-            leftOut = visual?.leftOutPhotos ?: 0,
-            mayDelete = mayDelete, failure = failure
-        )
+        return null
     }
 
     /** No vector decode or full clustering on the People home path. */

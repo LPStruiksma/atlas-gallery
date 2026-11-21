@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
@@ -216,10 +217,29 @@ class DeclutterSearchLandscapeEvidenceTest {
                     rule.exists(hasTestTag("atlas-search-single-row"))
                 }
                 rule.waitForIdle()
+                // #702: the full counted action must be a real visible,
+                // enabled >=48dp target; a one-pixel blue sliver is not enough.
+                val move = rule.onNodeWithTag("atlas-declutter-trash").assertExists()
+                    .assertIsEnabled()
+                    .assertTextContains("Move 3 to Android Trash…")
+                val buttonNode = move.fetchSemanticsNode()
+                val labelNode = rule.onNodeWithText(
+                    "Move 3 to Android Trash…", useUnmergedTree = true
+                ).fetchSemanticsNode()
+                val minHeightPx = 48f * rule.activity.resources.displayMetrics.density
+                assertTrue("Move height ${buttonNode.size.height}px, expected >= ${minHeightPx}px",
+                    buttonNode.size.height + 1 >= minHeightPx) // allow <=1px rounding
+                assertTrue("Move label has no laid-out glyph bounds", labelNode.size.height > 0 &&
+                    labelNode.size.width > 0)
+                val buttonBounds = buttonNode.boundsInWindow
+                val labelBounds = labelNode.boundsInWindow
+                assertTrue("Move label outside its tappable button: $labelBounds vs $buttonBounds",
+                    labelBounds.top >= buttonBounds.top && labelBounds.bottom <= buttonBounds.bottom &&
+                    labelBounds.left >= buttonBounds.left && labelBounds.right <= buttonBounds.right)
                 saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
                 rule.assertTagsAboveIme(listOf("atlas-scoped-search-field",
                     "atlas-search-scope-screen", "atlas-search-scope-library",
-                    "atlas-search-close", "atlas-header-back"))
+                    "atlas-search-close", "atlas-header-back", "atlas-declutter-trash"))
 
                 // Whole library is reachable with the keyboard still up.
                 rule.onNodeWithTag("atlas-search-scope-library").performClick()
@@ -233,6 +253,10 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.onNodeWithTag("atlas-search-close").performClick()
                 rule.hidePanelKeyboard()
                 rule.awaitThat("panel closed") { !rule.exists(hasTestTag("atlas-search-expanded")) }
+                rule.awaitThat("staged rows return when the IME hides") {
+                    rule.onAllNodesWithTag("atlas-declutter-thumbnail")
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
             }
             rule.runOnIdle { assertEquals(0, left) }
             } finally {

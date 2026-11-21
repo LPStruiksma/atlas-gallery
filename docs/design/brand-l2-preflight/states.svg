@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1540" viewBox="0 0 1800 1540">
+<rect x="0" y="0" width="1800" height="1540" rx="0" fill="#E7EAF2" stroke="none" stroke-width="1"/>
+<text x="72" y="88" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="49" fill="#0E1030">L2 states · representative style probes</text>
+<text x="72" y="128" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="22" fill="#5A5F7A">Schematic synthetic panels: visual checks, not complete screen builds. No new L4–L8 components.</text>
+<rect x="70" y="190" width="535" height="420" rx="20" fill="#000000" stroke="#323750" stroke-width="2"/>
+<text x="92" y="230" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#8C9BFF">Viewer / dark</text>
+<rect x="92" y="248" width="490" height="186" rx="15" fill="#14152A" stroke="none" stroke-width="1"/>
+<rect x="130" y="279" width="445" height="98" rx="9" fill="#000000" stroke="none" stroke-width="1"/>
+<rect x="264" y="289" width="170" height="64" rx="5" fill="#496D79" stroke="none" stroke-width="1"/>
+<rect x="129" y="394" width="450" height="28" rx="15" fill="#3448E0" stroke="none" stroke-width="1"/>
+<text x="233" y="414" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="15" fill="#FFFFFF">Share   Edit    More</text>
+<rect x="140" y="430" width="435" height="6" rx="3" fill="#41445D" stroke="none" stroke-width="1"/>
+<rect x="306" y="430" width="68" height="6" rx="3" fill="#8C9BFF" stroke="none" stroke-width="1"/>
+<text x="98" y="480" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#F2F3F8">Black viewer ground</text>
+<text x="98" y="513" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Existing action controls: lapis</text>
+<text x="98" y="546" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Seek / filmstrip: token greys</text>
+<rect x="635" y="190" width="535" height="420" rx="20" fill="#FFFFFF" stroke="#CFD4E0" stroke-width="2"/>
+<text x="657" y="230" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#2639C9">Selection / light</text>
+<rect x="657" y="248" width="490" height="186" rx="15" fill="#F2F3F8" stroke="none" stroke-width="1"/>
+<rect x="695" y="277" width="170" height="160" rx="8" fill="#769CA3" stroke="none" stroke-width="1"/>
+<rect x="872" y="277" width="170" height="160" rx="8" fill="#B6A281" stroke="none" stroke-width="1"/>
+<circle cx="845" cy="299" r="18" fill="#2639C9" stroke="#FFFFFF" stroke-width="3"/>
+<text x="837" y="307" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="20" fill="#FFFFFF">1</text>
+<text x="1065" y="332" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="32" fill="#2639C9">♥</text>
+<text x="663" y="480" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#0E1030">Selected tile state visible</text>
+<text x="663" y="513" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Existing indicator → brand-fill</text>
+<text x="663" y="546" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Favourite stays distinguishable</text>
+<rect x="1200" y="190" width="535" height="420" rx="20" fill="#FFFFFF" stroke="#CFD4E0" stroke-width="2"/>
+<text x="1222" y="230" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#2639C9">People / light</text>
+<rect x="1222" y="248" width="490" height="186" rx="15" fill="#F2F3F8" stroke="none" stroke-width="1"/>
+<rect x="1260" y="290" width="110" height="113" rx="8" fill="#98AAA6" stroke="none" stroke-width="1"/>
+<text x="1388" y="331" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="25" fill="#0E1030">Alex</text>
+<text x="1388" y="362" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">236 photos</text>
+<text x="1388" y="392" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="17" fill="#5A5F7A">Latest: November 2026</text>
+<text x="1228" y="480" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#0E1030">Existing row and count</text>
+<text x="1228" y="513" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">15/22 body; 14/20 secondary</text>
+<text x="1228" y="546" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">No portrait component change</text>
+<rect x="70" y="630" width="535" height="420" rx="20" fill="#000000" stroke="#323750" stroke-width="2"/>
+<text x="92" y="670" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#8C9BFF">Settings / dark</text>
+<rect x="92" y="688" width="490" height="186" rx="15" fill="#14152A" stroke="none" stroke-width="1"/>
+<text x="130" y="743" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="24" fill="#F2F3F8">Appearance</text>
+<rect x="130" y="760" width="440" height="2" rx="0" fill="#50546F" stroke="none" stroke-width="1"/>
+<text x="130" y="802" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#F2F3F8">Use system theme</text>
+<text x="130" y="839" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="17" fill="#9AA0B8">Follows your device setting</text>
+<rect x="504" y="781" width="60" height="32" rx="16" fill="#3448E0" stroke="none" stroke-width="1"/>
+<text x="98" y="920" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#F2F3F8">Funnel Sans section hierarchy</text>
+<text x="98" y="953" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Surface = #14152A</text>
+<text x="98" y="986" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Secondary ink ≥ 4.5:1</text>
+<rect x="635" y="630" width="535" height="420" rx="20" fill="#FFFFFF" stroke="#CFD4E0" stroke-width="2"/>
+<text x="657" y="670" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#2639C9">Dialog / light</text>
+<rect x="657" y="688" width="490" height="186" rx="15" fill="#F2F3F8" stroke="none" stroke-width="1"/>
+<rect x="720" y="729" width="390" height="130" rx="18" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<text x="743" y="765" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="24" fill="#0E1030">Move 3 photos?</text>
+<text x="743" y="796" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="18" fill="#5A5F7A">The photos stay in your library.</text>
+<text x="910" y="838" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="18" fill="#5A5F7A">Cancel</text>
+<text x="1005" y="838" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="18" fill="#2639C9">Move</text>
+<text x="663" y="920" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#0E1030">Existing confirmation layout</text>
+<text x="663" y="953" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Action text = brand-text</text>
+<text x="663" y="986" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Focus and buttons legible</text>
+<rect x="1200" y="630" width="535" height="420" rx="20" fill="#000000" stroke="#323750" stroke-width="2"/>
+<text x="1222" y="670" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#8C9BFF">Empty album / dark</text>
+<rect x="1222" y="688" width="490" height="186" rx="15" fill="#14152A" stroke="none" stroke-width="1"/>
+<text x="1268" y="761" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="22" fill="#F2F3F8">No photos in this album yet.</text>
+<text x="1268" y="798" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Add photos from Photos to fill it.</text>
+<text x="1268" y="853" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="20" fill="#8C9BFF">Open Photos</text>
+<text x="1228" y="920" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#F2F3F8">One sentence, one next step</text>
+<text x="1228" y="953" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">No decorative filler</text>
+<text x="1228" y="986" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Body text remains readable</text>
+<rect x="70" y="1070" width="535" height="420" rx="20" fill="#FFFFFF" stroke="#CFD4E0" stroke-width="2"/>
+<text x="92" y="1110" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#2639C9">Loading / light</text>
+<rect x="92" y="1128" width="490" height="186" rx="15" fill="#F2F3F8" stroke="none" stroke-width="1"/>
+<text x="135" y="1205" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="25" fill="#0E1030">Finding faces</text>
+<text x="135" y="1244" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="22" fill="#5A5F7A">7.140 of 12.305</text>
+<rect x="135" y="1275" width="433" height="12" rx="6" fill="#D0D6EA" stroke="none" stroke-width="1"/>
+<rect x="135" y="1275" width="252" height="12" rx="6" fill="#2639C9" stroke="none" stroke-width="1"/>
+<text x="98" y="1360" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#0E1030">Existing progress treatment</text>
+<text x="98" y="1393" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Finding faces, 7.140 of 12.305</text>
+<text x="98" y="1426" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">No new self-animating sphere</text>
+<rect x="635" y="1070" width="535" height="420" rx="20" fill="#000000" stroke="#323750" stroke-width="2"/>
+<text x="657" y="1110" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#8C9BFF">Search / keyboard / dark</text>
+<rect x="657" y="1128" width="490" height="186" rx="15" fill="#14152A" stroke="none" stroke-width="1"/>
+<rect x="693" y="1163" width="450" height="55" rx="14" fill="#000000" stroke="none" stroke-width="1"/>
+<text x="717" y="1199" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="21" fill="#9AA0B8">Search photos</text>
+<rect x="693" y="1233" width="450" height="75" rx="8" fill="#333747" stroke="none" stroke-width="1"/>
+<text x="713" y="1263" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="15" fill="#FFFFFF">Q  W  E  R  T  Y  U  I  O  P</text>
+<text x="713" y="1294" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="16" fill="#FFFFFF">A  S  D  F  G  H  J  K  L</text>
+<text x="663" y="1360" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#F2F3F8">Existing Search destination</text>
+<text x="663" y="1393" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Keyboard respects safe area</text>
+<text x="663" y="1426" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#9AA0B8">Search input / results readable</text>
+<rect x="1200" y="1070" width="535" height="420" rx="20" fill="#FFFFFF" stroke="#CFD4E0" stroke-width="2"/>
+<text x="1222" y="1110" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="29" fill="#2639C9">200% text / 10k+ / light</text>
+<rect x="1222" y="1128" width="490" height="186" rx="15" fill="#F2F3F8" stroke="none" stroke-width="1"/>
+<text x="1260" y="1195" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="31" fill="#0E1030">12.305 photos</text>
+<text x="1260" y="1238" font-family="Funnel Sans, Arial, sans-serif" font-weight="700" font-size="31" fill="#0E1030">and 45 videos</text>
+<rect x="1260" y="1259" width="137" height="50" rx="8" fill="#2639C9" stroke="none" stroke-width="1"/>
+<text x="1274" y="1293" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="24" fill="#FFFFFF">Photos</text>
+<text x="1470" y="1291" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">10k+ synthetic</text>
+<text x="1228" y="1360" font-family="Funnel Sans, Arial, sans-serif" font-weight="600" font-size="20" fill="#0E1030">Wrap body, preserve target sizes</text>
+<text x="1228" y="1393" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Virtualized media; no copy loss</text>
+<text x="1228" y="1426" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">No overlap at large font</text>
+<text x="74" y="1520" font-family="Funnel Sans, Arial, sans-serif" font-weight="400" font-size="20" fill="#5A5F7A">Contrast ratios are recorded in palette.svg. Actual font metrics, TalkBack, insets and interaction require exact-head Android render tests.</text>
+</svg>
