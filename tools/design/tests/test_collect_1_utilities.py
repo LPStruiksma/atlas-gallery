@@ -49,6 +49,30 @@ class CollectOneUtilities(unittest.TestCase):
         self.assertFalse(any("Selfies," in label for label in labels))
         self.assertTrue(any("Videos," in label for label in labels))
 
+    def test_all_empty_media_types_omit_the_whole_section(self):
+        s = collect.collections(counts=(0,) * 7)
+        self.assertFalse(any(any(c in t.label for c in collect.CATEGORIES) for t in s.targets))
+        # Favourites still draws two thumbnails; no media-type strip exists.
+        self.assertEqual(self._photos(counts=(0,) * 7), 2)
+
+    def test_one_and_two_item_categories_have_no_filler_thumbnails(self):
+        counts = (0, 0, 2, 1, 0, 0, 0)
+        labels = [t.label for t in collect.collections(counts=counts).targets]
+        self.assertTrue(any(l.startswith("Recently added, 2 items") for l in labels))
+        self.assertTrue(any(l.startswith("Selfies, 1 item,") for l in labels))
+        self.assertEqual(self._photos(counts=counts), 2 + 2 + 1)  # Favourites + exactly 2 + 1
+
+    @staticmethod
+    def _photos(**kw):
+        calls = []
+        original = collect.Screen.photo
+        collect.Screen.photo = lambda self, *a, **k: (calls.append(1), original(self, *a, **k))[1]
+        try:
+            collect.collections(**kw)
+        finally:
+            collect.Screen.photo = original
+        return len(calls)
+
 
 if __name__ == "__main__":
     unittest.main()

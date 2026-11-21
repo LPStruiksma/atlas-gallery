@@ -39,7 +39,7 @@ OUT = REPO / "docs/design/lapis/preflight"
 FILE = "collect-1-utilities.png"
 VERIFIED = "2026-11-21"
 CATEGORIES = ("Videos", "Screenshots", "Recently added", "Selfies", "Panoramas", "Slow motion", "Large files")
-PANELS = ("A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3", "C4", "D1", "D2", "D3", "E1", "E2", "E3")
+PANELS = ("A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "C1", "C2", "C3", "C4", "D1", "D2", "D3", "E1", "E2", "E3")
 
 
 def _title(s: Screen, text: str, subtitle: str = "") -> int:
@@ -82,6 +82,7 @@ def collections(
     long: bool = False,
     scrolled: bool = False,
     zero_case: bool = False,
+    counts: tuple[int, ...] | None = None,
 ) -> Screen:
     """Collections is scrollable: separate panels show its first and later rows.
 
@@ -90,40 +91,40 @@ def collections(
     """
     s = Screen(FONTS, theme=theme, font_scale=scale)
     y = _title(s, "Collections", "Named rows and Media types · synthetic")
-    if not scrolled:
-        s.text((px(20), y), "Favourites", "section")
-        y = _strip(s, y + px(28), 10, available=2) + px(18)
-        s.text((px(20), y), "Media types", "section")
-        y += s.line_h("section") + px(10)
-    else:
-        y = s.wrap(px(20), y, "Media types · continued", DEVICE_W - px(40), "section") + px(10)
-
     # Model a stable seven-category navigation order; zero-count rows disappear.
-    counts = (1284, 326, 4912, 7, 12, 3, 84)
-    if zero_case:
-        counts = (1284, 326, 0, 0, 12, 3, 84)
+    if counts is None:
+        counts = (1284, 326, 0, 0, 12, 3, 84) if zero_case else (1284, 326, 4912, 7, 12, 3, 84)
     entries = [(i, name, counts[i]) for i, name in enumerate(CATEGORIES) if counts[i] > 0]
     if scrolled:
         entries = entries[3:]
+    if not scrolled:
+        s.text((px(20), y), "Favourites", "section")
+        y = _strip(s, y + px(28), 10, available=2) + px(18)
+        if entries:  # an all-empty Media types section is omitted, heading included
+            s.text((px(20), y), "Media types", "section")
+            y += s.line_h("section") + px(10)
+    else:
+        y = s.wrap(px(20), y, "Media types · continued", DEVICE_W - px(40), "section") + px(10)
     for i, name, count in entries:
         label = name
         if long and name == "Panoramas":
             label = "Panoramas · localized extended label"
         start = y
         label_bottom = s.wrap(px(20), start, label, DEVICE_W - px(160), "body")
-        s.text((DEVICE_W - px(20), start + px(6)), f"{count:,} items", "secondary",
+        s.text((DEVICE_W - px(20), start + px(6)), f"{count:,} item" + ("" if count == 1 else "s"), "secondary",
                fill=s.t["ink2"], anchor="ra")
         strip_y = max(start + px(30), label_bottom + px(4))
         if strip_y + px(48) > s.bottom - px(108):
             break  # remaining entries are visible after Collections scrolls
         _strip(s, strip_y, 40 + i * 7, available=count)
         box = (px(16), start - px(4), DEVICE_W - px(16), strip_y + px(48))
-        s.target(box, f"{name}, {count} items, latest today")
-        s.focus_order(box, f"{name}: {count} items, latest today")
+        s.target(box, f"{name}, {count} item{'' if count == 1 else 's'}, latest today")
+        s.focus_order(box, f"{name}: {count} item{'' if count == 1 else 's'}, latest today")
         y = strip_y + px(48) + px(14)
 
     s.note((px(8), s.bottom - px(102)),
-           "Scroll continues · empty media types omitted" if zero_case else
+           "All media types empty: whole section omitted" if not any(counts) else
+           "Scroll continues · empty media types omitted" if zero_case or 0 in counts else
            "Scroll continues · full category order in table")
     _chrome(s)
     return s
@@ -239,6 +240,8 @@ def build(fonts: Fonts) -> Board:
         "Seven media types keep their stable order. Empty categories are omitted; screenshots are not duplicated."])
     frames = [
         Panel("A3", "Hidden empty rows", "Zero-count categories disappear while the remaining rows retain their order.", collections(zero_case=True)),
+        Panel("A4", "All media types empty", "Every media type has zero items: the whole Media types section, heading included, is absent; Favourites remain.", collections(counts=(0,) * 7)),
+        Panel("A5", "One- and two-item strips", "Categories with 1 or 2 items show exactly that many real-ratio thumbnails; no filler or stretching.", collections(counts=(1284, 326, 2, 1, 0, 0, 0))),
         Panel("B1", "Screenshots grid", "Opening Screenshots reuses its normal square grid.", category()),
         Panel("B2", "Sort", "Sort remains scoped to Screenshots; normal grid geometry is unchanged.", category(sorted_newest=False)),
         Panel("B3", "Scoped result", "A query filters only Screenshots unless Whole library is chosen.", category(query="receipt")),
