@@ -590,6 +590,8 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
                 cx, cy = DEVICE_W / 2, (my0 + my1) / 2
                 ld.ellipse([cx - px(30), cy - px(30), cx + px(30), cy + px(30)], fill=s.t["brand_fill"])
                 ld.text((cx, cy), "1.240", font=s.fonts.get("sans", 600, px(14)), fill="#FFFFFF", anchor="mm")
+                # the counted cluster is one tap target (zooms to its places)
+                place_pts["cluster 1.240"] = (cx, cy)
             else:
                 labels = [("Amsterdam", 0.30, 0.35), ("Coast", 0.15, 0.7), ("Mountains", 0.7, 0.6)]
                 for name, fx, fy in labels:
@@ -613,7 +615,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
             # Visible dot is intentionally small; the effective tap target
             # is 48 dp in both dimensions, including for TalkBack focus.
             s.target([x - px(24), yy - px(24), x + px(24), yy + px(24)], f"place {n}",
-                     actual=True, show_size=(n == "Coast"))
+                     actual=True, show_size=(n in ("Coast", "cluster 1.240")))
         for i, (a, b, c, d_) in enumerate(month_boxes):
             s.target([a, y0 + b, c, y0 + d_], f"month {MONTHS[i]}", actual=True, show_size=(i == 0))
     return y0 + h

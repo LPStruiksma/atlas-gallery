@@ -73,6 +73,19 @@ class L6PrimaryMonthTargets(unittest.TestCase):
             self.assertFalse(any(t.label.startswith("place ") for t in
                                  self.gen.l6_frame(theme, scale, frac=1.0, no_geo=True).targets))
 
+    def test_dense_cluster_is_one_48dp_target(self):
+        for theme, scale in (("light", 1.0), ("dark", 2.0)):
+            frame = self.gen.l6_frame(theme, scale, frac=1.0, dense=True)
+            clusters = [t for t in frame.targets if t.label == "place cluster 1.240"]
+            self.assertEqual(len(clusters), 1)
+            a, b, c, d = clusters[0].box
+            self.assertGreaterEqual(c - a, px(48) - 1)
+            self.assertGreaterEqual(d - b, px(48) - 1)
+            others = [t for t in frame.targets if t is not clusters[0]]
+            for o in others:
+                oa, ob, oc, od = o.box
+                self.assertTrue(oc <= a or oa >= c or od <= b or ob >= d, o.label)
+
     def test_motion_proof_is_timed_synthetic_and_reversible(self):
         path = ROOT / "docs/design/lapis/preflight/brand-l6-pull-motion.svg"
         root = ET.parse(path).getroot()
