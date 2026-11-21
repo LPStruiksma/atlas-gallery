@@ -52,3 +52,40 @@ backfill, geometry matching and a charging-stop guard. See
 measurement recipe. An Android instrumented SQLite/throughput run is still
 required to establish the measured ≤5% acceptance target; no numerical
 result is claimed without a completed run.
+
+
+## COVER-2 automatic person-cover policy (#166)
+
+The existing version-2 quality score is used **within one person only**.
+A face is eligible for the preferred tier when it has a non-null score,
+`quality_version=2`, and `quality_below_size_floor=0`. Among eligible
+observations, photos (`frame_ms IS NULL`) take priority over sampled video
+frames; the highest score within that tier wins. If no eligible photo exists,
+the highest-scoring eligible video frame wins. If no observation is eligible,
+a current, authorized member with the best available known score is used;
+legacy/unknown scores are still viable and are never interpreted as zero.
+Equal scores use the smallest opaque face UID for deterministic first choice.
+
+The automatic winner is a derived, app-private `people_auto_cover` hint.
+A valid current incumbent remains selected until a new candidate in its
+**same tier** exceeds its score by more than 0.05. A candidate in a higher
+priority tier takes over immediately, and removed, rejected, invalidated or
+split-away incumbents cannot be retained. This prevents flicker across
+relaunches, while allowing a newly eligible photo to replace a video.
+An automatic hint never replaces the separately persisted COVER-3 manual
+override, which wins while it still resolves to a present named-person member.
+
+The People home projection is updated transactionally with publication and
+manual identity review. Quality-only backfill recomputes *only affected*
+people in the same guarded SQLite transaction without changing the identity
+review revision; the host invalidates its cached home projection on a
+successful quality-only write. The live fallback path rechecks model, source
+revision, processed state, membership and grant before using a cover.
+Video cover crops continue to use the existing `frame_ms`-aware,
+grant-scoped crop cache. No expression/aesthetics model or attractiveness
+score is added.
+
+Synthetic selector JVM tests and Android SQLite tests live in
+`BestShotSelectorTest.kt` and `BestShotCoverAndroidTest.kt`, respectively.
+The tests and emulator render must still run on the exact PR head; no
+performance or visual measurement is claimed here.
