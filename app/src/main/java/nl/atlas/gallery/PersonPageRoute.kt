@@ -116,6 +116,21 @@ internal fun encodePersonSelectionForRotation(
 } else emptyList()
 
 /**
+ * Choose only a currently listed member for a named-person portrait. Both
+ * Hidden list and the person header consume this same deterministic fallback.
+ */
+internal fun personPagePortraitFace(
+    faces: List<NativeFaceObservationId>?,
+    manualUid: String?,
+    currentUid: String?,
+    homeCover: NativeFaceObservationId?
+): NativeFaceObservationId? =
+    manualUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: currentUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: homeCover?.takeIf { faces == null || it in faces }
+        ?: faces?.firstOrNull()
+
+/**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
  * and narrowed on Default, newest first. Every action is computed from the
@@ -367,10 +382,7 @@ internal fun NativePersonAlbumRoute(
         searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
         portrait = { portrait(
-            chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
-                ?: displayCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
-                ?: summaryCover?.takeIf { faces == null || it in faces }
-                ?: facts?.coverFace) },
+            personPagePortraitFace(faces, chosenCover, displayCover, summaryCover)) },
         onBack = onBack,
         onOpen = { record ->
             visibleMedia?.takeIf { shown -> shown.any { it.uri == record.uri } }
@@ -504,8 +516,7 @@ internal fun PersonFaceImage(host: PeopleDiscoveryHost, epoch: String?, face: Na
 internal fun hiddenPortraitFace(
     faces: List<NativeFaceObservationId>, selectedUid: String?
 ): NativeFaceObservationId? =
-    selectedUid?.let { uid -> faces.firstOrNull { it.localHex == uid } }
-        ?: faces.firstOrNull()
+    personPagePortraitFace(faces, null, selectedUid, null)
 
 /**
  * People ⋮ → Hidden: the hidden named people of the live snapshot. Tapping
