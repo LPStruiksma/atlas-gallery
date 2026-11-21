@@ -21,8 +21,10 @@ import java.nio.ByteOrder
  * [CpuRenderer] does; tests hold the two within a few 8-bit steps.
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-class AgslProgram {
-    private val shader = RuntimeShader(SHADER)
+class AgslProgram internal constructor(source: String) {
+    constructor() : this(SHADER)
+
+    private val shader = RuntimeShader(source)
     private var lutKey: Lut3D? = null
     private var lutShader: BitmapShader = bufferShader(packLut(Lut3D.identity(2)))
 
