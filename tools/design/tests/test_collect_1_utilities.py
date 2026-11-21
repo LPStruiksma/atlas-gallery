@@ -37,9 +37,17 @@ class CollectOneUtilities(unittest.TestCase):
 
     def test_categories_are_fixed_and_check_rejects_asset_readers(self):
         self.assertEqual(collect.CATEGORIES, (
-            "Videos", "Screenshots", "Selfies", "Portrait", "Panoramas", "Bursts", "Recently added"
+            "Videos", "Screenshots", "Recently added", "Selfies", "Panoramas", "Slow motion", "Large files"
         ))
         collect._source_is_safe()
+
+    def test_confirmed_zero_categories_are_not_navigable_rows(self):
+        collect.build(Fonts(FontSource(None, True)))  # initialize synthetic fonts
+        zero = collect.collections(zero_case=True)
+        labels = [t.label for t in zero.targets]
+        self.assertFalse(any("Recently added," in label for label in labels))
+        self.assertFalse(any("Selfies," in label for label in labels))
+        self.assertTrue(any("Videos," in label for label in labels))
 
 
 if __name__ == "__main__":
