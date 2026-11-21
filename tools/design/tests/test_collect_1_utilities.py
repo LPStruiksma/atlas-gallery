@@ -42,7 +42,7 @@ class CollectOneUtilities(unittest.TestCase):
         collect._source_is_safe()
 
     def test_confirmed_zero_categories_are_not_navigable_rows(self):
-        collect.build(Fonts(FontSource(None, True)))  # initialize synthetic fonts
+        # setUpClass initialized the shared synthetic font source.
         zero = collect.collections(zero_case=True)
         labels = [t.label for t in zero.targets]
         self.assertFalse(any("Recently added," in label for label in labels))
