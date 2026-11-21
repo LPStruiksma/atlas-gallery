@@ -90,6 +90,45 @@ class L6PrimaryMonthTargets(unittest.TestCase):
                     self.assertTrue(a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1],
                                     "place labels overlap")
 
+    def test_month_glyph_bounds_fit_target_at_full_200_percent(self):
+        # Test rendered glyph rectangles, not just geometric target boxes.
+        for theme, scale in (("light", 1.0), ("dark", 2.0)):
+            for state in (
+                {},
+                {"year": "2019", "counts": [0, 0, 40, 0, 0, 220, 610, 0, 0, 0, 15, 0],
+                 "current": 6},
+            ):
+                with self.subTest(theme=theme, scale=scale, state=state):
+                    frame = self.gen.l6_frame(theme, scale, frac=1.0, **state)
+                    targets = [t for t in frame.targets if t.label.startswith("month ")]
+                    self.assertEqual(len(frame.month_label_boxes), 12)
+                    for (name, glyph), target in zip(frame.month_label_boxes, targets):
+                        self.assertEqual(target.label, f"month {name}")
+                        left, top, right, bottom = target.box
+                        self.assertGreaterEqual(glyph[0], left - 1, name)
+                        self.assertGreaterEqual(glyph[1], top - 1, name)
+                        self.assertLessEqual(glyph[2], right + 1, name)
+                        self.assertLessEqual(glyph[3], bottom + 1, name)
+
+    def test_metadata_failure_is_a_recoverable_atlas_overlay(self):
+        frame = self.gen.l6_frame("dark", frac=1.0, error=True)
+        self.assertTrue(frame.atlas_error)
+        labels = [t.label for t in frame.targets]
+        self.assertIn("try atlas again", labels)
+        self.assertIn("close atlas (Back)", labels)
+        self.assertFalse(any(name.startswith(("month ", "place ")) for name in labels),
+                         "failed metadata must not expose stale month or place actions")
+        retry = next(t for t in frame.targets if t.label == "try atlas again")
+        close = next(t for t in frame.targets if t.label == "close atlas (Back)")
+        for t in (retry, close):
+            left, top, right, bottom = t.box
+            self.assertGreaterEqual(right - left, px(48) - 1)
+            self.assertGreaterEqual(bottom - top, px(48) - 1)
+            self.assertGreaterEqual(top, frame.top)
+            self.assertLessEqual(bottom, frame.slab_box[1])
+        self.assertLessEqual(retry.box[3], frame.slab_box[1],
+                             "Pictures grid and bottom slab remain reachable after the atlas")
+
     def test_dense_cluster_is_one_48dp_target(self):
         for theme, scale in (("light", 1.0), ("dark", 2.0)):
             frame = self.gen.l6_frame(theme, scale, frac=1.0, dense=True)
