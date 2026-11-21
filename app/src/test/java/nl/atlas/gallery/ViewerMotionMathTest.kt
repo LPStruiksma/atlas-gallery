@@ -1,6 +1,7 @@
 package nl.atlas.gallery
 
 import org.junit.Assert.*
+import nl.atlas.gallery.featuredesign.AtlasMotion
 import org.junit.Test
 import kotlin.math.abs
 
@@ -225,5 +226,127 @@ class ViewerMotionMathTest {
         assertThrows(IllegalArgumentException::class.java) {
             viewerStripPosition(0, 0f, 5, 0)
         }
+    }
+
+    // FLOW-4 (#713): animated double-tap zoom. Galaxy S24+ viewport 1080x2340.
+    private val vw = 1_080
+    private val vh = 2_340
+
+    /** Eased progress at [ms] into the 160 ms double-tap zoom. */
+    private fun eased(ms: Int): Float =
+        AtlasMotion.SineInOut70.transform(ms / AtlasMotion.DOUBLE_TAP_ZOOM_MS.toFloat())
+
+    /** Where the photo point that started under ([fx],[fy]) now is on screen. */
+    private fun mapped(from: ViewerZoomPosition, pose: ViewerZoomPosition, f: Float, centre: Float,
+                       fromT: Float, poseT: Float): Float {
+        val u = (f - centre - fromT) / from.scale
+        return centre + u * pose.scale + poseT
+    }
+
+    private fun assertLegal(pose: ViewerZoomPosition, sw: Int, sh: Int) {
+        // A legal pose is one the next finger step does not move (no snap).
+        val next = viewerZoomGesture(pose, 1f, 0f, 0f, vw / 2f, vh / 2f, vw, vh, sw, sh)
+        assertEquals(pose.scale, next.scale, .001f)
+        assertEquals(pose.translationX, next.translationX, .01f)
+        assertEquals(pose.translationY, next.translationY, .01f)
+    }
+
+    @Test fun doubleTapZoomAnimatesFor160msWithSineInOut() {
+        assertEquals(160, AtlasMotion.DOUBLE_TAP_ZOOM_MS)
+        assertEquals(0f, eased(0), .001f)
+        assertEquals(1f, eased(160), .001f)
+        val mid = eased(80)
+        assertTrue("sine in-out midpoint, got $mid", mid in .4f..0.75f)
+        val curve = (0..160 step 8).map { eased(it) }
+        assertTrue(curve.zipWithNext().all { it.first <= it.second + 1e-4f })
+    }
+
+    @Test fun doubleTapZoomInAtCentreKeepsTappedPixelStill() {
+        val from = ViewerZoomPosition()
+        for ((fx, fy) in listOf(540f to 1_170f, 700f to 1_000f, 380f to 1_500f)) {
+            val to = viewerDoubleTapZoom(from, fx, fy, vw, vh, vw, vh)
+            assertTrue(to.scale > 2f)
+            for (ms in listOf(0, 40, 80, 120, 160)) {
+                val pose = viewerDoubleTapFrame(from, to, fx, fy, vw, vh, vw, vh, eased(ms))
+                val x = mapped(from, pose, fx, vw / 2f, from.translationX, pose.translationX)
+                val y = mapped(from, pose, fy, vh / 2f, from.translationY, pose.translationY)
+                assertEquals("x drift at $ms ms", fx, x, 8f)
+                assertEquals("y drift at $ms ms", fy, y, 8f)
+                assertLegal(pose, vw, vh)
+            }
+            assertEquals(from, viewerDoubleTapFrame(from, to, fx, fy, vw, vh, vw, vh, 0f))
+            assertEquals(to, viewerDoubleTapFrame(from, to, fx, fy, vw, vh, vw, vh, 1f))
+        }
+    }
+
+    @Test fun doubleTapZoomInNearCornerBlendsClampWithoutJump() {
+        // A full-screen photo never needs clamping at 2.5x, so the clamped
+        // corner case is a 4:3 landscape photo letterboxed on the S24+: its
+        // short side still does not fill the screen, so vertical pan stays 0.
+        val (sw, sh) = 4_000 to 3_000
+        val from = ViewerZoomPosition()
+        val (fx, fy) = 40f to 1_000f
+        val to = viewerDoubleTapZoom(from, fx, fy, vw, vh, sw, sh)
+        assertEquals(2.5f, to.scale, .001f)
+        assertEquals(0f, to.translationY, .01f)
+        var previous = from
+        for (ms in 0..160 step 4) {
+            val pose = viewerDoubleTapFrame(from, to, fx, fy, vw, vh, sw, sh, eased(ms))
+            assertLegal(pose, sw, sh)
+            assertTrue(pose.scale >= previous.scale - .001f)
+            // The free axis still pivots on the tap.
+            val x = mapped(from, pose, fx, vw / 2f, from.translationX, pose.translationX)
+            assertEquals("x drift at $ms ms", fx, x, 8f)
+            // Never a jump: each 4 ms frame moves the photo a bounded amount.
+            assertTrue("jump at $ms ms", abs(pose.translationX - previous.translationX) < 120f)
+            assertTrue("jump at $ms ms", abs(pose.translationY - previous.translationY) < 1f)
+            previous = pose
+        }
+        assertEquals(to, previous)
+    }
+
+    @Test fun doubleTapZoomOutReturnsSmoothlyToFit() {
+        val zoomed = viewerDoubleTapZoom(ViewerZoomPosition(), 700f, 1_000f, vw, vh, vw, vh)
+        val to = viewerDoubleTapZoom(zoomed, 700f, 1_000f, vw, vh, vw, vh)
+        assertEquals(ViewerZoomPosition(), to)
+        val mid = viewerDoubleTapFrame(zoomed, to, 700f, 1_000f, vw, vh, vw, vh, eased(80))
+        assertTrue(mid.scale > 1f && mid.scale < zoomed.scale)
+        assertLegal(mid, vw, vh)
+        var previous = zoomed
+        for (ms in 0..160 step 4) {
+            val pose = viewerDoubleTapFrame(zoomed, to, 700f, 1_000f, vw, vh, vw, vh, eased(ms))
+            assertTrue(pose.scale <= previous.scale + .001f)
+            assertLegal(pose, vw, vh)
+            previous = pose
+        }
+        assertEquals(to, previous)
+    }
+
+    @Test fun cancellingMidAnimationHandsOverWithoutSnapBack() {
+        val from = ViewerZoomPosition()
+        // Letterboxed landscape photo: the vertical axis cannot pan until it fills.
+        val (sw, sh) = 4_000 to 3_000
+        val to = viewerDoubleTapZoom(from, 200f, 900f, vw, vh, sw, sh)
+        for (ms in listOf(40, 80, 120)) {
+            val pose = viewerDoubleTapFrame(from, to, 200f, 900f, vw, vh, sw, sh, eased(ms))
+            assertLegal(pose, sw, sh)
+            // A drag that follows continues from this exact pose.
+            val dragged = viewerZoomGesture(pose, 1f, -10f, 0f, 200f, 900f, vw, vh, sw, sh)
+            assertEquals(pose.scale, dragged.scale, .001f)
+            assertTrue(abs(dragged.translationX - pose.translationX) <= 10.01f)
+            assertEquals(pose.translationY, dragged.translationY, .01f)
+        }
+    }
+
+    @Test fun doubleTapFrameFailsClosedOnUnknownSizesAndBadInput() {
+        val from = ViewerZoomPosition()
+        val to = viewerDoubleTapZoom(from, 700f, 1_000f, vw, vh, 0, 0)
+        val mid = viewerDoubleTapFrame(from, to, 700f, 1_000f, vw, vh, 0, 0, .5f)
+        assertEquals(0f, mid.translationX, 0f)
+        assertEquals(0f, mid.translationY, 0f)
+        assertEquals(to, viewerDoubleTapFrame(from, to, 700f, 1_000f, vw, vh, vw, vh, Float.NaN))
+        assertEquals(to, viewerDoubleTapFrame(from, to, 700f, 1_000f, 0, 0, vw, vh, .5f))
+        val nanTap = viewerDoubleTapFrame(from, to, Float.NaN, Float.NaN, vw, vh, vw, vh, .5f)
+        assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
     }
 }

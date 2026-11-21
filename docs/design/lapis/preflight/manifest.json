@@ -1,0 +1,270 @@
+{
+  "boards": {
+    "l4": {
+      "file": "brand-l4-navigation.png",
+      "size": [
+        3480,
+        8462
+      ],
+      "sha256": "e5de2a7ffb5fffb041fdefdcd06a63ec6c98fd9b657165cf8a2fab694e887e81",
+      "device_frames": 20,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "E1",
+        "E2",
+        "E3",
+        "F1",
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "H1",
+        "H2"
+      ]
+    },
+    "l5": {
+      "file": "brand-l5-collections.png",
+      "size": [
+        3480,
+        9269
+      ],
+      "sha256": "5f4256040fcfa805a480c011f8d0b4d295453dbba4943aae1634eefc2035e0ec",
+      "device_frames": 13,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "C3",
+        "D1",
+        "D2",
+        "D3",
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    "l6": {
+      "file": "brand-l6-atlas.png",
+      "size": [
+        3480,
+        8338
+      ],
+      "sha256": "59230a865e44df4471630d8a5e7ee0a793b30e5300e29ba0f98dcd2ff3c548f1",
+      "device_frames": 18,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "D1",
+        "D2"
+      ]
+    },
+    "l7": {
+      "file": "brand-l7-search.png",
+      "size": [
+        3480,
+        8381
+      ],
+      "sha256": "23162bc526e3ebbd67378b6516df39befd1630401525c46e7261b49b39bdc3b4",
+      "device_frames": 18,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B10",
+        "B11",
+        "B12",
+        "B13",
+        "B14",
+        "B15",
+        "B16"
+      ]
+    },
+    "l8": {
+      "file": "brand-l8-justified.png",
+      "size": [
+        3480,
+        41717
+      ],
+      "sha256": "6a2671cc1f537406986f365ee2636c314511d482ebc9fae634a8aa111473fb12",
+      "device_frames": 67,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9",
+        "C10",
+        "C11",
+        "C12",
+        "C13",
+        "C14",
+        "C15",
+        "C16",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6",
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6",
+        "Q7",
+        "Q8",
+        "Q9",
+        "Q10",
+        "Q11",
+        "Q12",
+        "Q13",
+        "Q14",
+        "Q15",
+        "Q16",
+        "Q17",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "D1",
+        "D2",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ]
+    }
+  },
+  "generator": "tools/design/lapis_preflight.py",
+  "unit": "https://github.com/LPStruiksma/atlas-gallery/issues/753",
+  "synthetic_only": true,
+  "device_frame": "1080x2340 px, 384x832 dp at 2.8125",
+  "references_checked": "2026-11-21",
+  "fonts": "Funnel Display + Funnel Sans (OFL), variable weight",
+  "font_sha256": {
+    "funnel_display.ttf": "b4151c9c4b7b07eb74320096b4ff4156cca8821f5adfab34af9fd9a2d6c1179d",
+    "funnel_sans.ttf": "652c9834434bc01835c4e75a73d3c7e42ff2e4beb261cc851cb911e889af6a77"
+  },
+  "pillow": "12.3.0",
+  "recordings": {
+    "l4_fast_scroll": {
+      "file": "brand-l4-fast-scroll.gif",
+      "size": [
+        360,
+        780
+      ],
+      "frames": 11,
+      "duration_ms": 1400,
+      "frame_ms": [
+        100,
+        400
+      ],
+      "sha256": "59a75b1014be429b7449529ee7666b620cb09833de97968e654014fb3171a75c",
+      "synthetic_only": true,
+      "months": [
+        "Nov",
+        "Nov",
+        "Nov",
+        "Aug",
+        "Aug",
+        "Aug",
+        "Aug",
+        "Mar",
+        "Mar",
+        "Mar",
+        "Mar"
+      ],
+      "thumb_fractions": [
+        0.08,
+        0.14,
+        0.22,
+        0.31,
+        0.4,
+        0.49,
+        0.58,
+        0.67,
+        0.76,
+        0.82,
+        0.82
+      ],
+      "settled_frames": 1
+    }
+  }
+}
