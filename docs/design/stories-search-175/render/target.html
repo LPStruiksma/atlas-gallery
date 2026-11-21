@@ -1,0 +1,290 @@
+<!doctype html>
+<!--
+  atlas-gallery #872 · FIND-6D proposed TARGET frames for Stories scoped search. Synthetic only.
+  Composition = approved Quiet Frame v3 (docs/design/QUIET_FRAME.md) with BRAND-L4 slab geometry
+  (docs/design/lapis/preflight/L4-GEOMETRY-AUDIT.md) and the BRAND-L7 search bar above the slab
+  (docs/design/lapis/preflight/README.md, tools/design/lapis_screens.py search_bar geometry).
+  NOT on main: main still ships the legacy four-tab pill and the header-icon popup (frames.html).
+  CSS px = Android dp; render.mjs captures at deviceScaleFactor 2.8125 = S24+ 1080 x 2340 px.
+  Inter / Inter Display stand in for Funnel Sans / Funnel Display (render container only).
+  window.__metrics carries every measured number the README and the --check run rely on.
+-->
+<html><head><meta charset="utf-8">
+<style>
+:root{
+  --ground:#FFFFFF; --mist:#F2F3F8; --ink:#0E1030; --ink2:#5A5F7A; --fill:#2639C9; --btext:#2639C9; --on:#FFFFFF;
+  --err:#B3261E; --kbd:#E3E5EC; --key:#FFFFFF; --shadow:0 4px 10px rgba(14,16,48,.16),0 10px 28px rgba(14,16,48,.12);
+}
+body.dark{
+  --ground:#000000; --mist:#14152A; --ink:#F2F3F8; --ink2:#9AA0B8; --fill:#3448E0; --btext:#8C9BFF; --on:#FFFFFF;
+  --err:#F2B8B5; --kbd:#1D1F33; --key:#34364F; --shadow:0 4px 14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:var(--ground);color:var(--ink);font-family:Inter,sans-serif;font-size:calc(14px*var(--fs));position:relative;--fs:1}
+.abs{position:absolute}
+.status{left:0;right:0;top:0;height:var(--st);display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600}
+.ib{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;flex:none;color:var(--ink)}
+.ib svg{width:24px;height:24px;fill:currentColor}
+.header{position:absolute;left:0;right:0;display:flex;align-items:center;padding:8px 10px}
+.title{font-family:'Inter Display',Inter,sans-serif;font-weight:700;letter-spacing:-.03em;color:var(--btext);margin-left:8px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrap{position:absolute;left:16px;right:16px;overflow:hidden}
+.grid{position:absolute;left:0;right:0;display:grid;grid-template-columns:1fr 1fr;column-gap:12px;row-gap:18px;align-content:start}
+.tile{display:flex;flex-direction:column;min-width:0}
+.cover{height:220px;border-radius:18px;overflow:hidden;position:relative}
+.cover .lab{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.57);color:#fff;font-size:calc(12px*var(--fs));font-weight:500;padding:10px 12px}
+.tile .tt{margin-top:8px;font-size:calc(16px*var(--fs));line-height:1.5;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .cp{font-size:calc(11px*var(--fs));line-height:1.45;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .ms{font-size:calc(11px*var(--fs));line-height:1.45;color:var(--err)}
+mark{background:transparent;color:inherit;font-weight:700;text-decoration:underline;text-decoration-thickness:1.5px}
+/* bottom stack: panel, slab, IME or gesture inset (bottom-up like tools/design search_bar / slab) */
+.stack{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;z-index:20}
+.panel{margin:0 8px 6px;background:var(--mist);border-radius:22px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+body.dark .panel{outline:1px solid #ffffff14}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px 8px;padding:0 8px}
+.chip{min-height:max(48px,calc(14px*var(--fs)*1.43 + 14px));border-radius:24px;display:flex;align-items:center;padding:0 14px;font-size:calc(14px*var(--fs));font-weight:600;line-height:1.43;color:var(--ink);gap:6px;background:var(--ground);white-space:nowrap;flex:none}
+.chip.on{background:var(--fill);color:var(--on)}
+.chip svg{width:calc(16px*var(--fs));height:calc(16px*var(--fs));fill:currentColor;flex:none}
+.qbar{display:flex;align-items:center;min-height:max(52px,calc(15px*var(--fs)*1.47 + 24px));border-radius:24px;background:var(--ground);padding:0 6px 0 14px;gap:10px;font-size:calc(15px*var(--fs));line-height:1.47;color:var(--ink2);min-width:0}
+.qbar.focus{box-shadow:inset 0 0 0 2px var(--fill)}
+.qbar svg{width:calc(24px*var(--fs));height:calc(24px*var(--fs));fill:currentColor;flex:none}
+.qbar .val{color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qbar .ph{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.caret{display:inline-block;width:2px;height:calc(20px*var(--fs));background:var(--fill);vertical-align:middle;margin-left:1px}
+.qbar .x{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex:none;margin-left:auto;color:var(--ink2)}
+.qbar .x svg{width:24px;height:24px}
+.row{display:flex;align-items:center;min-height:max(48px,calc(15px*var(--fs)*1.47 + 14px));padding:0 8px;font-size:calc(15px*var(--fs));line-height:1.47;gap:10px;color:var(--ink)}
+.row svg{width:calc(20px*var(--fs));height:calc(20px*var(--fs));fill:var(--ink2);flex:none}
+.row .k{margin-left:auto;color:var(--ink2);font-size:calc(14px*var(--fs))}
+.row.note{color:var(--ink);white-space:normal}
+.slab{align-self:center;margin-bottom:12px;background:var(--fill);border-radius:24px;padding:8px;display:flex;align-items:center;gap:4px}
+.pill{height:var(--pillh);border-radius:24px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:calc(14px*var(--fs));color:var(--on);flex:none}
+.pill.on{background:#fff;color:#2639C9}
+.sphere{width:48px;height:48px;border-radius:24px;background:#fff;color:#2639C9;display:flex;align-items:center;justify-content:center;margin-left:4px;flex:none}
+.sphere svg{width:24px;height:24px;fill:currentColor}
+.under{flex:none}
+.ime{background:var(--kbd);display:flex;flex-direction:column;padding:8px 4px 0;gap:9px;flex:none}
+.ime .sug{height:36px;display:flex;align-items:center;justify-content:space-around;color:var(--ink);opacity:.8;font-size:15px}
+.ime .kr{display:flex;justify-content:center;gap:5px}
+.ime .k{height:44px;flex:0 0 32px;background:var(--key);border-radius:6px;color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:18px}
+.ime .k.w{flex:0 0 52px;font-size:13px}.ime .k.sp{flex:0 0 170px}.ime .k.go{background:var(--fill);color:var(--on);flex:0 0 62px}
+body.land .ime .k{height:34px;flex-basis:62px}body.land .ime .k.w{flex-basis:90px}body.land .ime .k.sp{flex-basis:320px}body.land .ime .k.go{flex-basis:110px}body.land .ime{gap:6px}
+.navbar{display:flex;align-items:center;justify-content:center;flex:none}
+.navbar i{display:block;width:108px;height:4px;border-radius:2px;background:var(--ink);opacity:.55}
+.empty{position:absolute;left:24px;right:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.empty .t{font-size:calc(15px*var(--fs));line-height:1.45;color:var(--ink)}
+.empty svg{width:40px;height:40px;fill:var(--ink2)}
+.tbtn{min-height:48px;padding:0 12px;display:flex;align-items:center;color:var(--btext);font-weight:600;font-size:calc(14px*var(--fs));border-radius:24px}
+.sq{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.sq div{aspect-ratio:1;overflow:hidden}
+.player{position:absolute;inset:0;background:#000}
+.pbar{position:absolute;left:0;right:0;background:rgba(0,0,0,.68);display:flex;align-items:center;color:#fff;padding:0 12px;gap:4px}
+.pbar .ib{color:#fff}
+.ripple{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);z-index:25}
+.stitle{font-family:'Inter Display',Inter,sans-serif;font-weight:700;letter-spacing:-.03em;color:var(--btext)}
+/* annotations: orange is outside the Lapis palette; green = measured clearance; red = risk */
+.ann{position:absolute;z-index:100;pointer-events:none}
+.badge{width:26px;height:26px;border-radius:13px;background:#E8590C;color:#fff;font:700 14px/26px Inter,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff}
+.tgt{border:1.5px dashed #E8590C;border-radius:6px}
+.inset{background:repeating-linear-gradient(135deg,rgba(232,89,12,.16) 0 6px,transparent 6px 12px);border:1px solid rgba(232,89,12,.55);color:#B3440A;font:600 9px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:center}
+body.dark .inset{color:#FFB38A}
+.clear{background:rgba(46,160,67,.2);border-top:1.5px dashed #2EA043;border-bottom:1.5px dashed #2EA043;color:#1A7F37;font:700 10px/1 Inter,sans-serif;display:flex;align-items:center;justify-content:flex-end;padding:0 6px}
+body.dark .clear{color:#7EE787}
+.ghost{border:1.5px dashed #E8590C;background:repeating-linear-gradient(135deg,rgba(232,89,12,.10) 0 6px,transparent 6px 12px);color:#B3440A;font:700 10px/1 Inter,sans-serif;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 6px 20px 0}
+body.dark .ghost{color:#FFB38A}
+.callout{position:absolute;z-index:101;font:700 11px/1.3 Inter,sans-serif;background:#E8590C;color:#fff;border-radius:6px;padding:4px 7px;max-width:240px}
+.tag{position:absolute;z-index:101;left:8px;font:700 11px/1.3 Inter,sans-serif;background:#0E1030;color:#fff;border-radius:6px;padding:4px 7px;max-width:330px;box-shadow:0 0 0 1.5px #fff}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+const I = {
+  back:'<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+  history:'<svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0013 21a9 9 0 000-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>',
+  stories:'<svg viewBox="0 0 24 24"><path d="M19 1l-5 5v11l5-4.5V1zM1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5V6c-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6zm22 13.5V6c-.6-.45-1.25-.75-2-1v13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5v2c1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5v-1.1z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>',
+  next:'<svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>',
+  full:'<svg viewBox="0 0 24 24"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg>',
+};
+const PAL=[["#46686D","#B6C4B4","#40675E"],["#99856D","#E2BFA1","#595A4B"],["#4E657F","#D5BDB0","#596786"],["#6E736B","#C5C2AF","#454E48"],["#5B4E7A","#D9C6E6","#3D3556"]];
+function art(i){i=Math.abs(i);const p=PAL[i%PAL.length];const s=(i*37)%100;return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:100%"><rect width="100" height="100" fill="${p[1]}"/><circle cx="${20+s*0.6}" cy="${22+(s%30)}" r="${9+(i%5)}" fill="#FFF0D0" opacity=".85"/><path d="M0 ${62+(i%4)*4} Q 30 ${44+(s%20)} 55 ${64-(i%3)*5} T 100 ${58+(i%6)*3} V100 H0Z" fill="${p[0]}"/><path d="M0 ${80+(i%3)*3} Q 40 ${70+(s%9)} 100 ${84-(i%4)*2} V100 H0Z" fill="${p[2]}"/></svg>`}
+// Synthetic stories: [title, caption, moments, unavailable]
+const STORIES=[
+  ["Summer by the lake","June 2024, 3 days",24,0],
+  ["Weekend in Utrecht","March 2024",18,0],
+  ["Snow day","January 2024",12,0],
+  ["Summer evenings","August 2023",31,3],
+  ["Garden in bloom","May 2023",15,0],
+  ["One year ago today","21 November 2025",9,0],
+];
+const P=new URLSearchParams(location.search);
+const F=P.get('f'), ANN=P.get('ann')!=='0', LAND=P.get('land')==='1', FS=parseFloat(P.get('fs')||'1');
+if(LAND)document.body.classList.add('land');
+if(P.get('theme')==='dark')document.body.classList.add('dark');
+const W=LAND?832:384, H=LAND?384:832, ST=LAND?24:29, NB=LAND?0:16, IMEH=LAND?184:324;
+const HH=FS>1.5?72:64;                       // header band; screen title fitted to one line at 200 %
+const PILLH=FS>1.5?55:48, PILLW=FS>1.5?[123,160]:[104,104]; // L4-GEOMETRY-AUDIT (Funnel widths; pills 123 x 55 and 160 x 55 at 200 %)
+document.body.style.setProperty('--fs',FS);document.body.style.setProperty('--st',ST+'px');document.body.style.setProperty('--pillh',PILLH+'px');
+const R=document.getElementById('root');
+const M={frame:F,scale:FS,land:LAND,theme:P.get('theme')};   // measured metrics
+const anns=[];
+const badge=(n,x,y)=>anns.push({n,x,y});
+const callout=(x,y,text)=>anns.push({c:[x,y,text]});
+const hl=(s,q)=>{if(!q)return s;const i=s.toLowerCase().indexOf(q.toLowerCase());return i<0?s:s.slice(0,i)+'<mark>'+s.slice(i,i+q.length)+'</mark>'+s.slice(i+q.length)};
+const match=(q)=>STORIES.filter(s=>(s[0]+' '+s[1]).toLowerCase().includes(q.toLowerCase()));
+const status=()=>`<div class="abs status"><span>12:30</span><span>▾ ◢ 87%</span></div>`;
+const header=(title='Stories')=>`<div class="header" id="hdr" style="top:${ST}px;height:${HH}px"><div class="ib" id="back">${I.back}</div><div class="title" id="ttl" style="font-size:${FS>1.5?44:38}px;line-height:${FS>1.5?52:44}px">${title}</div></div>`;
+const tile=([t,c,m,u],q,k)=>`<div class="tile"><div class="cover">${art(k)}<div class="lab">${m} moments</div></div><div class="tt">${hl(t,q)}</div><div class="cp">${hl(c,q)}</div>${u?`<div class="ms">${u} items unavailable</div>`:''}</div>`;
+const tiles=(list,q)=>list.map(s=>tile(s,q,STORIES.indexOf(s))).join('');
+// results region: .wrap is clipped between the header and `bottom`; inner grid anchored at the top (scroll 0) or the end (scrolled to the end)
+const results=(list,q,mode='start')=>`<div class="wrap" id="wrap" style="top:${ST+HH}px;bottom:0"><div class="grid" id="grid" style="${mode==='end'?'bottom:0':'top:0'}">${tiles(list,q)}</div></div>`;
+function slab(active='Collections',sphere=true){
+  return `<div class="slab" id="slab">${['Pictures','Collections'].map((n,i)=>`<div class="pill ${n===active?'on':''}" style="width:${PILLW[i]}px" data-t="${n}">${n}</div>`).join('')}${sphere?`<div class="sphere" id="sphere">${I.search}</div>`:''}</div>`;
+}
+function chips(lib){return `<div class="chiprow" id="chiprow"><div class="chip ${lib?'':'on'}" data-t="This screen">${lib?'':I.check}This screen</div><div class="chip ${lib?'on':''}" id="libchip" data-t="Whole library">${lib?I.check:''}Whole library</div></div>`}
+function panel(o={}){
+  const x=`<div class="x" id="close" data-t="Close search">${I.close}</div>`;
+  const body=o.q?`<span class="val">${o.q}${o.focus?'<span class="caret"></span>':''}</span>`:`${o.focus?'<span class="caret" style="margin-left:-8px"></span>':''}<span class="ph">Search photos, people, places</span>`;
+  const recents=(!o.q&&o.recents!==false)?`<div class="row" data-t="Recent: lake">${I.history}lake<span class="k">Recent</span></div><div class="row" data-t="Recent: 2024">${I.history}2024<span class="k">Recent</span></div>`:'';
+  const note=o.note?`<div class="row note" id="note">${o.note}</div>`:'';
+  return `<div class="panel" id="panel">${note}${recents}${chips(o.lib)}<div class="qbar ${o.focus?'focus':''}" id="qbar" data-t="Search field">${I.search}${body}${x}</div></div>`;
+}
+function ime(){const r=s=>`<div class="kr">${[...s].map(c=>`<div class="k">${c}</div>`).join('')}</div>`;return `<div class="ime" id="ime" style="height:${IMEH+NB}px">${LAND?'':'<div class="sug"><span>summer</span><span>sum</span><span>sunny</span></div>'}${r('qwertyuiop')}${r('asdfghjkl')}<div class="kr"><div class="k w">⇧</div>${[...'zxcvbnm'].map(c=>`<div class="k">${c}</div>`).join('')}<div class="k w">⌫</div></div><div class="kr"><div class="k w">!#1</div><div class="k">,</div><div class="k sp"></div><div class="k">.</div><div class="k go">${I.search.replace('<svg','<svg style="width:20px;height:20px;fill:currentColor"')}</div></div></div>`}
+const under=()=>NB?`<div class="navbar" id="navbar" style="height:${NB}px"><i></i></div>`:'';
+// ---- frames ------------------------------------------------------------------------------------
+let main='', stackHtml='', tag='', hasIme=false, noStack=false;
+const Q='summer';
+switch(F){
+case 'T1-collapsed': // Stories, search sphere at rest in the L4 slab
+  main=header()+results(STORIES,'','start'); stackHtml=slab('Collections',true)+under();
+  tag='T1 · Target: search is the slab sphere; header keeps Back and title'; break;
+case 'T2-typing-ime': // IME up, query typed, first result row only
+  hasIme=true; main=header()+results(match(Q),Q,'start'); stackHtml=panel({q:Q,focus:true})+slab('Collections',false)+ime();
+  tag='T2 · Target: bar + chips above the slab on the IME; only this deck is filtered'; break;
+case 'T3-bottom-results': // IME dismissed by dragging the results; scrolled to the end
+  main=header()+results(match('20'),'20','end'); stackHtml=panel({q:'20',focus:false})+slab('Collections',false)+under();
+  tag='T3 · Target: drag hid the IME, bar stays; last matching tile wholly clear'; break;
+case 'T4-no-match-ime':
+  hasIme=true; main=header()+`<div id="emptyslot"></div>`; stackHtml=panel({q:'beach',focus:true})+slab('Collections',false)+ime();
+  tag='T4 · Target: no match, IME up. The Whole library chip is the one-tap action'; break;
+case 'T5-no-match-rest':
+  main=header()+`<div id="emptyslot"></div>`; stackHtml=panel({q:'beach',focus:false})+slab('Collections',false)+under();
+  tag='T5 · Target: no match, IME hidden (Search key). Button repeats the chip'; break;
+case 'T6-handoff': // tapping Whole library
+  main=header()+results(match(Q),Q,'start'); stackHtml=panel({q:Q,focus:true,lib:true})+slab('Collections',false)+ime();
+  tag='T6 · Target: deliberate tap on Whole library leaves Stories'; hasIme=true; break;
+case 'T7-landscape-ime':
+  hasIme=true; main=header()+results(match(Q),Q,'start'); stackHtml=`<div class="panel" id="panel" style="margin-bottom:0"><div style="display:flex;align-items:center;gap:8px">${`<div class="qbar focus" id="qbar" data-t="Search field" style="flex:1;min-width:0">${I.search}<span class="val">${Q}<span class="caret"></span></span></div>`}${chips(false).replace('class="chiprow"','class="chiprow" style="flex-wrap:nowrap;padding:0"')}<div class="ib" id="close" data-t="Close search" style="color:var(--ink2)">${I.close}</div></div></div>`+ime();
+  tag='T7 · Target landscape: one-row bar on the IME; slab hidden'; break;
+case 'T8-arrival': // existing global Search after the handoff: bar open at library scope, empty, IME released
+  main=`<div class="header" id="hdr" style="top:${ST}px;height:${HH}px;padding-left:16px"><div class="title" id="ttl" style="margin-left:0;font-size:${FS>1.5?44:38}px;line-height:${FS>1.5?52:44}px">Pictures</div></div><div class="abs sq" id="sq" style="top:${ST+HH}px;left:0;right:0;opacity:.35">${Array.from({length:70},(_,i)=>`<div>${art(i+11)}</div>`).join('')}</div>`;
+  stackHtml=panel({lib:true,focus:false})+slab('Pictures',false)+under();
+  tag='T8 · Target: existing global Search, library scope, empty query, IME released'; break;
+case 'T9-back': // system Back from Search lands on Pictures (host rule tab != 0 -> tab = 0)
+  main=`<div class="header" id="hdr" style="top:${ST}px;height:${HH}px;padding-left:16px"><div class="title" id="ttl" style="margin-left:0;font-size:${FS>1.5?44:38}px;line-height:${FS>1.5?52:44}px">Pictures</div></div><div class="abs sq" id="sq" style="top:${ST+HH}px;left:0;right:0">${Array.from({length:70},(_,i)=>`<div>${art(i+11)}</div>`).join('')}</div>`;
+  stackHtml=slab('Pictures',true)+under();
+  tag='T9 · Target: Back from Search lands on Pictures; Stories is one tap away in Collections'; break;
+case 'TS1-no-stories':
+  main=header()+`<div id="emptyslot"></div>`; stackHtml=slab('Collections',true)+under();
+  tag='TS1 · Target: no stories; sphere stays (Whole library is still useful)'; break;
+case 'TS2-planning':
+  main=header()+`<div id="emptyslot"></div>`; stackHtml=slab('Collections',true)+under();
+  tag='TS2 · Target: restored slideshow waits for the re-planned deck'; break;
+case 'TS3-stale-permission': // permission/catalogue change cleared the query: grid follows the new deck, bar closed
+  main=header()+results(STORIES.filter(s=>s[0]!=='Summer by the lake'),'','start'); stackHtml=slab('Collections',true)+under();
+  tag='TS3 · Target: grant change clears the query and closes the bar; deck follows'; break;
+case 'TS4-playback-exit': // player closed with a non-empty query: the bar returns open with the query
+  main=header()+results(match(Q),Q,'start'); stackHtml=panel({q:Q,focus:false})+slab('Collections',false)+under();
+  tag='TS4 · Target: playback closed, query kept, so the bar is shown open'; break;
+default: main='unknown frame '+F;
+}
+let body=status()+main;
+if(F==='TS1-no-stories') body+=`<div class="empty" id="empty" style="top:${ST+HH}px;bottom:0">${I.stories}<div class="t">Your stories will appear here</div></div>`;
+else if(F==='TS2-planning') body+=`<div class="empty" id="empty" style="top:${ST+HH}px;bottom:0"><div class="t" style="color:var(--ink2)">Getting your stories ready…</div></div>`;
+body+=`<div class="stack" id="stack">${stackHtml}</div>`;
+R.innerHTML=body.replace(/<div id="emptyslot"><\/div>/,'');
+const $=id=>document.getElementById(id), rect=e=>e&&e.getBoundingClientRect();
+const stack=$('stack'), overlayTop=rect(stack).top; M.overlayTopDp=+overlayTop.toFixed(1);
+if(F==='T3-bottom-results')$('wrap').style.bottom=(H-overlayTop+8)+'px'; // contentPadding = bottom stack + 8 dp
+const HB=ST+HH, gridRegion=()=>({top:HB,bottom:overlayTop});
+// no-match / empty-state text sits in the free region above the stack
+if(F==='T4-no-match-ime'||F==='T5-no-match-rest'){
+  const free=overlayTop-HB;
+  const withBtn=F==='T5-no-match-rest';
+  const h=document.createElement('div'); h.className='empty'; h.id='empty'; h.style.top=HB+'px'; h.style.height=free+'px';
+  h.innerHTML=`<div class="t" id="nmtxt">No stories match “beach”.</div>`+(withBtn?`<div class="tbtn" id="nmbtn" data-t="Search whole library">Search whole library</div>`:'');
+  R.appendChild(h); M.freeRegionDp=+free.toFixed(1); M.emptyFits=h.scrollHeight<=h.clientHeight+1;
+}
+// fit the screen title to one line (L4–L8 precedent: one-word titles are fitted at 200 %)
+const ttl=$('ttl'); if(ttl){M.titleFits=ttl.scrollWidth<=ttl.clientWidth+1;}
+// ---- metrics ------------------------------------------------------------------------------------
+const rr=e=>{const r=rect(e);return {l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height}};
+const targets=[...document.querySelectorAll('[data-t],#back,#sphere,.pill,.chip')].filter(e=>e.id!=='note');
+M.targets=targets.map(e=>{const r=rr(e);return {name:e.dataset.t||e.id||e.textContent.trim().slice(0,24),w:+r.w.toFixed(1),h:+r.h.toFixed(1)}});
+M.minTargetDp=Math.min(...M.targets.map(t=>Math.min(t.w,t.h)));
+if($('chiprow')){const c=rr($('chiprow')), ps=rr($('panel'));M.chipRows=new Set([...document.querySelectorAll('.chip')].map(e=>Math.round(rr(e).t))).size;M.chipsInsidePanel=[...document.querySelectorAll('.chip')].every(e=>rr(e).r<=ps.r-8+1&&rr(e).l>=ps.l);M.chipLabelsClipped=[...document.querySelectorAll('.chip')].some(e=>e.scrollWidth>e.clientWidth+1);M.panelTopDp=+ps.t.toFixed(1);M.panelBelowHeader=ps.t>=ST+HH-0.5;M.panelHeightDp=+ps.h.toFixed(1);M.panelWidthDp=+ps.w.toFixed(1);}
+if($('slab')){const s=rr($('slab'));M.slabWidthDp=+s.w.toFixed(1);M.slabTopDp=+s.t.toFixed(1);M.slabHeightDp=+s.h.toFixed(1);M.slabBottomAboveInsetDp=+((H-NB-(hasIme?IMEH:0))-s.b).toFixed(1);M.slabInsideScreen=s.l>=0&&s.r<=W;}
+if($('qbar')){const b=rr($('qbar'));M.qbarHeightDp=+b.h.toFixed(1);}
+// results clearance: wholly visible tiles between the header and the bottom stack
+if($('wrap')){
+  const wrap=rr($('wrap')), g=rr($('grid'));
+  wrap.el=$('wrap'); const reg={top:HB,bottom:overlayTop};
+  const ts=[...document.querySelectorAll('.tile')].map(rr);
+  M.tiles=ts.length; M.tileHeightDp=ts.length?+ts[0].h.toFixed(1):0; M.resultRegionDp=+(reg.bottom-reg.top).toFixed(1);
+  if(P.get('f')==='T3-bottom-results'||true){
+    const last=ts[ts.length-1];
+    M.lastTileBottomDp=+last.b.toFixed(1); M.lastTileClearAboveStackDp=+(overlayTop-last.b).toFixed(1);
+    M.lastTileTopBelowHeaderDp=+(last.t-HB).toFixed(1);
+    M.firstRowTileVisibleDp=+Math.max(0,Math.min(ts[0].h,overlayTop-ts[0].t)).toFixed(1);
+    M.firstRowWhollyVisible=ts[0].b<=overlayTop+0.5;
+    M.lastTileWhollyClear=last.b<=overlayTop-8+0.5&&last.t>=HB-0.5;
+  }
+}
+// ---- annotations --------------------------------------------------------------------------------
+const bx=(e,pad=0)=>{const r=rr(e);return [r.l-pad,r.t-pad,r.w+2*pad,r.h+2*pad]};
+const tgt=(e)=>{if(e)anns.push({t:bx(e)})};
+const clearBand=(y0,y1,l,x0=0,x1=W)=>anns.push({clear:[x0,y0,x1-x0,y1-y0,l]});
+const imeZone=(label)=>{if(!hasIme)anns.push({ghost:[0,H-NB-IMEH,W,IMEH,label]})};
+if(NB) anns.push({inset:[0,H-NB,W,NB,`gesture nav ${NB} dp (assumed)`]});
+anns.push({inset:[0,0,W,ST,`status bar ${ST} dp (assumed)`]});
+const sc=FS>1.5?'200 %':'100 %';
+switch(F){
+case 'T1-collapsed': tgt($('back'));tgt($('sphere'));tgt(document.querySelector('.pill.on'));tgt(document.querySelectorAll('.pill')[0]);
+  badge(1,rr($('sphere')).l-4,rr($('sphere')).t-30);badge(2,rr($('back')).r-4,rr($('back')).t-8);badge(3,W/2-13,HB+80);break;
+case 'T2-typing-ime': tgt($('qbar'));tgt($('close'));document.querySelectorAll('.chip').forEach(tgt);
+  badge(4,rr($('chiprow')).l-2,rr($('chiprow')).t-30);badge(5,rr($('qbar')).l+30,rr($('qbar')).t-28);
+  clearBand(HB,overlayTop,`${M.resultRegionDp.toFixed(0)} dp for results`,W-120,W);imeZone('IME 324 dp');break;
+case 'T3-bottom-results': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));
+  clearBand(rr(document.querySelectorAll('.tile')[document.querySelectorAll('.tile').length-1]).b,overlayTop,`${M.lastTileClearAboveStackDp.toFixed(0)} dp`,W-90,W);
+  imeZone('IME returns here only if the field is tapped');badge(6,W-40,HB+10);break;
+case 'T4-no-match-ime': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));badge(7,rr($('nmtxt')).l-30,rr($('nmtxt')).t);imeZone('IME 324 dp');break;
+case 'T5-no-match-rest': tgt($('nmbtn'));document.querySelectorAll('.chip').forEach(tgt);badge(8,rr($('nmbtn')).r-6,rr($('nmbtn')).t-8);imeZone('IME hidden');break;
+case 'T6-handoff':{const c=rr($('libchip'));document.body.insertAdjacentHTML('beforeend',`<div class="ripple" style="left:${c.l+c.w/2-40}px;top:${c.t+c.h/2-40}px;width:80px;height:80px"></div>`);tgt($('libchip'));badge(9,c.r-6,c.t-10);
+  callout(16,HB+60,'Tap: close scoped search, release the IME, clear this query, leave Stories, open global Search with an empty query.');imeZone('IME 324 dp');break;}
+case 'T7-landscape-ime': tgt($('back'));tgt($('qbar'));tgt($('close'));document.querySelectorAll('.chip').forEach(tgt);
+  badge(10,4,ST+2);badge(11,W-60,rr($('panel')).t-14);
+  clearBand(HB,overlayTop,`${Math.max(0,M.resultRegionDp).toFixed(0)} dp for results`,W-190,W);break;
+case 'T8-arrival': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));badge(12,W-40,rr($('panel')).t+14);break;
+case 'T9-back': badge(13,W/2-13,HB+120);tgt($('sphere'));break;
+case 'TS1-no-stories': tgt($('sphere'));badge(14,rr($('sphere')).l-4,rr($('sphere')).t-30);break;
+case 'TS2-planning': tgt($('sphere'));badge(15,rr($('sphere')).l-4,rr($('sphere')).t-30);break;
+case 'TS3-stale-permission': tgt($('sphere'));badge(16,W-40,HB+10);break;
+case 'TS4-playback-exit': document.querySelectorAll('.chip').forEach(tgt);tgt($('qbar'));badge(17,W-40,HB+10);imeZone('IME hidden');break;
+}
+if(ANN){let a='';for(const x of anns){
+  if(x.n)a+=`<div class="ann badge" style="left:${x.x}px;top:${x.y}px">${x.n}</div>`;
+  else if(x.t)a+=`<div class="ann tgt" style="left:${x.t[0]}px;top:${x.t[1]}px;width:${x.t[2]}px;height:${x.t[3]}px"></div>`;
+  else if(x.inset)a+=`<div class="ann inset" style="left:${x.inset[0]}px;top:${x.inset[1]}px;width:${x.inset[2]}px;height:${x.inset[3]}px">${x.inset[3]>8?x.inset[4]:''}</div>`;
+  else if(x.clear&&x.clear[3]>0)a+=`<div class="ann clear" style="left:${x.clear[0]}px;top:${x.clear[1]}px;width:${x.clear[2]}px;height:${x.clear[3]}px">${x.clear[4]}</div>`;
+  else if(x.ghost)a+=`<div class="ann ghost" style="left:${x.ghost[0]}px;top:${x.ghost[1]}px;width:${x.ghost[2]}px;height:${x.ghost[3]}px;">${x.ghost[4]}</div>`;
+  else if(x.c)a+=`<div class="callout" style="left:${x.c[0]}px;top:${x.c[1]}px">${x.c[2]}</div>`;
+ }
+ a+=`<div class="tag" style="top:${ST+6}px;right:8px;left:auto;max-width:${FS>1.5?120:150}px;font-size:10px">PROPOSED TARGET<br>${tag.split(' · ')[0]} · ${sc}${LAND?' · landscape':''}</div>`;
+ R.insertAdjacentHTML('beforeend',a)}
+window.__metrics=M;
+document.title='ready';
+</script></body></html>
