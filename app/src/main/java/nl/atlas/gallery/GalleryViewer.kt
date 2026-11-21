@@ -271,6 +271,17 @@ private fun GalleryViewerSnapshot(
     var selectionRequest by remember(CatalogSourceKey(items)) {
         mutableStateOf<ViewerJumpIntent?>(null)
     }
+    // Keep a generation even when touch-down clears the active request.
+    // Otherwise two same-index taps separated by a fast cancel could become
+    // structurally equal and be conflated by snapshotFlow.
+    var lastIssuedSelection by remember(CatalogSourceKey(items)) {
+        mutableStateOf<ViewerJumpIntent?>(null)
+    }
+    fun requestViewerSelection(index: Int, origin: ViewerJumpOrigin = ViewerJumpOrigin.DIRECT) {
+        val intent = nextViewerJumpIntent(lastIssuedSelection, index, items.size, origin)
+        lastIssuedSelection = intent
+        selectionRequest = intent
+    }
     // Track only the last *settled* preview focus, not every intermediate
     // scrub position. Directional prefetch remains useful after a long jump.
     var lastPrefetchFocus by remember(CatalogSourceKey(items)) { mutableIntStateOf(start) }
@@ -481,8 +492,7 @@ private fun GalleryViewerSnapshot(
                 val index = viewerStripCentreIndex(stripState)
                 if (index != null && index in items.indices) {
                     heldScrubIndex = index
-                    selectionRequest = nextViewerJumpIntent(
-                        selectionRequest, index, items.size)
+                    requestViewerSelection(index)
                 }
             } else {
                 wasUserScrubbing = false
@@ -858,8 +868,7 @@ private fun GalleryViewerSnapshot(
                     },
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
-                            selectionRequest = nextViewerJumpIntent(
-                                selectionRequest, target, items.size)
+                            requestViewerSelection(target)
                         }
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
@@ -1021,9 +1030,7 @@ private fun GalleryViewerSnapshot(
                                 stateDescription = if (selected) "Currently displayed" else "Not selected"
                             }
                             .clickable(role = Role.Button) {
-                                selectionRequest = nextViewerJumpIntent(
-                                    selectionRequest, index, items.size,
-                                    ViewerJumpOrigin.THUMBNAIL)
+                                requestViewerSelection(index, ViewerJumpOrigin.THUMBNAIL)
                             }) {
                             MediaPreview(
                                 // The parent already announces Photo/Video N of M
