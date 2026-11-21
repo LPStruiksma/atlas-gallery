@@ -23,6 +23,10 @@ physical Galaxy S24+ measurement, or acceptance of baseline defects. Every diagr
 a **target concept**: insets and cutout are copied from a named measured frame,
 every other rectangle is **proposed**. No `app/src/main/**` change.
 
+## Independent preflight repair gate (#832)
+
+The independent [DESIGN-8 review on #142](https://github.com/LPStruiksma/atlas-gallery/issues/142#issuecomment-7056330457) found the **current proposed target BLOCKING**: metadata ink on a 35% black scrim over white, selected-ring/sphere visibility on bright thumbnails, and primary long-video media recognizability with shown chrome at 832×384 and 640×360 dp at 200% text. [Unit #832](https://github.com/LPStruiksma/atlas-gallery/issues/832) owns the generator-first repair and deterministic regeneration of T3/T4, target JSON and state/interaction SVGs. This note records the *unresolved* review gate, not a preflight PASS or measured runtime evidence. Revalidate every assertion and update this section only after generated proof exists.
+
 ## Sources
 
 | Kind | Where | Used for |
