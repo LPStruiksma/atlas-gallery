@@ -518,6 +518,8 @@ class Gen:
             y += s.line_h("secondary") + L.px(4)
         L.square_grid(s, y, s.bottom, seed=kw.pop("seed", 1), header=kw.pop("header", "Today"))
         if frac > 0:
+            # Chosen 2 x 6 layout in every open-atlas state.
+            kw.setdefault("grid", True)
             bottom = L.atlas_panel(s, frac, **kw)
             if finger:
                 L.finger(s, (DEVICE_W // 2, bottom - L.px(30)), (DEVICE_W // 2, bottom - L.px(30) + finger),
@@ -534,11 +536,10 @@ class Gen:
         a1 = self.l6_frame(frac=1.0)
         a2 = self.l6_frame("dark", 2.0, frac=1.0)
         b.heroes([
-            Panel("A1", "Atlas open, light, 100 %", "Month bars sized by count (tallest labelled), sphere on the "
-                  "current month, schematic dot map with labelled places. Bars are 29 dp wide: see the flagged "
-                  "targets and the 2 x 6 alternative (C6).", a1),
-            Panel("A2", "Atlas open, dark, 200 %", "Month labels shorten to one letter; the year and totals scale. "
-                  "The atlas stops above the slab and the gesture inset.", a2),
+            Panel("A1", "Atlas open, light, 100 %", "Normative 2 x 6 month bars: 58.7 x 80 dp non-overlapping "
+                  "targets, counted bars and held current-month sphere. Schematic places stay below.", a1),
+            Panel("A2", "Atlas open, dark, 200 %", "Same 2 x 6 month targets and three-letter labels "
+                  "at 200 % font. The year, total, map, slab and insets remain in frame.", a2),
         ], self.LEGEND)
         panels = [
             Panel("B1", "Closed, first use", "Hint line under the title until the atlas has been opened once.",
@@ -579,6 +580,18 @@ class Gen:
         p8.gesture_bar()
         panels.append(Panel("B8", "Place in the grid", "Pictures shows only that place, newest first. Back or "
                             "'Clear place' restores the full grid and scroll position.", p8))
+        panels.append(Panel("B9", "Empty year, dark 200 %", "Same accessible 2 x 6 targets; "
+                             "empty months show baselines, with insets and slab present.",
+                             self.l6_frame("dark", 2.0, frac=1.0, year="2019",
+                                           counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0, 15, 0], current=6)))
+        p10 = self.scr("dark", 2.0)
+        p10.status_bar()
+        yy = L.title(p10, "Coast", "1.408 photos, July and August 2026")
+        L.square_grid(p10, yy, p10.bottom, seed=14, header="August 2026")
+        p10.slab("Pictures")
+        p10.gesture_bar()
+        panels.append(Panel("B10", "Place-filtered grid, dark 200 %", "Filtering remains in Pictures; "
+                             "Back restores its previous position and the title remains legible.", p10))
         panels.append(Panel("C1", "Year with empty months", "Empty months draw a baseline only, never a fake "
                             "bar.", self.l6_frame(frac=1.0, year="2019", counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0,
                                                                                     15, 0], current=6)))
@@ -598,8 +611,9 @@ class Gen:
         panels.append(Panel("C5", "Large library", "Bars scale to the tallest month; totals use full counts.",
                             self.l6_frame(frac=1.0, counts=[9120, 8400, 11020, 12804, 15500, 18210, 22340, 21900,
                                                              13000, 7800, 6100, 2718])))
-        panels.append(Panel("C6", "Alternative: 2 x 6 months", "Two rows of six: 58 x 80 dp month targets, rows "
-                            "touch but never overlap. Recommended over 29 dp one-row bars.", self.l6_frame(frac=1.0, grid=True)))
+        panels.append(Panel("C6", "Chosen: 2 x 6 target anatomy", "Normative everywhere the atlas is "
+                             "open: twelve 58.7 x 80 dp month targets. Rows touch but never overlap.",
+                             self.l6_frame(frac=1.0)))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Atlas", "TalkBack list view")
@@ -640,8 +654,9 @@ class Gen:
                     "push up or Back closes. It is a scrim-free overlay, so the grid position is kept."),
             ref_row("nested", "Adopted: the grid consumes the drag until it is at the top; only the remaining "
                     "downward delta pulls the atlas."),
-            ref_row("touch", "Open issue: 12 bars in one row are 29 dp wide. Either accept full-height 29 x 96 dp "
-                    "targets with drag-to-scrub, or use 2 x 6 (C6, 58 dp). Recommended: 2 x 6."),
+            ref_row("touch", "Selected: 2 x 6 month targets of 58.7 x 80 dp replace the 29 dp strip "
+                     "in every open state. Smaller visible place dots use 48 dp effective targets. "
+                     "Labels remain legible at 200 %."),
         ], DECISION_W, DECISION_NOTE + " No map tiles, network call or new permission is involved.")
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")
