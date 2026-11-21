@@ -6,7 +6,7 @@ When either group appears to contain multiple people, choose **Not one person** 
 
 **People → ⋮ → Needs splitting (N)** opens the groups marked in the currently authorized visible People scope. A named group opens its existing person page; an unnamed group opens that group's existing page and manual split controls.
 
-**People → ⋮ → Hidden → ⋮ → Needs splitting** lists marked hidden named people separately, inside Hidden only. The ordinary People count and list never include hidden people, and the Hidden entry gives no hidden count. Changing visibility or photo access re-evaluates the lists from the current authorized review state.
+**People → ⋮ → Hidden → Needs splitting (H)** is a secondary action directly below Hidden's search/header. It lists marked hidden named people separately, inside Hidden only; H counts only active marks visible in that Hidden scope. The ordinary People count and list never include hidden people, and the ordinary People **Hidden** entry gives no hidden count. Changing visibility or photo access re-evaluates the lists from the current authorized review state.
 
 **Skip** is kept as an app-private preference for the current photo permission scope, not as a review decision. It survives reopening the dialog and app relaunch while that scope and both groups' actual memberships remain unchanged. Changes to either membership invalidate the old Skip fingerprint. **Show skipped**, in the People overflow or the queue's empty view, clears Skip preferences for the current scope and shows eligible questions again. The open question count includes skipped questions; it is not a count of currently visible cards.
 
