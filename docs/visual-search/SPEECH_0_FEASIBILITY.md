@@ -90,5 +90,5 @@ These exclude video decode, audio extraction, scheduling gaps and thermal pauses
 
 - Constraints: [#669](https://github.com/LPStruiksma/atlas-gallery/issues/669); related spikes [VS-S0](VS_S0_MODEL_SPIKE.md), [NLS-0](NLS_0_TEXT_FEASIBILITY.md), [LLM-0](LLM_0_FEASIBILITY.md).
 - Results: `tools/speech_bench/results/host_whisper-{tiny,base,small}.json`, `host_silero_vad.json` (per-clip counts and timings, SHA-256 of every model file, environment, sample IDs).
-- Tests: `python3 -m unittest test_speech_bench` in `tools/speech_bench` (synthetic, offline).
+- Tests: `python3 -m unittest test_speech_bench` in `tools/speech_bench` (synthetic, offline). Local evidence only: no workflow runs them yet (adding one touches `.github/**`).
 - Exact-head CI: see the PR.
