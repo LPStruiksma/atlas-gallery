@@ -1,0 +1,168 @@
+{
+  "boards": {
+    "l4": {
+      "file": "brand-l4-navigation.png",
+      "size": [
+        3480,
+        8462
+      ],
+      "sha256": "b4a6cb3e9a25af76d0ded8540bfd6a20e31a0800276d7fbd710bec31e9655899",
+      "device_frames": 20,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "E1",
+        "E2",
+        "E3",
+        "F1",
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "H1",
+        "H2"
+      ]
+    },
+    "l5": {
+      "file": "brand-l5-collections.png",
+      "size": [
+        3480,
+        7090
+      ],
+      "sha256": "5701b17eb5aef1a1e3e531ebf27aadfdd926545d075b569ea8368bf111b8bdb9",
+      "device_frames": 12,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "C3",
+        "D1",
+        "D2",
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    "l6": {
+      "file": "brand-l6-atlas.png",
+      "size": [
+        3480,
+        8309
+      ],
+      "sha256": "bdc6def1111b96aabd92edabc381b24874d78a433f32ee44350101c9561bda4e",
+      "device_frames": 16,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "D1",
+        "D2"
+      ]
+    },
+    "l7": {
+      "file": "brand-l7-search.png",
+      "size": [
+        3480,
+        7008
+      ],
+      "sha256": "468f713adfb8bddf9d8b436d3daee1284003a055145adfdaea49c387fdbb6d90",
+      "device_frames": 14,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B10",
+        "B11",
+        "B12"
+      ]
+    },
+    "l8": {
+      "file": "brand-l8-justified.png",
+      "size": [
+        3480,
+        8342
+      ],
+      "sha256": "39c41788f7efe535083ca1566fb81a8cef3d13022c130826ad4c3658c0b0c055",
+      "device_frames": 16,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "D3",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
+    }
+  },
+  "generator": "tools/design/lapis_preflight.py",
+  "unit": "https://github.com/LPStruiksma/atlas-gallery/issues/753",
+  "synthetic_only": true,
+  "device_frame": "1080x2340 px, 384x832 dp at 2.8125",
+  "references_checked": "2026-11-21",
+  "fonts": "Funnel Display + Funnel Sans (OFL), variable weight",
+  "font_sha256": {
+    "funnel_display.ttf": "b4151c9c4b7b07eb74320096b4ff4156cca8821f5adfab34af9fd9a2d6c1179d",
+    "funnel_sans.ttf": "652c9834434bc01835c4e75a73d3c7e42ff2e4beb261cc851cb911e889af6a77"
+  },
+  "pillow": "12.3.0"
+}

@@ -1,24 +1,44 @@
 # Lapis L4–L8 synthetic pre-build evidence (#753)
 
-This directory is the output location for five **synthetic-only** annotated S24+ 1080×2340 PNG boards. These are design-preflight storyboards, **not** device screenshots, implementation, performance readings, or inspection of the private Round 3/Continuum boards. The source of truth is [Quiet Frame v3](../../QUIET_FRAME.md) and the independent preflight receipts on [L4 #657](https://github.com/LPStruiksma/atlas-gallery/issues/657), [L5 #658](https://github.com/LPStruiksma/atlas-gallery/issues/658), [L6 #659](https://github.com/LPStruiksma/atlas-gallery/issues/659), [L7 #660](https://github.com/LPStruiksma/atlas-gallery/issues/660) and [L8 #661](https://github.com/LPStruiksma/atlas-gallery/issues/661).
+**Status:** five annotated sheets ready for independent Review and then a fresh design re-preflight on [L4 #657](https://github.com/LPStruiksma/atlas-gallery/issues/657), [L5 #658](https://github.com/LPStruiksma/atlas-gallery/issues/658), [L6 #659](https://github.com/LPStruiksma/atlas-gallery/issues/659), [L7 #660](https://github.com/LPStruiksma/atlas-gallery/issues/660) and [L8 #661](https://github.com/LPStruiksma/atlas-gallery/issues/661). These are **synthetic design storyboards**: not device screenshots, emulator captures, implementation, recordings or performance readings, and not an inspection of the private Round 3, Continuum or Lapis boards. Source of truth: [Quiet Frame v3](../../QUIET_FRAME.md) and the preflight receipts on each unit.
 
-## Expected reproducible deliverables
+| Sheet | Unit | Device frames |
+|---|---|---|
+| [brand-l4-navigation.png](brand-l4-navigation.png) | L4 slab and held sphere | 20 |
+| [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 12 |
+| [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 16 |
+| [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 14 |
+| [brand-l8-justified.png](brand-l8-justified.png) | L8 justified day rows | 16 |
 
-A single generator under `tools/design/` should create the following five boards. Each board may compose multiple labelled scale-preserving panels, but must include at least one complete 1080×2340 device frame with measured 48 dp effective touch areas, status/navigation/IME insets, light and dark appearances and 100%/200% font handling. Annotate focus/TalkBack and distinguish illustrative gestures from runtime captures.
+Each sheet opens with two full-scale 1080 × 2340 frames (light 100 % and dark 200 %), then labelled state panels (the same full frames at 50 %), then tables: a dated **source → observed convention → Atlas adaptation/deviation** row set, and the unit's copy, TalkBack, tap-path, gesture or layout rules. [manifest.json](manifest.json) records every sheet's size, SHA-256, panel codes, font hashes and Pillow version.
 
-| Board | Mandatory visual/storyboard evidence |
-| --- | --- |
-| `brand-l4-navigation.png` | Pictures and Collections active white pills, legacy Albums/Stories/People entry, 46 dp month sphere in ≥48 dp target, 3 fast-scroll frames with thumb position and gesture, three ordered selections with 2 dp white halo, full AtlasSearch handoff + IME/Back, viewer filmstrip/current 2 dp ring/action slab, loading arc/count, empty/error/large library, reduced motion on/off |
-| `brand-l5-collections.png` | Four differently shaped photo-strip thumbnails without circular people crops, rows with count/date and partial/empty variants, navigation tap-count to individual person/album/place, 500-people sort/scoped search/keyboard, Trash/Hidden, long labels, loading/error and TalkBack traversal |
-| `brand-l6-atlas.png` | Pictures with closed, finger-followed 50% and open overlay; current-month sphere/year bar counts; month/place tap to grid, reverse gesture, no-geotags and dense-dot-map cases, TalkBack month/place lists, reduced-motion cuts; map MUST be offline schematic dots, never real tiles, network or location data |
-| `brand-l7-search.png` | Search sphere/rest, expanding full-width bar directly above slab, IME/history/autocomplete/scope toggle/results/no-results/loading/error; preserve natural-language, face, image, metadata and history entry; scoped vs whole-library, query preservation, IME Back then collapse Back, focus traversal and reduced motion |
-| `brand-l8-justified.png` | Day justified real-shape rows with panoramas, portrait, short final row, mixed video and 2 dp gaps; square month/year comparison, 3-step anchored pinch forward/back, selection and held sphere, empty/loading/error/150k schematic library, font-scale cases; plan FrameMetrics post-build gate without inventing measurements |
+## What is assumed
 
-Every board should have a **source → observed convention → Atlas adaptation/deviation** row comparing two *independently documented public* interaction/layout patterns. Do not claim independent inspection of the private boards. Use only approved colour and type tokens: light brand fill `#2639C9`, dark `#3448E0`, Funnel Display/Sans, neutral ground/surface/ink from Quiet Frame v3. Use generated shapes/gradient placeholders, never real pictures, people or geodata.
+| Item | Value | Status |
+|---|---|---|
+| Viewport | 384 × 832 dp at density 2.8125 = 1080 × 2340 px | S24+ FHD+ default, same as [FIND-5](../../declutter-search-341/README.md) |
+| Status bar / gesture nav | 29 dp / 16 dp | **Assumed** (FIND-5 values); measure on the S24+ |
+| Keyboard | 324 dp | CI test IME (#437); Samsung Keyboard height unverified |
+| Font scale 200 % | Linear 2× | Worst case; Android 14+ scales large text non-linearly. One-word titles that would overflow are fitted to the width and marked |
+| Fonts | Funnel Display and Funnel Sans, variable weight | The BRAND-L2 files from PR [#720](https://github.com/LPStruiksma/atlas-gallery/pull/720) (head `91ccdeb`, not yet on `main`) |
+| Pictures, names, places | Generated gradients, fictional names, schematic dots | No photos, people or geodata; no map tiles, network or permissions |
 
-## Acceptance and provenance
+The annotation layer is magenta `#E0007A`, outside the palette: dashed box = effective touch target with its size, numbered dot = TalkBack order, tinted band = system inset, ring and arrow = illustrative gesture.
 
-- Generator should be deterministic, documented (command and dependencies), render all five PNGs, and validate exact dimensions for every full-device base frame; no private input or network required at generation time.
-- The five **PNG binaries must actually be committed** before review, not merely named in a manifest.
-- The installed Codex patch-apply guard accepts only regular **text** files (max 12 changed files, no binary), so a Codex-generated text patch can deliver the generator and associated text annotations, but **cannot by itself land the PNG binaries**. A subsequent Dev action must generate and commit them through a binary-capable path, then validate exact-head CI.
-- L2 #720 gates *runtime implementation*, not these pre-build boards. When evidence actually exists and has independent Review, re-request the separate pre-build design preflight on all five units.
+## Open design questions the sheets surface
+
+1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 dp targets; the sheet recommends it. Decide at re-preflight.
+2. **L4 slab at 200 % font:** the pills widen instead of truncating, so the search sphere no longer fits and detaches above the slab's right end (A2). A proposal, not part of Quiet Frame v3 yet.
+3. **L7 auto-focus:** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused field. The two-step Back and the This screen / Whole library chips are kept.
+4. **L5 two-tap reach:** recent people and albums get their own rows; any of 500 people is Collections, then search (2 taps plus typing) or 3 taps via People and pets.
+
+## Regenerate
+
+```bash
+pip install Pillow  # tested with Pillow 12.3.0
+python3 tools/design/lapis_preflight.py --font-dir <dir with funnel_display.ttf and funnel_sans.ttf>
+python3 tools/design/lapis_preflight.py --check      # sizes and SHA-256 against manifest.json
+python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a fallback font
+```
+
+Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
