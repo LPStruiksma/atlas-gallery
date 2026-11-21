@@ -1,0 +1,20 @@
+# #783 Copy -> library reload -> Move in the real MainActivity, S24+ portrait
+# (SelectionMoveRepublicationLight/DarkJourneyTest): selection kept through a
+# republication before the picker opens (portrait and landscape), the picker
+# after a republication while open, consent canceled, moved into the tapped
+# album; then a republication that removes every chosen row while the picker
+# is open and the tap's visible "Selection changed" result.
+move-783-light-reloaded-selection
+move-783-light-reloaded-selection-landscape
+move-783-light-picker-after-reload
+move-783-light-consent-canceled
+move-783-light-moved
+move-783-light-picker-selection-gone
+move-783-light-selection-changed
+move-783-dark-reloaded-selection
+move-783-dark-reloaded-selection-landscape
+move-783-dark-picker-after-reload
+move-783-dark-consent-canceled
+move-783-dark-moved
+move-783-dark-picker-selection-gone
+move-783-dark-selection-changed
