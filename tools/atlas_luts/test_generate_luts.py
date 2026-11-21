@@ -1,38 +1,54 @@
 import hashlib
 import json
 import tempfile
-import zlib
 import unittest
 from pathlib import Path
 
-from generate_luts import LOOKS, SIZE, lut_bytes, generate
+from generate_luts import LOOKS, SIZE, MAGIC, lut_bytes, generate
+
 
 class GenerateLutsTest(unittest.TestCase):
-    def test_catalogue_is_original_named_and_bounded(self):
+    def test_original_named_and_bounded(self):
         self.assertEqual(14, len(LOOKS))
         self.assertEqual(len(LOOKS), len({x.id for x in LOOKS}))
         self.assertTrue(all(x.id.startswith("atlas-") and x.name for x in LOOKS))
+        self.assertTrue(all(0.0 < x.preview_strength <= 0.68 for x in LOOKS))
         self.assertLess(sum(len(lut_bytes(x)) for x in LOOKS), 2_000_000)
 
-    def test_generation_is_byte_identical_and_hashes_cover_files(self):
+    def test_byte_identical_regeneration_and_hashes(self):
         with tempfile.TemporaryDirectory() as root:
-            a, b = Path(root) / "a", Path(root) / "b"
-            first, second = generate(a), generate(b)
+            first_dir, second_dir = Path(root) / "a", Path(root) / "b"
+            first, second = generate(first_dir), generate(second_dir)
             self.assertEqual(first, second)
-            self.assertEqual((a / "catalogue.json").read_bytes(), (b / "catalogue.json").read_bytes())
-            parsed = json.loads((a / "catalogue.json").read_text())
-            for entry in parsed["looks"]:
-                data = (a / f'{entry["id"]}.lut').read_bytes()
+            self.assertEqual((first_dir / "catalogue.json").read_bytes(),
+                             (second_dir / "catalogue.json").read_bytes())
+            for entry in first["looks"]:
+                data = (first_dir / (entry["id"] + ".lut")).read_bytes()
                 self.assertEqual(entry["sha256"], hashlib.sha256(data).hexdigest())
-                self.assertEqual(b"ATLASLUT1", data[:9])
+                self.assertEqual(MAGIC, data[:9])
                 self.assertEqual(SIZE, data[9])
-                self.assertEqual(SIZE ** 3 * 3, len(zlib.decompress(data[10:])))
+                self.assertEqual(10 + SIZE ** 3 * 3, len(data))
 
-    def test_binary_axis_order_and_endpoints_are_stable(self):
-        raw = zlib.decompress(lut_bytes(LOOKS[0])[10:])
-        values = raw
-        self.assertEqual([0, 0, 0], list(values[:3]))
-        self.assertEqual([255, 255, 255], list(values[-3:]))
-        self.assertNotEqual(values[3:6], values[SIZE * 3:SIZE * 3 + 3])
+    def test_checked_in_bundle_matches_generated_source(self):
+        committed = Path(__file__).resolve().parents[2] / "app/src/main/assets/editor/luts"
+        self.assertTrue(committed.is_dir())
+        with tempfile.TemporaryDirectory() as root:
+            generated = Path(root)
+            expected = generate(generated)
+            self.assertEqual({p.name for p in generated.iterdir()},
+                             {p.name for p in committed.iterdir()})
+            self.assertEqual(expected, json.loads((committed / "catalogue.json").read_text()))
+            for look in LOOKS:
+                filename = look.id + ".lut"
+                self.assertEqual((generated / filename).read_bytes(),
+                                 (committed / filename).read_bytes())
 
-if __name__ == "__main__": unittest.main()
+    def test_rgb_major_axis_order_and_endpoints(self):
+        raw = lut_bytes(LOOKS[0])[10:]
+        self.assertEqual([0, 0, 0], list(raw[:3]))
+        self.assertEqual([255, 255, 255], list(raw[-3:]))
+        self.assertNotEqual(raw[3:6], raw[SIZE * 3:SIZE * 3 + 3])
+
+
+if __name__ == "__main__":
+    unittest.main()

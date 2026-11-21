@@ -1,46 +1,23 @@
 # Atlas filters (EDIT-7)
 
-Status: **implementation task scaffold only**. No LUT catalogue, sampler, custom-filter storage, or tests are implemented by this document.
+Status: **original filter reference implementation and complete 14-look assets committed; independent proof and rendering integration still required.**
 
-## Scope and contract
+Unit: [EDIT-7 #725](https://github.com/LPStruiksma/atlas-gallery/issues/725) under [Editor #629](https://github.com/LPStruiksma/atlas-gallery/issues/629). Fourteen distinct Atlas looks use own parametric transforms, no Samsung LUT data, names, assets, packs or personal images. No UI is introduced (EDIT-10 owns it), and the existing `EditOperation.Filter(lutId, lutHash, strength)` schema is unchanged.
 
-Unit: [EDIT-7 #725](https://github.com/LPStruiksma/atlas-gallery/issues/725) under [Editor #629](https://github.com/LPStruiksma/atlas-gallery/issues/629). Build **12–16 original Atlas looks** as deterministic parametric colour transforms, never derived from Samsung or unlicensed LUTs, names, or assets. Their naming and previews should fit the [Lapis Atlas Quiet Frame](../design/QUIET_FRAME.md) while leaving thumbnails recognisable. Preserve neutral tones and skin safety in each look's preview.
+## Format and reproducibility
 
-Existing engine: `EditOperation.Filter(lutId, lutHash, strength)` in `featureeditor.engine`, where `strength` is a finite `Double` in `0.0..1.0`; `RenderStage.Lut` carries the same id, optional hash and strength. A UI 0–100 control maps to this range. **Do not change the engine schema or add UI** (EDIT-10 owns it).
+Run `python3 tools/atlas_luts/generate_luts.py app/src/main/assets/editor/luts` to regenerate the exact committed bundle. Fourteen 33³ `.lut` files total **1,509,494 bytes**; including catalogue JSON, the bundle is below 2 MB. Each binary file contains the nine ASCII magic bytes `ATLASLUT1`, one unsigned dimension byte (`33`), then interleaved RGB8 channel values across a 33×33×33 grid. The grid is ordered B outermost, G middle, R fastest. The raw format avoids external codecs; APK packaging compresses it. `catalogue.json` records stable identifiers, display names, bounded preview strengths, transform parameters, SHA-256 and byte lengths.
 
-A committed Python generator must produce byte-identical 33³ LUT assets, with stable identifiers, display names, a thumbnail-safe preview rule and an aggregate asset budget of **at most 2 MB**. A reference CPU sampler must interpolate trilinearly, blend with the original in a defined working colour space, and provide a reference for EDIT-2's GPU path (target ΔE ≤ 1). Reference-photo custom filters must work with synthetic Lab-statistics fixtures, avoid personal media in the repo, and save under app-private storage with the content SHA-256 referenced by the recipe.
+The CPU reference `AtlasLut.fromBytes` and `sample` interpolate trilinearly **in encoded sRGB** and blend the original in the same domain with `strength` from 0.0 to 1.0 (the 0–100 UI scale maps to `samplePercent`). The static `AtlasFilterCatalogue.load(id, context.assets::open)` verifies each packaged asset's SHA-256 and byte count before decoding. Unknown identifiers return null; corrupt assets fail closed. Previews use per-look strengths from 0.28 to 0.68 to limit extreme treatment of neutral and skin-like colours; these rules need visual verification on synthetic licensed fixtures before shipping.
 
-## Acceptance proof (not yet supplied)
+## Custom filter from another photo
 
-- Python generator byte-identical regeneration and 12–16 asset count/size/integrity tests.
-- JVM identity-LUT, strength-zero, trilinear-grid and custom-reference colour-transfer tests with synthetic palettes.
-- Exact-head hosted CI of the generated source and assets, including Android compilation; independent Review before merge.
-- Implementation note documents format, colour-space assumptions, custom-file corruption handling, privacy boundary and copy/paste semantics.
+`LabColourTransfer.statistics` summarizes **on-device** encoded-sRGB pixels in D65 CIE Lab (channel mean and population deviation). `FilterFromPhoto.derive(sourceStats, referenceStats)` samples this Lab mean/deviation transform over a 33³ lattice and emits an original LUT in the same file format. It requires only numeric statistics, not the reference image, and JVM fixtures use synthetic palettes. Do not upload source/reference photos, pixel buffers or full Lab statistics to GitHub or external services. Release reference pixels once the user's ordinary media lifecycle allows it.
 
-## Codex relay boundary
+`CustomFilterStore(filesDir/subdirectory)` stores LUT bytes privately at `<sha256>.lut`, optionally stores a user-provided display name at `<sha256>.name`, verifies content hashes on read, and rejects malformed names, malformed hashes and corrupt files. Do not pass an external-storage directory. Existing recipes retain `lutId` and optional `lutHash` for copy/paste; a pasted recipe with a missing hash must report missing custom content, not silently substitute a preset. The storage helper does not itself synchronize assets across devices or manage the photo permission lifecycle.
 
-The first Codex Cloud patch is constrained by the installed auto-apply guard: **one commit, at most 12 changed regular text files, no binary changes, deletes or renames**. It can implement a bounded text-source first stage, but **cannot by itself prove bundled generated binary assets or the full unit complete**. Missing files, generated assets and executable proof must be reported as follow-up work, never claimed as shipped. The draft PR remains unready until those requirements are met.
+## Acceptance and remaining independent proof
 
-## First-stage reference implementation
-
-`tools/atlas_luts/generate_luts.py` is the clean-room specification for fourteen original
-33³ looks. It emits losslessly zlib-compressed `ATLASLUT1` files containing RGB uint8 samples in
-blue/green/red loop order (red varies fastest), normalized sRGB-domain inputs and SHA-256
-catalogue entries. The compact complete catalogue is specified to remain below 2 MB.
-The checked-in Kotlin sampler uses the same ordering, clamps finite sRGB inputs to the LUT
-domain, interpolates in encoded sRGB, then linearly blends the filtered and original values
-at the recipe's `0.0..1.0` strength. This is a CPU reference, not a claim of perceptual-linear
-blending or the EDIT-2 GPU implementation.
-
-Custom-filter colour transfer converts encoded sRGB through D65 CIE Lab and independently
-matches each synthetic channel's mean and population deviation. Production integration must
-compute statistics on-device, discard reference pixels when no longer otherwise needed, and
-pass an app-private directory below `filesDir` to `CustomFilterStore`. The store names content
-only by SHA-256, verifies bytes on every read, returns null for malformed hashes or corruption,
-and supports recipe copy/paste through the existing optional `lutHash`; it does not grant a
-receiving device access to missing content.
-
-This bounded stage deliberately contains no generated LUT assets or UI. Follow-up work must
-commit and regeneration-check the complete generated asset set (aggregate at most 2 MB), wire
-asset parsing/rendering and app-private lifecycle policy, measure skin/neutral preview safety,
-and prove GPU agreement (target ΔE ≤ 1), Android compilation and exact-head CI.
+- Python generator tests cover byte-identical regeneration, exact checked-in assets, 14 distinct looks, SHA-256 catalogue and aggregate size. JVM tests cover identity, strength zero and 0–100, trilinear accuracy, catalogue loading and tampering, synthetic Lab transfer and named private storage.
+- **Not yet claimed:** exact-head CI after the asset commit, Android compilation/JVM test execution, synthetic preview/skin-neutral evaluation, actual pipeline wiring for EDIT-2's GPU path, or measured GPU agreement (target ΔE ≤ 1). Don't call the feature shipped until these proofs and independent Review exist.
+- The Codex first-stage auto-apply limit was text-only and excluded binary assets. The follow-up binary commit is ordinary Dev work, not another Codex patch; no additional `@codex` task is needed.
