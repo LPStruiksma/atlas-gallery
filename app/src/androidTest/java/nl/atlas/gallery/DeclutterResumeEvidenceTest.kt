@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.testkit.advanceVirtualTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -49,7 +50,7 @@ class DeclutterResumeEvidenceTest {
 
     private fun capture(name: String) {
         rule.waitForIdle()
-        Thread.sleep(700)
+        rule.advanceVirtualTime(700)
         rule.waitForIdle()
         saveUiEvidence(name)
     }
