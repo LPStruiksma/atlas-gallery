@@ -528,7 +528,8 @@ internal fun HiddenPeopleRoute(
     people: PeopleHomeSummary?,
     onBack: () -> Unit,
     onOpen: (NativePersonAlbumRequest) -> Unit,
-    onSearchWholeLibrary: (() -> Unit)? = null
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    onOpenNeedsSplitting: (() -> Unit)? = null
 ) {
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
@@ -551,6 +552,7 @@ internal fun HiddenPeopleRoute(
         },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
+        onOpenNeedsSplitting = onOpenNeedsSplitting,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
     )
 }

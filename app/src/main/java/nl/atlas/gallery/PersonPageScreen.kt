@@ -531,13 +531,18 @@ internal fun HiddenPeopleScreen(
     portrait: @Composable (NativePersonAlbum) -> Unit,
     onBack: () -> Unit,
     onOpen: (NativePersonAlbum) -> Unit,
-    onSearchWholeLibrary: (() -> Unit)? = null
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    onOpenNeedsSplitting: (() -> Unit)? = null
 ) {
     var searchText by remember { mutableStateOf("") }
     val visiblePeople = scopedNamedMatches(people, searchText) { it.name }
     // AtlasGalleryHeader already clears the status bar here (People's own inset).
     Column(Modifier.fillMaxSize().background(DeepBg).testTag("atlas-people-hidden")) {
-        AtlasGalleryHeader(title = "Hidden", onBack = onBack, actions = {
+        AtlasGalleryHeader(title = "Hidden", onBack = onBack,
+            menuItems = if (onOpenNeedsSplitting != null) listOf(
+                AtlasHeaderMenuItem("Needs splitting", "atlas-hidden-needs-splitting-open",
+                    onClick = onOpenNeedsSplitting)) else emptyList(),
+            actions = {
             AtlasSearch(query = searchText, onQueryChange = { searchText = it },
                 historyScope = SearchHistoryScope.PEOPLE,
                 onScopeChange = { scope ->

@@ -905,6 +905,19 @@ internal class PeopleDiscoveryHost(
         liveEpoch == epoch && synchronized(lock) { optedIn } && photoGrantCurrent()
 
     /**
+     * HUB-1C: a Skip key must outlive a random face-publication epoch.
+     * Full-library grants have a stable, permission-derived token across
+     * publications and relaunches. Selected-photos grants have no equally
+     * trustworthy stable token: keep their Skip suppression epoch-local
+     * rather than risk carrying it into a changed, narrower selection.
+     * Never return a scope for a stale or unauthorized publication.
+     */
+    fun stableSamePersonSkipScope(epoch: String): String? {
+        if (!scopeCurrent(epoch) || synchronized(lock) { scope?.epoch != epoch }) return null
+        return photoGrantToken()?.let { "full-photo-grant:$it" } ?: epoch
+    }
+
+    /**
      * #61: manual scanning is a transient foreground grant, never WorkManager
      * Data. A token prevents an old coroutine from ending a newer invocation.
      */

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -55,6 +57,10 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewState
 import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewCommand
+import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
+import nl.atlas.gallery.featurepeopleui.samePersonQueueMixedSides
+import nl.atlas.gallery.featurepeopleui.samePersonSkipFingerprint
+import nl.atlas.gallery.featurepeopleui.SamePersonSkipPreferences
 import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
 import nl.atlas.gallery.featurepeopleui.PersonPageTarget
 import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
@@ -67,8 +73,10 @@ import nl.atlas.gallery.featurepeopleui.samePersonQueueStillAsks
  * #580 People ⋮ → Same person?: every open question of the library, one at a
  * time, the one that would move the most faces first. Yes and No are the
  * answers a person's page sends (same reducer, same atomic commit through
- * [PeopleDiscoveryHost.review]); Skip only moves on and is forgotten when the
- * screen closes. Nothing is joined without an answer.
+ * [PeopleDiscoveryHost.review]); Skip is stored as a grant-scoped opaque
+ * membership fingerprint preference and survives closing or relaunching the
+ * screen until a membership change or Show skipped reset. Nothing is joined
+ * without an answer.
  *
  * PERF: the list is read through a [SamePersonQueueCursor], so the first
  * question shows once the largest groups are scored, and the rest of the
@@ -88,20 +96,44 @@ internal fun SamePersonQueueRoute(
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
     val epoch = state?.permissionEpoch
+    val skipScope = epoch?.let(host::stableSamePersonSkipScope)
+    val context = LocalContext.current
+    val skipPreferences = remember(context) { SamePersonSkipPreferences.forApp(context) }
     var cursor by remember { mutableStateOf(state?.let(SamePersonQueueMemo::cursor)) }
     // How many of this screen's answers [cursor]'s snapshot already holds.
     var cursorSeq by remember { mutableIntStateOf(0) }
     var found by remember { mutableStateOf(cursor?.items.orEmpty()) }
     var listDone by remember { mutableStateOf(cursor?.done == true) }
-    var skipped by remember { mutableStateOf(emptySet<String>()) }
+    // Restored for the currently authorized grant before rendering questions.
+    var skipped by remember(skipScope) {
+        mutableStateOf(skipScope?.let(skipPreferences::read).orEmpty())
+    }
+    var mixedBusy by remember { mutableStateOf(false) }
+    var undoBusy by remember { mutableStateOf(false) }
+    var lastMixedGeneration by remember { mutableStateOf<String?>(null) }
+    var lastMixedQuestion by remember { mutableStateOf<String?>(null) }
     // Every answer of this screen in tap order; the first `resolved` are committed (or refused).
     var answers by remember { mutableStateOf(emptyList<SamePersonQueueAnswer>()) }
     var resolved by remember { mutableIntStateOf(0) }
-    val visible = remember(found, skipped, answers, cursorSeq) {
+    val skipSnapshot = cursor?.state?.takeIf {
+        it.permissionEpoch == epoch && skipScope != null && host.scopeCurrent(it.permissionEpoch)
+    }
+    val skipTokenFor: (SamePersonQueueItem) -> String? = { question ->
+        if (skipSnapshot != null && skipScope != null)
+            samePersonSkipFingerprint(skipSnapshot, question, skipScope)
+        else null
+    }
+    val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion, skipSnapshot, skipScope) {
         val notInList = answers.drop(cursorSeq)
-        found.filter { item -> item.key !in skipped && notInList.none { it.hides(item) } }
+        found.filter { item ->
+            val token = skipTokenFor(item)
+            token != null && token !in skipped && item.key != lastMixedQuestion &&
+                notInList.none { it.hides(item) }
+        }
     }
     val item = visible.firstOrNull()
+    var markSubject by remember(item?.key) { mutableStateOf(false) }
+    var markOther by remember(item?.key) { mutableStateOf(false) }
     val ahead by rememberUpdatedState(visible.size)
 
     // A new snapshot (after answers, or a new publication) is read again once
@@ -161,7 +193,13 @@ internal fun SamePersonQueueRoute(
     LaunchedEffect(listDone, cursor) {
         if (listDone) counted = (found.size - answers.drop(cursorSeq).size) to answers.size
     }
-    val open = counted?.let { (n, at) -> maxOf(0, n - (answers.size - at)) } ?: 0
+    val pendingMarked = lastMixedQuestion != null && found.any { it.key == lastMixedQuestion }
+    val open = if (skipSnapshot == null) 0 else counted?.let { (n, at) ->
+        maxOf(0, n - (answers.size - at) - if (pendingMarked) 1 else 0)
+    } ?: 0
+    val canUndoMixed = skipSnapshot != null && lastMixedGeneration != null &&
+        state?.sourceGeneration == lastMixedGeneration && (state?.undoHistory?.isNotEmpty() == true) &&
+        !mixedBusy && !undoBusy && resolved == answers.size
     Dialog(onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         SamePersonQueueScreen(
@@ -169,17 +207,73 @@ internal fun SamePersonQueueRoute(
             open = open,
             loaded = people == null ||
                 (listDone && resolved == answers.size && cursor?.state === state),
-            skippedSome = found.any { it.key in skipped },
+            skippedSome = found.any { question ->
+                val token = skipTokenFor(question)
+                token != null && token in skipped
+            },
+            onShowSkipped = {
+                if (epoch != null && skipScope != null &&
+                    host.stableSamePersonSkipScope(epoch) == skipScope) {
+                    skipPreferences.clear(skipScope)
+                    skipped = emptySet()
+                }
+            },
+            markSubject = markSubject,
+            markOther = markOther,
+            actionBusy = mixedBusy || undoBusy,
+            canUndoMixed = canUndoMixed,
+            onToggleSubject = { if (!mixedBusy && !undoBusy) markSubject = !markSubject },
+            onToggleOther = { if (!mixedBusy && !undoBusy) markOther = !markOther },
+            onMarkMixed = {
+                val asked = item
+                val liveEpoch = epoch
+                val fingerprint = asked?.let { skipTokenFor(it) }
+                if (asked != null && liveEpoch != null && skipScope != null &&
+                    fingerprint != null &&
+                    (markSubject || markOther) && !mixedBusy && !undoBusy &&
+                    resolved == answers.size) {
+                    mixedBusy = true
+                    SamePersonQueueCommits.mark(host, liveEpoch, asked, markSubject, markOther,
+                        skipScope, fingerprint) { generation ->
+                        mixedBusy = false
+                        if (generation != null) {
+                            lastMixedGeneration = generation
+                            lastMixedQuestion = asked.key
+                        }
+                    }
+                }
+            },
+            onUndoMixed = {
+                val generation = lastMixedGeneration
+                val liveEpoch = epoch
+                if (generation != null && liveEpoch != null && canUndoMixed) {
+                    undoBusy = true
+                    SamePersonQueueCommits.undoMixed(host, liveEpoch, generation) { _ ->
+                        undoBusy = false
+                        // Even a refused Undo must not leave a queue question hidden.
+                        lastMixedGeneration = null
+                        lastMixedQuestion = null
+                    }
+                }
+            },
             face = { PersonFaceImage(host, epoch, it) },
             onAnswer = { same ->
                 val asked = item
-                if (asked != null && epoch != null) {
+                if (asked != null && epoch != null && !mixedBusy && !undoBusy) {
                     val answer = SamePersonQueueAnswer(epoch, asked, same)
                     answers = answers + answer
                     SamePersonQueueCommits.submit(host, answer) { resolved++ }
                 }
             },
-            onSkip = { item?.let { skipped = skipped + it.key } },
+            onSkip = {
+                val asked = item
+                val token = asked?.let { skipTokenFor(it) }
+                if (epoch != null && skipScope != null && token != null &&
+                    host.stableSamePersonSkipScope(epoch) == skipScope &&
+                    !mixedBusy && !undoBusy) {
+                    skipped = skipPreferences.add(skipScope, token)
+                }
+            },
             onClose = onClose
         )
     }
@@ -214,6 +308,44 @@ internal object SamePersonQueueCommits {
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor { task ->
         Thread(task, "atlas-same-person").apply { isDaemon = true }
+    }
+
+    /** Serialized with Yes/No to prevent races with earlier questions. */
+    fun mark(
+        host: PeopleDiscoveryHost, epoch: String, item: SamePersonQueueItem,
+        subject: Boolean, other: Boolean, expectedScope: String,
+        expectedFingerprint: String, done: (String?) -> Unit
+    ) {
+        worker.execute {
+            val generation = try {
+                val live = host.liveReview(epoch)
+                    ?: host.reviewState(epoch)?.let { host.liveReview(epoch) }
+                val action = samePersonQueueMixedSides(item, subject, other)
+                if (live != null && action != null && samePersonQueueStillAsks(live, item) &&
+                    host.stableSamePersonSkipScope(epoch) == expectedScope &&
+                    samePersonSkipFingerprint(live, item, expectedScope) == expectedFingerprint &&
+                    host.review(PeopleClusterReviewCommand(live, action))) {
+                    host.liveReview(epoch)?.sourceGeneration
+                } else null
+            } catch (_: RuntimeException) { null }
+            main.post { done(generation) }
+        }
+    }
+
+    /** Only Undo the latest acknowledged change of this queue session. */
+    fun undoMixed(
+        host: PeopleDiscoveryHost, epoch: String, generation: String,
+        done: (Boolean) -> Unit
+    ) {
+        worker.execute {
+            val success = try {
+                val live = host.liveReview(epoch)
+                live != null && live.sourceGeneration == generation &&
+                    live.undoHistory.isNotEmpty() &&
+                    host.review(PeopleClusterReviewCommand(live, PeopleReviewAction.Undo))
+            } catch (_: RuntimeException) { false }
+            main.post { done(success) }
+        }
     }
 
     fun submit(host: PeopleDiscoveryHost, answer: SamePersonQueueAnswer, done: () -> Unit) {
@@ -256,6 +388,15 @@ internal fun SamePersonQueueScreen(
     open: Int,
     loaded: Boolean,
     skippedSome: Boolean,
+    onShowSkipped: () -> Unit,
+    markSubject: Boolean,
+    markOther: Boolean,
+    actionBusy: Boolean,
+    canUndoMixed: Boolean,
+    onToggleSubject: () -> Unit,
+    onToggleOther: () -> Unit,
+    onMarkMixed: () -> Unit,
+    onUndoMixed: () -> Unit,
     face: @Composable (NativeFaceObservationId) -> Unit,
     onAnswer: (Boolean) -> Unit,
     onSkip: () -> Unit,
@@ -271,6 +412,10 @@ internal fun SamePersonQueueScreen(
                 }
                 Text("Same person?", style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f).padding(start = 4.dp))
+                if (canUndoMixed) TextButton(onClick = onUndoMixed,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-same-queue-undo")) {
+                    Text("Undo")
+                }
                 if (open > 0) Text(
                     if (open == 1) "1 open" else "%,d open".format(Locale.US, open),
                     style = MaterialTheme.typography.bodyMedium,
@@ -285,19 +430,42 @@ internal fun SamePersonQueueScreen(
                         SamePersonSide(item.subjectName ?: "Unnamed person",
                             faceCount(item.subjectFaces), item.subjectSamples, face,
                             "atlas-same-queue-subject")
+                        TextButton(onClick = onToggleSubject, enabled = !actionBusy,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-same-queue-subject-mixed")) {
+                            Text(if (markSubject) "Not one person (selected)" else "Not one person")
+                        }
                         Text("and", style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         SamePersonSide("Unnamed group", faceCount(item.otherFaces),
                             item.otherSamples, face, "atlas-same-queue-other")
+                        TextButton(onClick = onToggleOther, enabled = !actionBusy,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-same-queue-other-mixed")) {
+                            Text(if (markOther) "Not one person (selected)" else "Not one person")
+                        }
+                        if (markSubject || markOther) TextButton(onClick = onMarkMixed,
+                            enabled = !actionBusy,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-same-queue-confirm-mixed")) {
+                            Text(if (markSubject && markOther) "Mark both groups"
+                                else "Mark this group")
+                        }
                     }
                     !loaded -> CircularProgressIndicator(
                         Modifier.size(32.dp).testTag("atlas-same-queue-loading"))
-                    else -> Text(
-                        if (skippedSome) "You skipped the rest. Close and open again to see them."
-                        else "No open questions.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(32.dp).testTag("atlas-same-queue-empty"))
+                    else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (skippedSome) "No unskipped questions."
+                            else "No open questions.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(32.dp).testTag("atlas-same-queue-empty"))
+                        if (skippedSome) TextButton(onClick = onShowSkipped,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .testTag("atlas-same-queue-show-skipped")) {
+                            Text("Show skipped")
+                        }
+                    }
                 }
             }
             if (item != null) Row(
@@ -305,11 +473,11 @@ internal fun SamePersonQueueScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = { onAnswer(false) }, 
+                OutlinedButton(onClick = { onAnswer(false) }, enabled = !actionBusy,
                     modifier = Modifier.weight(1f).testTag("atlas-same-queue-no")) { Text("No") }
-                TextButton(onClick = onSkip,
+                TextButton(onClick = onSkip, enabled = !actionBusy,
                     modifier = Modifier.testTag("atlas-same-queue-skip")) { Text("Skip") }
-                Button(onClick = { onAnswer(true) }, 
+                Button(onClick = { onAnswer(true) }, enabled = !actionBusy,
                     modifier = Modifier.weight(1f).testTag("atlas-same-queue-yes")) { Text("Yes") }
             }
         }
