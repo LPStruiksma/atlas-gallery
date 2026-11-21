@@ -187,7 +187,8 @@ internal fun PhotoDnaReviewScreen(
                         onClick = {
                             onDeclutterSource("exact:${group.key}", group.members.map { it.uri })
                         },
-                        modifier = Modifier.testTag("photo-dna-declutter-group")
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("photo-dna-declutter-group")
                     ) { Text("Review group with Declutter") }
                 }
             }
@@ -214,15 +215,19 @@ internal fun PhotoDnaReviewScreen(
                             Text(pair.right.title, maxLines = 1)
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { onComparePair(pair) }) { Text(PhotoDnaCopy.COMPARE) }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(
+                            onClick = { onComparePair(pair) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text(PhotoDnaCopy.COMPARE) }
                         TextButton(
                             onClick = {
                                 onDeclutterSource(
                                     "visual:${pair.left.uri}:${pair.right.uri}",
                                     listOf(pair.left.uri, pair.right.uri))
                             },
-                            modifier = Modifier.testTag("photo-dna-declutter-pair")
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .testTag("photo-dna-declutter-pair")
                         ) { Text("Review with Declutter") }
                     }
                 }

@@ -1592,7 +1592,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         filter: String = "",
         sourceSort: String = "source-order"
     ) {
-        if (source.isEmpty()) return
+        if (source.isEmpty() || !galleryAccessCurrent()) return
         declutterItems = null
         declutterPersistentScope = null
         declutterSource = source
@@ -4330,7 +4330,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                         label = "Search results",
                                         source = visible,
                                         kind = "search",
-                                        id = searchFacets.toString(),
+                                        id = "${overviewScope.name}:${overviewQuery}:${searchFacets}",
                                         filter = "library-search",
                                         sourceSort = "${sort.key.name}:${sort.direction.name}"
                                     )

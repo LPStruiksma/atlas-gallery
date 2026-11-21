@@ -232,7 +232,8 @@ fun AtlasTimelineGallery(
     val zone = ZoneId.systemDefault()
     val localDensity = LocalDensity.current
     val gapPx = with(localDensity) { 3.dp.roundToPx() }
-    val headerHeightPx = with(localDensity) { 42.dp.roundToPx() }
+    // Month actions need a full 48 dp target; planning and painted rows share this height.
+    val headerHeightPx = with(localDensity) { 48.dp.roundToPx() }
     val openCurrent by rememberUpdatedState(onOpen)
     val displayedSlotsSink by rememberUpdatedState(onDisplayedSlots)
     val originalCurrent by rememberUpdatedState(onOriginalProportionsRequested)

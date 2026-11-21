@@ -1410,7 +1410,7 @@ internal fun PhotoDnaRoute(
                 onReviewRequested = { if (!verifying) onReviewRequested(it) },
                 onDeclutterSource = { sourceId, uris ->
                     val records = uris.mapNotNull { shown.records[it] }
-                    if (records.size == uris.size && records.isNotEmpty()) {
+                    if (!verifying && records.size == uris.size && records.isNotEmpty()) {
                         onDeclutterSource("${shown.plan.scopeEpoch}:$sourceId", records)
                     }
                 },

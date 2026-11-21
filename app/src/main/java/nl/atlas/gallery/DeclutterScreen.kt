@@ -114,6 +114,7 @@ internal fun DeclutterScreen(
             ) {
                 Column(
                     Modifier.fillMaxWidth().navigationBarsPadding()
+                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp).padding(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {

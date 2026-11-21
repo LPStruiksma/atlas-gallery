@@ -19,13 +19,13 @@ assert.match(timeline, /slot\.stableKey\.startsWith\("header:MONTH:"\)/,
   'only a displayed month header exposes the month action');
 assert.match(host, /atlas-search-declutter[\s\S]*?source = visible/,
   'Search launches the exact visible results and retains its query on Back');
-assert.match(photo, /photo-dna-declutter-group[\s\S]*?group\.members\.map \{ it\.uri \}/,
+assert.match(photo, /group\.members\.map \{ it\.uri \}[\s\S]*?photo-dna-declutter-group/,
   'Photo DNA exact family exposes its ordered members');
-assert.match(photo, /photo-dna-declutter-pair[\s\S]*?pair\.left\.uri[\s\S]*?pair\.right\.uri/,
+assert.match(photo, /pair\.left\.uri[\s\S]*?pair\.right\.uri[\s\S]*?photo-dna-declutter-pair/,
   'Photo DNA visual pair exposes the exact pair');
-assert.match(dnaHost, /shown\.plan\.scopeEpoch[\s\S]*?shown\.records\[it\]/,
+assert.match(dnaHost, /shown\.records\[it\][\s\S]*?shown\.plan\.scopeEpoch/,
   'Photo DNA source is fenced to the current grant and record map');
-assert.match(progress, /fun declutterSourceFingerprint[\s\S]*?modifiedAtSeconds/,
+assert.match(progress, /fields = if \(snapshot\.isBlank\(\)\)[\s\S]*?fun declutterSourceFingerprint[\s\S]*?modifiedAtSeconds/,
   'snapshot identity changes with order, membership and media revision');
 assert.match(screen, /ModalBottomSheet[\s\S]*?atlas-declutter-resume[\s\S]*?atlas-declutter-start-again[\s\S]*?atlas-declutter-not-now/,
   'resume / reset / exit actions share the approved bottom sheet');
