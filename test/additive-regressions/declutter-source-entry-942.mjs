@@ -17,7 +17,7 @@ assert.match(host, /onDeclutterMonth = if \(albumRoute == null\)[\s\S]*?kind = "
   'Pictures month entry is supplied from the timeline header range');
 assert.match(timeline, /slot\.stableKey\.startsWith\("header:MONTH:"\)/,
   'only a displayed month header exposes the month action');
-assert.match(host, /atlas-search-declutter[\s\S]*?source = visible/,
+assert.match(host, /source = visible[\s\S]*?atlas-search-declutter/,
   'Search launches the exact visible results and retains its query on Back');
 assert.match(photo, /group\.members\.map \{ it\.uri \}[\s\S]*?photo-dna-declutter-group/,
   'Photo DNA exact family exposes its ordered members');
