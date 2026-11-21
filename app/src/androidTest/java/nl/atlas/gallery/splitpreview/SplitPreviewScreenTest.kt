@@ -16,6 +16,7 @@ import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewFace
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewGroup
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewScreen
 import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewUiModel
+import nl.atlas.gallery.featurepeople.splitpreview.SplitPreviewStatus
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.rules.RuleChain
@@ -139,6 +140,7 @@ class SplitPreviewScreenTest {
         // setContent may run once per test, so theme and model both flip through state.
         var dark by mutableStateOf(false)
         var evidenceModel by mutableStateOf(model(2, 1))
+        var selectedFace by mutableStateOf<String?>(null)
         compose.setContent {
             MaterialTheme(colorScheme = if (dark)
                 androidx.compose.material3.darkColorScheme()
@@ -147,7 +149,8 @@ class SplitPreviewScreenTest {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                         SplitPreviewScreen(
                             evidenceModel, onAccept = {}, onAdjust = {}, onCancel = {},
-                            onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> }
+                            onManualSplit = {}, onSelectFace = {}, onMoveFace = { _, _ -> },
+                            selectedFaceHandle = selectedFace
                         )
                     }
                 }
@@ -156,6 +159,8 @@ class SplitPreviewScreenTest {
         val states = listOf(
             Triple("empty", SplitPreviewUiModel(emptyList(), emptyList()), false),
             Triple("one-group", model(1), false),
+            Triple("loading", model(2, 1).copy(status = SplitPreviewStatus.LOADING), false),
+            Triple("error", model(2, 1).copy(status = SplitPreviewStatus.ERROR), false),
             Triple("light", model(2, 1), false),
             Triple("dark", model(2, 1), true),
             Triple("long-review-light", model(3, 2), false),
@@ -166,6 +171,13 @@ class SplitPreviewScreenTest {
             dark = isDark
             compose.waitForIdle()
             saveUiEvidence("split-preview-synthetic-$name.png")
+        }
+        evidenceModel = model(2, 1)
+        selectedFace = "synthetic-1-1"
+        for (isDark in listOf(false, true)) {
+            dark = isDark
+            compose.waitForIdle()
+            saveUiEvidence(if (isDark) "split-preview-synthetic-selected-dark.png" else "split-preview-synthetic-selected-light.png")
         }
     }
 }
