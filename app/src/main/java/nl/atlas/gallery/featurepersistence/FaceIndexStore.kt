@@ -218,7 +218,7 @@ class FaceIndexStore(
                     CROSS JOIN catalog mc ON mc.media_key=mf.media_key AND mc.state='processed'
                         AND mc.revision=me.source_revision
                     WHERE pm.person_key=n.person_key),
-                MIN(p.face_uid)
+                MIN(p.face_uid) /* non-null bootstrap; selection below replaces it */
             FROM people_names n
             CROSS JOIN people_confirmed p ON p.person_key=n.person_key
             CROSS JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
@@ -307,6 +307,7 @@ class FaceIndexStore(
         ensureQualityColumns(db)
         createPeopleHomeTables(db)
         createPeopleCoverTable(db)
+        createAutoCoverTable(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
         createMixedGroupTable(db)
@@ -371,6 +372,7 @@ class FaceIndexStore(
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
         createPeopleCoverTable(db)
+        createAutoCoverTable(db)
         createModelCarryTable(db)
     }
     /**
@@ -636,6 +638,108 @@ class FaceIndexStore(
             frame_ms INTEGER)""")
     }
 
+
+    /**
+     * COVER-2 automatic winner is derived, not a user choice. The winner is
+     * persisted to keep hysteresis stable across process death and publications.
+     * No FK to embeddings: old hints are ignored unless they remain live members.
+     * COVER-3 manual override facts are never rewritten here.
+     */
+    private fun createAutoCoverTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_auto_cover(
+            person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256),
+            face_uid TEXT NOT NULL CHECK(length(face_uid)=32))""")
+    }
+
+    /** Indexed current-model, current-source and published members only. */
+    private fun autoCoverCandidates(
+        db: SQLiteDatabase, version: String, person: String? = null
+    ): Map<String, List<BestShotCandidate>> {
+        val results = LinkedHashMap<String, MutableList<BestShotCandidate>>()
+        for ((table, alias) in listOf("people_confirmed" to "pc", "people_matched" to "pm")) {
+            val filter = if (person == null) "" else " AND $alias.person_key=?"
+            val args = if (person == null) arrayOf(version) else arrayOf(version, person)
+            meteredStatements++
+            db.rawQuery("""SELECT $alias.person_key,e.face_uid,f.quality_score,
+                    f.quality_version,f.quality_below_size_floor,f.frame_ms
+                FROM $table $alias
+                CROSS JOIN embeddings e ON e.face_uid=$alias.face_uid AND e.model_version=?
+                CROSS JOIN faces f ON f.face_uid=e.face_uid
+                CROSS JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                    AND c.revision=e.source_revision
+                WHERE EXISTS (SELECT 1 FROM people_names n WHERE n.person_key=$alias.person_key)
+                    AND NOT EXISTS (SELECT 1 FROM face_reviews r
+                        WHERE r.media_key=f.media_key AND r.ordinal=f.ordinal
+                        AND r.decision='NOT_A_FACE')
+                    $filter
+                ORDER BY $alias.person_key,e.face_uid""", args).use { cursor ->
+                while (cursor.moveToNext()) {
+                    meteredRowsRead++
+                    results.getOrPut(cursor.getString(0)) { ArrayList() } += BestShotCandidate(
+                        cursor.getString(1),
+                        if (cursor.isNull(2)) null else cursor.getFloat(2),
+                        if (cursor.isNull(3)) null else cursor.getInt(3),
+                        if (cursor.isNull(4)) null else cursor.getInt(4) != 0,
+                        if (cursor.isNull(5)) null else cursor.getLong(5)
+                    )
+                }
+            }
+        }
+        return results
+    }
+
+    private fun autoCoverHint(db: SQLiteDatabase, person: String): String? =
+        db.rawQuery("SELECT face_uid FROM people_auto_cover WHERE person_key=?",
+            arrayOf(person)).use { if (it.moveToFirst()) it.getString(0) else null }
+
+    /**
+     * Existing publication/review refreshes all named people in one indexed
+     * member scan. A quality-only backfill refreshes just its affected people.
+     */
+    private fun refreshAutomaticCovers(
+        db: SQLiteDatabase, version: String, only: Set<String>? = null
+    ) {
+        if (only != null && only.isEmpty()) return
+        // Hidden named people are absent from people_home but still need their
+        // ranked automatic winner refreshed on publication and review writes.
+        val people = only ?: db.rawQuery("SELECT person_key FROM people_names", null).use { c ->
+            buildSet { while (c.moveToNext()) add(c.getString(0)) }
+        }
+        val candidates = if (only == null) autoCoverCandidates(db, version)
+            else buildMap {
+                // Quality-only work affects at most one source's faces. Never
+                // scan every named member when that source touched 2+ people.
+                for (person in people) putAll(autoCoverCandidates(db, version, person))
+            }
+        for (person in people) {
+            val prior = autoCoverHint(db, person)
+            val selected = BestShotSelector.choose(candidates[person].orEmpty(), prior)?.faceUid
+            when {
+                selected == null -> db.delete("people_auto_cover", "person_key=?", arrayOf(person))
+                selected != prior -> {
+                    val inserted = db.insertWithOnConflict("people_auto_cover", null,
+                        ContentValues().apply {
+                            put("person_key", person); put("face_uid", selected)
+                        }, SQLiteDatabase.CONFLICT_REPLACE)
+                    check(inserted != -1L) { "Automatic People cover could not be persisted" }
+                }
+            }
+            if (selected != null) {
+                db.execSQL("""UPDATE people_home SET cover_uid=?
+                    WHERE person_key=? AND cover_uid<>?""",
+                    arrayOf(selected, person, selected))
+            }
+        }
+        if (only == null) db.execSQL("""DELETE FROM people_auto_cover
+            WHERE NOT EXISTS (SELECT 1 FROM people_names n
+                WHERE n.person_key=people_auto_cover.person_key)""")
+    }
+
+    /** Read-only live fallback after cascading face removal invalidates a generation. */
+    private fun liveAutomaticCover(db: SQLiteDatabase, version: String, person: String): String? =
+        BestShotSelector.choose(autoCoverCandidates(db, version, person)[person].orEmpty(),
+            autoCoverHint(db, person))?.faceUid
+
     /** Exact source/face geometry plus current confirmed or published matched membership. */
     private fun resolvedPersonCover(db: SQLiteDatabase, version: String, person: String): String? =
         db.rawQuery("""SELECT f.face_uid FROM people_cover_override o
@@ -720,6 +824,34 @@ class FaceIndexStore(
     fun personCoverOverride(epoch: String, person: PersonKey): String? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             if (!servable(db)) null else resolvedPersonCover(db, version, person.value)
+        }
+
+    /**
+     * Current canonical portrait for a named person, including one hidden from
+     * People home. The manual choice wins; fallback reranks only currently
+     * processed, model/source-matched published members under the live grant.
+     */
+    fun personDisplayCover(epoch: String, person: PersonKey): String? =
+        authorizedEmbeddingRead(epoch, null) { db, version ->
+            if (!servable(db)) null else
+                resolvedPersonCover(db, version, person.value)
+                    ?: liveAutomaticCover(db, version, person.value)
+        }
+
+    /**
+     * Hidden rows are not in People home. Resolve their manual/automatic covers
+     * in one authorized transaction, and never expose a visible person or an
+     * unprocessed/stale member through this separate Hidden list projection.
+     */
+    fun hiddenPersonCovers(epoch: String): Map<PersonKey, String> =
+        authorizedEmbeddingRead(epoch, emptyMap<PersonKey, String>()) { db, version ->
+            if (!servable(db)) emptyMap() else buildMap {
+                for (person in hiddenPeople(db)) {
+                    val cover = resolvedPersonCover(db, version, person)
+                        ?: liveAutomaticCover(db, version, person)
+                    if (cover != null) put(PersonKey(person), cover)
+                }
+            }
         }
 
     /** Returns false without mutation for a stale grant, face or person. */
@@ -1448,19 +1580,29 @@ class FaceIndexStore(
                     source.detectorVersion)).use { it.moveToFirst() }
             if (!stillCurrent) return@write 0
             var written = 0
+            val affected = LinkedHashSet<String>()
             for ((uid, quality) in scores) {
                 val values = ContentValues().apply {
                     put("quality_score", quality.score.toDouble())
                     put("quality_version", quality.qualityVersion)
                     put("quality_below_size_floor", if (quality.belowSizeFloor) 1 else 0)
                 }
-                written += db.update("faces", values,
+                val updated = db.update("faces", values,
                     """face_uid=? AND media_key=? AND quality_score IS NULL
                     AND EXISTS(SELECT 1 FROM embeddings e WHERE e.face_uid=faces.face_uid
                         AND e.source_revision=? AND e.model_version=?)""",
                     arrayOf(uid, source.media.canonicalMediaKey,
                         source.media.sourceRevision, source.embedderVersion))
+                written += updated
+                if (updated > 0) db.rawQuery("""SELECT person_key FROM people_confirmed WHERE face_uid=?
+                    UNION SELECT person_key FROM people_matched WHERE face_uid=?""",
+                    arrayOf(uid, uid)).use { cursor ->
+                    while (cursor.moveToNext()) affected += cursor.getString(0)
+                }
             }
+            // Identity revision is unchanged by this backfill. Update cached
+            // home covers in the very same transaction, limited to its people.
+            refreshAutomaticCovers(db, source.embedderVersion, affected)
             written
         }
     }
@@ -2143,8 +2285,10 @@ class FaceIndexStore(
                 while (c.moveToNext()) {
                     val person = PersonKey(c.getString(0))
                     val choice = resolvedPersonCover(db, version, person.value)
+                    val automatic = if (built == revision) c.getString(3)
+                        else liveAutomaticCover(db, version, person.value) ?: c.getString(3)
                     people[person] = StoredPersonSummary(c.getString(1), c.getInt(2),
-                        choice ?: c.getString(3))
+                        choice ?: automatic)
                 }
             }
             // PERF-11: aggregate distinct person-media pairs in one SQL pass.
@@ -2215,6 +2359,7 @@ class FaceIndexStore(
         db.delete("people_home", null, null)
         db.execSQL("""INSERT INTO people_home(person_key,name,face_count,cover_uid)
             $PEOPLE_HOME_SELECT""", arrayOf(version))
+        refreshAutomaticCovers(db, version)
         db.execSQL("UPDATE people_home_generation SET revision=? WHERE singleton=1",
             arrayOf<Any>(reviewRevision(db)))
     }

@@ -3053,6 +3053,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 folder = folderForReview,
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
+                scopeKey = declutterScopeKey("album", folderForReview, sort = "size"),
+                keepStore = remember {
+                    SharedPreferencesDeclutterKeepStore(
+                        context.getSharedPreferences("atlas_declutter_keeps",
+                            android.content.Context.MODE_PRIVATE))
+                },
                 onExit = ::closeDeclutter,
                 onSearchWholeLibrary = {
                     // Leave the transient review route without submitting Trash.
