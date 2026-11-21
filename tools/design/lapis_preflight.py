@@ -71,6 +71,19 @@ REF = {
     "people": ("ATLAS People home today (main)",
                "atlas-gallery main: app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt",
                "People are entered through circular (CircleShape) face crops."),
+    "apple5": ("Apple Support, Find and name people and pets in Photos on iPhone",
+               "support.apple.com/guide/iphone/find-and-name-people-and-pets-iph9c7ee918c/ios",
+               "People & Pets is a separate collection with named person/pet photo thumbnails and a sort control; "
+               "the depicted thumbnails are individual portraits, not mixed four-photo strips."),
+    "immich5": ("Immich, Facial Recognition documentation",
+                "docs.immich.app/features/facial-recognition/",
+                "Detected faces are grouped into named people; opening a person shows the associated assets. "
+                "The current exact mobile thumbnail layout is not verified by this source."),
+    "immich_album": ("Immich release v2.4.0, 18 December 2025",
+                     "immich.app/blog/v2.4.0-release",
+                     "Mobile album sorting and layout preferences persist; no four-photo strip or direct "
+                     "named-album navigation is established by this release."),
+
     "grid": ("Android Developers, Compose lists and grids",
              "developer.android.com/develop/ui/compose/lists",
              "LazyVerticalGrid forms equal columns, e.g. GridCells.Adaptive(minSize = 128.dp)."),
@@ -312,14 +325,17 @@ class Gen:
     def l5_collections(self, s: Screen, people_inline=True, focus=False):
         s.status_bar()
         y = L.title(s, "Collections")
+        # Only visible named/recent members are two-tap direct destinations.
+        # Category rows open landings rather than a particular off-screen member.
         rows = [
-            ("Albums", "24 albums, latest 12 November 2026", 0, 11),
-            ("Noor", "1.204 photos, latest 14 November 2026", 1, 21) if people_inline else None,
-            ("Bram", "866 photos, latest 9 November 2026", 2, 31) if people_inline else None,
+            ("Noor", "1.204 photos, latest 14 November 2026", 1, 21),
+            ("Coastal weekend", "84 photos, latest 12 November 2026", 0, 11),
+            ("Dunes trip", "38 photos, latest 8 October 2026", 2, 51),
+            ("Albums", "24 albums, latest 12 November 2026", 0, 61),
             ("People and pets", "500 people and 3 pets", 3, 41),
-            ("Places", "38 places, latest Amsterdam", 0, 51),
-            ("Stories", "8 stories, latest 2 November 2026", 1, 61),
-            ("Favourites", "212 photos, latest 13 November 2026", 2, 71),
+            ("Places", "38 places, latest Amsterdam", 0, 71),
+            ("Stories", "8 stories, latest 2 November 2026", 1, 81),
+            ("Favourites", "212 photos, latest 13 November 2026", 2, 91),
         ]
         k = 0
         for row in rows:
@@ -327,7 +343,11 @@ class Gen:
                 continue
             k += 1
             name, line, rk, seed = row
-            if y > s.bottom - L.px(200):
+            # At high font scale, stop before a partial photo strip would sit
+            # underneath the slab. Remaining rows are reachable by scrolling.
+            if s.font_scale >= 1.75 and k > 2:
+                break
+            if y > s.bottom - L.px(240):
                 break
             y = L.collection_row(s, y, name, line, L.STRIP_RATIOS[rk], seed,
                                  focus_label=f"{name}, {line}" if focus else None)
@@ -344,11 +364,13 @@ class Gen:
         a2 = self.scr("dark", 2.0)
         self.l5_collections(a2)
         b.heroes([
-            Panel("A1", "Collections, light, 100 %", "Rows in brief order. The two most recent people appear as "
-                  "their own rows so a person is two taps from anywhere. Strip: latest 4 photos, real shape, "
-                  "8 dp radius. TalkBack reads one merged node per row (dots).", a1),
-            Panel("A2", "Collections, dark, 200 %", "Names and counts wrap to two lines; strip height stays 72 dp; "
-                  "each row remains one target.", a2),
+            Panel("A1", "Collections, light, 100 %", "Named recent Noor (person), Coastal weekend "
+                  "(album) and Dunes trip (place) rows open precise destinations in two taps. "
+                  "Albums, People and pets and Places below are category landings. "
+                  "Four real-shape photos, 8 dp radius, merged TalkBack row.", a1),
+            Panel("A2", "Collections, dark, 200 %", "Only complete recent rows are drawn above "
+                  "navigation; scroll for other members. Rows retain 72 dp photo strips. "
+                  "Shared one-group slab geometry belongs to #816; detached search is not accepted.", a2),
         ], self.LEGEND)
         panels = []
         s = self.scr()
@@ -381,17 +403,17 @@ class Gen:
         panels.append(Panel("C1", "Tap path 1", "From Pictures (or any screen with the slab): Collections.", s))
         s = self.scr()
         self.l5_collections(s)
-        L.finger(s, (L.px(200), s.top + L.px(230)), None, "tap 2: Noor")
-        panels.append(Panel("C2", "Tap path 2", "Recent people, albums and places have their own rows: tap 2 "
-                            "opens the person. Others: search in Collections (D2).", s))
+        L.finger(s, (L.px(200), s.top + L.px(125)), None, "tap 2: Noor")
+        panels.append(Panel("C2", "Named person · tap 2", "Noor is a direct recent row; "
+                            "People and pets is a category landing instead.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Noor", "1.204 photos, latest 14 November 2026")
         L.square_grid(s, y, s.bottom, seed=21, header="November 2026")
         s.note((DEVICE_W - L.px(8), s.top + L.px(4)), "existing person page, unchanged")
         s.gesture_bar()
-        panels.append(Panel("C3", "Person opened", "The existing person screen opens; Back returns to "
-                            "Collections, a second Back to Pictures.", s))
+        panels.append(Panel("C3", "Noor opened", "Existing person detail; system Back returns to "
+                            "Collections, then Pictures.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "People and pets", "500 people and 3 pets")
