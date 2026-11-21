@@ -409,13 +409,13 @@ if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   strictmode_baseline_417
 fi
 if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
-# #31: the two real-process People/visual/grid/Albums phases cannot run in
-# one instrumentation invocation: force-stop must kill the target process
-# between them. The test seeds only invented images and its own app-private
-# database, while MainActivity and the Android permission publication are real.
-# Run after the sharded suite to avoid polluting its MediaStore fixture counts;
-# the PNGs still remain for the final evidence pull.
-if [[ "$SHARD_INDEX" == "0" ]]; then
+# #31/#620/#43 are independent post-suite process-recovery proofs. Run them
+# on shard 1 when sharded: shard 0 needs its full 40-minute budget for the
+# baseline APK upgrade and its instrumented suite (#586), while shard 1 has
+# spare time. An unsharded run must still execute every recovery proof.
+# Keep the recovery tests after the sharded suite to avoid polluting its
+# MediaStore fixture counts; screenshots are collected from both shards.
+if [[ "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ]]; then
   [[ "${GITHUB_ACTIONS:-}" == "true" &&
     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
     echo "::error::#31 real-process fixture requires isolated GitHub emulator"; exit 1
