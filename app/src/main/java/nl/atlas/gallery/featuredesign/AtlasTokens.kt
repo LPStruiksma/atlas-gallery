@@ -98,6 +98,17 @@ object AtlasTokens {
             val DarkSurface = Dark.Surface
             val DarkAccent = Dark.BrandText
         }
+        /** AI Edit (#431): share the Lapis dark semantic palette. */
+        object AiEdit {
+            val Ground = Dark.Ground
+            val Slab = Dark.BrandFill
+            val OnBrand = Dark.OnBrand
+            val OnBrandSecondary = Dark.OnBrandSecondary
+            val Surface = Dark.Surface
+            val Ink = Dark.Ink
+            val InkSecondary = Dark.InkSecondary
+            val BrandText = Dark.BrandText
+        }
     }
 
     object SyntheticArt {

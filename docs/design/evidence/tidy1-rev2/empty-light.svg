@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-label="Synthetic TIDY-1 empty state in light at 1080 by 2340">
+<rect x="0" y="0" width="360" height="780" fill="#FFFFFF"/>
+<text x="18" y="15" font-family="Funnel Sans, sans-serif" font-size="8" font-weight="500" fill="#5A5F7A" text-anchor="start">TIDY-1  EMPTY  light  SYNTHETIC</text>
+<text x="342" y="15" font-family="Funnel Sans, sans-serif" font-size="8" font-weight="500" fill="#5A5F7A" text-anchor="end">1080 x 2340</text>
+<rect x="8" y="24" width="48" height="48" rx="22" fill="#F2F3F8"/>
+<text x="32" y="57" font-family="Funnel Sans, sans-serif" font-size="30" font-weight="600" fill="#2639C9" text-anchor="middle">‹</text>
+<text x="66" y="55" font-family="Funnel Sans, sans-serif" font-size="22" font-weight="700" fill="#2639C9" text-anchor="start">Declutter</text>
+<text x="18" y="103" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="400" fill="#5A5F7A" text-anchor="start">Empty album</text>
+<rect x="18" y="132" width="324" height="292" rx="22" fill="#F2F3F8"/>
+<circle cx="180" cy="236" r="34" fill="#2639C9"/>
+<circle cx="180" cy="224" r="13" fill="#FFFFFF"/>
+<path d="M158 255 L180 239 L202 255" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="180" y="326" font-family="Funnel Sans, sans-serif" font-size="19" font-weight="700" fill="#0E1030" text-anchor="middle">No photos to review</text>
+<text x="180" y="361" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="400" fill="#0E1030" text-anchor="middle">This source has no eligible photos.</text>
+<text x="180" y="384" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="400" fill="#5A5F7A" text-anchor="middle">Nothing was changed.</text>
+<rect x="18" y="518" width="324" height="56" rx="22" fill="#2639C9"/>
+<text x="180" y="552" font-family="Funnel Sans, sans-serif" font-size="16" font-weight="600" fill="#FFFFFF" text-anchor="middle">Back to collection</text>
+<rect x="18" y="587" width="324" height="56" rx="22" fill="#F2F3F8"/>
+<text x="180" y="621" font-family="Funnel Sans, sans-serif" font-size="16" font-weight="600" fill="#2639C9" text-anchor="middle">Back to Pictures</text>
+<text x="180" y="706" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#5A5F7A" text-anchor="middle">48 dp minimum controls; top and bottom insets reserved</text>
+<rect x="0" y="756" width="360" height="24" fill="#FFFFFF"/>
+<text x="180" y="772" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="600" fill="#5A5F7A" text-anchor="middle">━━</text>
+</svg>

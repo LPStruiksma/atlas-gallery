@@ -543,4 +543,58 @@ class EditHttpTransportTest {
                 downloadTo = java.io.File(dir, "f")))
         } finally { dir.deleteRecursively() }
     }
+
+    // #431 addendum A3: "Nothing was sent" needs transport proof of the failure phase.
+    @Test fun connectFailureIsBeforeBody() {
+        val closed = java.net.ServerSocket(0).let { val port = it.localPort; it.close(); port }
+        val transport = EditHttpTransport(connectionFactory = { requested: URL ->
+            URL("http://127.0.0.1:$closed${requested.file}").openConnection() as HttpURLConnection
+        }, sleeper = { })
+        val result = transport.execute(config().copy(maxAttempts = 1),
+            EditHttpRequest(EditHttpMethod.POST, "edits", EditHttpBody.Json("{}".toByteArray())))
+        result as EditHttpResult.Failed
+        assertEquals(FailureCode.NETWORK, result.code)
+        assertEquals(FailurePhase.BEFORE_BODY, result.phase)
+    }
+
+    @Test fun locallyRefusedRequestIsBeforeBody() {
+        val result = EditHttpTransport().execute(config(), EditHttpRequest(EditHttpMethod.POST, "edits"))
+        assertEquals(FailurePhase.BEFORE_BODY, (result as EditHttpResult.Failed).phase)
+    }
+
+    @Test fun failureAfterTheBodyWasWrittenIsAfterBody() {
+        val socket = java.net.ServerSocket(0)
+        val gotBody = java.util.concurrent.CountDownLatch(1)
+        val thread = Thread {
+            socket.accept().use { client ->
+                val input = client.getInputStream()
+                val seen = StringBuilder()
+                while (!seen.endsWith("\r\n\r\n")) { val b = input.read(); if (b < 0) break; seen.append(b.toChar()) }
+                repeat(2) { input.read() } // the 2-byte JSON body
+                gotBody.countDown()
+                // Close without any reply: the request reached the server, the answer is lost.
+            }
+        }.apply { isDaemon = true; start() }
+        try {
+            val transport = EditHttpTransport(connectionFactory = { requested: URL ->
+                URL("http://127.0.0.1:${socket.localPort}${requested.file}").openConnection() as HttpURLConnection
+            }, sleeper = { })
+            val result = transport.execute(config().copy(maxAttempts = 1),
+                EditHttpRequest(EditHttpMethod.POST, "edits", EditHttpBody.Json("{}".toByteArray())))
+            assertTrue(gotBody.await(2, java.util.concurrent.TimeUnit.SECONDS))
+            result as EditHttpResult.Failed
+            assertEquals(FailurePhase.AFTER_BODY_OR_UNKNOWN, result.phase)
+        } finally {
+            socket.close(); thread.join(1_000)
+        }
+    }
+
+    @Test fun httpAnswerKeepsStatusAndIsAfterBody() = withServer({ FakeResponse(429) }) { server ->
+        val result = transport(server).execute(config(),
+            EditHttpRequest(EditHttpMethod.POST, "edits", EditHttpBody.Json("{}".toByteArray())))
+        result as EditHttpResult.Failed
+        assertEquals(FailureCode.QUOTA, result.code)
+        assertEquals(429, result.status)
+        assertEquals(FailurePhase.AFTER_BODY_OR_UNKNOWN, result.phase)
+    }
 }

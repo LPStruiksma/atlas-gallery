@@ -82,6 +82,7 @@ import org.junit.Before
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
 import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.awaitScreenStill
 import nl.atlas.gallery.testkit.awaitThat
@@ -108,10 +109,12 @@ import org.junit.runner.RunWith
 class PersonPageJourneyTest {
     // #584: rendered like the app (dark theme, app system bars) at S24+ size.
     private val compose = createAndroidComposeRule<ComponentActivity>()
-    // No keyboard slides up: the name and search steps are about the page,
-    // not layout above the keyboard (docs/testing/EMULATOR_TESTS.md).
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.None))
-        .around(S24DisplayRule()).around(compose)
+    // Render journeys use no keyboard, but the IME-Done journey needs a real,
+    // deterministic test keyboard selected before the Activity is created.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(
+        TestKeyboard.None,
+        methodKeyboards = mapOf("keyboardDoneInTheNameDialogNamesThePerson" to TestKeyboard.Fixed)
+    )).around(S24DisplayRule()).around(compose)
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val target = instrumentation.targetContext
@@ -981,7 +984,12 @@ class PersonPageJourneyTest {
         }
         compose.waitForNode(hasText("Add name"), WAIT_MS)
         compose.tap(hasTestTag("atlas-person-name"))
-        compose.typeText(hasTestTag("atlas-person-name-field"), "Synthetic Ada")
+        // Keep Done actionable: the default typeText path hides the keyboard, which can
+        // race the IME action on a dialog. This journey exercises Done while it is shown.
+        compose.typeText(hasTestTag("atlas-person-name-field"), "Synthetic Ada", KeyboardAfter.Shown)
+        compose.awaitThat("name entered before IME Done", WAIT_MS) {
+            compose.exists(hasText("Synthetic Ada"), useUnmergedTree = true)
+        }
         compose.onNodeWithTag("atlas-person-name-field").performImeAction()
         compose.awaitThat("page follows the named person", WAIT_MS) { request?.person != null }
         val ada = request!!.person!!

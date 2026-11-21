@@ -110,6 +110,9 @@ class PhotoPeopleDetailsTest {
             id = 7, uri = Uri.fromFile(source).toString(),
             name = "Fictional-party.jpg", relativePath = "DCIM/Camera/",
             sizeBytes = source.length(), takenAtMillis = 1_600_000_000_000L, isVideo = false)
+        // Viewer snapshot keys catalogue identity: retain one stable instance across
+        // palette recomposition instead of remounting away the open Details sheet.
+        val album = listOf(photo)
         val ada = PhotoPerson.Named("synthetic-epoch", uid(1), PersonKey("native-ada"), "Ada")
         val bram = PhotoPerson.Named("synthetic-epoch", uid(2), PersonKey("native-bram"), "Bram")
         val unknown = PhotoPerson.Unnamed("synthetic-epoch", uid(3), uid(3))
@@ -141,7 +144,7 @@ class PhotoPeopleDetailsTest {
             CompositionLocalProvider(LocalViewerDimensionsReader provides reader) {
                 // #645: the app's dark theme and system bars, as in MainActivity.
                 AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
-                    GalleryViewer(listOf(photo), photo.uri, photoPeople = port, onBack = {})
+                    GalleryViewer(album, photo.uri, photoPeople = port, onBack = {})
                 }
             }
         }
