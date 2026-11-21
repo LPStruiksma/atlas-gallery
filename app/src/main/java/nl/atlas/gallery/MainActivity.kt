@@ -121,8 +121,9 @@ import nl.atlas.gallery.featurealbums.AlbumPickerScreen
 import nl.atlas.gallery.featurealbums.HiddenAlbums
 import nl.atlas.gallery.featurealbums.HideAlbumsScreen
 import nl.atlas.gallery.featurestories.AtlasStoriesScreen
+import nl.atlas.gallery.featurestories.StoryDeck
 import nl.atlas.gallery.featurestories.StoryPlaybackPosition
-import nl.atlas.gallery.featurestories.rememberStoryPlaybackState
+import nl.atlas.gallery.featurestories.rememberStoryPlaybackStateFor
 import nl.atlas.gallery.featurecuration.CurationReviewRequest
 import nl.atlas.gallery.featurealbums.buildAlbumSummaries
 import nl.atlas.gallery.featuredesign.AtlasDestination
@@ -1315,9 +1316,6 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // The open slideshow lives above the viewer route (#444): Back from a
     // photo opened in a story returns to that story at the same moment, and
     // it is saved across rotation and process death (#451).
-    val storyPlayback = rememberStoryPlaybackState(storyDeckBase)
-    // #457: Stories closed by any route never resumes a pending restore later.
-    ClearStoryPlaybackWhenHidden(shown = tab == 1 && storiesOpen, playback = storyPlayback)
     // Photo DNA (#442) hashes same-size files only while it is open, once per
     // grant/catalogue publication; a grant change mid-read yields Unknown.
     val photoDnaTokens = photoDnaTokensOrNull(grants, publishedGallery.epoch,
@@ -1346,13 +1344,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val discoveryHost = remember(context) { PeopleDiscoveryHost.forApp(context) }
     val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, media)
     // YEARS-1 (#586): a named person's Through the years Story joins the one
-    // existing deck and player; it is planned only while Stories is shown.
+    // existing deck and player; it is planned only while Stories is shown. The
+    // saveable playback state sees this same composite deck, so an open people
+    // Story survives rotation and process death like any other Story (#451).
+    val renderedDeck = remember { mutableStateOf<StoryDeck?>(null) }
+    val storyPlayback = rememberStoryPlaybackStateFor { renderedDeck.value }
+    // #457: Stories closed by any route never resumes a pending restore later.
+    ClearStoryPlaybackWhenHidden(shown = tab == 1 && storiesOpen, playback = storyPlayback)
+    val openStoryKey = storyPlayback.position?.storyKey ?: storyPlayback.restored?.storyKey
     val yearsCards = rememberPeopleYearsCards(discoveryHost, searchGrant, media,
-        discovery.status?.people, storyTokens, enabled = tab == 1)
-    val storyDeck = remember(storyDeckBase, yearsCards) {
-        if (storyDeckBase == null || yearsCards.isEmpty()) storyDeckBase
-        else storyDeckBase.copy(cards = storyDeckBase.cards + yearsCards)
+        discovery.status?.people, storyTokens, enabled = tab == 1,
+        pinned = yearsPersonOfKey(openStoryKey))
+    // A restored people Story waits for its card instead of being dropped as gone.
+    val awaitingYears = storyPlayback.restored?.storyKey?.startsWith("years:") == true &&
+        !yearsCards.ready
+    val storyDeck = remember(storyDeckBase, yearsCards, awaitingYears) {
+        when {
+            storyDeckBase == null || awaitingYears -> if (awaitingYears) null else storyDeckBase
+            yearsCards.cards.isEmpty() -> storyDeckBase
+            else -> storyDeckBase.copy(cards = storyDeckBase.cards + yearsCards.cards)
+        }
     }
+    SideEffect { renderedDeck.value = storyDeck }
     // Where an opened people Story returns to when it closes (the person's page).
     var yearsOrigin by remember { mutableStateOf<NativePersonAlbumRequest?>(null) }
     // Ignore and Undo feedback: one quiet snackbar, no dialog and no banner.

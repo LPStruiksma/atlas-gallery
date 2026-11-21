@@ -233,6 +233,17 @@ fun rememberStoryPlaybackState(deck: StoryDeck? = null): StoryPlaybackState {
 }
 
 /**
+ * Same as [rememberStoryPlaybackState] for a host whose deck is only known after
+ * the state exists (people Stories join the deck later). [deck] is read when a
+ * save happens, so it must return the deck the screen actually renders.
+ */
+@Composable
+fun rememberStoryPlaybackStateFor(deck: () -> StoryDeck?): StoryPlaybackState {
+    val currentDeck by rememberUpdatedState(deck)
+    return rememberSaveable(saver = storyPlaybackSaver { currentDeck() }) { StoryPlaybackState() }
+}
+
+/**
  * Independent, read-only Samsung-style Stories surface. Lane I owns nav + grant renewal;
  * it must pass the current epoch/revision (not a cached value) every time they change.
  * No media mutation, auto-upload, story music, or hidden album access.

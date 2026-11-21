@@ -261,10 +261,42 @@ internal fun yearsStoryKey(person: PersonKey): String = "years:" + person.value
 /** At most this many people get an automatic Story, most photographed first. */
 private const val MAX_YEARS_STORIES = 12
 
+/** The people Story cards, and whether they are final for the current inputs. */
+internal data class YearsCards(val cards: List<StoryCard>, val ready: Boolean)
+
 /**
- * YEARS-1 (#586): the people Stories for the current Stories tokens, planned off
- * main and only while [enabled]. People home already leaves out hidden and
- * ignored people, so none of them gets an automatic Story. Never persisted.
+ * Cards for [ordered] people (most photographed first). The cap counts finished
+ * automatic cards, never candidates, so an ineligible well-photographed person
+ * cannot mask an eligible one; [pinned] always gets its card when eligible.
+ */
+internal fun selectYearsCards(
+    ordered: List<Pair<PersonKey, String>>,
+    pinned: PersonKey?,
+    max: Int,
+    plan: (PersonKey, String) -> StoryCard?
+): List<StoryCard> {
+    val out = ArrayList<StoryCard>()
+    var automatic = 0
+    for ((person, name) in ordered) {
+        val isPinned = person == pinned
+        if (!isPinned && automatic >= max) continue
+        val card = plan(person, name) ?: continue
+        out += card
+        if (!isPinned) automatic++
+    }
+    return out
+}
+
+/** The person a Story key names, or null for any other Story. */
+internal fun yearsPersonOfKey(key: String?): PersonKey? =
+    key?.takeIf { it.startsWith("years:") }?.removePrefix("years:")?.let { PersonKey(it) }
+
+/**
+ * Cards for people who qualify, planned off the main thread and only while
+ * Stories is shown. The cap counts finished cards, never candidates, so an
+ * ineligible well-photographed person cannot mask an eligible one. [pinned]
+ * (the person whose Story is open or being restored) always gets its card.
+ * [YearsCards.ready] is false until the plan for the current inputs is done.
  */
 @Composable
 internal fun rememberPeopleYearsCards(
@@ -273,29 +305,32 @@ internal fun rememberPeopleYearsCards(
     source: List<MediaRecord>,
     people: PeopleHomeSummary?,
     tokens: StoryPlanTokens?,
-    enabled: Boolean
-): List<StoryCard> {
+    enabled: Boolean,
+    pinned: PersonKey? = null
+): YearsCards {
     val version by host.changes.collectAsState()
-    val cards by produceState<List<StoryCard>>(emptyList(), tokens, CatalogSourceKey(source),
-        people, version, enabled, galleryGrant) {
-        value = emptyList()
-        if (!enabled || tokens == null || people == null || galleryGrant == null) return@produceState
+    val nothingToPlan = !enabled || tokens == null || galleryGrant == null
+    val cards by produceState(YearsCards(emptyList(), nothingToPlan), tokens, CatalogSourceKey(source),
+        people, version, enabled, galleryGrant, pinned) {
+        value = YearsCards(emptyList(), nothingToPlan)
+        if (nothingToPlan || people == null) return@produceState
         value = withContext(Dispatchers.IO) {
             val births = host.birthDates()
             val now = System.currentTimeMillis()
             val zone = ZoneId.systemDefault()
-            people.people.entries
+            val ordered = people.people.entries
                 .filter { it.value.photoCount >=
                     YearsStoryPlanner.MIN_PHOTOS_PER_YEAR * YearsStoryPlanner.MIN_YEARS }
                 .sortedWith(compareByDescending<Map.Entry<PersonKey, nl.atlas.gallery.featurepeopleui.PeopleHomePerson>> {
                     it.value.photoCount }.thenBy { it.key.value })
-                .take(MAX_YEARS_STORIES)
-                .mapNotNull { (person, entry) ->
-                    ensureActive()
-                    yearsStoryCard(person, entry.name,
-                        personYearsFrames(host, galleryGrant, person, source, births[person],
-                            now, zone) { ensureActive() })
-                }
+                .map { it.key to it.value.name }
+            val out = selectYearsCards(ordered, pinned, MAX_YEARS_STORIES) { person, name ->
+                ensureActive()
+                yearsStoryCard(person, name,
+                    personYearsFrames(host, galleryGrant!!, person, source, births[person],
+                        now, zone) { ensureActive() })
+            }
+            YearsCards(out, true)
         }
     }
     return cards
