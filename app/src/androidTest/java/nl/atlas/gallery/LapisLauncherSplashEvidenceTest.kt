@@ -423,5 +423,5 @@ private fun saveBitmapEvidence(name: String, bitmap: Bitmap) {
     } finally {
         bitmap.recycle()
     }
-    writeUiEvidenceFile(uiEvidenceDisplayName(name), png)
+    writeUiEvidenceFile(uiEvidenceDisplayName("$name.png"), png)
 }
