@@ -1,0 +1,535 @@
+{
+  "schema": "atlas-viewer142-gesture-source/1",
+  "provenance": {
+    "classification": "MEASURED",
+    "subject": "Current GalleryViewer, not proposed #142 target",
+    "issue": 833,
+    "run_id": 44869342120,
+    "head_sha": "9600527142706cf8cc6d252d73a52a4af1fe8232",
+    "report_url": "https://github.com/LPStruiksma/atlas-gallery/blob/main/docs/design/viewer-142-gesture-proof/run-44869342120/viewer-142-gesture.shard0.json",
+    "report_git_blob_sha": "0e07a4a167af72e0940272878ffc116556f17401",
+    "readme_url": "https://github.com/LPStruiksma/atlas-gallery/blob/main/docs/design/viewer-142-gesture-proof/README.md",
+    "environment": "GitHub-hosted API 35 x86_64 pixel_6 AVD with S24DisplayRule (1080x2340, 450 dpi); NOT a physical Galaxy S24+",
+    "device_acceptance": "UNKNOWN: physical Galaxy S24+ and One UI not captured"
+  },
+  "classification": {
+    "insets_and_current_semantic_bounds": "MEASURED",
+    "px_to_dp": "COMPUTED from 2.8125 px/dp",
+    "target_layout_and_user_interactions": "PROPOSED; not measured",
+    "right_left_back_zones": "MEASURED from systemGestures, not mandatorySystemGestures"
+  },
+  "frame_keys_note": "The source run includes portrait shown/hidden and rotation=1 landscape shown; no rotation=3 measurements.",
+  "frames": [
+    {
+      "key": "photo/portrait/shown",
+      "navigation_mode": "2",
+      "rotation": 0,
+      "window_px": [
+        1080,
+        2340
+      ],
+      "pixels_per_dp": 2.8125,
+      "android_insets_px": {
+        "statusBars": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "displayCutout": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "systemGestures": [
+          84,
+          157,
+          84,
+          90
+        ],
+        "mandatorySystemGestures": [
+          0,
+          157,
+          0,
+          90
+        ],
+        "tappableElement": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "statusBars_ignoringVisibility": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars_ignoringVisibility": [
+          0,
+          0,
+          0,
+          68
+        ]
+      },
+      "compose_safeDrawing_px": [
+        0,
+        125,
+        0,
+        68
+      ],
+      "cutout_rects_px": [
+        [
+          480,
+          0,
+          595,
+          125
+        ]
+      ],
+      "gesture_exclusion_rects": [],
+      "current_viewer_regions_px": {
+        "atlas-back": [
+          56,
+          159,
+          169,
+          272
+        ],
+        "atlas-viewer-details-open": [
+          911,
+          159,
+          1024,
+          272
+        ],
+        "atlas-filmstrip": [
+          0,
+          2058,
+          1080,
+          2216
+        ],
+        "atlas-video-controls": "NOT_RENDERED",
+        "atlas-video-play-pause": "NOT_RENDERED",
+        "atlas-video-seek": "NOT_RENDERED"
+      }
+    },
+    {
+      "key": "photo/portrait/hidden",
+      "navigation_mode": "2",
+      "rotation": 0,
+      "window_px": [
+        1080,
+        2340
+      ],
+      "pixels_per_dp": 2.8125,
+      "android_insets_px": {
+        "statusBars": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "navigationBars": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "displayCutout": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "systemGestures": [
+          84,
+          157,
+          84,
+          90
+        ],
+        "mandatorySystemGestures": [
+          0,
+          157,
+          0,
+          90
+        ],
+        "tappableElement": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "statusBars_ignoringVisibility": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars_ignoringVisibility": [
+          0,
+          0,
+          0,
+          68
+        ]
+      },
+      "compose_safeDrawing_px": [
+        0,
+        125,
+        0,
+        0
+      ],
+      "cutout_rects_px": [
+        [
+          480,
+          0,
+          595,
+          125
+        ]
+      ],
+      "gesture_exclusion_rects": [],
+      "current_viewer_regions_px": {
+        "atlas-back": "NOT_RENDERED",
+        "atlas-viewer-details-open": "NOT_RENDERED",
+        "atlas-filmstrip": "NOT_RENDERED",
+        "atlas-video-controls": "NOT_RENDERED",
+        "atlas-video-play-pause": "NOT_RENDERED",
+        "atlas-video-seek": "NOT_RENDERED"
+      }
+    },
+    {
+      "key": "photo/landscape/shown",
+      "navigation_mode": "2",
+      "rotation": 1,
+      "window_px": [
+        2340,
+        1080
+      ],
+      "pixels_per_dp": 2.8125,
+      "android_insets_px": {
+        "statusBars": [
+          0,
+          68,
+          0,
+          0
+        ],
+        "navigationBars": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "displayCutout": [
+          125,
+          0,
+          0,
+          0
+        ],
+        "systemGestures": [
+          84,
+          68,
+          84,
+          90
+        ],
+        "mandatorySystemGestures": [
+          0,
+          68,
+          0,
+          90
+        ],
+        "tappableElement": [
+          0,
+          68,
+          0,
+          0
+        ],
+        "statusBars_ignoringVisibility": [
+          0,
+          68,
+          0,
+          0
+        ],
+        "navigationBars_ignoringVisibility": [
+          0,
+          0,
+          0,
+          68
+        ]
+      },
+      "compose_safeDrawing_px": [
+        125,
+        68,
+        0,
+        68
+      ],
+      "cutout_rects_px": [
+        [
+          0,
+          485,
+          125,
+          600
+        ]
+      ],
+      "gesture_exclusion_rects": [],
+      "current_viewer_regions_px": {
+        "atlas-back": [
+          181,
+          102,
+          294,
+          215
+        ],
+        "atlas-viewer-details-open": [
+          2171,
+          102,
+          2284,
+          215
+        ],
+        "atlas-filmstrip": [
+          125,
+          798,
+          2340,
+          956
+        ],
+        "atlas-video-controls": "NOT_RENDERED",
+        "atlas-video-play-pause": "NOT_RENDERED",
+        "atlas-video-seek": "NOT_RENDERED"
+      }
+    },
+    {
+      "key": "video/portrait/shown",
+      "navigation_mode": "2",
+      "rotation": 0,
+      "window_px": [
+        1080,
+        2340
+      ],
+      "pixels_per_dp": 2.8125,
+      "android_insets_px": {
+        "statusBars": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars": [
+          0,
+          0,
+          0,
+          68
+        ],
+        "displayCutout": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "systemGestures": [
+          84,
+          157,
+          84,
+          90
+        ],
+        "mandatorySystemGestures": [
+          0,
+          157,
+          0,
+          90
+        ],
+        "tappableElement": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "statusBars_ignoringVisibility": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars_ignoringVisibility": [
+          0,
+          0,
+          0,
+          68
+        ]
+      },
+      "compose_safeDrawing_px": [
+        0,
+        125,
+        0,
+        68
+      ],
+      "cutout_rects_px": [
+        [
+          480,
+          0,
+          595,
+          125
+        ]
+      ],
+      "gesture_exclusion_rects": [
+        {
+          "view": "DefaultTimeBar",
+          "rect": {
+            "px": [
+              0,
+              0,
+              1080,
+              135
+            ],
+            "dp": [
+              0,
+              0,
+              384,
+              48
+            ]
+          }
+        }
+      ],
+      "current_viewer_regions_px": {
+        "atlas-back": [
+          56,
+          159,
+          169,
+          272
+        ],
+        "atlas-viewer-details-open": [
+          911,
+          159,
+          1024,
+          272
+        ],
+        "atlas-filmstrip": [
+          0,
+          2058,
+          1080,
+          2216
+        ],
+        "atlas-video-controls": [
+          39,
+          1659,
+          1041,
+          1811
+        ],
+        "atlas-video-play-pause": [
+          61,
+          1679,
+          174,
+          1792
+        ],
+        "atlas-video-seek": [
+          228,
+          1674,
+          964,
+          1798
+        ]
+      }
+    },
+    {
+      "key": "video/portrait/hidden",
+      "navigation_mode": "2",
+      "rotation": 0,
+      "window_px": [
+        1080,
+        2340
+      ],
+      "pixels_per_dp": 2.8125,
+      "android_insets_px": {
+        "statusBars": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "navigationBars": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "displayCutout": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "systemGestures": [
+          84,
+          157,
+          84,
+          90
+        ],
+        "mandatorySystemGestures": [
+          0,
+          157,
+          0,
+          90
+        ],
+        "tappableElement": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "statusBars_ignoringVisibility": [
+          0,
+          125,
+          0,
+          0
+        ],
+        "navigationBars_ignoringVisibility": [
+          0,
+          0,
+          0,
+          68
+        ]
+      },
+      "compose_safeDrawing_px": [
+        0,
+        125,
+        0,
+        0
+      ],
+      "cutout_rects_px": [
+        [
+          480,
+          0,
+          595,
+          125
+        ]
+      ],
+      "gesture_exclusion_rects": [
+        {
+          "view": "DefaultTimeBar",
+          "rect": {
+            "px": [
+              0,
+              0,
+              1080,
+              135
+            ],
+            "dp": [
+              0,
+              0,
+              384,
+              48
+            ]
+          }
+        }
+      ],
+      "current_viewer_regions_px": {
+        "atlas-back": "NOT_RENDERED",
+        "atlas-viewer-details-open": "NOT_RENDERED",
+        "atlas-filmstrip": "NOT_RENDERED",
+        "atlas-video-controls": "NOT_RENDERED",
+        "atlas-video-play-pause": "NOT_RENDERED",
+        "atlas-video-seek": "NOT_RENDERED"
+      }
+    }
+  ]
+}
