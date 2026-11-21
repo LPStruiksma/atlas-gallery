@@ -1,6 +1,10 @@
 # NLS-1B: tokenizer licence and offline goldens
 
-Status: **BLOCKING — do not package or redistribute the tokenizer in an APK**.
+Status: **offline goldens pending; APK redistribution permission unresolved**. Do not package or redistribute the tokenizer in an APK.
+
+## Approved non-bundled delivery (2026-11-21)
+
+Following the [first-party object audit](https://github.com/LPStruiksma/atlas-gallery/issues/898#issuecomment-7062369113) and [Lukas's decision](https://github.com/LPStruiksma/atlas-gallery/issues/898#issuecomment-7067261537), the Android runtime will fetch the exact pinned Google-hosted tokenizer on first use, verify its SHA-256 before use and cache it locally; this separate implementation belongs to [#238](https://github.com/LPStruiksma/atlas-gallery/issues/238). **Downloading on demand is not evidence of permission to redistribute this object inside an APK.** This NLS-1B unit generates offline token IDs from independently hash-verified bytes without committing the binary. A future `status: verified` fixture means tokenizer provenance and token-ID generation were verified, not that any redistribution licence was granted.
 
 ## Exact-byte evidence
 
