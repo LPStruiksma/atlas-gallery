@@ -49,7 +49,10 @@ internal object BestShotSelector {
         // A newly *known* score is evidence, not an arithmetic comparison to zero.
         if (better != null && current == null) return best
         if (better == null || current == null) return incumbent
-        return if (better.toDouble() - current.toDouble() > SWITCH_MARGIN.toDouble()) best
+        // Float scores are stored as REAL and decoded as Float. Keep the exact
+        // 0.05 boundary stable despite binary rounding of e.g. 0.70 - 0.65.
+        return if (better.toDouble() - current.toDouble() >
+            SWITCH_MARGIN.toDouble() + 0.000001) best
             else incumbent
     }
 }
