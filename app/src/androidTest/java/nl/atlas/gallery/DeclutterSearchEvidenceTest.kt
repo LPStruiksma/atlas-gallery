@@ -35,6 +35,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.testkit.awaitKeyboardShown
+import nl.atlas.gallery.testkit.awaitWindowSettled
 import nl.atlas.gallery.testkit.onMainThread
 import nl.atlas.gallery.testkit.rootViews
 import nl.atlas.gallery.testkit.KeyboardRule
@@ -200,6 +201,9 @@ class DeclutterSearchLandscapeEvidenceTest {
                     }
                 }
             }
+            // Rotation/recreation changes the host window asynchronously. Settle
+            // the real window before reading Compose layout or opening a popup.
+            rule.awaitWindowSettled()
             rule.awaitThat("Declutter laid out in landscape") {
                 val bounds = rule.onAllNodes(isRoot()).fetchSemanticsNodes()
                     .maxByOrNull { it.boundsInRoot.width * it.boundsInRoot.height }?.boundsInRoot
@@ -212,9 +216,19 @@ class DeclutterSearchLandscapeEvidenceTest {
                 rule.runOnIdle { dark = theme == "dark" }
                 rule.onNodeWithTag("atlas-search-expand").performClick()
                 rule.awaitThat("search panel") { rule.exists(hasTestTag("atlas-search-expanded")) }
-                rule.typeInSearchPanel("beach")
-                rule.awaitThat("single-row panel above the keyboard") {
-                    rule.exists(hasTestTag("atlas-search-single-row"))
+                rule.typeInSearchPanel("beach") // waits for the fixed system IME to be shown and still
+                rule.awaitWindowSettled() // the popup and host may resize after IME arrival
+                // #781: a visible IME is not proof that the host received its
+                // inset. Never pass on the pre-IME/two-row popup: report both
+                // windows and the system keyboard's bounds if it persists.
+                try {
+                    rule.awaitThat("single-row panel after settled landscape IME/insets") {
+                        rule.exists(hasTestTag("atlas-search-single-row"))
+                    }
+                } catch (failure: AssertionError) {
+                    val state = landscapeImeReport(automation)
+                    Log.e("ATLAS_EVIDENCE", "declutter-781 landscape IME timeout: $state")
+                    throw AssertionError("${failure.message}; IME/window trace: $state", failure)
                 }
                 rule.waitForIdle()
                 // #702: the full counted action must be a real visible,
@@ -236,10 +250,17 @@ class DeclutterSearchLandscapeEvidenceTest {
                 assertTrue("Move label outside its tappable button: $labelBounds vs $buttonBounds",
                     labelBounds.top >= buttonBounds.top && labelBounds.bottom <= buttonBounds.bottom &&
                     labelBounds.left >= buttonBounds.left && labelBounds.right <= buttonBounds.right)
-                saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
-                rule.assertTagsAboveIme(listOf("atlas-scoped-search-field",
+                val controls = listOf("atlas-scoped-search-field",
                     "atlas-search-scope-screen", "atlas-search-scope-library",
-                    "atlas-search-close", "atlas-header-back", "atlas-declutter-trash"))
+                    "atlas-search-close", "atlas-header-back", "atlas-declutter-trash")
+                // All six must exist and have a nonzero, visible touch target;
+                // system-window bounds (not clipped Compose bounds) must clear IME.
+                controls.forEach { tag ->
+                    val node = rule.onNodeWithTag(tag).assertIsDisplayed().fetchSemanticsNode()
+                    assertTrue("$tag has an empty touch target", node.size.width > 0 && node.size.height > 0)
+                }
+                rule.assertTagsAboveIme(controls)
+                saveUiEvidence("declutter-341-L-landscape-keyboard-$theme.png")
 
                 // Whole library is reachable with the keyboard still up.
                 rule.onNodeWithTag("atlas-search-scope-library").performClick()
@@ -264,6 +285,25 @@ class DeclutterSearchLandscapeEvidenceTest {
                 automation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             }
         }
+
+    /** Failure-only: host/popup insets and the REAL IME window's screen bounds. */
+    private fun landscapeImeReport(automation: UiAutomation): String = runCatching {
+        automation.serviceInfo = automation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
+        val keyboardWindows = automation.windows
+            .filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            .map { window -> Rect().also { window.getBoundsInScreen(it) }.toShortString() }
+        val roots = rule.rootViews().mapIndexed { i, view ->
+            val state = onMainThread {
+                val inset = view.rootWindowInsets?.getInsets(WindowInsets.Type.ime())?.bottom
+                "#$i attached=${view.isAttachedToWindow} focus=${view.hasWindowFocus()} " +
+                    "size=${view.width}x${view.height} imeBottom=$inset"
+            }
+            state
+        }
+        "IME=$keyboardWindows; Compose windows=$roots"
+    }.getOrElse { "IME/window diagnostic unavailable: ${it.javaClass.simpleName}: ${it.message}" }
 }
 
 /**
