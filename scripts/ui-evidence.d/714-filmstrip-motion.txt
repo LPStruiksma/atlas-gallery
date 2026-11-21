@@ -14,3 +14,8 @@ viewer-714-light-tap-130
 viewer-714-light-tap-195
 viewer-714-light-tap-260
 viewer-714-light-tap-300
+# #714 in-flight interruption, pager takeover, reverse tap, and reduced-motion bounds.
+viewer-714-interrupt-strip-down
+viewer-714-interrupt-pager-drag
+viewer-714-interrupt-new-tap
+viewer-714-reduced-motion-edge
