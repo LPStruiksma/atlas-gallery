@@ -23,9 +23,5 @@
 <text x="195" y="180" font-family="Funnel Sans, sans-serif" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="start">2</text>
 <rect x="15" y="561" width="330" height="43" rx="20" fill="#14152A" opacity="1"/>
 <text x="180" y="588" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8" text-anchor="middle">Suggested: left · sharper</text>
-<text x="180" y="621" font-family="Funnel Sans, sans-serif" font-size="11" font-weight="400" fill="#9AA0B8" text-anchor="middle">Suggestion only · you choose</text>
-<rect x="12" y="648" width="165" height="52" rx="22" fill="#3448E0" opacity="1"/>
-<text x="94.5" y="680" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Keep selected</text>
-<rect x="183" y="648" width="165" height="52" rx="22" fill="#14152A" opacity="1"/>
-<text x="265.5" y="680" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#F2F3F8" text-anchor="middle">Keep both</text>
-<text x="180" y="742" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#9AA0B8" text-anchor="middle">Zoom / pan linked · Reset available</text></svg>
+<text x="180" y="621" font-family="Funnel Sans, sans-serif" font-size="11" font-weight="400" fill="#9AA0B8" text-anchor="middle">Hint only · Stage Trash acts on selected</text>
+<rect x="12" y="632" width="165" height="48" rx="22" fill="#3448E0"/><text x="94.5" y="662" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">Keep selected</text><rect x="183" y="632" width="165" height="48" rx="22" fill="#14152A"/><text x="265.5" y="662" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#F2F3F8" text-anchor="middle">Keep both</text><rect x="12" y="690" width="165" height="48" rx="22" fill="#14152A"/><text x="94.5" y="720" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#F2F3F8" text-anchor="middle">Stage Trash</text><rect x="183" y="690" width="165" height="48" rx="22" fill="#14152A"/><text x="265.5" y="720" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#F2F3F8" text-anchor="middle">Reset zoom</text></svg>
