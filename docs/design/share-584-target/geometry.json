@@ -1,0 +1,1299 @@
+{
+  "schema": 1,
+  "source": "synthetic coordinates; does not represent S24+ measured runtime",
+  "frames": [
+    {
+      "file": "F0-viewer",
+      "flow": "A",
+      "stage": "viewer",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": null
+    },
+    {
+      "file": "F1-share-light",
+      "flow": "A",
+      "stage": "share",
+      "theme": "light",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "F1-share-dark",
+      "flow": "A",
+      "stage": "share",
+      "theme": "dark",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "F1-share-200",
+      "flow": "A",
+      "stage": "share200",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ],
+      "share200_hit_px": {
+        "switch": [
+          104,
+          1215,
+          864,
+          285
+        ],
+        "share": [
+          118,
+          1640,
+          844,
+          185
+        ],
+        "back": [
+          810,
+          1880,
+          190,
+          150
+        ]
+      }
+    },
+    {
+      "file": "F2-sharesheet",
+      "flow": "A",
+      "stage": "chooser",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "F2-no-location-error",
+      "flow": "A",
+      "stage": "share-error",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "F3-return",
+      "flow": "A",
+      "stage": "viewer",
+      "theme": "dark",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": null
+    },
+    {
+      "file": "B1-wallpaper-action",
+      "flow": "B",
+      "stage": "more-wallpaper",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "B2-android-wallpaper",
+      "flow": "B",
+      "stage": "wallpaper",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "B3-missing-handler",
+      "flow": "B",
+      "stage": "no-handler",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "C1-copy-action",
+      "flow": "C",
+      "stage": "more-copy",
+      "theme": "dark",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "C2-copy-feedback",
+      "flow": "C",
+      "stage": "copy",
+      "theme": "dark",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": null
+    },
+    {
+      "file": "C3-revoked",
+      "flow": "C",
+      "stage": "copy-error",
+      "theme": "light",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D0-details-light",
+      "flow": "D",
+      "stage": "details",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D0-details-dark",
+      "flow": "D",
+      "stage": "details",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D1-edit-date-place",
+      "flow": "D",
+      "stage": "edit",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D1-keyboard-open",
+      "flow": "D",
+      "stage": "ime",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D2-undo",
+      "flow": "D",
+      "stage": "saved",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "D2-denied",
+      "flow": "D",
+      "stage": "denied",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "portrait",
+      "px": [
+        1080,
+        2340
+      ],
+      "insets_ltrb_px": [
+        0,
+        125,
+        0,
+        135
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        90,
+        280,
+        900,
+        1300
+      ],
+      "back_hit_px": [
+        24,
+        137,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        890,
+        137,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        470,
+        1853,
+        140,
+        154
+      ],
+      "slab_px": [
+        215,
+        2042,
+        650,
+        145
+      ],
+      "action_hit_width_px": 162.5,
+      "sheet_px": [
+        52,
+        1040,
+        976,
+        1015
+      ]
+    },
+    {
+      "file": "A-landscape",
+      "flow": "A",
+      "stage": "share",
+      "theme": "dark",
+      "photo": "bright",
+      "orientation": "landscape",
+      "px": [
+        2340,
+        1080
+      ],
+      "insets_ltrb_px": [
+        125,
+        68,
+        135,
+        0
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        350,
+        138,
+        1640,
+        730
+      ],
+      "back_hit_px": [
+        149,
+        80,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        2015,
+        80,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        1100,
+        758,
+        140,
+        154
+      ],
+      "slab_px": [
+        820,
+        925,
+        700,
+        145
+      ],
+      "action_hit_width_px": 175,
+      "sheet_px": [
+        1175,
+        188,
+        950,
+        782
+      ]
+    },
+    {
+      "file": "B-landscape",
+      "flow": "B",
+      "stage": "more-wallpaper",
+      "theme": "dark",
+      "photo": "dark",
+      "orientation": "landscape",
+      "px": [
+        2340,
+        1080
+      ],
+      "insets_ltrb_px": [
+        125,
+        68,
+        135,
+        0
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        350,
+        138,
+        1640,
+        730
+      ],
+      "back_hit_px": [
+        149,
+        80,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        2015,
+        80,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        1100,
+        758,
+        140,
+        154
+      ],
+      "slab_px": [
+        820,
+        925,
+        700,
+        145
+      ],
+      "action_hit_width_px": 175,
+      "sheet_px": [
+        1175,
+        188,
+        950,
+        782
+      ]
+    },
+    {
+      "file": "C-landscape",
+      "flow": "C",
+      "stage": "more-copy",
+      "theme": "light",
+      "photo": "bright",
+      "orientation": "landscape",
+      "px": [
+        2340,
+        1080
+      ],
+      "insets_ltrb_px": [
+        125,
+        68,
+        135,
+        0
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        350,
+        138,
+        1640,
+        730
+      ],
+      "back_hit_px": [
+        149,
+        80,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        2015,
+        80,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        1100,
+        758,
+        140,
+        154
+      ],
+      "slab_px": [
+        820,
+        925,
+        700,
+        145
+      ],
+      "action_hit_width_px": 175,
+      "sheet_px": [
+        1175,
+        188,
+        950,
+        782
+      ]
+    },
+    {
+      "file": "D-landscape",
+      "flow": "D",
+      "stage": "edit",
+      "theme": "light",
+      "photo": "dark",
+      "orientation": "landscape",
+      "px": [
+        2340,
+        1080
+      ],
+      "insets_ltrb_px": [
+        125,
+        68,
+        135,
+        0
+      ],
+      "density_px_per_dp": 2.8125,
+      "photo_px": [
+        350,
+        138,
+        1640,
+        730
+      ],
+      "back_hit_px": [
+        149,
+        80,
+        144,
+        138
+      ],
+      "more_hit_px": [
+        2015,
+        80,
+        166,
+        138
+      ],
+      "filmstrip_hit_px": [
+        1100,
+        758,
+        140,
+        154
+      ],
+      "slab_px": [
+        820,
+        925,
+        700,
+        145
+      ],
+      "action_hit_width_px": 175,
+      "sheet_px": [
+        1175,
+        188,
+        950,
+        782
+      ]
+    }
+  ]
+}
