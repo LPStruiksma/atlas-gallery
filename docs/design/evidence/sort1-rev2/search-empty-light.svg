@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-label="Proposed synthetic S24+ Search empty sort sheet light theme">
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#FFFFFF" />
+<text x="12" y="15" font-size="8" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="600" >SORT-1 | SEARCH-EMPTY | LIGHT | SYNTHETIC</text>
+<text x="348" y="15" font-size="8" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="500" text-anchor="end">1080 × 2340</text>
+<text x="20" y="54" font-size="29" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="600" >‹</text>
+<text x="58" y="49" font-size="24" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="700" >Search</text>
+<text x="257" y="47" font-size="23" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="500" >⌕</text>
+<rect x="295" y="23" width="52" height="52" rx="22" fill="#F2F3F8" />
+<text x="321" y="57" font-size="25" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="700" text-anchor="middle">≡</text>
+<text x="20" y="89" font-size="13" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="500" >No matches for “lantern”</text>
+<rect x="18" y="103" width="324" height="46" rx="21" fill="#F2F3F8" />
+<text x="33" y="132" font-size="21" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="600" >⌕</text>
+<text x="66" y="130" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="500" >lantern</text>
+<text x="325" y="130" font-size="17" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="500" text-anchor="end">×</text>
+<text x="180" y="206" font-size="24" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="600" text-anchor="middle">No results</text>
+<text x="180" y="232" font-size="14" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="400" text-anchor="middle">Try another word</text>
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#0E1030" opacity=".18"/>
+<rect x="0" y="361" width="360" height="419" rx="22" fill="#F2F3F8" />
+<rect x="151" y="371" width="58" height="4" rx="3" fill="#5A5F7A" opacity=".65"/>
+<text x="20" y="406" font-size="20" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="700" >Sort by</text>
+<clipPath id="rows"><rect x="12" y="418" width="336" height="237"/></clipPath><g clip-path="url(#rows)">
+<rect x="15" y="420" width="330" height="40" rx="12" fill="#FFFFFF" />
+<circle cx="33" cy="439.5" r="9" fill="#2639C9" stroke="#2639C9" stroke-width="1.5"/>
+<circle cx="33" cy="439.5" r="3.2" fill="#FFFFFF" />
+<text x="55" y="444.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="700" >Relevance</text>
+<circle cx="33" cy="482.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="487.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date created</text>
+<circle cx="33" cy="525.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="530.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Date modified</text>
+<circle cx="33" cy="568.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="573.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >File name</text>
+<circle cx="33" cy="611.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="616.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Size</text>
+<circle cx="33" cy="654.5" r="9" fill="#FFFFFF" stroke="#5A5F7A" stroke-width="1.5"/>
+<text x="55" y="659.5" font-size="15" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="450" >Random</text>
+</g>
+<rect x="12" y="713" width="336" height="1" rx="0" fill="#5A5F7A" opacity=".25"/>
+<text x="20" y="738" font-size="13" font-family="Funnel Sans, Arial, sans-serif" fill="#5A5F7A" font-weight="600" >Direction</text>
+<rect x="111" y="720" width="103" height="34" rx="16" fill="#FFFFFF" />
+<text x="162" y="742" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#2639C9" font-weight="600" text-anchor="middle">↓ Newest</text>
+<rect x="223" y="720" width="121" height="34" rx="16" fill="#FFFFFF" />
+<text x="282" y="742" font-size="12" font-family="Funnel Sans, Arial, sans-serif" fill="#0E1030" font-weight="600" text-anchor="middle">↑ Oldest</text>
+<rect x="0" y="757" width="360" height="23" rx="0" fill="#FFFFFF" />
+<rect x="137" y="767" width="86" height="4" rx="2" fill="#0E1030" />
+</svg>
