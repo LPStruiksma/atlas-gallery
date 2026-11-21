@@ -70,14 +70,14 @@ fun SplitPreviewScreen(
     val selectedFace = (model.groups.flatMap { it.faces } + model.unsure)
         .firstOrNull { it.handle == selectedFaceHandle }
     Scaffold(
-        modifier = modifier.fillMaxSize().testTag("split-preview-screen"),
+        modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             DecisionRail(model.groups.size > 1, onCancel, onAdjust, onAccept)
         }
     ) { scaffoldPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("split-preview-screen"),
             contentPadding = PaddingValues(
                 start = AtlasTokens.Spacing.Gutter,
                 top = scaffoldPadding.calculateTopPadding() + 16.dp,
