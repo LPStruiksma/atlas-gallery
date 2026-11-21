@@ -67,4 +67,31 @@ class AgslDiagnosticsTest {
         variant("sample", "return half4(sampleSrc(sq));")
         variant("tow", "return half4(uToW0, 1.0);")
     }
+
+    private fun firstMismatch(a: Bitmap, b: Bitmap): String {
+        var n = 0; var first = ""
+        for (y in 0 until a.height) for (x in 0 until a.width) {
+            val p = a.getPixel(x, y); val q = b.getPixel(x, y)
+            if (p != q) { if (n == 0) first = "($x,$y) %08x vs %08x".format(p, q); n++ }
+        }
+        return "mismatch=$n first=$first"
+    }
+
+    @Test fun probeSizes() {
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        for ((w, h) in listOf(8 to 8, 64 to 64, 240 to 160, 256 to 160)) {
+            val pic = RenderTestKit.picture(w, h)
+            val pass = RuntimeShader("uniform shader s; half4 main(float2 p){return s.eval(p);}")
+            pass.setInputBuffer("s", BitmapShader(pic, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { filterMode = BitmapShader.FILTER_MODE_NEAREST })
+            RenderTestKit.log("diag2 ${w}x$h passthrough " + firstMismatch(draw(pass, w, h), pic))
+            val plan = nl.atlas.gallery.featureeditor.engine.RenderPlan.build(nl.atlas.gallery.featureeditor.engine.EditRecipe(w, h))
+            val prog = SegmentProgram.of(plan)
+            val region = SourceRegion(pic, 0f, 0f, 1f, PixelSpace.SRGB)
+            val g = AgslPixelBackend().use { it.render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB) }
+            val c = CpuPixelBackend().render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB)
+            RenderTestKit.log("diag2 ${w}x$h gpu_vs_src " + firstMismatch(g, pic) + " cpu_vs_src " + firstMismatch(c, pic) + " gpuconf=${g.config} ${g.width}x${g.height}")
+            val direct = draw(AgslProgram().bind(prog, region, null, PixelSpace.SRGB), w, h)
+            RenderTestKit.log("diag2 ${w}x$h direct_vs_src " + firstMismatch(direct, pic))
+        }
+    }
 }
