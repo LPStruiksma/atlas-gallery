@@ -109,11 +109,20 @@ internal object RenderTestKit {
 
     fun readLatest(reader: ImageReader, space: PixelSpace): Bitmap {
         val deadline = SystemClock.uptimeMillis() + 5_000
+        val arrived = java.util.concurrent.Semaphore(0)
+        val thread = android.os.HandlerThread("edit2-read").apply { start() }
+        reader.setOnImageAvailableListener({ arrived.release() }, android.os.Handler(thread.looper))
         var image = reader.acquireLatestImage()
-        while (image == null) {
-            check(SystemClock.uptimeMillis() < deadline) { "No frame arrived" }
-            Thread.sleep(2)
-            image = reader.acquireLatestImage()
+        try {
+            // Re-check after each signal (or every 50 ms) in case the frame landed before the listener.
+            while (image == null) {
+                check(SystemClock.uptimeMillis() < deadline) { "No frame arrived" }
+                arrived.tryAcquire(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+                image = reader.acquireLatestImage()
+            }
+        } finally {
+            reader.setOnImageAvailableListener(null, null)
+            thread.quitSafely()
         }
         image.use { img ->
             val hb = requireNotNull(img.hardwareBuffer)
