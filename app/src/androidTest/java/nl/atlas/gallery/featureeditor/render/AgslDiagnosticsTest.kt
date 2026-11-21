@@ -108,4 +108,48 @@ class AgslDiagnosticsTest {
             RenderTestKit.log("diag2 ${w}x$h direct_vs_src " + firstMismatch(direct, pic))
         }
     }
+
+    private fun drawB(w: Int, h: Int, translate: Boolean, bindInside: Boolean, images: Int, reuse: Boolean, prog: SegmentProgram, region: SourceRegion): Bitmap {
+        val agsl = AgslProgram()
+        val paint = Paint()
+        val reader = RenderTestKit.reader(w, h, images)
+        val r = HardwareRenderer().apply { setSurface(reader.surface); isOpaque = false }
+        var out: Bitmap? = null
+        repeat(if (reuse) 2 else 1) {
+            val pre = if (!bindInside) agsl.bind(prog, region, null, PixelSpace.SRGB) else null
+            val node = RenderNode("d").apply { setPosition(0, 0, w, h) }
+            val c = node.beginRecording(w, h)
+            c.drawColor(0, PorterDuff.Mode.CLEAR)
+            if (translate) c.translate(-0f, -0f)
+            paint.shader = pre ?: agsl.bind(prog, region, null, PixelSpace.SRGB)
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+            node.endRecording()
+            r.setContentRoot(node)
+            r.createRenderRequest().setWaitForPresent(true).syncAndDraw()
+            out = RenderTestKit.readLatest(reader, PixelSpace.SRGB)
+        }
+        r.destroy(); reader.close()
+        return out!!
+    }
+
+    @Test fun probeBackendParts() {
+        assumeTrue(Build.VERSION.SDK_INT >= 33)
+        val w = 240; val h = 160
+        val pic = RenderTestKit.picture(w, h)
+        val prog = SegmentProgram.of(nl.atlas.gallery.featureeditor.engine.RenderPlan.build(nl.atlas.gallery.featureeditor.engine.EditRecipe(w, h)))
+        val region = SourceRegion(pic, 0f, 0f, 1f, PixelSpace.SRGB)
+        for (t in listOf(false, true)) for (bi in listOf(false, true)) for (im in listOf(2, 3)) for (re in listOf(false, true)) {
+            RenderTestKit.log("diag3 translate=$t bindInside=$bi images=$im reuse=$re " + firstMismatch(drawB(w, h, t, bi, im, re, prog, region), pic))
+        }
+        val reader = RenderTestKit.reader(w, h)
+        val pv = EditorPreviewSurface(reader.surface, w, h, RenderTestKit.assets())
+        pv.render(nl.atlas.gallery.featureeditor.engine.RenderPlan.build(nl.atlas.gallery.featureeditor.engine.EditRecipe(w, h)), BitmapSource(pic))
+        RenderTestKit.log("diag3 preview " + firstMismatch(RenderTestKit.readLatest(reader, PixelSpace.SRGB), pic))
+        pv.close(); reader.close()
+        val be = AgslPixelBackend()
+        val a1 = be.render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB)
+        val a2 = be.render(prog, region, IntRect.size(w, h), null, PixelSpace.SRGB)
+        RenderTestKit.log("diag3 backend first " + firstMismatch(a1, pic) + " second " + firstMismatch(a2, pic))
+        be.close()
+    }
 }
