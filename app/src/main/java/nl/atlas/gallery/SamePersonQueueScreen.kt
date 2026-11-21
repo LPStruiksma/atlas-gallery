@@ -112,7 +112,9 @@ internal fun SamePersonQueueRoute(
     // Every answer of this screen in tap order; the first `resolved` are committed (or refused).
     var answers by remember { mutableStateOf(emptyList<SamePersonQueueAnswer>()) }
     var resolved by remember { mutableIntStateOf(0) }
-    val skipSnapshot = cursor?.state?.takeIf { it.permissionEpoch == epoch }
+    val skipSnapshot = cursor?.state?.takeIf {
+        it.permissionEpoch == epoch && host.scopeCurrent(it.permissionEpoch)
+    }
     val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion, skipSnapshot) {
         val notInList = answers.drop(cursorSeq)
         found.filter { item ->
@@ -184,10 +186,10 @@ internal fun SamePersonQueueRoute(
         if (listDone) counted = (found.size - answers.drop(cursorSeq).size) to answers.size
     }
     val pendingMarked = lastMixedQuestion != null && found.any { it.key == lastMixedQuestion }
-    val open = counted?.let { (n, at) ->
+    val open = if (skipSnapshot == null) 0 else counted?.let { (n, at) ->
         maxOf(0, n - (answers.size - at) - if (pendingMarked) 1 else 0)
     } ?: 0
-    val canUndoMixed = lastMixedGeneration != null &&
+    val canUndoMixed = skipSnapshot != null && lastMixedGeneration != null &&
         state?.sourceGeneration == lastMixedGeneration && state.undoHistory.isNotEmpty() &&
         !mixedBusy && !undoBusy && resolved == answers.size
     Dialog(onDismissRequest = onClose,
