@@ -59,7 +59,6 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-timeline-grid")
             .performScrollToNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
 
-        step("start")
         // 1. Select two items, More → Hide.
         compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").performTouchInput { longClick() }
         awaitNode(hasTestTag("atlas-selection-count") and hasText("1 selected"))
@@ -68,7 +67,7 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         compose.tap(hasTestTag("atlas-selection-more"))
         awaitNode(hasTestTag("atlas-selection-hide"))
         compose.waitForIdle()
-        step("save"); saveUiEvidence("hidden-585-selection-more-$theme")
+        saveUiEvidence("hidden-585-selection-more-$theme.png")
         compose.tap(hasTestTag("atlas-selection-hide"))
 
         // Both leave Photos at once; the other two stay; no file moved or was deleted.
@@ -79,14 +78,13 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         awaitNode(hasTestTag("atlas-hidden-result-undo"))
         awaitNode(hasTestTag("atlas-timeline-media-${ids[2]}"))
         compose.waitForIdle()
-        step("save"); saveUiEvidence("hidden-585-after-hide-$theme")
+        saveUiEvidence("hidden-585-after-hide-$theme.png")
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)
         ids.forEach { assertEquals(FIXTURE_PATH, fixtures.relativePathOf(it)) }
         // Durable: the set survives in the private store, as two media keys.
         val stored = HiddenMediaStore(fixtures.context).readOrNull()
         assertEquals(2, stored?.size)
 
-        step("part2")
         // 2. Albums ⋮ → Hidden lists exactly the two hidden items.
         compose.tap(hasTestTag("atlas-nav-albums"))
         awaitNode(hasTestTag("atlas-header-more"))
@@ -98,9 +96,8 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
             compose.onAllNodes(hasTestTag("atlas-hidden-tile")).fetchSemanticsNodes().size == 2
         }
         compose.waitForIdle()
-        step("save"); saveUiEvidence("hidden-585-filled-$theme")
+        saveUiEvidence("hidden-585-filled-$theme.png")
 
-        step("part3")
         // 3. Long-press a tile, Unhide: the collection empties, Photos shows them again.
         compose.onAllNodesWithTag("atlas-hidden-tile")[0].performTouchInput { longClick() }
         awaitNode(hasTestTag("atlas-hidden-unhide"))
@@ -108,14 +105,13 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         compose.tap(hasTestTag("atlas-hidden-unhide"))
         awaitNode(hasTestTag("atlas-hidden-empty"))
         compose.waitForIdle()
-        step("save"); saveUiEvidence("hidden-585-empty-$theme")
+        saveUiEvidence("hidden-585-empty-$theme.png")
         compose.tap(hasTestTag("atlas-hidden-back"))
         compose.tap(hasTestTag("atlas-nav-photos"))
         awaitNode(hasTestTag("atlas-timeline-media-${ids[0]}"))
         awaitNode(hasTestTag("atlas-timeline-media-${ids[1]}"))
         assertEquals(0, HiddenMediaStore(fixtures.context).readOrNull()?.size)
 
-        step("part4")
         // 4. Viewer More → Hide hides the open item and moves on to a neighbour.
         compose.onNodeWithTag("atlas-timeline-grid")
             .performScrollToNode(hasTestTag("atlas-timeline-media-${ids[2]}"))
@@ -124,7 +120,7 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         compose.tap(hasTestTag("atlas-viewer-more"))
         awaitNode(hasTestTag("atlas-viewer-hide"))
         compose.waitForIdle()
-        step("save"); saveUiEvidence("hidden-585-viewer-more-$theme")
+        saveUiEvidence("hidden-585-viewer-more-$theme.png")
         compose.tap(hasTestTag("atlas-viewer-hide"))
         compose.awaitThat("viewer item is hidden") {
             HiddenMediaStore(fixtures.context).readOrNull()?.size == 1
@@ -136,14 +132,10 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         }
         compose.onAllNodesWithTag("atlas-timeline-media-${ids[3]}").assertCountEquals(1)
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)
-        step("end")
         val listing = shellOut("ls /data/local/tmp/atlas-ui-evidence")
         assertTrue("no hidden-585-$theme evidence on device: $listing",
-            listing.lines().count { it.contains("hidden-585-") && it.contains(theme) } == 5)
+            listing.lines().count { it.contains("hidden-585-") && it.contains(theme) && it.trim().endsWith(".png") } == 5)
     }
-
-    private fun step(what: String) =
-        android.util.Log.i("ATLAS_TESTKIT", "hide-journey $theme $what")
 
     private fun shellOut(command: String): String {
         val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
