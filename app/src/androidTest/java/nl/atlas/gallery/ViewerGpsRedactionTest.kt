@@ -96,7 +96,11 @@ class ViewerGpsRedactionTest {
             file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             ExifInterface(file.absolutePath).apply {
                 setAttribute(ExifInterface.TAG_MAKE, "AtlasPlaces0")
-                setLatLong(fixtureLat, fixtureLon)
+                // 52.0907 = 52 deg 5' 26.52" N ; 5.1214 = 5 deg 7' 16.92" E (platform ExifInterface has no setLatLong)
+                setAttribute(ExifInterface.TAG_GPS_LATITUDE, "52/1,5/1,2652/100")
+                setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, "N")
+                setAttribute(ExifInterface.TAG_GPS_LONGITUDE, "5/1,7/1,1692/100")
+                setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, "E")
                 saveAttributes()
             }
             return file.readBytes()
