@@ -97,6 +97,12 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
     private var activeCoroutine: Job? = null
     private var activeProviderJob: EditJob? = null
     private var chargeAgainConfirmed = false
+    /**
+     * Services whose last request may have charged and that no confirmed request has followed yet.
+     * Kept apart from the shown issue, because editing or changing the prompt clears the card but
+     * must not drop the "may charge again" confirmation (#769 review).
+     */
+    private val chargeRisk = LinkedHashSet<String>()
     private var journal: AndroidRequestJournal? = null
 
     fun initialize(environment: AiEditEnvironment, sourceUri: Uri) {
@@ -104,8 +110,13 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
         source = sourceUri
         journal = AndroidRequestJournal(environment.store.sessionDirectory())
         refreshServices()
-        if (initialized) return
+        if (initialized) {
+            // Back from Settings: a service may have been connected, removed or re-keyed.
+            reconcileService()
+            return
+        }
         initialized = true
+        handle.get<ArrayList<String>>(CHARGE_RISK)?.let { chargeRisk.addAll(it) }
         val saved = handle.get<String>("snapshot")
         machine = if (saved == null) AiEditStateMachine() else
             AiEditStateMachine.restore(readState(saved), environment.store.existing())
@@ -148,6 +159,21 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
         }
     }
 
+    /** Keeps the selection on a usable service, picking the default one when the current one is gone. */
+    private fun reconcileService() {
+        val e = env ?: return
+        val profiles = usableProfiles()
+        if (profiles.none { it.id == machine.state.providerId }) {
+            val next = e.settings.defaultProvider()?.takeIf { p -> profiles.any { it.id == p.id } }
+                ?: profiles.firstOrNull()
+            if (next != null && choose(next)) {
+                chargeAgainConfirmed = false
+                publish()
+            }
+        }
+        refreshEstimate()
+    }
+
     private fun profile(): ProviderProfile? = usableProfiles().firstOrNull { it.id == ui.providerId }
 
     private fun choose(profile: ProviderProfile): Boolean = machine.chooseProvider(
@@ -156,7 +182,9 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
 
     private fun publish() {
         ui = machine.state
+        if (ui.issue?.mayHaveCharged == true) chargeRisk.add(ui.providerId)
         handle["snapshot"] = writeState(ui)
+        handle[CHARGE_RISK] = ArrayList(chargeRisk)
     }
 
     fun promptChanged(text: String) { if (machine.compose(text)) publish() }
@@ -232,7 +260,8 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
                 disclosure = disclosure,
                 priceConsented = e.preferences.getBoolean(PRICE_CONSENT + p.id, false),
                 lastIssue = ui.issue,
-                chargeAgainConfirmed = chargeAgainConfirmed)
+                chargeAgainConfirmed = chargeAgainConfirmed,
+                chargeRiskPending = p.id in chargeRisk)
             gate = next
             if (next == null) generate()
         }
@@ -260,10 +289,11 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
         val p = profile() ?: return
         val l = loader(e) ?: return
         val prior = machine.state
-        val retryAfterUncertain = prior.issue?.mayHaveCharged == true
+        val retryAfterUncertain = prior.issue?.mayHaveCharged == true || p.id in chargeRisk
         if (retryAfterUncertain && !chargeAgainConfirmed) return
         val token = machine.generate() ?: return
         chargeAgainConfirmed = false
+        chargeRisk.remove(p.id)
         journal?.clear()
         publish()
         activeCoroutine = viewModelScope.launch {
@@ -531,6 +561,7 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
 
     companion object {
         private const val PRICE_CONSENT = "priceConsent:"
+        private const val CHARGE_RISK = "chargeRisk"
     }
 }
 

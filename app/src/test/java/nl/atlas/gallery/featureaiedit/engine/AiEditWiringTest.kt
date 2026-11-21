@@ -185,6 +185,16 @@ class AiEditWiringTest {
         assertEquals(AiEditGate.CHARGE_AGAIN, AiEditGates.next(true, total, false, charged, false))
     }
 
+    @Test fun aPendingChargeRiskStillGatesAfterTheCardIsGone() {
+        // Change prompt or typing clears the card; the risk flag keeps the confirmation (#769 review).
+        assertEquals(AiEditGate.CHARGE_AGAIN,
+            AiEditGates.next(true, total, false, null, false, chargeRiskPending = true))
+        assertNull(AiEditGates.next(true, total, false, null, true, chargeRiskPending = true))
+        assertNull(AiEditGates.next(true, total, false, null, false, chargeRiskPending = false))
+        assertEquals("first use and price consent still come first", AiEditGate.FIRST_USE,
+            AiEditGates.next(false, total, false, null, false, chargeRiskPending = true))
+    }
+
     @Test fun workingLineMovesFromSendingToEditing() {
         assertEquals("Sending photo…", AiEditStateCopy.working(true, "fal.ai"))
         assertEquals("Editing with fal.ai", AiEditStateCopy.working(false, "fal.ai"))

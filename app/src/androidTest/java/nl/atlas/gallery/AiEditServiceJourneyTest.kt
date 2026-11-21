@@ -81,6 +81,8 @@ class AiEditServiceJourneyTest {
         val calls = CopyOnWriteArrayList<String>()
         val bodies = CopyOnWriteArrayList<String>()
         @Volatile var holdSubmit: CountDownLatch? = null
+        /** fal's safety checker flags the result: a decline after fal accepted (and may have billed) the job. */
+        @Volatile var flagNsfw = false
         val submitStarted = AtomicBoolean(false)
         override fun execute(call: FalCall, key: String, cancellation: nl.atlas.gallery.featureaiedit.network.EditRequestCancellation): EditHttpResult {
             calls += "${call.method} ${call.path}"
@@ -106,7 +108,7 @@ class AiEditServiceJourneyTest {
                     json("""{"status":"COMPLETED","request_id":"req-1"}""")
                 call.path.endsWith("/requests/req-1") ->
                     json("""{"images":[{"url":"https://v3b.fal.media/files/synthetic/out.png",""" +
-                        """"content_type":"image/png","width":160,"height":120}],"has_nsfw_concepts":[false],"seed":1}""")
+                        """"content_type":"image/png","width":160,"height":120}],"has_nsfw_concepts":[$flagNsfw],"seed":1}""")
                 else -> EditHttpResult.Failed(nl.atlas.gallery.featureaiedit.network.FailureCode.INVALID_REQUEST, false, 404)
             }
         }
@@ -261,6 +263,57 @@ class AiEditServiceJourneyTest {
             sessions += session
             compose.awaitThat("no service", 30_000L) { shown(hasTestTag("atlas-ai-edit-connect")) }
             assertEquals(callsBefore, fake.calls.size)
+
+            // 8. Connect a service from there: back in the editor, Generate uses the new service.
+            compose.onNodeWithTag("atlas-ai-edit-connect").performClick()
+            compose.awaitThat("settings", 30_000L) { shown(hasTestTag("aie-settings-screen")) }
+            settings.save(profile)
+            settings.setDefault(profile.id)
+            vault.put(profile.id, key)
+            compose.onNodeWithTag("aie-back").performClick()
+            compose.awaitThat("editor with the new service", 30_000L) {
+                !shown(hasTestTag("aie-settings-screen")) && shown(hasTestTag("atlas-ai-edit-generate")) &&
+                    shown(hasTestTag("atlas-ai-edit-provider"))
+            }
+            val postsBeforeConnect = fake.posts()
+            compose.typeText(hasTestTag("atlas-ai-edit-prompt"), "Soften the shadows")
+            compose.onNodeWithTag("atlas-ai-edit-generate").performClick()
+            confirmGates()
+            compose.awaitThat("result from the newly connected service", 30_000L) {
+                shown(hasTestTag("atlas-ai-edit-accept"))
+            }
+            assertEquals("Generate sent exactly one request", postsBeforeConnect + 1, fake.posts())
+
+            // 9. fal declines after accepting: Change prompt or typing never skips "may charge again".
+            fake.flagNsfw = true
+            compose.runOnIdle { session = "aie20-$tag-decline" }
+            sessions += session
+            compose.awaitThat("decline composer", 30_000L) { shown(hasTestTag("atlas-ai-edit-prompt")) }
+            compose.typeText(hasTestTag("atlas-ai-edit-prompt"), "Make it night")
+            compose.onNodeWithTag("atlas-ai-edit-generate").performClick()
+            confirmGates()
+            compose.awaitThat("declined, may have charged", 30_000L) {
+                shown(hasTestTag("atlas-ai-edit-issue-DECLINED_MAY_HAVE_CHARGED"))
+            }
+            fake.flagNsfw = false
+            val postsAfterDecline = fake.posts()
+            compose.onNodeWithTag("atlas-ai-edit-action-CHANGE_PROMPT").performClick()
+            compose.awaitThat("composer after Change prompt", 30_000L) { shown(hasTestTag("atlas-ai-edit-generate")) }
+            compose.onNodeWithTag("atlas-ai-edit-generate").performClick()
+            compose.awaitThat("charge-again gate after Change prompt", 30_000L) {
+                shown(hasTestTag("atlas-ai-edit-gate-CHARGE_AGAIN"))
+            }
+            assertEquals("nothing sent while the gate is open", postsAfterDecline, fake.posts())
+            compose.onNodeWithTag("atlas-ai-edit-gate-dismiss").performClick()
+            compose.typeText(hasTestTag("atlas-ai-edit-prompt"), "Make it dusk")
+            compose.onNodeWithTag("atlas-ai-edit-generate").performClick()
+            compose.awaitThat("charge-again gate after typing", 30_000L) {
+                shown(hasTestTag("atlas-ai-edit-gate-CHARGE_AGAIN"))
+            }
+            assertEquals("Cancel and typing sent nothing", postsAfterDecline, fake.posts())
+            compose.onNodeWithTag("atlas-ai-edit-gate-confirm").performClick()
+            compose.awaitThat("result after confirming", 30_000L) { shown(hasTestTag("atlas-ai-edit-accept")) }
+            assertEquals("one request after Try again", postsAfterDecline + 1, fake.posts())
         } finally {
             AiEditServices.providerOverride = null
             AiEditServices.onlineOverride = null

@@ -23,11 +23,13 @@ object AiEditGates {
         disclosure: CostDisclosure,
         priceConsented: Boolean,
         lastIssue: AiEditIssue?,
-        chargeAgainConfirmed: Boolean
+        chargeAgainConfirmed: Boolean,
+        /** The selected service's last request may have charged, even if its card is gone. */
+        chargeRiskPending: Boolean = false
     ): AiEditGate? = when {
         !firstUseAcknowledged -> AiEditGate.FIRST_USE
         disclosure !is CostDisclosure.Total && !priceConsented -> AiEditGate.PRICE_UNKNOWN
-        lastIssue?.mayHaveCharged == true && !chargeAgainConfirmed -> AiEditGate.CHARGE_AGAIN
+        (lastIssue?.mayHaveCharged == true || chargeRiskPending) && !chargeAgainConfirmed -> AiEditGate.CHARGE_AGAIN
         else -> null
     }
 }
