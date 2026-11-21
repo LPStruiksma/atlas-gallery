@@ -49,11 +49,11 @@ Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` w
 
 The board preserves the merged L5 row and L7 search contracts and covers, in order:
 
-* **A — Collections rows:** named rows have latest-photo strips at their real ratios, including genuinely short strips. Utilities always appear as Videos, Screenshots, Selfies, Portrait, Panoramas, Bursts, Recently added. Videos and Screenshots reuse their existing destinations. A zero-count category keeps its position and accessible count while the visible numeric zero is hidden.
+* **A — Collections media-type rows:** between Favourites and later system rows, the fixed order is Videos, Screenshots, Recently added, Selfies, Panoramas, Slow motion, Large files. Videos/Screenshots are their existing L5 destinations, never duplicated. Only confirmed non-empty categories render; an all-empty grouping disappears. Real-ratio strips contain only available synthetic items, including genuine 1–3-item short strips. Light 100% and dark 200% panels illustrate different scroll positions.
 * **B — category destination:** Screenshots opens its normal square grid; sort and a typed query remain scoped to that category.
 * **C — search:** the search sphere expands immediately above the slab with **This screen** selected and **Whole library** available. The assumed 324 dp IME opens; first Back hides it and keeps the query, second Back closes search.
-* **D — pending, error and empty:** the held sphere accompanies plain progress; error offers one 48 dp retry; empty uses one sentence and one useful next step.
-* **E — stress and accessibility:** long labels at 200%, a schematic 148,912-item lazy grid, assumed system insets, merged row semantics, visual-order TalkBack traversal and 48 dp targets.
+* **D — pending, error and empty:** the held sphere accompanies plain progress; error offers one 48 dp retry; no text matches prompts a clear-search action, while confirmed-zero categories are omitted from Collections.
+* **E — stress and accessibility:** long labels at 200%, a schematic 250,128-item lazy grid (layout intent, not measured performance), assumed system insets, merged row semantics, visual-order TalkBack traversal and 48 dp targets.
 
 Two hero frames are annotated native **1080 × 2340 px** S24+ frames: light at 100% and dark at 200%. Every A–E panel is built from the same full-size frame before the board scales it to 50%. The 29 dp status inset, 16 dp gesture inset and 324 dp keyboard are explicitly **assumptions**, not device measurements. All pictures are generated gradients and shapes; no image file, MediaStore item, network resource or private board is read.
 
