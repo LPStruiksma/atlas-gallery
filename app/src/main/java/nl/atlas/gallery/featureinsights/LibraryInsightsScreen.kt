@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -98,7 +99,7 @@ fun LibraryInsightsScreen(
                     tag = "atlas-insights-empty")
             state is InsightsUiState.Failed && shown == null -> InsightsFailure(null, onRetry)
             shown != null -> LazyColumn(
-                Modifier.fillMaxSize().testTag("atlas-insights-list"),
+                Modifier.fillMaxSize().navigationBarsPadding().testTag("atlas-insights-list"),
                 state = listState,
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)

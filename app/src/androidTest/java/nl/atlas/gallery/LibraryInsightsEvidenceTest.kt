@@ -1,6 +1,5 @@
 package nl.atlas.gallery
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -9,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -88,13 +89,15 @@ class LibraryInsightsEvidenceTest {
             val base = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
                 AtlasGalleryTheme(dark = dark) {
-                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-                        .statusBarsPadding()) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+                        contentColor = MaterialTheme.colorScheme.onBackground) {
+                    Column(Modifier.fillMaxSize().statusBarsPadding()) {
                         AtlasGalleryHeader("Library insights", onBack = {}, backDescription = "Back to Settings")
                         LibraryInsightsScreen(state, onOpenRow = { opened += it }, onRetry = { retries++ },
                             possibleDuplicateBytes = duplicateBytes,
                             onReviewDuplicates = { }.takeIf { duplicateBytes != null },
                             locale = Locale.US)
+                    }
                     }
                 }
             }
@@ -112,7 +115,11 @@ class LibraryInsightsEvidenceTest {
         for (isDark in listOf(false, true)) {
             compose.runOnIdle { dark = isDark; setup() }
             compose.waitForIdle()
-            scroll?.invoke()
+            if (scroll != null) scroll() else {
+                // Every state starts from the top, not where the last one was scrolled.
+                if (compose.onAllNodesWithTag("atlas-insights-list").fetchSemanticsNodes().isNotEmpty())
+                    compose.onNodeWithTag("atlas-insights-list").performScrollToIndex(0)
+            }
             capture("insights-587-$name-${if (isDark) "dark" else "light"}")
         }
     }
