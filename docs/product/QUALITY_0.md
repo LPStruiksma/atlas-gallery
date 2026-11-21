@@ -2,7 +2,7 @@
 
 Unit: [#668](https://github.com/LPStruiksma/atlas-gallery/issues/668) · Goal: [#102](https://github.com/LPStruiksma/atlas-gallery/issues/102)
 
-**Status: PARTIAL.** Pure host-independent scorers and synthetic tests exist, but phone performance and human preference accuracy are **NOT MEASURED**. This is feasibility work, not production wiring or a disposal decision.
+**Status: FEASIBILITY SLICE.** This document records the bounded, non-production prototype accepted by [QUALITY-0 #668](https://github.com/LPStruiksma/atlas-gallery/issues/668): pure Kotlin signal mechanics, synthetic tests, nullable/abstaining keeper behavior, licence notes, and estimates labelled as estimates. It is not production wiring or a disposal decision. Human-preference agreement and full Kotlin host-cost validation are separate acceptance requirements tracked by [QUALITY-EVAL-1 #937](https://github.com/LPStruiksma/atlas-gallery/issues/937); neither is claimed as measured here.
 
 ## Contract and algorithms
 
@@ -45,7 +45,9 @@ The Python harness generates luminance through a fixed LCG and times only an ana
 
 **MEASURED locally 2026-11-20:** Linux 6.18.57 x86_64, Python 3.12.13, 256×192, 10 warm-ups and 50 samples produced p50 16.616 ms and p95 18.202 ms. Decode was excluded and memory was **NOT MEASURED**. This is a Python harness measurement only, not a Kotlin or S24+ estimate.
 
-Human best-shot agreement: **NOT MEASURED**. Pair count, annotators, inclusion criteria, split/leakage control, class balance, confidence interval and pairwise accuracy are all **NOT MEASURED** because no verified licensed, human-labelled pair set was available. Synthetic tests must not be interpreted as human agreement.
+Human best-shot agreement: **NOT MEASURED**. No verified licensed, human-labelled pair set or completed protocol is claimed. Pair count, annotators, inclusion criteria, split/leakage control, class balance, confidence interval and pairwise accuracy remain **NOT MEASURED**. This is deliberately outside #668's feasibility-only acceptance and is owned by [QUALITY-EVAL-1 #937](https://github.com/LPStruiksma/atlas-gallery/issues/937). Synthetic tests must not be interpreted as human agreement.
+
+Full Kotlin host cost/photo is also **NOT MEASURED**: the Python harness above times only a Laplacian-loop analogue, not `PhotoQualitySignals.analyseArgb8888`. A reproducible host-JVM benchmark of the actual Kotlin path is the second required evidence deliverable in [#937](https://github.com/LPStruiksma/atlas-gallery/issues/937).
 
 ### S24+ estimate (not measured)
 
@@ -57,10 +59,11 @@ Human best-shot agreement: **NOT MEASURED**. Pair count, annotators, inclusion c
 |---|---|---|
 | Pure blur/exposure mechanics | MEASURED | synthetic JVM assertions when the listed Gradle test passes |
 | Determinism/abstention mechanics | MEASURED | synthetic JVM assertions only |
-| Host Python loop timing | MEASURED | only when command output is recorded; not Android/Kotlin |
+| Host Python loop timing | MEASURED | recorded analogue only; not Android/Kotlin and not a substitute for the #937 host-JVM benchmark |
 | S24+ batch cost | ESTIMATED | broad arithmetic range above; device benchmark missing |
-| S24+ p50/p95, energy, memory | NOT MEASURED | representative-device benchmark missing |
-| Human pairwise accuracy/CI | NOT MEASURED | licensed labelled pairs and protocol missing |
+| Full Kotlin host benchmark | NOT MEASURED | actual `analyseArgb8888` host-JVM benchmark owned by #937 | 
+| S24+ p50/p95, energy, memory | NOT MEASURED | representative-device benchmark not part of this feasibility slice |
+| Human pairwise accuracy/CI | NOT MEASURED | licensed labelled pairs and protocol owned by #937 |
 | Aesthetic model/head | BLOCKED | per-asset/label/weight licence chain and evaluation missing |
 | Production integration | NOT MEASURED | explicitly out of scope; QUALITY-1 review missing |
 
@@ -70,4 +73,4 @@ Verification commands:
 - `python3 tools/quality_bench/bench.py --width 256 --height 192 --warmups 10 --samples 50`
 - `python3 -m py_compile tools/quality_bench/bench.py`
 
-QUALITY-0 is not fully done: licensed preference evidence, calibrated thresholds, representative S24+ measurements, accessibility/product review, and safe QUALITY-1 integration remain acceptance gaps.
+For this PR, #668's acceptance is the bounded feasibility slice described above; empirical human-preference agreement and full Kotlin host timing are not hidden acceptance gaps here and remain explicitly assigned to [#937](https://github.com/LPStruiksma/atlas-gallery/issues/937). The Python analogue is not a Kotlin benchmark. S24+ timing, energy and memory remain **NOT MEASURED**, and any calibrated thresholds, accessibility/product review or QUALITY-1 production integration require separate future work. Nothing in this feasibility slice authorises scanning, hiding or deletion.
