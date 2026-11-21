@@ -225,7 +225,7 @@ If Lukas obtains a licence for InSwapper or HyperSwap, either replaces GHOST on 
 ## Reproduce
 
 ```bash
-python3 -m unittest tools/identity_bench/test_identity_bench.py     # 45 tests, no downloads
+python3 -m unittest tools/identity_bench/test_identity_bench.py     # synthetic unit tests; do not download weights
 python3 -m tools.identity_bench one --target T04 --identity 0213ccb4776a --candidate ghost_1_256
 python3 -m tools.identity_bench explore --candidates inswapper_128,ghost_1_256,simswap_256  # allowed examples only; new measurements need a separate decision
 ```
