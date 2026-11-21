@@ -13,11 +13,12 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.launch
 import nl.atlas.gallery.GalleryViewer
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.typeText
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.ViewerFindSimilar
 import nl.atlas.gallery.featurepersistence.IndexedMedia
@@ -53,8 +54,10 @@ import kotlin.math.sqrt
  */
 @RunWith(AndroidJUnit4::class)
 class FindSimilarJourneyTest {
-    // v2: the route resumes coroutines after withContext(IO) on the UI thread.
-    @get:Rule val compose = createComposeRule()
+    // The test keyboard must be selected before Compose starts, so typed text
+    // never races the emulator IME or changes hit-grid viewport geometry.
+    @get:Rule(order = 0) val keyboard = KeyboardRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     private val model = "siglip-journey:1"
     private val dim = 16
@@ -189,7 +192,7 @@ class FindSimilarJourneyTest {
 
         // A nonempty text query must not discard the already-scoped hit.
         compose.onNodeWithTag("atlas-search-expand").performClick()
-        compose.onNodeWithTag("atlas-scoped-search-field").performTextInput("synthetic-2")
+        compose.typeText(hasTestTag("atlas-scoped-search-field"), "synthetic-2")
         compose.waitForIdle()
         waitFor(hasTestTag("atlas-visual-search-grid"))
         compose.onNodeWithTag("atlas-visual-search-empty").assertDoesNotExist()
