@@ -3,6 +3,7 @@ package nl.atlas.gallery
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import nl.atlas.gallery.testkit.awaitScreenStill
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -39,7 +40,7 @@ class UsageShareSheetEvidenceTest {
         val file = java.io.File(compose.activity.cacheDir, "usage/" + log.exportFileName())
         assertTrue("export file missing: $file", file.isFile)
         assertTrue(file.readText().startsWith("{\"schema\":\"usage-1\""))
-        Thread.sleep(3000)
+        compose.awaitScreenStill("the share sheet")
         saveUiEvidence("usage-0-share-sheet.png")
         InstrumentationRegistry.getInstrumentation().uiAutomation
             .performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
