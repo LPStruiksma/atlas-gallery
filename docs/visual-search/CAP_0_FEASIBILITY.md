@@ -1,21 +1,104 @@
-# CAP-0 — On-device photo captions feasibility (research in progress)
+# CAP-0 — on-device photo-caption feasibility
 
-Unit: [atlas-gallery#666](https://github.com/LPStruiksma/atlas-gallery/issues/666) · Goal: [Vision D #101](https://github.com/LPStruiksma/atlas-gallery/issues/101)
+Unit: [atlas-gallery#666](https://github.com/LPStruiksma/atlas-gallery/issues/666) · Evidence cut-off: 2026-11-20 UTC
 
-**Status: INCOMPLETE — task scaffold, not evidence.** This file is the bounded input to one Codex Cloud (Legacy) task on [the draft PR](https://github.com/LPStruiksma/atlas-gallery/pulls). Replace it with an evidence-backed feasibility report. Do not confuse proposed numbers with measured results.
+## Decision
 
-## Research boundary
+**Not ready to plan or ship.** No model was downloaded, converted, executed, or measured; no phone was available. All latency, memory, quality, Dutch, and hallucination results are therefore **NOT MEASURED**. CAP-0 supports only a bounded CAP-1 experiment, not a capability-map change.
 
-- The ATLAS SigLIP 2 image encoder does not produce prose; captioning requires a generative vision–language model and a validated inference path.
-- Investigate the model/weight/processor licence chain separately for Florence-2 base and large, SmolVLM / SmolVLM2 256M and 500M, Moondream 2 and 0.5B, Qwen3-VL 2B (or the current small Qwen VL), and PaliGemma 2 / Gemma 3n. Mark unavailable, ambiguous or contradictory terms **unverified**. Do not infer the licence of weights from a code repo's licence.
-- For each model distinguish `bundle`, `download after explicit install consent with SHA-256`, `bench only`, or `do not use`; check terms against commercial versus private use and publication constraints. Follow the field definitions in `docs/identity-studio/LICENCES.md`.
-- Use only a confirmed-licensed, public test set, or a small synthetic fixture; commit identifiers or scripts, not original images, weights, private photos, credentials, output with sensitive details, or large model downloads. Verify each dataset's distribution, image and caption licences.
-- Run **actual** CPU ONNX Runtime int8 host measurements only if the exact model conversion, processor, weights and dataset are accessible. Record commands, environment, model revision and SHA-256, provenance, durations, warm-up, n, p50/p95 latency, peak RAM, confidence/limitations. A Python data analysis script is not proof of an executable ONNX image-caption pipeline. Never fabricate benchmark data, images, licences, downloads, Dutch competence or S24+ numbers.
-- Estimate S24+ Exynos 2400 versus Snapdragon 8 Gen 3 only through an explicit model with documented range and assumptions; **host** measurements and **unmeasured phone** estimates must occupy separate columns. Report cases where an ONNX export is infeasible or requires a different runtime.
-- Include readable caption examples and a score (CIDEr or SigLIP image–caption agreement), hard-case hallucinations (counts, people, text) and Dutch output where supported; if impossible to run, mark each cell `NOT MEASURED` and include the exact blocking prerequisite and feasible protocol.
-- Include 150,000-image hours-at-charging, RAM, storage and per-new-image formulas with sensitivity bands; keep hypothetical illustrative assumptions visibly separate from measurements.
-- Decide whether fast whole-library captioner + optional on-demand rich captioner is justified; name CAP-1 scanner/runtime, CAP-2 search, CAP-3 Details/TalkBack Design brief (following BRAND-0 #628 and Lapis #654). Note privacy, charging, battery and incremental-index dedupe requirements. Update `docs/product/ATLAS_VISION.md` capability-map row from Research to Planned **only if the report supports it**.
+Two tiers should be tested, not adopted:
 
-## Output and validation contract
+1. **Fast whole-library:** SmolVLM2 256M and 500M, bench-only until the dependency/data licence chain and Android conversion are approved. The publisher labels checkpoints Apache-2.0 and exposes ONNX files, but those large artefacts were not downloaded or executed.
+2. **Optional on-demand rich:** Florence-2-base first, with large as comparator; bench-only. Do not bundle PaliGemma 2, Gemma 3n, small Qwen VL, or Moondream without the legal/runtime gates below.
 
-Produce `docs/visual-search/CAP_0_FEASIBILITY.md`, reproducible non-destructive files under `tools/caption_bench/**`, and the capability-map row where warranted; no app code, Gradle, workflows, second index or remote inference. Separate measured evidence, estimated values and unknowns. Include exact upstream URLs and access dates for every licence and model fact. Tests, if added, use synthetic/licensed fixtures only. End with an explicit done/not-done checklist and outstanding blockers.
+This is not a licence approval. “Publisher says” records provenance, not ATLAS admissibility.
+
+## IDS-1-style admissibility register
+
+Code, weights, conversion, processor and evaluation data are independent artefacts; a green cell cannot cure an unknown one. URLs are upstream publisher/project pages accessed 2026-11-20. `UNVERIFIED` means exact artefact text or executable closure was not locally retained and reviewed.
+
+| Candidate | Code / processor | Weights / checkpoint terms | Conversion / runtime | Data licensing | Disposition |
+|---|---|---|---|---|---|
+| Florence-2 base / large | Cards require Transformers `trust_remote_code`; code/dependency closure **UNVERIFIED** | Publisher repos label MIT; base has revision-pinned licence. Exact large revision/hash **UNVERIFIED** | No official pinned mobile CPU-int8 bundle validated: **UNVERIFIED / NOT MEASURED** | Training corpus rights not audited; no eval set used | **bench only**, base first |
+| SmolVLM / SmolVLM2 256M / 500M | Transformers/Idefics3; dependency closure **UNVERIFIED** | SmolVLM2 card says checkpoints Apache-2.0. Exact 500M/original SmolVLM revisions/hashes **UNVERIFIED** | 256M repo exposes ONNX; provenance, quantization, processor parity, Android ops untested | Card lists a multi-dataset mixture; every source image/text grant remains **UNVERIFIED** | **bench only**, best fast-tier lead |
+| Moondream 2 / 0.5B | Page uses custom code; code-to-weight closure **UNVERIFIED** | Moondream 2 page labels Apache-2.0. An immutable official 0.5B checkpoint/terms were not established: **UNVERIFIED** | No publisher Android CPU-int8 pipeline validated | Training/eval grants **UNVERIFIED** | **do not use** until closed |
+| Qwen2.5-VL-3B-Instruct | Implementation/dependencies **UNVERIFIED** | Pinned repo licence is Qwen Research License: non-commercial absent commercial licence | Conversion, mobile ops and processor parity **UNVERIFIED / NOT MEASURED** | **UNVERIFIED** | **reject for product**; research only after counsel |
+| PaliGemma 2 3B | Dependency closure **UNVERIFIED** | Gated Gemma terms; obligations/restrictions not legally reviewed | BF16 published; no approved Android int8 conversion | Card names WebLI, CC3M derivatives, OpenImages and WIT; underlying rights not audited | **do not use** pending legal/runtime gates |
+| Gemma 3n E2B | Dependency closure **UNVERIFIED** | Gated Gemma terms; accepted text/redistribution plan absent | Advertised low-resource, but ATLAS Android/ONNX path untested | 140+ spoken languages is not Dutch-caption proof; data rights **UNVERIFIED** | **on-demand research only** |
+
+Primary upstream evidence:
+
+- Florence-2 [base card](https://huggingface.co/microsoft/Florence-2-base), [pinned MIT licence](https://huggingface.co/microsoft/Florence-2-base/blob/579b82bf58da309400d35772326fbcb4043b811f/LICENSE), and [large card](https://huggingface.co/microsoft/Florence-2-large).
+- SmolVLM2 [256M](https://huggingface.co/HuggingFaceTB/SmolVLM2-256M-Video-Instruct), [500M](https://huggingface.co/HuggingFaceTB/SmolVLM2-500M-Video-Instruct), and [paper](https://arxiv.org/abs/2504.05299). The 256M card calls the language English and checkpoint Apache-2.0; neither proves Dutch quality or dataset admissibility.
+- Moondream [2 repository](https://huggingface.co/vikhyatk/moondream2) and [0.5B documentation](https://docs.moondream.ai/). The latter did not establish an immutable checkpoint/licence here.
+- Qwen [pinned 2.5-VL-3B licence](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/acbce9a6c80e81356680a632166380c8cc1d27ec/LICENSE) and [card](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct).
+- Google [PaliGemma 2 card](https://huggingface.co/google/paligemma2-3b-pt-224), [Gemma terms](https://ai.google.dev/gemma/terms), and [Gemma 3n E2B-it card](https://huggingface.co/google/gemma-3n-E2B-it).
+- ONNX Runtime [quantization](https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html) and [mobile guidance](https://onnxruntime.ai/docs/tutorials/mobile/).
+
+### Dataset licensing
+
+No public photo dataset is admitted. Dataset-level licences may not grant rights in every underlying photo/caption. CAP-1 needs an immutable asset register with source/revision, licence-text hash, copyright/consent basis, annotation terms, allowed use/redistribution and approval owner for every sample.
+
+`protocol.py make-fixtures` creates only geometric PPMs and factual manifests; no downloaded/owner photo. It tests plumbing, **not quality**. Quality is blocked until Legal approves public data or ATLAS commissions consented images kept outside Git.
+
+## Safe reproducible protocol
+
+The offline, model-agnostic harness never downloads a model or sends images over a network. A trusted operator supplies an immutable local bundle and adapter. The adapter receives a local path/prompt and emits one JSON object.
+
+1. Record hardware/OS/CPU, Python/ORT; model repo/revision, file and licence SHA-256; conversion command/container digest, opset, quantization and calibration provenance.
+2. Generate synthetic fixtures. `check-manifest` rejects symlinks, missing/mismatched hashes, duplicates, non-absolute paths and absent rights metadata.
+3. Convert in isolation. Compare source and int8 on approved parity data before timing. Static int8 needs licensed calibration data. Never silently partition to remote inference.
+4. Run the local adapter with network externally disabled, deterministic decoding, five warm-ups and ≥30 recorded runs/images. Record latency, failures and child peak RSS. Android needs platform memory/energy tooling.
+5. Retain only results permitted by data terms; no private bytes/EXIF. Report n, failures, p50/p95, peak memory, storage, and cold/warm separately.
+
+Canonical commands are in `tools/caption_bench/README.md`. They are protocol, not proof a VLM ran.
+
+### Quality, Dutch and hallucination
+
+Pre-approve and freeze ≥100 licensed images stratified across people/no-people, indoor/outdoor, low light, occlusion, text, food, animals and negatives. Two Dutch-fluent raters independently score main entity/action/setting (0–2 each), Dutch requested/grammatical/idiomatic (0–2 each), and flag invented identity/relationship, object, count, action, location, OCR, sensitive attribute and unsupported certainty. Also flag unsupported names/sensitive inference.
+
+Resolve disagreements blind to model; report raw counts, Wilson 95% intervals and inter-rater agreement. Model output is not ground truth. CIDEr requires licensed references; SigLIP agreement is secondary and misses hallucinations. Publish examples only when redistribution permits. CAP-0 has **zero examples/scores: NOT MEASURED**.
+
+## Device-free S24+ estimate bands
+
+No numeric S24+ runtime/RAM estimate is defensible without a validated graph and measured reference. Conditional bands:
+
+| Band | Assumption |
+|---|---|
+| optimistic | entire int8 graph on one accelerator, no fallback, resident weights |
+| central | mixed accelerator/CPU with bounded copies, thermal steady state |
+| pessimistic | CPU fallback/token loop, cold load, memory pressure, throttling; possibly OOM |
+
+For Exynos 2400 and Snapdragon 8 Gen 3, latency, RAM, energy and throughput are **UNVERIFIED / NOT MEASURED**. CAP-1 must measure both physical variants at controlled temperature/battery. Do not convert chipset TOPS or desktop latency into phone seconds. Capture p50/p95, cold/warm load, first/per-token time, peak PSS/RSS, joules/image, throttling and delegate trace.
+
+## Hypothetical 150,000-image sensitivity
+
+Let `N=150000`, measured throughput `r` images/hour charging, retry multiplier `q≥1`, caption bytes `c`, row/index overhead `m`, model bytes `W`:
+
+- initial hours = `N*q/r`; storage = `W + N*(c+m)`;
+- per-new-image hours = `q/r`; daily charging hours for `d` arrivals = `d*q/r`.
+
+Publish low/central/high grids using **measured** CAP-1 `r,q,c,m,W`, not guesses. No second visual index: CAP-2 must join derived text to existing photo identity and version/model/prompt hash with dedupe/invalidation. Work must be opt-in, charging-only by default, resumable, thermal-aware and deletable.
+
+## Runtime limits and gates
+
+A generative VLM includes vision preprocessing, encoder/projector, tokenizer, KV-cache decoder, sampling and postprocessing. An ONNX badge does not prove parity/Android support. Dynamic shapes, int64, custom ops/code and KV growth can cause fallback or infeasibility; weight int8 does not imply activation int8/delegation.
+
+Downloads require explicit consent, immutable revision/SHA-256, integrity/resume, notices, disk check and deletion. Captions are fallible derived personal data: local-only, opt-in, deletable, no identity/sensitive inference, non-AI fallback.
+
+- **CAP-1 scanner/runtime:** approved artefact/data register; pinned conversion; host parity/int8; physical Exynos/Snapdragon runs; Dutch/hallucination review; thermal/energy/storage and local-only proof.
+- **CAP-2 search:** thresholds; existing-index schema; versioning, dedupe/invalidation, deletion, ranking/false-positive evaluation.
+- **CAP-3 Details/TalkBack:** generated label; edit/remove/report; uncertainty/accessibility wording; latency fallback; privacy/consent.
+
+Only after all gates and independent legal/security/privacy review may Research move to Planned.
+
+## Completion and blockers
+
+- [x] Compared every requested family; separated code, weights, runtime and data.
+- [x] Added offline validation, synthetic smoke fixtures, orchestrator and capacity calculator.
+- [ ] Weights/hashes, conversion, host int8 — **NOT DONE / NOT MEASURED**.
+- [ ] Approved quality set, examples, Dutch/hallucinations — **BLOCKED / NOT MEASURED**.
+- [ ] Physical S24+ latency/RAM/energy — **NOT MEASURED**; no device.
+- [ ] Capability map — unchanged; evidence does not support Planned.
+
+Live-main instructions were inaccessible: this checkout has no remote/main ref, and `git show origin/main:{AGENTS.md,docs/agents/codex-wake.md,roles/dev.md}` failed `fatal: invalid object name 'origin/main'`. Model execution was intentionally not attempted without approved artefacts/data, conversion, or devices.
