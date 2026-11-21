@@ -93,6 +93,25 @@ guessed into policy refusals.
 
 Providers differ in moderation and legal/licence constraints. ATLAS does not impose an additional content-category filter on the local gallery or promise that any external provider accepts all lawful requests. Benchmark refusal rate independently of output quality using synthetic/licensed inputs; do not put free-text prompts or media in logs, crash reports or analytics.
 
+### Delivery, recovery and cost scope (AIE-20 contract, [#431](https://github.com/LPStruiksma/atlas-gallery/issues/431))
+
+These typed fields let the editor say exactly what happened to a request that may cost money. It never parses free text, a display name or `supportsAsync`.
+
+- **Failure phase (transport).** `EditHttpResult.Failed.phase` is `BEFORE_BODY` only when no attempt of the request got past opening the connection: refused locally, DNS, connect or TLS failed, or the deadline passed first. Everything else, including an unknown phase, is `AFTER_BODY_OR_UNKNOWN`.
+- **Delivery (provider).** `EditOutcome.Failed.delivery` can be one of three values:
+  - `NOT_SENT`: proven never sent. This is the only case where the editor may say "Nothing was sent".
+  - `ANSWERED`: the service answered with a definite 4xx (not 408), so it did not process the edit.
+  - `UNCERTAIN`: the default, so an adapter that doesn't say fails closed. Every failure after a queue provider accepted the request is uncertain, even a 4xx on a status call.
+- **Rate limit is not credit.** `BILLING` (HTTP 402) leads to "out of credit". `QUOTA` (HTTP 429, Gemini `RESOURCE_EXHAUSTED`) is its own rate-limit state, with a manual retry only (`engine/AiEditIssue.kt`).
+- **Remote recovery.** `ProviderCapabilities.remoteRecovery` is separate from `supportsAsync`:
+  - Gemini is `NONE`. It makes one synchronous `generateContent` POST, so there is nothing to look up later.
+  - fal is `QUERY_BY_PERSISTED_ID`.
+  - `submit(request, journal)` calls `SubmitJournal.beforeSend()` immediately before the paid request. For fal it then calls `remoteAccepted(RemoteHandle)` with the validated `request_id`, bound to the provider id and endpoint, before the first status call.
+  - `resume(handle)` follows that id with status and result calls only, never a POST. It refuses a handle for another provider or endpoint.
+  - If the key is gone, or the lookup answers 401, 403 or 404, the result is `FailureKind.CANNOT_CHECK`, never a wrong-key state.
+- **Key binding.** The editor stores `KeyFingerprint.of(salt, key)` with the handle: the first 8 bytes of SHA-256 over a per-install random salt plus the key. It never stores the key itself, and only a matching fingerprint may "Check again".
+- **Cost scope.** `CostEstimate` carries `scope` (`TOTAL`, `OUTPUT_ONLY` or `PARTIAL`), `source` and `observedOn`, and the amount stays in the provider's currency. `CostDisclosure.of` falls back to the unknown-price path if any of these is missing. Gemini list prices are `OUTPUT_ONLY` (input is charged on top). fal has no verified price.
+
 ## Credentials and network options
 
 - **Direct BYOK on phone:** user configures a provider credential, used only for their chosen edit endpoint. Protect the credential with an Android Keystore-backed per-install key and encrypted app-private storage. **Exclude both stored ciphertext and key material from all Android backups/restore transfers**; reconfiguration after restore is preferable to leaked credentials. Never embed keys in the APK, repository, URL/query strings, usage export ([#173](https://github.com/LPStruiksma/atlas-gallery/issues/173)), logs, crash reports or telemetry; redact Authorization headers and endpoint secrets from diagnostics. A compromised phone/app process can still misuse a locally stored key; Keystore does not turn BYOK into a server-held secret.

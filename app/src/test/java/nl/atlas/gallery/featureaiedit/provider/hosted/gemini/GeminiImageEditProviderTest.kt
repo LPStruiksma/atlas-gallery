@@ -402,3 +402,66 @@ class GeminiImageEditProviderTest {
         assertTrue(GeminiModel.FLASH.aspectRatios.any { it.label == "1:8" })
     }
 }
+
+/** #431 rev 4 row 6 and addendum A1/A3: synchronous provider, send boundary, typed output-only price. */
+class GeminiRecoveryAndCostTest {
+    private class Journal(private val allow: Boolean) : nl.atlas.gallery.featureaiedit.provider.SubmitJournal {
+        var sends = 0
+        var accepted = 0
+        override fun beforeSend(): Boolean { sends++; return allow }
+        override fun remoteAccepted(handle: nl.atlas.gallery.featureaiedit.provider.RemoteHandle) { accepted++ }
+    }
+
+    @Test fun synchronousProviderHasNoRemoteRecoveryAndNoResume() {
+        GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
+            val provider = h.provider()
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.RemoteRecovery.NONE, provider.capabilities().remoteRecovery)
+            assertTrue("supportsAsync is local only", provider.capabilities().supportsAsync)
+            assertNull(provider.resume(nl.atlas.gallery.featureaiedit.provider.RemoteHandle(provider.id, "x", "y")))
+        }
+    }
+
+    @Test fun journalRunsOnceBeforeThePostAndNeverGetsARemoteId() {
+        GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
+            val journal = Journal(allow = true)
+            assertTrue(h.provider().submit(request(), journal).await() is EditOutcome.Success)
+            assertEquals(1, journal.sends)
+            assertEquals(0, journal.accepted)
+        }
+        GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
+            assertEquals(EditOutcome.Cancelled, h.provider().submit(request(), Journal(allow = false)).await())
+            assertTrue(h.server.requests.isEmpty())
+        }
+    }
+
+    @Test fun localFailuresAreProvenNotSentAndLostRepliesAreUncertain() {
+        GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
+            val noKey = h.provider(key = null).submit(request()).await() as EditOutcome.Failed
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.NOT_SENT, noKey.delivery)
+        }
+        GeminiHarness { FakeResponse(200, dropConnection = true) }.use { h ->
+            val lost = h.provider().submit(request()).await() as EditOutcome.Failed
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.UNCERTAIN, lost.delivery)
+        }
+        GeminiHarness { FakeResponse.json("""{"error":{"status":"RESOURCE_EXHAUSTED"}}""", 429) }.use { h ->
+            val limited = h.provider().submit(request()).await() as EditOutcome.Failed
+            assertEquals(FailureKind.QUOTA, limited.kind)
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.Delivery.ANSWERED, limited.delivery)
+        }
+    }
+
+    @Test fun pricesAreTypedOutputOnlyWithSourceAndDateAndNeverATotal() {
+        GeminiHarness { FakeResponse.json(successReply()) }.use { h ->
+            val cost = h.provider().estimateCost(request(OutputSpec(2048, 1536)))!!
+            assertEquals(nl.atlas.gallery.featureaiedit.provider.CostScope.OUTPUT_ONLY, cost.scope)
+            assertEquals(java.time.LocalDate.of(2026, 11, 15), cost.observedOn)
+            assertTrue(cost.source!!.contains("[G2]"))
+            val shown = nl.atlas.gallery.featureaiedit.provider.CostDisclosure.of(cost)
+            assertTrue(shown is nl.atlas.gallery.featureaiedit.provider.CostDisclosure.Partial)
+            assertEquals("US$0.11", (shown as nl.atlas.gallery.featureaiedit.provider.CostDisclosure.Partial).amount)
+            for (model in GeminiModel.CATALOG) for (size in model.sizes) {
+                assertTrue(size.price == null || size.price!!.scope == nl.atlas.gallery.featureaiedit.provider.CostScope.OUTPUT_ONLY)
+            }
+        }
+    }
+}
