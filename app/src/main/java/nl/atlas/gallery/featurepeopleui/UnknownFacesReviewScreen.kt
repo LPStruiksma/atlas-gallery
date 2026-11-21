@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.PaddingValues
+import nl.atlas.gallery.featuredesign.atlasImePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,6 +39,9 @@ import androidx.compose.runtime.NonSkippableComposable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,6 +49,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
@@ -149,10 +157,32 @@ fun UnknownFacesReviewScreen(
         }
     }
 
+    // #448: with the keyboard open on a short viewport (landscape), the full
+    // sticky faces header would cover the name form. It then shrinks to one
+    // row of faces first. Both reads sit inside derivedStateOf, so only a
+    // flip of the boolean recomposes, never each keyboard animation frame
+    // (the #411 lesson: per-frame recomposition lost a Create tap).
+    val reviewImeInsets = WindowInsets.ime
+    val reviewDensity = LocalDensity.current
+    var listHeightPx by remember { mutableIntStateOf(0) }
+    // #448: the sticky header's height. The name form asks to be shown below
+    // it, not merely inside the list, or in landscape the header covers the field.
+    val stickyHeaderPx = remember { mutableIntStateOf(0) }
+    val compactHeader by remember(reviewDensity) {
+        derivedStateOf {
+            reviewImeInsets.getBottom(reviewDensity) > 0 && listHeightPx > 0 &&
+                listHeightPx < with(reviewDensity) { COMPACT_HEADER_BELOW.roundToPx() }
+        }
+    }
     key(ReviewReferenceKey(current), selectionScope,
         currentPermissionEpoch, currentSourceGeneration) {
         LazyColumn(
-            modifier = modifier.fillMaxSize().imePadding().testTag("atlas-unknown-face-review-screen"),
+            // #448: atlasImePadding, not imePadding: inside the app scaffold the
+            // tab pill's padding is already applied, and adding the full IME inset
+            // on top left a 350 px dead band above the keyboard on the S24+.
+            modifier = modifier.fillMaxSize().atlasImePadding()
+                .onSizeChanged { listHeightPx = it.height }
+                .testTag("atlas-unknown-face-review-screen"),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -193,7 +223,9 @@ fun UnknownFacesReviewScreen(
                     visiblePeople.clusters.unknownClusters, showSmallGroups)
                 shownGroups.forEachIndexed { index, group ->
                     stickyHeader {
-                        UnknownGroupHeader(group, clusterFacePreview)
+                        Box(Modifier.onSizeChanged { stickyHeaderPx.intValue = it.height }) {
+                            UnknownGroupHeader(group, clusterFacePreview, compact = compactHeader)
+                        }
                     }
                     item {
                         UnknownIdentityGroupCard(
@@ -203,7 +235,8 @@ fun UnknownFacesReviewScreen(
                             onAction = ::sendPeopleDecision,
                             resolveDestination = ::resolveDestination,
                             destinationTagPrefix = "atlas-group-${index + 1}-destination",
-                            preview = clusterFacePreview
+                            preview = clusterFacePreview,
+                            stickyHeaderPx = { stickyHeaderPx.intValue }
                         )
                     }
                 }
@@ -343,6 +376,16 @@ fun UnknownFacesReviewScreen(
 }
 
 /**
+ * #448: below this list height, with the keyboard open, the sticky faces
+ * header shrinks to one row. Portrait S24+ with the keyboard open has about
+ * 460 dp and keeps the full header; landscape has about 190 dp.
+ */
+private val COMPACT_HEADER_BELOW = 360.dp
+
+/** #448 brief: the gap kept between Create and the keyboard's top edge. */
+private val NAME_FORM_KEYBOARD_MARGIN = 16.dp
+
+/**
  * Compact, persistent context while scrolling or using the keyboard.
  * Only positional semantics are exported; previews are provided by the live,
  * grant-authorized host and are reset by the outer review reference key.
@@ -350,10 +393,28 @@ fun UnknownFacesReviewScreen(
 @Composable
 private fun UnknownGroupHeader(
     group: UnknownFaceCluster,
-    preview: @Composable (NativeFaceObservationId) -> Unit
+    preview: @Composable (NativeFaceObservationId) -> Unit,
+    compact: Boolean = false
 ) {
     var showAll by remember(group) { mutableStateOf(false) }
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp,
+        modifier = Modifier.testTag(
+            if (compact) "atlas-unknown-group-header-compact" else "atlas-unknown-group-header")) {
+        if (compact) {
+            // #448: one row, same faces and the same "See all faces" action.
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                group.members.take(6).forEachIndexed { index, face ->
+                    Box(Modifier.size(44.dp).testTag("atlas-group-face-${index + 1}")) {
+                        preview(face)
+                    }
+                }
+                TextButton(onClick = { showAll = true }) {
+                    Text("See all faces")
+                }
+            }
+        } else
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -413,7 +474,8 @@ private fun UnknownIdentityGroupCard(
     onAction: (PeopleReviewAction) -> Unit,
     resolveDestination: (List<NativePersonAlbum>, Int?, PersonKey?) -> PersonKey?,
     destinationTagPrefix: String,
-    preview: @Composable (NativeFaceObservationId) -> Unit
+    preview: @Composable (NativeFaceObservationId) -> Unit,
+    stickyHeaderPx: () -> Int = { 0 }
 ) {
     var name by remember(selectionScope, group) { mutableStateOf("") }
     var tooLong by remember(selectionScope, group) { mutableStateOf(false) }
@@ -435,6 +497,11 @@ private fun UnknownIdentityGroupCard(
     val duplicates = if (cleanedName.isBlank()) emptyList() else albums.withIndex()
         .filter { it.value.name.equals(cleanedName, ignoreCase = true) }
     val nameFormView = remember { BringIntoViewRequester() }
+    // #448: the name form's size, so the request can keep a margin under Create.
+    var nameFormSize by remember { mutableStateOf(IntSize.Zero) }
+    // #448: where the name field starts inside the form, so the request can
+    // keep the field (not only the form) clear of the sticky header.
+    var nameFieldTop by remember { mutableFloatStateOf(0f) }
     var nameFocused by remember { mutableStateOf(false) }
     // #394/#409: the keyboard can take far longer than NAME_FORM_SETTLE_MS to
     // appear (about 2 s on the CI emulator). A one-shot bringIntoView then ran
@@ -448,10 +515,20 @@ private fun UnknownIdentityGroupCard(
     val density = LocalDensity.current
     LaunchedEffect(nameFocused, duplicates.isEmpty()) {
         if (nameFocused) {
-            snapshotFlow { imeInsets.getBottom(density) }.collectLatest {
+            // The header height is read here too: it shrinks to one row once
+            // the keyboard is up in landscape, and the request follows it.
+            snapshotFlow { imeInsets.getBottom(density) to stickyHeaderPx() }.collectLatest {
+                (_, headerPx) ->
                 // Let the keyboard inset settle first, then show the field and its action.
                 delay(NAME_FORM_SETTLE_MS)
-                nameFormView.bringIntoView()
+                // #448 brief: Create's bottom stays at least 16 dp above the
+                // keyboard. Ask for the form plus that margin below it, and, above
+                // the field, room for the sticky header so it never covers the
+                // field. On a short viewport "Who is this?" may sit under the header.
+                val margin = with(density) { NAME_FORM_KEYBOARD_MARGIN.toPx() }
+                val top = minOf(0f, nameFieldTop - headerPx)
+                nameFormView.bringIntoView(Rect(0f, top, nameFormSize.width.toFloat(),
+                    nameFormSize.height + margin))
             }
         }
     }
@@ -470,7 +547,8 @@ private fun UnknownIdentityGroupCard(
     ) {
         // #266: while typing, keep the name field and its Create action above the
         // keyboard. The sticky group header keeps the faces visible on top.
-        Column(Modifier.bringIntoViewRequester(nameFormView),
+        Column(Modifier.bringIntoViewRequester(nameFormView)
+            .onSizeChanged { nameFormSize = it },
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Who is this?", style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(
@@ -483,6 +561,7 @@ private fun UnknownIdentityGroupCard(
             isError = tooLong,
             supportingText = if (tooLong) { { Text("Use a shorter name.") } } else null,
             modifier = Modifier.fillMaxWidth().testTag("atlas-group-name")
+                .onPlaced { nameFieldTop = it.positionInParent().y }
                 .onFocusChanged { nameFocused = it.isFocused }
         )
         if (duplicates.isNotEmpty()) {
