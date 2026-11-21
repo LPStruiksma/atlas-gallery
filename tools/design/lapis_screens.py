@@ -13,6 +13,7 @@ from lapis_kit import (
     VIEWER_SPHERE,
     Screen,
     justified_rows,
+    placeholder,
     px,
 )
 
@@ -103,13 +104,19 @@ def video_badge(s: Screen, box, dur: str):
     s.d.text((tx + px(12), (b[1] + b[3]) / 2), dur, font=f, fill="#FFFFFF", anchor="lm")
 
 
-def select_sphere(s: Screen, box, n: int | None):
-    """Selection: lapis sphere on the tile corner with a 2 dp white halo + order number."""
-    r = px(12)
-    cx, cy = box[0] + px(8) + r, box[1] + px(8) + r
+def select_sphere(s: Screen, box, n: int | None, r_dp: float = 12, inset_dp: float = 8, target: str = "sphere"):
+    """Selection: lapis sphere on the tile corner with a 2 dp white halo + order number.
+
+    ``target="tile"`` records the whole tile as the touch target as it is (selection mode toggles on a
+    tile tap), so an undersized tile is flagged on the board; ``None`` records nothing."""
+    r = px(r_dp)
+    cx, cy = box[0] + px(inset_dp) + r, box[1] + px(inset_dp) + r
     s.d.rectangle(box, fill=(255, 255, 255, 40))
     s.sphere((cx, cy), r, halo_dp=2, label=str(n) if n else None, label_role="nav")
-    s.target([cx - r, cy - r, cx + r, cy + r], f"select {n}")
+    if target == "sphere":
+        s.target([cx - r, cy - r, cx + r, cy + r], f"select {n}")
+    elif target == "tile":
+        s.target(box, f"select {n}", actual=True)
 
 
 def fast_thumb(s: Screen, frac: float, month: str, y0: int, y1: int, dragging=False):
@@ -604,30 +611,382 @@ def _nl(n: int) -> str:
     return f"{n:,}".replace(",", ".")
 
 
-def anchored_squares(s: Screen, cols: int, anchor_center, anchor_seed: int, y_min: int, seed: int = 5,
-                     y_max: int | None = None) -> None:
-    """Square tiles positioned so one tile is centred on ``anchor_center`` (pinch anchor)."""
-    y_max = y_max or s.bottom
+# ---------------------------------------------------------------------------
+# L8 pinch geometry (#836). Pure functions, no drawing: the board and the tests read the same numbers.
+#
+# Model: the "Pictures" title stays fixed; the timeline scrolls beneath it inside a viewport from the
+# title bottom to the gesture inset (the slab floats over the content). Every layout places media keys
+# in content coordinates; a scroll offset maps them to the screen. A pinch keeps the media key under
+# the focal point (the two-finger centroid), restores its vertical position by choosing the new scroll
+# offset, and reports whatever cannot be kept: an edge-aligned square grid fixes every key's column,
+# so the horizontal position is quantized and the key may land away from the pointer.
+# ---------------------------------------------------------------------------
+from dataclasses import dataclass, field as _field  # noqa: E402
+from datetime import date as _date  # noqa: E402
+
+DAY_LABELS = ["Saturday 14 November", "Friday 13 November", "Thursday 12 November", "Wednesday 11 November",
+              "Tuesday 10 November", "Monday 9 November", "Sunday 8 November", "Saturday 7 November",
+              "Friday 6 November", "Thursday 5 November", "Wednesday 4 November", "Tuesday 3 November",
+              "Monday 2 November", "Sunday 1 November"]
+LIB_RATIOS = [1.33, 0.75, 1.5, 1.0, 0.56, 1.78, 0.8, 2.4, 0.66, 1.25]
+LIB_VIDEOS = frozenset({6, 12, 21, 30, 44, 86, 97})
+
+
+@dataclass(frozen=True)
+class Item:
+    key: int
+    ratio: float
+    day: str
+    month: str  # "November 2026"
+    video: bool = False
+
+
+def synthetic_library(n_nov: int = 268, n_sep: int = 702) -> list[Item]:
+    """Newest first. Keys 0-15 are the A1 day rows (DAY_RATIOS); the rest are seeded synthetic shapes.
+    Counts follow the L6 atlas bars (November 268, October 0, September 702)."""
+    r = random.Random(836)
+    items: list[Item] = []
+    split = [9, 7]
+    per_day = []
+    left = n_nov - sum(split)
+    days_left = len(DAY_LABELS) - len(split)
+    for i in range(days_left):
+        c = left // (days_left - i)
+        per_day.append(c)
+        left -= c
+    counts = split + per_day
+    k = 0
+    for day, c in zip(DAY_LABELS, counts):
+        for _ in range(c):
+            ratio = DAY_RATIOS[k] if k < len(DAY_RATIOS) else r.choice(LIB_RATIOS)
+            items.append(Item(k, ratio, day, "November 2026", k in LIB_VIDEOS))
+            k += 1
+    for j in range(n_sep):
+        d = _date(2026, 9, max(1, 30 - j // 24))
+        items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} September", "September 2026"))
+        k += 1
+    return items
+
+
+@dataclass
+class Layout:
+    kind: str  # "day", "month" or "year"
+    cols: int  # 0 for day
+    rects: dict[int, tuple[float, float, float, float]]  # key -> content rect
+    headers: list[tuple[float, str]]  # (content y of header band top, label)
+    height: float
+    header_h: float
+
+
+def header_h_for(s: Screen) -> int:
+    """Date/section header band height, as drawn by day_rows() and square_grid()."""
+    return s.line_h("date") + px(16)
+
+
+def day_layout(items: list[Item], header_h: float, target_dp: int = 118) -> Layout:
+    rects: dict[int, tuple] = {}
+    headers: list[tuple[float, str]] = []
+    y = 0.0
+    groups: list[list[Item]] = []
+    for it in items:
+        if not groups or groups[-1][0].day != it.day:
+            groups.append([])
+        groups[-1].append(it)
+    for grp in groups:
+        headers.append((y, grp[0].day))
+        y += header_h
+        for row in justified_rows([it.ratio for it in grp], DEVICE_W, px(target_dp), px(GAP)):
+            x = 0.0
+            h = row[0][2]
+            for j, w, _h in row:
+                rects[grp[j].key] = (x, y, x + w, y + h)
+                x += w + px(GAP)
+            y += h + px(GAP)
+    return Layout("day", 0, rects, headers, y, header_h)
+
+
+def grid_layout(items: list[Item], cols: int, header_h: float) -> Layout:
+    """Edge-aligned square grid, one section per month: a key's column is its index in the month mod cols."""
     tile = (DEVICE_W - px(GAP) * (cols - 1)) / cols
     step = tile + px(GAP)
-    acx, acy = anchor_center
-    acol = min(cols - 1, int(acx // step))
-    top0 = acy - tile / 2
-    first_row = -int((top0 - y_min) // step) - 1
-    r = first_row
-    while True:
-        y0 = top0 + r * step
-        if y0 >= y_max:
-            break
-        if y0 + tile > y_min:
-            for c in range(cols):
-                x0 = c * step
-                box = (x0, max(y0, y_min), x0 + tile, y0 + tile)
-                if box[3] - box[1] < 2:
-                    continue
-                is_anchor = r == 0 and c == acol
-                ph_seed = anchor_seed if is_anchor else seed * 53 + (r + 50) * cols + c
-                s.photo(box, ph_seed)
-                if is_anchor:
-                    s.d.rectangle((x0, y0, x0 + tile, y0 + tile), outline=ANNO, width=px(3))
-        r += 1
+    rects: dict[int, tuple] = {}
+    headers: list[tuple[float, str]] = []
+    y = 0.0
+    month, i = None, 0
+    for it in items:
+        if it.month != month:
+            y += (i + cols - 1) // cols * step  # rows of the previous month
+            month, i = it.month, 0
+            label = it.month if cols <= 4 else it.month[:3] + " " + it.month.split()[-1]
+            headers.append((y, label))
+            y += header_h
+        c, r = i % cols, i // cols
+        rects[it.key] = (c * step, y + r * step, c * step + tile, y + r * step + tile)
+        i += 1
+    y += (i + cols - 1) // cols * step
+    return Layout("month" if cols <= 4 else "year", cols, rects, headers, y, header_h)
+
+
+@dataclass(frozen=True)
+class Viewport:
+    top: float  # screen y of the first content pixel (title bottom)
+    bottom: float  # screen y where content stops (gesture inset)
+
+    @property
+    def h(self) -> float:
+        return self.bottom - self.top
+
+
+def max_scroll(layout: Layout, vp: Viewport) -> float:
+    return max(0.0, layout.height - vp.h)
+
+
+def to_screen(rect, scroll: float, vp: Viewport):
+    x0, y0, x1, y1 = rect
+    return (x0, y0 - scroll + vp.top, x1, y1 - scroll + vp.top)
+
+
+def centre(rect) -> tuple[float, float]:
+    return ((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
+
+
+@dataclass
+class PinchStep:
+    key: int
+    focal: tuple[float, float]
+    src: tuple  # screen rect before
+    dst: tuple  # screen rect after
+    scroll: float  # destination scroll offset
+    wanted_scroll: float  # before clamping to [0, max]
+    clamped: str  # "", "top" or "bottom"
+    kind: str = ""
+    extra: dict = _field(default_factory=dict)
+
+    @property
+    def dx(self) -> float:
+        return centre(self.dst)[0] - centre(self.src)[0]
+
+    @property
+    def dy(self) -> float:
+        return centre(self.dst)[1] - centre(self.src)[1]
+
+    @property
+    def hit(self) -> bool:
+        fx, fy = self.focal
+        return self.dst[0] <= fx <= self.dst[2] and self.dst[1] <= fy <= self.dst[3]
+
+    @property
+    def y_residual(self) -> float:
+        """Screen distance between the focal y and the same relative height inside the new rect."""
+        v = rel_v(self.src, self.focal[1])
+        return self.dst[1] + v * (self.dst[3] - self.dst[1]) - self.focal[1]
+
+
+def rel_v(rect, fy: float) -> float:
+    return min(1.0, max(0.0, (fy - rect[1]) / (rect[3] - rect[1])))
+
+
+def pinch(src_screen_rect, focal, key: int, dst: Layout, vp: Viewport) -> PinchStep:
+    """Destination scroll that puts ``key`` at the same relative height under the focal y."""
+    v = rel_v(src_screen_rect, focal[1])
+    r = dst.rects[key]
+    want_top_screen = focal[1] - v * (r[3] - r[1])
+    wanted = r[1] - (want_top_screen - vp.top)
+    hi = max_scroll(dst, vp)
+    scroll = min(hi, max(0.0, wanted))
+    clamped = "top" if wanted < 0 else ("bottom" if wanted > hi else "")
+    return PinchStep(key, focal, tuple(src_screen_rect), to_screen(r, scroll, vp), scroll, wanted, clamped, dst.kind)
+
+
+def key_at(layout: Layout, scroll: float, vp: Viewport, point) -> int | None:
+    for k, r in layout.rects.items():
+        x0, y0, x1, y1 = to_screen(r, scroll, vp)
+        if x0 <= point[0] <= x1 and y0 <= point[1] <= y1 and vp.top <= point[1] <= vp.bottom:
+            return k
+    return None
+
+
+def same_point_columns(cols_a: int = 4, cols_b: int = 8) -> list[int]:
+    """Columns of the finer grid whose span lies inside the coarser grid's column for the same key.
+    Only for these can one stationary focal point sit on the same key in both grids."""
+    ta = (DEVICE_W - px(GAP) * (cols_a - 1)) / cols_a
+    tb = (DEVICE_W - px(GAP) * (cols_b - 1)) / cols_b
+    out = []
+    for c in range(cols_b):
+        a0 = (c % cols_a) * (ta + px(GAP))
+        b0 = c * (tb + px(GAP))
+        if a0 <= b0 and b0 + tb <= a0 + ta:
+            out.append(c)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# L8 drawing on top of the pinch geometry
+# ---------------------------------------------------------------------------
+def key_seed(key: int) -> int:
+    """Same synthetic picture for a media key at every zoom (day_rows() uses seed 5)."""
+    return 5 * 31 + key
+
+
+def key_photo(s: Screen, rect, item: Item, clip: tuple[float, float] | None = None) -> None:
+    """Draw ``item`` into ``rect``: the whole picture when the rect has its real ratio (day), a centre
+    crop of the same picture when the rect is square (month/year). Clipped vertically to ``clip``."""
+    x0, y0, x1, y1 = rect
+    w, h = x1 - x0, y1 - y0
+    if w < 1 or h < 1:
+        return
+    if abs(w / h - item.ratio) < 0.02:
+        gw, gh = w, h
+    elif item.ratio > w / h:
+        gw, gh = h * item.ratio, h
+    else:
+        gw, gh = w, w / item.ratio
+    gw, gh = max(1, int(round(gw))), max(1, int(round(gh)))
+    ph = placeholder(gw, gh, key_seed(item.key))
+    ox, oy = (gw - w) / 2, (gh - h) / 2
+    top, bot = (y0, y1) if clip is None else (max(y0, clip[0]), min(y1, clip[1]))
+    if bot - top < 1:
+        return
+    crop = ph.crop((int(round(ox)), int(round(oy + top - y0)), int(round(ox + w)), int(round(oy + bot - y0))))
+    s.img.paste(crop, (int(round(x0)), int(round(top))))
+
+
+def video_glyph(s: Screen, box) -> None:
+    """Compact video mark for 46 dp year tiles, where a duration label cannot fit."""
+    r = px(9)
+    cx, cy = box[2] - px(4) - r, box[3] - px(4) - r
+    s.d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(0, 0, 0, 150))
+    s.d.polygon([(cx - px(3), cy - px(4.5)), (cx - px(3), cy + px(4.5)), (cx + px(4.5), cy)], fill="#FFFFFF")
+
+
+def draw_layout(s: Screen, items: dict[int, Item], layout: Layout, scroll: float, vp: Viewport, *,
+                selected: dict[int, int] | None = None, placeholders: bool = False,
+                outline: int | None = None) -> dict[int, tuple]:
+    """Draw the visible part of ``layout`` and return key -> screen rect for what is visible."""
+    vis: dict[int, tuple] = {}
+    for hy, label in layout.headers:
+        y = hy - scroll + vp.top
+        if vp.top - layout.header_h < y < vp.bottom:
+            s.text((px(SIDE), y + px(10)), label, "date")
+    year = layout.kind == "year"
+    for k, r in layout.rects.items():
+        sr = to_screen(r, scroll, vp)
+        if sr[3] <= vp.top or sr[1] >= vp.bottom:
+            continue
+        vis[k] = sr
+        if placeholders:
+            s.d.rectangle([sr[0], max(sr[1], vp.top), sr[2], min(sr[3], vp.bottom)], fill=s.t["surface"])
+        else:
+            key_photo(s, sr, items[k], (vp.top, vp.bottom))
+        if items[k].video and sr[3] < vp.bottom:
+            video_glyph(s, sr) if year else video_badge(s, sr, "0:14" if layout.kind != "day" else "1:02")
+        if selected and k in selected and sr[1] >= vp.top:
+            if layout.kind == "day":
+                select_sphere(s, sr, selected[k])
+            else:
+                select_sphere(s, sr, selected[k], r_dp=10 if year else 12, inset_dp=4 if year else 8,
+                              target="tile")
+    if outline is not None and outline in vis:
+        s.d.rectangle(vis[outline], outline=ANNO, width=px(3))
+    return vis
+
+
+def thumb_frac(layout: Layout, scroll: float, vp: Viewport) -> float:
+    hi = max_scroll(layout, vp)
+    return 0.0 if hi <= 0 else min(1.0, max(0.0, scroll / hi))
+
+
+def crosshair(s: Screen, p, label: str | None = None) -> None:
+    x, y = p
+    r = px(9)
+    s.d.line([x - r * 2, y, x - r / 2, y], fill=ANNO, width=px(2))
+    s.d.line([x + r / 2, y, x + r * 2, y], fill=ANNO, width=px(2))
+    s.d.line([x, y - r * 2, x, y - r / 2], fill=ANNO, width=px(2))
+    s.d.line([x, y + r / 2, x, y + r * 2], fill=ANNO, width=px(2))
+    s.d.ellipse([x - r / 3, y - r / 3, x + r / 3, y + r / 3], fill=ANNO)
+    if label:
+        f = s.fonts.get("sans", 700, px(11))
+        anchor = "rm" if x > DEVICE_W * 0.6 else "lm"
+        tx = x - r * 2.4 if anchor == "rm" else x + r * 2.4
+        bb = s.d.textbbox((tx, y - px(14)), label, font=f, anchor=anchor)
+        s.d.rectangle([bb[0] - px(3), bb[1] - px(2), bb[2] + px(3), bb[3] + px(2)], fill=(255, 255, 255, 225))
+        s.d.text((tx, y - px(14)), label, font=f, fill=ANNO, anchor=anchor)
+
+
+def anno_card(s: Screen, lines: list[str], y_bottom: float) -> None:
+    """White annotation card (magenta text) that sits above the slab; part of the annotation layer."""
+    f = s.fonts.get("sans", 600, px(11))
+    lh = px(15)
+    h = lh * len(lines) + px(12)
+    y0 = y_bottom - h
+    s.d.rounded_rectangle([px(8), y0, DEVICE_W - px(8), y_bottom], radius=px(8), fill=(255, 255, 255, 236),
+                          outline=ANNO, width=px(1.5))
+    for i, ln in enumerate(lines):
+        s.d.text((px(16), y0 + px(6) + i * lh), ln, font=f, fill=ANNO)
+
+
+def fmt_rect(r) -> str:
+    return f"({r[0]:.0f},{r[1]:.0f})-({r[2]:.0f},{r[3]:.0f})"
+
+
+def fmt_pt(p) -> str:
+    return f"({p[0]:.0f}, {p[1]:.0f})"
+
+
+# ---------------------------------------------------------------------------
+# L8 storyboard scenarios: computed once, drawn by the board, asserted by the tests
+# ---------------------------------------------------------------------------
+MAIN_KEY = 88  # Monday 9 November; left day edge, column 0 in month and year, deep enough to scroll freely
+MAIN_TOP_FRAC = 0.45  # day frame scrolled so the main key's top sits at 45 % of the viewport
+INTERIOR_KEY = 83  # same day frame, a wide photo whose month/year columns lie away from its day position
+SELECTED = {80: 1, 86: 2, 93: 3}  # ordered selection carried through every zoom (86 is a video)
+
+
+def l8_env(s: Screen):
+    """Layouts and viewport for a screen at its font scale. The title is measured on a scratch screen."""
+    probe = Screen(s.fonts, theme=s.theme, font_scale=s.font_scale)
+    vp = Viewport(title(probe, "Pictures"), probe.bottom)
+    hh = header_h_for(probe)
+    lib = synthetic_library()
+    lays = {"day": day_layout(lib, hh), "month": grid_layout(lib, 4, hh), "year": grid_layout(lib, 8, hh)}
+    return {it.key: it for it in lib}, lays, vp
+
+
+def storyboard(lays: dict[str, Layout], vp: Viewport) -> dict[str, PinchStep]:
+    day, month, year = lays["day"], lays["month"], lays["year"]
+    out: dict[str, PinchStep] = {}
+    # Main: fingers on the main key at 40 % of its height, x inside its day, month and year columns.
+    s0 = round(day.rects[MAIN_KEY][1] - MAIN_TOP_FRAC * vp.h)
+    r = to_screen(day.rects[MAIN_KEY], s0, vp)
+    f = (70.0, round(r[1] + 0.4 * (r[3] - r[1])))
+    start = PinchStep(MAIN_KEY, f, r, r, s0, s0, "", "day")
+    out["start"] = start
+    out["in_month"] = pinch(r, f, MAIN_KEY, month, vp)
+    out["in_year"] = pinch(out["in_month"].dst, f, MAIN_KEY, year, vp)
+    k_back = key_at(year, out["in_year"].scroll, vp, f)
+    out["out_month"] = pinch(out["in_year"].dst, f, k_back, month, vp)
+    out["out_day"] = pinch(out["out_month"].dst, f, k_back, day, vp)
+    # Interior key: the photo cannot stay under a stationary pointer once columns are fixed.
+    ri = to_screen(day.rects[INTERIOR_KEY], s0, vp)
+    fi = (round(centre(ri)[0]), round(centre(ri)[1]))
+    out["int_start"] = PinchStep(INTERIOR_KEY, fi, ri, ri, s0, s0, "", "day")
+    out["int_month"] = pinch(ri, fi, INTERIOR_KEY, month, vp)
+    out["int_year"] = pinch(out["int_month"].dst, fi, INTERIOR_KEY, year, vp)
+    out["int_month"].extra["key_under_pointer"] = key_at(month, out["int_month"].scroll, vp, fi)
+    out["int_year"].extra["key_under_pointer"] = key_at(year, out["int_year"].scroll, vp, fi)
+    # Top clamp: first photo of the library at day scroll 0.
+    r0 = to_screen(day.rects[0], 0, vp)
+    out["top"] = pinch(r0, (round(centre(r0)[0]), round(centre(r0)[1])), 0, month, vp)
+    # Bottom clamp: last photo of the library with the day timeline at its end.
+    last = max(day.rects)
+    sb = max_scroll(day, vp)
+    rl = to_screen(day.rects[last], sb, vp)
+    out["bottom"] = pinch(rl, (round(centre(rl)[0]), round(rl[1] + 0.2 * (rl[3] - rl[1]))), last, month, vp)
+    out["bottom"].extra["day_scroll"] = sb
+    return out
+
+
+def fmt_d(v: float) -> str:
+    """Signed whole pixels; rounding noise prints as +0, never -0."""
+    r = round(v)
+    return f"{r:+d}" if r else "+0"
