@@ -20,6 +20,8 @@ Reviewed 2026-11-21. “Observed” below means documented platform guidance was
 - Represent people and imagery with abstract synthetic scenes. Names and counts are invented examples and contain no owner data.
 - The SVG fallback is Arial because no font files are embedded. Funnel verification is explicitly deferred to implementation/runtime evidence.
 
-## Evidence gap caused by source access
+## Source verification and corrected state studies
 
-The local `TASK_BRIEF.md` identifies issue #809 and contains its bounded contract. The issue body itself could not be retrieved in this environment (GitHub CLI had no authentication; unauthenticated API access returned HTTP 403). No additional issue-only claims are made here.
+GitHub [unit #809](https://github.com/LPStruiksma/atlas-gallery/issues/809) and its Done criteria were read through the connector. The earlier inability-to-read note is obsolete. Corrected V11–V17 studies have 21 distinct named states shown in both palettes; no unobserved Android OS picker, permission sheet, Sharesheet, external editor or notification template is fabricated. V14 and V17 specifically describe **Atlas-owned entry/handoff intent**, not OS chrome.
+
+These changes correct previously shared provider, loading and progress copy in error/empty/no-match panels. Actual rendered-viewport inspection, device font metrics, OS observation and independent Design Review remain pending.
