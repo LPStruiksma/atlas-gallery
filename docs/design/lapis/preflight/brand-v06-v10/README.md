@@ -1,25 +1,29 @@
 # BRAND-VE2 · V06–V10 synthetic pre-build preflight
 
-> **Status: input scaffold only.** No design frames or design PASS are claimed until the linked, inspectable artwork and state matrix are committed and independently reviewed.
+> **Status: proposed design evidence, not a design PASS.** These inspectable text SVGs and matrices are synthetic pre-build decisions pending independent review. They are not screenshots, runtime verification, or implementation proof.
 
 Unit: [#807](https://github.com/LPStruiksma/atlas-gallery/issues/807) · Goal: [#628](https://github.com/LPStruiksma/atlas-gallery/issues/628)
 
-Source of authority: [Quiet Frame v3](../../../QUIET_FRAME.md) (Lapis Atlas), [Lapis surface audit](../../../LAPIS_COVERAGE.md), and the unit issue. These are **proposed synthetic illustrations** for design preflight, not actual app screenshots, Android behavior observations, accessibility-test results, or runtime verification. Never use private media.
+Source of authority: [Quiet Frame v3](../../../QUIET_FRAME.md), [Lapis surface audit](../../../LAPIS_COVERAGE.md), and the unit issue. All media is abstract synthetic colour geometry made for these sheets; there are no private photos, faces, places, embeddings, or production data.
 
-## Required evidence index (not yet produced)
+## Evidence index
+
+Each contact sheet is `2160 × 2340` with separately bounded light and dark `1080 × 2340` panels.
 
 | Child | Surface | Light | Dark | Named states |
 |---|---|---|---|---|
-| V06 | Declutter and Photo DNA | Pending | Pending | destructive confirm, undo, keep/discard |
-| V07 | Settings and What's new | Pending | Pending | long list, people/privacy, current release |
-| V08 | Stories browse and playback | Pending | Pending | playing, paused, gesture, empty |
-| V09 | Album picker, hidden albums, cover chooser | Pending | Pending | keyboard create, private/hidden, active cover |
-| V10 | Multi-select action slab and feedback | Pending | Pending | 100 picks, undo, ordered selection |
+| V06 | Declutter and Photo DNA | [left panel](v06-declutter-photo-dna.svg) | [right panel](v06-declutter-photo-dna.svg) | [destructive confirmation, undo, keep/discard](STATE_MATRIX.md#state-transitions) |
+| V07 | Settings and What's new | [left panel](v07-settings-whats-new.svg) | [right panel](v07-settings-whats-new.svg) | [long list, people/privacy, current release](STATE_MATRIX.md#state-transitions) |
+| V08 | Stories browse and playback | [left panel](v08-stories.svg) | [right panel](v08-stories.svg) | [playing, paused, gesture, empty](STATE_MATRIX.md#state-transitions) |
+| V09 | Album picker, hidden albums, cover chooser | [left panel](v09-albums.svg) | [right panel](v09-albums.svg) | [keyboard create, private/hidden, active cover](STATE_MATRIX.md#state-transitions) |
+| V10 | Multi-select action slab and feedback | [left panel](v10-selection.svg) | [right panel](v10-selection.svg) | [100 picks, undo, ordered selection](STATE_MATRIX.md#state-transitions) |
 
-**Target frame:** synthetic Samsung S24+ design viewport 1080 × 2340 px, corresponding dp density and status/navigation/IME insets stated **on each frame**. Annotate 100% and 200% font scale, inset and keyboard variants, minimum 48 dp touch regions, one-handed reach, TalkBack focus/name/action semantics and gesture arrows. Use a separate stated assumptions sheet where real-device metrics cannot be proven.
+Supporting evidence: [state, type, reach, TalkBack and motion matrix](STATE_MATRIX.md) · [OS / One UI / Material observations separated from proposals](REFERENCES.md).
 
-**Required v3 features:** Funnel Display title 38/44 sp, Funnel Sans roles; approved light/dark palettes; actual-ratio photo strips with 8 dp corners and 2 dp gaps; 22 dp mist surfaces; 24 dp lapis action slab; filled lapis held sphere with 2 dp white halo and pick number (not checkbox or a hollow outline). Annotate Lift = deliberate 200 ms, remove-animations = immediate switch. Do not animate an illustrative SVG or claim measured motion.
+## Reading the sheets
 
-**Reference decisions:** include a separate observed-vs-proposed table citing actual documented Android/One UI/Material guidance and why v3 borrows or intentionally diverges. No uncited claim that a proposed layout is Samsung's measured behavior.
+The SVG text calls out the synthetic S24+ design viewport, assumed status/navigation/IME insets, media provenance, minimum 48 dp targets, focus/gesture arrows and lower one-hand reach zone. The matrix specifies 100%/200% text behavior, TalkBack names/actions, 200 ms deliberate Lift, and immediate reduced-motion transitions. Real-shape strips have 8 dp corners and 2 dp gaps; mist surfaces use 22 dp; the lapis slab uses 24 dp; ordered held spheres use a 2 dp white halo.
 
-Deliver final artefacts *under this directory only* as inspectable vector SVG (regular UTF-8 text suitable for the bounded Codex patch allowlist) plus Markdown state/measurement matrices; replace all Pending entries with real relative links. If any requirement cannot be evidenced, mark it missing rather than passing it.
+## Explicit gaps
+
+No real device or app was run. Actual density/insets, font rendering/reflow, contrast over media, target bounds, focus order, gesture behavior, authentication, story playback, state persistence, transactionality and undo correctness remain uncovered until implementation evidence exists. The matrices mark further bounded gaps; none is silently treated as passing.
