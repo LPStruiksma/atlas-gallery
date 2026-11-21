@@ -1,0 +1,5 @@
+# TIDY-1A (#577) resume journey, light and dark
+declutter-577-resume-light
+declutter-577-resume-dark
+declutter-577-deck-dark
+declutter-577-deck-light
