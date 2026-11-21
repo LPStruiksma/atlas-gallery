@@ -466,4 +466,59 @@ class ViewerInteractionTest {
     private val thumbnailTile = SemanticsMatcher("filmstrip tile") {
         it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-thumbnail-") == true
     }
+
+    /** FLOW-5 (#714): emulator captures are synthetic, not physical S24+ observations. */
+    private fun captureThumbnailTapTimeline(dark: Boolean) {
+        val media = fixtures()
+        rule.setContent {
+            AtlasEvidenceHarness(edgeToEdge = true, dark = dark) {
+                GalleryViewer(media, media[10].uri) {}
+            }
+        }
+        rule.waitForIdle()
+        rule.mainClock.autoAdvance = false
+        try {
+            fun distanceFromCentre(): Float {
+                val center = rule.onNodeWithTag("atlas-filmstrip")
+                    .fetchSemanticsNode().boundsInRoot.center.x
+                val tile = rule.onNodeWithTag("atlas-thumbnail-13")
+                    .fetchSemanticsNode().boundsInRoot
+                return kotlin.math.abs(center - tile.center.x)
+            }
+
+            val theme = if (dark) "dark" else "light"
+            rule.onNodeWithTag("atlas-thumbnail-13").performClick()
+            // Advance one UI frame for the selection effect. A thumbnail
+            // request does NOT animate pages 11 and 12 to reach page 13.
+            rule.mainClock.advanceTimeByFrame()
+            rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+            rule.onNodeWithTag("atlas-thumbnail-13").assertIsSelected()
+            var previousDistance = distanceFromCentre()
+            assertTrue("First animation frame teleported to destination",
+                previousDistance > 1f)
+            saveUiEvidence("viewer-714-$theme-tap-016.png")
+
+            for ((atMs, deltaMs) in listOf(65L to 49L, 130L to 65L,
+                195L to 65L, 260L to 65L, 300L to 40L)) {
+                rule.mainClock.advanceTimeBy(deltaMs)
+                val distance = distanceFromCentre()
+                assertTrue("Strip reversed or teleported at ${atMs}ms: ${distance} > ${previousDistance}",
+                    distance <= previousDistance + 2f)
+                previousDistance = distance
+                saveUiEvidence("viewer-714-$theme-tap-${atMs.toString().padStart(3, '0')}.png")
+            }
+            val tile = rule.onNodeWithTag("atlas-thumbnail-13")
+                .fetchSemanticsNode().boundsInRoot
+            assertTrue("The tapped tile must finish centred", previousDistance < tile.width * .25f)
+            rule.onNodeWithTag("atlas-photo-counter").assertTextEquals("14 of 64")
+        } finally {
+            rule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test fun thumbnailTapEasesStripWithoutPagingThroughPhotosDark() =
+        captureThumbnailTapTimeline(dark = true)
+
+    @Test fun thumbnailTapEasesStripWithoutPagingThroughPhotosLight() =
+        captureThumbnailTapTimeline(dark = false)
 }
