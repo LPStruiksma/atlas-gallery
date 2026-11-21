@@ -193,7 +193,6 @@ import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.ScopedMediaSearchSnapshot
 import nl.atlas.gallery.featuresearch.currentScopedMediaSearchOrNull
 import nl.atlas.gallery.featuresearch.scopedMediaMatches
-import nl.atlas.gallery.featuresearch.scopeRankedHits
 import nl.atlas.gallery.featuresearch.LocalSearchControls
 import nl.atlas.gallery.featuresearch.personSearchLabel
 import nl.atlas.gallery.featuresearch.face.FaceSearchRoute
@@ -3194,9 +3193,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     vm.publishedInventory.value.epoch == publishedGallery.epoch &&
                     (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
-                    items.all { row -> current.records.any { it.uri == row.uri } } &&
-                    (activeAdvancedSource == null ||
-                        items.all { row -> activeAdvancedSource.any { it.uri == row.uri } })) {
+                    items.all { row -> current.records.any { it.uri == row.uri } }) {
                     openViewer(items, record.uri)
                 }
             },
@@ -3206,10 +3203,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 settingsOpen = true
             },
             onClose = {
-                // `visible` is still the results list in this frame: reopen the
-                // origin photo once the gallery list is shown again (below).
-                similarReturn = similarOrigin
+                // A scoped search returns to its origin, not a past viewer.
+                similarReturn = if (advancedScreenSource == null) similarOrigin else null
                 closeFindSimilar()
+                advancedScreenSource = null
             },
             facetPeople = people,
             onSearchWholeLibrary = { closeFindSimilar(); tab = 3 },
@@ -3243,9 +3240,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     vm.publishedInventory.value.epoch == publishedGallery.epoch &&
                     (advancedScreenSource == null || activeAdvancedSource === advancedScreenSource) &&
                     items.any { it.uri == record.uri } &&
-                    items.all { row -> current.records.any { it.uri == row.uri } } &&
-                    (activeAdvancedSource == null ||
-                        items.all { row -> activeAdvancedSource.any { it.uri == row.uri } })) {
+                    items.all { row -> current.records.any { it.uri == row.uri } }) {
                     openViewer(items, record.uri)
                 }
             },
@@ -3263,8 +3258,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 hiddenPeopleOpen = false
             },
             onClose = {
-                val origin = faceOrigin
+                val origin = if (advancedScreenSource == null) faceOrigin else null
                 closeFaceSearch()
+                advancedScreenSource = null
                 if (origin != null && origin.first === visible) openViewer(origin.first, origin.second)
             },
             facetPeople = people,
