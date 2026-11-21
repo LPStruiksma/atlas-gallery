@@ -135,7 +135,7 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
     /** A classified outcome (#431 rev 4 D, addendum A2–A4). Cancel goes through [cancel]. */
     fun onIssue(token: Long, issue: AiEditIssue, detail: String? = null): Boolean {
         if (!current(token) || issue == AiEditIssue.CANCELLED) return false
-        val refused = issue == AiEditIssue.DECLINED
+        val refused = issue.isDecline
         state = state.copy(
             phase = if (refused) AiEditPhase.Refused else AiEditPhase.Failed,
             progress = null, sending = false, issue = issue,

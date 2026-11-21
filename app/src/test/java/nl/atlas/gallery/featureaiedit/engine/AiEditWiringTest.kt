@@ -173,6 +173,18 @@ class AiEditWiringTest {
         assertEquals("This photo will be sent at 2048×1536.", AiEditStateCopy.sentAtSize(2048, 1536))
     }
 
+    @Test fun aDeclineAfterAcceptanceWarnsAboutChargesAndNeedsConfirmBeforeRetry() {
+        val refused = nl.atlas.gallery.featureaiedit.provider.EditOutcome.Refused("fal:has_nsfw_concepts", "withheld")
+        assertEquals(AiEditIssue.DECLINED, AiEditIssue.classify(refused, remoteSaved = false))
+        val charged = AiEditIssue.classify(refused, remoteSaved = true)!!
+        assertEquals(AiEditIssue.DECLINED_MAY_HAVE_CHARGED, charged)
+        assertTrue(charged.mayHaveCharged && charged.isDecline && !charged.outcomeUnknown)
+        val card = AiEditStateCopy.card(charged, "fal.ai", "withheld")!!
+        assertEquals("fal.ai declined this edit", card.title)
+        assertEquals("withheld fal.ai may have charged for it.", card.detail)
+        assertEquals(AiEditGate.CHARGE_AGAIN, AiEditGates.next(true, total, false, charged, false))
+    }
+
     @Test fun workingLineMovesFromSendingToEditing() {
         assertEquals("Sending photo…", AiEditStateCopy.working(true, "fal.ai"))
         assertEquals("Editing with fal.ai", AiEditStateCopy.working(false, "fal.ai"))

@@ -23,6 +23,10 @@ object AiEditStateCopy {
         AiEditIssue.DECLINED -> IssueCard("$service declined this edit",
             reason?.takeIf { it.isNotBlank() }?.take(160) ?: "It didn't give a reason.",
             listOf(IssueAction.TRY_ANOTHER_SERVICE, IssueAction.CHANGE_PROMPT))
+        AiEditIssue.DECLINED_MAY_HAVE_CHARGED -> IssueCard("$service declined this edit",
+            (reason?.takeIf { it.isNotBlank() }?.take(160) ?: "It didn't give a reason.") +
+                " $service may have charged for it.",
+            listOf(IssueAction.TRY_ANOTHER_SERVICE, IssueAction.CHANGE_PROMPT))
         AiEditIssue.WRONG_KEY -> IssueCard("$service didn't accept your key",
             "Check the key in Settings, then try again.", listOf(IssueAction.OPEN_SETTINGS))
         AiEditIssue.OUT_OF_CREDIT -> IssueCard("$service says you're out of credit",

@@ -381,7 +381,8 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
                         if (machine.onResult(token, created)) publish()
                     } else {
                         val issue = AiEditIssue.classify(outcome, remoteSaved()) ?: AiEditIssue.FAILED
-                        if (!issue.mayHaveCharged) journal?.clear()
+                        // Final outcomes (including a charged decline) need no lookup; only unknowns keep it.
+                        if (!issue.outcomeUnknown) journal?.clear()
                         if (issue == AiEditIssue.CANCELLED) {
                             if (machine.cancel()) publish()
                         } else {

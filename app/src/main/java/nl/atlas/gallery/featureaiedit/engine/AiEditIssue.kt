@@ -12,6 +12,8 @@ import nl.atlas.gallery.featureaiedit.provider.FailureKind
 enum class AiEditIssue {
     /** The service declined (policy, safety). */
     DECLINED,
+    /** Declined after a queue service accepted the request (e.g. fal's safety checker): it may have charged. */
+    DECLINED_MAY_HAVE_CHARGED,
     /** The service answered that the key is wrong, or there is no key. Nothing ran. */
     WRONG_KEY,
     /** HTTP 402 or a documented prepaid-exhausted code. Offers "Open {Service}". */
@@ -32,9 +34,16 @@ enum class AiEditIssue {
     UNKNOWN_NONRECOVERABLE,
     CANCELLED;
 
+    /** A service refusal: shown as the Refused phase. */
+    val isDecline: Boolean get() = this == DECLINED || this == DECLINED_MAY_HAVE_CHARGED
+
+    /** Outcome unknown: the request may still be in flight or stored remotely, so its journal is kept. */
+    val outcomeUnknown: Boolean
+        get() = this == UNKNOWN_RECOVERABLE || this == UNKNOWN_CANNOT_CHECK || this == UNKNOWN_NONRECOVERABLE
+
     /** States where the paid request may have reached the service, so a new submit could charge again. */
     val mayHaveCharged: Boolean
-        get() = this == UNKNOWN_RECOVERABLE || this == UNKNOWN_CANNOT_CHECK || this == UNKNOWN_NONRECOVERABLE
+        get() = this == DECLINED_MAY_HAVE_CHARGED || this == UNKNOWN_RECOVERABLE || this == UNKNOWN_CANNOT_CHECK || this == UNKNOWN_NONRECOVERABLE
 
     companion object {
         /**
@@ -44,7 +53,7 @@ enum class AiEditIssue {
         fun classify(outcome: EditOutcome, remoteSaved: Boolean): AiEditIssue? = when (outcome) {
             is EditOutcome.Success -> null
             EditOutcome.Cancelled -> CANCELLED
-            is EditOutcome.Refused -> DECLINED
+            is EditOutcome.Refused -> if (remoteSaved) DECLINED_MAY_HAVE_CHARGED else DECLINED
             is EditOutcome.Failed -> classifyFailure(outcome, remoteSaved)
         }
 

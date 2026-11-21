@@ -183,7 +183,7 @@ class AiEditUiEvidenceTest {
         for (issue in AiEditIssue.entries.filter { it != AiEditIssue.CANCELLED }) {
             val card = requireNotNull(AiEditStateCopy.card(issue, "fal.ai"))
             cases += Case("d-${issue.name.lowercase().replace('_', '-')}",
-                composing.copy(phase = if (issue == AiEditIssue.DECLINED) AiEditPhase.Refused else AiEditPhase.Failed,
+                composing.copy(phase = if (issue.isDecline) AiEditPhase.Refused else AiEditPhase.Failed,
                     issue = issue, submitSent = issue.mayHaveCharged),
                 base, "atlas-ai-edit-action-${card.actions.last().name}")
         }

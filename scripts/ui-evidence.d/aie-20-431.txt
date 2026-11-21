@@ -1,6 +1,6 @@
 # AIE-20 (#431): the real-service AI Edit editor, every state (rev 4 A to F, addendum A2),
 # in both Android themes, plus font scale 1.3, keyboard open and landscape. AiEditUiEvidenceTest
-# generates these 63 images from synthetic pixels only; no provider or network is used.
+# generates these 65 images from synthetic pixels only; no provider or network is used.
 aie-20-light-a-compose-total
 aie-20-light-a-compose-partial
 aie-20-light-a-compose-unknown
@@ -15,6 +15,7 @@ aie-20-light-c-saving
 aie-20-light-c-saved
 aie-20-light-e-cancelled
 aie-20-light-d-declined
+aie-20-light-d-declined-may-have-charged
 aie-20-light-d-wrong-key
 aie-20-light-d-out-of-credit
 aie-20-light-d-rate-limited
@@ -41,6 +42,7 @@ aie-20-dark-c-saving
 aie-20-dark-c-saved
 aie-20-dark-e-cancelled
 aie-20-dark-d-declined
+aie-20-dark-d-declined-may-have-charged
 aie-20-dark-d-wrong-key
 aie-20-dark-d-out-of-credit
 aie-20-dark-d-rate-limited
