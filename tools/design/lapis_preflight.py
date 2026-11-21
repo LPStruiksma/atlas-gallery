@@ -415,6 +415,30 @@ class Gen:
         panels.append(Panel("C3", "Noor opened", "Existing person detail; system Back returns to "
                             "Collections, then Pictures.", s))
         s = self.scr()
+        self.l5_collections(s)
+        L.finger(s, (L.px(194), s.top + L.px(270)), None, "tap 2: Coastal weekend")
+        panels.append(Panel("C4", "Named album · tap 2", "Collections then Coastal weekend opens "
+                            "the named album. Choosing Albums category adds another tap.", s))
+        s = self.scr()
+        s.status_bar()
+        y = L.title(s, "Coastal weekend", "84 photos, latest 12 November 2026")
+        L.square_grid(s, y, s.bottom, seed=11, header="November 2026")
+        s.gesture_bar()
+        panels.append(Panel("C5", "Coastal weekend opened", "Existing album detail; "
+                            "system Back returns to Collections, then Pictures.", s))
+        s = self.scr()
+        self.l5_collections(s)
+        L.finger(s, (L.px(194), s.top + L.px(420)), None, "tap 2: Dunes trip")
+        panels.append(Panel("C6", "Named place · tap 2", "Collections then Dunes trip opens "
+                            "the named place/trip. The Places category is another destination.", s))
+        s = self.scr()
+        s.status_bar()
+        y = L.title(s, "Dunes trip", "38 photos, latest 8 October 2026")
+        L.square_grid(s, y, s.bottom, seed=51, header="October 2026")
+        s.gesture_bar()
+        panels.append(Panel("C7", "Dunes trip opened", "Existing place detail; "
+                            "system Back returns to Collections, then Pictures.", s))
+        s = self.scr()
         s.status_bar()
         y = L.title(s, "People and pets", "500 people and 3 pets")
         chips = ["Most photos", "Name", "Latest"]
@@ -429,23 +453,26 @@ class Gen:
             s.target(bb, c)
             xx += w + L.px(8)
         y += L.px(52)
-        for i, (n, c) in enumerate((("Noor", "1.204 photos"), ("Bram", "866 photos"), ("Sem", "702 photos"),
-                                    ("Lotte", "655 photos"), ("Pip (dog)", "540 photos"))):
+        for i, (n, c) in enumerate((("Noor", "1.204 photos"), ("Bram", "866 photos"))):
             y = L.collection_row(s, y, n, f"{c}, latest {14 - i} November 2026", L.STRIP_RATIOS[i % 4], 80 + i * 7)
         sb = s.slab("Collections", search=False)
         L.search_bar(s, sb[1], "", False, scope="This screen")
-        panels.append(Panel("D1", "500 people", "Sort by most photos, name or latest; scoped search sits above "
-                            "the slab, so nobody scrolls 500 rows.", s))
-        s = self.scr()
+        panels.append(Panel("D1", "500 people · category", "Sort by most photos, name or latest. "
+                            "A named person off-screen needs category navigation or a Collections-scoped "
+                            "query. The first two rows are only a sample.", s))
+        s = self.scr("dark", 2.0)
         s.status_bar()
-        y = L.title(s, "People and pets")
-        y = L.collection_row(s, y, "Noor", "1.204 photos, latest 14 November 2026", L.STRIP_RATIOS[0], 21)
-        y = L.collection_row(s, y, "Nora", "88 photos, latest 2 June 2026", L.STRIP_RATIOS[3], 91)
-        kb = s.keyboard(["noor", "nora", "north"])
+        L.title(s, "Collections")
+        kb = s.keyboard(["lotte", "lot", "photo"])
         sb = s.slab("Collections", y_bottom=kb, search=False)
-        L.search_bar(s, sb[1], "no", True, scope="This screen")
-        panels.append(Panel("D2", "Scoped search", "'This screen' searches people only; 'Whole library' hands "
-                            "the query to AtlasSearch (#175). Matches stay above the keyboard.", s))
+        L.search_bar(s, sb[1], "lotte", True, scope="This screen",
+                     items=[("Person", "Lotte")], thumbs=True)
+        s.note((L.px(8), s.top + L.px(8)), "3 taps + typing: Collections → search → Lotte result")
+        panels.append(Panel("D2", "500 people · search, dark 200 %", "Lotte is not a visible "
+                            "recent row: tap 1 Collections, tap 2 scoped search, type, tap 3 "
+                            "direct Lotte result. Back hides IME, then closes the query panel; "
+                            "the next Back returns to Pictures. Proposed scoped Collections "
+                            "index, not proven global AtlasSearch entity results.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Collections")
@@ -493,13 +520,20 @@ class Gen:
         panels.append(Panel("E3", "Error, dark", "Plain message and a 48 dp retry.", s))
         b.grid("States and tap paths", panels, cols=5, scale=0.5)
         b.table("Tap counts (from any screen with the slab)", ["Goal", "Taps", "Path"], [
-            ["A recent person (top 2)", "2", "Collections › person row (C1-C3)."],
-            ["Any of 500 people", "2 + typing", "Collections › search sphere, type, pick (D2); or 3 taps via People "
-             "and pets."],
-            ["An album", "2", "Collections › album row (recent albums inline, as people)."],
-            ["A place or trip", "2", "Collections › place row; or Pictures › atlas place (L6)."],
-            ["Back", "1 per level", "System Back returns along the same path; nothing is intercepted."],
-        ], [0.25, 0.12, 0.63])
+            ["Named person: Noor, recent", "2", "Collections (tap 1) → Noor row (tap 2) → person (C1-C3)."],
+            ["Named album: Coastal weekend", "2", "Collections (tap 1) → Coastal weekend row (tap 2) "
+             "→ album (C4-C5)."],
+            ["Named place/trip: Dunes trip", "2", "Collections (tap 1) → Dunes trip row (tap 2) "
+             "→ place detail (C6-C7)."],
+            ["Off-screen person: Lotte (of 500)", "3 + typing", "Collections (tap 1) → scoped search "
+             "(tap 2) → type 'lotte' → direct Lotte result (tap 3) (D2)."],
+            ["People and pets category", "3 for visible", "Collections → category → visible member. "
+             "Off-screen members require scroll or further search actions."],
+            ["Global search sphere", "Unknown", "No observed evidence that the global #175 search "
+             "opens named person/album/place destinations directly."],
+            ["System Back", "Per level", "Detail → Collections → original slab screen. With IME: "
+             "Back hides keyboard before closing scoped search."],
+        ], [0.27, 0.14, 0.59])
         b.table("Destination parity (every former entry keeps a row)", ["Destination", "Row and order",
                                                                          "Opens", "Shown in"], [
             ["Albums", "1 · count and latest date", "Existing Albums screen", "A1, C2"],
@@ -515,12 +549,20 @@ class Gen:
             ["Shared albums", "9", "Existing Shared albums screen", "D3"],
             ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "10-13 · end of list",
              "Existing screens; Hidden asks to unlock first", "E1"],
-        ], [0.24, 0.28, 0.3, 0.18], "Two taps to the row's screen from any screen with the slab (Collections, then "
-           "the row); rows below the fold need a scroll, not an extra tap. Sort and scoped search per #175 still "
-           "apply inside each destination.")
+        ], [0.24, 0.28, 0.3, 0.18], "Only visible named/recent members are two-tap direct "
+           "destinations. Category rows open landings, not a specific off-screen member; search "
+           "requires a separate result tap. No universal two-tap promise or unverified global results.")
         b.table("Reference decisions", DECISION_HEAD, [
-            ref_row("people", "Deviation: no circles. People rows show name, count, latest date and a strip of real "
-                    "photos, as Quiet Frame v3 requires; the person screen behind the row is unchanged."),
+            ref_row("apple5", "Deviation: Apple documents People & Pets as a category of portrait "
+                    "thumbnails with a sort control; Atlas keeps category access but uses four "
+                    "mixed-aspect recent photo shapes per visible named row, radius 8 dp. Apple's "
+                    "exact high-font geometry is not established by this source."),
+            ref_row("immich5", "Deviation: Immich groups named faces and opens the assets for a person. "
+                    "Atlas keeps that detail destination while avoiding a sole face-cover thumbnail. "
+                    "Current exact Immich mobile people composition is unknown; no tap equivalence inferred."),
+            ref_row("immich_album", "Deviation: Atlas exposes selected recent named albums inline "
+                    "but keeps the full Albums landing and sort. Immich's persisted album layout "
+                    "preference does not prove a mixed-aspect strip or direct-result search."),
             ref_row("semantics", "Adopted: one merged TalkBack node per row, read as 'Noor, 1.204 photos, latest "
                     "14 November 2026, button'. Strip thumbnails are not separate stops."),
             ref_row("searchbar", "Adapted: the bar sits above the slab (L7) with This screen / Whole library; "
