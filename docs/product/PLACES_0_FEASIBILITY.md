@@ -1,6 +1,6 @@
 # PLACES-0: GPS visibility and offline place-name feasibility
 
-Status: **evidence pending**. This file is a bounded research scaffold, not a claim that an emulator was run or that reverse geocoding is feasible. Unit: [#579](https://github.com/LPStruiksma/atlas-gallery/issues/579). Vision C [#100](https://github.com/LPStruiksma/atlas-gallery/issues/100), Vision F [#103](https://github.com/LPStruiksma/atlas-gallery/issues/103).
+Status: **Part 1 verified on an emulator; Part 2 runnable but unmeasured** (GeoNames download was blocked in the cloud seat). Unit: [#579](https://github.com/LPStruiksma/atlas-gallery/issues/579). Vision C [#100](https://github.com/LPStruiksma/atlas-gallery/issues/100), Vision F [#103](https://github.com/LPStruiksma/atlas-gallery/issues/103).
 
 ## Scope and evidence rules
 
@@ -10,30 +10,34 @@ Benchmark a **public, attributable** GeoNames-derived offline dataset, using doc
 
 ## 1. Android location-read result
 
-**Result: PENDING.** Capture before/after evidence from a foreign-package MediaStore item through the actual ATLAS metadata reader, not only `ExifInterface` on a filesystem path.
+**Result: VERIFIED (one emulator, API 35).** `ViewerGpsRedactionTest` passed in the hosted emulator-ui shard 1 of [run 44897640430](https://github.com/LPStruiksma/atlas-gallery/actions/runs/44897640430) at head `3ac61a4f` (testcase time 3.99 s; the same run's only failure, `OriginalProportionsAlbumJourneyTest`, is unrelated and also fails on other branches). Earlier red runs on this PR were compile and test-harness fixes, and one of them printed the observation below.
 
 | Evidence | Recorded value |
 | --- | --- |
-| Emulator/API and Android build | Pending |
-| Synthetic JPEG generator and foreign package insertion | Pending |
-| Known fixture latitude/longitude | Pending |
-| ATLAS reader invocation and observed value | Pending |
-| Android 10+ redaction conclusion | Pending |
-| Required future manifest/runtime permission path, only if supported by evidence | Pending |
+| Emulator/API and Android build | API 35, `Android/sdk_phone64_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys` |
+| Synthetic JPEG generator and foreign-package insertion | The test generates a 64x48 JPEG, writes EXIF GPS 52.0907 N, 5.1214 E (fictional) and inserts and writes it as the **shell uid** with `content insert` / `content write`. `OWNER_PACKAGE_NAME` is not readable by ATLAS (null), so foreign ownership rests on the shell doing the insert and write |
+| Known fixture latitude/longitude | 52.0907, 5.1214 (control read of the same bytes through `readViewerExif` returns them) |
+| ATLAS reader invocation and observed value | `PlatformViewerMetadataReader.read` on the MediaStore content URI, ATLAS holding `READ_MEDIA_IMAGES` but not `ACCESS_MEDIA_LOCATION`: **latitude 0.0, longitude 0.0** (run 44895524788, head `dbdcf9e7`, assertion message) |
+| Android 10+ redaction conclusion | The platform redacts the coordinate for a foreign-owned file. Other EXIF still reads, so it is selective, not a failed read. `setRequireOriginal` without `ACCESS_MEDIA_LOCATION` is refused |
+| Required future permission path | `ACCESS_MEDIA_LOCATION` (manifest plus runtime grant) is required to see real coordinates of other apps' photos, such as the camera's. This unit does not change the manifest. That is a separate protected-path unit for Lukas |
+
+**Finding for a follow-up fix:** the redacted read comes back as `0.0 / 0.0`, not null, and `readViewerExif` treats `getLatLong` returning true as a real position. Today's Details sheet can therefore show a fake "0.0, 0.0" for photos ATLAS does not own. The follow-up must treat an exact (0.0, 0.0) as "no GPS" and never feed it to Places.
+
+**Not covered:** one emulator and API level only, a shell-owned fixture (camera-owned files should behave the same, but that is not shown), and no physical-phone run. Videos and HEIC were not tested.
 
 ## 2. Fully offline reverse-geocoding benchmark
 
-**Result: PENDING.** Dataset selection must support Netherlands towns (avoid a cities-only population cutoff unless coverage loss is measured); separate a nearest-point heuristic from border-aware administrative classification.
+**Result: NOT MEASURED.** The cloud seat could not download GeoNames (the download tunnel returns HTTP 403), so no dataset size, latency, memory or coverage numbers exist. Nothing below is a measurement. The tooling is in place and tested offline on a synthetic miniature: `tools/places_geonames/`.
 
-| Evidence | Recorded value |
-| --- | --- |
-| Exact dataset, download URL, timestamp, attribution | Pending |
-| Filtering rules and row count | Pending |
-| Original and packaged on-disk bytes | Pending |
-| Nearest-place lookup structure, measured p50/p95/p99 ms | Pending |
-| Peak RAM and measurement host | Pending |
-| Synthetic coastal/border/NL-town error examples | Pending |
-| EN/NL alternate-name coverage | Pending |
+Run on any machine with internet access (public data only, CC BY 4.0, attribution to GeoNames required for any shipped use):
+
+```
+python3 tools/places_geonames/places_geonames.py prepare --source /tmp/geonames --output /tmp/nl-places.tsv.gz --download
+python3 tools/places_geonames/places_geonames.py bench --index /tmp/nl-places.tsv.gz
+python3 tools/places_geonames/test_places_geonames.py
+```
+
+`prepare` keeps populated places (feature class P) with no population cutoff, records source URLs, byte sizes and SHA-256 of the inputs, row count, EN and NL alternate-name coverage and the filtered on-disk bytes in a manifest. `bench` reports accuracy per case kind (NL towns, coast, border, EN/NL labels), lookup latency p50/p95/p99 and peak memory. The query set `places_queries.json` is synthetic points beside public landmarks; the border and offshore cases must return no Dutch place. The lookup is nearest point within a 15 km cutoff and has no administrative-border knowledge, so a point just across the border can still snap to a Dutch town. Border-aware classification would need boundary polygons and is out of scope here. Desktop Python numbers say nothing about phone latency, so a Kotlin check on the emulator or a phone is a follow-up.
 
 ## 3. Index integration sketch
 
@@ -41,13 +45,19 @@ At scan time, derive an optional place result by stable media key from the avail
 
 ## 4. Decision and follow-up units
 
-**Decision: PENDING.** Record a go/no-go against explicit latency, footprint, locality correctness and permission-dependency constraints, with measured evidence links. Any `AndroidManifest.xml` or permission-flow change requires a **separate protected-path PR merged by Lukas**. Maps, map tiles, location network calls, and reading real user photographs are outside this unit.
+**Decision: conditional.** On Android 10+, GPS of photos ATLAS does not own is not available without `ACCESS_MEDIA_LOCATION`, so Places for the camera roll is a **no-go until that permission is approved**. Offline place names are **undecided** until the benchmark above has run. Photos ATLAS itself saved (for example its own edits) carry their coordinates today. Any `AndroidManifest.xml` or permission-flow change requires a **separate protected-path PR merged by Lukas**. Maps, map tiles, location network calls and reading real user photographs are outside this unit.
+
+Follow-up units, in order:
+1. Treat exact (0.0, 0.0) GPS as absent in `readViewerExif` and Details, with a failing test first. Small, independent of the permission question.
+2. Run the GeoNames `prepare` and `bench` commands somewhere with access and paste the manifest and report here.
+3. Owner decision: ask for `ACCESS_MEDIA_LOCATION` (manifest plus runtime prompt, protected path) and what to say when it is declined.
+4. If 2 and 3 are favourable, build the per-media-key place index from section 3, with a Kotlin latency and memory check.
 
 ## Reproduction checklist
 
-- [ ] Reader test uses foreign-package insertion and synthetic EXIF GPS.
-- [ ] Emulator command + observed output recorded, or capability gap documented without claiming PASS.
-- [ ] GeoNames download/licensing provenance and reproducible Python scripts recorded.
-- [ ] Dataset size, latency, memory, EN/NL labels and synthetic edge cases measured.
-- [ ] `docs/product/ATLAS_VISION.md` Places row updated with only verified findings.
-- [ ] Follow-up list, go/no-go and unknowns written.
+- [x] Reader test uses foreign-package (shell uid) insertion and synthetic EXIF GPS.
+- [x] Emulator result recorded (API 35, hosted run link above).
+- [x] GeoNames provenance and reproducible Python scripts in `tools/places_geonames/` (offline unit tests pass).
+- [ ] Dataset size, latency, memory, EN/NL labels and synthetic edge cases measured: **not done**, download blocked.
+- [x] `docs/product/ATLAS_VISION.md` Places row updated with only verified findings.
+- [x] Follow-up list, conditional go/no-go and unknowns written.

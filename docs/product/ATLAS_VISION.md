@@ -41,7 +41,7 @@ Status: **Shipped** (on main, tested, in a release) · **Partial** (works but in
 | Photo DNA | Partial | Exact byte groups, perceptual near-duplicates, manual trash review | Crops, edits and exposures lineage, conservative keeper suggestions (`tools/photo_lineage` research) |
 | **AI Edit (user-initiated generative editing)** | **In build** | Approved product direction [#183](https://github.com/LPStruiksma/atlas-gallery/issues/183) and [architecture](../ai-edit/ARCHITECTURE.md); the editor runs Google Gemini and fal.ai with your own key ([#431](https://github.com/LPStruiksma/atlas-gallery/issues/431)); ordinary system Edit remains | First edit on the phone with a real key, model picker in Settings, custom server in the editor. **Not yet confirmed on a phone** |
 | Stories | Partial | On this day, month recap, favourites, inline video, opens over Albums | Event and trip detection, people-themed Stories |
-| Places and maps | Missing | GPS shown in viewer details only | Map, journeys, residences |
+| Places and maps | Research (PLACES-0 #579) | GPS shown in viewer details only. Verified on an API 35 emulator: other apps' photos lose GPS without `ACCESS_MEDIA_LOCATION` and read as 0.0/0.0. Offline place names unmeasured | Map, journeys, residences |
 | Life Graph / Memory Atlas | Research | — | See vision B |
 | Family Archive link | Research | Separate tenant (`family-archive`) | See vision F |
 
