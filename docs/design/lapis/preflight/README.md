@@ -5,10 +5,11 @@
 | Sheet | Unit | Device frames |
 |---|---|---|
 | [brand-l4-navigation.png](brand-l4-navigation.png) | L4 slab and held sphere | 20 |
+| [brand-l4-fast-scroll.gif](brand-l4-fast-scroll.gif) | L4 synthetic fast-scroll recording (11 frames, 1.4 s) | 11 |
 | [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
 | [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
-| [brand-l8-justified.png](brand-l8-justified.png) | L8 six-stop day and overview densities; pinch storyboard, month/year signature and precision selection, repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) and corrected in [#855](https://github.com/LPStruiksma/atlas-gallery/issues/855) and [#864](https://github.com/LPStruiksma/atlas-gallery/issues/864) | 60 |
+| [brand-l8-justified.png](brand-l8-justified.png) | L8 six-stop day and overview densities; pinch storyboard, month/year signature and precision selection, repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) and corrected in [#855](https://github.com/LPStruiksma/atlas-gallery/issues/855) and [#864](https://github.com/LPStruiksma/atlas-gallery/issues/864) | 67 |
 
 Each sheet opens with two full-scale 1080 × 2340 frames (light 100 % and dark 200 %), then labelled state panels (the same full frames at 50 %), then tables: a dated **source → observed convention → Atlas adaptation/deviation** row set, and the unit's copy, TalkBack, tap-path, gesture or layout rules. [manifest.json](manifest.json) records every sheet's size, SHA-256, panel codes, font hashes and Pillow version.
 
@@ -28,7 +29,7 @@ The annotation layer is magenta `#E0007A`, outside the palette: dashed box = eff
 ## Open design questions the sheets surface
 
 1. **L6 month bars are 29 dp wide** in one row of twelve (flagged `BELOW 48 dp`). Panel C6 shows a 2 × 6 alternative with 58 × 80 dp targets that touch but do not overlap (unit-tested); the sheet recommends it. Decide at re-preflight.
-2. **L4 slab at 200 % font:** the pills widen instead of truncating, so the search sphere no longer fits and detaches above the slab's right end (A2). A proposal, not part of Quiet Frame v3 yet.
+2. **L4 slab at 200 % font (resolved in [#816](https://github.com/LPStruiksma/atlas-gallery/issues/816)):** Pictures, Collections and the search sphere stay in ONE centred slab (about 360 of 384 dp wide), with three separate targets of at least 48 dp. The detached-sphere proposal is removed. Evidence and checks: [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 3. **L7 auto-focus:** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused field. The two-step Back and the This screen / Whole library chips are kept.
 4. **L5 two-tap reach:** recent people and albums get their own rows; any of 500 people is Collections, then search (2 taps plus typing) or 3 taps via People and pets.
 
@@ -71,7 +72,7 @@ Tile sizes use the 1080 px frame, (1080 px − gaps) / columns / 2.8125. YEAR is
 | C15, C16 | Top and bottom of the library | scroll clamps at 0 / at the end; the key lands −90 px / +147 px from its focal height |
 | P1–P6 | Precision selection from MONTH and YEAR (long-press entry) | see below |
 | T1–T7 | Fast-scroll thumb label at MONTH, SMALL and YEAR, light and dark 200 % | label = month of the first visible key; Nov at the top, Sep after the last November row has left, Sep at SMALL and YEAR (#864) |
-| Q1–Q10 | Select precisely with no prior target, MONTH and YEAR, with and without selected keys, TalkBack focus, dark 200 % | centre rule, no auto-select, return restores scroll and selection (#864) |
+| Q1–Q17 | Select precisely with no prior target: MONTH (Q1–Q4, Q6–Q10) and YEAR (Q5, Q11–Q17), each with entry, focused SMALL, tap, return, prior selected keys and dark 200 %; TalkBack focus (Q8) | centre rule, no auto-select, return restores scroll and selection (#864) |
 | B1–B5 | SMALL, MONTH and YEAR, light 100 % and dark 200 % | ordered spheres 1–3 with 2 dp white halo, video badge (SMALL), play glyph (MONTH), no video mark on YEAR's 12 dp tiles, 46 dp thumb in a 48 dp target whose label is the month of the first visible key |
 | E3 | MONTH loading, dark 200 % | surface squares hold their place; selection, thumb and the precision pill already work |
 
@@ -83,8 +84,8 @@ Tile sizes use the 1080 px frame, (1080 px − gaps) / columns / 2.8125. YEAR is
 
 - **Thumb label.** The month of the *first visible key*: the first key in library order with a pixel below the top edge of the grid. A month heading belongs to the keys under it. Tie-break, shown in T2 and T3: at MONTH scroll 2122 px the last November row is still partly in view and the thumb reads Nov; at 2242 px it has left and the thumb reads Sep. T1–T7 cover MONTH, SMALL and YEAR, light 100 % and dark 200 %.
 - **Pill with no prior target.** The pill focuses the SMALL 7-column view on the *visible key nearest the viewport centre* (distance to the tile centre; equal distance goes to the lower key, the earlier in library order). It does **not** select that key: selecting is a tap on the 53.0 dp tile (Q2, Q3). Prior selected keys never move the anchor and stay selected (Q6, Q7). Back or the *12 columns* pill returns to the same overview, scroll position and selection (Q4).
-- **Explicit focus.** A long-press or TalkBack focus key that is still visible is kept as the anchor (Q8, P1); a stale focus (scrolled out of view) is not eligible and the centre rule applies. Long-press keeps its selecting behaviour.
-- **Targets and order.** The pill, the 53.0 dp tile and the return pill are measured at ≥ 48 dp in light 100 % and dark 200 % (Q1–Q10). Proposed TalkBack order: the pill, then the focused tile, then the grid. This is a design proposal, not a device test.
+- **Explicit focus.** A long-press or TalkBack focus key that is still visible is kept as the anchor (Q8, P1); a stale focus (scrolled out of view) is not eligible and the centre rule applies. Long-press keeps its selecting behaviour and is drawn separately (P1, P5).
+- **Targets and order.** The pill, the 53.0 dp tile and the return pill are measured at ≥ 48 dp in light 100 % and dark 200 % (Q1–Q17). Proposed TalkBack order: the pill, then the focused tile, then the grid. This is a design proposal, not a device test.
 
 Nothing here adds a zoom stop or a smaller target, selects automatically, or claims S24+, TalkBack or jank results; those remain post-build gates on [#661](https://github.com/LPStruiksma/atlas-gallery/issues/661).
 

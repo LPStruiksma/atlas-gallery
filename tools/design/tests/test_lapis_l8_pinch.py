@@ -378,6 +378,30 @@ class ThumbLabelAndPillFocus(unittest.TestCase):
             for k in L.SELECTED:
                 self.assertIn(k, vis, (step, k))
 
+    def test_year_pill_flow_with_and_without_selection_and_in_dark_200(self):
+        for scale in (1.0, 2.0):
+            items, lays, vp = env(scale)
+            lay = lays["year"]
+            for scroll in (lay.rects[267][3] + 30, lay.rects[845][1] - 0.5 * vp.h):
+                pf = L.pill_flow(lays, vp, "year", scroll)
+                self.assertEqual(pf["press"].extra["rule"], "centre")
+                self.assertEqual(pf["focus"].kind, "small")
+                self.assertEqual(pf["back"].kind, "year")
+                self.assertAlmostEqual(pf["back"].scroll, pf["press"].scroll, delta=0.5)
+                self.assertAlmostEqual(pf["focus"].y_residual, 0.0, delta=0.5)
+        items, lays, vp = env()
+        scroll = lays["year"].rects[845][1] - 0.5 * vp.h
+        pf = L.pill_flow(lays, vp, "year", scroll)
+        self.assertNotIn(pf["press"].key, L.SELECTED)
+        for step, kind in (("press", "year"), ("focus", "small"), ("back", "year")):
+            vis = L.visible_keys(lays[kind], pf[step].scroll, vp)
+            for k in L.SELECTED:
+                self.assertIn(k, vis, (step, k))
+
+    def test_p5_no_longer_conflates_long_press_with_the_pill(self):
+        src = (Path(__file__).resolve().parents[1] / "lapis_preflight.py").read_text()
+        self.assertNotIn("long-press or the pill", src)
+
     def test_dark_200_percent_geometry_gives_a_valid_anchor(self):
         items, lays, vp = env(2.0)
         lay = lays["month"]
@@ -390,7 +414,7 @@ class ThumbLabelAndPillFocus(unittest.TestCase):
         import json
         man = json.loads((REPO / "docs/design/lapis/preflight/manifest.json").read_text())
         codes = man["boards"]["l8"]["panels"]
-        for c in [f"T{i}" for i in range(1, 8)] + [f"Q{i}" for i in range(1, 11)]:
+        for c in [f"T{i}" for i in range(1, 8)] + [f"Q{i}" for i in range(1, 18)]:
             self.assertIn(c, codes)
 
     def test_readme_quotes_the_boundary_scrolls(self):
