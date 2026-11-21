@@ -12,12 +12,13 @@ assert.match(screen, /fun decide\(discard: Boolean\)[\s\S]*?if \(!discard\) onKe
   'only a Keep may be persisted, never a staged Trash choice');
 assert.match(screen, /fun undoLast\(\)[\s\S]*?onUnkeep\?\.invoke\(last\.media\)/,
   'undo removes the saved Keep because the item returns to review');
-assert.match(screen, /"Resume review"[\s\S]*?"Start again"[\s\S]*?"Not now"/, 'resume prompt choices');
+assert.match(screen, /ModalBottomSheet[\s\S]*?"Resume"[\s\S]*?"Start again"[\s\S]*?"Not now"/, 'resume bottom sheet choices');
 assert.match(screen, /Start this review again\?[\s\S]*?Nothing is deleted\./, 'reset needs a confirmation that says nothing is deleted');
 assert.match(screen, /Reviewed \$\{reviewedBefore \+ session\.position\} of \$sourceTotal/, 'source-local progress line');
 assert.doesNotMatch(progress, /ContentResolver|createTrashRequest|\.delete\(/, 'the store never touches MediaStore');
 assert.match(progress, /"keeps\.v1\."/, 'versioned storage key');
-assert.match(host, /scopeKey = declutterScopeKey\("album", folderForReview, sort = "size"\)/, 'album source key');
+assert.match(host, /sourceDeclutterDeck\(frozenCatalog\)/, 'all sources use the source-order builder');
+assert.match(host, /declutterSourceFingerprint\(deck\)/, 'Keep scope follows frozen membership and order');
 assert.match(host, /atlas_declutter_keeps[\s\S]*?MODE_PRIVATE/, 'private on-device preferences');
 assert.match(host, /DeclutterTrashPreflight\.unchanged\(\s*context\.contentResolver, selected\)/,
   'pre-Trash re-query guard stays in the host');
