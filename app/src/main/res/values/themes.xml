@@ -7,5 +7,9 @@
          Surface, so the app looks as before. API 31+ uses values-v31 instead. -->
     <style name="Theme.Atlas.Launch" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@drawable/atlas_launch_background</item>
+        <!-- #763 review: light system-bar glyphs on the dark Lapis splash in both night modes
+             (the parent's value too; stated so the splash cannot inherit dark glyphs). -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

@@ -38,7 +38,10 @@ import org.junit.runner.RunWith
  *
  * Evidence (scripts/ui-evidence.d/656-lapis-launcher.txt):
  * - lapis656-splash-light / -dark: real screen captures of MainActivity's platform splash on
- *   the CI emulator (API 31+ `windowSplashScreen*`), taken while the app starts.
+ *   the CI emulator (API 31+ `windowSplashScreen*`), taken while the app starts, with legible
+ *   light navigation-bar glyphs on the Lapis ground.
+ * - lapis656-real-launcher-light / -dark: the installed icon in the emulator's own launcher
+ *   app list, captured from the real screen.
  * - lapis656-launcher-light / -dark: the shipped adaptive icon drawn by Android at 48 dp on a
  *   synthetic 1080 x 2340 launcher (busy wallpaper, fictional apps) under round, squircle and
  *   the system's own mask, colour and themed (monochrome) variants.
@@ -321,18 +324,27 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
         val name = "lapis656-splash-${if (dark) "dark" else "light"}"
         var captured: Bitmap? = null
         var attempts = 0
+        val seen = mutableListOf<String>()
         while (captured == null && attempts < 3) {
             attempts++
-            captured = launchAndCatchSplash()
+            val (frame, note) = launchAndCatchSplash()
+            captured = frame
+            seen += note
             finishMainActivities()
         }
         val frame = requireNotNull(captured) {
-            "No Lapis splash frame seen in $attempts launches of MainActivity; ${describeFocus()}"
+            "No Lapis splash frame with legible system-bar glyphs in $attempts launches of MainActivity " +
+                "(${seen.joinToString("; ")}); ${describeFocus()}"
         }
         saveBitmapEvidence(name, frame)
     }
 
-    private fun launchAndCatchSplash(): Bitmap? {
+    /**
+     * Launches MainActivity and returns the first frame that is the Lapis splash with legible
+     * (near-white) navigation-bar glyphs, or null and what it saw instead (#763 review: the
+     * dark-mode capture had grey glyphs at about 1.1:1 on Lapis).
+     */
+    private fun launchAndCatchSplash(): Pair<Bitmap?, String> {
         val context = instrumentation.targetContext
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -342,16 +354,40 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
             options.setSplashScreenStyle(android.window.SplashScreen.SPLASH_SCREEN_STYLE_ICON)
         }
         context.startActivity(intent, options.toBundle())
+        var splashFrames = 0
+        var bestGlyphs = 0
         val deadline = SystemClock.uptimeMillis() + 6_000L
         while (SystemClock.uptimeMillis() < deadline) {
             val shot = instrumentation.uiAutomation.takeScreenshot() ?: continue
             val frame = if (shot.config == Bitmap.Config.HARDWARE) {
                 shot.copy(Bitmap.Config.ARGB_8888, false).also { shot.recycle() }
             } else shot
-            if (isLapisSplash(frame)) return frame
+            if (isLapisSplash(frame)) {
+                splashFrames++
+                val glyphs = legibleNavGlyphPixels(frame)
+                bestGlyphs = maxOf(bestGlyphs, glyphs)
+                if (glyphs >= MIN_NAV_GLYPH_PIXELS) return frame to "ok"
+            } else if (splashFrames > 0) {
+                frame.recycle()
+                break // the app's first frame replaced the splash
+            }
             frame.recycle()
         }
-        return null
+        return null to "$splashFrames splash frames, best $bestGlyphs light glyph px (need $MIN_NAV_GLYPH_PIXELS)"
+    }
+
+    /**
+     * Pixels in the bottom navigation band that are near white and so read on Lapis (>= 4.5:1;
+     * Lapis has relative luminance ~0.07, so glyphs need luminance >= ~0.48, i.e. channels ~190+).
+     */
+    private fun legibleNavGlyphPixels(frame: Bitmap): Int {
+        val band = (48 * instrumentation.targetContext.resources.displayMetrics.density).toInt()
+        var light = 0
+        for (y in frame.height - band until frame.height step 2) for (x in 0 until frame.width step 2) {
+            val c = frame.getPixel(x, y)
+            if (Color.red(c) >= 190 && Color.green(c) >= 190 && Color.blue(c) >= 190) light++
+        }
+        return light
     }
 
     /** Mostly Lapis away from the centre and white mark pixels near it: the splash, not the app. */
@@ -398,6 +434,64 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
     }
 }
 
+/**
+ * The installed icon in the emulator's own launcher (#763 review): home, swipe up to the app
+ * list, wait until the launcher shows an "ATLAS" item, then capture the real screen.
+ */
+abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(DisplayPrefsRule(dark = dark))
+
+    private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+
+    @Test
+    fun installedIconInEmulatorLauncherAppList() {
+        var bounds: android.graphics.Rect? = null
+        var tries = 0
+        while (bounds == null && tries < 4) {
+            tries++
+            nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
+            idle()
+            nl.atlas.gallery.testkit.testShell("input swipe 540 1900 540 500 300")
+            bounds = awaitAtlasInLauncher(8_000L)
+        }
+        val found = requireNotNull(bounds) {
+            "ATLAS not shown in the emulator launcher's app list after $tries tries; ${describeFocus()}"
+        }
+        android.util.Log.i("ATLAS_LAPIS", "launcher ATLAS item at $found (dark=$dark)")
+        saveUiEvidence("lapis656-real-launcher-${if (dark) "dark" else "light"}.png")
+        nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
+    }
+
+    private fun idle() {
+        runCatching { instrumentation.uiAutomation.waitForIdle(300L, 3_000L) }
+    }
+
+    /** Bounds of a fully on-screen launcher item labelled ATLAS, outside this app's own windows. */
+    private fun awaitAtlasInLauncher(timeoutMs: Long): android.graphics.Rect? {
+        val own = instrumentation.targetContext.packageName
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
+        while (SystemClock.uptimeMillis() < deadline) {
+            val root = instrumentation.uiAutomation.rootInActiveWindow
+            if (root != null && root.packageName?.toString() != own) {
+                for (node in root.findAccessibilityNodeInfosByText("ATLAS")) {
+                    val label = node.text?.toString() ?: node.contentDescription?.toString()
+                    if (label != "ATLAS" || !node.isVisibleToUser) continue
+                    val r = android.graphics.Rect().also { node.getBoundsInScreen(it) }
+                    if (!r.isEmpty && r.top >= 0 && r.bottom <= UI_EVIDENCE_HEIGHT) return r
+                }
+            }
+            idle()
+        }
+        return null
+    }
+}
+
+@RunWith(AndroidJUnit4::class)
+class LapisRealLauncherLightEvidenceTest : LapisRealLauncherEvidence(dark = false)
+
+@RunWith(AndroidJUnit4::class)
+class LapisRealLauncherDarkEvidenceTest : LapisRealLauncherEvidence(dark = true)
+
 @RunWith(AndroidJUnit4::class)
 class LapisColdStartSplashLightEvidenceTest : LapisColdStartSplashEvidence(dark = false)
 
@@ -405,6 +499,9 @@ class LapisColdStartSplashLightEvidenceTest : LapisColdStartSplashEvidence(dark 
 class LapisColdStartSplashDarkEvidenceTest : LapisColdStartSplashEvidence(dark = true)
 
 private val LAPIS = 0xFF2639C9.toInt()
+
+/** Light glyph pixels (sampled every 2 px) the three-button nav bar shows at minimum. */
+private const val MIN_NAV_GLYPH_PIXELS = 40
 
 /** Illustrative themed-icon tones (ground, ink); real launchers derive theirs from the wallpaper. */
 private val THEMED_LIGHT = 0xFFE3E6FA.toInt() to 0xFF2A3270.toInt()

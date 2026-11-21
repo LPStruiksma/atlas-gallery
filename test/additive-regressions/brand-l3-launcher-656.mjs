@@ -49,6 +49,11 @@ test('splash: static Lapis on both API families, no branding image, no animation
   assert.match(v31, /windowSplashScreenBackground">@color\/atlas_lapis</);
   assert.match(v31, /windowSplashScreenAnimatedIcon">@drawable\/ic_launcher_foreground</);
   assert.doesNotMatch(v31, /<item name="android:windowBackground"|windowSplashScreenBrandingImage|windowSplashScreenAnimationDuration/);
+  // #763 review: light system-bar glyphs on the dark Lapis splash in both night modes.
+  for (const theme of [legacy, v31]) {
+    assert.match(theme, /windowLightStatusBar">false</);
+    assert.match(theme, /windowLightNavigationBar">false</);
+  }
   assert.ok(!existsSync(join(root, res, 'drawable/ic_launcher_foreground_animated.xml')));
 });
 

@@ -7,3 +7,6 @@ lapis656-launcher-light
 lapis656-launcher-dark
 # The API 29-30 starting window (values/ windowBackground layer-list) drawn by Android.
 lapis656-splash-api29-30
+# The installed icon in the emulator's own launcher app list (real screen).
+lapis656-real-launcher-light
+lapis656-real-launcher-dark
