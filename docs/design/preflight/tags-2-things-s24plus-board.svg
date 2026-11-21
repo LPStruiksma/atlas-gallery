@@ -869,8 +869,8 @@
 <text x="322" y="343" font-family="'Funnel Sans',system-ui,sans-serif" font-size="34" fill="#FFFFFF" font-weight="400" aria-label="Verwijder filter Fiets">×</text>
 <rect x="16" y="375" width="352" height="52" rx="12" fill="#14152A" data-state="Actionable empty outcome"/>
 <text x="26" y="407" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#F2F3F8" font-weight="400" data-base-sp="12" data-font-scale="2">Geen resultaat</text>
-<rect x="238" y="377" width="130" height="48" rx="12" fill="#3448E0" data-touch="Clear filter; 130x48dp"/>
-<text x="247" y="408" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#FFFFFF" font-weight="600" data-base-sp="12" data-font-scale="2">Wis filter</text>
+<rect x="220" y="377" width="148" height="48" rx="12" fill="#3448E0" data-touch="Clear filter; 148x48dp"/>
+<text x="232" y="408" font-family="'Funnel Sans',system-ui,sans-serif" font-size="24" fill="#FFFFFF" font-weight="600" data-base-sp="12" data-font-scale="2">Wis filter</text>
 <rect x="16" y="434" width="352" height="54" rx="22" fill="#14152A" data-touch="Query; 352x54dp"/>
 <circle cx="41" cy="458" r="9" fill="none" stroke="#9AA0B8" stroke-width="2"/>
 <path d="M47 464l7 7" stroke="#9AA0B8" stroke-width="2"/>
