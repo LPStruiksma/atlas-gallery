@@ -2,9 +2,12 @@
   "boards": {
     "collect-1": {
       "file": "collect-1-utilities.png",
-      "size": null,
-      "sha256": null,
-      "binary_status": "render and record size/sha256 in the Dev driver commit",
+      "size": [
+        3480,
+        8754
+      ],
+      "sha256": "0f107827479e1ffccd94c831fc416ad8bdcc6ce5393b2439ee3a3352bd06a769",
+      "binary_status": "rendered with Funnel Display + Funnel Sans (font_sha256 below); Pillow 12.3.0",
       "device_frames": 16,
       "device_frame_px": [
         1080,

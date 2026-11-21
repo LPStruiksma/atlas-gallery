@@ -44,8 +44,14 @@ PANELS = ("A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3", "C4", "D1", "D2"
 
 def _title(s: Screen, text: str, subtitle: str = "") -> int:
     y = s.top + px(18)
+    # A single-word title cannot wrap: at large font scales it is capped to the
+    # largest size that still fits between the 20 dp margins (never clipped).
+    user_scale = s.font_scale
+    while s.font_scale > 1.0 and s.d.textlength(text, font=s.font("title")) > DEVICE_W - px(40):
+        s.font_scale = round(s.font_scale - 0.05, 2)
     s.text((px(20), y), text, "title", fill=s.t["brand_text"])
     y += s.line_h("title")
+    s.font_scale = user_scale
     if subtitle:
         y = s.wrap(px(20), y + px(4), subtitle, DEVICE_W - px(40), "secondary")
     return y + px(14)
@@ -90,8 +96,7 @@ def collections(
         s.text((px(20), y), "Media types", "section")
         y += s.line_h("section") + px(10)
     else:
-        s.text((px(20), y), "Media types · continued", "section")
-        y += s.line_h("section") + px(10)
+        y = s.wrap(px(20), y, "Media types · continued", DEVICE_W - px(40), "section") + px(10)
 
     # Model a stable seven-category navigation order; zero-count rows disappear.
     counts = (1284, 326, 4912, 7, 12, 3, 84)
@@ -255,7 +260,7 @@ def build(fonts: Fonts) -> Board:
                           "Omit if zero confirmed; never invent missing thumbnails. Latest strip may be genuinely short.")]
         for i, name in enumerate(CATEGORIES)
     ], [0.12, 0.28, 0.60])
-    b.table("Observed → proposed → deviation", ["Public reference (checked 2026-11-21)", "Observed", "Atlas proposal / deviation"], [
+    b.table("Observed, proposed, deviation", ["Public reference (checked 2026-11-21)", "Observed", "Atlas proposal / deviation"], [
         ["Apple Photos · Media Types\nsupport.apple.com/guide/iphone/find-photos-and-videos-iphf7de217f0/ios", "Media is grouped by type for direct entry.", "Seven deterministic utility rows; Videos and Screenshots reuse existing Atlas destinations."],
         ["Apple Photos · Utilities\nsupport.apple.com/guide/iphone/find-photos-and-videos-iphf7de217f0/ios", "Utilities expose task- or state-oriented groups.", "Keep type entry in Collections; rows with confirmed zero items disappear, with no extra Utilities hub."],
         ["Google Photos · Recently Added\nsupport.google.com/photos/answer/6128843", "Recently added is a chronological collection.", "Recently added uses proposed last-30-days DATE_ADDED; this horizon is an Atlas proposal, not a Google claim."],
@@ -276,6 +281,8 @@ def _source_is_safe() -> None:
     forbidden = {"open", "glob", "rglob", "iterdir", "walk", "scandir"}
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Attribute) and getattr(node.func.value, "id", "") == "ast":
+                continue  # this checker's own AST traversal, not a filesystem reader
             name = getattr(node.func, "attr", getattr(node.func, "id", ""))
             if name in forbidden:
                 raise AssertionError(f"private-asset safety: forbidden filesystem reader {name}()")
