@@ -620,8 +620,8 @@ class Gen:
         items = [("Months", None)] + [(f"{m}, {L._nl(c)} photos" if c else f"{m}, no photos", 1)
                                       for m, c in zip(["January", "February", "March", "April", "May", "June"],
                                                       L.COUNTS[:6])]
-        items += [("Places", None), ("Amsterdam, 6.120 photos", 1), ("Coast, 1.408 photos", 1),
-                  ("Mountains, 912 photos", 1)]
+        # The first viewport shows Jan-Jun; the scrolled continuation
+        # includes Jul-Dec before Places (D3).
         k = 0
         for text_, kind in items:
             if kind is None:
@@ -636,12 +636,38 @@ class Gen:
                 y += L.px(48)
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("D1", "TalkBack lists", "With TalkBack the map is replaced by lists: months, then "
-                            "places, e.g. 'Amsterdam, 6.120 photos'. Each is a 48 dp row.", s))
+        panels.append(Panel("D1", "TalkBack months, first viewport", "The list begins with January-June; "
+                             "scroll to July-December, then Places. Rows have 48 dp targets.", s))
         d2 = self.l6_frame(frac=1.0)
         d2.note((L.px(8), d2.top + L.px(580)), "Remove animations: closed › open in one frame")
-        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once.",
-                            d2))
+        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once. "
+                             "See the timed synthetic SVG for the tracked and reverse movement.", d2))
+        d3 = self.scr()
+        d3.status_bar()
+        yy = L.title(d3, "Atlas", "TalkBack list, scrolled")
+        d3_items = [("Months continued", None)] + [
+            (f"{name}, {L._nl(count)} photos" if count else f"{name}, no photos", 1)
+            for name, count in zip(
+                ["July", "August", "September", "October", "November", "December"], L.COUNTS[6:]
+            )
+        ] + [("Places", None), ("Amsterdam, 6.120 photos", 1),
+             ("Coast, 1.408 photos", 1), ("Mountains, 912 photos", 1)]
+        focus_no = 6
+        for name, kind in d3_items:
+            if kind is None:
+                d3.text((L.px(L.SIDE), yy + L.px(8)), name, "section")
+                yy += d3.line_h("section") + L.px(12)
+            else:
+                focus_no += 1
+                d3.text((L.px(L.SIDE), yy + L.px(14)), name, "body", anchor="lm")
+                d3.target([0, yy - L.px(10), DEVICE_W, yy + L.px(38)], name)
+                if focus_no in (7, 12, 13):
+                    d3.focus_order((L.px(6), yy + L.px(14)), name)
+                yy += L.px(48)
+        d3.slab("Pictures")
+        d3.gesture_bar()
+        panels.append(Panel("D3", "TalkBack months then places", "Scrolled list: July-December precede "
+                             "Amsterdam, Coast and Mountains; each row is 48 dp.", d3))
         b.grid("Storyboard and states", panels)
         b.table("Gesture precedence", ["Situation", "What a downward drag does", "Alternative"], [
             ["Grid scrolled to the top", "Opens the atlas, finger-tracked", "Tap the month sphere"],
