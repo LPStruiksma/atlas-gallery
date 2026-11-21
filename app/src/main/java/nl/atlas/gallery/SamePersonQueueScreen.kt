@@ -96,6 +96,7 @@ internal fun SamePersonQueueRoute(
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
     val epoch = state?.permissionEpoch
+    val skipScope = epoch?.let(host::stableSamePersonSkipScope)
     val context = LocalContext.current
     val skipPreferences = remember(context) { SamePersonSkipPreferences.forApp(context) }
     var cursor by remember { mutableStateOf(state?.let(SamePersonQueueMemo::cursor)) }
@@ -104,8 +105,8 @@ internal fun SamePersonQueueRoute(
     var found by remember { mutableStateOf(cursor?.items.orEmpty()) }
     var listDone by remember { mutableStateOf(cursor?.done == true) }
     // Restored for the currently authorized grant before rendering questions.
-    var skipped by remember(epoch) {
-        mutableStateOf(epoch?.let(skipPreferences::read).orEmpty())
+    var skipped by remember(skipScope) {
+        mutableStateOf(skipScope?.let(skipPreferences::read).orEmpty())
     }
     var mixedBusy by remember { mutableStateOf(false) }
     var undoBusy by remember { mutableStateOf(false) }
@@ -115,12 +116,17 @@ internal fun SamePersonQueueRoute(
     var answers by remember { mutableStateOf(emptyList<SamePersonQueueAnswer>()) }
     var resolved by remember { mutableIntStateOf(0) }
     val skipSnapshot = cursor?.state?.takeIf {
-        it.permissionEpoch == epoch && host.scopeCurrent(it.permissionEpoch)
+        it.permissionEpoch == epoch && skipScope != null && host.scopeCurrent(it.permissionEpoch)
     }
-    val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion, skipSnapshot) {
+    val skipTokenFor: (SamePersonQueueItem) -> String? = { question ->
+        if (skipSnapshot != null && skipScope != null)
+            samePersonSkipFingerprint(skipSnapshot, question, skipScope)
+        else null
+    }
+    val visible = remember(found, skipped, answers, cursorSeq, lastMixedQuestion, skipSnapshot, skipScope) {
         val notInList = answers.drop(cursorSeq)
         found.filter { item ->
-            val token = skipSnapshot?.let { samePersonSkipFingerprint(it, item) }
+            val token = skipTokenFor(item)
             token != null && token !in skipped && item.key != lastMixedQuestion &&
                 notInList.none { it.hides(item) }
         }
@@ -202,11 +208,15 @@ internal fun SamePersonQueueRoute(
             loaded = people == null ||
                 (listDone && resolved == answers.size && cursor?.state === state),
             skippedSome = found.any { question ->
-                val token = skipSnapshot?.let { samePersonSkipFingerprint(it, question) }
+                val token = skipTokenFor(question)
                 token != null && token in skipped
             },
             onShowSkipped = {
-                epoch?.let { skipPreferences.clear(it); skipped = emptySet() }
+                if (epoch != null && skipScope != null &&
+                    host.stableSamePersonSkipScope(epoch) == skipScope) {
+                    skipPreferences.clear(skipScope)
+                    skipped = emptySet()
+                }
             },
             markSubject = markSubject,
             markOther = markOther,
@@ -217,15 +227,14 @@ internal fun SamePersonQueueRoute(
             onMarkMixed = {
                 val asked = item
                 val liveEpoch = epoch
-                val fingerprint = asked?.let { question ->
-                    skipSnapshot?.let { samePersonSkipFingerprint(it, question) }
-                }
-                if (asked != null && liveEpoch != null && fingerprint != null &&
+                val fingerprint = asked?.let { skipTokenFor(it) }
+                if (asked != null && liveEpoch != null && skipScope != null &&
+                    fingerprint != null &&
                     (markSubject || markOther) && !mixedBusy && !undoBusy &&
                     resolved == answers.size) {
                     mixedBusy = true
                     SamePersonQueueCommits.mark(host, liveEpoch, asked, markSubject, markOther,
-                        fingerprint) { generation ->
+                        skipScope, fingerprint) { generation ->
                         mixedBusy = false
                         if (generation != null) {
                             lastMixedGeneration = generation
@@ -258,11 +267,11 @@ internal fun SamePersonQueueRoute(
             },
             onSkip = {
                 val asked = item
-                val token = if (asked != null) skipSnapshot?.let {
-                    samePersonSkipFingerprint(it, asked)
-                } else null
-                if (epoch != null && token != null && !mixedBusy && !undoBusy) {
-                    skipped = skipPreferences.add(epoch, token)
+                val token = asked?.let { skipTokenFor(it) }
+                if (epoch != null && skipScope != null && token != null &&
+                    host.stableSamePersonSkipScope(epoch) == skipScope &&
+                    !mixedBusy && !undoBusy) {
+                    skipped = skipPreferences.add(skipScope, token)
                 }
             },
             onClose = onClose
@@ -304,8 +313,8 @@ internal object SamePersonQueueCommits {
     /** Serialized with Yes/No to prevent races with earlier questions. */
     fun mark(
         host: PeopleDiscoveryHost, epoch: String, item: SamePersonQueueItem,
-        subject: Boolean, other: Boolean, expectedFingerprint: String,
-        done: (String?) -> Unit
+        subject: Boolean, other: Boolean, expectedScope: String,
+        expectedFingerprint: String, done: (String?) -> Unit
     ) {
         worker.execute {
             val generation = try {
@@ -313,7 +322,8 @@ internal object SamePersonQueueCommits {
                     ?: host.reviewState(epoch)?.let { host.liveReview(epoch) }
                 val action = samePersonQueueMixedSides(item, subject, other)
                 if (live != null && action != null && samePersonQueueStillAsks(live, item) &&
-                    samePersonSkipFingerprint(live, item) == expectedFingerprint &&
+                    host.stableSamePersonSkipScope(epoch) == expectedScope &&
+                    samePersonSkipFingerprint(live, item, expectedScope) == expectedFingerprint &&
                     host.review(PeopleClusterReviewCommand(live, action))) {
                     host.liveReview(epoch)?.sourceGeneration
                 } else null
