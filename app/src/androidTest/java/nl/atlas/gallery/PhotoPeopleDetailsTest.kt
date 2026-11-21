@@ -7,7 +7,9 @@ import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasTestTag
@@ -27,10 +29,13 @@ import nl.atlas.gallery.testkit.sampleOnFrames
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
 import org.junit.Assert.assertEquals
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
 
 /**
  * #553 rendered proof: swipe-up Details of a photo with three invented faces
@@ -71,11 +76,40 @@ class PhotoPeopleDetailsTest {
         saveUiEvidence(filename)
     }
 
+    /** Keep the full viewer decodeable across theme changes; never read personal media. */
+    private val generatedImages = mutableListOf<File>()
+
+    @After fun deleteSyntheticImages() {
+        generatedImages.forEach { check(!it.exists() || it.delete()) }
+    }
+
+    private fun syntheticPhoto(): File {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File.createTempFile("atlas-details-people-", ".png", context.cacheDir)
+        generatedImages += file
+        val bitmap = Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(0xFF253C52.toInt())
+            val brush = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD4A67B.toInt() }
+            canvas.drawOval(70f, 28f, 250f, 210f, brush)
+            brush.color = 0xFFF4E2BC.toInt()
+            canvas.drawCircle(162f, 105f, 44f, brush)
+            FileOutputStream(file).use {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            bitmap.recycle()
+        }
+        return file
+    }
+
     @Test fun detailsShowsPeopleTapOpensPersonAndPlusNamesTheGroup() {
+        val source = syntheticPhoto()
         val photo = MediaRecord(
-            id = 7, uri = "content://synthetic-atlas-test/images/7",
+            id = 7, uri = Uri.fromFile(source).toString(),
             name = "Fictional-party.jpg", relativePath = "DCIM/Camera/",
-            sizeBytes = 3_200_000L, takenAtMillis = 1_600_000_000_000L, isVideo = false)
+            sizeBytes = source.length(), takenAtMillis = 1_600_000_000_000L, isVideo = false)
         val ada = PhotoPerson.Named("synthetic-epoch", uid(1), PersonKey("native-ada"), "Ada")
         val bram = PhotoPerson.Named("synthetic-epoch", uid(2), PersonKey("native-bram"), "Bram")
         val unknown = PhotoPerson.Unnamed("synthetic-epoch", uid(3), uid(3))
@@ -125,10 +159,16 @@ class PhotoPeopleDetailsTest {
         // #655: same synthetic Details/People mapping, both Activity themes.
         evidence("parity-24-viewer-details-people-dark.png")
         dark = false
-        rule.waitForIdle()
+        rule.awaitThat("light Details people survive recompose", 8_000) {
+            rule.exists(hasTestTag("atlas-details-people")) &&
+                !rule.exists(hasTestTag("atlas-viewer-decode-error"))
+        }
         evidence("parity-24-viewer-details-people-light.png")
         dark = true
-        rule.waitForIdle()
+        rule.awaitThat("dark Details people survive recompose", 8_000) {
+            rule.exists(hasTestTag("atlas-details-people")) &&
+                !rule.exists(hasTestTag("atlas-viewer-decode-error"))
+        }
 
         rule.tap(hasTestTag("atlas-details-person-1")) { opened.isNotEmpty() }
         assertEquals(listOf(ada), opened)
