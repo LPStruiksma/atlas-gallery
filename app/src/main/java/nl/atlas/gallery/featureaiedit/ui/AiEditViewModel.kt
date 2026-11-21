@@ -52,6 +52,7 @@ import nl.atlas.gallery.featureaiedit.settings.ProviderRegistry
 import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.util.UUID
 
 /** What the editor needs from the app; built once per screen from the application context. */
@@ -408,7 +409,18 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
                             }
                         }
                         journal?.clear()
-                        if (machine.onResult(token, created)) publish()
+                        if (machine.onResult(token, created)) {
+                            // Record only after the explicit provider request succeeded and
+                            // the state machine accepted its result. Best-effort local storage
+                            // must never turn a successful edit into a failed paid request.
+                            if (created.isNotEmpty()) withContext(Dispatchers.IO) {
+                                runCatching {
+                                    AiEditPromptHistory(File(env!!.context.noBackupFilesDir,
+                                        AI_EDIT_PROMPT_HISTORY_FILE)).record(prior.prompt)
+                                }
+                            }
+                            publish()
+                        }
                     } else {
                         val issue = AiEditIssue.classify(outcome, remoteSaved()) ?: AiEditIssue.FAILED
                         // Final outcomes (including a charged decline) need no lookup; only unknowns keep it.
