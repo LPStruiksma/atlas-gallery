@@ -1,0 +1,3 @@
+# #870 A/B arm: listener off (proof-only throwaway head, never a PR)
+6 nl.atlas.gallery.featureintents.ExternalPickerJourneyTest
+6 nl.atlas.gallery.featureintents.ExternalNeighboursJourneyTest
