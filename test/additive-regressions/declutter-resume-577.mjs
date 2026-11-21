@@ -22,6 +22,8 @@ assert.match(host, /atlas_declutter_keeps[\s\S]*?MODE_PRIVATE/, 'private on-devi
 assert.match(host, /DeclutterTrashPreflight\.unchanged\(\s*context\.contentResolver, selected\)/,
   'pre-Trash re-query guard stays in the host');
 console.log('declutter resume contract ok');
-assert.match(screen, /All \$\{progress\.total\} items reviewed\./, 'completed source shows All items reviewed');
-assert.match(screen, /atlas-declutter-complete-back[\s\S]*?onExit/, 'completed state has a safe exit');
-assert.match(screen, /atlas-declutter-complete-restart[\s\S]*?confirmingReset = true/, 'completed restart goes through the confirmation');
+assert.match(screen, /All \$total items reviewed\./, 'completed source shows All items reviewed');
+assert.match(screen, /atlas-declutter-complete-back/, 'completed state has a safe exit');
+assert.match(screen, /onRestart = \{ confirmingReset = true \}/, 'completed restart goes through the confirmation');
+assert.match(screen, /current == null && pendingCount == 0 && onKeep != null[\s\S]*?DeclutterCompletedBody/, 'last Keep in an active session ends on the completed state');
+assert.match(screen, /private fun DeclutterResetDialog/, 'one shared reset confirmation');

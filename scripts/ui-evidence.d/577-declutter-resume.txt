@@ -9,3 +9,5 @@ declutter-577-deck-light
 declutter-577-complete-light
 declutter-577-complete-dark
 declutter-577-complete-large
+declutter-577-deck-large
+declutter-577-complete-active-light

@@ -118,11 +118,45 @@ class DeclutterResumeEvidenceTest {
             rule.runOnIdle { dark = false }
             capture("declutter-577-deck-light.png")
 
-            // Keep is saved at once; a stage never is.
+            // 200% type on the real deck: progress line and both primary actions stay
+            // displayed, clickable, 48 dp tall, and in reading order (Stage left of Keep,
+            // both below the progress line) so focus reaches them without scrolling.
+            rule.runOnIdle { fontScale = 2f }
+            rule.waitForIdle()
+            val progressTop = rule.onNodeWithTag("atlas-declutter-progress")
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+            val stage = rule.onNodeWithTag("atlas-declutter-discard")
+                .assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
+            val keep = rule.onNodeWithTag("atlas-declutter-keep")
+                .assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
+            val stageBox = stage.fetchSemanticsNode().boundsInRoot
+            val keepBox = keep.fetchSemanticsNode().boundsInRoot
+            assertTrue("stage before keep", stageBox.left < keepBox.left || stageBox.top < keepBox.top)
+            assertTrue("actions below progress", stageBox.top > progressTop && keepBox.top > progressTop)
+            capture("declutter-577-deck-large.png")
+            rule.runOnIdle { fontScale = 1f }
+
+            // Keep is saved at once; a stage never is. The last Keep ends on the
+            // completed-source state, not the generic folder page.
             rule.onNodeWithTag("atlas-declutter-keep").performClick()
             assertEquals(3, store.load(key).size)
-            rule.onNodeWithText("Folder review complete").assertExists()
+            rule.onNodeWithTag("atlas-declutter-complete").assertExists()
+            rule.onNodeWithText("All 3 items reviewed.").assertExists()
+            rule.onNodeWithText("Folder review complete").assertDoesNotExist()
             rule.onNodeWithTag("atlas-declutter-undo").assertDoesNotExist()
+            rule.onNodeWithTag("atlas-declutter-complete-back").assertHeightIsAtLeast(48.dp)
+            rule.onNodeWithTag("atlas-declutter-complete-restart").assertHeightIsAtLeast(48.dp)
+            capture("declutter-577-complete-active-light.png")
+            // Restart still needs its confirmation; cancelling keeps every Keep.
+            rule.onNodeWithTag("atlas-declutter-complete-restart").performClick()
+            rule.onNodeWithTag("atlas-declutter-reset-dialog").assertExists()
+            rule.onNodeWithTag("atlas-declutter-reset-cancel").performClick()
+            assertEquals(3, store.load(key).size)
+            // Confirmed restart clears this source and returns to the first photo.
+            rule.onNodeWithTag("atlas-declutter-complete-restart").performClick()
+            rule.onNodeWithTag("atlas-declutter-reset-confirm").performClick()
+            assertEquals(0, store.load(key).size)
+            rule.onNodeWithTag("atlas-declutter-progress").assertTextEquals("Reviewed 0 of 3")
         } finally {
             uris.forEach { resolver.delete(it, null, null) }
         }
@@ -130,6 +164,24 @@ class DeclutterResumeEvidenceTest {
     private fun fakeDeck(count: Int) = (1..count).map { i ->
         MediaRecord(900L + i, "content://media/external/images/media/${900 + i}",
             "ATLAS_577_FAKE_$i.png", folder, 2048L, 900L + i, false, modifiedAtSeconds = 1L)
+    }
+
+    @Test fun keepingEveryPhotoOfAFreshReviewEndsOnAllReviewed() {
+        val deck = fakeDeck(2)
+        val store = InMemoryDeclutterKeepStore()
+        val key = declutterScopeKey("album", folder, sort = "size")
+        rule.setContent {
+            AtlasGalleryTheme(dark = false) {
+                DeclutterScreen(folder, deck, onExit = {}, onTrashRequest = {},
+                    scopeKey = key, keepStore = store)
+            }
+        }
+        rule.onNodeWithTag("atlas-declutter-keep").performClick()
+        rule.onNodeWithTag("atlas-declutter-complete").assertDoesNotExist()
+        rule.onNodeWithTag("atlas-declutter-keep").performClick()
+        rule.onNodeWithTag("atlas-declutter-complete").assertExists()
+        rule.onNodeWithText("All 2 items reviewed.").assertExists()
+        assertEquals(2, store.load(key).size)
     }
 
     @Test fun everyItemKeptShowsAllReviewedAndNeverOffersAMissingResume() {

@@ -53,44 +53,31 @@ internal fun DeclutterScreen(
 ) {
     if (scopeKey == null || keepStore == null) {
         DeclutterReviewScreen(folder, deck, onExit, onSearchWholeLibrary,
-            onTrashRequest, verifying, 0, deck.size, null, null)
+            onTrashRequest, verifying, 0, deck.size, null, null, null)
         return
     }
     val sourceKey = CatalogSourceKey(deck)
-    val progress = remember(sourceKey, scopeKey) {
+    // Bumped when the Keeps are cleared so progress and the resume choice rebuild.
+    var generation by remember(sourceKey, scopeKey) { mutableIntStateOf(0) }
+    val progress = remember(sourceKey, scopeKey, generation) {
         DeclutterProgress.of(deck, keepStore.load(scopeKey))
     }
     // null = still asking; false = start again; true = resume.
-    var resume by remember(sourceKey, scopeKey) {
+    var resume by remember(sourceKey, scopeKey, generation) {
         mutableStateOf<Boolean?>(if (progress.reviewed == 0) false else null)
     }
-    var confirmingReset by remember(sourceKey, scopeKey) { mutableStateOf(false) }
+    var confirmingReset by remember(sourceKey, scopeKey, generation) { mutableStateOf(false) }
     val chosen = resume
     if (chosen == null) {
         if (confirmingReset) {
-            AlertDialog(
-                onDismissRequest = { confirmingReset = false },
-                title = { Text("Start this review again?") },
-                text = { Text("Your ${progress.reviewed} kept photos here will come back for review. Nothing is deleted.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            keepStore.clear(scopeKey)
-                            confirmingReset = false
-                            resume = false
-                        },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                            .testTag("atlas-declutter-reset-confirm")
-                    ) { Text("Start again") }
+            DeclutterResetDialog(
+                kept = progress.reviewed,
+                onConfirm = {
+                    keepStore.clear(scopeKey)
+                    confirmingReset = false
+                    generation++
                 },
-                dismissButton = {
-                    TextButton(
-                        onClick = { confirmingReset = false },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                            .testTag("atlas-declutter-reset-cancel")
-                    ) { Text("Cancel") }
-                },
-                modifier = Modifier.testTag("atlas-declutter-reset-dialog")
+                onCancel = { confirmingReset = false }
             )
         }
         if (progress.complete) {
@@ -110,25 +97,12 @@ internal fun DeclutterScreen(
                         onBack = onExit,
                         backDescription = "Back to Gallery"
                     )
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("All ${progress.total} items reviewed.",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onBackground)
-                            Text("You kept every photo here. Nothing was deleted.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Button(
-                        onClick = onExit,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .testTag("atlas-declutter-complete-back")
-                    ) { Text("Back to album") }
-                    TextButton(
-                        onClick = { confirmingReset = true },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .testTag("atlas-declutter-complete-restart")
-                    ) { Text("Start this review again") }
+                    DeclutterCompletedBody(
+                        total = progress.total,
+                        onExit = onExit,
+                        onRestart = { confirmingReset = true },
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    )
                 }
             }
         } else if (!confirmingReset) {
@@ -168,7 +142,7 @@ internal fun DeclutterScreen(
     }
     // `progress` is frozen per source, so new Keeps never reshuffle this deck.
     // Fresh start keeps the full source; resume leaves only unkept items.
-    val reviewDeck = remember(sourceKey, scopeKey, chosen) {
+    val reviewDeck = remember(sourceKey, scopeKey, chosen, generation) {
         sourceDeclutterDeck(if (chosen) progress.unreviewed else deck)
     }
     DeclutterReviewScreen(
@@ -176,7 +150,62 @@ internal fun DeclutterScreen(
         reviewedBefore = if (chosen) progress.reviewed else 0,
         sourceTotal = progress.total,
         onKeep = { keepStore.add(scopeKey, declutterKeepIdentity(it)) },
-        onUnkeep = { keepStore.remove(scopeKey, declutterKeepIdentity(it)) }
+        onUnkeep = { keepStore.remove(scopeKey, declutterKeepIdentity(it)) },
+        onRestartSource = { keepStore.clear(scopeKey); generation++ }
+    )
+}
+
+/** Completed source: every item kept. Safe exit, restart only via a confirmation. */
+@Composable
+private fun DeclutterCompletedBody(
+    total: Int,
+    onExit: () -> Unit,
+    onRestart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("All $total items reviewed.",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground)
+                Text("You kept every photo here. Nothing was deleted.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Button(
+            onClick = onExit,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag("atlas-declutter-complete-back")
+        ) { Text("Back to album") }
+        TextButton(
+            onClick = onRestart,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag("atlas-declutter-complete-restart")
+        ) { Text("Start this review again") }
+    }
+}
+
+/** Own confirmation for clearing a source's Keeps. Nothing is deleted. */
+@Composable
+private fun DeclutterResetDialog(kept: Int, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Start this review again?") },
+        text = { Text("Your $kept kept photos here will come back for review. Nothing is deleted.") },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-declutter-reset-confirm")
+            ) { Text("Start again") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-declutter-reset-cancel")
+            ) { Text("Cancel") }
+        },
+        modifier = Modifier.testTag("atlas-declutter-reset-dialog")
     )
 }
 
@@ -196,7 +225,8 @@ private fun DeclutterReviewScreen(
     reviewedBefore: Int,
     sourceTotal: Int,
     onKeep: ((MediaRecord) -> Unit)?,
-    onUnkeep: ((MediaRecord) -> Unit)?
+    onUnkeep: ((MediaRecord) -> Unit)?,
+    onRestartSource: (() -> Unit)?
 ) {
     // The review deck may contain 150k entries; never ask Compose to
     // structurally compare List contents in remember/effect keys. Fresh
@@ -208,6 +238,7 @@ private fun DeclutterReviewScreen(
     // FIND-5 (#341): the panel's scope, and the D1 "leave Declutter?" step.
     var searchScope by remember(CatalogSourceKey(deck)) { mutableStateOf(AtlasSearchScope.THIS_SCREEN) }
     var confirmingLeave by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
+    var confirmingRestart by remember(CatalogSourceKey(deck)) { mutableStateOf(false) }
     var dragX by remember(CatalogSourceKey(deck), session.position) { mutableFloatStateOf(0f) }
     // A held swipe is not a settled card: postpone hires/player allocation.
     var dragging by remember(CatalogSourceKey(deck), session.position) { mutableStateOf(false) }
@@ -506,6 +537,21 @@ private fun DeclutterReviewScreen(
                         .fillMaxWidth().heightIn(min = 48.dp)
                         .testTag("atlas-declutter-trash")
                 ) { Text("Move ${pendingCount} to Android Trash…") }
+            }
+        } else if (current == null && pendingCount == 0 && onKeep != null && onRestartSource != null) {
+            // The last photo was kept in this session: same completed state as a reopen.
+            DeclutterCompletedBody(
+                total = sourceTotal,
+                onExit = onExit,
+                onRestart = { confirmingRestart = true },
+                modifier = Modifier.weight(1f).fillMaxWidth().testTag("atlas-declutter-complete")
+            )
+            if (confirmingRestart) {
+                DeclutterResetDialog(
+                    kept = sourceTotal,
+                    onConfirm = { confirmingRestart = false; onRestartSource() },
+                    onCancel = { confirmingRestart = false }
+                )
             }
         } else if (current == null) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

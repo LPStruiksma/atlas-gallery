@@ -100,7 +100,8 @@ signing-safe APK upgrade and backup**.
   for files that were edited or left the album do not count and trigger nothing.
 - **Completed source.** When every item is kept the screen says *All n items
   reviewed* with *Back to album* and *Start this review again*; it never resets
-  by itself and never offers a resume with nothing left.
+  by itself and never offers a resume with nothing left. Keeping the last photo of an active
+  review ends on the same state.
 - **Start again** clears that source's Keeps only after a confirmation.
 - Undo removes the saved Keep of the item it returns to review. The two
   Trash confirmations and the MediaStore re-query are unchanged.
