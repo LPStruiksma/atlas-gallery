@@ -65,9 +65,17 @@ def _summary(bucket: dict[str, int]) -> dict:
     }
 
 
-def evaluate(manifest: Path, predictions: Path) -> dict:
+def evaluate(manifest: Path, predictions: Path, split: str | None = None) -> dict:
     expected = _index_rows(manifest)
     actual = _index_rows(predictions)
+    if split is not None:  # score one manifest split; predictions are still ID-checked in full
+        expected = {key: row for key, row in expected.items() if row.get("split") == split}
+        if not expected:
+            raise ValueError(f"no manifest rows with split {split!r}")
+        extra_other = sorted(set(actual) - set(_index_rows(manifest)))
+        actual = {key: row for key, row in actual.items() if key in expected}
+        if extra_other:
+            raise ValueError(f"ID mismatch: missing=[], extra={extra_other}")
     missing = sorted(set(expected) - set(actual))
     extra = sorted(set(actual) - set(expected))
     if missing or extra:
@@ -90,10 +98,14 @@ def evaluate(manifest: Path, predictions: Path) -> dict:
             by_language.setdefault(language, _empty_bucket()),
             by_language_kind.setdefault(language, {}).setdefault(kind, _empty_bucket()),
         )
+        # CER/WER are defined over text-positive images only. Text hallucinated on a no-text
+        # image is reported as false_text, never as insertions inside CER (OCR-0A #873: the
+        # merged scorer counted them, contradicting its own test and the README denominators).
+        is_text = bool(ref)
         measured = {"chars": len(ref_chars), "words": len(ref_words),
-                    "char_edits": edit_distance(ref_chars, hyp_chars),
-                    "word_edits": edit_distance(ref_words, hyp_words),
-                    "is_text": bool(ref), "has_prediction": bool(hyp)}
+                    "char_edits": edit_distance(ref_chars, hyp_chars) if is_text else 0,
+                    "word_edits": edit_distance(ref_words, hyp_words) if is_text else 0,
+                    "is_text": is_text, "has_prediction": bool(hyp)}
         for bucket in counters:
             _add(bucket, **measured)
 
@@ -113,8 +125,9 @@ def main() -> None:
     parser.add_argument("manifest", type=Path)
     parser.add_argument("predictions", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--split", help="score only manifest rows with this split (dev or test)")
     args = parser.parse_args()
-    result = json.dumps(evaluate(args.manifest, args.predictions), indent=2, sort_keys=True) + "\n"
+    result = json.dumps(evaluate(args.manifest, args.predictions, args.split), indent=2, sort_keys=True) + "\n"
     if args.output: args.output.write_text(result, encoding="utf-8")
     else: print(result, end="")
 
