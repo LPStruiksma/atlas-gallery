@@ -32,6 +32,8 @@ import nl.atlas.gallery.S24DisplayRule
 import nl.atlas.gallery.applyAtlasSystemBars
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.saveUiEvidence
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,6 +45,7 @@ import java.io.FileOutputStream
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.abs
 
 /**
  * #16: rendered 1080x2340 S24+ evidence in both themes, plus a real TalkBack
@@ -79,6 +82,76 @@ class MonthYearOverviewEvidenceTest {
     private fun LazyGridLayoutInfo.drawnPhotoColumns(): Int =
         visibleItemsInfo.filter { it.size.width in 1 until viewportSize.width / 2 }
             .groupingBy { it.offset.y }.eachCount().values.maxOrNull() ?: 0
+
+    /** Real UiAutomation pixels, not Compose layout or an image-loaded callback. */
+    private data class PaintProbe(
+        val visibleIds: List<Long>,
+        val matchedIds: List<Long>,
+        val counts: List<Int>,
+        val frame: String
+    ) {
+        fun diagnostic(): String =
+            "frame=$frame visible=$visibleIds painted=$matchedIds matches=$counts"
+    }
+
+    /** Only the current LazyGrid's composed photo tiles can nominate expected colors. */
+    private fun visiblePhotoIds(original: Boolean): List<Long> {
+        val prefix = if (original) "atlas-ratio-media-" else "atlas-timeline-media-"
+        val matcher = SemanticsMatcher("visible synthetic photo tile") { node ->
+            node.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(prefix) == true
+        }
+        return compose.onAllNodes(matcher, useUnmergedTree = true)
+            .fetchSemanticsNodes(atLeastOneRootRequired = false)
+            .filter { it.boundsInRoot.width >= 16f && it.boundsInRoot.height >= 16f }
+            .mapNotNull { node ->
+                node.config.getOrNull(SemanticsProperties.TestTag)
+                    ?.removePrefix(prefix)?.substringBefore('-')?.toLongOrNull()
+            }.distinct().take(12)
+    }
+
+    /**
+     * #780: a column count or drawWithContent callback can succeed while the
+     * display still contains plain ground or undecoded surfaceVariant tiles.
+     * The fixture is made of solid known HSV photos, so demand three distinct
+     * visible photo colors in a *device* screenshot before saving the evidence.
+     * This also works for the original-proportions layout.
+     */
+    private fun paintedTileColors(visibleIds: List<Long>): PaintProbe {
+        if (visibleIds.size < 3) return PaintProbe(visibleIds, emptyList(), emptyList(), "no tiles")
+        val shot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            ?: return PaintProbe(visibleIds, emptyList(), emptyList(), "no screenshot")
+        val pixels = if (shot.config == Bitmap.Config.HARDWARE)
+            requireNotNull(shot.copy(Bitmap.Config.ARGB_8888, false))
+        else shot
+        try {
+            val colors = visibleIds.map { id ->
+                Color.HSVToColor(floatArrayOf((id * 47f) % 360f, .6f, .8f))
+            }
+            val hits = IntArray(colors.size)
+            // Ignore system bars. At 28 columns a tile is only ~35 px wide;
+            // a 6 px stride still yields many samples of its solid photo ink.
+            for (y in pixels.height * 8 / 100 until pixels.height * 92 / 100 step 6) {
+                for (x in 0 until pixels.width step 6) {
+                    val pixel = pixels.getPixel(x, y)
+                    for (i in colors.indices) {
+                        val expected = colors[i]
+                        if (abs(Color.red(pixel) - Color.red(expected)) <= 12 &&
+                            abs(Color.green(pixel) - Color.green(expected)) <= 12 &&
+                            abs(Color.blue(pixel) - Color.blue(expected)) <= 12) hits[i]++
+                    }
+                }
+            }
+            return PaintProbe(
+                visibleIds,
+                visibleIds.filterIndexed { i, _ -> hits[i] >= 8 },
+                hits.toList(),
+                "${pixels.width}x${pixels.height}"
+            )
+        } finally {
+            if (pixels !== shot) pixels.recycle()
+            shot.recycle()
+        }
+    }
 
     @Test fun capturesSevenMonthYearAndOriginalInLightAndDark() {
         val items = inventedPhotos()
@@ -132,22 +205,67 @@ class MonthYearOverviewEvidenceTest {
             }
         }
 
+        fun levelIsReady(level: GridDensity, bucket: TimelineBucket): Boolean =
+            compose.onAllNodes(hasTestTag("atlas-timeline-grid")
+                .and(SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription, "${level.columns} columns")))
+                .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() &&
+                displayed.get()?.timeline?.headers?.isNotEmpty() == true &&
+                displayed.get()?.timeline?.headers?.all {
+                    it.header.stableKey.startsWith("header:${bucket.name}:")
+                } == true &&
+                drawnColumns.get() == level.columns
+
         fun awaitLevel(level: GridDensity, bucket: TimelineBucket) {
-            compose.waitUntil(30_000L) {
-                compose.onAllNodes(hasTestTag("atlas-timeline-grid")
-                    .and(SemanticsMatcher.expectValue(
-                        SemanticsProperties.StateDescription, "${level.columns} columns")))
-                    .fetchSemanticsNodes().isNotEmpty() &&
-                    displayed.get()?.timeline?.headers?.isNotEmpty() == true &&
-                    displayed.get()?.timeline?.headers?.all {
-                        it.header.stableKey.startsWith("header:${bucket.name}:")
-                    } == true &&
-                    // #570: semantics and slots can be ready while no frame
-                    // has drawn the tiles yet; capture only after one has.
-                    drawnColumns.get() == level.columns
+            compose.awaitThat("${level.columns} ${bucket.name} columns laid out", 30_000L) {
+                levelIsReady(level, bucket)
             }
             assertTrue(displayed.get()!!.timeline.grouped)
             compose.waitForIdle()
+        }
+
+        fun savePaintedEvidence(
+            filename: String, level: GridDensity? = null, bucket: TimelineBucket? = null
+        ) {
+            // Initial layout may take 30 s on a loaded emulator, but once
+            // capture begins its *entire* paint/relook budget is only 10 s.
+            if (level != null) awaitLevel(level, requireNotNull(bucket))
+            else {
+                compose.awaitThat("original-proportions layout", 30_000L) {
+                    compose.exists(hasTestTag("atlas-ratio-gallery"))
+                }
+                compose.waitForIdle()
+            }
+            val startedAt = android.os.SystemClock.uptimeMillis()
+            var lastDiagnostic = "no sampled frame yet"
+            saveUiEvidence(filename) {
+                val remaining = 10_000L - (android.os.SystemClock.uptimeMillis() - startedAt)
+                check(remaining > 0L) {
+                    "UI evidence $filename exceeded its 10 s paint deadline: $lastDiagnostic"
+                }
+                try {
+                    compose.awaitThat("real painted photo pixels in $filename", remaining) {
+                        val ready = if (level == null)
+                            compose.exists(hasTestTag("atlas-ratio-gallery"))
+                        else levelIsReady(level, requireNotNull(bucket))
+                        if (!ready) {
+                            lastDiagnostic = "layout not ready; columns=${drawnColumns.get()} " +
+                                "clock=${compose.mainClock.currentTime}ms " +
+                                "headers=${displayed.get()?.timeline?.headers?.size}"
+                            false
+                        } else {
+                            val probe = paintedTileColors(visiblePhotoIds(original = level == null))
+                            lastDiagnostic = "clock=${compose.mainClock.currentTime}ms " +
+                                "columns=${drawnColumns.get()} ${probe.diagnostic()}"
+                            probe.matchedIds.size >= 3
+                        }
+                    }
+                } catch (timeout: AssertionError) {
+                    throw AssertionError("UI evidence $filename: $lastDiagnostic", timeout)
+                }
+                android.util.Log.i("ATLAS_EVIDENCE", "$filename painted: $lastDiagnostic")
+                compose.waitForIdle()
+            }
         }
 
         fun chooseSmaller() {
@@ -167,35 +285,22 @@ class MonthYearOverviewEvidenceTest {
                 // its old slots through AtlasTimelineGallery.onDispose.
             }
             val theme = if (useDark) "dark" else "light"
-            // #693: each look re-checks the level. A replan after the check
-            // (likely a late viewport change after the S24 resize) leaves the
-            // plain ground on screen until a Compose sync lets it finish.
-            saveUiEvidence("zoom-16-$theme-7.png") {
-                awaitLevel(GridDensity.SMALL, TimelineBucket.MONTH)
-            }
+            // #780: every capture waits for actual rendered synthetic tile
+            // colors; semantics and a previous draw pass alone do not suffice.
+            savePaintedEvidence("zoom-16-$theme-7.png", GridDensity.SMALL, TimelineBucket.MONTH)
 
             chooseSmaller()
-            saveUiEvidence("zoom-16-$theme-12-month.png") {
-                awaitLevel(GridDensity.MONTH, TimelineBucket.MONTH)
-            }
+            savePaintedEvidence("zoom-16-$theme-12-month.png", GridDensity.MONTH, TimelineBucket.MONTH)
 
             chooseSmaller()
             assertEquals(28, GridDensity.YEAR.columns)
-            saveUiEvidence("zoom-16-$theme-28-year.png") {
-                awaitLevel(GridDensity.YEAR, TimelineBucket.YEAR)
-            }
+            savePaintedEvidence("zoom-16-$theme-28-year.png", GridDensity.YEAR, TimelineBucket.YEAR)
 
             val actions = compose.onNodeWithTag("atlas-timeline-grid")
                 .fetchSemanticsNode().config[SemanticsActions.CustomActions]
             val original = actions.first { it.label == ORIGINAL_PROPORTIONS_ACTION }
             compose.runOnIdle { assertTrue(original.action()) }
-            saveUiEvidence("zoom-16-$theme-original.png") {
-                compose.waitUntil(30_000L) {
-                    compose.onAllNodes(hasTestTag("atlas-ratio-gallery"))
-                        .fetchSemanticsNodes().isNotEmpty()
-                }
-                compose.waitForIdle()
-            }
+            savePaintedEvidence("zoom-16-$theme-original.png")
         }
     }
 }
