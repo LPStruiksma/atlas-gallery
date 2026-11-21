@@ -157,6 +157,8 @@ import nl.atlas.gallery.featuregrid.GalleryZoomStop
 import nl.atlas.gallery.featuregrid.isCurrentFor
 import nl.atlas.gallery.featureorganization.SamsungSelectionBottomBar
 import nl.atlas.gallery.featureorganization.AlbumTransferMode
+import nl.atlas.gallery.featureorganization.BatchTransferGate
+import nl.atlas.gallery.featureorganization.gateBatchTransfer
 import nl.atlas.gallery.featureorganization.AlbumTransferPlan
 import nl.atlas.gallery.featureorganization.AlbumTransferResult
 import nl.atlas.gallery.featureorganization.AlbumTransferTarget
@@ -2610,29 +2612,34 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
     }
     fun transferBatch(mode: AlbumTransferMode, target: AlbumTransferTarget) {
-        if (Build.VERSION.SDK_INT < 30 || batchOperating) return
-        // #783: the target tap must never be a silent no-op. A catalogue
-        // reload while the picker was up can leave no selection (or one rebased
-        // to zero items); say so with the existing snackbar and do nothing else.
+        // #783: the target tap must never be a silent no-op. A catalogue reload
+        // while the picker was up can leave no selection (or one rebased to
+        // zero items); say so with the existing snackbar and do nothing else.
         val selection = batchSelection
-        if (selection == null || selection.count == 0) {
-            selectionResults.show("Selection changed · select again")
-            return
+        when (gateBatchTransfer(selection, batchOperating, galleryAccessCurrent(),
+            Build.VERSION.SDK_INT >= 30)) {
+            BatchTransferGate.IGNORE -> return
+            BatchTransferGate.SELECTION_CHANGED -> {
+                selectionResults.show("Selection changed · select again")
+                return
+            }
+            BatchTransferGate.ACCESS_CHANGED -> {
+                selectionResults.show("Photo access changed · select again")
+                return
+            }
+            BatchTransferGate.TOO_MANY -> {
+                selectionResults.show((if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
+                    " up to $MAX_BATCH_SHARE_ITEMS items at a time")
+                return
+            }
+            BatchTransferGate.PROCEED -> Unit
         }
+        if (selection == null) return
         // The picker is a separate screen: a library reload while it was open
         // (e.g. after a previous copy) re-publishes the list and rebases the
-        // selection a moment later. Resolve against the selection's own list
-        // instead of silently doing nothing; every URI is still checked by
-        // MediaStore (byte count for a copy, Android's consent for a move).
-        if (!galleryAccessCurrent()) {
-            selectionResults.show("Photo access changed · select again")
-            return
-        }
-        if (selection.count > MAX_BATCH_SHARE_ITEMS) {
-            selectionResults.show((if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
-                " up to $MAX_BATCH_SHARE_ITEMS items at a time")
-            return
-        }
+        // selection a moment later. Resolve against the selection's own list;
+        // every URI is still checked by MediaStore (byte count for a copy,
+        // Android's consent for a move).
         val source = selection.source
         batchOperating = true
         Log.i(TRANSFER_LOG, "start ${mode.name} items=${selection.count}")
