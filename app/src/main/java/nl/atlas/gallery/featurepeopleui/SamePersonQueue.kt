@@ -40,7 +40,8 @@ data class SamePersonQueueItem(
  * No raw person, anchor or observation identifier is written to preferences.
  */
 fun samePersonSkipFingerprint(
-    state: PeopleClusterReviewState, item: SamePersonQueueItem
+    state: PeopleClusterReviewState, item: SamePersonQueueItem,
+    scope: String = state.permissionEpoch
 ): String? {
     val unknown = state.clusters.unknownClusters.associateBy { it.id }
     val subject = when (val side = item.subject) {
@@ -54,7 +55,7 @@ fun samePersonSkipFingerprint(
     if (subject.size != item.subjectFaces || other.size != item.otherFaces) return null
     fun members(ids: Collection<NativeFaceObservationId>) =
         ids.map { it.localHex }.sorted().joinToString(",")
-    val bytes = ("same-person-skip-v1|" + state.permissionEpoch + "|" + item.key +
+    val bytes = ("same-person-skip-v1|" + scope + "|" + item.key +
         "|subject:" + members(subject) + "|other:" + members(other))
         .toByteArray(Charsets.UTF_8)
     return MessageDigest.getInstance("SHA-256").digest(bytes)
