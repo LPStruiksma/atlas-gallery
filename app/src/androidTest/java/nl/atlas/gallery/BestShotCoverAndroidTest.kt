@@ -116,8 +116,7 @@ class BestShotCoverAndroidTest {
         name(store, "epoch-V")
         val chosen = faceBySource(store, "epoch-V").getValue(2)
         assertEquals(chosen, cover(store, "epoch-V"))
-        assertEquals(2000L, store.faceLocations("epoch-V", listOf(chosen))
-            .getValue(chosen).frameMs)
+        assertEquals(2000L, store.faceLocation("epoch-V", chosen)?.frameMs)
     }
 
     @Test fun marginalBackfillDoesNotDisplaceIncumbent() = withStore { store ->
