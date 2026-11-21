@@ -37,6 +37,8 @@ class BestShotSelectorTest {
     @Test fun betterPhotoMovesButMarginalImprovementDoesNot() {
         val initial = listOf(shot("a", .65f), shot("b", .69f))
         assertEquals("a", BestShotSelector.choose(initial, "a")?.faceUid)
+        assertEquals("a", chosen(shot("a", .65f), shot("edge", .70f),
+            incumbent = "a")) // equality at the nominal 0.05 boundary is not enough
         assertEquals("better", chosen(*initial.toTypedArray(), shot("better", .78f),
             incumbent = "a"))
         assertEquals("better", chosen(*initial.toTypedArray(), shot("better", .78f),
