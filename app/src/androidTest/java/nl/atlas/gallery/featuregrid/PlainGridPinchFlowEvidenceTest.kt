@@ -225,11 +225,15 @@ class PlainGridPinchFlowEvidenceTest {
         val delta = Offset(40f, 160f)
         val from = 260f
         grid.performTouchInput { down(0, start - Offset(from, 0f)); down(1, start + Offset(from, 0f)) }
-        val steps = 12
+        // The span alone first, until the pinch is recognised (touch slop):
+        // the centre then moves only while the pinch is live, so the photo
+        // must follow all of [delta].
+        val steps = 16
+        val still = 6
         val target = from * 1.5f.pow(-.75f)
         for (i in 1..steps) {
             val s = from + (target - from) * i / steps
-            val c = start + delta * (i.toFloat() / steps)
+            val c = start + delta * ((i - still).coerceAtLeast(0).toFloat() / (steps - still))
             grid.performTouchInput { moveTo(0, c - Offset(s, 0f)); moveTo(1, c + Offset(s, 0f)) }
         }
         compose.waitForIdle()
