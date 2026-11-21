@@ -80,7 +80,7 @@
       "900x600"
     ],
     "images": 240,
-    "manifest_sha256": "9cb5120776cc4b79ad3c1aab69abcf696347c4223cb6c7294aa3e714d2a96b47",
+    "manifest_sha256": "0e7cfe1efc5a0bc01c5d364ba9ebe61f0c853ee716d0a59634b5904a740286de",
     "no_text": 60,
     "recipe": "ocr0a-synthetic-v1",
     "seed": 873,
@@ -91,7 +91,7 @@
     "text_positive": 180
   },
   "host": {
-    "cpu": "Intel(R) Xeon(R) Processor @ 2.30GHz",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "execution_provider": "CPUExecutionProvider",
     "gpu": false,
     "inter_op_threads": 1,
@@ -104,40 +104,44 @@
   "latency": {
     "doctr": {
       "detector": {
-        "median_ms": 662.1,
+        "images": 240,
+        "median_ms": 656.5,
         "n": 240,
-        "p95_ms": 823.7
+        "p95_ms": 766.7
       },
       "empty_predictions": 48,
-      "predictions_sha256": "37af09f2ab510f4060104908bbca408ac1969410db40930a15557fa9821de074",
+      "predictions_sha256": "f98406558c0449edcdc250d5c39a45947773ecce5c0e3a4b7b5fcdb1334b21a6",
       "recognizer": {
-        "median_ms": 15.8,
+        "images": 240,
+        "median_ms": 17.4,
         "n": 240,
-        "p95_ms": 51.9
+        "p95_ms": 58.5
       },
       "total": {
-        "median_ms": 688.8,
+        "median_ms": 684.1,
         "n": 240,
-        "p95_ms": 856.7
+        "p95_ms": 813.0
       }
     },
     "ppocr": {
       "detector": {
-        "median_ms": 145.0,
-        "n": 180,
-        "p95_ms": 215.9
+        "images": 240,
+        "median_ms": 165.5,
+        "n": 240,
+        "p95_ms": 386.8
       },
       "empty_predictions": 60,
-      "predictions_sha256": "d6472f9f75b2ceaa4de1b6b45fe3629e3e51481fd45874f39b24c28baa521ef2",
+      "predictions_sha256": "3c7cf3c12543cb800f1a0bc5c094d61653ad85239235b66b7889ece80be3eea6",
       "recognizer": {
-        "median_ms": 178.4,
-        "n": 180,
-        "p95_ms": 419.3
+        "images": 240,
+        "median_ms": 162.1,
+        "n": 188,
+        "p95_ms": 394.4
       },
       "total": {
-        "median_ms": 334.7,
+        "median_ms": 331.5,
         "n": 240,
-        "p95_ms": 530.8
+        "p95_ms": 523.2
       }
     }
   },
@@ -159,7 +163,6 @@
       "python3 -m tools.ocr_bench.evaluate CORPUS/manifest.jsonl X.jsonl [--split dev|test]"
     ],
     "detection_forced_on_every_image": true,
-    "predictions_postprocessing": "boxes rounded to integer px, scores to 3 decimals (as run_models.py now does)",
     "prefilter": "none (OCR-0B)",
     "timed_runs_per_image": 1,
     "warmup_images_discarded": 5

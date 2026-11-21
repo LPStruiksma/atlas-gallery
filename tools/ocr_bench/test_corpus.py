@@ -34,6 +34,12 @@ class CorpusRecipeTest(unittest.TestCase):
         self.assertGreaterEqual(sum(1 for r in rows if r["kind"] == "no_text"), 50)
         self.assertTrue(any(ch in "".join(r["text"] for r in rows if r.get("language") == "nl") for ch in "éëï"))
 
+    def test_no_ground_truth_text_is_clipped(self):
+        rows = gen_corpus.generate(Path("/nonexistent"), write_images=False)
+        text_rows = [r for r in rows if r["text"]]
+        self.assertTrue(all(r["text_px"] <= r["text_limit_px"] for r in text_rows))
+        self.assertEqual(len(text_rows), 180)
+
     def test_split_scoring_and_negatives_stay_out_of_cer(self):
         rows = [{"id": "a", "kind": "sign", "language": "en", "text": "exit", "split": "dev"},
                 {"id": "b", "kind": "no_text", "text": "", "split": "test"}]
@@ -49,6 +55,13 @@ class CorpusRecipeTest(unittest.TestCase):
             self.assertEqual((dev["samples"], dev["false_text"]), (1, 0))
             with self.assertRaises(ValueError):
                 evaluate.evaluate(manifest, pred, split="none")
+            # a prediction missing from the EXCLUDED split must still fail the integrity check
+            pred.write_text(json.dumps(preds[1]) + "\n")
+            with self.assertRaises(ValueError):
+                evaluate.evaluate(manifest, pred, split="test")
+            pred.write_text("".join(json.dumps(r) + "\n" for r in preds + [{"id": "zzz", "text": ""}]))
+            with self.assertRaises(ValueError):
+                evaluate.evaluate(manifest, pred, split="dev")
 
 
 if __name__ == "__main__":

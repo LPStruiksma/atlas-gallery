@@ -46,8 +46,8 @@
       "words": 438
     },
     "sign": {
-      "cer": 0.02140309155766944,
-      "char_edits": 18,
+      "cer": 0.023781212841854936,
+      "char_edits": 20,
       "chars": 841,
       "false_skip_rate": 0.0,
       "false_skips": 0,
@@ -56,15 +56,15 @@
       "no_text_samples": 0,
       "samples": 40,
       "text_samples": 40,
-      "wer": 0.09774436090225563,
-      "word_edits": 13,
+      "wer": 0.11278195488721804,
+      "word_edits": 15,
       "words": 133
     }
   },
   "by_language": {
     "en": {
-      "cer": 0.0013265531726730046,
-      "char_edits": 6,
+      "cer": 0.0017687375635640063,
+      "char_edits": 8,
       "chars": 4523,
       "false_skip_rate": 0.0,
       "false_skips": 0,
@@ -73,8 +73,8 @@
       "no_text_samples": 0,
       "samples": 60,
       "text_samples": 60,
-      "wer": 0.005326231691078562,
-      "word_edits": 4,
+      "wer": 0.007989347536617843,
+      "word_edits": 6,
       "words": 751
     },
     "nl": {
@@ -141,8 +141,8 @@
         "words": 227
       },
       "sign": {
-        "cer": 0.00909090909090909,
-        "char_edits": 4,
+        "cer": 0.013636363636363636,
+        "char_edits": 6,
         "chars": 440,
         "false_skip_rate": 0.0,
         "false_skips": 0,
@@ -151,8 +151,8 @@
         "no_text_samples": 0,
         "samples": 20,
         "text_samples": 20,
-        "wer": 0.02564102564102564,
-        "word_edits": 2,
+        "wer": 0.05128205128205128,
+        "word_edits": 4,
         "words": 78
       }
     },
@@ -221,8 +221,8 @@
       }
     }
   },
-  "cer": 0.003635974762057534,
-  "char_edits": 34,
+  "cer": 0.0038498556304138597,
+  "char_edits": 36,
   "chars": 9351,
   "false_skip_rate": 0.0,
   "false_skips": 0,
@@ -231,7 +231,7 @@
   "no_text_samples": 40,
   "samples": 160,
   "text_samples": 120,
-  "wer": 0.020209059233449476,
-  "word_edits": 29,
+  "wer": 0.021602787456445994,
+  "word_edits": 31,
   "words": 1435
 }

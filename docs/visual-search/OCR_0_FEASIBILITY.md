@@ -36,29 +36,31 @@ Every artifact is pinned to an immutable Hugging Face revision with SHA-256 and 
 
 ## Results
 
-Host: Intel Xeon @ 2.30 GHz, 4 logical CPUs, 15 GiB, Linux 6.18, Python 3.13, ONNX Runtime 1.32.0 `CPUExecutionProvider`, intra-op threads 1, 5 discarded warm-up images, one timed pass per image, images 460–900 px wide by 230–960 px high (PP-OCR detector limit side 960; docTR detector resizes to 1024×1024). Detection is forced on every image, so empty predictions are genuine detector/recognizer outcomes: **there is no prefilter in this unit, so no unmeasured prefilter skips exist**. Score = pooled over text-positive images (edits and reference lengths summed; negatives never add insertions to CER/WER, they are counted as false text). Full files: `docs/visual-search/results/ocr0a/{ppocr,doctr}_{all,dev,test}.json`.
+Host: Intel Xeon @ 2.30 GHz, 4 logical CPUs, 15 GiB, Linux 6.18, Python 3.13, ONNX Runtime 1.32.0 `CPUExecutionProvider`, intra-op threads 1, 5 discarded warm-up images, one timed pass per image, images 460–900 px wide by 230–960 px high (PP-OCR detector limit side 960; docTR detector resizes to 1024×1024). Detection is forced on every image, so empty predictions are genuine detector or recognizer-score-filter outcomes: **there is no prefilter in this unit, so no unmeasured prefilter skips exist**. Score = pooled over text-positive images (edits and reference lengths summed; negatives never add insertions to CER/WER, they are counted as false text). Full files: `docs/visual-search/results/ocr0a/{ppocr,doctr}_{all,dev,test}.json`.
 
 Locked **test split** (120 text-positive, 40 no-text):
 
 | Candidate | CER | WER | False text on no-text | False skips on text | Median / p95 per image |
 |---|---:|---:|---:|---:|---:|
-| PP-OCRv5 mobile det + latin rec | 0.21% | 0.91% | 0/40 | 0/120 | 335 / 531 ms (all 240) |
-| docTR DBNet MobileNetV3-L + CRNN MobileNetV3-S | 0.36% | 2.02% | 7/40 | 0/120 | 689 / 857 ms (all 240) |
+| PP-OCRv5 mobile det + latin rec | 0.21% | 0.91% | 0/40 | 0/120 | 332 / 523 ms (all 240) |
+| docTR DBNet MobileNetV3-L + CRNN MobileNetV3-S | 0.38% | 2.16% | 7/40 | 0/120 | 684 / 813 ms (all 240) |
 
 Per language × kind on the test split (CER / WER %):
 
 | Language × kind | PP-OCR | docTR |
 |---|---:|---:|
 | EN screenshot | 0.00 / 0.00 | 0.00 / 0.00 |
-| EN receipt | 0.2 / 1.1 | 0.1 / 0.4 |
-| EN sign | 0.00 / 0.00 | 0.9 / 2.6 |
+| EN receipt | 0.2 / 1.1 | 0.08 / 0.4 |
+| EN sign | 0.00 / 0.00 | 1.4 / 5.1 |
 | NL screenshot | 0.00 / 0.00 | 0.5 / 3.3 |
-| NL receipt | 0.3 / 1.0 | 0.2 / 1.7 |
+| NL receipt | 0.26 / 1.0 | 0.22 / 1.7 |
 | NL sign | 2.0 / 7.3 | 3.5 / 20.0 |
 
-Pooled by language (test): PP-OCR EN 0.11% / 0.67%, NL 0.31% / 1.17%; docTR EN 0.13% / 0.53%, NL 0.58% / 3.65%. Dev split and all-240 files are in the results folder; the same strata ranking holds.
+Pooled by language (test): PP-OCR EN 0.11% / 0.67%, NL 0.31% / 1.17%; docTR EN 0.18% / 0.80%, NL 0.58% / 3.65%. Dev split and all-240 files are in the results folder; the same strata ranking holds.
 
-What the errors are (all 31 imperfect docTR rows and 17 PP-OCR rows were inspected): both models read “Reïntegratie” as “Reintegratie”, so the ï in the word is lost by both even though PP-OCR's dictionary contains it. docTR's recognizer vocabulary has no ö, so “coördinatie” can never be right (“coordinatie”, twice), and it also drops ï/ë in some Dutch screenshots (“Naieve”, “Naleve”) and reads “ij” as “ii” once. On Dutch signs PP-OCR's errors are a detector-side word reorder and a cropped first/last character (“randdeur … houde”, shared by both models). PP-OCR otherwise adds a stray trailing character on some receipt tokens. docTR's 12/60 false text (20%) comes from the 10 text-like `fine_lines` textures (7 hits) and the `noise` images (5 hits of 9); PP-OCR produced no false text on any negative style. Per-stage medians: PP-OCR detector 145 ms and recognizer 178 ms per image that had boxes; docTR detector (including its 1024×1024 resize and post-processing) 662 ms and recognizer 16 ms.
+What the errors are (all 33 imperfect docTR rows and 16 imperfect PP-OCR rows were inspected): both models read “Reïntegratie” as “Reintegratie”, so the ï is lost by both even though PP-OCR's dictionary contains it. docTR's recognizer vocabulary has no ö, so “coördinatie” can never be right (“coordinatie”, twice); it also drops or swaps accents elsewhere (“Naieve”, “Belgié”, “Financièle”), and adds stray `-`, `I` or doubled letters in several signs and receipts. PP-OCR's remaining errors are reading-order swaps on two-line Dutch signs (“Uitgang en Koffie gebak”, “Koffie een gebak”) and a stray trailing character on some receipt tokens (“250g g”). docTR's 12/60 false text (20%) comes from the 10 text-like `fine_lines` textures (7 hits) and the 9 `noise` images (5 hits); PP-OCR produced no false text on any negative style. An earlier revision of this unit clipped long sign text (“randdeur … houde”); the generator now shrinks the font until every ground-truth line fits and records `text_px` / `text_limit_px` per row, and the committed results come from the corrected corpus.
+
+Per-stage latency (median, with the number of images in which the stage ran): PP-OCR detector 165.5 ms (240 of 240) and recognizer 162.1 ms (188 of 240; the recognizer does not run when the detector finds no box, and its internal score filter then empties 8 detector hits); docTR detector, including its 1024×1024 resize and post-processing, 656.5 ms (240 of 240) and recognizer 17.4 ms (240 of 240). A stage that did not execute is recorded as `null`, never as 0.
 
 **Limits of this evidence.** Synthetic, clean, single-font-family renders; one seed; one timed pass; no handwriting, no real photographs, no rotated or perspective text beyond ±2.5°. A near-zero CER here says the pipeline is wired correctly and the strata are separable, not that scene-text accuracy on a phone gallery will be as good.
 

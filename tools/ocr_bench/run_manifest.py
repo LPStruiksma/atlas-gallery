@@ -62,8 +62,12 @@ def main() -> None:
         preds = [json.loads(line) for line in (args.preds / f"{name}.jsonl").read_text("utf-8").splitlines()]
         manifest["latency"][name] = {
             "total": _stats([p["latency_ms"] for p in preds]),
-            "detector": _stats([p["detector_ms"] for p in preds if p["detector_ms"]]),
-            "recognizer": _stats([p["recognizer_ms"] for p in preds if p["recognizer_ms"]]),
+            # None = stage did not execute (e.g. recognizer when the detector found no boxes);
+            # `n` is the number of images in which the stage ran, out of `images`.
+            "detector": {**_stats([p["detector_ms"] for p in preds if p["detector_ms"] is not None]),
+                         "images": len(preds)},
+            "recognizer": {**_stats([p["recognizer_ms"] for p in preds if p["recognizer_ms"] is not None]),
+                           "images": len(preds)},
             "predictions_sha256": hashlib.sha256((args.preds / f"{name}.jsonl").read_bytes()).hexdigest(),
             "empty_predictions": sum(1 for p in preds if not p["text"])}
     args.output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")

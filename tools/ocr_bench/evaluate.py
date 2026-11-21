@@ -68,18 +68,17 @@ def _summary(bucket: dict[str, int]) -> dict:
 def evaluate(manifest: Path, predictions: Path, split: str | None = None) -> dict:
     expected = _index_rows(manifest)
     actual = _index_rows(predictions)
-    if split is not None:  # score one manifest split; predictions are still ID-checked in full
-        expected = {key: row for key, row in expected.items() if row.get("split") == split}
-        if not expected:
-            raise ValueError(f"no manifest rows with split {split!r}")
-        extra_other = sorted(set(actual) - set(_index_rows(manifest)))
-        actual = {key: row for key, row in actual.items() if key in expected}
-        if extra_other:
-            raise ValueError(f"ID mismatch: missing=[], extra={extra_other}")
+    # Full-manifest ID integrity is checked BEFORE any split is selected, so a missing or extra
+    # row in the excluded split cannot pass silently.
     missing = sorted(set(expected) - set(actual))
     extra = sorted(set(actual) - set(expected))
     if missing or extra:
         raise ValueError(f"ID mismatch: missing={missing}, extra={extra}")
+    if split is not None:
+        expected = {key: row for key, row in expected.items() if row.get("split") == split}
+        if not expected:
+            raise ValueError(f"no manifest rows with split {split!r}")
+        actual = {key: actual[key] for key in expected}
 
     total = _empty_bucket()
     by_kind: dict[str, dict[str, int]] = {}

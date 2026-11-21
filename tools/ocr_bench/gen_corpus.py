@@ -77,6 +77,22 @@ def _font(name: str, size: int):
     return ImageFont.truetype(FONTS[name], size)
 
 
+def _fit_font(name: str, size: int, lines: list[str], max_width: int):
+    """Largest font <= size whose widest line fits max_width, so no ground-truth text is clipped.
+
+    Returns (font, widest_line_px). Raises instead of silently clipping when even 14 px is too wide.
+    """
+    from PIL import Image, ImageDraw
+    probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    while size >= 14:
+        font = _font(name, size)
+        widest = max(probe.textlength(line, font=font) for line in lines)
+        if widest <= max_width:
+            return font, int(widest)
+        size -= 2
+    raise ValueError(f"cannot fit {lines!r} in {max_width}px")
+
+
 def _bg(rng: random.Random, dark: bool, low_contrast: bool):
     if dark:
         base = rng.randint(16, 40)
@@ -106,7 +122,8 @@ def _screenshot(rng: random.Random, lang: str, low: bool):
     dark = rng.random() < 0.5
     bg, fg = _bg(rng, dark, low)
     size = rng.choice([20, 22, 24, 26])
-    font = _font(rng.choice(["sans", "lib"]), size)
+    font, widest = _fit_font(rng.choice(["sans", "lib"]), size, lines, 720 - 44 - 44)
+    size = font.size
     width, height = 720, 160 + len(lines) * (size * 3)
     img = Image.new("RGB", (width, height), bg)
     draw = ImageDraw.Draw(img)
@@ -117,7 +134,7 @@ def _screenshot(rng: random.Random, lang: str, low: bool):
         draw.rounded_rectangle([24, y - 12, width - 24, y + size + 14], radius=10, outline=bar, width=2)
         draw.text((44, y), line, font=font, fill=fg)
         y += size * 3
-    return _postprocess(img, rng, False), lines
+    return _postprocess(img, rng, False), lines, (widest, 720 - 44 - 44)
 
 
 def _receipt(rng: random.Random, lang: str, low: bool):
@@ -134,13 +151,13 @@ def _receipt(rng: random.Random, lang: str, low: bool):
     lines.append(f"{pool['total']}  {total // 100}{sep}{total % 100:02d}")
     lines.append(pool["thanks"])
     bg, fg = _bg(rng, False, low)
-    font = _font(rng.choice(["mono", "lib"]), rng.choice([20, 22, 24]))
+    font, widest = _fit_font(rng.choice(["mono", "lib"]), rng.choice([20, 22, 24]), lines, 460 - 24 - 24)
     step = 40
     img = Image.new("RGB", (460, 80 + len(lines) * step), bg)
     draw = ImageDraw.Draw(img)
     for i, line in enumerate(lines):
         draw.text((24, 40 + i * step), line, font=font, fill=fg)
-    return _postprocess(img, rng, True), lines
+    return _postprocess(img, rng, True), lines, (widest, 460 - 24 - 24)
 
 
 def _sign(rng: random.Random, lang: str, low: bool):
@@ -152,14 +169,14 @@ def _sign(rng: random.Random, lang: str, low: bool):
     bg, fg = rng.choice(palette)
     if low:
         fg = tuple(int(b + (f - b) * 0.4) for b, f in zip(bg, fg))
-    font = _font(rng.choice(["sans_bold", "lib_bold"]), rng.choice([52, 60, 68]))
+    font, widest = _fit_font(rng.choice(["sans_bold", "lib_bold"]), rng.choice([52, 60, 68]), lines, 900 - 2 * 60)
     img = Image.new("RGB", (900, 120 + len(lines) * 110), bg)
     draw = ImageDraw.Draw(img)
     draw.rectangle([14, 14, 885, img.height - 15], outline=fg, width=6)
     for i, line in enumerate(lines):
         box = draw.textbbox((0, 0), line, font=font)
         draw.text(((900 - (box[2] - box[0])) // 2, 70 + i * 110), line, font=font, fill=fg)
-    return _postprocess(img, rng, rng.random() < 0.5), lines
+    return _postprocess(img, rng, rng.random() < 0.5), lines, (widest, 900 - 2 * 60)
 
 
 def _no_text(rng: random.Random):
@@ -236,10 +253,10 @@ def generate(out_dir: Path, seed: int = 873, per_cell: int = 30,
             for index in range(per_cell):
                 rng = random.Random(f"{seed}:{lang}:{kind}:{index}")
                 low = index % 5 == 4  # every fifth image is a low-contrast hard case
-                img, lines = BUILDERS[kind](rng, lang, low)
+                img, lines, (widest, limit) = BUILDERS[kind](rng, lang, low)
                 text = unicodedata.normalize("NFC", "\n".join(lines))
                 emit(f"{lang}-{kind}-{index:03d}", img, kind=kind, language=lang, text=text,
-                     split=_split(index), low_contrast=low)
+                     split=_split(index), low_contrast=low, text_px=widest, text_limit_px=limit)
     for index in range(negatives):
         rng = random.Random(f"{seed}:neg:{index}")
         img, style = _no_text(rng)

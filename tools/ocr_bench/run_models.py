@@ -72,21 +72,37 @@ def build_ppocr(models: Path, threads: int):
     engine.text_recognizer = TextRecognizer({
         "model_path": str(rec_dir / "inference.onnx"), "use_cuda": False,
         "rec_img_shape": [3, 48, 320], "rec_batch_num": 6, "keys_path": chars})
+    seen = {"det": None, "rec": None}  # None = stage did not execute for this image
+
+    class Timed:  # records each stage's own elapsed time even when the pipeline returns no text
+        def __init__(self, name, inner):
+            self.name, self.inner = name, inner
+
+        def __call__(self, *args, **kwargs):
+            out = self.inner(*args, **kwargs)
+            seen[self.name] = out[1] * 1000  # both rapidocr stages return (result, elapsed_s)
+            return out
+
+        def __getattr__(self, attr):
+            return getattr(self.inner, attr)
+    engine.text_detector = Timed("det", engine.text_detector)
+    engine.text_recognizer = Timed("rec", engine.text_recognizer)
     engine.use_angle_cls = False      # orientation classifier is not part of this candidate
     engine.min_height = 0             # never skip detection on short images
     engine.width_height_ratio = -1    # nor on wide ones
     engine.text_score = 0.5
 
     def run(path: str):
+        seen["det"] = seen["rec"] = None
         t0 = time.perf_counter()
-        result, elapse = engine(path)
+        result, _ = engine(path)
         total = (time.perf_counter() - t0) * 1000
         if not result:
-            return [], 0.0, 0.0, total
+            return [], seen["det"], seen["rec"], total
         words = [{"text": text, "box": [min(p[0] for p in box), min(p[1] for p in box),
                                         max(p[0] for p in box), max(p[1] for p in box)],
                   "score": float(score)} for box, text, score in result]
-        return words, elapse[0] * 1000, elapse[2] * 1000, total
+        return words, seen["det"], seen["rec"], total
     return run
 
 
@@ -103,7 +119,7 @@ def build_doctr(models: Path, threads: int):
                                   engine_cfg=cfg)
     predictor = ocr_predictor(det_arch=det, reco_arch=rec, assume_straight_pages=True,
                               det_engine_cfg=cfg, reco_engine_cfg=cfg)
-    stage = {"det": 0.0, "rec": 0.0}
+    stage = {"det": None, "rec": None}  # None = stage did not execute for this image
 
     class Timed:  # proxy: OCRPredictor calls its sub-predictors as plain callables
         def __init__(self, name, inner):
@@ -112,7 +128,7 @@ def build_doctr(models: Path, threads: int):
         def __call__(self, *args, **kwargs):
             start = time.perf_counter()
             out = self.inner(*args, **kwargs)
-            stage[self.name] += (time.perf_counter() - start) * 1000
+            stage[self.name] = (stage[self.name] or 0.0) + (time.perf_counter() - start) * 1000
             return out
 
         def __getattr__(self, attr):
@@ -121,7 +137,7 @@ def build_doctr(models: Path, threads: int):
     predictor.reco_predictor = Timed("rec", predictor.reco_predictor)
 
     def run(path: str):
-        stage["det"] = stage["rec"] = 0.0
+        stage["det"] = stage["rec"] = None
         pages = DocumentFile.from_images([path])
         t0 = time.perf_counter()
         doc = predictor(pages)
@@ -161,7 +177,8 @@ def main() -> None:
         words, det_ms, rec_ms, total_ms = run(str(args.corpus / row["path"]))
         text = " ".join(w["text"] for w in words)  # each library's native reading order
         out.append({"id": row["id"], "text": text, "words": tidy(words), "latency_ms": round(total_ms, 3),
-                    "detector_ms": round(det_ms, 3), "recognizer_ms": round(rec_ms, 3)})
+                    "detector_ms": None if det_ms is None else round(det_ms, 3),
+                    "recognizer_ms": None if rec_ms is None else round(rec_ms, 3)})
         totals.append(total_ms)
     args.output.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out), encoding="utf-8")
     ordered = sorted(totals)

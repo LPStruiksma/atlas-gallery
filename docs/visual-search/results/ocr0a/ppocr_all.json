@@ -46,8 +46,8 @@
       "words": 642
     },
     "sign": {
-      "cer": 0.007722007722007722,
-      "char_edits": 10,
+      "cer": 0.006177606177606178,
+      "char_edits": 8,
       "chars": 1295,
       "false_skip_rate": 0.0,
       "false_skips": 0,
@@ -56,8 +56,8 @@
       "no_text_samples": 0,
       "samples": 60,
       "text_samples": 60,
-      "wer": 0.029556650246305417,
-      "word_edits": 6,
+      "wer": 0.019704433497536946,
+      "word_edits": 4,
       "words": 203
     }
   },
@@ -78,8 +78,8 @@
       "words": 1102
     },
     "nl": {
-      "cer": 0.0028363047001620746,
-      "char_edits": 21,
+      "cer": 0.0025661804430037816,
+      "char_edits": 19,
       "chars": 7404,
       "false_skip_rate": 0.0,
       "false_skips": 0,
@@ -88,8 +88,8 @@
       "no_text_samples": 0,
       "samples": 90,
       "text_samples": 90,
-      "wer": 0.012452107279693486,
-      "word_edits": 13,
+      "wer": 0.01053639846743295,
+      "word_edits": 11,
       "words": 1044
     },
     "unspecified": {
@@ -188,8 +188,8 @@
         "words": 326
       },
       "sign": {
-        "cer": 0.01488095238095238,
-        "char_edits": 10,
+        "cer": 0.011904761904761904,
+        "char_edits": 8,
         "chars": 672,
         "false_skip_rate": 0.0,
         "false_skips": 0,
@@ -198,8 +198,8 @@
         "no_text_samples": 0,
         "samples": 30,
         "text_samples": 30,
-        "wer": 0.06593406593406594,
-        "word_edits": 6,
+        "wer": 0.04395604395604396,
+        "word_edits": 4,
         "words": 91
       }
     },
@@ -221,8 +221,8 @@
       }
     }
   },
-  "cer": 0.002352102637205987,
-  "char_edits": 33,
+  "cer": 0.002209550962223806,
+  "char_edits": 31,
   "chars": 14030,
   "false_skip_rate": 0.0,
   "false_skips": 0,
@@ -231,7 +231,7 @@
   "no_text_samples": 60,
   "samples": 240,
   "text_samples": 180,
-  "wer": 0.010251630941286114,
-  "word_edits": 22,
+  "wer": 0.009319664492078284,
+  "word_edits": 20,
   "words": 2146
 }
