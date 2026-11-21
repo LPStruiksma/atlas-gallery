@@ -91,8 +91,27 @@ python -I tools/tag_vocab/tag_vocab.py verify
 
 The train label file is 2.7 GB; filtering it to the vocabulary's classes while streaming is enough. Embedding 16.8k images with the int8 image tower took 9 minutes on 4 vCPU; `calibrate` saves progress and resumes.
 
+## TAGS-1: scanner hook and store ([#732](https://github.com/LPStruiksma/atlas-gallery/issues/732))
+
+| Path | What |
+|---|---|
+| `featurevisual/tags/store/VisualTagStore.kt` | App-private SQLite `atlas_visual_tags.db` (the app sets `allowBackup=false`). `items(id, media_key, frame_ms, revision)` per scored photo (frame -1) or video moment, `hits(item, tag, margin)` by item rowid and a `tags` dictionary id (a hit costs a few bytes, not a repeated media key), cascade-deleted with the item, index `hits(tag, margin)`, `meta` with the fence and sweep position. |
+| `featurevisual/tags/store/VisualTagger.kt` | `tagPublished` (incremental), `sweepStep` (backfill and reconcile), `TaggingIndexPort` (the scan hook), the `VisualTagStorePort` contract with `tagsFor(mediaKey, revision?)` and `mediaForTag(tagId, scope)`. |
+| `featurevisual/tags/store/VisualTagHook.kt` | What the worker holds: opens the matrix asset and the database lazily on the worker thread, never at app start; a failure turns tagging off for the process and never touches the visual index. |
+
+**One call site.** `PeopleDiscoveryHost`'s visual step builds its `VisualScanStage` on `visualTags.wrap(store)`: after the visual index *accepts* a batch, the same vectors (int8 round trip, so exactly the bytes the store keeps) are scored and written. A refused batch tags nothing; a tagging error never fails the index write.
+
+**Backfill and reconcile.** When the visual step finds nothing to claim, the same worker step runs one bounded tag sweep: pages of 256 stored vectors from `loadActiveVectors` for the current epoch (so the grant's epoch gates it), at most 8 pages or 1.5 s, the host guard (charging, thermal, grant, stop) before every page. Rows whose stored revision matches are skipped without scoring, new or changed rows are scored, rows whose vectors are gone are deleted. While the sweep has more to do the step reports `VisualScanResult.tagged`, so the worker continues now under its usual guards; a finished sweep runs again after 24 h to catch drift. Videos are tagged per moment; `tagsFor` takes each tag's best margin over the moments.
+
+**Invalidation.** The fence (`image model | text model | vocabulary`) is stored; a different fence deletes every row and restarts the sweep. If the visual index runs on another model than the matrix, the sweep deletes all tags and stops. Deleting the visual index deletes the tags.
+
+**Privacy.** Nothing leaves the device and no image is decoded for tags. The store is not authority: a reader (TAGS-2) resolves each returned media key through the live grant, as Search does for vectors.
+
+**Policy.** TAGS-0 thresholds, on-by-default tags only, at most 5 per row. Scored rows with no tag are kept, so a re-scan does not score them again.
+
+**Proof.** JVM: `VisualTaggerTest` (thresholds and off-by-default, incremental replace, video moments, 2,000-item bounded backfill with a stable re-scan, revision change and pruning, fence and model invalidation, guard and time budget, hook only on accepted batches). Emulator: `VisualTagBackfillAndroidTest` (real SQLite, the shipped matrix, 2,000 synthetic items, half through the hook and half pre-existing; logs the 250k estimate under `AtlasTags1`).
+
 ## Follow-ups
 
-- **TAGS-1** (scanner and store): score each newly indexed vector, store up to 5 tag ids plus the fence, re-tag on fence change, measure the device rate and memory.
 - **TAGS-2** (UI, design gate): a Search "Things" entry with category tiles and tag chips, Dutch and English names from `tags.tsv`. Needs a Design brief under BRAND-0 #628 / Lapis #654 and coordination with COLLECT-1 #576 and BRAND-L5 #658.
 - **Vocabulary growth:** licensed or synthetic receipts, handwriting and night scenes; split `text`/`document` into narrower tags; user corrections as feedback rows (Vision rule "corrections teach").
