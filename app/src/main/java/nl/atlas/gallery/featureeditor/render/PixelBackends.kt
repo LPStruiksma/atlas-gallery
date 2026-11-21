@@ -82,7 +82,8 @@ class AgslPixelBackend : PixelBackend {
     override fun render(program: SegmentProgram, region: SourceRegion, tile: IntRect, lut: Lut3D?, outputSpace: PixelSpace): Bitmap {
         require(!tile.isEmpty) { "Empty tile" }
         ensure(tile.width, tile.height)
-        val node = RenderNode("atlas-edit2-tile").apply { setPosition(0, 0, width, height) }
+        val node = RenderNode("atlas-edit2-tile")
+        node.setPosition(0, 0, width, height) // not inside apply: RenderNode has its own width/height
         val canvas = node.beginRecording(width, height)
         try {
             canvas.drawColor(0, PorterDuff.Mode.CLEAR)
@@ -104,8 +105,7 @@ class AgslPixelBackend : PixelBackend {
                 val wrapped = requireNotNull(Bitmap.wrapHardwareBuffer(buffer, RenderBitmaps.colorSpace(outputSpace))) {
                     "Cannot wrap the tile buffer"
                 }
-                // Read back immutably first: on the API 35 emulator a direct HARDWARE -> mutable
-                // copy came back fully transparent (diagnosed for #632), the immutable copy does not.
+                // GPU readback, then a software copy that overlays may draw on.
                 val readBack = wrapped.copy(Bitmap.Config.ARGB_8888, false)
                 wrapped.recycle()
                 val cropped = if (tile.width == width && tile.height == height) readBack
