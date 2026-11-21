@@ -64,9 +64,10 @@ class Find2ScopedFaceTiersTest {
             }
         }
         compose.onNodeWithTag("atlas-face-screen-sort").performClick()
+        // The projection runs on Default, so wait for its *new* ordering,
+        // not merely the old header that was already composed.
         compose.waitUntil(30_000) {
-            compose.onAllNodesWithTag("atlas-face-results-sure-header")
-                .fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Screen sort · 2").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("Screen sort · 2").assertExists()
         compose.onNodeWithTag("atlas-face-result-0").assertExists()
@@ -76,6 +77,10 @@ class Find2ScopedFaceTiersTest {
 
         // Back to engine ranking: keep both results and the probable tier.
         compose.onNodeWithTag("atlas-face-screen-sort").performClick()
+        compose.waitUntil(30_000) {
+            compose.onAllNodesWithText("Possible matches · 1")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Same person · 1").assertExists()
         compose.onNodeWithText("Possible matches · 1").assertExists()
     }
