@@ -48,7 +48,8 @@ class PerformanceSettingsJourneyTest {
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
 
     private val overviewTags = listOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
-        "face_photos_min", "visual_photos_min", "heap_fraction").map { "atlas-perf-$it" }
+        "face_photos_min", "visual_photos_min", "heap_fraction", "native_heap_mib",
+        "process_pss_mib").map { "atlas-perf-$it" }
 
     @Test fun performanceReportStateMatrix() {
         var dark by mutableStateOf(false)
@@ -88,18 +89,22 @@ class PerformanceSettingsJourneyTest {
                 val theme = if (isDark) "dark" else "light"
                 val state = if (populated) "populated" else "empty"
 
-                // One viewport from the Performance heading shows all six headline rows.
+                // Preserve PERF-0's original six-row first viewport invariant.
                 scrollToTop("atlas-settings-performance")
                 val viewportBottom = compose.onNodeWithTag("atlas-settings-screen")
                     .fetchSemanticsNode().boundsInRoot.bottom
-                overviewTags.forEach { tag ->
+                overviewTags.take(6).forEach { tag ->
                     compose.onNodeWithTag(tag).assertIsDisplayed()
                     val bottom = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.bottom
                     assertTrue("$tag below the first viewport ($bottom > $viewportBottom)",
                         bottom <= viewportBottom + 1f)
                 }
+                // Added native/PSS values remain reachable without sacrificing PERF-0 rows.
+                overviewTags.drop(6).forEach { tag ->
+                    compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+                }
                 if (!populated) {
-                    assertEquals(6 + PerformanceReport.INSTRUMENTED_ACTIONS,
+                    assertEquals(8 + PerformanceReport.INSTRUMENTED_ACTIONS,
                         compose.onAllNodesWithText(PerformanceReport.NO_DATA)
                             .fetchSemanticsNodes().size)
                 }
@@ -121,6 +126,7 @@ class PerformanceSettingsJourneyTest {
         scrollToTop("atlas-settings-performance")
         val rootRight = compose.onRoot().fetchSemanticsNode().boundsInRoot.right
         overviewTags.forEach { tag ->
+            compose.onNodeWithTag(tag).performScrollTo()
             val bounds = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
             assertTrue("$tag clipped at 200%: $bounds", bounds.right <= rootRight + 1f)
         }
@@ -156,6 +162,8 @@ class PerformanceSettingsJourneyTest {
         listOf(41.0, 45.0, 52.0).forEach { record("face_photos_min", it) }
         listOf(58.0, 63.0, 70.0).forEach { record("visual_photos_min", it) }
         listOf(0.30, 0.38, 0.41).forEach { record("heap_fraction", it) }
+        listOf(120.0, 140.0, 160.0).forEach { record("native_heap_mib", it) }
+        listOf(540.0, 620.0, 700.0).forEach { record("process_pss_mib", it) }
         listOf(380.0, 412.0, 690.0).forEach { record("action_a1_ms", it) }
         listOf(64.0, 80.0).forEach { record("action_a3_ms", it) }
         listOf(140.0, 210.0).forEach { record("action_a9_ms", it) }

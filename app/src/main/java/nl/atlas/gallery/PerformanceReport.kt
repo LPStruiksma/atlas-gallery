@@ -48,7 +48,9 @@ internal object PerformanceReport {
             Row("atlas-perf-grid_frame_ms", "Grid frame time", gridValue, grid.count > 0),
             metric(p, "face_photos_min", "Face scanning", ::perMinute),
             metric(p, "visual_photos_min", "Visual indexing", ::perMinute),
-            Row("atlas-perf-heap_fraction", "Java heap / maximum", heapValue, heap.count > 0)
+            Row("atlas-perf-heap_fraction", "Java heap / maximum", heapValue, heap.count > 0),
+            memoryMetric(p, "native_heap_mib", "Native heap"),
+            memoryMetric(p, "process_pss_mib", "Process PSS")
         )
     }
 
@@ -69,6 +71,13 @@ internal object PerformanceReport {
             if (s.count == 0) NO_DATA else distribution(s, unit), s.count > 0)
     }
 
+    private fun memoryMetric(p: PerformanceAggregates, key: String, label: String): Row {
+        val s = p.snapshot(key)
+        val value = if (s.count == 0) NO_DATA else
+            "p50 ${mib(s.p50!!)} · p95 ${mib(s.p95!!)} · max ${mib(s.max!!)} · ${samples(s.count)}"
+        return Row("atlas-perf-$key", label, value, s.count > 0)
+    }
+
     private fun distribution(s: PerformanceAggregates.Summary, unit: (Double) -> String) =
         "p50 ${unit(s.p50!!)} · p90 ${unit(s.p90!!)} · p95 ${unit(s.p95!!)} · ${samples(s.count)}"
 
@@ -79,4 +88,6 @@ internal object PerformanceReport {
         else String.format(Locale.US, "%.0f ms", value)
 
     fun perMinute(value: Double): String = String.format(Locale.US, "%.0f photos/min", value)
+
+    fun mib(value: Double): String = String.format(Locale.US, "%.1f MiB", value)
 }

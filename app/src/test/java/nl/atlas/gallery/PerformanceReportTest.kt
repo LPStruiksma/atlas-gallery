@@ -9,7 +9,8 @@ class PerformanceReportTest {
     @Test fun emptyAggregatesSayNoDataYetNeverZero() {
         val rows = PerformanceReport.overview(PerformanceAggregates())
         assertEquals(listOf("Cold start to cached photos", "Viewer preview", "Grid frame time",
-            "Face scanning", "Visual indexing", "Java heap / maximum"), rows.map { it.label })
+            "Face scanning", "Visual indexing", "Java heap / maximum", "Native heap", "Process PSS"),
+            rows.map { it.label })
         rows.forEach {
             assertEquals(PerformanceReport.NO_DATA, it.value)
             assertFalse(it.hasData)
@@ -41,6 +42,8 @@ class PerformanceReportTest {
         listOf(9.0, 18.0, 30.0, 12.0).forEach { p.record("grid_frame_ms", it) }
         listOf(0.0, 1.0, 0.0, 0.0).forEach { p.record("grid_frame_over_budget", it) }
         p.record("face_photos_min", 45.4)
+        listOf(12.0, 24.0).forEach { p.record("native_heap_mib", it) }
+        p.record("process_pss_mib", 128.25)
         listOf(0.2, 0.41, 0.33).forEach { p.record("heap_fraction", it) }
         val rows = PerformanceReport.overview(p).associateBy { it.tag }
         assertEquals("p50 412 ms · p90 690 ms · p95 690 ms · 3 samples",
@@ -54,6 +57,8 @@ class PerformanceReportTest {
         assertEquals("Peak 41% of maximum · 3 samples",
             rows.getValue("atlas-perf-heap_fraction").value)
         assertEquals(PerformanceReport.NO_DATA, rows.getValue("atlas-perf-visual_photos_min").value)
+        assertEquals("p50 12.0 MiB · p95 24.0 MiB · max 24.0 MiB · 2 samples",
+            rows.getValue("atlas-perf-native_heap_mib").value)
         assertTrue(rows.getValue("atlas-perf-cold_start_ms").hasData)
     }
 }
