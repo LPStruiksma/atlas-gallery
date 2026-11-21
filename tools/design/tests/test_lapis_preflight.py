@@ -59,6 +59,49 @@ class AtlasTargets(unittest.TestCase):
                 self.assertFalse(overlap_w > 1 and overlap_h > 1, (a, b))
 
 
+class L5HighFontLayout(unittest.TestCase):
+    """Pre-build geometry only, not runtime UI or a fixed shared L4 slab."""
+
+    def test_complete_rows_stop_before_dark_200_navigation(self):
+        from lapis_kit import FontSource, Fonts, Screen
+
+        fonts = Fonts(FontSource(None, True))
+        s = Screen(fonts, theme="dark", font_scale=2.0)
+        lapis_preflight.Gen(fonts).l5_collections(s)
+        self.assertIsNotNone(s.slab_box)
+        slab_top = s.slab_box[1]
+        named = [t for t in s.targets if t.label in {"Noor", "Coastal weekend", "Dunes trip"}]
+        self.assertGreaterEqual(len(named), 2)
+        for target in named:
+            x0, y0, x1, y1 = target.box
+            self.assertGreaterEqual(x1 - x0, px(48) - 1)
+            self.assertGreaterEqual(y1 - y0, px(48) - 1)
+            self.assertLessEqual(y1, slab_top - px(4), (target.label, y1, slab_top))
+
+    def test_dark_200_scoped_search_result_above_keyboard(self):
+        from lapis_kit import FontSource, Fonts, Screen
+        import lapis_screens as L
+
+        fonts = Fonts(FontSource(None, True))
+        s = Screen(fonts, theme="dark", font_scale=2.0)
+        s.status_bar()
+        L.title(s, "Collections")
+        keyboard_top = s.keyboard(["lotte", "lot", "photo"])
+        slab = s.slab("Collections", y_bottom=keyboard_top, search=False)
+        L.search_bar(s, slab[1], "lotte", True, scope="This screen",
+                     items=[("Person", "Lotte")], thumbs=True)
+        self.assertGreaterEqual(s.panel_top, s.top)
+        results = [t for t in s.targets if t.label == "Person: Lotte"]
+        self.assertEqual(len(results), 1, "Proposed direct scoped entity result must be visible")
+        for target in results:
+            x0, y0, x1, y1 = target.box
+            self.assertGreaterEqual(x1 - x0, px(48) - 1)
+            self.assertGreaterEqual(y1 - y0, px(48) - 1)
+            self.assertGreaterEqual(y0, s.top)
+            self.assertLessEqual(y1, slab[1] - px(6))
+        self.assertLess(slab[3], keyboard_top)
+
+
 class Render(unittest.TestCase):
     def test_every_sheet_renders_with_full_device_frames(self):
         with tempfile.TemporaryDirectory() as tmp:
