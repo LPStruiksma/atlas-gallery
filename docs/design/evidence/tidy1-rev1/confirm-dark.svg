@@ -15,12 +15,12 @@
 <path d="M13 456.28000000000003L119.88 294.4L196.70000000000002 392.38L273.52 243.28000000000003L347 383.86V550H13Z" fill="#3448E0"/>
 <path d="M13 507.40000000000003L163.3 413.68L347 486.09999999999997V550H13Z" fill="#2639C9"/>
 <rect x="0" y="428" width="360" height="328" rx="22" fill="#14152A" opacity="1"/>
-<text x="180" y="464" font-family="Funnel Sans, sans-serif" font-size="19" font-weight="700" fill="#F2F3F8" text-anchor="middle">Review 12 staged items</text>
-<text x="180" y="493" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#9AA0B8" text-anchor="middle">Approx. 2.4 GB · estimate only</text>
-<text x="180" y="525" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#F2F3F8" text-anchor="middle">1. Confirm in Atlas</text>
-<text x="180" y="549" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8" text-anchor="middle">2. Re-query each MediaStore item</text>
-<text x="180" y="572" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8" text-anchor="middle">3. Confirm in Android Trash</text>
+<text x="180" y="464" font-family="Funnel Sans, sans-serif" font-size="19" font-weight="700" fill="#F2F3F8" text-anchor="middle">Move 12 items to Trash?</text>
+<text x="180" y="493" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#9AA0B8" text-anchor="middle">Approx. 2.4 GB (estimate)</text>
+<text x="180" y="525" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#F2F3F8" text-anchor="middle">You'll confirm again in Android.</text>
+<text x="180" y="549" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8" text-anchor="middle">Items can be recovered from Trash.</text>
+<text x="180" y="572" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8" text-anchor="middle">Nothing moves until you approve there.</text>
 <rect x="18" y="603" width="324" height="52" rx="22" fill="#3448E0" opacity="1"/>
-<text x="180" y="635" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Continue to Android</text>
-<text x="180" y="691" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#8C9BFF" text-anchor="middle">Cancel</text>
-<text x="180" y="738" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#9AA0B8" text-anchor="middle">Permission or change = no Trash</text></svg>
+<text x="180" y="635" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Confirm 12 items</text>
+<rect x="18" y="663" width="324" height="52" rx="22" fill="#14152A"/><text x="180" y="691" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#8C9BFF" text-anchor="middle">Cancel</text>
+<text x="180" y="738" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#9AA0B8" text-anchor="middle">If items change, this action stops.</text></svg>
