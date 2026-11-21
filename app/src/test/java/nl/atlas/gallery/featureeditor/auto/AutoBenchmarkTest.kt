@@ -18,9 +18,13 @@ class AutoBenchmarkTest {
             val distance = kotlin.math.abs(-sin(angle) * x + cos(angle) * y - 32 * round((-sin(angle) * x + cos(angle) * y) / 32))
             if (distance < 1.2) 235.toByte() else 20.toByte()
         }
+        // Dense 2px stripes exercise the edge cap at the same 512px long edge.
+        val dense = ByteArray(width * height) { index ->
+            if ((index % width / 2) % 2 == 0) 0.toByte() else 255.toByte()
+        }
         val bins = LongArray(256) { 10 }
         val statistics = ToneStatistics(bins, bins, bins)
-        repeat(20) { AutoStraighten.suggest(image, width, height); AutoAdjust.suggest(statistics) }
+        repeat(20) { AutoStraighten.suggest(image, width, height); AutoStraighten.suggest(dense, width, height); AutoAdjust.suggest(statistics) }
 
         fun measure(action: () -> Unit): List<Double> = List(200) {
             val start = System.nanoTime()
@@ -31,6 +35,7 @@ class AutoBenchmarkTest {
             println("AUTO benchmark $name: median=${samples[100]}ms p95=${samples[189]}ms max=${samples.last()}ms")
         }
         report("straighten", measure { AutoStraighten.suggest(image, width, height) })
+        report("straighten-dense", measure { AutoStraighten.suggest(dense, width, height) })
         report("tone", measure { AutoAdjust.suggest(statistics) })
     }
 }

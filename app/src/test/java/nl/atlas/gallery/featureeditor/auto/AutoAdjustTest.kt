@@ -23,7 +23,21 @@ class AutoAdjustTest {
         val cool = channelStats(red = 90, green = 128, blue = 180)
         val green = channelStats(red = 128, green = 180, blue = 128)
         assertTrue(values(AutoAdjust.suggest(cool)).getValue(AdjustParam.TEMPERATURE) > 0.2)
-        assertTrue(values(AutoAdjust.suggest(green)).getValue(AdjustParam.TINT) < -0.2)
+        assertTrue(values(AutoAdjust.suggest(green)).getValue(AdjustParam.TINT) > 0.2)
+    }
+
+
+    @Test fun greenHeavyTintSuggestionMovesRendererPixelTowardNeutral() {
+        val tint = values(AutoAdjust.suggest(channelStats(128, 180, 128))).getValue(AdjustParam.TINT)
+        assertTrue(tint > 0.0)
+        val pixel = floatArrayOf(0.5f, 0.7f, 0.5f)
+        val originalImbalance = kotlin.math.abs(pixel[1] - (pixel[0] + pixel[2]) / 2f)
+        val controls = nl.atlas.gallery.featureeditor.render.AdjustValues(
+            FloatArray(AdjustParam.entries.size).also { it[AdjustParam.TINT.ordinal] = tint.toFloat() }
+        )
+        nl.atlas.gallery.featureeditor.render.ColourOps.apply(controls, pixel, nx = 0.5f, ny = 0.5f)
+        val correctedImbalance = kotlin.math.abs(pixel[1] - (pixel[0] + pixel[2]) / 2f)
+        assertTrue("Positive tint must reduce a green cast", correctedImbalance < originalImbalance)
     }
 
     @Test fun operationsAreStableBoundedAndDeterministic() {

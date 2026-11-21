@@ -49,6 +49,22 @@ class AutoStraightenTest {
         assertEquals(AutoStraighten.suggest(image, 512, 384), AutoStraighten.suggest(image, 512, 384))
     }
 
+
+    @Test fun denseEdgeVotesRespectEightThousandPointCap() {
+        for (edgeCount in listOf(0, 1, 7_999, 8_000, 8_001, 15_999, 16_000, 16_001, 50_000, 512 * 384)) {
+            val stride = AutoStraighten.voteSampleStride(edgeCount)
+            val sampled = if (edgeCount == 0) 0 else (edgeCount - 1) / stride + 1
+            assertTrue("sample count $sampled exceeds cap for $edgeCount edges", sampled <= 8_000)
+        }
+        val dense = ByteArray(512 * 384) { index ->
+            if ((index % 512 / 2) % 2 == 0) 0.toByte() else 255.toByte()
+        }
+        assertEquals(
+            AutoStraighten.suggest(dense, 512, 384),
+            AutoStraighten.suggest(dense, 512, 384),
+        )
+    }
+
     private fun grid(width: Int, height: Int, angle: Double, horizontal: Boolean, spacing: Int = 32): ByteArray {
         val radians = angle * PI / 180.0
         val c = cos(radians); val s = sin(radians)
