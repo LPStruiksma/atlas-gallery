@@ -79,7 +79,8 @@ class L6PrimaryMonthTargets(unittest.TestCase):
         text = path.read_text(encoding="utf-8")
         self.assertIn("SYNTHETIC", text)
         self.assertIn("remove animations", text.lower())
-        animation = list(root.iter("{http://www.w3.org/2000/svg}animate"))
+        ns = "{http://www.w3.org/2000/svg}"
+        animation = [e for e in root.iter() if e.tag in (ns + "animate", ns + "animateTransform")]
         self.assertGreaterEqual(len(animation), 2)
         for a in animation:
             self.assertIn("dur", a.attrib)
