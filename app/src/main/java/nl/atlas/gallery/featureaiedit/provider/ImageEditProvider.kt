@@ -1,5 +1,7 @@
 package nl.atlas.gallery.featureaiedit.provider
 
+import java.time.LocalDate
+import java.util.Currency
 import kotlin.math.floor
 import kotlin.math.sqrt
 
@@ -60,7 +62,84 @@ data class AspectRange(val min: Double, val max: Double) {
     }
 }
 
-data class CostEstimate(val currencyCode: String, val minorUnits: Long, val note: String = "")
+/**
+ * What a provider's price covers (#431 addendum A1). [TOTAL] means every applicable charge at the
+ * chosen size, model and request shape is included; [OUTPUT_ONLY] prices just the generated image
+ * (input is charged on top); [PARTIAL] covers some charges but not all of them.
+ */
+enum class CostScope { TOTAL, OUTPUT_ONLY, PARTIAL }
+
+/**
+ * A provider's price for one request, in the provider's own currency ([currencyCode], ISO 4217,
+ * never converted). [scope], [source] and [observedOn] are typed so the editor never parses
+ * [note]: a missing scope, source or date makes the estimate unusable ([CostDisclosure.of]).
+ */
+data class CostEstimate(
+    val currencyCode: String,
+    val minorUnits: Long,
+    val note: String = "",
+    val scope: CostScope? = null,
+    val source: String? = null,
+    val observedOn: LocalDate? = null
+)
+
+/**
+ * What the editor may say about cost before Generate. It branches only on the typed scope:
+ * [Total] → "About {amount}", [Partial] (OUTPUT_ONLY or PARTIAL) → "{amount}; input extra; total
+ * unknown", [Unknown] → "{Service} sets the price." Anything incomplete fails closed to [Unknown].
+ */
+sealed interface CostDisclosure {
+    data class Total(val amount: String, val source: String, val observedOn: LocalDate) : CostDisclosure
+    data class Partial(val amount: String, val scope: CostScope, val source: String, val observedOn: LocalDate) : CostDisclosure
+    data object Unknown : CostDisclosure
+
+    companion object {
+        private val CODE = Regex("[A-Z]{3}")
+
+        fun of(estimate: CostEstimate?): CostDisclosure {
+            if (estimate == null) return Unknown
+            val scope = estimate.scope ?: return Unknown
+            val source = estimate.source?.trim()?.takeIf { it.isNotEmpty() && it.length <= 120 } ?: return Unknown
+            val date = estimate.observedOn ?: return Unknown
+            if (estimate.minorUnits < 0) return Unknown
+            val amount = formatAmount(estimate.currencyCode, estimate.minorUnits) ?: return Unknown
+            return when (scope) {
+                CostScope.TOTAL -> Total(amount, source, date)
+                CostScope.OUTPUT_ONLY, CostScope.PARTIAL -> Partial(amount, scope, source, date)
+            }
+        }
+
+        /**
+         * Formats in the estimate's own currency with its own number of minor digits. Never a
+         * conversion; an unknown code is refused rather than guessed.
+         */
+        fun formatAmount(currencyCode: String, minorUnits: Long): String? {
+            if (!CODE.matches(currencyCode) || minorUnits < 0) return null
+            val currency = try { Currency.getInstance(currencyCode) } catch (_: IllegalArgumentException) { return null }
+            val digits = currency.defaultFractionDigits.coerceIn(0, 4)
+            var divisor = 1L
+            repeat(digits) { divisor *= 10 }
+            val whole = minorUnits / divisor
+            val fraction = minorUnits % divisor
+            val number = if (digits == 0) whole.toString()
+                else whole.toString() + "." + fraction.toString().padStart(digits, '0')
+            val symbol = when (currencyCode) {
+                "USD" -> "US$"
+                "EUR" -> "€"
+                "GBP" -> "£"
+                else -> "$currencyCode "
+            }
+            return symbol + number
+        }
+    }
+}
+
+/**
+ * Whether a request that may have reached the service can be looked up again after the app was
+ * stopped (#431 rev 4 row 6). Independent of [ProviderCapabilities.supportsAsync], which only
+ * says that `poll()` never blocks: Gemini is async locally but has no remote job to query.
+ */
+enum class RemoteRecovery { NONE, QUERY_BY_PERSISTED_ID }
 
 data class ProviderCapabilities(
     val supportsInstructionEdit: Boolean,
@@ -77,7 +156,8 @@ data class ProviderCapabilities(
     val supportsAsync: Boolean,
     val supportsStreaming: Boolean,
     val estimatedCostPerRequest: CostEstimate? = null,
-    val advancedParameters: Map<CapabilityKey, OptionSchema> = emptyMap()
+    val advancedParameters: Map<CapabilityKey, OptionSchema> = emptyMap(),
+    val remoteRecovery: RemoteRecovery = RemoteRecovery.NONE
 )
 
 enum class OversizePolicy { REJECT, DOWNSCALE }
@@ -194,7 +274,24 @@ object ImageEditRequestValidator {
     }
 }
 
-enum class FailureKind { NETWORK, TIMEOUT, AUTH, BILLING, QUOTA, INVALID_REQUEST, SERVER, UNKNOWN }
+/**
+ * [BILLING] is an empty balance or a payment problem (HTTP 402 or a documented prepaid-exhausted
+ * code); [QUOTA] is a rate or quota limit (HTTP 429, Gemini `RESOURCE_EXHAUSTED`) and never means
+ * "out of credit" (#431 addendum A2). [CANNOT_CHECK] is a recovery lookup that can no longer be
+ * answered for this request (key changed or removed, or the service refused the lookup).
+ */
+enum class FailureKind { NETWORK, TIMEOUT, AUTH, BILLING, QUOTA, INVALID_REQUEST, SERVER, UNKNOWN, CANNOT_CHECK }
+
+/**
+ * Whether the request that could cost money may have reached the service (#431 addendum A3).
+ * - [NOT_SENT]: proven never sent, for example a failure before the request body was written
+ *   (DNS, connect, TLS) or before submit started at all. Only this allows "Nothing was sent".
+ * - [ANSWERED]: the service answered with a definite refusal (an HTTP 4xx other than 408), so it
+ *   did not process this edit.
+ * - [UNCERTAIN]: anything else after submit may have started. The default, so an adapter that
+ *   forgets to say fails closed.
+ */
+enum class Delivery { NOT_SENT, ANSWERED, UNCERTAIN }
 
 sealed interface EditOutcome {
     data class Success(
@@ -204,7 +301,12 @@ sealed interface EditOutcome {
         val metadata: Map<String, String> = emptyMap()
     ) : EditOutcome
     data class Refused(val providerCode: String, val providerMessage: String) : EditOutcome
-    data class Failed(val kind: FailureKind, val retryable: Boolean, val message: String = "") : EditOutcome
+    data class Failed(
+        val kind: FailureKind,
+        val retryable: Boolean,
+        val message: String = "",
+        val delivery: Delivery = Delivery.UNCERTAIN
+    ) : EditOutcome
     data object Cancelled : EditOutcome
 }
 
@@ -245,13 +347,68 @@ interface EditJob {
     }
 }
 
+/**
+ * Durable hand-off between a hosted adapter and the caller's journal (#431 rev 4 row 6).
+ * - [beforeSend] runs on the worker immediately before the request that may cost money starts.
+ *   It must durably record "submit may have been sent" and return true; false aborts with
+ *   nothing sent (for example the user cancelled meanwhile).
+ * - [remoteAccepted] runs once a queue provider returned a validated remote request id, before
+ *   the adapter polls it. It must durably store the id bound to [RemoteHandle.providerId] and
+ *   [RemoteHandle.endpoint]; only then may the editor offer "Check again".
+ * Neither callback may receive or store a credential.
+ */
+interface SubmitJournal {
+    fun beforeSend(): Boolean
+    fun remoteAccepted(handle: RemoteHandle)
+
+    companion object {
+        val NONE: SubmitJournal = object : SubmitJournal {
+            override fun beforeSend(): Boolean = true
+            override fun remoteAccepted(handle: RemoteHandle) = Unit
+        }
+    }
+}
+
+/**
+ * A provider-side request that can be queried again: which service and endpoint accepted it, its
+ * remote id, and how many images were asked for. [keyFingerprint] is a non-secret fingerprint of
+ * the key that submitted it (see `KeyFingerprint`), filled in by the caller, never the key.
+ */
+data class RemoteHandle(
+    val providerId: String,
+    val endpoint: String,
+    val remoteId: String,
+    val candidates: Int = 1,
+    val keyFingerprint: String? = null
+) {
+    override fun toString(): String = "RemoteHandle($providerId, $endpoint)"
+}
+
 interface ImageEditProvider {
     val id: String
     val displayName: String
     fun capabilities(): ProviderCapabilities
     /** Invalid requests complete with Failed(INVALID_REQUEST); only the selected image may be supplied. */
     fun submit(request: ImageEditRequest): EditJob
+
+    /** As [submit], reporting the send boundary and any remote id to [journal]. */
+    fun submit(request: ImageEditRequest, journal: SubmitJournal): EditJob =
+        if (journal.beforeSend()) submit(request) else NotSentJob
+
+    /**
+     * Follows an already accepted request without submitting again (no POST). Only providers whose
+     * [ProviderCapabilities.remoteRecovery] is [RemoteRecovery.QUERY_BY_PERSISTED_ID] support it;
+     * a handle for another provider or endpoint is refused (null), never attached to the wrong job.
+     */
+    fun resume(handle: RemoteHandle): EditJob? = null
     fun estimateCost(request: ImageEditRequest): CostEstimate? =
         if (ImageEditRequestValidator.validate(request, capabilities()) is Admission.Accepted)
             capabilities().estimatedCostPerRequest else null
+}
+
+/** A job that ended before anything was sent, because the journal refused the send. */
+private object NotSentJob : EditJob {
+    override val id: String = "not-sent"
+    override fun poll(): JobSnapshot = JobSnapshot.Completed(EditOutcome.Cancelled)
+    override fun cancel() = Unit
 }

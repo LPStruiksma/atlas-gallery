@@ -49,7 +49,7 @@ The editor previews a temporary candidate and offers **Accept / Retry / Change p
 
 A stored service (`ProviderProfile`) has a `kind`: `ATLAS_PROTOCOL` (custom server, [PROTOCOL.md](PROTOCOL.md)), `GEMINI` or `FAL`, plus an optional model id and the last key-check status. Profiles stored before #430 have no kind and read as `ATLAS_PROTOCOL`. A stored profile whose kind this build does not know is kept, listed disabled as "Not available in this version" with Remove only, and never used; saving other profiles preserves it.
 
-`ProviderRegistry` maps a kind to its runtime: `ATLAS_PROTOCOL` runs through `EditJobRunner`; hosted kinds register an `ImageEditProvider` factory when their adapter merges (Gemini [#192](https://github.com/LPStruiksma/atlas-gallery/issues/192), fal [#429](https://github.com/LPStruiksma/atlas-gallery/issues/429)). "Add service" offers only kinds with a runtime, in fixed order: Google Gemini, fal.ai, then Custom server under Advanced. Hosted presets carry their base URL, so nobody types one, and validate host and scheme exactly as custom profiles do (HTTPS, no user info, query or fragment, path ending in `/`).
+`ProviderRegistry` maps a kind to its runtime: `ATLAS_PROTOCOL` runs through `EditJobRunner`; hosted kinds register an `ImageEditProvider` factory when their adapter merges (Gemini [#192](https://github.com/LPStruiksma/atlas-gallery/issues/192), fal [#429](https://github.com/LPStruiksma/atlas-gallery/issues/429)). "Add service" offers only kinds with a runtime, in fixed order: Google Gemini, fal.ai, then Custom server under Advanced. Hosted presets carry their base URL and auth, so nobody types one (fal: `KEY_SCHEME`, `Authorization: Key <key>` on `https://queue.fal.run/`, the same word and host as its adapter; a fal profile with any other scheme sends nothing, #462; Custom server offers only No key, Bearer and Key in header), and validate host and scheme exactly as custom profiles do (HTTPS, no user info, query or fragment, path ending in `/`).
 
 **Key check.** User-initiated only (Save, or "Check key" on a service), one authenticated GET through `EditHttpTransport` (host-pinned HTTPS, no redirects), never an image, prompt or body. Results: "Key works"; "This key was not accepted" (nothing is saved for a new service); "Couldn't check. No connection." or "Couldn't check. {Service} didn't respond." (the key is kept, status "Not checked yet"). There is no "out of credit" result: credit problems are reported when an edit is attempted (#431).
 
@@ -92,6 +92,25 @@ guessed into policy refusals.
 | `completed` | A candidate was returned, not yet accepted | Keep source intact and show preview/save-copy controls |
 
 Providers differ in moderation and legal/licence constraints. ATLAS does not impose an additional content-category filter on the local gallery or promise that any external provider accepts all lawful requests. Benchmark refusal rate independently of output quality using synthetic/licensed inputs; do not put free-text prompts or media in logs, crash reports or analytics.
+
+### Delivery, recovery and cost scope (AIE-20 contract, [#431](https://github.com/LPStruiksma/atlas-gallery/issues/431))
+
+These typed fields let the editor say exactly what happened to a request that may cost money. It never parses free text, a display name or `supportsAsync`.
+
+- **Failure phase (transport).** `EditHttpResult.Failed.phase` is `BEFORE_BODY` only when no attempt of the request got past opening the connection: refused locally, DNS, connect or TLS failed, or the deadline passed first. Everything else, including an unknown phase, is `AFTER_BODY_OR_UNKNOWN`.
+- **Delivery (provider).** `EditOutcome.Failed.delivery` can be one of three values:
+  - `NOT_SENT`: proven never sent. This is the only case where the editor may say "Nothing was sent".
+  - `ANSWERED`: the service answered with a definite 4xx (not 408), so it did not process the edit.
+  - `UNCERTAIN`: the default, so an adapter that doesn't say fails closed. Every failure after a queue provider accepted the request is uncertain, even a 4xx on a status call.
+- **Rate limit is not credit.** `BILLING` (HTTP 402) leads to "out of credit". `QUOTA` (HTTP 429, Gemini `RESOURCE_EXHAUSTED`) is its own rate-limit state, with a manual retry only (`engine/AiEditIssue.kt`).
+- **Remote recovery.** `ProviderCapabilities.remoteRecovery` is separate from `supportsAsync`:
+  - Gemini is `NONE`. It makes one synchronous `generateContent` POST, so there is nothing to look up later.
+  - fal is `QUERY_BY_PERSISTED_ID`.
+  - `submit(request, journal)` calls `SubmitJournal.beforeSend()` immediately before the paid request. For fal it then calls `remoteAccepted(RemoteHandle)` with the validated `request_id`, bound to the provider id and endpoint, before the first status call.
+  - `resume(handle)` follows that id with status and result calls only, never a POST. It refuses a handle for another provider or endpoint.
+  - If the key is gone, or the lookup answers 401, 403 or 404, the result is `FailureKind.CANNOT_CHECK`, never a wrong-key state.
+- **Key binding.** The editor stores `KeyFingerprint.of(salt, key)` with the handle: the first 8 bytes of SHA-256 over a per-install random salt plus the key. It never stores the key itself, and only a matching fingerprint may "Check again".
+- **Cost scope.** `CostEstimate` carries `scope` (`TOTAL`, `OUTPUT_ONLY` or `PARTIAL`), `source` and `observedOn`, and the amount stays in the provider's currency. `CostDisclosure.of` falls back to the unknown-price path if any of these is missing. Gemini list prices are `OUTPUT_ONLY` (input is charged on top). fal has no verified price.
 
 ## Credentials and network options
 

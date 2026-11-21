@@ -13,7 +13,7 @@ assert.match(host, /access && optedIn && \(status == null \|\| status\.peoplePen
 assert.match(host, /val peoplePending = people == null && try \{ store\.hasPublishedMembership\(scoped\.epoch\) \}/);
 // The UI keeps the people it showed for the same epoch while the next read is pending.
 assert.match(host, /previous\?\.people\?\.takeIf \{ it\.permissionEpoch == next\.displayEpoch \}/);
-assert.match(host, /value = holdPendingPeople\(value, published\)/);
+assert.match(host, /value = shownPeopleStatus\(host, value, published\)/);
 assert.match(main, /restoring = peopleHomeRestoring\(access,/);
 
 console.log('people-pending-75: source contracts pass');
