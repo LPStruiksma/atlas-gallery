@@ -1,69 +1,94 @@
-# SPEECH-0: local spoken-word search feasibility (research seed)
+# SPEECH-0: local spoken-word search feasibility
 
-Issue: [atlas-gallery#669](https://github.com/LPStruiksma/atlas-gallery/issues/669) · Goals: [Vision D #101](https://github.com/LPStruiksma/atlas-gallery/issues/101) and [search everywhere #175](https://github.com/LPStruiksma/atlas-gallery/issues/175).
+Issue: [atlas-gallery#669](https://github.com/LPStruiksma/atlas-gallery/issues/669) · Goals: [Vision D #101](https://github.com/LPStruiksma/atlas-gallery/issues/101) and [search everywhere #175](https://github.com/LPStruiksma/atlas-gallery/issues/175). Tool and raw results: [`tools/speech_bench/`](../../tools/speech_bench/README.md).
 
-**Status: RESEARCH IN PROGRESS — no model, licence, WER, latency, battery or S24+ result is yet validated by this seed.** This is a bounded specification for a reproducible host-only Python benchmark. A later Codex patch must replace this disclaimer with linked evidence or clearly state why a measurement could not be obtained. No app code, Gradle dependency, cloud speech API, translated subtitle content or private/owner video is in scope.
+## Verdict
 
-## Question and decision
+**Conditional yes for a bounded SPEECH-1 spike with Whisper small (multilingual, int8). No for tiny and base on Dutch.** On a 4 vCPU cloud host, with the same ONNX Runtime version ATLAS ships (1.23.2) and no custom ops, Whisper small reaches **5.8 % English and 23.6 % Dutch WER at an RTF of 0.19 and 0.29**. That is good enough to *find* spoken words, not good enough for captions anyone reads without seeing the video. Nothing here was run on a phone, so the S24+ numbers below are estimates with stated assumptions, and speed on the device is the first thing SPEECH-1 must measure before it commits to indexing.
 
-Can ATLAS, without INTERNET permission and without a new Android inference dependency, use local transcription to index *spoken words in videos* in English and Dutch, provide word/segment timestamps for search results and captions, and do so only during battery-safe background work?
+## What was actually measured
 
-A usable SPEECH-0 decision requires all of the following, not merely an available Hugging Face model: verified redistribution and deployment rights for **each exact code, checkpoint, tokenizer, VAD model and dataset revision**; Dutch **and** English recognition; reproducible WER and host real-time factor (RTF); an honest, uncertainty-bounded S24+ *estimate* (not a fabricated device measurement); and a specific ONNX Runtime compatibility assessment against the version already shipped in ATLAS.
+Host: Intel Xeon @ 2.1 GHz, 4 vCPU, 15.7 GB, Linux x86_64, Python 3.13, ONNX Runtime **1.23.2** (CPU provider, 4 intra-op threads), greedy decode, language forced per clip. Timing covers log-mel, encoder and the decoder loop on a warmed session; WAV decode and model load are excluded. Every figure traces to a committed result file in [`tools/speech_bench/results/`](../../tools/speech_bench/results).
 
-## Candidate inventory (verify, do not assume)
+Corpus: Google FLEURS `test` split, `en_us` and `nl_nl`, dataset revision `70bb2e84b976b7e960aa89f1c648e09c59f894dd`, CC-BY-4.0. Sample: **30 clips per language** chosen by a seeded hash (`speech-0-v1`) before any model ran, about 5 minutes of audio per language (653 English and 696 Dutch reference words). FLEURS is read speech from a fixed sentence list, so clean and read-aloud, unlike phone video.
 
-| Candidate | Test | Checks before qualifying |
-|---|---|---|
-| OpenAI Whisper **multilingual** tiny/base/small | Primary accuracy–speed frontier | Verify checkpoint-specific licence, download revision/hash, output languages, audio/frontend, encoder/decoder export and tokenizer redistribution; do not substitute `*.en` checkpoints for Dutch |
-| Distilled Whisper variants | Optional challenger | Many public distilled checkpoints are English-only: reject Dutch claims until a specified revision demonstrates Dutch support; verify the parent, derived model and tokenizer licences separately |
-| Moonshine | Optional challenger | Verify *specific checkpoint* language support, weights licence, ONNX export and segment timestamp method; English-only models cannot meet the bilingual requirement |
-| Silero VAD (optional pre-pass) | Silence skipping | Verify code and model licences and exact revision; test false-negative speech trimming, including Dutch, rather than reporting speed only |
-
-Use official upstream model cards/repos and licence files at pinned commits or revisions. Record source URL, revision, SHA-256, actual licence text/scope, commercial distribution status, and whether the licence covers **weights, code and tokenizer**. An unknown field is `UNVERIFIED`, never inferred from a repository-wide code licence. Do not commit downloaded weights, tokenizers, datasets, audio or transcript text. If a suitable bilingual ONNX artifact cannot legally be fetched or run, report a reproducible blocker and a *not measured* row instead of substituting an unvalidated pipeline.
-
-## Licensed evaluation protocol
-
-1. Select a **versioned**, independently licensed English and Dutch speech corpus, such as Common Voice or FLEURS **after** reviewing its current terms, access restrictions, redistribution rules and speaker split. Record dataset URL, release/config, licence evidence, revision and sample IDs only. No owner media, speaker names, URLs containing authentication, raw clips or individual transcript text in Git.
-2. Hold out an evaluation subset **before** any normaliser, model, VAD threshold or decoding parameters are tuned. Select a reproducible seed and deterministic sample IDs stratified by language and duration (at least short and long utterances); record sample counts, total hours, split, exclusions, accents/domain limitations, sampling mechanism and unavailable subsets. Never evaluate on a model's known training split without disclosing leakage risk.
-3. Decode locally to 16 kHz mono, checking clipped, silent, malformed and missing files. Preserve originals only in a local ignored cache. Include audio resampling/decode in a separate end-to-end timing.
-4. Compute **WER separately for English and Dutch** with `(S+D+I)/N` under one pinned, documented, language-neutral normalisation (Unicode NFC, Unicode case-fold, strip punctuation consistently, collapse whitespace). Keep diacritics and lexical contractions unless the normaliser explicitly specifies and justifies changes. Report reference word count, S/D/I counts, macro WER by clip and corpus-micro WER, both raw and normalised if feasible. Empty-reference clips are excluded from WER but counted and reported; a hallucinated nonempty transcription for silence is a separate error.
-5. VAD is measured both disabled and enabled on a common fixed subset. Account for skipped silent duration, false-trimmed reference speech, added decode/chunk overlap cost, word/segment boundary errors and end-to-end accuracy. Do not award VAD a gain merely for dropping difficult spoken content.
-6. Keep all output at the aggregate level. A `tools/speech_bench/` CLI and README should generate a machine-readable report with model/dataset hashes and parameter values. Include reproducibility commands and a small synthetic fixture so a reviewer can exercise the scoring formula offline without a downloaded corpus.
-
-**Measurement matrix** (populate with observed numbers and provenance; `not measured` until run):
-
-| Model revision | EN clips / hours | NL clips / hours | EN WER | NL WER | Host RTF | Peak RSS MB | Status |
+| Model (HF revision) | EN WER | NL WER | EN RTF | NL RTF | Peak RSS | Int8 size (enc + dec) | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Whisper multilingual tiny | — | — | — | — | — | — | not measured |
-| Whisper multilingual base | — | — | — | — | — | — | not measured |
-| Whisper multilingual small | — | — | — | — | — | — | — | not measured |
-| Distilled multilingual candidate (if verified) | — | — | — | — | — | — | — | not measured |
-| Moonshine bilingual candidate (if verified) | — | — | — | — | — | — | — | not measured |
+| Whisper tiny multilingual (`onnx-community/whisper-tiny@ff41770`) | 45.2 % | 72.6 % | 0.080 | 0.098 | 2.7 GB | 10 + 31 MB | measured |
+| Whisper base multilingual (`onnx-community/whisper-base@27a07b4`) | 10.3 % | 40.5 % | 0.096 | 0.151 | 2.9 GB | 23 + 54 MB | measured |
+| Whisper small multilingual (`onnx-community/whisper-small@36050c4`) | 5.8 % | 23.6 % | 0.189 | 0.290 | 3.3 GB | 92 + 157 MB | measured |
+| Distilled Whisper | | | | | | | not measured: `distil-whisper/distil-small.en` is English-only |
+| Moonshine | | | | | | | not measured: `moonshine-ai/moonshine-tiny` card lists `en` only |
 
-## Timing and S24+ extrapolation
+WER is micro (total errors over total reference words) with one normaliser for both languages: NFC, case-fold, drop `[ ] '`, other punctuation to spaces, diacritics kept. Macro (per-clip mean) WER: tiny 59.8 / 74.6, base 11.4 / 42.4, small 6.4 / 25.1 percent (EN / NL). RTF is total wall time over total audio; per-clip median and p95 are in the result files. Peak RSS is the whole process and includes the 200 to 400 MB FLEURS parquet held in memory, so treat it as an upper bound of about 0.4 GB too high.
 
-RTF is **wall-clock seconds / decoded audio seconds** (RTF below 1 is faster than real time). Record host CPU architecture, vCPU count, RAM, OS, Python/ONNX Runtime versions, provider, threads, decoder/beam parameters, quantisation, model SHA and batch size. Measure cold model load separately from warm inference; for each sample report aggregate median and p95 wall time and RTF over at least 3 warm repetitions, plus preprocess, VAD and postprocess phases. Do not compare batch processing against streaming without disclosure. Measure model disk bytes, peak RSS and any temporary buffers. Label any CUDA/GPU results separately; a host CUDA number is not a phone CPU result.
+How much to trust this: 30 clips per language is a screening sample. Expect a few points of WER noise (at 650 words, one error is 0.15 point, but clip difficulty varies much more). The ranking tiny, base, small is large enough to be real; the exact Dutch figure is not. The decoder has a loop guard (stop after the same four tokens repeat three times), which fired on 4 tiny clips and none for base or small. Without it tiny English read 98 % WER on an 8-clip smoke run because of runaway repetition, which is a real greedy-decoding failure for the smallest model. Numbers, dates and spelling variants ("twenties" vs "20s") count as errors under this normaliser, so WER is pessimistic for search use.
 
-A Snapdragon S24+ estimate must disclose exact regional SoC uncertainty (Snapdragon 8 Gen 3 versus Exynos 2400 variants), whether ATLAS can access NNAPI/XNNPACK or only CPU in the **shipped** ONNX Runtime package, RAM/thermal throttling, decoder overhead and a defensible slowdown factor *range*, with citations or calibration to existing ATLAS ONNX benchmarks. Compute low/nominal/high RTF scenarios, **never** label any extrapolation a measured S24+ throughput. Without suitable comparable benchmarks give `device estimate not defensible` and specify an owner-safe on-device validation gate for the next unit.
+Reproduce: commands in the [tool README](../../tools/speech_bench/README.md). Weights and audio are never committed. Reports hold counts and timings only, never transcript text.
 
-For a library containing **N video hours**, total ASR CPU hours = `N × RTF`; 1-hour charging windows needed = `ceil(N × RTF / 1 hour)` (plus decode/scan/VAD overhead and scheduling fragmentation). Show 1, 10 and 100 hours as illustrative inputs; identify the fraction actually spoken if VAD is used, and do not assert battery mAh or percentage without device power measurement. Estimate transcript storage as segments × average UTF-8 bytes plus timestamps/index metadata; report assumptions. Charging-only, idle, thermal-limit and permission-aware incremental indexing is the safe default, not a claim that the S24+ has been tested.
+## Licence and provenance
 
-## ONNX Runtime: a necessary proof, not an assumption
+| Item | Source and pin | Licence evidence | Status |
+|---|---|---|---|
+| Whisper weights, tiny/base/small | `openai/whisper-{tiny,base,small}` at `169d4a4`, `e37978b`, `973afd2` | `apache-2.0` on each model card | Verified (card metadata) |
+| ONNX conversions used | `onnx-community/whisper-*` at the revisions above; SHA-256 of encoder, decoder and tokenizer are in each result file | `base` card says `apache-2.0`; the `tiny` and `small` cards carry **no licence field** and name the openai model as base | Base verified. Tiny and small are derivatives of Apache-2.0 weights, but the conversion repo's own licence is **UNVERIFIED**; SPEECH-1 should export from the openai checkpoint itself, or confirm the licence, before bundling |
+| Tokenizer | `tokenizer.json` inside the same repos | No separate licence text found | UNVERIFIED as its own artefact; shipped under the model repo's terms |
+| Silero VAD | `onnx-community/silero-vad@e71cae9` (`onnx/model.onnx`, SHA-256 `a4a068cd…`) | `mit` in card and a `LICENSE` file in the repo | Verified |
+| FLEURS | `google/fleurs@70bb2e8` | `cc-by-4.0` in the dataset card | Verified (card). Attribution required if results are published |
+| Moonshine | `moonshine-ai/moonshine-tiny@390624e` | `mit`, language `en` only | Licence verified, rejected for Dutch |
 
-Inspect the version and Android execution providers in `app/build.gradle.kts` and the shipped code. Verify each candidate's **encoder and autoregressive decoder** can be expressed in supported ONNX ops and opsets, along with KV-cache handling, decoder loop orchestration, tokenizer/normaliser, log-mel frontend, language detection, VAD integration and timestamp alignment. Run session construction and a known synthetic/appropriately licensed clip through the export on the **same ORT API/opset family** as the app. An ONNX graph that merely loads on host ORT does not prove compatibility with the APK. Disclose models requiring ONNX Runtime Extensions, a custom op, a bundled tokenizer runtime or a new AAR, as **not sufficient without dependency change**. Give a yes/no/conditional table with evidence for each component and distinguish `uses existing ORT` from `works on S24+`.
+No weights, tokenizer files or audio were committed. A deployment right for the shipped asset still needs a human read of the licence texts (Apache-2.0 requires the notice to travel with the weights), which this unit did not do beyond the card metadata above.
+
+## ONNX Runtime compatibility
+
+ATLAS ships `com.microsoft.onnxruntime:onnxruntime-android:1.23.2` (`app/build.gradle.kts`), the full package, with CPU execution and `setIntraOpNumThreads` in every existing session. The benchmark used the **same version, 1.23.2, on x86**.
+
+| Component | Result | Evidence |
+|---|---|---|
+| Encoder and merged decoder (with KV cache branch) load and run | Yes, host | All three sizes decode correctly; both graphs are ONNX opset 14, standard `ai.onnx` domain only, no custom or contrib-domain nodes |
+| Quantised ops (`DynamicQuantizeLinear`, `MatMulInteger`, `ConvInteger`) | Conditional | Run on host 1.23.2. The full Android package includes them; not run on Android |
+| Decoder loop, KV-cache feed, token suppression, loop guard | Needs app code | About 60 lines of Python here; SPEECH-1 ports them to Kotlin |
+| Log-mel frontend (n_fft 400, hop 160, 80 bands, 30 s pad) | Needs app code | NumPy here; no library needed, but the Kotlin port must match to float tolerance |
+| Tokenizer (byte-level BPE, `tokenizer.json`) | Needs a Kotlin implementation | Existing SigLIP text work already ships a SentencePiece tokenizer, not this one |
+| Silero VAD | Conditional | Loads and runs on host 1.23.2; inputs `input`, `state`, `sr` |
+| New Gradle dependency | **None expected** | Everything above is plain ORT plus Kotlin |
+
+Host success proves the graphs are valid for this ORT version, not that they run on the APK. "Uses existing ORT" is established; "works on the S24+" is not.
+
+## Silero VAD
+
+Loaded and run over the same 60 clips. VAD cost is negligible: RTF 0.004 (EN) and 0.0045 (NL). Speech fraction at p > 0.5 was 72 % on FLEURS, which is dense read speech. **VAD's effect on WER was not measured**, and the speech fraction of real phone video is unknown, so no saving from skipping silence is claimed.
+
+## S24+ estimate (not a measurement)
+
+No phone was used. VS-S0 earlier judged that a Snapdragon 8 Gen 3 big core runs int8 matrix multiplies in the same range as this host; VS-B was to measure it. I take a **slowdown of 1x (low), 2x (nominal), 3x (high)** against this host's RTF for Whisper small as an assumption, not a finding. The regional variant (Snapdragon or Exynos), thermal throttling, 12 GB of RAM shared with the app, and the memory the phone can give (host peak RSS was 3.3 GB including the parquet) are all unknown. ATLAS uses CPU only, with no NNAPI or XNNPACK provider configured.
+
+Indexing cost for Whisper small, host Dutch RTF 0.29 as the conservative case, spoken content in the video taken as 100 % (no VAD saving):
+
+| Video hours | Host CPU time | S24+ low (1x) | S24+ nominal (2x) | S24+ high (3x) | 1-hour charging windows (nominal) |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 17 min | 17 min | 35 min | 52 min | 1 |
+| 10 | 2.9 h | 2.9 h | 5.8 h | 8.7 h | 6 |
+| 100 | 29 h | 29 h | 58 h | 87 h | 58 |
+
+These exclude video decode, audio extraction, scheduling gaps and thermal pauses, so real time is longer. A 100-hour library is a multi-week charging-only job at the nominal case, which argues for incremental, newest-first indexing. Battery use in mAh or percent is **not estimated**: it needs device power measurement. Transcript storage is small: at an assumed 150 spoken words per minute and about 7 bytes per word, 100 hours of speech is about 6 MB before timestamps and index overhead.
+
+## Recommendation and gates
+
+1. **Model:** Whisper small multilingual, int8, for SPEECH-1. Tiny is unusable for Dutch (73 % WER). Base is usable for English (10 %) but Dutch at 41 % loses too many words. Small's 24 % Dutch WER is search-grade: many queried words will still be found, but captions would show visible mistakes. Not measured: whether `large` or distilled Dutch models close that gap.
+2. **Before any app work,** SPEECH-1 measures real speed on the S24+ and checks the encoder's fixed 30-second window cost, because short clips pay for a full window.
+3. **Limits of this study:** read speech, 30 clips per language, one host, greedy decoding, forced language (no language identification measured), no VAD-on versus VAD-off WER, no phone-video noise, music or overlapping speakers, no word timestamps, no battery.
+4. **Licence:** resolve the conversion-repo and tokenizer licences, or export from the openai checkpoint, before any weights are bundled or downloaded by the app.
 
 ## Proposed downstream units (not built here)
 
-**SPEECH-1 — scanner/indexing, no UI:** Feature-gated and off by default until consent/performance guardrails are validated. Process only locally accessible video audio, with permission checks, charging/idle constraints, bounded work chunks, thermal/battery pause, durable resume, dedup/version fences and per-video invalidation. Store transcript segments with `mediaId`, `startMs`, `endMs`, `language`, `text`, `modelVersion`, and privacy-compatible deletion. Exclude silent videos, DRM, inaccessible media and failed decodes gracefully. Preserve personal speech exclusively on-device, including diagnostics.
+**SPEECH-1 — device spike and scanner, no UI.** Kotlin port of mel, tokenizer and decoder loop checked against this tool's outputs; S24+ speed, memory and thermal measurement on synthetic or licensed audio only; then, if it passes, a feature-gated, off-by-default, charging-and-idle-only scanner with durable resume and per-video invalidation. Transcript segments store `mediaId`, `startMs`, `endMs`, `language`, `text`, `modelVersion` on device only, with deletion. Skips silent, DRM, inaccessible or undecodable media.
 
-**SPEECH-2 — search + viewer subtitles, UI:** Requires its own Design brief and independent design preflight before any UI implementation. Search transcript words/phrases alongside existing visual search with language-aware tokenisation, jump to timestamp, captions toggle, synchronization and screen-reader/TalkBack semantics. Explicitly distinguish generated from authored subtitles; allow disabling and deletion. No speech-to-text cloud endpoint or automatic translation.
-
-**Docs impact:** On acceptance, update the capability map in `docs/product/ATLAS_VISION.md` with a **“Spoken words in videos”** row that distinguishes feasibility from implementation, links SPEECH-0 evidence and the follow-up units. SPEECH-0 must not claim the feature is shipped.
+**SPEECH-2 — search and subtitles, UI.** Needs its own design brief and independent design preflight first. Word and phrase search beside visual search, jump to timestamp, captions toggle, TalkBack semantics, generated captions clearly labelled and deletable. No cloud endpoint and no automatic translation.
 
 ## Evidence register
 
-- Issue/constraints: [#669](https://github.com/LPStruiksma/atlas-gallery/issues/669).
-- Existing on-device search pipeline: [VS-S0](VS_S0_MODEL_SPIKE.md), [NLS-0](NLS_0_TEXT_FEASIBILITY.md).
-- Upstream model, dataset and licence references: **Codex to pin exact URLs and immutable revisions**.
-- Benchmark outputs, raw aggregate result JSON, commands, env and hashes: **Codex to create or report blockers**.
-- Exact-head CI result: **pending**.
+- Constraints: [#669](https://github.com/LPStruiksma/atlas-gallery/issues/669); related spikes [VS-S0](VS_S0_MODEL_SPIKE.md), [NLS-0](NLS_0_TEXT_FEASIBILITY.md), [LLM-0](LLM_0_FEASIBILITY.md).
+- Results: `tools/speech_bench/results/host_whisper-{tiny,base,small}.json`, `host_silero_vad.json` (per-clip counts and timings, SHA-256 of every model file, environment, sample IDs).
+- Tests: `python3 -m unittest test_speech_bench` in `tools/speech_bench` (synthetic, offline).
+- Exact-head CI: see the PR.
