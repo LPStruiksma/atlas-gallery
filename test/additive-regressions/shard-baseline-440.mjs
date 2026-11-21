@@ -26,12 +26,23 @@ test('the listener checks before each test, reports failures and sums drift per 
     assert.match(listener, new RegExp(`override fun ${callback}\\(`), `${callback} is handled`);
   }
   assert.match(listener, /"drift \$\{.*\} " \+\s*"left by \$previousTest"/s, 'a drift line names the previous test');
-  assert.match(listener, /Log\.e\(DIAG_LOG_TAG, "\$\{failure\.description\.name\(\)\} \$\{describeDevice\(\)\}"\)/);
+  assert.match(listener, /val device = withInteractiveWindows \{ describeDevice\(\) \}/);
+  assert.match(listener, /Log\.e\(DIAG_LOG_TAG, "\$\{failure\.description\.name\(\)\} \$device"\)/);
   assert.match(listener, /const val BASELINE_LOG_TAG = "ATLAS_BASELINE"/);
   assert.match(listener, /const val DIAG_LOG_TAG = "ATLAS_DIAG"/);
   for (const kind of ['Keyboard', 'Display', 'Animator', 'Night', 'TopApp']) {
     assert.match(listener, new RegExp(`DriftKind\\.${kind}\\b`), `${kind} drift is compared`);
   }
+});
+
+test('a test that leaves nothing behind costs no accessibility window reads (#870)', () => {
+  assert.doesNotMatch(listener, /interactiveUiAutomation/, 'the listener never turns interactive windows on for good');
+  assert.doesNotMatch(listener, /\.windows\b/, 'no accessibility window list on the check path');
+  const anr = listener.slice(listener.indexOf('if (first.anrDialog)'));
+  assert.match(anr.slice(0, 300), /withInteractiveWindows \{ clearSystemAnrDialogs\(/,
+    'interactive windows only to answer a dialog that was found');
+  assert.match(listener, /startsWith\("mInputShown=true"\)/, 'the keyboard flag that caught the window-list miss');
+  assert.match(listener, /"dumpsys window displays"/);
 });
 
 test('the keyboard is hidden before a display reset, and a listener never fails a test', () => {

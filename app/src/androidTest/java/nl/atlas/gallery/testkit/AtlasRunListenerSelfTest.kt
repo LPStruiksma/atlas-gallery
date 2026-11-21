@@ -87,7 +87,6 @@ class AtlasRunListenerSelfTest {
         try {
             assertFalse("the leaked keyboard should be gone: ${describeDevice()}",
                 DeviceBaseline.keyboardShown())
-            assertEquals(0, DeviceBaseline.keyboardWindowPx())
             assertTrue("the listener should have reset the display: ${describeDevice()}",
                 testShell("wm size").lines().none { it.trim().startsWith("Override size:") })
             assertFalse("the display should be back at the baseline", DeviceBaseline.display()?.height == 2340)
