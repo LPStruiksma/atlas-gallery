@@ -164,6 +164,7 @@ fun GalleryViewer(
     // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
+    motionProbe: ViewerFilmstripMotionProbe? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -174,7 +175,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onBack)
     }
 }
 
@@ -195,6 +196,7 @@ private fun GalleryViewerSnapshot(
     photoPeople: ViewerPhotoPeople?,
     swapPerson: ViewerSwapPerson?,
     access: ViewerAccess,
+    motionProbe: ViewerFilmstripMotionProbe?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -410,6 +412,7 @@ private fun GalleryViewerSnapshot(
                         val frame = viewerTapStripFrame(from, request.index,
                             fraction, items.size, stripStridePx)
                         stripState.requestScrollToItem(frame.index, frame.scrollOffsetPx)
+                        motionProbe?.stripFrame()
                     }
                 }
                 // A final exact alignment is harmless after the t=260 ms frame.
@@ -856,6 +859,7 @@ private fun GalleryViewerSnapshot(
                 PhotoPage(media, page, items.size, focused, focused && !rapidlyChanging,
                     chromeVisible = chromeVisible,
                     observePreviewLoads = timingProbe != null,
+                    motionProbe = motionProbe,
                     faceBoxes = faceHighlights[media.uri].orEmpty(),
                     forceFresh = editorReturn.mustReload(media.uri),
                     refreshRevision = editorReturn.revision,
@@ -1479,6 +1483,7 @@ private fun PhotoPage(
     focused: Boolean, fullResolution: Boolean,
     chromeVisible: Boolean,
     observePreviewLoads: Boolean,
+    motionProbe: ViewerFilmstripMotionProbe?,
     faceBoxes: List<IndexedFaceBox>,
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
@@ -1488,6 +1493,7 @@ private fun PhotoPage(
     onGainmapDecoded: (revision: Long, hasGainmap: Boolean) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    SideEffect { motionProbe?.pageComposed(pageIndex) }
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
     // Gesture loops below are deliberately NOT restarted by recomposition,
     // so they must call the latest callbacks rather than captured ones.
@@ -1724,6 +1730,7 @@ private fun PhotoPage(
                 ViewerPhotoPreview(media,
                     Modifier.fillMaxSize().clearAndSetSemantics {},
                     onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    motionProbe = motionProbe, pageIndex = pageIndex,
                     onFirstFrame = {
                         previewFailed = false
                         if (firstFrameAt == 0L) firstFrameAt = System.nanoTime()
@@ -1732,6 +1739,7 @@ private fun PhotoPage(
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
                     val request = remember(media, epoch, imageRevision) {
+                        motionProbe?.baseRequested(pageIndex)
                         viewerBaseRequestOrNull(context, media, epoch, forceFresh, imageRevision,
                             requireKey = false)!!
                     }
@@ -1787,13 +1795,15 @@ private fun ViewerPhotoPreview(
     media: MediaRecord, modifier: Modifier,
     onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
     onDecodeError: () -> Unit,
-    forceFresh: Boolean, refreshRevision: Long
+    forceFresh: Boolean, refreshRevision: Long,
+    motionProbe: ViewerFilmstripMotionProbe?, pageIndex: Int
 ) {
     val context = LocalContext.current
     val epoch = LocalGalleryPublicationEpoch.current
     // An editor return must show its new pixels, never an older copy.
     val instant = LocalViewerInstantOpen.current && !forceFresh
     val request = remember(media, epoch, forceFresh, refreshRevision, instant) {
+        motionProbe?.previewRequested(pageIndex)
         val preview = mediaPreviewRequest(context, media, ViewerInstantPreview.VIEWER_PREVIEW_PIXELS,
             epoch, forceFresh, refreshRevision)
         val cache = if (instant) SingletonImageLoader.get(context).memoryCache else null
@@ -1818,8 +1828,10 @@ private fun ViewerPhotoPreview(
         contentScale = ContentScale.Fit, modifier = modifier,
         onState = { state ->
             when (state) {
-                is AsyncImagePainter.State.Loading ->
+                is AsyncImagePainter.State.Loading -> {
+                    motionProbe?.previewLoading(pageIndex)
                     if (state.painter != null) currentOnFirstFrame()
+                }
                 is AsyncImagePainter.State.Success -> {
                     currentOnFirstFrame()
                     previewLoaded = true
