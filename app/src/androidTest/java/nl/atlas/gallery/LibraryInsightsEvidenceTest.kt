@@ -105,7 +105,7 @@ class LibraryInsightsEvidenceTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         compose.awaitScreenStill(name)
-        saveUiEvidence(name)
+        saveUiEvidence("$name.png")
     }
 
     private fun both(name: String, setup: () -> Unit = {}, scroll: (() -> Unit)? = null) {
