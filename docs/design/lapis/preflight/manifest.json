@@ -67,10 +67,10 @@
       "file": "brand-l6-atlas.png",
       "size": [
         3480,
-        8338
+        9711
       ],
-      "sha256": "59230a865e44df4471630d8a5e7ee0a793b30e5300e29ba0f98dcd2ff3c548f1",
-      "device_frames": 18,
+      "sha256": "4bdc1936420924f74bc40dfd438885d47c6939751904cf001bf6769f1e457b42",
+      "device_frames": 21,
       "device_frame_px": [
         1080,
         2340
@@ -86,6 +86,8 @@
         "B6",
         "B7",
         "B8",
+        "B9",
+        "B10",
         "C1",
         "C2",
         "C3",
@@ -93,7 +95,8 @@
         "C5",
         "C6",
         "D1",
-        "D2"
+        "D2",
+        "D3"
       ]
     },
     "l7": {
