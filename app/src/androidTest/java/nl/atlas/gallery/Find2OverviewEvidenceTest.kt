@@ -141,18 +141,24 @@ class Find2OverviewUnionJourneyTest {
 @RunWith(AndroidJUnit4::class)
 class Find2OverviewStateEvidenceTest {
     private val compose = createComposeRule()
+    // Invented, locally drawn images so result tiles show real pixels.
+    private val fixtures = SyntheticHeaderFixtures()
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule())
-        .around(S24DisplayRule()).around(compose)
+        .around(S24DisplayRule()).around(fixtures).around(compose)
 
     private var dark by mutableStateOf(true)
     private var fontScale by mutableStateOf(1f)
 
-    private fun record(id: Long) = MediaRecord(
-        id = id, uri = "content://media/external_primary/images/media/$id",
-        name = "synthetic-$id.png", relativePath = "DCIM/Fictional/",
-        sizeBytes = 1000L + id, takenAtMillis = 1000L * id, isVideo = false,
-        volumeName = "external_primary", widthPixels = 480, heightPixels = 480)
+    private fun record(id: Long): MediaRecord {
+        val uri = fixtures.insertedUris.getOrNull(id.toInt() - 1)
+        return MediaRecord(
+            id = uri?.let(android.content.ContentUris::parseId) ?: (10_000L + id),
+            uri = uri?.toString() ?: "content://media/external/images/media/${10_000L + id}",
+            name = "IMG_HEADER_FIXTURE_$id.png", relativePath = "Pictures/ATLAS-Header-Fixture/",
+            sizeBytes = 1000L + id, takenAtMillis = 1000L * id, isVideo = false,
+            widthPixels = 120, heightPixels = 90)
+    }
 
     private fun themed(content: @androidx.compose.runtime.Composable () -> Unit) {
         compose.setContent {
