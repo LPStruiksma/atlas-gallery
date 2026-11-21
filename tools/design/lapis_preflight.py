@@ -20,7 +20,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from PIL import Image  # noqa: E402
+from PIL import Image, ImageDraw  # noqa: E402
 
 import lapis_screens as L  # noqa: E402
 from lapis_board import Board, Panel  # noqa: E402
@@ -97,6 +97,7 @@ DECISION_NOTE = ("Rows compare publicly documented conventions only. The private
 class Gen:
     def __init__(self, fonts: Fonts):
         self.fonts = fonts
+        self._l8_cache: dict = {}
 
     def scr(self, theme="light", scale=1.0, viewer=False) -> Screen:
         return Screen(self.fonts, theme=theme, font_scale=scale, viewer=viewer)
@@ -806,13 +807,115 @@ class Gen:
         s.gesture_bar()
         return s
 
-    def l8_month(self, theme="light", cols=4, anchor=None, header="November 2026", title="Pictures", scale=1.0):
-        s = self.scr(theme, scale)
+    # --- L8 storyboard helpers (#836): every number drawn comes from lapis_screens.storyboard()
+    def l8_env(self, theme="light", scale=1.0):
+        key = (theme, scale)
+        if key not in self._l8_cache:
+            self._l8_cache[key] = L.l8_env(self.scr(theme, scale))
+        return self._l8_cache[key]
+
+    def l8_chrome(self, s: Screen, vp: L.Viewport) -> None:
+        s.d.rectangle([0, 0, DEVICE_W, vp.top], fill=s.t["ground"])
         s.status_bar()
-        y = L.title(s, title)
-        boxes = L.square_grid(s, y, s.bottom, cols=cols, seed=5, header=header)
-        if anchor is not None and anchor in boxes:
-            s.d.rectangle(boxes[anchor], outline=L.ANNO, width=L.px(3))
+        L.title(s, "Pictures")
+
+    def l8_zoom(self, kind, scroll, theme="light", scale=1.0, selected=None, outline=None, thumb=True,
+                placeholders=False, chrome=True):
+        items, lays, vp = self.l8_env(theme, scale)
+        s = self.scr(theme, scale)
+        vis = L.draw_layout(s, items, lays[kind], scroll, vp, selected=selected, outline=outline,
+                            placeholders=placeholders)
+        if thumb:
+            L.fast_thumb(s, L.thumb_frac(lays[kind], scroll, vp), "Nov", vp.top + L.px(8), s.bottom - L.px(110))
+        if chrome:
+            self.l8_chrome(s, vp)
+            s.slab("Pictures")
+            s.gesture_bar()
+        return s, vis
+
+    @staticmethod
+    def l8_card_y(s: Screen) -> float:
+        return s.bottom - L.px(90)
+
+    def l8_end(self, st: L.PinchStep, name: str, kind: str, selected=None):
+        s, _vis = self.l8_zoom(kind, st.scroll, selected=selected, outline=st.key)
+        L.dashed_rect(s.d, st.src, L.ANNO, L.px(2), L.px(6))
+        a, b = L.centre(st.src), L.centre(st.dst)
+        if abs(st.dx) + abs(st.dy) > 4:
+            L.finger(s, a, b)
+        L.crosshair(s, st.focal, f"F {L.fmt_pt(st.focal)}")
+        clamp = f"clamped at {st.clamped} (wanted {st.wanted_scroll:.0f})" if st.clamped else "no clamp"
+        L.anno_card(s, [
+            f"{name} · same key {st.key} · dashed = its rect before, solid = after",
+            f"before {L.fmt_rect(st.src)} centre {L.fmt_pt(a)}",
+            f"after  {L.fmt_rect(st.dst)} centre {L.fmt_pt(b)}",
+            f"centre shift X {L.fmt_d(st.dx)} px, Y {L.fmt_d(st.dy)} px · focal height residual {L.fmt_d(st.y_residual)} px",
+            f"F on key {st.key}: {'yes' if st.hit else 'NO'} · scroll {st.scroll:.0f} px, {clamp}",
+        ], self.l8_card_y(s))
+        return s
+
+    def l8_start(self, st: L.PinchStep, name: str, direction="pinch in", selected=None):
+        s, _vis = self.l8_zoom("day", st.scroll, selected=selected, outline=st.key)
+        fy = st.focal[1]
+        L.draw_pinch(s, st.focal, direction)
+        L.crosshair(s, st.focal, f"F {L.fmt_pt(st.focal)}")
+        L.anno_card(s, [
+            f"{name} · key {st.key} under the focal point F (two-finger centroid)",
+            f"photo rect {L.fmt_rect(st.src)} centre {L.fmt_pt(L.centre(st.src))}",
+            f"F at {L.rel_v(st.src, fy) * 100:.0f} % of the photo height · day scroll {st.scroll:.0f} px",
+        ], self.l8_card_y(s))
+        return s
+
+    def l8_mid(self, a_kind, b_kind, st: L.PinchStep, a_scroll, selected=None, direction="pinch in"):
+        """Illustrative halfway still: both layouts at 50 % and the key's rect halfway between endpoints."""
+        items, _lays, vp = self.l8_env()
+        sa, _ = self.l8_zoom(a_kind, a_scroll, selected=selected, thumb=False, chrome=False)
+        sb, _ = self.l8_zoom(b_kind, st.scroll, selected=selected, thumb=False, chrome=False)
+        s = self.scr()
+        s.img = Image.blend(sa.img, sb.img, 0.5)
+        s.d = ImageDraw.Draw(s.img, "RGBA")
+        mid = tuple((p + q) / 2 for p, q in zip(st.src, st.dst))
+        L.key_photo(s, mid, items[st.key], (vp.top, vp.bottom))
+        s.d.rectangle(mid, outline=L.ANNO, width=L.px(3))
+        a, b, m = L.centre(st.src), L.centre(st.dst), L.centre(mid)
+        s.d.line([a, b], fill=L.ANNO, width=L.px(2))
+        for p in (a, b):
+            s.d.ellipse([p[0] - L.px(4), p[1] - L.px(4), p[0] + L.px(4), p[1] + L.px(4)], outline=L.ANNO,
+                        width=L.px(2))
+        s.d.ellipse([m[0] - L.px(5), m[1] - L.px(5), m[0] + L.px(5), m[1] + L.px(5)], fill=L.ANNO)
+        L.draw_pinch(s, st.focal, direction, far_dp=60, near_dp=36)
+        L.crosshair(s, st.focal, f"F {L.fmt_pt(st.focal)}")
+        self.l8_chrome(s, vp)
+        s.slab("Pictures")
+        s.gesture_bar()
+        L.anno_card(s, [
+            f"halfway still (t = 0.5) · key {st.key} rect {L.fmt_rect(mid)} centre {L.fmt_pt(m)}",
+            f"centre path {L.fmt_pt(a)} -> {L.fmt_pt(b)}: the key moves, never vanishes",
+            "Illustrative still; FLOW-2 #712 owns runtime motion.",
+            "With Remove animations on, the zoom cuts to the end frame.",
+        ], self.l8_card_y(s))
+        return s
+
+    L8_SIG_SELECTED = {1: 1, 6: 2, 9: 3}  # top of November, so the month heading is in view; 6 is a video
+
+    def l8_month_sig(self, kind, theme, scale, scroll=None, placeholders=False, loading=None):
+        """Month/year zoom with the held-sphere vocabulary: ordered selection + halo, video, 46 dp thumb."""
+        items, lays, vp = self.l8_env(theme, scale)
+        lay = lays[kind]
+        scroll = 0.0 if scroll is None else scroll
+        s = self.scr(theme, scale)
+        top = vp.top
+        if loading:  # the arc row sits under the title and pushes the grid down
+            top += max(L.loading_arc(self.scr(theme, scale), vp.top, 0.4, loading) - vp.top,
+                       L.px(26) + 2 * s.line_h("secondary") + L.px(4))
+        cvp = L.Viewport(top, vp.bottom)
+        L.draw_layout(s, items, lay, scroll, cvp, selected=self.L8_SIG_SELECTED, placeholders=placeholders)
+        L.fast_thumb(s, L.thumb_frac(lay, scroll, cvp), "Nov", cvp.top + L.px(8), s.bottom - L.px(110))
+        s.d.rectangle([0, 0, DEVICE_W, top], fill=s.t["ground"])
+        s.status_bar()
+        L.title(s, "Pictures")
+        if loading:
+            L.loading_arc(s, vp.top, 0.4, loading)
         s.slab("Pictures")
         s.gesture_bar()
         return s
@@ -821,7 +924,9 @@ class Gen:
         b = Board(self.fonts, "brand-l8-justified")
         b.header("BRAND-L8 · Real-shape rows at day zoom",
                  "Day zoom shows every picture at its real shape in justified rows; month and year stay square.",
-                 self.facts(661))
+                 self.facts(661, "Pinch frames (C) are computed from one synthetic 970-item library by "
+                            "tools/design/lapis_screens.py storyboard(); every coordinate printed on a frame is "
+                            "the drawn pixel position in the 1080 x 2340 frame (#836)."))
         b.heroes([
             Panel("A1", "Day zoom, light, 100 %", "Rows target 118 dp and stretch to the width; 2 dp gaps. The "
                   "4.2:1 panorama gets its own full-width row, the 0.45 portrait keeps its height, a video shows "
@@ -829,59 +934,60 @@ class Gen:
             Panel("A2", "Day zoom, dark, 200 %", "Date headers scale; picture geometry does not depend on font "
                   "scale.", self.l8_day("dark", 2.0)),
         ], self.LEGEND)
+
+        _items, lays, vp = self.l8_env()
+        st = L.storyboard(lays, vp)
+        sel = L.SELECTED
+        pinch_panels = [
+            Panel("C1", "Pinch in 1/4: day", f"Fingers around key {st['start'].key}; F is the centroid. "
+                  "Selection 1-3 is on.", self.l8_start(st["start"], "C1", selected=sel)),
+            Panel("C2", "Pinch in 2/4: halfway to month", "Both layouts at 50 %; the key's rect is halfway "
+                  "between its day and month positions.", self.l8_mid("day", "month", st["in_month"],
+                                                                     st["start"].scroll, sel)),
+            Panel("C3", "Pinch in 3/4: month", f"Same key under F. Column quantization moves its centre "
+                  f"{L.fmt_d(st['in_month'].dx)} px in X; its height under F is restored exactly.",
+                  self.l8_end(st["in_month"], "C3", "month", sel)),
+            Panel("C4", "Pinch in 4/4: year", f"Same key under F; centre {L.fmt_d(st['in_year'].dx)} px in X. "
+                  "Selection, video mark and thumb carry over.", self.l8_end(st["in_year"], "C4", "year", sel)),
+            Panel("C5", "Pinch out 1/3: halfway to month", f"F unchanged; the key under it is still key "
+                  f"{st['out_month'].key}.", self.l8_mid("year", "month", st["out_month"], st["in_year"].scroll,
+                                                          sel, "pinch out")),
+            Panel("C6", "Pinch out 2/3: month", "Lands on the same month scroll as C3.",
+                  self.l8_end(st["out_month"], "C6", "month", sel)),
+            Panel("C7", "Pinch out 3/3: back to day", f"Day scroll restored: {st['out_day'].scroll:.0f} px "
+                  f"(C1: {st['start'].scroll:.0f} px). Selection 1-3 unchanged.",
+                  self.l8_end(st["out_day"], "C7", "day", sel)),
+            Panel("C8", "Interior key: day", f"Key {st['int_start'].key}, a wide photo whose month and year "
+                  "columns lie away from its day position.", self.l8_start(st["int_start"], "C8", selected=sel)),
+            Panel("C9", "Interior key: month", f"Height restored, but the fixed column moves it "
+                  f"{L.fmt_d(st['int_month'].dx)} px: F now rests on key {st['int_month'].extra['key_under_pointer']}.",
+                  self.l8_end(st["int_month"], "C9", "month", sel)),
+            Panel("C10", "Interior key: year", f"{L.fmt_d(st['int_year'].dx)} px in X; F rests on key "
+                  f"{st['int_year'].extra['key_under_pointer']}. Disclosed, not hidden.",
+                  self.l8_end(st["int_year"], "C10", "year", sel)),
+            Panel("C11", "Top clamp: first photo", f"Scroll cannot go above 0: the key lands "
+                  f"{L.fmt_d(st['top'].y_residual)} px from its focal height.", self.l8_end(st["top"], "C11", "month")),
+            Panel("C12", "Bottom clamp: last photo", f"Scroll cannot pass the end: {L.fmt_d(st['bottom'].y_residual)} px "
+                  "from its focal height.", self.l8_end(st["bottom"], "C12", "month")),
+        ]
+        b.grid("Pinch storyboard, both directions (measured, 75 % scale)", pinch_panels, cols=4, scale=0.75)
+
         panels = [
-            Panel("B1", "Month zoom", "Square tiles, 4 per row, 2 dp gaps.", self.l8_month()),
-            Panel("B2", "Year zoom", "Square tiles, 8 per row, month headers.",
-                  self.l8_month(cols=8, header="2026")),
+            Panel("B1", "Month zoom, light, 100 %", "4 squares per row. Ordered selection spheres 1-3 with "
+                  "2 dp white halo, 0:14 video badge, 46 dp \"Nov\" thumb in a 48 dp target.",
+                  self.l8_month_sig("month", "light", 1.0)),
+            Panel("B2", "Month zoom, dark, 200 %", "Headers scale; tiles, spheres and thumb keep their size.",
+                  self.l8_month_sig("month", "dark", 2.0)),
+            Panel("B3", "Year zoom, light, 100 %", "8 squares per row. Spheres shrink to 20 dp on 46 dp tiles; "
+                  "video becomes a play glyph. Tile target 46 dp is flagged below 48 dp.",
+                  self.l8_month_sig("year", "light", 1.0)),
+            Panel("B4", "Year zoom, dark, 200 %", "Short month headers stay on one line at 200 %.",
+                  self.l8_month_sig("year", "dark", 2.0)),
+            Panel("D1", "Selection in day rows", "Same sphere, halo and order numbers as month zoom.",
+                  self.l8_day(selected={0: 1, 3: 2, 4: 3})),
+            Panel("D2", "Fast scroll in day rows", "Same 46 dp sphere in a 48 dp target.",
+                  self.l8_day(thumb=True)),
         ]
-        c1 = self.scr()
-        c1.status_bar()
-        ty = L.title(c1, "Pictures")
-        boxes = L.day_rows(c1, ty, c1.bottom, anchor=7)
-        c1.slab("Pictures")
-        c1.gesture_bar()
-        ab = boxes[7]
-        anchor_c = ((ab[0] + ab[2]) / 2, (ab[1] + ab[3]) / 2)
-        anchor_seed = 5 * 31 + 7
-        L.finger(c1, (anchor_c[0] - L.px(40), anchor_c[1] - L.px(40)), (anchor_c[0] - L.px(10), anchor_c[1] - L.px(10)))
-        L.finger(c1, (anchor_c[0] + L.px(40), anchor_c[1] + L.px(40)), (anchor_c[0] + L.px(10), anchor_c[1] + L.px(10)),
-                 "pinch in")
-
-        def zoomed(cols, label):
-            z = self.scr()
-            z.status_bar()
-            zy = L.title(z, "Pictures")
-            z.text((L.px(L.SIDE), zy + L.px(10)), label, "date")
-            gy = zy + z.line_h("date") + L.px(16)
-            L.anchored_squares(z, cols, anchor_c, anchor_seed, gy)
-            z.d.line([0, anchor_c[1], DEVICE_W, anchor_c[1]], fill=L.ANNO, width=L.px(1))
-            z.note((L.px(8), anchor_c[1] + L.px(2)), "anchor centre line, same y as day frame")
-            z.slab("Pictures")
-            z.gesture_bar()
-            return z
-
-        c4 = self.scr()
-        c4.status_bar()
-        ty = L.title(c4, "Pictures")
-        L.day_rows(c4, ty, c4.bottom, anchor=7)
-        c4.d.line([0, anchor_c[1], DEVICE_W, anchor_c[1]], fill=L.ANNO, width=L.px(1))
-        c4.slab("Pictures")
-        c4.gesture_bar()
-        panels += [
-            Panel("C1", "Pinch in 1/3: day", "Fingers around the anchor picture (outlined).", c1),
-            Panel("C2", "Pinch in 2/3: month", "Squares from month zoom; the anchor tile is centred on the same "
-                  "screen point.", zoomed(4, "November 2026")),
-            Panel("C3", "Pinch in 3/3: year", "Eight columns; the anchor still sits under the fingers.",
-                  zoomed(8, "2026")),
-            Panel("C4", "Pinch out: back to day", "Reverse order lands on the same day with the anchor at the "
-                  "same height (line).", c4),
-        ]
-        panels.append(Panel("D1", "Selection in day rows", "Same sphere, halo and order numbers as month zoom.",
-                            self.l8_day(selected={0: 1, 3: 2, 4: 3})))
-        panels.append(Panel("D2", "Fast scroll in day rows", "Same 46 dp sphere in a 48 dp target.",
-                            self.l8_day(thumb=True)))
-        panels.append(Panel("D3", "Month zoom, 200 %", "Headers and the month sphere stay legible.",
-                            self.l8_month(scale=2.0, theme="dark")))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Pictures")
@@ -889,7 +995,7 @@ class Gen:
                   "Take a photo, or copy pictures to this phone, and they appear here.")
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("E1", "Empty", "One sentence and a next step.", s))
+        panels.append(Panel("E1", "Empty, any zoom", "One sentence and a next step; no grid exists to zoom.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Pictures")
@@ -897,8 +1003,12 @@ class Gen:
         L.day_rows(s, y, s.bottom)
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("E2", "Loading", "Rows render from stored width and height; no layout jump when "
-                            "pixels arrive.", s))
+        panels.append(Panel("E2", "Loading, day", "Rows render from stored width and height; no layout jump "
+                            "when pixels arrive.", s))
+        panels.append(Panel("E3", "Loading, month, dark 200 %", "Squares hold their place as surface tiles; "
+                            "selection and thumb already work.",
+                            self.l8_month_sig("month", "dark", 2.0, placeholders=True,
+                                              loading="Reading pictures, 2.100 of 12.305")))
         s = self.scr("dark")
         s.status_bar()
         y = L.title(s, "Pictures")
@@ -906,8 +1016,8 @@ class Gen:
                   "Check that Atlas may use photos and videos, then try again.", "Try again")
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("E3", "Error, dark", "Plain cause, 48 dp retry.", s))
-        panels.append(Panel("E4", "Small library", "Five pictures: one justified row and a short final row.",
+        panels.append(Panel("E4", "Error, dark, any zoom", "Plain cause, 48 dp retry.", s))
+        panels.append(Panel("E5", "Small library", "Five pictures: one justified row and a short final row.",
                             self.l8_day(ratios=[1.33, 0.75, 1.5, 1.0, 0.56])))
         s = self.scr()
         s.status_bar()
@@ -916,24 +1026,69 @@ class Gen:
         L.fast_thumb(s, 0.7, "2014", y + L.px(8), s.bottom - L.px(110))
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("E5", "150k library", "Schematic only. No performance is claimed; see the "
+        panels.append(Panel("E6", "150k library, year", "Schematic only. No performance is claimed; see the "
                             "post-build gate below.", s))
-        b.grid("Zoom storyboard and states", panels)
+        b.grid("Month and year signature, states", panels)
+
+        def row(code, label, x):
+            clamp = x.clamped or "none"
+            return [code, label, str(x.key), L.fmt_pt(x.focal),
+                    f"{L.fmt_rect(x.src)}\ncentre {L.fmt_pt(L.centre(x.src))}",
+                    f"{L.fmt_rect(x.dst)}\ncentre {L.fmt_pt(L.centre(x.dst))}",
+                    f"{L.fmt_d(x.dx)} / {L.fmt_d(x.dy)}", L.fmt_d(x.y_residual), "yes" if x.hit else "NO",
+                    f"{x.scroll:.0f} ({clamp})"]
+
+        b.table("Pinch geometry, measured from the frames above (px in the 1080 x 2340 frame)",
+                ["Frame", "Step", "Key", "Focal F", "Key rect before", "Key rect after", "Centre shift X / Y",
+                 "Height residual", "F on key", "Scroll (clamp)"], [
+                    row("C3", "day -> month", st["in_month"]),
+                    row("C4", "month -> year", st["in_year"]),
+                    row("C6", "year -> month", st["out_month"]),
+                    row("C7", "month -> day", st["out_day"]),
+                    row("C9", "day -> month", st["int_month"]),
+                    row("C10", "month -> year", st["int_year"]),
+                    row("C11", "day -> month, top", st["top"]),
+                    row("C12", "day -> month, bottom", st["bottom"]),
+                ], [0.05, 0.11, 0.05, 0.08, 0.16, 0.16, 0.10, 0.08, 0.07, 0.14],
+                "Rule drawn: the pinch keeps the media key under F and restores the same relative height "
+                "inside it by choosing the new scroll offset (clamped to the content). Square grids are "
+                "edge-aligned and a key's column is its position in the month modulo the column count, so X "
+                "is quantized: tile centres at 4 and 8 columns sit at odd/8 and odd/16 of the width and "
+                f"cannot coincide. A stationary F can stay on the same key in both month and year only in year "
+                f"columns {L.same_point_columns()} (first and last); elsewhere the key keeps its height and "
+                "moves to its column (C9, C10).")
         b.table("Layout rules", ["Rule", "Value", "Notes"], [
             ["Target row height", "118 dp", "Rows scale to fill 384 dp exactly; height varies per row."],
             ["Gap", "2 dp", "Between pictures and rows (Quiet Frame v3)."],
             ["Panorama cap", "One full row", "Wider than the row at target height: shown full width, lower row."],
             ["Final row", "Not stretched", "Keeps target height and aligns left."],
-            ["Crop and letterbox", "Never", "Thumbnails decode at row size from the real aspect ratio."],
-        ], [0.25, 0.2, 0.55])
+            ["Crop and letterbox", "Never at day zoom", "Day thumbnails decode at row size from the real aspect "
+             "ratio; month and year squares are centre crops of the same picture."],
+            ["Pinch anchor", "Key under F", "Same key; relative height restored via scroll, clamped at the top "
+             "and end; X follows the key's fixed column and the shift is disclosed (table above)."],
+            ["Year tile", "46.25 dp", "8 columns x 46.25 dp + 7 x 2 dp = 384 dp. In selection mode the tile is "
+             "the tap target and is below 48 dp (B3). Open for the design decision below."],
+        ], [0.18, 0.17, 0.65])
         b.table("Reference decisions", DECISION_HEAD, [
             ref_row("justified", "Adopted for day zoom: rows from aspect ratios, with a capped panorama and an "
                     "unstretched final row."),
             ref_row("grid", "Kept for month and year zoom: equal square cells give stable targets for fast "
-                    "scanning; the pinch anchor ties the two layouts together."),
+                    "scanning. Consequence: a key's column is fixed by its position, so the pinch anchor can "
+                    "keep the key and its height but not its horizontal position (measured above)."),
+            ref_row("touch", "Deviation flagged, not resolved: 8-column year tiles are 46.25 dp, under the "
+                    "48 dp guidance, when a tile tap toggles selection."),
             ref_row("frames", "Post-build gate only: a FrameMetrics fling test on a 150k synthetic library against "
                     "the #119 target. No measurement exists yet and none is shown."),
         ], DECISION_W, DECISION_NOTE)
+        b.notes("Open for an explicit design decision (Strategy, before the re-preflight)", [
+            "Pinch invariant. Proven here: the same media key and its height under the focal point, both "
+            "directions, with a day scroll that round-trips exactly (C1 -> C7). Not achievable with fixed "
+            "edge-aligned grids: keeping the key horizontally under a stationary pointer, except in the outer "
+            "year columns. Proposed wording for #661: 'the pinched photo stays the same photo at the same "
+            "height under the fingers; it slides to its column (shift shown during the gesture)'.",
+            "Year tile size. Keep 8 columns at 46.25 dp (flagged below 48 dp in selection mode), or use 7 "
+            "columns (52.6 dp). No zoom stop or gesture changes in this repair.",
+        ])
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")
         return b

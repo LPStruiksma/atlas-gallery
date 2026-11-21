@@ -58,8 +58,8 @@
 <path d="M238 505.2L286.15 483.64L345 500.3V515H238Z" fill="#2639C9"/>
 <rect x="115" y="105" width="232" height="204" rx="17" fill="#14152A"/>
 <text x="130" y="136" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#F2F3F8">Month actions</text>
-<rect x="121" y="151" width="220" height="48" rx="8" fill="#1E2750" stroke="#9AA0B8" stroke-width="0.5"/>
-<text x="130" y="181" font-family="Funnel Sans, sans-serif" font-size="15" font-weight="700" fill="#8C9BFF">Review in Declutter</text>
+<rect x="121" y="151" width="220" height="48" rx="8" fill="#3448E0"/>
+<text x="130" y="181" font-family="Funnel Sans, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">Review in Declutter</text>
 <rect x="121" y="203" width="220" height="48" rx="8" fill="#14152A" stroke="#9AA0B8" stroke-width="0.5"/>
 <text x="130" y="233" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="500" fill="#F2F3F8">Select photos</text>
 <rect x="121" y="255" width="220" height="48" rx="8" fill="#14152A" stroke="#9AA0B8" stroke-width="0.5"/>

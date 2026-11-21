@@ -205,7 +205,9 @@ data class VisualScanResult(
     val held: Boolean,
     val skipped: Int = 0,
     val stop: VisualScanStop = if (claimed == 0) VisualScanStop.NOTHING_CLAIMED
-        else if (held) VisualScanStop.HELD else VisualScanStop.COMPLETED
+        else if (held) VisualScanStop.HELD else VisualScanStop.COMPLETED,
+    /** TAGS-1 (#732): stored vectors the tag sweep read in this step (no image decode). */
+    val tagged: Int = 0
 )
 
 /**

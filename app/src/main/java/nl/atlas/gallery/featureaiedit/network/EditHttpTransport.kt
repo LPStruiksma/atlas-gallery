@@ -78,6 +78,15 @@ data class EditHttpRequest(
 
 enum class FailureCode { INVALID_REQUEST, RESPONSE_TOO_LARGE, NETWORK, TIMEOUT, AUTH, BILLING, QUOTA, SERVER }
 
+/**
+ * Where a failed exchange stopped (#431 addendum A3). [BEFORE_BODY]: no attempt of this request
+ * got past opening the connection (request refused locally, DNS, connect or TLS failed, or the
+ * deadline passed first), so the server cannot have received it. [AFTER_BODY_OR_UNKNOWN]: the
+ * request may have been written, wholly or partly, or the phase is unknown. Fail closed: only
+ * code that proves the earlier phase may report [BEFORE_BODY].
+ */
+enum class FailurePhase { BEFORE_BODY, AFTER_BODY_OR_UNKNOWN }
+
 sealed interface EditHttpResult {
     data class Success(val status: Int, val bytes: ByteArray = byteArrayOf(), val file: File? = null) : EditHttpResult
     /**
@@ -89,13 +98,14 @@ sealed interface EditHttpResult {
         val code: FailureCode,
         val retryable: Boolean,
         val status: Int? = null,
-        val errorBody: ByteArray = byteArrayOf()
+        val errorBody: ByteArray = byteArrayOf(),
+        val phase: FailurePhase = FailurePhase.AFTER_BODY_OR_UNKNOWN
     ) : EditHttpResult {
         // Preserve the pre-body value semantics used by callers and tests; the body is diagnostic
         // input to an adapter, not part of the public failure identity.
         override fun equals(other: Any?): Boolean = other is Failed && code == other.code && retryable == other.retryable
         override fun hashCode(): Int = 31 * code.hashCode() + retryable.hashCode()
-        override fun toString(): String = "Failed(code=$code, retryable=$retryable, status=$status, errorBody=[REDACTED])"
+        override fun toString(): String = "Failed(code=$code, retryable=$retryable, status=$status, phase=$phase, errorBody=[REDACTED])"
     }
     data object Cancelled : EditHttpResult
 }
@@ -150,6 +160,24 @@ class EditHttpTransport(
         maxReplyBytes: Int? = null,
         idempotent: Boolean = false
     ): EditHttpResult {
+        val sent = AtomicBoolean(false)
+        val result = executeTracked(config, request, auth, cancellation, downloadTo, maxReplyBytes, idempotent, sent)
+        // Nothing past connect in any attempt: the server cannot have received this request.
+        return if (result is EditHttpResult.Failed && !sent.get() && result.status == null)
+            EditHttpResult.Failed(result.code, result.retryable, null, result.errorBody, FailurePhase.BEFORE_BODY)
+        else result
+    }
+
+    private fun executeTracked(
+        config: EditHttpConfig,
+        request: EditHttpRequest,
+        auth: EditHttpAuth,
+        cancellation: EditRequestCancellation,
+        downloadTo: File?,
+        maxReplyBytes: Int?,
+        idempotent: Boolean,
+        sent: AtomicBoolean
+    ): EditHttpResult {
         if (cancellation.isCancelled) return EditHttpResult.Cancelled
         val url = verifiedUrl(config, request.path)
             ?: return EditHttpResult.Failed(FailureCode.INVALID_REQUEST, false)
@@ -193,7 +221,7 @@ class EditHttpTransport(
             if (clockMs() >= deadline) return EditHttpResult.Failed(FailureCode.TIMEOUT, true)
             attempt++
             val result = once(url, request.method, payload, header, request.headers, config,
-                deadline, cancellation, downloadTo, maxReplyBytes)
+                deadline, cancellation, downloadTo, maxReplyBytes, sent)
             if (cancellation.isCancelled) return EditHttpResult.Cancelled
             if (result !is EditHttpResult.Failed || !result.retryable ||
                 request.method == EditHttpMethod.POST ||
@@ -290,7 +318,8 @@ class EditHttpTransport(
         url: URL, method: EditHttpMethod, payload: Payload?,
         header: Pair<String, String>?, extraHeaders: Map<String, String>, config: EditHttpConfig, deadline: Long,
         cancel: EditRequestCancellation, destination: File?,
-        replyCap: Int? = null
+        replyCap: Int? = null,
+        sent: AtomicBoolean = AtomicBoolean(false)
     ): EditHttpResult {
         var connection: HttpURLConnection? = null
         var temp: File? = null
@@ -313,8 +342,13 @@ class EditHttpTransport(
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", payload.type)
                 connection.setFixedLengthStreamingMode(payload.bytes.size)
-                connection.outputStream.use { it.write(payload.bytes) }
             }
+            // DNS, TCP and TLS happen here. A failure up to this point is BEFORE_BODY; from the
+            // next line on the request line, headers or body may reach the server.
+            connection.connect()
+            if (cancel.isCancelled) return EditHttpResult.Cancelled
+            sent.set(true)
+            if (payload != null) connection.outputStream.use { it.write(payload.bytes) }
             val status = connection.responseCode
             if (status !in 200..299) {
                 val body = if (status in 400..599) readErrorBody(connection, deadline, cancel)
