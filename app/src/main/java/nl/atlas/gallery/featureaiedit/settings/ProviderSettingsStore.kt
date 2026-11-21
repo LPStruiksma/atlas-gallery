@@ -3,13 +3,31 @@ package nl.atlas.gallery.featureaiedit.settings
 import android.content.Context
 import nl.atlas.gallery.featureaiedit.network.EditHttpAuth
 import nl.atlas.gallery.featureaiedit.network.EditHttpConfig
+import nl.atlas.gallery.featureaiedit.provider.hosted.fal.TransportFalExchange
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URI
 import java.util.Locale
 
 /** Only service metadata is persisted here. Keys are stored separately in Keystore-backed vault. */
-enum class ProviderAuthType { NONE, BEARER, CUSTOM_HEADER }
+enum class ProviderAuthType {
+    NONE, BEARER, CUSTOM_HEADER,
+
+    /**
+     * `Authorization: Key <key>`, fal.ai's documented scheme (#462). Only the fal preset uses it;
+     * a custom server cannot pick it ([CUSTOM_SERVER]) and [ProviderSettingsStore.valid]
+     * refuses it on any other kind.
+     */
+    KEY_SCHEME;
+
+    companion object {
+        /** What "Custom server" offers, in this order. */
+        val CUSTOM_SERVER: List<ProviderAuthType> = listOf(NONE, BEARER, CUSTOM_HEADER)
+
+        /** The scheme word [KEY_SCHEME] sends; the fal adapter sends the same word. */
+        const val FAL_KEY_SCHEME = TransportFalExchange.AUTH_SCHEME
+    }
+}
 
 /**
  * Result of the last user-initiated key check, shown as the service row's status.
@@ -37,12 +55,17 @@ data class ProviderProfile(
     fun authentication(vault: ProviderCredentialVault): EditHttpAuth? =
         authentication(vault.get(id))
 
-    /** fal's `Authorization: Key …` scheme belongs to its adapter (#429), not this transport. */
+    /**
+     * fal only ever gets `Authorization: Key …` (#462), the scheme its adapter (#429) sends; a fal
+     * profile stored with any other scheme fails closed rather than sending Bearer.
+     */
     fun authentication(secret: String?): EditHttpAuth? = when {
-        kind == ProviderKind.FAL -> null
+        kind == ProviderKind.FAL && authType != ProviderAuthType.KEY_SCHEME -> null
         authType == ProviderAuthType.NONE -> EditHttpAuth.None
         secret == null -> null
         authType == ProviderAuthType.BEARER -> EditHttpAuth.Bearer(secret)
+        authType == ProviderAuthType.KEY_SCHEME ->
+            EditHttpAuth.Scheme(ProviderAuthType.FAL_KEY_SCHEME, secret)
         else -> EditHttpAuth.CustomHeader(headerName, secret)
     }
 
@@ -189,6 +212,7 @@ class ProviderSettingsStore(context: Context) {
                 uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
                 uri.rawPath?.endsWith("/") == true && uri.normalize() == uri &&
                 (profile.modelId == null || profile.modelId.matches(MODEL_ID)) &&
+                (profile.authType != ProviderAuthType.KEY_SCHEME || profile.kind == ProviderKind.FAL) &&
                 (profile.authType != ProviderAuthType.CUSTOM_HEADER ||
                     (profile.headerName.matches(Regex("[A-Za-z][A-Za-z0-9-]{0,63}")) &&
                         profile.headerName.lowercase(Locale.ROOT) !in

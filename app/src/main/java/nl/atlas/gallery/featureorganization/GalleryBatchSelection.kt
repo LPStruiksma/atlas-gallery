@@ -89,6 +89,10 @@ class GalleryBatchSelection private constructor(
     }
 
     companion object {
+        /** Explicit empty-mode restoration after a previously verified save. */
+        internal fun empty(source: List<MediaRecord>, epoch: Long): GalleryBatchSelection? =
+            if (epoch < 0L) null else GalleryBatchSelection(source, epoch, emptySet())
+
         /** Starts from a full set (a long-press drag). Empty or blank-only sets do not start. */
         fun of(source: List<MediaRecord>, epoch: Long, selected: Set<String>): GalleryBatchSelection? {
             val clean = selected.filterTo(HashSet()) { it.isNotBlank() }

@@ -365,6 +365,11 @@ echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Keep the bounded query even on a failed test so review can read the p50.
 timeout 30 adb logcat -d -s ATLAS_PERF10:I || echo "ATLAS_PERF10 logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
+echo "::group::ATLAS_RESUME620 recents-resume People/visual retention timeline"
+# #620: aggregate counts, epoch changes and gap counts only (no IDs or names),
+# from PeopleVisualResumeRetentionTest; printed even when the suite failed.
+timeout 30 adb logcat -d -s ATLAS_RESUME620:I || echo "ATLAS_RESUME620 logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
 echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # Bounded (run 43076916972): if the device died with the tests, plain `adb logcat` blocks on
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
@@ -475,6 +480,47 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   # synthetic screenshot PNGs stay available for the evidence pull.
   adb shell pm clear nl.atlas.gallery
   echo "PASS: #31 separate-process People, visual, Settings, Photos and Albums relaunch"
+
+  # #620: a true Android photo-grant loss. Revoking a runtime permission kills
+  # the app process, so seed and verify are separate instrumentation runs with
+  # a real `pm revoke` between them. Invented PNGs and app-private data only.
+  # Re-grant and cleanup run even when verify fails, so nothing after this
+  # block inherits a revoked grant; then the phase failure fails the shard.
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+  run_grant_loss_phase() {
+    local phase="$1" method="$2"
+    local capture="/tmp/atlas-grantloss620-$phase.txt"
+    adb shell am instrument -w -r -e atlasGrantLossPhase "$phase" \
+      -e class "nl.atlas.gallery.PeopleVisualResumeRetentionTest#$method" "$RUNNER" \
+      > "$capture" 2>&1 || true
+    cat "$capture"
+    if ! grep -Fq 'OK (1 test)' "$capture"; then
+      echo "::error::#620 grant-loss $phase instrumentation failed"
+      timeout 30 adb logcat -d -b crash -t 500 || true
+      return 1
+    fi
+  }
+  adb logcat -c || true
+  grant_loss_status=0
+  run_grant_loss_phase seed grantLossSeed || grant_loss_status=1
+  if [[ "$grant_loss_status" == "0" ]]; then
+    # Each revoke kills the app process, as on a phone.
+    adb shell pm revoke nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+    adb shell pm revoke nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+    run_grant_loss_phase verify grantLossVerify || grant_loss_status=1
+  fi
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
+  run_grant_loss_phase cleanup grantLossCleanup || grant_loss_status=1
+  echo "::group::ATLAS_RESUME620 grant-loss phases"
+  timeout 30 adb logcat -d -s ATLAS_RESUME620:I || echo "ATLAS_RESUME620 logcat unavailable (device gone or timed out)"
+  echo "::endgroup::"
+  adb shell pm clear nl.atlas.gallery
+  if [[ "$grant_loss_status" != "0" ]]; then
+    echo "::error::#620 true grant-loss phases failed"; exit 1
+  fi
+  echo "PASS: #620 a real photo-grant revoke hides prior People, visual and gallery data"
 
   # #43: real process death mid-scan. The seed opts in through the app's own
   # host while unplugged (chain enqueued, nothing scanned). Charging lets

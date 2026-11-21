@@ -45,6 +45,8 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 
 **9. Capture only a node that is whole on screen.** `captureToImage()` copies only the visible part of a node; `node.captureWhole()` scrolls it in and refuses a node that is still cut.
 
+Exception for **failure-only forensics**: `node.captureTimeoutViewport()` (testkit) intentionally records the current clipped viewport *without scrolling*. Use it only after an assertion timeout when the cut-off or moving state itself is evidence, never for passing assertions or acceptance screenshots. Compare it with the node's geometry in the same failure log.
+
 ## Which helper do I use
 
 | I want to | Use | Not |
@@ -55,6 +57,8 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 | type | `typeText(matcher, text)` | `performTextInput` and hope |
 | screenshot or assert with the keyboard up | `typeText(…, KeyboardAfter.Shown)`, `assertAboveKeyboard(matcher)` | a check on `boundsInWindow` |
 | read pixels of a node | `node.captureWhole()` | `captureToImage()` |
+| screenshot real content (thumbnails, face crops) | `awaitScreenStill(label)` before `saveUiEvidence` | sleeping a second |
+| change the animator scale | `withAnimatorScale(scale) { … }` | a private `settings put` |
 | let a product timer pass | `advanceVirtualTime(ms)` | sleeping |
 | choose the keyboard | `KeyboardRule()` (none), `KeyboardRule(TestKeyboard.Fixed)` | the emulator's own |
 | describe the device in a failure | `describeDevice()` | a private `shell("dumpsys …")` |
@@ -93,6 +97,8 @@ So tests bring their own. The androidTest APK carries two input methods (nothing
 ```
 
 `typeText`, `hideKeyboard` and `awaitKeyboardShown` work the same with either. No migrated test depends on LatinIME.
+
+In a Dialog or Popup the kit sends keyboard requests to the focused window. A Dialog sits above the keyboard, so its own IME inset stays 0 while the keyboard is up; the kit then counts the keyboard as up when that window asks for it and the input method's window is on screen, and waits until the Dialog has stopped moving. Each keyboard wait logs, under `ATLAS_TESTKIT`, every Compose window with its focus and IME inset and which one it picked.
 
 Kit code that the system starts must be plain Java on `android.*` only. The system runs an input method in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
 

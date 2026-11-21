@@ -299,8 +299,15 @@ class VisualIndexStore(context: Context) :
      * Start a grant-scoped complete inventory. Tokens are NEVER reused, even
      * after process restart or cancellation. A replay of an older token must
      * not hide a newer granted catalogue.
+     *
+     * [keepActiveReadable] (#684): the host has just re-checked that the full
+     * Android grant is unchanged and the face catalogue this one follows was
+     * staged behind the readable one, so the active visual catalogue stays
+     * readable behind the host's face directory (its scan worker holds) until
+     * [commitSnapshot] replaces it in one transaction. Staging writes only the
+     * stage table. Any rejection still clears every epoch (fail closed).
      */
-    @Synchronized fun beginSnapshot(epoch: String) {
+    @Synchronized fun beginSnapshot(epoch: String, keepActiveReadable: Boolean = false) {
         validToken(epoch)
         val accepted = write { db ->
             val used = db.rawQuery("SELECT 1 FROM epoch_history WHERE epoch=?",
@@ -312,7 +319,11 @@ class VisualIndexStore(context: Context) :
                 if (owns) clearScope(db)
                 false
             } else {
-                clearScope(db)
+                if (keepActiveReadable) {
+                    db.delete("stage", null, null)
+                    db.execSQL("""UPDATE control SET staging_epoch=NULL, dormant_epoch=NULL,
+                        staged_count=0 WHERE singleton=1""")
+                } else clearScope(db)
                 db.insertOrThrow("epoch_history", null,
                     ContentValues().apply { put("epoch", epoch) })
                 db.execSQL("UPDATE control SET staging_epoch=? WHERE singleton=1",

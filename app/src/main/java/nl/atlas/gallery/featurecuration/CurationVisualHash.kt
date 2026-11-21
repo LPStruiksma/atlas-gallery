@@ -7,7 +7,8 @@ import java.util.PriorityQueue
  * E2e (#450): an on-device perceptual hash for Photo DNA "possible visual
  * matches". Pure Kotlin: the host decodes a small, orientation-corrected
  * thumbnail of an already-authorized image and hands its pixels here. Only
- * the 64-bit hash is kept (in memory); no pixels are retained.
+ * the 64-bit hash is kept (in compact memory and, after a fresh authorized
+ * scan, in a versioned app-private no-backup cache); no pixels are retained.
  */
 
 /** Two images whose dHashes differ in at most this many bits are a possible visual pair. */
