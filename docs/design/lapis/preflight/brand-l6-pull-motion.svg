@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="770" viewBox="0 0 1250 770" role="img" aria-labelledby="title desc">
+  <title id="title">BRAND-L6 synthetic finger-tracked atlas pull and reverse motion</title>
+  <desc id="desc">A six-second looping vector recording shows a Pictures grid and a 2-by-6 accessible atlas sliding down with the finger, release to open, reverse to close, cancelled short pull, and immediate cuts under remove animations. This is generated design evidence, not a device capture.</desc>
+  <rect width="1250" height="770" fill="#f8f9fe"/>
+  <text x="35" y="37" font-family="sans-serif" font-weight="bold" font-size="24" fill="#172447">BRAND-L6 · Finger-tracked atlas</text>
+  <text x="35" y="61" font-family="sans-serif" font-size="14" fill="#6a7182">SYNTHETIC animated proof · 6.0 s loop · design storyboard only, NOT an Android/device recording</text>
+  <g transform="translate(34,90) scale(.78)">
+    <rect x="-3" y="-3" width="390" height="840" rx="22" fill="#162044"/>
+    <rect width="384" height="832" rx="19" fill="#fafbff"/>
+    <rect x="0" y="0" width="384" height="29" fill="#e5e8f5"/>
+    <text x="16" y="20" font-size="13" font-family="sans-serif" fill="#182442">09:41</text>
+    <text x="16" y="91" font-family="sans-serif" font-size="31" font-weight="bold" fill="#182442">Pictures</text>
+    <text x="16" y="113" font-family="sans-serif" font-size="12" fill="#647086">Pull down for your atlas</text>
+    <g fill="#dce0ed">
+      <rect x="4" y="132" width="120" height="120" rx="5"/><rect x="132" y="132" width="120" height="120" rx="5"/><rect x="260" y="132" width="120" height="120" rx="5"/>
+      <rect x="4" y="260" width="120" height="120" rx="5"/><rect x="132" y="260" width="120" height="120" rx="5"/><rect x="260" y="260" width="120" height="120" rx="5"/>
+      <rect x="4" y="388" width="120" height="120" rx="5"/><rect x="132" y="388" width="120" height="120" rx="5"/><rect x="260" y="388" width="120" height="120" rx="5"/>
+    </g>
+    <defs><clipPath id="overlay-viewport"><rect x="0" y="29" width="384" height="560"/></clipPath></defs>
+    <g clip-path="url(#overlay-viewport)">
+      <g transform="translate(0,-560)">
+        <animateTransform attributeName="transform" type="translate"
+            values="0,-560;0,-280;0,0;0,0;0,-280;0,-560;0,-360;0,-560;0,-560;0,0;0,-560;0,-560"
+            keyTimes="0;.133333;.216667;.333333;.45;.5;.633333;.716667;.783333;.8;.9;1"
+            dur="6s" calcMode="linear" repeatCount="indefinite"/>
+        <rect x="0" y="29" width="384" height="560" fill="#f5f7ff" stroke="#2639c9" stroke-width="1.5"/>
+        <text x="16" y="69" font-family="sans-serif" font-size="24" font-weight="bold" fill="#2639c9">2026</text>
+        <text x="368" y="62" text-anchor="end" font-family="sans-serif" font-size="13" fill="#48516a">8.800 photos</text>
+        <g transform="translate(0,29)"><g><rect x="16.0" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="21.0" y="112" width="48.7" height="6" rx="3" fill="#777d90"/><text x="45.3" y="133" text-anchor="middle" font-size="11" fill="#182442">Jan</text></g><g><rect x="74.7" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="79.7" y="118" width="48.7" height="1" rx="3" fill="#777d90"/><text x="104.0" y="133" text-anchor="middle" font-size="11" fill="#182442">Feb</text></g><g><rect x="133.3" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="138.3" y="110" width="48.7" height="8" rx="3" fill="#777d90"/><text x="162.7" y="133" text-anchor="middle" font-size="11" fill="#182442">Mar</text></g><g><rect x="192.0" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="197.0" y="105" width="48.7" height="13" rx="3" fill="#777d90"/><text x="221.3" y="133" text-anchor="middle" font-size="11" fill="#182442">Apr</text></g><g><rect x="250.7" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="255.7" y="98" width="48.7" height="20" rx="3" fill="#777d90"/><text x="280.0" y="133" text-anchor="middle" font-size="11" fill="#182442">May</text></g><g><rect x="309.3" y="62" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="314.3" y="90" width="48.7" height="28" rx="3" fill="#777d90"/><text x="338.7" y="133" text-anchor="middle" font-size="11" fill="#182442">Jun</text></g><g><rect x="16.0" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="21.0" y="154" width="48.7" height="44" rx="3" fill="#777d90"/><text x="45.3" y="213" text-anchor="middle" font-size="11" fill="#182442">Jul</text></g><g><rect x="74.7" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="79.7" y="161" width="48.7" height="37" rx="3" fill="#777d90"/><text x="104.0" y="213" text-anchor="middle" font-size="11" fill="#182442">Aug</text></g><g><rect x="133.3" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="138.3" y="184" width="48.7" height="14" rx="3" fill="#777d90"/><text x="162.7" y="213" text-anchor="middle" font-size="11" fill="#182442">Sep</text></g><g><rect x="192.0" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="197.0" y="198" width="48.7" height="1" rx="3" fill="#777d90"/><text x="221.3" y="213" text-anchor="middle" font-size="11" fill="#182442">Oct</text></g><g><rect x="250.7" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="255.7" y="193" width="48.7" height="5" rx="3" fill="#2639c9"/><text x="280.0" y="213" text-anchor="middle" font-size="11" fill="#182442">Nov</text><circle cx="280.0" cy="180" r="10" fill="#2639c9" stroke="#fff" stroke-width="2"/></g><g><rect x="309.3" y="142" width="58.7" height="80" fill="none" stroke="#e0007a" stroke-dasharray="2 3" stroke-width=".5"/><rect x="314.3" y="198" width="48.7" height="1" rx="3" fill="#777d90"/><text x="338.7" y="213" text-anchor="middle" font-size="11" fill="#182442">Dec</text></g></g>
+        <text x="368" y="291" text-anchor="end" font-family="sans-serif" font-size="11" fill="#48516a">tallest bar = 2.210 photos</text>
+        <rect x="16" y="308" width="352" height="256" rx="17" fill="#e5eaf1"/>
+        <g fill="#2639c9"><circle cx="125" cy="378" r="8"/><circle cx="74" cy="479" r="8"/><circle cx="267" cy="458" r="8"/><circle cx="213" cy="372" r="5"/><circle cx="294" cy="391" r="6"/><circle cx="176" cy="502" r="7"/></g>
+        <g font-family="sans-serif" font-size="13" fill="#1b274b">
+          <text x="139" y="381">Amsterdam</text><text x="87" y="483">Coast</text><text x="282" y="463" text-anchor="end">Mountains</text>
+        </g>
+        <rect x="174" y="580" width="36" height="4" rx="2" fill="#707b8d"/>
+      </g>
+    </g>
+    <rect x="70" y="734" width="244" height="62" rx="32" fill="#f5f7ff" stroke="#a1a9c0"/>
+    <text x="119" y="771" font-family="sans-serif" font-size="17" font-weight="bold" fill="#2639c9">Pictures</text>
+    <rect x="158" y="817" width="68" height="4" rx="2" fill="#1e2743"/>
+    <g>
+      <circle cx="192" cy="90" r="20" fill="#ffffff" fill-opacity=".86" stroke="#e0007a" stroke-width="3">
+        <animate attributeName="cy" values="90;335;585;585;335;90;270;90;90;585;90;90"
+          keyTimes="0;.133333;.216667;.333333;.45;.5;.633333;.716667;.783333;.8;.9;1"
+          dur="6s" calcMode="linear" repeatCount="indefinite"/>
+      </circle>
+      <text x="215" y="87" font-family="sans-serif" font-size="12" fill="#e0007a">finger</text>
+    </g>
+  </g>
+  <text x="390" y="96" font-family="sans-serif" font-size="21" font-weight="bold" fill="#2639c9">Timed state sequence</text>
+  <text x="390" y="134" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">0.0s</tspan>  Closed: grid at top; first-use hint</text><text x="390" y="187" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">0.8s</tspan>  Pull: finger +280 dp; atlas follows</text><text x="390" y="240" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">1.3s</tspan>  Release beyond halfway → open</text><text x="390" y="293" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">2.0s</tspan>  Open held; month and place targets active</text><text x="390" y="346" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">2.7s</tspan>  Push up: atlas tracks finger in reverse</text><text x="390" y="399" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">3.0s</tspan>  Closed; gesture cancelled / completed</text><text x="390" y="452" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">3.8s</tspan>  Short pull +200 dp; release cancels → closed</text><text x="390" y="505" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">4.7s</tspan>  Remove animations: direct cut open</text><text x="390" y="558" font-family="sans-serif" font-size="15" fill="#1a2644"><tspan font-weight="bold">5.4s</tspan>  Remove animations: direct cut closed</text>
+  <path d="M390 640 H1214" stroke="#c0c6d8" stroke-width="1"/>
+  <text x="390" y="671" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2639c9">Accessibility: 2 × 6 month bars</text>
+  <text x="390" y="696" font-family="sans-serif" font-size="14" fill="#26314b">Each effective month target is 58.7 × 80 dp; rows touch, never overlap.</text>
+  <text x="390" y="721" font-family="sans-serif" font-size="14" fill="#26314b">System status 29 dp · gesture navigation 16 dp · Picture slab preserved.</text>
+  <text x="390" y="744" font-family="sans-serif" font-size="13" fill="#6a7182">Times are authored synthetic values, not measured touch latency or Android performance.</text>
+</svg>
