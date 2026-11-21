@@ -51,8 +51,22 @@ class UsageShareSheetEvidenceTest {
             return roots.filter { it.packageName?.toString() != own }
                 .any { it.findAccessibilityNodeInfosByText(text)?.isNotEmpty() == true }
         }
-        compose.awaitThat("the share sheet to list the synthetic recipient", timeoutMs = 20_000L) {
-            sheetHas("Test recipient")
+        fun shell(command: String): String = automation.executeShellCommand(command).use { pfd ->
+            java.io.FileInputStream(pfd.fileDescriptor).bufferedReader().readText()
+        }
+        try {
+            compose.awaitThat("the share sheet to list the synthetic recipient", timeoutMs = 20_000L) {
+                sheetHas("Test recipient")
+            }
+        } catch (e: AssertionError) {
+            // Facts for the next fix: what the system did with the chooser intent.
+            val activities = shell("dumpsys activity activities").lines()
+                .filter { Regex("Resolver|Chooser|intentresolver|UsageShareTarget").containsMatchIn(it) }
+                .take(12).joinToString(" | ") { it.trim() }
+            val logcat = shell("logcat -d -t 600").lines()
+                .filter { Regex("Chooser|Resolver|intentresolver|FATAL|AndroidRuntime|UsageShareTarget|ActivityTaskManager: START").containsMatchIn(it) }
+                .takeLast(25).joinToString(" | ") { it.trim().take(220) }
+            throw AssertionError(e.message + " || activities: " + activities + " || logcat: " + logcat, e)
         }
         android.util.Log.i("ATLAS_EVIDENCE", "share sheet shows the file name: ${sheetHas(log.exportFileName())}")
         compose.awaitScreenStill("the share sheet")
