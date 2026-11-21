@@ -290,13 +290,13 @@ class Viewer142GestureNavigationEvidenceTest {
 
     /** Puts the viewer back on [index] with chrome shown, after a probe moved it. */
     private fun resetTo(index: Int, counter: String) {
-        compose.awaitWindowSettled()
         if (!chromeShown()) {
             val focus = (hasTestTag("atlas-photo-surface") or hasTestTag("atlas-video-surface")) and
                 hasClickAction()
             compose.onNode(focus).performSemanticsAction(SemanticsActions.OnClick)
             compose.awaitThat("chrome back after probe") { chromeShown() }
         }
+        settleQuietly(compose, "reset")
         if (counterText() != counter) {
             // Reset is setup, not a measured touch: use the click action.
             // A real tap on a filmstrip tile right after a page change fails
@@ -506,7 +506,7 @@ class Viewer142GestureNavigationEvidenceTest {
                     signature(state()) != signature(before)
                 }
             }.isSuccess
-            compose.awaitWindowSettled()
+            settleQuietly(compose, name)
             compose.awaitScreenStill("after $name")
             val after = state()
             val outcome = JSONObject().put("name", name)
@@ -520,7 +520,9 @@ class Viewer142GestureNavigationEvidenceTest {
                 // a Back the viewer did not consume.
                 .put("viewer_onBack_calls", after.getInt("viewer_back") - before.getInt("viewer_back"))
                 .put("back_not_consumed_by_viewer", after.getInt("system_back") - before.getInt("system_back"))
-                .put("page_changed", before.opt("counter") != after.opt("counter"))
+                // The counter exists only while chrome is shown.
+                .put("page_changed", if (before.isNull("counter") || after.isNull("counter"))
+                    "UNKNOWN: chrome hidden" else before.opt("counter") != after.opt("counter"))
                 .put("chrome_changed", before.getBoolean("chrome") != after.getBoolean("chrome"))
                 .put("seek_changed", before.opt("seek_fraction") != after.opt("seek_fraction"))
                 .put("playing_changed", before.getBoolean("video_playing") != after.getBoolean("video_playing"))
@@ -708,6 +710,17 @@ private fun <T> onMain(read: () -> T): T {
     var out: Result<T>? = null
     InstrumentationRegistry.getInstrumentation().runOnMainSync { out = runCatching(read) }
     return out!!.getOrThrow()
+}
+
+/**
+ * Window settle that does not end the run. With gesture navigation and the
+ * viewer's chrome hidden (system bars hidden), awaitWindowSettled timed out
+ * on both emulators in run 44867998376 although the screen was still; probes
+ * then rely on awaitScreenStill. Captures keep the strict settle.
+ */
+private fun settleQuietly(compose: ComposeTestRule, label: String) {
+    runCatching { compose.awaitWindowSettled(5_000L) }
+        .onFailure { Log.w(G142_TAG, "G142 window not settled after $label; using screen stillness") }
 }
 
 private fun sha256(bytes: ByteArray): String =
