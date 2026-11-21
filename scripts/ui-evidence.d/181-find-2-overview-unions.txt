@@ -1,0 +1,12 @@
+# FIND-2 F (#181): Albums/People overview unions, captured by API35 synthetic UI tests.
+find-2-albums-tools
+find-2-albums-image-chooser
+find-2-albums-return
+find-2-albums-by-face
+find-2-albums-ime
+find-2-people-tools-dark
+find-2-people-tools-light-large-text
+find-2-people-tools-no-match
+find-2-people-face-results-dark
+find-2-people-face-results-light-large-text
+find-2-people-face-no-matches

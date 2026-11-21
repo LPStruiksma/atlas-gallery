@@ -286,6 +286,9 @@ internal class SyntheticHeaderFixtures(
 ) : TestRule {
     private val inserted = mutableListOf<Uri>()
 
+    /** The fixture images' content URIs, in step order, while the test runs. */
+    internal val insertedUris: List<Uri> get() = inserted
+
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
             override fun evaluate() {

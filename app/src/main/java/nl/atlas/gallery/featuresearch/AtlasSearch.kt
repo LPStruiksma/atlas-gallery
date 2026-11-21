@@ -1,5 +1,7 @@
 package nl.atlas.gallery.featuresearch
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -82,11 +84,19 @@ fun AtlasSearch(
      * FIND-3a (#182): this bar's own recent searches (never per album or
      * person id). Null, or no [LocalSearchHistory], shows no history.
      */
-    historyScope: SearchHistoryScope? = null
+    historyScope: SearchHistoryScope? = null,
+    /** Optional host state: keeps the expanded origin when a face/image route hides this bar. */
+    expandedState: Boolean? = null,
+    onExpandedChange: (Boolean) -> Unit = {}
 ) {
     val history = LocalSearchHistory.current.takeIf { historyScope != null }
     val keyboard = LocalSoftwareKeyboardController.current
-    var expanded by remember { mutableStateOf(initialExpanded) }
+    var localExpanded by remember { mutableStateOf(initialExpanded) }
+    val expanded = expandedState ?: localExpanded
+    val setExpanded: (Boolean) -> Unit = {
+        localExpanded = it
+        onExpandedChange(it)
+    }
     var localScope by remember { mutableStateOf(initialScope) }
     val scope = selectedScope ?: localScope
     val selectScope: (AtlasSearchScope) -> Unit = {
@@ -94,7 +104,7 @@ fun AtlasSearch(
         onScopeChange(it)
     }
     val close = {
-        expanded = persistentInline
+        setExpanded(persistentInline)
         onQueryChange("")
         if (scope != initialScope) {
             selectScope(initialScope)
@@ -195,9 +205,14 @@ fun AtlasSearch(
                 }
             }
             textTool?.invoke()
-            faceTool?.invoke()
-            imageTool?.invoke()
-            filtersTool?.invoke()
+            if (faceTool != null || imageTool != null || filtersTool != null) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    faceTool?.invoke()
+                    imageTool?.invoke()
+                    filtersTool?.invoke()
+                }
+            }
             historyTool?.invoke()
             if (history != null && historyScope != null && showQueryField && query.isBlank()) {
                 RecentSearchPills(
@@ -219,12 +234,12 @@ fun AtlasSearch(
             contents()
         } else if (initialExpanded) {
             if (expanded) contents() else IconButton(
-                onClick = { expanded = true },
+                onClick = { setExpanded(true) },
                 modifier = Modifier.testTag("atlas-search-expand")
             ) { Icon(Icons.Filled.Search, "Search") }
         } else {
             IconButton(
-                onClick = { expanded = true },
+                onClick = { setExpanded(true) },
                 modifier = Modifier.testTag("atlas-search-expand")
             ) { Icon(Icons.Filled.Search, "Search this screen") }
             DropdownMenu(

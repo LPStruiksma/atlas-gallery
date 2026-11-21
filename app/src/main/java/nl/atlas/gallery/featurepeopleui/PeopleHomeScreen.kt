@@ -66,6 +66,9 @@ import nl.atlas.gallery.featuresearch.AtlasSearch
 import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
 import nl.atlas.gallery.featuresearch.scopedNameMatches
+import nl.atlas.gallery.featuresearch.OverviewAdvancedChip
+import nl.atlas.gallery.featuresearch.OverviewAdvancedMode
+import nl.atlas.gallery.featuresearch.PeopleOverviewSelection
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeopleui.PeopleSortChoice
@@ -133,11 +136,30 @@ fun PeopleHomeScreen(
      * A confirmed face of a native person, drawn by the host from the live
      * grant (round crop). The default is the neutral icon.
      */
-    nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() }
+    nativePortrait: @Composable (NativeFaceObservationId) -> Unit = { DefaultPortrait() },
+    /**
+     * FIND-2 (#181): host-held name query and expanded state, so a By face or
+     * By image search returns to this exact filtered list. Null keeps them local.
+     */
+    searchQuery: String? = null,
+    onSearchQueryChange: (String) -> Unit = {},
+    searchExpanded: Boolean? = null,
+    onSearchExpandedChange: (Boolean) -> Unit = {},
+    /**
+     * FIND-2 (#181) F: By face / By image over the media of the reviewed
+     * people this list shows right now (after its name filter). Unnamed
+     * groups are not people and never count. The host builds the union.
+     */
+    onAdvancedSearch: ((OverviewAdvancedMode, PeopleOverviewSelection) -> Unit)? = null
 ) {
     val discovery = state.discovery.restrictedToGrant(currentPermissionEpoch)
     val locale = LocalConfiguration.current.locales[0]
-    var searchText by remember(currentPermissionEpoch) { mutableStateOf("") }
+    var localSearchText by remember(currentPermissionEpoch) { mutableStateOf("") }
+    val searchText = searchQuery ?: localSearchText
+    val setSearchText: (String) -> Unit = {
+        localSearchText = it
+        onSearchQueryChange(it)
+    }
     var sortSheetOpen by rememberSaveable { mutableStateOf(false) }
     // The native review snapshot is grant-scoped and never mixed with imported
     // V4 numeric IDs. Its confirmed names appear in the same People grid.
@@ -229,7 +251,28 @@ fun PeopleHomeScreen(
                     modifier = Modifier.size(48.dp).testTag("atlas-people-sort-open")) {
                     Icon(Icons.Filled.Sort, contentDescription = "Sort people")
                 }
-                AtlasSearch(query = searchText, onQueryChange = { searchText = it },
+                val selection = PeopleOverviewSelection(
+                    importedPersonIds = filteredTiles.mapNotNullTo(LinkedHashSet()) {
+                        (it as? PeopleGridTile.Imported)?.profile?.personId
+                    },
+                    nativePersonKeys = filteredTiles.mapNotNullTo(LinkedHashSet()) {
+                        (it as? PeopleGridTile.Native)?.tile?.person?.value
+                    })
+                AtlasSearch(query = searchText, onQueryChange = setSearchText,
+                    expandedState = searchExpanded,
+                    onExpandedChange = onSearchExpandedChange,
+                    faceTool = onAdvancedSearch?.let { advanced -> {
+                        OverviewAdvancedChip(OverviewAdvancedMode.FACE, "atlas-people-by-face",
+                            enabled = !selection.isEmpty) {
+                            advanced(OverviewAdvancedMode.FACE, selection)
+                        }
+                    } },
+                    imageTool = onAdvancedSearch?.let { advanced -> {
+                        OverviewAdvancedChip(OverviewAdvancedMode.IMAGE, "atlas-people-by-image",
+                            enabled = !selection.isEmpty) {
+                            advanced(OverviewAdvancedMode.IMAGE, selection)
+                        }
+                    } },
                     historyScope = SearchHistoryScope.PEOPLE,
                     onScopeChange = { scope ->
                         if (scope == AtlasSearchScope.LIBRARY) onSearchWholeLibrary?.invoke()
