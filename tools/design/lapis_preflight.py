@@ -1006,8 +1006,9 @@ class Gen:
                   self.l8_end(st["in_small"], "C3", "small", sel)),
             Panel("C4", "Pinch in 4/4: MONTH (12)", f"Centre {L.fmt_d(st['in_month'].dx)} px in X. F on key "
                   f"{st['in_month'].extra['key_under_pointer']}.", self.l8_end(st["in_month"], "C4", "month", sel)),
-            Panel("C5", "Pinch in, last stop: YEAR (28)", f"Centre {L.fmt_d(st['in_year'].dx)} px in X. Selection, "
-                  f"video mark and thumb carry over. F on key {st['in_year'].extra['key_under_pointer']}.",
+            Panel("C5", "Pinch in, last stop: YEAR (28)", f"Centre {L.fmt_d(st['in_year'].dx)} px in X. Selection "
+                  f"and thumb carry over; no video mark fits on 12 dp tiles. F on key "
+                  f"{st['in_year'].extra['key_under_pointer']}.",
                   self.l8_end(st["in_year"], "C5", "year", sel)),
             Panel("C6", "Halfway SMALL to MONTH", "Illustrative still: both layouts at 50 %; the key's rect is "
                   "halfway between its two positions.",
@@ -1208,9 +1209,11 @@ class Gen:
                 "Rule drawn: the pinch keeps the media key as the semantic anchor and restores its relative height "
                 "under F by choosing the new scroll offset (clamped to the content). Square grids are "
                 "edge-aligned and a key's column is its position in the month modulo the column count, so X is "
-                "quantized. F can stay over the same key for SMALL -> MONTH only in MONTH columns "
-                f"{L.same_point_columns(7, 12)} and for MONTH -> YEAR only in YEAR columns "
-                f"{L.same_point_columns(12, 28)}; elsewhere the key keeps its height and moves to its column "
+                "quantized. One stationary F can stay on the same key in two grids only when the key's two horizontal "
+                "spans overlap: for SMALL -> MONTH that holds for "
+                f"{L.shared_point_positions(7, 12)[0]} of every {L.shared_point_positions(7, 12)[1]} month "
+                f"positions, for MONTH -> YEAR for {L.shared_point_positions(12, 28)[0]} of every "
+                f"{L.shared_point_positions(12, 28)[1]}; otherwise the key keeps its height and moves to its column "
                 "(horizontal shift and any pointer departure are disclosed above). At the top and bottom clamps "
                 "the height residual is disclosed instead. No frame claims every stationary pointer stays over "
                 "the same tile or a zero X drift.")

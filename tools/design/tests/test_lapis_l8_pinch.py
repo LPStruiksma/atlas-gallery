@@ -4,6 +4,7 @@ Run: python3 -m unittest discover -s tools/design/tests
 The geometry depends on line heights and the 1080 x 2340 frame only, so the DejaVu fallback font gives the
 same numbers as the Funnel render that the committed sheet uses."""
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -190,9 +191,48 @@ class Storyboard(unittest.TestCase):
             far = abs(s1[1] - s2[1]) > abs(e1[1] - e2[1])
             self.assertEqual(far, direction == "pinch in")
 
-    def test_only_a_few_columns_can_share_a_point_between_neighbouring_overviews(self):
-        self.assertEqual(L.same_point_columns(7, 12), [0])
-        self.assertEqual(L.same_point_columns(12, 28), [0, 20, 21])
+    def test_shared_point_depends_on_the_key_index_and_overlap_not_containment(self):
+        # Review on #856: month position 85 is column 1 in SMALL 7 and MONTH 12; the spans overlap at x = 160 px.
+        lo, hi = L.shared_point_x(85, 7, 12)
+        self.assertAlmostEqual(lo, 155.14, delta=0.05)
+        self.assertAlmostEqual(hi, 175.0, delta=0.05)
+        a, b = L.month_span_x(85, 7), L.month_span_x(85, 12)
+        self.assertTrue(a[0] <= 160 <= a[1] and b[0] <= 160 <= b[1])
+        self.assertEqual(L.shared_point_positions(7, 12), (18, 84))
+        self.assertEqual(L.shared_point_positions(12, 28), (8, 84))
+        self.assertIsNotNone(L.shared_point_x(0, 12, 28))
+        self.assertIsNotNone(L.shared_point_x(20, 12, 28))
+        self.assertIsNone(L.shared_point_x(5, 12, 28))
+        # Any F inside the shared range lies on the key's rect in both grids.
+        for cols_a, cols_b in ((7, 12), (12, 28)):
+            for idx in range(math.lcm(cols_a, cols_b)):
+                r = L.shared_point_x(idx, cols_a, cols_b)
+                if r:
+                    x = (r[0] + r[1]) / 2
+                    for cols in (cols_a, cols_b):
+                        s0, s1 = L.month_span_x(idx, cols)
+                        self.assertTrue(s0 <= x <= s1, (idx, cols))
+
+    def test_synthetic_videos_are_flagged_and_year_draws_no_video_mark(self):
+        for k in L.LIB_VIDEOS:
+            self.assertTrue(self.items[k].video, k)
+        self.assertTrue(self.items[830].video)  # selected frame item (L.SELECTED[830] = 2)
+        self.assertIn(830, L.SELECTED)
+        marks = {}
+        for kind in ("small", "month", "year"):
+            s = Screen(Fonts(FontSource(None, True)))
+            calls = []
+            orig = (L.video_badge, L.video_glyph)
+            L.video_badge = lambda *a, **k: calls.append("badge")
+            L.video_glyph = lambda *a, **k: calls.append("glyph")
+            try:
+                L.draw_layout(s, self.items, self.lays[kind], 0.0, self.vp)
+            finally:
+                L.video_badge, L.video_glyph = orig
+            marks[kind] = calls
+        self.assertTrue(marks["small"] and set(marks["small"]) == {"badge"})
+        self.assertTrue(marks["month"] and set(marks["month"]) == {"glyph"})
+        self.assertEqual(marks["year"], [])
 
     def test_selection_keys_are_visible_in_every_non_original_frame(self):
         st = self.st

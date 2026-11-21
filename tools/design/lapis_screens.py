@@ -669,12 +669,12 @@ def synthetic_library(n_nov: int = 268, n_sep: int = 702) -> list[Item]:
             k += 1
     for j in range(n_sep):
         d = _date(2026, 9, max(1, 30 - j // 24))
-        items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} September", "September 2026"))
+        items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} September", "September 2026", k in LIB_VIDEOS))
         k += 1
     for name, m, n in OLDER_MONTHS:
         for j in range(n):
             d = _date(2026, m, max(1, 28 - j // 30))
-            items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} {name}", f"{name} 2026"))
+            items.append(Item(k, r.choice(LIB_RATIOS), f"{d:%A} {d.day} {name}", f"{name} 2026", k in LIB_VIDEOS))
             k += 1
     return items
 
@@ -859,18 +859,26 @@ def key_at(layout: Layout, scroll: float, vp: Viewport, point) -> int | None:
     return None
 
 
-def same_point_columns(cols_a: int = 7, cols_b: int = 12) -> list[int]:
-    """Columns of the finer grid whose span lies inside the coarser grid's column for the same key.
-    Only for these can one stationary focal point sit on the same key in both grids."""
-    ta = (DEVICE_W - px(GAP) * (cols_a - 1)) / cols_a
-    tb = (DEVICE_W - px(GAP) * (cols_b - 1)) / cols_b
-    out = []
-    for c in range(cols_b):
-        a0 = (c % cols_a) * (ta + px(GAP))
-        b0 = c * (tb + px(GAP))
-        if a0 <= b0 and b0 + tb <= a0 + ta:
-            out.append(c)
-    return out
+def month_span_x(idx: int, cols: int) -> tuple[float, float]:
+    """Horizontal span (px) of the key at zero-based position ``idx`` in its month, in a ``cols``-column grid."""
+    tile = (DEVICE_W - px(GAP) * (cols - 1)) / cols
+    x0 = (idx % cols) * (tile + px(GAP))
+    return x0, x0 + tile
+
+
+def shared_point_x(idx: int, cols_a: int, cols_b: int) -> tuple[float, float] | None:
+    """x range where one stationary focal point lies on the same key in both grids, or None.
+    The key at month position ``idx`` sits in column idx % cols in each grid, so the condition depends on the
+    key's index and needs only overlapping spans, not containment."""
+    a, b = month_span_x(idx, cols_a), month_span_x(idx, cols_b)
+    lo, hi = max(a[0], b[0]), min(a[1], b[1])
+    return (lo, hi) if lo < hi else None
+
+
+def shared_point_positions(cols_a: int, cols_b: int) -> tuple[int, int]:
+    """(positions that can share a point, positions in one full cycle) over idx = 0 .. lcm(cols_a, cols_b) - 1."""
+    cycle = math.lcm(cols_a, cols_b)
+    return sum(shared_point_x(i, cols_a, cols_b) is not None for i in range(cycle)), cycle
 
 
 # ---------------------------------------------------------------------------
