@@ -11,9 +11,9 @@ function attrs(m){return Object.entries(m).map(([k,v])=>` ${k}="${xml(v)}"`).joi
 function R(x,y,w,h,fill,m={}){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${m.rx||0}" fill="${fill}"${attrs(Object.fromEntries(Object.entries(m).filter(([k])=>k!=="rx")))}/>`}
 function T(x,y,text,size,fill,m={}){return `<text x="${x}" y="${y}" fill="${fill}" font-size="${size}" font-family="${m.family||"Funnel Sans, sans-serif"}" font-weight="${m.weight||400}"${attrs(Object.fromEntries(Object.entries(m).filter(([k])=>k!=="family"&&k!=="weight")))}>${xml(text)}</text>`}
 function dot(p,y,active){return `<circle cx="319" cy="${y}" r="9" stroke="${active?p.fill:p.sub}" stroke-width="2" fill="none"/>`+(active?`<circle cx="319" cy="${y}" r="5" fill="${p.fill}"/>`:"")}
-function opt(p,y,h,label,kind,active=false,size=15,m={}){return R(15,y,330,h,active?p.mist:p.sheet,{rx:5,"data-target":kind,"data-selected":String(active),...m})+T(32,y+(h+size)/2-3,label,size,p.ink)+(kind==="shuffle"?"":dot(p,y+h/2,active))}
+function opt(p,y,h,label,kind,active=false,size=15,m={}){return R(15,y,330,h,active?p.mist:p.sheet,{rx:5,"data-target":kind,"data-selected":String(active),...m})+T(32,y+(h+size)/2-3,label,size,p.ink,size===30?{"data-role":"option-label","data-base-sp":15}:{})+(kind==="shuffle"?"":dot(p,y+h/2,active))}
 function tiles(p,offset=0){return [[16,148,104,72],[123,148,81,72],[207,148,137,72],[16,223,140,59],[159,223,92,59],[254,223,90,59]].map(([x,y,w,h],i)=>R(x,y+offset,w,h,p.tile,{rx:6,opacity:i%2?".56":".84"})+`<path d="M${x+7} ${y+offset+h-9} l${Math.round(w*.22)} -${Math.round(h*.23)} l${Math.round(w*.19)} ${Math.round(h*.13)} l${Math.round(w*.24)} -${Math.round(h*.29)}" stroke="${p.mist}" stroke-width="3" fill="none"/>`).join("\n")}
-function draw(a,theme){const [id,title,sub,kind,selected,direction,query]=a,p=colors[theme],s=[],large=kind.startsWith("large");s.push(`<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="${id}" data-theme="${theme}" data-synthetic="true" data-density-illustrative="3" data-font-scale="${large?2:1}"${large?' data-scroll-offset-dp="240"':""}${query?` data-query="${xml(query)}"`:""}>`,`<title id="title">${xml(title)} — synthetic ${theme} design proposal</title>`,`<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>`,R(0,0,360,780,p.bg),T(16,large?112:84,title,large?76:38,p.title,{"family":"Funnel Display, sans-serif",weight:700,"letter-spacing":"-0.03em","data-role":"screen-title","data-spec":"38/44sp; 76/88sp at 200%"}),T(16,large?151:118,sub,13,p.sub),R(295,35,52,52,p.mist,{"data-target":"sort",rx:15}),T(303,67,"Sort",14,p.title,{weight:600}));
+function draw(a,theme){const [id,title,sub,kind,selected,direction,query]=a,p=colors[theme],s=[],large=kind.startsWith("large");s.push(`<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="${id}" data-theme="${theme}" data-synthetic="true" data-density-illustrative="3" data-font-scale="${large?2:1}"${large?' data-scroll-offset-dp="240"':""}${query?` data-query="${xml(query)}"`:""}>`,`<title id="title">${xml(title)} — synthetic ${theme} design proposal</title>`,`<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>`,R(0,0,360,780,p.bg),T(16,large?112:84,title,large?76:38,p.title,{"family":"Funnel Display, sans-serif",weight:700,"letter-spacing":"-0.03em","data-role":"screen-title","data-spec":"38/44sp; 76/88sp at 200%",...(large?{"data-base-sp":38}:{})}),T(16,large?161:118,large?"Text at 200%":sub,large?26:13,p.sub,large?{"data-role":"header-subtitle","data-base-sp":13}:{}),...(large?[]:[R(295,35,52,52,p.mist,{"data-target":"sort",rx:15}),T(303,67,"Sort",14,p.title,{weight:600})]));
 if(["date","results","random"].includes(kind)){
  if(query)s.push(R(16,132,328,52,p.mist,{rx:12,"data-target":"query"}),T(31,164,query,16,p.ink));
  if(id==="search-empty")s.push(T(18,223,"No matching media",18,p.ink),T(18,252,"Try another search",15,p.sub));else s.push(tiles(p,query?48:0));
@@ -40,10 +40,20 @@ if(["date","results","random"].includes(kind)){
  if(state==="sheet")s.push(R(28,y+87,304,87,p.bg,{rx:12}),T(40,y+108,"Sort by",14,p.ink,{weight:600}),R(39,y+116,282,48,p.mist,{rx:6}),T(51,y+145,"Relevance selected",14,p.ink));
  s.push("</g>")});s.push(T(16,767,"Full six-key list shown in search-relevance",11,p.sub));
 }else if(large){
- s.push(tiles(p),R(0,287,360,470,p.bg,{opacity:".77"}),R(0,287,360,470,p.sheet,{rx:24}),R(157,297,46,4,p.line,{rx:2}),T(24,330,"Sort by",25,p.ink,{weight:600}),T(24,348,"Scrolled to terminal controls",12,p.sub));
- if(kind==="large-dir")s.push(opt(p,356,72,"Size","key",true,30,{"data-key":"Size"}),opt(p,428,72,"Random","key",false,30,{"data-key":"Random"}),T(24,531,"Direction",23,p.ink,{weight:600}),opt(p,544,72,"Ascending","direction",false,30,{"data-direction":"Ascending"}),opt(p,616,72,"Descending","direction",true,30,{"data-direction":"Descending"}));
- else s.push(opt(p,438,72,"Random","key",true,30,{"data-key":"Random"}),R(15,590,330,72,p.mist,{rx:9,"data-target":"shuffle"}),T(28,635,"Shuffle again",30,p.ink));
- s.push(R(349,353,4,338,p.line,{rx:2}),R(349,566,4,92,p.fill,{rx:2}),T(24,738,"Focus and swipe reach end",12,p.sub));
+ // Fully doubled in-app text, rather than a mix of 100%, 125% and 200%.
+ // The Sort entry is widened for its 28sp label; all terminal actions stay above the gesture inset.
+ s.push(R(0,287,360,470,p.bg,{opacity:".77"}),R(0,287,360,470,p.sheet,{rx:24}),R(157,297,46,4,p.line,{rx:2}),
+  R(228,197,116,72,p.mist,{"data-target":"sort",rx:15}),
+  T(252,245,"Sort",28,p.title,{weight:600,"data-role":"sort-entry-label","data-base-sp":14}),
+  T(24,340,"Sort by",40,p.ink,{weight:600,"data-role":"sheet-title","data-base-sp":20}),
+  T(24,374,"Scrolled",24,p.sub,{"data-role":"scroll-hint","data-base-sp":12}));
+ if(kind==="large-dir")s.push(opt(p,390,72,"Size","key",true,30,{"data-key":"Size"}),opt(p,462,72,"Random","key",false,30,{"data-key":"Random"}),
+  T(24,578,"Direction",34,p.ink,{weight:600,"data-role":"direction-heading","data-base-sp":17}),
+  opt(p,592,72,"Ascending","direction",false,30,{"data-direction":"Ascending"}),opt(p,664,72,"Descending","direction",true,30,{"data-direction":"Descending"}));
+ else s.push(opt(p,422,72,"Random","key",true,30,{"data-key":"Random"}),
+  R(15,645,330,72,p.mist,{rx:9,"data-target":"shuffle"}),
+  T(28,692,"Shuffle again",30,p.ink,{"data-role":"shuffle-label","data-base-sp":15}));
+ s.push(R(349,353,4,383,p.line,{rx:2}),R(349,618,4,103,p.fill,{rx:2}));
 }
 s.push(R(0,757,360,23,p.bg),R(126,768,108,4,p.ink,{rx:2}),"</svg>");
 return s.join("\n")+"\n"}

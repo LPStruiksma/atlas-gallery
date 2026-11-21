@@ -51,6 +51,45 @@ for scene in scenes:
   if scene.startswith("font200"):
    check(svg.get("data-font-scale")=="2" and float(svg.get("data-scroll-offset-dp","0"))>0,"scrolled 200%")
    check(all(float(r.get("height"))>=72 for k in ("key","direction","shuffle") for r in targets.get(k,[])),"72dp enlarged targets")
+   # Inspect every text element, not merely the display title: no hidden 100% or 125% labels.
+   texts=list(svg.iter(ns+"text"))
+   required={"screen-title":1,"header-subtitle":1,"sort-entry-label":1,"sheet-title":1,
+             "scroll-hint":1,"option-label":4 if scene=="font200-direction" else 1}
+   required["direction-heading" if scene=="font200-direction" else "shuffle-label"]=1
+   roles=[t.get("data-role") for t in texts]
+   check(len(roles)==sum(required.values()) and all(roles.count(role)==count for role,count in required.items()),
+         "200% text roles/inventory")
+   for t in texts:
+    base=t.get("data-base-sp")
+    try: scaled=base is not None and float(t.get("font-size","0"))==2*float(base)
+    except ValueError: scaled=False
+    check(scaled,f"200% font scale: {t.text}")
+    try: x,y=float(t.get("x","-1")),float(t.get("y","-1"))
+    except ValueError: x,y=-1,-1
+    check(0<=x<=360 and 24<=y<=757,f"text baseline outside safe frame: {t.text}")
+   def text_in_target(role,target):
+    labels=[t for t in texts if t.get("data-role")==role]
+    rects=targets.get(target,[])
+    if len(labels)!=1 or len(rects)!=1:return False
+    t,r=labels[0],rects[0]
+    return (float(r.get("x"))<=float(t.get("x"))<=float(r.get("x"))+float(r.get("width")) and
+            float(r.get("y"))<=float(t.get("y"))<=float(r.get("y"))+float(r.get("height")))
+   check(text_in_target("sort-entry-label","sort"),"enlarged sort label inside its enlarged target")
+   if scene=="font200-shuffle":
+    check(text_in_target("shuffle-label","shuffle"),"enlarged shuffle label inside its target")
+   option_rows=sorted(targets.get("key",[])+targets.get("direction",[]),key=lambda r:float(r.get("y")))
+   option_labels=[t for t in texts if t.get("data-role")=="option-label"]
+   check(len(option_rows)==len(option_labels),"option text/row count")
+   for t,r in zip(option_labels,option_rows):
+    check(float(r.get("y"))<=float(t.get("y"))<=float(r.get("y"))+float(r.get("height")),
+          f"200% option baseline outside row: {t.text}")
+   first_key=min((float(r.get("y")) for r in targets.get("key",[])),default=0)
+   scroll_hints=[t for t in texts if t.get("data-role")=="scroll-hint"]
+   check(len(scroll_hints)==1 and first_key>=float(scroll_hints[0].get("y"))+12,
+         "scrolled hint overlaps first option")
+   terminal=(targets.get("direction") or targets.get("shuffle"))[-1]
+   bottom=float(terminal.get("y"))+float(terminal.get("height"))
+   check(700<=bottom<=757,"last direction/shuffle target visible above gesture inset")
   if scene=="state-matrix":
    check({g.get("data-state") for g in svg.iter(ns+"g") if g.get("data-state")}=={"loading","error","revoked","progressive"},"four pictured states")
    check(len(targets.get("retry",[]))==1 and len(targets.get("grant",[]))==1,"retry/grant controls")

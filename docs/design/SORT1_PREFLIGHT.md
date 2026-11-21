@@ -36,10 +36,10 @@ All media thumbnails are generated neutral shapes, never actual photos. The held
 | Canvas / insets | 360×780 illustrative dp; top 24dp and gesture y757–780 (23dp), not runtime insets | Real `WindowInsets`, density, keyboard overlap, landscape |
 | Sort and normal rows | Sort 52×52dp. Five keys y310–570, 52dp each; vertical direction rows y616–720, 52dp each | Compose click bounds, focused radio semantics, Back and scrim |
 | Results-only sixth row | Relevance plus five options y364–676, each complete and non-overlapping | TalkBack focus, long labels/RTL and scroll after IME |
-| 200% scrolled terminal | `data-scroll-offset-dp=240`; end-of-scroll visible 72dp direction or Shuffle controls above bottom gesture | Real fontScale=2.0, swipe/focus order, one-hand reach |
+| 200% scrolled terminal | `data-scroll-offset-dp=240`; all in-app text doubles its declared baseline (38→76 title, 13→26 subtitle, 14→28 Sort, 20→40 sheet heading, 12→24 scroll hint, 17→34 Direction, 15→30 options/shuffle). Wider 116×72dp Sort entry; end-scrolled 72dp direction/Shuffle controls stay fully above the gesture inset | Real fontScale=2.0, fallback glyph dimensions, swipe/focus order, one-hand reach |
 | Fallible states | Pictured loading with count/held sphere, actionable retry/permission, incremental 250k grid | Permission re-grant, actual large library and error states |
 
-The 200% frames show **after scrolling**, not an impossible claim that the whole sheet fits without scrolling. The IME frames show keyboard **dismissed before sheet opening**, not both overlaid. Large translations, RTL, high contrast, rotation and focus testing remain implementation-stage work.
+The 200% frames show **after scrolling**, not an impossible claim that the whole sheet fits without scrolling. The Python audit now rejects any undoubled text labels and checks text baselines against enlarged controls, the scroll-hint clearance and the final action's safe-area position; it does not measure font glyph extents or prove Android font scaling. The IME frames show keyboard **dismissed before sheet opening**, not both overlaid. Large translations, RTL, high contrast, rotation and focus testing remain implementation-stage work.
 
 ## Per-host adaptation versus reference
 
