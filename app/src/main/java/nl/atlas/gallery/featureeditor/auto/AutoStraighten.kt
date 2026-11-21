@@ -45,7 +45,7 @@ object AutoStraighten {
         val points = if (horizontal.size >= vertical.size) horizontal else vertical
         val isHorizontal = points === horizontal
         if (points.size < maxOf(24, (width + height) / 8)) return null
-        val stride = (points.size / MAX_POINTS).coerceAtLeast(1)
+        val stride = voteSampleStride(points.size)
         val sampled = points.filterIndexed { index, _ -> index % stride == 0 }
         val diagonal = hypot(width.toDouble(), height.toDouble()).roundToInt()
         val accumulator = IntArray(diagonal * 2 + 3)
@@ -73,6 +73,10 @@ object AutoStraighten {
         val correction = (-lineAngle).coerceIn(-45.0, 45.0)
         return StraightenSuggestion(correction, confidence)
     }
+
+    /** Ceiling stride ensures that even the densest admissible edge plane votes at most 8,000 points. */
+    internal fun voteSampleStride(edgeCount: Int): Int =
+        ((edgeCount + MAX_POINTS - 1) / MAX_POINTS).coerceAtLeast(1)
 
     private const val MAX_EVIDENCE_ANGLE = 20.0
     private const val ANGLE_STEP = 0.25

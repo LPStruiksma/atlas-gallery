@@ -17,8 +17,9 @@ Sobel filter, separates approximately horizontal and vertical evidence, and perf
 `-20..20` degree Hough projection vote at 0.25 degree resolution. A peak must have both absolute
 line concentration and separation from the next non-neighbouring peak; otherwise the result is
 `null`. The reported angle is the correction (clockwise positive in `EditOperation`), rather than
-the detected source tilt. At most 8,000 uniformly selected edge points enter the vote, bounding
-work for a 512 px input.
+the detected source tilt. Ceiling-divided stride keeps **at most 8,000 uniformly selected edge points** in the vote,
+including dense high-contrast 512 px inputs. This prevents a previously unbounded 8,001–15,999
+edge case from overrunning the intended sampling budget.
 
 `ToneStatistics` owns defensive copies of three 256-bin RGB histograms with equal, non-zero sample
 counts. `AutoAdjust` derives mean and 5th/95th percentiles, applies documented neutral targets
@@ -38,8 +39,10 @@ The repository checkout did not contain `./gradlew`, and the installed Gradle co
 future Android Gradle Plugin 8.13.2. Therefore the same benchmark body was compiled directly with
 the installed Kotlin compiler and run with `java`. Results were: auto-straighten median **18.430
 ms**, p95 **20.097 ms**, max **25.807 ms**; auto-tone median **0.042 ms**, p95 **0.150 ms**, max
-**0.312 ms**. Both desktop p95 values meet the 30 ms target. These are reproducible desktop JVM
-numbers, not hosted-CI or Samsung S24+ measurements.
+**0.312 ms**. The earlier desktop p95 values met the 30 ms target **before the sampling-cap correction**.
+The regression benchmark now also records `straighten-dense` on 512×384 two-pixel stripes;
+record its new timings from a fresh run rather than treating the earlier numbers as exact-head
+measurements. These are reproducible desktop JVM numbers, not hosted-CI or Samsung S24+ measurements.
 
 ## Parity
 

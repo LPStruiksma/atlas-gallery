@@ -59,7 +59,8 @@ object AutoAdjust {
         val shadows = ((0.05 - low) * 1.25).deadZone(0.025)
         val highlights = ((0.95 - high) * 1.25).deadZone(0.025)
         val temperature = ((blueMean - redMean) * 1.5).deadZone(0.012)
-        val tint = (((redMean + blueMean) / 2.0 - greenMean) * 1.5).deadZone(0.012)
+        // Renderer tint attenuates green for positive values; a green cast needs positive correction.
+        val tint = ((greenMean - (redMean + blueMean) / 2.0) * 1.5).deadZone(0.012)
         return listOf(
             operation(AdjustParam.EXPOSURE, exposure),
             operation(AdjustParam.CONTRAST, contrast),
