@@ -15,33 +15,97 @@ def rows(path: Path) -> list[dict]:
             if line.strip()]
 
 
+def _index_rows(path: Path) -> dict[str, dict]:
+    indexed: dict[str, dict] = {}
+    for number, row in enumerate(rows(path), 1):
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"].strip():
+            raise ValueError(f"{path}: row {number} needs a nonempty string id")
+        key = row["id"]
+        if key in indexed:
+            raise ValueError(f"{path}: duplicate id {key!r} at row {number}")
+        indexed[key] = row
+    return indexed
+
+
+def _empty_bucket() -> dict[str, int]:
+    return {"samples": 0, "chars": 0, "words": 0, "char_edits": 0,
+            "word_edits": 0, "text_samples": 0, "no_text_samples": 0,
+            "false_text": 0, "false_skips": 0}
+
+
+def _add(bucket: dict[str, int], *, chars: int, words: int, char_edits: int,
+         word_edits: int, is_text: bool, has_prediction: bool) -> None:
+    bucket["samples"] += 1
+    bucket["chars"] += chars
+    bucket["words"] += words
+    bucket["char_edits"] += char_edits
+    bucket["word_edits"] += word_edits
+    bucket["text_samples" if is_text else "no_text_samples"] += 1
+    if not is_text and has_prediction:
+        bucket["false_text"] += 1
+    if is_text and not has_prediction:
+        bucket["false_skips"] += 1
+
+
+def _summary(bucket: dict[str, int]) -> dict:
+    return {
+        "samples": bucket["samples"],
+        "chars": bucket["chars"], "words": bucket["words"],
+        "char_edits": bucket["char_edits"], "word_edits": bucket["word_edits"],
+        "cer": bucket["char_edits"] / bucket["chars"] if bucket["chars"] else None,
+        "wer": bucket["word_edits"] / bucket["words"] if bucket["words"] else None,
+        "text_samples": bucket["text_samples"],
+        "no_text_samples": bucket["no_text_samples"],
+        "false_text": bucket["false_text"],
+        "false_skips": bucket["false_skips"],
+        "false_text_rate": (bucket["false_text"] / bucket["no_text_samples"]
+                            if bucket["no_text_samples"] else None),
+        "false_skip_rate": (bucket["false_skips"] / bucket["text_samples"]
+                            if bucket["text_samples"] else None),
+    }
+
+
 def evaluate(manifest: Path, predictions: Path) -> dict:
-    expected = {row["id"]: row for row in rows(manifest)}
-    actual = {row["id"]: row for row in rows(predictions)}
+    expected = _index_rows(manifest)
+    actual = _index_rows(predictions)
     missing = sorted(set(expected) - set(actual))
     extra = sorted(set(actual) - set(expected))
     if missing or extra:
         raise ValueError(f"ID mismatch: missing={missing}, extra={extra}")
 
-    chars = words = char_edits = word_edits = false_text = false_skips = 0
+    total = _empty_bucket()
     by_kind: dict[str, dict[str, int]] = {}
+    by_language: dict[str, dict[str, int]] = {}
+    by_language_kind: dict[str, dict[str, dict[str, int]]] = {}
     for key, truth in expected.items():
         ref, hyp = normalize(truth["text"]), normalize(actual[key].get("text", ""))
         ref_chars, hyp_chars = list(ref), list(hyp)
         ref_words, hyp_words = ref.split(), hyp.split()
-        chars += len(ref_chars); words += len(ref_words)
-        char_edits += edit_distance(ref_chars, hyp_chars)
-        word_edits += edit_distance(ref_words, hyp_words)
         kind = truth["kind"]
-        bucket = by_kind.setdefault(kind, {"samples": 0, "false_text": 0, "false_skips": 0})
-        bucket["samples"] += 1
-        if not ref and hyp:
-            false_text += 1; bucket["false_text"] += 1
-        if ref and not hyp:
-            false_skips += 1; bucket["false_skips"] += 1
-    return {"samples": len(expected), "cer": char_edits / chars if chars else None,
-            "wer": word_edits / words if words else None, "false_text": false_text,
-            "false_skips": false_skips, "by_kind": by_kind}
+        # Negative fixtures may omit language. Never silently assign them EN or NL.
+        language = truth.get("language") or "unspecified"
+        counters = (
+            total,
+            by_kind.setdefault(kind, _empty_bucket()),
+            by_language.setdefault(language, _empty_bucket()),
+            by_language_kind.setdefault(language, {}).setdefault(kind, _empty_bucket()),
+        )
+        measured = {"chars": len(ref_chars), "words": len(ref_words),
+                    "char_edits": edit_distance(ref_chars, hyp_chars),
+                    "word_edits": edit_distance(ref_words, hyp_words),
+                    "is_text": bool(ref), "has_prediction": bool(hyp)}
+        for bucket in counters:
+            _add(bucket, **measured)
+
+    return {
+        **_summary(total),
+        "by_kind": {kind: _summary(bucket) for kind, bucket in by_kind.items()},
+        "by_language": {language: _summary(bucket) for language, bucket in by_language.items()},
+        "by_language_kind": {
+            language: {kind: _summary(bucket) for kind, bucket in kinds.items()}
+            for language, kinds in by_language_kind.items()
+        },
+    }
 
 
 def main() -> None:
@@ -57,4 +121,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
