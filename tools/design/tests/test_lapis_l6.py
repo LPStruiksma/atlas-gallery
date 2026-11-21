@@ -85,6 +85,18 @@ class L6PrimaryMonthTargets(unittest.TestCase):
         for a in animation:
             self.assertIn("dur", a.attrib)
             self.assertIn("values", a.attrib)
+        # The remove-animations cut must be true discrete jumps: two equal
+        # consecutive keyTimes, so no interpolation happens between states.
+        for a in animation:
+            kts = [float(x) for x in a.attrib["keyTimes"].split(";")]
+            vals = a.attrib["values"].split(";")
+            self.assertEqual(len(kts), len(vals))
+            jumps = [i for i in range(1, len(kts)) if kts[i] == kts[i - 1]]
+            self.assertEqual(len(jumps), 2, "closed->open and open->closed cuts")
+            for i in jumps:
+                self.assertNotEqual(vals[i], vals[i - 1])
+            # the cut segment shows the open state for a hold, not a ramp
+            self.assertEqual(vals[jumps[0] + 1], vals[jumps[0]])
         self.assertIn("cancel", text.lower())
         self.assertIn("release", text.lower())
 
