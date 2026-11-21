@@ -69,7 +69,10 @@ def make_row(p):
         "hair_votes": m(votes()), "seam_votes": m(votes()),
         "identity": m([{"source": "judgeA", "profile_capable": True, "outcome": "preserved"},
                        {"source": "judgeB", "profile_capable": True, "outcome": "preserved"}]),
-        "claimed_success": True,
+        "claimed_success": m(True),
+        "pose_tag": p["pose_tag"],
+        "licence_evidence": m(dict(p.get("licence") or {})),
+        "output_mask_hash": m(hashlib.sha256(f"mask-{n}".encode()).hexdigest()),
     }
 
 
@@ -147,7 +150,7 @@ class WholeHeadAndPose(unittest.TestCase):
         c = make_cohort()
         rows = make_rows(c)
         for r in rows[n_pass:]:
-            r["claimed_success"] = False
+            r["claimed_success"] = m(False)
             if how == "pose":
                 r["target_pose_preserved"] = m(False)
             else:
@@ -445,7 +448,7 @@ class Rows(unittest.TestCase):
         rows = make_rows(c)
         for r in rows[:5]:
             r["classification"] = m("no_swap")
-            r["claimed_success"] = False
+            r["claimed_success"] = m(False)
         self.assertEqual(q.evaluate(c, rows)["verdict"], q.FAIL)
 
 
@@ -466,6 +469,77 @@ class Cli(unittest.TestCase):
                 self.assertEqual(q.main([str(cp), str(rp)]), 1)
             with contextlib.redirect_stderr(io.StringIO()):
                 self.assertEqual(q.main([]), 2)
+
+
+class ReviewFindings(unittest.TestCase):
+    """Regressions for the three blocking findings of the first Review (#841)."""
+
+    def test_18_of_20_cohort_cannot_omit_success_state_on_nonpass_rows(self):
+        c = make_cohort()
+        rows = make_rows(c)
+        for r, cls in zip(rows[18:], ("face_only", "target_head_remains")):
+            r["classification"] = m(cls)
+            del r["claimed_success"]  # silent about whether it was surfaced as a success
+        g = gate(q.evaluate(c, rows), "whole_head_and_pose")
+        self.assertEqual(g["passed"], 18)
+        self.assertEqual(g["status"], q.INSUFFICIENT)
+        self.assertEqual(g["incomplete"], ["p18", "p19"])
+        self.assertNotEqual(q.evaluate(c, rows)["verdict"], q.PASS)
+
+    def test_18_of_20_mixed_class_with_explicit_false_states_passes_the_gate(self):
+        c = make_cohort()
+        rows = make_rows(c)
+        for r, cls in zip(rows[18:], ("face_only", "target_head_remains")):
+            r["classification"] = m(cls)
+            r["claimed_success"] = m(False)
+        g = gate(q.evaluate(c, rows), "whole_head_and_pose")
+        self.assertEqual((g["status"], g["passed"]), (q.PASS, 18))
+
+    def test_success_state_must_be_a_typed_boolean(self):
+        for bad in (nm("not recorded"), m("yes"), m(None), True, {"status": "measured", "value": True}):
+            c = make_cohort()
+            rows = make_rows(c)
+            rows[0]["claimed_success"] = bad
+            g = gate(q.evaluate(c, rows), "whole_head_and_pose")
+            self.assertEqual(g["status"], q.INSUFFICIENT, bad)
+            self.assertEqual(g["passed"], 19)
+
+    def test_missing_success_state_cannot_hide_a_contradiction_elsewhere(self):
+        c = make_cohort()
+        rows = make_rows(c)
+        rows[0]["claimed_success"] = nm("x")
+        rows[1]["classification"] = m("face_only")  # claimed success True
+        self.assertEqual(gate(q.evaluate(c, rows), "whole_head_and_pose")["status"], q.FAIL)
+
+    def row_fails_closed(self, mutate, needle):
+        c = make_cohort()
+        rows = make_rows(c)
+        mutate(rows[5])
+        r = q.evaluate(c, rows)
+        self.assertEqual(r["verdict"], q.INSUFFICIENT)
+        self.assertTrue(any(needle in p for p in r["row_problems"]), r["row_problems"])
+
+    def test_row_licence_evidence_is_required_and_bound_to_cohort(self):
+        self.row_fails_closed(lambda r: r.pop("licence_evidence"), "licence_evidence")
+        self.row_fails_closed(lambda r: r.update(licence_evidence=nm("not collected")), "licence_evidence")
+        self.row_fails_closed(
+            lambda r: r.update(licence_evidence=m({"cleared": False, "source": "synthetic", "licence": "CC0",
+                                                   "permitted_use": "research"})), "licence_evidence")
+        self.row_fails_closed(
+            lambda r: r.update(licence_evidence=m({"cleared": True, "source": "elsewhere", "licence": "CC0",
+                                                   "permitted_use": "research"})), "licence_evidence")
+        self.row_fails_closed(lambda r: r.update(licence_evidence={"cleared": True}), "licence_evidence")
+
+    def test_output_mask_digest_is_required_with_a_method(self):
+        self.row_fails_closed(lambda r: r.pop("output_mask_hash"), "output_mask_hash")
+        self.row_fails_closed(lambda r: r.update(output_mask_hash=nm("mask not saved")), "output_mask_hash")
+        self.row_fails_closed(lambda r: r.update(output_mask_hash=m("not-a-digest")), "output_mask_hash")
+        self.row_fails_closed(lambda r: r.update(output_mask_hash={"status": "measured", "value": SHA}),
+                              "output_mask_hash")
+
+    def test_row_pose_tag_must_match_the_locked_cohort(self):
+        self.row_fails_closed(lambda r: r.update(pose_tag="frontal" if r["pose_tag"] != "frontal" else "profile"),
+                              "pose_tag")
 
 
 class Frozen(unittest.TestCase):

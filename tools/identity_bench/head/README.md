@@ -19,7 +19,7 @@ Standard library only. The tests cover the classification rule (a face-only resu
 
 Standard library only. It runs no model and downloads nothing. The tests use constructed records, so they prove the evaluator, not a head-swap backend. The four-pair IDS-3 pilot in `results/results.json` does not satisfy this 20-pair gate; no backend has been evaluated against it yet (**NOT MEASURED**). The class names are the `probe.classify()` ones (`full_head`, `face_only`, `target_head_remains`, `no_swap`, `failed`).
 
-Row fields are `{"status": "measured", "value": ..., "method": ...}` or `{"status": "not_measured", "reason": ...}`. `check_outside_fence()` builds the `outside_fence` value from raw pixels and a fence mask. Gate 5 sets no numeric identity threshold (none was pre-registered): it requires two independent profile-capable sources per pair that agree, and reports how many said preserved.
+Row fields are `{"status": "measured", "value": ..., "method": ...}` or `{"status": "not_measured", "reason": ...}`. Every row must also carry `claimed_success` (explicit boolean: was it surfaced as a whole-head success), `licence_evidence` (matching the frozen cohort licence) and `output_mask_hash` (SHA-256 plus method); absence fails closed. `test/additive-regressions/identity-head-quality-772.mjs` runs both suites in the existing hosted static job. `check_outside_fence()` builds the `outside_fence` value from raw pixels and a fence mask. Gate 5 sets no numeric identity threshold (none was pre-registered): it requires two independent profile-capable sources per pair that agree, and reports how many said preserved.
 
 ## Re-running a probe
 

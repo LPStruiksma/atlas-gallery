@@ -165,6 +165,21 @@ def _gate(name, status, **detail):
     return {"gate": name, "status": status, **detail}
 
 
+def check_row_provenance(pair, row):
+    """Row-level mandatory evidence: licence proof bound to the frozen cohort record, and an
+    output-mask digest with its method. Absent, malformed or mismatching evidence fails closed."""
+    pid, probs = pair["pair_id"], []
+    s, v = measured(row, "licence_evidence")
+    lic = pair.get("licence")
+    if s != "ok" or not isinstance(v, dict) or v.get("cleared") is not True or not isinstance(lic, dict) \
+            or any(not _text(v.get(k)) or v.get(k) != lic.get(k) for k in ("source", "licence", "permitted_use")):
+        probs.append(f"{pid}: row licence_evidence missing, not cleared, or not matching the frozen cohort licence")
+    s, v = measured(row, "output_mask_hash")
+    if s != "ok" or not (isinstance(v, str) and _SHA.match(v)):
+        probs.append(f"{pid}: output_mask_hash missing or not a SHA-256 with a method")
+    return probs
+
+
 def _index_rows(cohort_pairs, rows):
     by_id, extra = {}, []
     for r in rows if isinstance(rows, list) else []:
@@ -194,10 +209,15 @@ def gate_whole_head_and_pose(pairs, by_id):
         if not cls_ok or not pose_ok:
             incomplete.append(pid)
             details[pid] = "classification or target-pose not measured/valid"
-        if r.get("claimed_success") is True and not (cls_ok and cv == "full_head" and pose_ok and pv):
+        ss, sv = measured(r, "claimed_success")
+        if ss != "ok" or not isinstance(sv, bool):
+            # The zero-false-success condition cannot be verified without an explicit per-row state.
+            incomplete.append(pid)
+            details[pid] = "claimed_success (explicit success/publication state) not measured or not boolean"
+        elif sv and not (cls_ok and cv == "full_head" and pose_ok and pv):
             contradictions.append(pid)
             details[pid] = f"labelled success but classification={cv!r}, target_pose_preserved={pv!r}"
-        if cls_ok and pose_ok and cv == "full_head" and pv and pid not in contradictions:
+        if cls_ok and pose_ok and cv == "full_head" and pv and pid not in contradictions and pid not in incomplete:
             passed.append(pid)
     frac = len(passed) / n if n else 0.0
     if contradictions:
@@ -344,9 +364,10 @@ def evaluate(cohort, rows):
         if r is None:
             row_problems.append(f"{p['pair_id']}: no row (stays in N as a non-pass)")
             continue
-        for k in ("target_id", "reference_id", "engine", "seed", "model_sha256", "adapter_sha256"):
+        for k in ("target_id", "reference_id", "engine", "seed", "model_sha256", "adapter_sha256", "pose_tag"):
             if r.get(k) != p.get(k):
                 row_problems.append(f"{p['pair_id']}: {k} differs from the locked cohort")
+        row_problems += check_row_provenance(p, r)
     gates = [gate_whole_head_and_pose(pairs, by_id), gate_edit_fence(pairs, by_id), gate_scale(pairs, by_id),
              gate_judges(pairs, by_id, "hair_votes", "new_hair_hairline"),
              gate_judges(pairs, by_id, "seam_votes", "neck_seam"),
