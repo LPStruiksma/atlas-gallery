@@ -38,7 +38,7 @@ REPO = HERE.parent.parent
 OUT = REPO / "docs/design/lapis/preflight"
 FILE = "collect-1-utilities.png"
 VERIFIED = "2026-11-21"
-CATEGORIES = ("Videos", "Screenshots", "Selfies", "Portrait", "Panoramas", "Bursts", "Recently added")
+CATEGORIES = ("Videos", "Screenshots", "Recently added", "Selfies", "Panoramas", "Slow motion", "Large files")
 PANELS = ("A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3", "C4", "D1", "D2", "D3", "E1", "E2", "E3")
 
 
@@ -57,9 +57,9 @@ def _chrome(s: Screen) -> None:
     s.gesture_bar()
 
 
-def _strip(s: Screen, y: int, seed: int, short: bool = False) -> int:
-    """Draw uncropped latest-photo cells using their actual synthetic ratios."""
-    ratios = (1.50, 0.72) if short else (1.50, 0.72, 1.05, 1.82)
+def _strip(s: Screen, y: int, seed: int, available: int = 4) -> int:
+    """Draw only available synthetic latest items at intrinsic aspect ratios."""
+    ratios = (1.50, 0.72, 1.05, 1.82)[: min(4, available)]
     h, gap, x = px(48), px(4), px(20)
     for i, ratio in enumerate(ratios):
         w = round(h * ratio)
@@ -70,27 +70,56 @@ def _strip(s: Screen, y: int, seed: int, short: bool = False) -> int:
     return y + h
 
 
-def collections(theme: str = "light", scale: float = 1.0, long: bool = False) -> Screen:
+def collections(
+    theme: str = "light",
+    scale: float = 1.0,
+    long: bool = False,
+    scrolled: bool = False,
+    zero_case: bool = False,
+) -> Screen:
+    """Collections is scrollable: separate panels show its first and later rows.
+
+    Empty categories are omitted, not merely displayed without a numeric zero.
+    Counts and strips describe the same fictional in-scope media snapshot.
+    """
     s = Screen(FONTS, theme=theme, font_scale=scale)
-    y = _title(s, "Collections", "Albums, people, places and utilities")
-    labels = ["Albums", "People and pets", "Places"]
-    if long:
-        labels[1] = "People and pets with exceptionally long names"
-    for i, label in enumerate(labels):
-        s.text((px(20), y), label, "section")
-        s.text((DEVICE_W - px(20), y), f"{18 - i * 5}", "secondary", fill=s.t["ink2"], anchor="ra")
-        y = _strip(s, y + px(26), 10 + i * 7, short=i == 2) + px(18)
-    s.text((px(20), y), "Utilities", "section")
-    y += px(32)
-    for i, label in enumerate(CATEGORIES):
-        if y > s.bottom - px(100):
-            break
-        count = ("1,284", "326", "0", "84", "12", "0", "4,912")[i]
-        s.text((px(24), y), label, "body")
-        if count != "0":  # zero categories remain in their fixed position; the zero itself is hidden
-            s.text((DEVICE_W - px(24), y), count, "secondary", fill=s.t["ink2"], anchor="ra")
-        s.target((px(16), y - px(13), DEVICE_W - px(16), y + px(35)), f"{label}, {count} items")
-        y += px(48)
+    y = _title(s, "Collections", "Named rows and Media types · synthetic")
+    if not scrolled:
+        s.text((px(20), y), "Favourites", "section")
+        y = _strip(s, y + px(28), 10, available=2) + px(18)
+        s.text((px(20), y), "Media types", "section")
+        y += s.line_h("section") + px(10)
+    else:
+        s.text((px(20), y), "Media types · continued", "section")
+        y += s.line_h("section") + px(10)
+
+    # Model a stable seven-category navigation order; zero-count rows disappear.
+    counts = (1284, 326, 4912, 7, 12, 3, 84)
+    if zero_case:
+        counts = (1284, 326, 0, 0, 12, 3, 84)
+    entries = [(i, name, counts[i]) for i, name in enumerate(CATEGORIES) if counts[i] > 0]
+    if scrolled:
+        entries = entries[3:]
+    for i, name, count in entries:
+        label = name
+        if long and name == "Panoramas":
+            label = "Panoramas · localized extended label"
+        start = y
+        label_bottom = s.wrap(px(20), start, label, DEVICE_W - px(160), "body")
+        s.text((DEVICE_W - px(20), start + px(6)), f"{count:,} items", "secondary",
+               fill=s.t["ink2"], anchor="ra")
+        strip_y = max(start + px(30), label_bottom + px(4))
+        if strip_y + px(48) > s.bottom - px(108):
+            break  # remaining entries are visible after Collections scrolls
+        _strip(s, strip_y, 40 + i * 7, available=count)
+        box = (px(16), start - px(4), DEVICE_W - px(16), strip_y + px(48))
+        s.target(box, f"{name}, {count} items, latest today")
+        s.focus_order(box, f"{name}: {count} items, latest today")
+        y = strip_y + px(48) + px(14)
+
+    s.note((px(8), s.bottom - px(102)),
+           "Scroll continues · empty media types omitted" if zero_case else
+           "Scroll continues · full category order in table")
     _chrome(s)
     return s
 
@@ -117,32 +146,39 @@ def category(theme: str = "light", sorted_newest: bool = True, query: str = "") 
 
 def search(step: int, theme: str = "light") -> Screen:
     s = Screen(FONTS, theme=theme)
-    y = _title(s, "Screenshots", "Search stays scoped to this category")
+    y = _title(s, "Screenshots", "326 items · category search")
     for i in range(8):
         col, row = i % 4, i // 4
         side = (DEVICE_W - px(6)) // 4
         x = col * (side + px(2))
-        s.photo((x, y + row * (side + px(2)), x + side, y + row * (side + px(2)) + side), 100 + i)
+        s.photo((x, y + row * (side + px(2)), x + side,
+                 y + row * (side + px(2)) + side), 100 + i)
+
+    # The existing L7 slab is moved above the keyboard rather than covered by it.
     keyboard_top = s.keyboard() if step <= 2 else s.bottom
-    bar_y = keyboard_top - px(64)
-    s.rrect((px(16), bar_y, DEVICE_W - px(16), bar_y + px(56)), 24, fill=s.t["surface"])
-    s.magnifier((px(42), bar_y + px(28)), px(8), s.t["ink2"])
-    s.text((px(62), bar_y + px(28)), "receipt" if step >= 2 else "Search Screenshots", "body", anchor="lm")
-    if step <= 2:
+    slab = s.slab("Collections", y_bottom=keyboard_top)
+    if step != 4:
+        bar_y = slab[1] - px(64)
+        s.rrect((px(16), bar_y, DEVICE_W - px(16), bar_y + px(56)),
+                24, fill=s.t["surface"])
+        s.magnifier((px(42), bar_y + px(28)), px(8), s.t["ink2"])
+        s.text((px(62), bar_y + px(28)),
+               "receipt" if step >= 2 else "Search Screenshots", "body", anchor="lm")
         for i, label in enumerate(("This screen", "Whole library")):
             x = px(16 + i * 116)
             fill = s.t["brand_fill"] if i == 0 else s.t["surface"]
             ink = s.t["on_brand"] if i == 0 else s.t["ink"]
-            s.rrect((x, bar_y - px(52), x + px(108), bar_y - px(8)), 22, fill=fill)
-            s.text((x + px(54), bar_y - px(30)), label, "nav", fill=ink, anchor="mm")
-            s.target((x, bar_y - px(54), x + px(108), bar_y - px(6)), label)
-    if step == 1:
-        s.note((DEVICE_W - px(8), keyboard_top + px(4)), f"assumed IME {IME_DP} dp")
-    elif step == 3:
-        s.note((DEVICE_W - px(8), bar_y - px(8)), "Back 1: keyboard hidden; query kept")
-    elif step == 4:
-        s.note((DEVICE_W - px(8), bar_y - px(8)), "Back 2: search closes; category remains")
-    _chrome(s)
+            s.rrect((x, bar_y - px(56), x + px(108), bar_y - px(8)), 22, fill=fill)
+            s.text((x + px(54), bar_y - px(32)), label, "nav", fill=ink, anchor="mm")
+            s.target((x, bar_y - px(56), x + px(108), bar_y - px(8)), label)
+        if step == 3:
+            s.note((DEVICE_W - px(8), bar_y - px(68)),
+                   "Back 1: IME hidden; query and scope kept")
+    else:
+        s.note((DEVICE_W - px(8), slab[1] - px(8)),
+               "Back 2: search closed; category still open")
+    s.status_bar()
+    s.gesture_bar()
     return s
 
 
@@ -159,15 +195,15 @@ def state(kind: str, theme: str = "light") -> Screen:
         s.text((px(76), y + px(136)), "Try again", "nav", fill=s.t["on_brand"], anchor="mm")
         s.target((px(20), y + px(112), px(132), y + px(160)), "Try again")
     else:
-        s.wrap(px(20), y, "No screenshots yet.", DEVICE_W - px(40), "section")
-        s.wrap(px(20), y + px(54), "Screenshots you take appear here.", DEVICE_W - px(40), "body")
+        s.wrap(px(20), y, "No screenshots match. Clear search", DEVICE_W - px(40), "section")
+        s.wrap(px(20), y + px(54), "Clear search to restore all Screenshots.", DEVICE_W - px(40), "body")
     _chrome(s)
     return s
 
 
 def huge_list() -> Screen:
     s = Screen(FONTS, theme="dark")
-    y = _title(s, "Recently added", "148,912 items · lazy grid schematic")
+    y = _title(s, "Recently added", "250,128 items · lazy grid schematic")
     side = (DEVICE_W - px(6)) // 4
     for i in range(24):  # viewport only: evidence of lazy composition, not a performance result
         col, row = i % 4, i // 4
@@ -192,12 +228,12 @@ def build(fonts: Fonts) -> Board:
     ])
     heroes = [
         Panel("A1", "Collections · light · 100%", "Existing L5 named rows keep latest-photo strips at real ratios; genuine short strips do not stretch.", collections()),
-        Panel("A2", "Collections · dark · 200%", "Funnel type scales; long content wraps rather than clipping into system insets.", collections("dark", 2.0)),
+        Panel("A2", "Collections · dark · 200%", "Funnel type scales; long content wraps rather than clipping into system insets.", collections("dark", 2.0, scrolled=True)),
     ]
     b.heroes(heroes, ["Magenta is annotation, never UI.", "Dashed rectangles show effective targets; every interactive row is at least 48 dp.",
-        "Seven utility categories keep their fixed order. Zero-count rows remain discoverable, but the numeric zero is hidden."])
+        "Seven media types keep their stable order. Empty categories are omitted; screenshots are not duplicated."])
     frames = [
-        Panel("A3", "Long labels", "Long labels wrap; rows, strips and 48 dp targets remain distinct.", collections(long=True)),
+        Panel("A3", "Hidden empty rows", "Zero-count categories disappear while the remaining rows retain their order.", collections(zero_case=True)),
         Panel("B1", "Screenshots grid", "Opening Screenshots reuses its normal square grid.", category()),
         Panel("B2", "Sort", "Sort remains scoped to Screenshots; normal grid geometry is unchanged.", category(sorted_newest=False)),
         Panel("B3", "Scoped result", "A query filters only Screenshots unless Whole library is chosen.", category(query="receipt")),
@@ -208,26 +244,26 @@ def build(fonts: Fonts) -> Board:
         Panel("D1", "Pending", "Held sphere accompanies a plain progress count.", state("pending")),
         Panel("D2", "Error", "Cause, next step and one 48 dp retry action.", state("error", "dark")),
         Panel("D3", "Empty", "One sentence and one useful next step; no decorative chrome.", state("empty")),
-        Panel("E1", "Long utility labels", "200% dark stress frame: wrapping must not overlap counts or insets.", collections("dark", 2.0, True)),
-        Panel("E2", "Lazy huge list", "148,912 synthetic items; only viewport cells are composed. No performance claim.", huge_list()),
+        Panel("E1", "Long utility labels", "200% dark stress frame: wrapping must not overlap counts or insets.", collections("dark", 2.0, long=True, scrolled=True)),
+        Panel("E2", "Lazy huge list", "250,128 synthetic items; only viewport cells are composed. No performance claim.", huge_list()),
         Panel("E3", "TalkBack and insets", "Rows are single semantic nodes in visual order; 48 dp targets and assumed insets are marked.", collections()),
     ]
     b.grid("A–E acceptance states", frames)
     b.generated_screens = [panel.screen for panel in heroes + frames]
     b.table("Fixed utility order and row contract", ["Position", "Category", "Rule"], [
         [str(i + 1), name, ("Reuse the existing destination and data contract." if name in {"Videos", "Screenshots"} else
-                          "Show the row even at zero; hide only the numeric zero. Latest strip may be genuinely short.")]
+                          "Omit if zero confirmed; never invent missing thumbnails. Latest strip may be genuinely short.")]
         for i, name in enumerate(CATEGORIES)
     ], [0.12, 0.28, 0.60])
     b.table("Observed → proposed → deviation", ["Public reference (checked 2026-11-21)", "Observed", "Atlas proposal / deviation"], [
         ["Apple Photos · Media Types\nsupport.apple.com/guide/iphone/find-photos-and-videos-iphf7de217f0/ios", "Media is grouped by type for direct entry.", "Seven deterministic utility rows; Videos and Screenshots reuse existing Atlas destinations."],
-        ["Apple Photos · Utilities\nsupport.apple.com/guide/iphone/find-photos-and-videos-iphf7de217f0/ios", "Utilities expose task- or state-oriented groups.", "Keep utility entry in Collections; zero rows remain but their zero count is silent."],
-        ["Google Photos · Recently Added\nsupport.google.com/photos/answer/6128843", "Recently added is a chronological collection.", "Use a fixed Recently added row and lazy normal grid; no performance claim in this sheet."],
+        ["Apple Photos · Utilities\nsupport.apple.com/guide/iphone/find-photos-and-videos-iphf7de217f0/ios", "Utilities expose task- or state-oriented groups.", "Keep type entry in Collections; rows with confirmed zero items disappear, with no extra Utilities hub."],
+        ["Google Photos · Recently Added\nsupport.google.com/photos/answer/6128843", "Recently added is a chronological collection.", "Recently added uses proposed last-30-days DATE_ADDED; this horizon is an Atlas proposal, not a Google claim."],
         ["Android Material 3 · SearchBar\ndeveloper.android.com/develop/ui/compose/components/search-bar", "Expanded search holds suggestions or filtered results.", "Preserve L7 bottom expansion, This screen / Whole library scopes and two Back presses; deviation from a top SearchBar."],
     ], [0.30, 0.30, 0.40], "Observations are dated documentation comparisons, not claims that private design boards were inspected.")
     b.notes("Accessibility and implementation gates", [
-        "TalkBack order follows the visual order: title, named rows, Utilities heading, then all seven categories. Each row merges label, count and latest date into one node.",
-        "All interactive rows and chips expose at least 48 × 48 dp. Status 29 dp, gesture 16 dp and IME 324 dp are assumptions to measure on the target S24+.",
+        "TalkBack order follows the visual order: heading, Favourites, Media types, then visible categories. Each row merges label, count and latest date into one node.",
+        "All interactive rows and chips expose at least 48 × 48 dp. Status 29 dp, gesture 16 dp and IME 324 dp are assumptions to measure on the target S24+. If all media types are empty, omit their section.",
         "The huge-list panel proves layout intent only. Post-build tests must establish lazy composition, stable keys and performance with a synthetic large library.",
         "Funnel Display and Funnel Sans plus Quiet Frame v3 tokens are inherited from the merged L5/L7 generator; app behaviour is unchanged.",
     ])
