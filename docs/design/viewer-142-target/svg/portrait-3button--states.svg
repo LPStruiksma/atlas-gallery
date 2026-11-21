@@ -1,18 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580.8 1184.4" font-family="Inter, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580.8 1751.6" font-family="Inter, Arial, sans-serif">
 <title>PROPOSED target state matrix — portrait-3button</title>
-<rect width="580.8" height="1184.4" fill="#FFFFFF"/>
+<rect width="580.8" height="1751.6" fill="#FFFFFF"/>
 <text x="8" y="16" font-size="12" font-weight="600" fill="#111318">PROPOSED Lapis Atlas viewer states — portrait-3button (target concept, not captures)</text>
 <text x="8" y="30" font-size="8.5" fill="#4A4F59">Geometry from generate_target.py; insets from MEASURED photo/bright/dark/portrait/shown. Viewer ground is black in both themes; slab, sphere and ring are the same in both.</text>
 <g transform="translate(8.0,42.0) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -21,18 +31,28 @@
 <rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="8.0" y="302.6" font-size="8.5" font-weight="600" fill="#111318">light theme · bright photo</text>
-<text x="8.0" y="312.6" font-size="7.5" fill="#4A4F59">viewer ground stays black</text>
+<text x="8.0" y="302.6" font-size="8.5" font-weight="600" fill="#111318">light · white photo</text>
+<text x="8.0" y="312.6" font-size="7.5" fill="#4A4F59">actual metadata · 60% local scrim</text>
 <g transform="translate(149.2,42.0) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -41,18 +61,28 @@
 <rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="149.2" y="302.6" font-size="8.5" font-weight="600" fill="#111318">dark theme · bright photo</text>
-<text x="149.2" y="312.6" font-size="7.5" fill="#4A4F59">default look</text>
+<text x="149.2" y="302.6" font-size="8.5" font-weight="600" fill="#111318">dark · white photo</text>
+<text x="149.2" y="312.6" font-size="7.5" fill="#4A4F59">actual metadata · 60% local scrim</text>
 <g transform="translate(290.4,42.0) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -61,83 +91,60 @@
 <rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="290.4" y="302.6" font-size="8.5" font-weight="600" fill="#111318">dark theme · dark photo</text>
-<text x="290.4" y="312.6" font-size="7.5" fill="#4A4F59">lapis slab carries the actions</text>
+<text x="290.4" y="302.6" font-size="8.5" font-weight="600" fill="#111318">light · black photo</text>
+<text x="290.4" y="312.6" font-size="7.5" fill="#4A4F59">actual metadata · selected keylines</text>
 <g transform="translate(431.6,42.0) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="431.6" y="302.6" font-size="8.5" font-weight="600" fill="#111318">chrome + system bars hidden</text>
-<text x="431.6" y="312.6" font-size="7.5" fill="#4A4F59">tap media again to show</text>
+<text x="431.6" y="302.6" font-size="8.5" font-weight="600" fill="#111318">dark · black photo</text>
+<text x="431.6" y="312.6" font-size="7.5" fill="#4A4F59">actual metadata · selected keylines</text>
 <g transform="translate(8.0,325.6) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="83.25" y="100.44" width="217.5" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
-<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
-<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-</g>
-<text x="8.0" y="586.2" font-size="8.5" font-weight="600" fill="#111318">no place</text>
-<text x="8.0" y="596.2" font-size="7.5" fill="#4A4F59">date · time only</text>
-<g transform="translate(149.2,325.6) scale(0.3)">
-<rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
-<rect width="384.0" height="112.44" fill="#000" opacity="0.35"/>
-<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
-<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
-<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-</g>
-<text x="149.2" y="586.2" font-size="8.5" font-weight="600" fill="#111318">no date and place</text>
-<text x="149.2" y="596.2" font-size="7.5" fill="#4A4F59">no metadata row, no placeholder</text>
-<g transform="translate(290.4,325.6) scale(0.3)">
-<rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
-<rect width="384.0" height="200.44" fill="#000" opacity="0.35"/>
-<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="12.0" y="100.44" width="360.0" height="84.0" fill="#ECEDF0" opacity="0.85"/>
-<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
-<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
-<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-</g>
-<text x="290.4" y="586.2" font-size="8.5" font-weight="600" fill="#111318">200% font, long place</text>
-<text x="290.4" y="596.2" font-size="7.5" fill="#4A4F59">2 lines below row</text>
-<g transform="translate(431.6,325.6) scale(0.3)">
-<rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
-<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
-<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
-<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
-<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -149,18 +156,272 @@
 <circle cx="194.5" cy="596.0" r="8" fill="#ECEDF0"/>
 <circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
-<text x="431.6" y="586.2" font-size="8.5" font-weight="600" fill="#111318">video short 0:04 · playing</text>
-<text x="431.6" y="596.2" font-size="7.5" fill="#4A4F59">pause glyph; seek 40%</text>
-<g transform="translate(8.0,609.2) scale(0.3)">
+<text x="8.0" y="586.2" font-size="8.5" font-weight="600" fill="#111318">light · white video</text>
+<text x="8.0" y="596.2" font-size="7.5" fill="#4A4F59">shown playback + seek + strip</text>
+<g transform="translate(149.2,325.6) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="108.48" y="594.0" width="215.04" height="4" fill="#ECEDF0" opacity="0.6"/>
+<circle cx="194.5" cy="596.0" r="8" fill="#ECEDF0"/>
+<circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
+</g>
+<text x="149.2" y="586.2" font-size="8.5" font-weight="600" fill="#111318">dark · white video</text>
+<text x="149.2" y="596.2" font-size="7.5" fill="#4A4F59">shown playback + seek + strip</text>
+<g transform="translate(290.4,325.6) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="108.48" y="594.0" width="215.04" height="4" fill="#ECEDF0" opacity="0.6"/>
+<circle cx="194.5" cy="596.0" r="8" fill="#ECEDF0"/>
+<circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
+</g>
+<text x="290.4" y="586.2" font-size="8.5" font-weight="600" fill="#111318">light · black video</text>
+<text x="290.4" y="596.2" font-size="7.5" fill="#4A4F59">shown playback + seek + strip</text>
+<g transform="translate(431.6,325.6) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="108.48" y="594.0" width="215.04" height="4" fill="#ECEDF0" opacity="0.6"/>
+<circle cx="194.5" cy="596.0" r="8" fill="#ECEDF0"/>
+<circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
+</g>
+<text x="431.6" y="586.2" font-size="8.5" font-weight="600" fill="#111318">dark · black video</text>
+<text x="431.6" y="596.2" font-size="7.5" fill="#4A4F59">shown playback + seek + strip</text>
+<g transform="translate(8.0,609.2) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+</g>
+<text x="8.0" y="869.8" font-size="8.5" font-weight="600" fill="#111318">chrome + system bars hidden</text>
+<text x="8.0" y="879.8" font-size="7.5" fill="#4A4F59">context only; shown proof above</text>
+<g transform="translate(149.2,609.2) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="75.25" y="96.44" width="233.5" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+</g>
+<text x="149.2" y="869.8" font-size="8.5" font-weight="600" fill="#111318">no place</text>
+<text x="149.2" y="879.8" font-size="7.5" fill="#4A4F59">date · time only</text>
+<g transform="translate(290.4,609.2) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect width="384.0" height="112.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+</g>
+<text x="290.4" y="869.8" font-size="8.5" font-weight="600" fill="#111318">no date and place</text>
+<text x="290.4" y="879.8" font-size="7.5" fill="#4A4F59">no metadata row, no placeholder</text>
+<g transform="translate(431.6,609.2) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect width="384.0" height="200.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="4.0" y="96.44" width="376.0" height="92.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
+<text x="192.0" y="136.44" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Sint-Michielsgestel, Noord-Brabant</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+</g>
+<text x="431.6" y="869.8" font-size="8.5" font-weight="600" fill="#111318">200% font, long place</text>
+<text x="431.6" y="879.8" font-size="7.5" fill="#4A4F59">2 lines below row</text>
+<g transform="translate(8.0,892.8) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
+<circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
+<rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="314.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="122.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="108.48" y="594.0" width="215.04" height="4" fill="#ECEDF0" opacity="0.6"/>
+<circle cx="194.5" cy="596.0" r="8" fill="#ECEDF0"/>
+<circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
+</g>
+<text x="8.0" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">video short 0:04 · playing</text>
+<text x="8.0" y="1163.4" font-size="7.5" fill="#4A4F59">pause glyph; seek 40%</text>
+<g transform="translate(149.2,892.8) scale(0.3)">
+<rect width="384.0" height="832.0" fill="#000"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
+<rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
+<rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
+<rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
+<rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -172,18 +433,30 @@
 <circle cx="199.37" cy="596.0" r="8" fill="#ECEDF0"/>
 <circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
-<text x="8.0" y="869.8" font-size="8.5" font-weight="600" fill="#111318">video long 1:23:45</text>
-<text x="8.0" y="879.8" font-size="7.5" fill="#4A4F59">labels sized for h:mm:ss</text>
-<g transform="translate(149.2,609.2) scale(0.3)">
+<text x="149.2" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">video long 1:23:45</text>
+<text x="149.2" y="1163.4" font-size="7.5" fill="#4A4F59">labels sized for h:mm:ss</text>
+<g transform="translate(290.4,892.8) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -195,18 +468,30 @@
 <circle cx="108.48" cy="596.0" r="8" fill="#ECEDF0"/>
 <circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
-<text x="149.2" y="869.8" font-size="8.5" font-weight="600" fill="#111318">video seek start (0%)</text>
-<text x="149.2" y="879.8" font-size="7.5" fill="#4A4F59">thumb inside hit, 8 dp inset</text>
-<g transform="translate(290.4,609.2) scale(0.3)">
+<text x="290.4" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">video seek start (0%)</text>
+<text x="290.4" y="1163.4" font-size="7.5" fill="#4A4F59">thumb inside hit, 8 dp inset</text>
+<g transform="translate(431.6,892.8) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -218,18 +503,31 @@
 <circle cx="323.52" cy="596.0" r="8" fill="#ECEDF0"/>
 <circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
-<text x="290.4" y="869.8" font-size="8.5" font-weight="600" fill="#111318">video seek end (100%)</text>
-<text x="290.4" y="879.8" font-size="7.5" fill="#4A4F59">thumb inside hit, 8 dp inset</text>
-<g transform="translate(431.6,609.2) scale(0.3)">
+<text x="431.6" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">video seek end (100%)</text>
+<text x="431.6" y="1163.4" font-size="7.5" fill="#4A4F59">thumb inside hit, 8 dp inset</text>
+<g transform="translate(8.0,1176.4) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#0D192F"/>
+<rect width="384.0" height="832.0" fill="#101A33"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#26375C"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#122943"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<rect x="7.68" y="399.36" width="84.48" height="18" rx="9" fill="#000" opacity=".65"/>
+<text x="49.92" y="411.36" text-anchor="middle" font-size="10" fill="#FFF">SYNTHETIC VIDEO · 00:42</text>
 <rect width="384.0" height="200.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="12.0" y="100.44" width="360.0" height="84.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="4.0" y="96.44" width="376.0" height="92.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32</text>
+<text x="192.0" y="136.44" text-anchor="middle" fill="#F2F3F8" font-size="14.0">Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -241,9 +539,9 @@
 <circle cx="190.4" cy="596.0" r="8" fill="#ECEDF0"/>
 <circle cx="32.0" cy="596.0" r="20" fill="#14152A" opacity="0.8"/>
 </g>
-<text x="431.6" y="869.8" font-size="8.5" font-weight="600" fill="#111318">video 200% font long</text>
-<text x="431.6" y="879.8" font-size="7.5" fill="#4A4F59">labels above bar</text>
-<g transform="translate(8.0,892.8) scale(0.3)">
+<text x="8.0" y="1437.0" font-size="8.5" font-weight="600" fill="#111318">video 200% font long</text>
+<text x="8.0" y="1447.0" font-size="7.5" fill="#4A4F59">labels above bar</text>
+<g transform="translate(149.2,1176.4) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
 <rect x="132.0" y="336.0" width="120" height="160" fill="#3A3D45" opacity="0.8"/>
 <rect x="181.0" y="405.0" width="22" height="22" rx="5" fill="none" stroke="#B4B8C1" stroke-width="1.6"/>
@@ -251,9 +549,12 @@
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -262,9 +563,9 @@
 <rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="8.0" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">pending (decode not ready)</text>
-<text x="8.0" y="1163.4" font-size="7.5" fill="#4A4F59">strip thumb as placeholder; chrome shown</text>
-<g transform="translate(149.2,892.8) scale(0.3)">
+<text x="149.2" y="1437.0" font-size="8.5" font-weight="600" fill="#111318">pending (decode not ready)</text>
+<text x="149.2" y="1447.0" font-size="7.5" fill="#4A4F59">strip thumb as placeholder; chrome shown</text>
+<g transform="translate(290.4,1176.4) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
 <rect x="181.0" y="405.0" width="22" height="22" rx="5" fill="none" stroke="#B4B8C1" stroke-width="1.6"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
@@ -274,9 +575,12 @@
 <line x1="94.0" y1="730.0" x2="122.0" y2="758.0" stroke="#9A9EA8" stroke-width="2"/>
 <line x1="150.0" y1="730.0" x2="178.0" y2="758.0" stroke="#9A9EA8" stroke-width="2"/>
 <line x1="206.0" y1="730.0" x2="234.0" y2="758.0" stroke="#9A9EA8" stroke-width="2"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -285,18 +589,28 @@
 <rect x="74.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="26.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 </g>
-<text x="149.2" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">unavailable / error</text>
-<text x="149.2" y="1163.4" font-size="7.5" fill="#4A4F59">glyph only; back + details live</text>
-<g transform="translate(290.4,892.8) scale(0.3)">
+<text x="290.4" y="1437.0" font-size="8.5" font-weight="600" fill="#111318">unavailable / error</text>
+<text x="290.4" y="1447.0" font-size="7.5" fill="#4A4F59">glyph only; back + details live</text>
+<g transform="translate(431.6,1176.4) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -307,18 +621,28 @@
 <rect x="0.0" y="632.0" width="24" height="76.0" fill="#000" opacity="0.6"/>
 <rect x="360.0" y="632.0" width="24" height="76.0" fill="#000" opacity="0.6"/>
 </g>
-<text x="290.4" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">long filmstrip (30+)</text>
-<text x="290.4" y="1163.4" font-size="7.5" fill="#4A4F59">virtualized; fade at band ends</text>
-<g transform="translate(431.6,892.8) scale(0.3)">
+<text x="431.6" y="1437.0" font-size="8.5" font-weight="600" fill="#111318">long filmstrip (30+)</text>
+<text x="431.6" y="1447.0" font-size="7.5" fill="#4A4F59">virtualized; fade at band ends</text>
+<g transform="translate(8.0,1460.0) scale(0.3)">
 <rect width="384.0" height="832.0" fill="#000"/>
-<rect y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="12.0" y="52.44" width="40.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="236.0" y="52.44" width="136.0" height="40.0" rx="20.0" fill="#14152A" opacity="0.8"/>
 <rect x="80.0" y="716.0" width="224.0" height="56.0" rx="24.0" fill="#3448E0"/>
-<rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#ECEDF0" opacity="0.85"/>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="168.0" y="646.0" width="48.0" height="60.0" rx="10.0" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
@@ -330,6 +654,6 @@
 <rect y="277.33" width="384.0" height="277.33" fill="#FFD60A" opacity="0.22"/>
 <rect width="384.0" height="277.33" fill="#FF453A" opacity="0.22"/>
 </g>
-<text x="431.6" y="1153.4" font-size="8.5" font-weight="600" fill="#111318">one-handed reach zones</text>
-<text x="431.6" y="1163.4" font-size="7.5" fill="#4A4F59">bottom third = thumb zone</text>
+<text x="8.0" y="1720.6" font-size="8.5" font-weight="600" fill="#111318">one-handed reach zones</text>
+<text x="8.0" y="1730.6" font-size="7.5" fill="#4A4F59">bottom third = thumb zone</text>
 </svg>

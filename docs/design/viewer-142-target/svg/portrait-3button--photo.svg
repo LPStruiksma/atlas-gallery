@@ -5,18 +5,14 @@
 <text x="8" y="30" font-size="8.5" fill="#4A4F59">Target concept, NOT a runtime capture. Insets/cutout copied from the measured frame named below; every other rectangle is proposed.</text>
 <g transform="translate(8,44)">
 <rect width="384.0" height="832.0" fill="#000000"/>
-<rect x="0.0" y="272.0" width="384.0" height="288.0" fill="#F0E978"/>
-<line x1="0.0" y1="272.0" x2="384.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="38.4" y1="272.0" x2="345.6" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="76.8" y1="272.0" x2="307.2" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="115.2" y1="272.0" x2="268.8" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="153.6" y1="272.0" x2="230.4" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="192.0" y1="272.0" x2="192.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="230.4" y1="272.0" x2="153.6" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="268.8" y1="272.0" x2="115.2" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="307.2" y1="272.0" x2="76.8" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="345.6" y1="272.0" x2="38.4" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
-<line x1="384.0" y1="272.0" x2="0.0" y2="560.0" stroke="#165096" stroke-width="3" opacity="0.8"/>
+<rect width="384.0" height="832.0" fill="#F5F7FF"/>
+<path d="M0 449.28 L69.12 232.96 L130.56 432.64 L215.04 166.4 L299.52 416.0 L384.0 257.92 V832.0 H0 Z" fill="#6D86B5"/>
+<rect y="482.56" width="384.0" height="349.44" fill="#8CC8E8"/>
+<circle cx="299.52" cy="183.04" r="26.88" fill="#FFD35A"/>
+<rect x="180.48" y="249.6" width="13.44" height="266.24" fill="#F6F0E8"/>
+<path d="M174.72 257.92 L193.92 257.92 L184.32 199.68 Z" fill="#C43A47"/>
+<path d="M84.48 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
+<path d="M261.12 565.76 l0 -133.12 l26.88 133.12 Z" fill="#FFF" opacity=".92"/>
 <rect x="0" y="0" width="384.0" height="138.44" fill="#000" opacity="0.35"/>
 <rect x="0" y="0" width="384.0" height="44.44" fill="#6E7BFF" opacity="0.25"/>
 <rect x="0" y="784.0" width="384.0" height="48" fill="#6E7BFF" opacity="0.25"/>
@@ -33,11 +29,13 @@
 <rect x="341.0" y="61.44" width="22.0" height="22.0" rx="5" fill="none" stroke="#ECEDF0" stroke-width="1.6"/>
 <rect x="328.0" y="48.44" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width="0.8" stroke-dasharray="2 1.5"/>
 <rect x="35.4" y="100.44" width="313.2" height="22.0" fill="#FFFFFF" opacity="0.18" stroke="#FFD60A" stroke-width="0.8"/>
-<text x="192.0" y="111.44" text-anchor="middle" fill="#ECEDF0" font-size="7">date, time, place</text>
+<rect x="27.4" y="96.44" width="329.2" height="30.0" rx="6" fill="#000" opacity="0.6"/>
+<text x="192.0" y="115.44" text-anchor="middle" fill="#F2F3F8" font-size="15.0">20 November 2026 at 14:32 in Utrecht</text>
 <rect x="0.0" y="632.0" width="384.0" height="76.0" fill="none" stroke="#FF9F0A" stroke-width="0.8" stroke-dasharray="3 2"/>
 <rect x="170.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
-<rect x="167.0" y="645.0" width="50.0" height="62.0" rx="11.0" fill="none" stroke="#000" stroke-width="1.0"/>
-<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFFFFF" stroke-width="2.0"/>
+<rect x="167.5" y="645.5" width="49.0" height="61.0" rx="10.5" fill="none" stroke="#000" stroke-width="1.0"/>
+<rect x="169.0" y="647.0" width="46.0" height="58.0" rx="9.0" fill="none" stroke="#FFF" stroke-width="2.0"/>
+<circle cx="192.0" cy="640.0" r="5.0" fill="#000"/>
 <circle cx="192.0" cy="640.0" r="4.0" fill="#8C9BFF"/>
 <rect x="218.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
 <rect x="266.0" y="648.0" width="44.0" height="56.0" rx="8.0" fill="#8E8E93"/>
