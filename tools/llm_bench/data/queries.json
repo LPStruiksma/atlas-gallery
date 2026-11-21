@@ -1,0 +1,963 @@
+{
+ "_comment": "Synthetic, hand-written EN/NL query set (Dev seat; Dutch wants a native check). Expected values are the reviewed ground truth, not model output.",
+ "queries": [
+  {
+   "id": "beach.en",
+   "pair": "beach",
+   "lang": "en",
+   "kind": "tag",
+   "text": "beach photos",
+   "expected": {
+    "tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "beach.nl",
+   "pair": "beach",
+   "lang": "nl",
+   "kind": "tag",
+   "text": "foto's van het strand",
+   "expected": {
+    "tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "person-tag.en",
+   "pair": "person-tag",
+   "lang": "en",
+   "kind": "person",
+   "text": "Alex at the beach",
+   "expected": {
+    "people": [
+     "Alex"
+    ],
+    "tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "person-tag.nl",
+   "pair": "person-tag",
+   "lang": "nl",
+   "kind": "person",
+   "text": "Alex op het strand",
+   "expected": {
+    "people": [
+     "Alex"
+    ],
+    "tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "two-people-place.en",
+   "pair": "two-people-place",
+   "lang": "en",
+   "kind": "person",
+   "text": "Alex and Sam in Rome",
+   "expected": {
+    "people": [
+     "Alex",
+     "Sam"
+    ],
+    "place": "Rome"
+   }
+  },
+  {
+   "id": "two-people-place.nl",
+   "pair": "two-people-place",
+   "lang": "nl",
+   "kind": "person",
+   "text": "Alex en Sam in Rome",
+   "expected": {
+    "people": [
+     "Alex",
+     "Sam"
+    ],
+    "place": "Rome"
+   }
+  },
+  {
+   "id": "last-summer.en",
+   "pair": "last-summer",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "dog photos from last summer",
+   "expected": {
+    "tags": [
+     "dog"
+    ],
+    "date_from": "2025-06-01",
+    "date_to": "2025-08-31"
+   }
+  },
+  {
+   "id": "last-summer.nl",
+   "pair": "last-summer",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "foto's met een hond van vorige zomer",
+   "expected": {
+    "tags": [
+     "dog"
+    ],
+    "date_from": "2025-06-01",
+    "date_to": "2025-08-31"
+   }
+  },
+  {
+   "id": "year.en",
+   "pair": "year",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "birthday photos from 2024",
+   "expected": {
+    "tags": [
+     "birthday"
+    ],
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "year.nl",
+   "pair": "year",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "verjaardagsfoto's uit 2024",
+   "expected": {
+    "tags": [
+     "birthday"
+    ],
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "neg-people.en",
+   "pair": "neg-people",
+   "lang": "en",
+   "kind": "negation",
+   "text": "snow without people",
+   "expected": {
+    "tags": [
+     "snow"
+    ],
+    "exclude_tags": [
+     "people"
+    ]
+   }
+  },
+  {
+   "id": "neg-people.nl",
+   "pair": "neg-people",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "sneeuw zonder mensen",
+   "expected": {
+    "tags": [
+     "snow"
+    ],
+    "exclude_tags": [
+     "people"
+    ]
+   }
+  },
+  {
+   "id": "person-place-month.en",
+   "pair": "person-place-month",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "Noor in Lisbon in March 2025",
+   "expected": {
+    "people": [
+     "Noor"
+    ],
+    "place": "Lisbon",
+    "date_from": "2025-03-01",
+    "date_to": "2025-03-31"
+   }
+  },
+  {
+   "id": "person-place-month.nl",
+   "pair": "person-place-month",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "Noor in Lissabon in maart 2025",
+   "expected": {
+    "people": [
+     "Noor"
+    ],
+    "place": "Lisbon",
+    "date_from": "2025-03-01",
+    "date_to": "2025-03-31"
+   }
+  },
+  {
+   "id": "neg-screenshot.en",
+   "pair": "neg-screenshot",
+   "lang": "en",
+   "kind": "negation",
+   "text": "food photos, no screenshots",
+   "expected": {
+    "tags": [
+     "food"
+    ],
+    "exclude_tags": [
+     "screenshot"
+    ]
+   }
+  },
+  {
+   "id": "neg-screenshot.nl",
+   "pair": "neg-screenshot",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "foto's van eten, geen screenshots",
+   "expected": {
+    "tags": [
+     "food"
+    ],
+    "exclude_tags": [
+     "screenshot"
+    ]
+   }
+  },
+  {
+   "id": "two-tags.en",
+   "pair": "two-tags",
+   "lang": "en",
+   "kind": "tag",
+   "text": "sunset over the sea",
+   "expected": {
+    "tags": [
+     "sunset",
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "two-tags.nl",
+   "pair": "two-tags",
+   "lang": "nl",
+   "kind": "tag",
+   "text": "zonsondergang boven de zee",
+   "expected": {
+    "tags": [
+     "sunset",
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "last-year-place.en",
+   "pair": "last-year-place",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "last year in Utrecht",
+   "expected": {
+    "place": "Utrecht",
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31"
+   }
+  },
+  {
+   "id": "last-year-place.nl",
+   "pair": "last-year-place",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "vorig jaar in Utrecht",
+   "expected": {
+    "place": "Utrecht",
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31"
+   }
+  },
+  {
+   "id": "yesterday.en",
+   "pair": "yesterday",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "photos from yesterday",
+   "expected": {
+    "date_from": "2026-06-14",
+    "date_to": "2026-06-14"
+   }
+  },
+  {
+   "id": "yesterday.nl",
+   "pair": "yesterday",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "foto's van gisteren",
+   "expected": {
+    "date_from": "2026-06-14",
+    "date_to": "2026-06-14"
+   }
+  },
+  {
+   "id": "this-month.en",
+   "pair": "this-month",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "this month",
+   "expected": {
+    "date_from": "2026-06-01",
+    "date_to": "2026-06-30"
+   }
+  },
+  {
+   "id": "this-month.nl",
+   "pair": "this-month",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "deze maand",
+   "expected": {
+    "date_from": "2026-06-01",
+    "date_to": "2026-06-30"
+   }
+  },
+  {
+   "id": "person-tag-2.en",
+   "pair": "person-tag-2",
+   "lang": "en",
+   "kind": "person",
+   "text": "Daan on his bike",
+   "expected": {
+    "people": [
+     "Daan"
+    ],
+    "tags": [
+     "bike"
+    ]
+   }
+  },
+  {
+   "id": "person-tag-2.nl",
+   "pair": "person-tag-2",
+   "lang": "nl",
+   "kind": "person",
+   "text": "Daan op de fiets",
+   "expected": {
+    "people": [
+     "Daan"
+    ],
+    "tags": [
+     "bike"
+    ]
+   }
+  },
+  {
+   "id": "neg-tag.en",
+   "pair": "neg-tag",
+   "lang": "en",
+   "kind": "negation",
+   "text": "cats but not dogs",
+   "expected": {
+    "tags": [
+     "cat"
+    ],
+    "exclude_tags": [
+     "dog"
+    ]
+   }
+  },
+  {
+   "id": "neg-tag.nl",
+   "pair": "neg-tag",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "katten maar geen honden",
+   "expected": {
+    "tags": [
+     "cat"
+    ],
+    "exclude_tags": [
+     "dog"
+    ]
+   }
+  },
+  {
+   "id": "person-tag-year.en",
+   "pair": "person-tag-year",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "wedding photos from 2023 with Sam",
+   "expected": {
+    "people": [
+     "Sam"
+    ],
+    "tags": [
+     "wedding"
+    ],
+    "date_from": "2023-01-01",
+    "date_to": "2023-12-31"
+   }
+  },
+  {
+   "id": "person-tag-year.nl",
+   "pair": "person-tag-year",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "huwelijksfoto's van 2023 met Sam",
+   "expected": {
+    "people": [
+     "Sam"
+    ],
+    "tags": [
+     "wedding"
+    ],
+    "date_from": "2023-01-01",
+    "date_to": "2023-12-31"
+   }
+  },
+  {
+   "id": "season-no-year.en",
+   "pair": "season-no-year",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "mountains in winter",
+   "expected": {
+    "tags": [
+     "mountains"
+    ],
+    "date_from": "2025-12-01",
+    "date_to": "2026-02-28"
+   }
+  },
+  {
+   "id": "season-no-year.nl",
+   "pair": "season-no-year",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "bergen in de winter",
+   "expected": {
+    "tags": [
+     "mountains"
+    ],
+    "date_from": "2025-12-01",
+    "date_to": "2026-02-28"
+   }
+  },
+  {
+   "id": "q-identity.en",
+   "pair": "q-identity",
+   "lang": "en",
+   "kind": "out-of-scope",
+   "text": "Who is in my newest photo?",
+   "expected": {
+    "intent": "unsupported"
+   }
+  },
+  {
+   "id": "q-identity.nl",
+   "pair": "q-identity",
+   "lang": "nl",
+   "kind": "out-of-scope",
+   "text": "Wie staat er op mijn nieuwste foto?",
+   "expected": {
+    "intent": "unsupported"
+   }
+  },
+  {
+   "id": "q-count.en",
+   "pair": "q-count",
+   "lang": "en",
+   "kind": "metadata-question",
+   "text": "How many photos did I take in Rome?",
+   "expected": {
+    "intent": "question"
+   }
+  },
+  {
+   "id": "q-count.nl",
+   "pair": "q-count",
+   "lang": "nl",
+   "kind": "metadata-question",
+   "text": "Hoeveel foto's heb ik in Rome gemaakt?",
+   "expected": {
+    "intent": "question"
+   }
+  },
+  {
+   "id": "last-week.en",
+   "pair": "last-week",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "photos of Alex from last week",
+   "expected": {
+    "people": [
+     "Alex"
+    ],
+    "date_from": "2026-06-08",
+    "date_to": "2026-06-14"
+   }
+  },
+  {
+   "id": "last-week.nl",
+   "pair": "last-week",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "foto's van Alex van vorige week",
+   "expected": {
+    "people": [
+     "Alex"
+    ],
+    "date_from": "2026-06-08",
+    "date_to": "2026-06-14"
+   }
+  },
+  {
+   "id": "tag-place.en",
+   "pair": "tag-place",
+   "lang": "en",
+   "kind": "tag",
+   "text": "church in Rome",
+   "expected": {
+    "tags": [
+     "church"
+    ],
+    "place": "Rome"
+   }
+  },
+  {
+   "id": "tag-place.nl",
+   "pair": "tag-place",
+   "lang": "nl",
+   "kind": "tag",
+   "text": "kerk in Rome",
+   "expected": {
+    "tags": [
+     "church"
+    ],
+    "place": "Rome"
+   }
+  },
+  {
+   "id": "media-video.en",
+   "pair": "media-video",
+   "lang": "en",
+   "kind": "media",
+   "text": "videos from Lisbon",
+   "expected": {
+    "media": "video",
+    "place": "Lisbon"
+   }
+  },
+  {
+   "id": "media-video.nl",
+   "pair": "media-video",
+   "lang": "nl",
+   "kind": "media",
+   "text": "video's uit Lissabon",
+   "expected": {
+    "media": "video",
+    "place": "Lisbon"
+   }
+  },
+  {
+   "id": "screenshots-year.en",
+   "pair": "screenshots-year",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "screenshots from 2025",
+   "expected": {
+    "tags": [
+     "screenshot"
+    ],
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31"
+   }
+  },
+  {
+   "id": "screenshots-year.nl",
+   "pair": "screenshots-year",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "screenshots uit 2025",
+   "expected": {
+    "tags": [
+     "screenshot"
+    ],
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31"
+   }
+  },
+  {
+   "id": "two-people-tag.en",
+   "pair": "two-people-tag",
+   "lang": "en",
+   "kind": "person",
+   "text": "Sam and Noor at a party",
+   "expected": {
+    "people": [
+     "Sam",
+     "Noor"
+    ],
+    "tags": [
+     "party"
+    ]
+   }
+  },
+  {
+   "id": "two-people-tag.nl",
+   "pair": "two-people-tag",
+   "lang": "nl",
+   "kind": "person",
+   "text": "Sam en Noor op een feest",
+   "expected": {
+    "people": [
+     "Sam",
+     "Noor"
+    ],
+    "tags": [
+     "party"
+    ]
+   }
+  },
+  {
+   "id": "season-year.en",
+   "pair": "season-year",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "flowers in spring 2025",
+   "expected": {
+    "tags": [
+     "flowers"
+    ],
+    "date_from": "2025-03-01",
+    "date_to": "2025-05-31"
+   }
+  },
+  {
+   "id": "season-year.nl",
+   "pair": "season-year",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "bloemen in de lente van 2025",
+   "expected": {
+    "tags": [
+     "flowers"
+    ],
+    "date_from": "2025-03-01",
+    "date_to": "2025-05-31"
+   }
+  },
+  {
+   "id": "neg-people-2.en",
+   "pair": "neg-people-2",
+   "lang": "en",
+   "kind": "negation",
+   "text": "cars with nobody in them",
+   "expected": {
+    "tags": [
+     "car"
+    ],
+    "exclude_tags": [
+     "people"
+    ]
+   }
+  },
+  {
+   "id": "neg-people-2.nl",
+   "pair": "neg-people-2",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "auto's zonder mensen",
+   "expected": {
+    "tags": [
+     "car"
+    ],
+    "exclude_tags": [
+     "people"
+    ]
+   }
+  },
+  {
+   "id": "neg-person.en",
+   "pair": "neg-person",
+   "lang": "en",
+   "kind": "negation",
+   "text": "Noor but without Alex",
+   "expected": {
+    "people": [
+     "Noor"
+    ],
+    "exclude_people": [
+     "Alex"
+    ]
+   }
+  },
+  {
+   "id": "neg-person.nl",
+   "pair": "neg-person",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "Noor maar zonder Alex",
+   "expected": {
+    "people": [
+     "Noor"
+    ],
+    "exclude_people": [
+     "Alex"
+    ]
+   }
+  },
+  {
+   "id": "month-no-year.en",
+   "pair": "month-no-year",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "boat trip in Amsterdam in August",
+   "expected": {
+    "tags": [
+     "boat"
+    ],
+    "place": "Amsterdam",
+    "date_from": "2025-08-01",
+    "date_to": "2025-08-31"
+   }
+  },
+  {
+   "id": "month-no-year.nl",
+   "pair": "month-no-year",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "bootreis in Amsterdam in augustus",
+   "expected": {
+    "tags": [
+     "boat"
+    ],
+    "place": "Amsterdam",
+    "date_from": "2025-08-01",
+    "date_to": "2025-08-31"
+   }
+  },
+  {
+   "id": "unknown-person.en",
+   "pair": "unknown-person",
+   "lang": "en",
+   "kind": "unresolved",
+   "text": "photos of Max",
+   "expected": {
+    "unresolved": [
+     "Max"
+    ]
+   }
+  },
+  {
+   "id": "unknown-person.nl",
+   "pair": "unknown-person",
+   "lang": "nl",
+   "kind": "unresolved",
+   "text": "foto's van Max",
+   "expected": {
+    "unresolved": [
+     "Max"
+    ]
+   }
+  },
+  {
+   "id": "unknown-place.en",
+   "pair": "unknown-place",
+   "lang": "en",
+   "kind": "unresolved",
+   "text": "photos in Kyoto",
+   "expected": {
+    "unresolved": [
+     "Kyoto"
+    ]
+   }
+  },
+  {
+   "id": "unknown-place.nl",
+   "pair": "unknown-place",
+   "lang": "nl",
+   "kind": "unresolved",
+   "text": "foto's in Kyoto",
+   "expected": {
+    "unresolved": [
+     "Kyoto"
+    ]
+   }
+  },
+  {
+   "id": "unknown-tag.en",
+   "pair": "unknown-tag",
+   "lang": "en",
+   "kind": "unresolved",
+   "text": "photos of my guitar",
+   "expected": {
+    "unresolved": [
+     "guitar"
+    ]
+   }
+  },
+  {
+   "id": "unknown-tag.nl",
+   "pair": "unknown-tag",
+   "lang": "nl",
+   "kind": "unresolved",
+   "text": "foto's van mijn gitaar",
+   "expected": {
+    "unresolved": [
+     "guitar"
+    ]
+   }
+  },
+  {
+   "id": "years-ago.en",
+   "pair": "years-ago",
+   "lang": "en",
+   "kind": "date-relative",
+   "text": "two years ago",
+   "expected": {
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "years-ago.nl",
+   "pair": "years-ago",
+   "lang": "nl",
+   "kind": "date-relative",
+   "text": "twee jaar geleden",
+   "expected": {
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "range.en",
+   "pair": "range",
+   "lang": "en",
+   "kind": "date-absolute",
+   "text": "between 2022 and 2024",
+   "expected": {
+    "date_from": "2022-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "range.nl",
+   "pair": "range",
+   "lang": "nl",
+   "kind": "date-absolute",
+   "text": "tussen 2022 en 2024",
+   "expected": {
+    "date_from": "2022-01-01",
+    "date_to": "2024-12-31"
+   }
+  },
+  {
+   "id": "colloquial.en",
+   "pair": "colloquial",
+   "lang": "en",
+   "kind": "colloquial",
+   "text": "pics of the dog with Sam",
+   "expected": {
+    "people": [
+     "Sam"
+    ],
+    "tags": [
+     "dog"
+    ]
+   }
+  },
+  {
+   "id": "colloquial.nl",
+   "pair": "colloquial",
+   "lang": "nl",
+   "kind": "colloquial",
+   "text": "kiekjes van de hond met Sam",
+   "expected": {
+    "people": [
+     "Sam"
+    ],
+    "tags": [
+     "dog"
+    ]
+   }
+  },
+  {
+   "id": "colloquial-2.en",
+   "pair": "colloquial-2",
+   "lang": "en",
+   "kind": "colloquial",
+   "text": "Daan chilling by the sea",
+   "expected": {
+    "people": [
+     "Daan"
+    ],
+    "tags": [
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "colloquial-2.nl",
+   "pair": "colloquial-2",
+   "lang": "nl",
+   "kind": "colloquial",
+   "text": "Daan aan het chillen bij de zee",
+   "expected": {
+    "people": [
+     "Daan"
+    ],
+    "tags": [
+     "sea"
+    ]
+   }
+  },
+  {
+   "id": "except.en",
+   "pair": "except",
+   "lang": "en",
+   "kind": "negation",
+   "text": "everything except beach photos",
+   "expected": {
+    "exclude_tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "except.nl",
+   "pair": "except",
+   "lang": "nl",
+   "kind": "negation",
+   "text": "alles behalve strandfoto's",
+   "expected": {
+    "exclude_tags": [
+     "beach"
+    ]
+   }
+  },
+  {
+   "id": "action.en",
+   "pair": "action",
+   "lang": "en",
+   "kind": "out-of-scope",
+   "text": "delete all blurry photos",
+   "expected": {
+    "intent": "unsupported"
+   }
+  },
+  {
+   "id": "action.nl",
+   "pair": "action",
+   "lang": "nl",
+   "kind": "out-of-scope",
+   "text": "verwijder alle wazige foto's",
+   "expected": {
+    "intent": "unsupported"
+   }
+  }
+ ]
+}

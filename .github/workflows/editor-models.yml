@@ -1,0 +1,87 @@
+name: Editor model Python scaffold
+
+# EDIT-11-CI (#875). Run only when the editor-model scaffold exists at the
+# checked-out PR head. Unrelated PRs have a visibly skipped Python job.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-scaffold:
+    name: Detect editor-model scaffold at exact head
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      present: ${{ steps.detect.outputs.present }}
+    steps:
+      - name: Check out requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact head and detect scaffold
+        id: detect
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Checked-out head: $actual"
+          if [[ "$actual" != "$EXPECTED_SHA" ]]; then
+            echo "::error::Checkout is not the requested exact head $EXPECTED_SHA"
+            exit 1
+          fi
+          if [[ ! -d tools/editor_models ]]; then
+            echo "::notice::No tools/editor_models scaffold at $actual; Python job will be SKIPPED (not tested)."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for path in tools/editor_models/benchmark.py tools/editor_models/candidates.json; do
+            if [[ ! -f "$path" ]]; then
+              echo "::error::Partial editor-model scaffold: missing $path"
+              exit 1
+            fi
+          done
+          if [[ ! -d tools/editor_models/tests ]] || [[ -z "$(find tools/editor_models/tests -maxdepth 1 -type f -name 'test_*.py' -print -quit)" ]]; then
+            echo "::error::Editor-model scaffold has no test_*.py files"
+            exit 1
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+          echo "Editor-model scaffold present at $actual; Python checks are required."
+
+  python-scaffold:
+    name: Python tests, validate and report (exact head)
+    needs: detect-scaffold
+    if: needs.detect-scaffold.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify tested head SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Python scaffold tested head: $actual"
+          test "$actual" = "$EXPECTED_SHA"
+      - name: Python scaffold unit tests
+        run: python3 -m unittest discover -s tools/editor_models/tests -p 'test_*.py' -v
+      - name: Validate candidate catalogue
+        run: python3 tools/editor_models/benchmark.py validate
+      - name: Generate candidate report
+        run: python3 tools/editor_models/benchmark.py report
