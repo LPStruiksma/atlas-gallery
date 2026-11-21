@@ -28,3 +28,10 @@ flow1-empty-after-pinch
 flow1-huge-in-50
 flow1-landscape-in-50
 flow1-landscape-settled-7
+flow1-dark-in-settling
+flow1-light-in-settling
+flow1-bottom-out-50
+flow1-bottom-settled-3
+flow1-cold-in-50
+flow1-cold-settled-7
+flow1-reduced-settled-7

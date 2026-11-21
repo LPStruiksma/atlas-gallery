@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,6 +45,7 @@ import nl.atlas.gallery.saveUiEvidence
 import nl.atlas.gallery.testkit.advanceVirtualTime
 import nl.atlas.gallery.testkit.awaitScreenStill
 import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.withAnimatorScale
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -83,6 +85,8 @@ class PinchCrossFlowEvidenceTest {
             .getSharedPreferences("atlas_featuregrid_density", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
+    private var gridState: LazyGridState? = null
+
     private fun show(items: List<MediaRecord>, dark: Boolean = true, viewKey: String,
         selected: Set<String>? = null) {
         compose.setContent {
@@ -90,7 +94,7 @@ class PinchCrossFlowEvidenceTest {
                 AtlasTimelineGallery(
                     items = items,
                     sort = TimelineSort.NEWEST,
-                    gridState = rememberLazyGridState(),
+                    gridState = rememberLazyGridState().also { gridState = it },
                     onOpen = {},
                     modifier = Modifier.fillMaxSize(),
                     viewKey = viewKey,
@@ -189,7 +193,12 @@ class PinchCrossFlowEvidenceTest {
 
     @Test fun pinchFlowsBetweenLevelsLight() = pinchFlowsBetweenLevels(dark = false)
 
-    private fun pinchFlowsBetweenLevels(dark: Boolean) {
+    /**
+     * CI emulators run with animations off (which makes the release a cut, see
+     * [reducedMotionReleaseIsACut]); this journey turns them on so the 350 ms
+     * settle is the one a person sees.
+     */
+    private fun pinchFlowsBetweenLevels(dark: Boolean) = withAnimatorScale("1") {
         clearDensity()
         val theme = if (dark) "dark" else "light"
         show(fixtures(1_500), dark, "flow1-$theme")
@@ -221,12 +230,18 @@ class PinchCrossFlowEvidenceTest {
         inward.to(.25f); saveUiEvidence("flow1-$theme-in-25.png")
         inward.to(.5f); saveUiEvidence("flow1-$theme-in-50.png")
         inward.to(.75f); saveUiEvidence("flow1-$theme-in-75.png")
+        // Half-way through the settle: still one continuous picture, no cut.
+        compose.mainClock.autoAdvance = false
         inward.release()
+        compose.mainClock.advanceTimeBy(48L)
+        saveUiEvidence("flow1-$theme-in-settling.png")
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
         grid.assert(columns(7))
         saveUiEvidence("flow1-$theme-in-settled-7.png")
         assertAnchoredAndStill(tag, focusRoot, "commit 4->7")
 
-        if (!dark) return
+        if (!dark) return@withAnimatorScale
         // One pinch through several levels: 7 → month overview → year overview.
         compose.awaitNeighboursPlanned()
         focusPoint(.5f).let { focusRoot = it.first; local = it.second }
@@ -307,6 +322,71 @@ class PinchCrossFlowEvidenceTest {
         saveUiEvidence("flow1-empty-after-pinch.png")
     }
 
+    /** Brief state "bottom bound": a pinch at the end of the library leaves no blank band below. */
+    @Test fun pinchAtTheBottomOfTheLibraryNeverOverscrolls() {
+        clearDensity()
+        show(fixtures(1_500), true, "flow1-bottom")
+        awaitColumns(4)
+        val state = checkNotNull(gridState)
+        compose.runOnUiThread { state.requestScrollToItem(state.layoutInfo.totalItemsCount - 1) }
+        compose.awaitThat("the grid scrolled to its end") { !state.canScrollForward }
+        val (focusRoot, local) = focusPoint(.7f, .75f)
+        val tag = tileNear(focusRoot).first
+        val pinch = Pinch(local, 220f)
+        pinch.to(-.5f)
+        saveUiEvidence("flow1-bottom-out-50.png")
+        pinch.to(-1f)
+        pinch.release()
+        grid.assert(columns(3))
+        saveUiEvidence("flow1-bottom-settled-3.png")
+        // Clamped by the end of the library: the last row ends at the bottom.
+        val last = compose.onAllNodes(tile, useUnmergedTree = true).fetchSemanticsNodes()
+            .maxOf { it.boundsInRoot.bottom }
+        val gridBottom = grid.fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue("no blank band below the last row ($last vs grid $gridBottom)", gridBottom - last < 400f)
+        assertTrue("anchor still shown", boundsOf(tag) != null)
+    }
+
+    /**
+     * Brief state "cold plan": a pinch that starts before the neighbouring
+     * level is planned draws the estimated anchor, then commits anchored.
+     */
+    @Test fun pinchBeforeTheNeighbourIsPlanned() {
+        clearDensity()
+        show(fixtures(1_500), true, "flow1-cold")
+        compose.awaitThat("4 columns shown") {
+            compose.onAllNodes(columns(4)).fetchSemanticsNodes().isNotEmpty()
+        }
+        val (focusRoot, local) = focusPoint()
+        val tag = tileNear(focusRoot).first
+        val pinch = Pinch(local, 260f)
+        pinch.to(.5f)
+        saveUiEvidence("flow1-cold-in-50.png")
+        pinch.to(.9f)
+        pinch.release()
+        grid.assert(columns(7))
+        saveUiEvidence("flow1-cold-settled-7.png")
+        assertAnchoredAndStill(tag, focusRoot, "cold commit 4->7")
+    }
+
+    /** Brief state "reduced motion": with animations removed the release cuts straight to the new level. */
+    @Test fun reducedMotionReleaseIsACut() = withAnimatorScale("0") {
+        clearDensity()
+        show(fixtures(1_500), true, "flow1-reduced")
+        awaitColumns(4)
+        val (focusRoot, local) = focusPoint()
+        val tag = tileNear(focusRoot).first
+        val pinch = Pinch(local, 260f)
+        pinch.to(.75f)
+        compose.mainClock.autoAdvance = false
+        pinch.release()
+        compose.mainClock.advanceTimeBy(32L)
+        compose.mainClock.autoAdvance = true
+        grid.assert(columns(7))
+        saveUiEvidence("flow1-reduced-settled-7.png")
+        assertAnchoredAndStill(tag, focusRoot, "reduced-motion commit 4->7")
+    }
+
     /**
      * Brief state "huge library": 150,000 rows (64 shared synthetic images),
      * pinch 4 → 7 → 4 with FrameMetrics recorded. Reported on logcat
@@ -317,14 +397,12 @@ class PinchCrossFlowEvidenceTest {
         show(fixtures(150_000, distinctFiles = 64), true, "flow1-huge")
         awaitColumns(4)
         compose.awaitNeighboursPlanned(60_000L) // the two neighbouring 150k plans
-        val samples = Collections.synchronizedList(ArrayList<Double>())
-        val thread = HandlerThread("frame-metrics-711").apply { start() }
-        val listener = android.view.Window.OnFrameMetricsAvailableListener { _, m, _ ->
-            samples += m.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000.0
+        // Baseline on the same emulator: an ordinary scroll of the same grid.
+        val scrollMs = recordFrames {
+            repeat(3) { grid.performTouchInput { swipeUp() }; compose.waitForIdle() }
+            compose.awaitNeighboursPlanned(60_000L)
         }
-        val window = compose.activity.window
-        try {
-            window.addOnFrameMetricsAvailableListener(listener, Handler(thread.looper))
+        val ms = recordFrames {
             val (_, local) = focusPoint(.6f)
             val pinch = Pinch(local, 260f)
             pinch.to(.5f, 12)
@@ -336,11 +414,9 @@ class PinchCrossFlowEvidenceTest {
             back.to(-1f, 16)
             back.release()
             grid.assert(columns(4))
-            window.removeOnFrameMetricsAvailableListener(listener)
-        } finally {
-            thread.quitSafely()
         }
-        val ms = synchronized(samples) { samples.toDoubleArray() }
+        val pinchP90 = BenchmarkReport.percentile(ms, 90.0)
+        val scrollP90 = BenchmarkReport.percentile(scrollMs, 90.0)
         val report = JSONObject()
             .put("unit", "711-pinch-150k")
             .put("schema", 1)
@@ -352,10 +428,37 @@ class PinchCrossFlowEvidenceTest {
             .put("p99_ms", BenchmarkReport.round1(BenchmarkReport.percentile(ms, 99.0)))
             .put("over_16ms_pct", if (ms.isEmpty()) -1.0 else
                 BenchmarkReport.round1(100.0 * ms.count { it > 16.7 } / ms.size))
+            .put("scroll_frames", scrollMs.size)
+            .put("scroll_p90_ms", BenchmarkReport.round1(scrollP90))
             .toString()
         println("${BenchmarkReport.TAG} 711-pinch-150k json $report")
         Log.i(BenchmarkReport.TAG, "711-pinch-150k json $report")
-        assertTrue("frames recorded: $report", ms.isNotEmpty())
+        assertTrue("frames recorded: $report", ms.isNotEmpty() && scrollMs.isNotEmpty())
+        // Frame budget (emulator frames are not phone frames, so it is relative):
+        // a 150k-row pinch costs at most twice an ordinary scroll of the same
+        // grid at p90, and never stalls like an ANR-class frame.
+        assertTrue("pinch p90 within 2x scroll p90 (or 50 ms): $report",
+            pinchP90 <= maxOf(2.0 * scrollP90, 50.0))
+        assertTrue("no pinch frame over 700 ms: $report", ms.max() < 700.0)
+    }
+
+    /** Total frame durations (ms) drawn while [body] runs. */
+    private fun recordFrames(body: () -> Unit): DoubleArray {
+        val samples = Collections.synchronizedList(ArrayList<Double>())
+        val thread = HandlerThread("frame-metrics-711").apply { start() }
+        val listener = android.view.Window.OnFrameMetricsAvailableListener { _, m, _ ->
+            samples += m.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000.0
+        }
+        val window = compose.activity.window
+        try {
+            window.addOnFrameMetricsAvailableListener(listener, Handler(thread.looper))
+            body()
+            compose.waitForIdle()
+        } finally {
+            window.removeOnFrameMetricsAvailableListener(listener)
+            thread.quitSafely()
+        }
+        return synchronized(samples) { samples.toDoubleArray() }
     }
 
     private fun fixtures(count: Int, distinctFiles: Int = count): List<MediaRecord> {
