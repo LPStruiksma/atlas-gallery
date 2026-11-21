@@ -990,3 +990,17 @@ def fmt_d(v: float) -> str:
     """Signed whole pixels; rounding noise prints as +0, never -0."""
     r = round(v)
     return f"{r:+d}" if r else "+0"
+
+
+def pinch_fingers(focal, direction: str = "pinch in", far_dp: float = 70, near_dp: float = 30):
+    """Two fingertip paths, (start, end) each, mirrored about ``focal`` on the vertical axis, so their
+    centroid is the focal point F at every stage. Pinch in moves far -> near; pinch out near -> far."""
+    fx, fy = focal
+    a, b = (px(far_dp), px(near_dp)) if direction == "pinch in" else (px(near_dp), px(far_dp))
+    return [((fx, fy - a), (fx, fy - b)), ((fx, fy + a), (fx, fy + b))]
+
+
+def draw_pinch(s: Screen, focal, direction: str = "pinch in", **kw) -> None:
+    (s1, e1), (s2, e2) = pinch_fingers(focal, direction, **kw)
+    finger(s, s1, e1)
+    finger(s, s2, e2, direction)

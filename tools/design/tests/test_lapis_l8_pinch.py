@@ -99,6 +99,20 @@ class Storyboard(unittest.TestCase):
         self.assertEqual(round(bot.y_residual), 53)
         self.assertEqual(bot.key, max(self.lays["day"].rects))
 
+    def test_drawn_fingertips_are_centred_on_the_focal_point_inside_the_viewport(self):
+        # The board labels F the two-finger centroid; the drawing inputs must agree (Review on #840).
+        cases = [(st.focal, d, kw) for st in (self.st["start"], self.st["int_start"])
+                 for d in ("pinch in", "pinch out") for kw in ({}, {"far_dp": 60, "near_dp": 36})]
+        for focal, direction, kw in cases:
+            (s1, e1), (s2, e2) = L.pinch_fingers(focal, direction, **kw)
+            for p, q in ((s1, s2), (e1, e2)):
+                self.assertAlmostEqual((p[0] + q[0]) / 2, focal[0], places=6)
+                self.assertAlmostEqual((p[1] + q[1]) / 2, focal[1], places=6)
+                for x, y in (p, q):
+                    self.assertTrue(0 <= x <= DEVICE_W and self.vp.top <= y <= self.vp.bottom, (focal, x, y))
+            far = abs(s1[1] - s2[1]) > abs(e1[1] - e2[1])
+            self.assertEqual(far, direction == "pinch in")
+
     def test_only_outer_year_columns_can_share_a_point_with_month(self):
         self.assertEqual(L.same_point_columns(4, 8), [0, 7])
 

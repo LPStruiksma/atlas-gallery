@@ -856,11 +856,8 @@ class Gen:
 
     def l8_start(self, st: L.PinchStep, name: str, direction="pinch in", selected=None):
         s, _vis = self.l8_zoom("day", st.scroll, selected=selected, outline=st.key)
-        fx, fy = st.focal
-        sgn = 1 if direction == "pinch in" else -1
-        d0, d1 = (L.px(70), L.px(30)) if sgn > 0 else (L.px(30), L.px(70))
-        L.finger(s, (fx + d0, fy - d0), (fx + d1, fy - d1))
-        L.finger(s, (fx + d0 * 0.2, fy + d0), (fx + d1 * 0.2, fy + d1), direction)
+        fy = st.focal[1]
+        L.draw_pinch(s, st.focal, direction)
         L.crosshair(s, st.focal, f"F {L.fmt_pt(st.focal)}")
         L.anno_card(s, [
             f"{name} · key {st.key} under the focal point F (two-finger centroid)",
@@ -886,10 +883,7 @@ class Gen:
             s.d.ellipse([p[0] - L.px(4), p[1] - L.px(4), p[0] + L.px(4), p[1] + L.px(4)], outline=L.ANNO,
                         width=L.px(2))
         s.d.ellipse([m[0] - L.px(5), m[1] - L.px(5), m[0] + L.px(5), m[1] + L.px(5)], fill=L.ANNO)
-        fx, fy = st.focal
-        d0, d1 = (L.px(60), L.px(36)) if direction == "pinch in" else (L.px(36), L.px(60))
-        L.finger(s, (fx + d0, fy - d0), (fx + d1, fy - d1))
-        L.finger(s, (fx + d0 * 0.2, fy + d0), (fx + d1 * 0.2, fy + d1), direction)
+        L.draw_pinch(s, st.focal, direction, far_dp=60, near_dp=36)
         L.crosshair(s, st.focal, f"F {L.fmt_pt(st.focal)}")
         self.l8_chrome(s, vp)
         s.slab("Pictures")
