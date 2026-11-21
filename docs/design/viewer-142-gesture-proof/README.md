@@ -69,7 +69,7 @@ Exclusion rects (MEASURED): the photo page requests **none**. The video page has
 
 ## Results: injected-gesture probes (MEASURED, `input swipe` / `input tap`)
 
-Each probe ran twice per shard (4 samples), from a reset viewer with chrome shown. All 4 samples agreed for every probe in the evidence run.
+Each probe ran twice per shard (4 samples), from a reset viewer with chrome shown. All 4 samples agreed for every probe in the evidence run, except tap play/pause (see its row).
 
 | Probe | Back to viewer | Other effect |
 |---|---|---|
@@ -85,7 +85,7 @@ Each probe ran twice per shard (4 samples), from a reset viewer with chrome show
 | Right-edge swipe on the seek bar | 4/4 | seek unchanged |
 | Inner drag on the seek bar | 0/4 | seek moved (0 → 0.73) |
 | Left-edge swipe, mid-screen (video) | 4/4 | none |
-| Tap play/pause | 0/4 | playback started (the clip ran to its end within the 2.5 s window) |
+| Tap play/pause | 0/4 | 2/4 observable: the first tap per shard moved seek from ~0.72 to 1.0 (the clip ran to its end within the 2.5 s window). The second tap per shard started at seek 1.0 and recorded no change, so it is **inconclusive** for playback activation (the reset doesn't rewind the clip) |
 
 Every Back went to `GalleryViewer`'s own handler (`back_not_consumed_by_viewer = 0` throughout). No probe paged or seeked by accident when it started in an edge zone, and no edge swipe was eaten by the filmstrip or the seek bar.
 
