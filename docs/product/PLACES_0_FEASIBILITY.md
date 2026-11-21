@@ -16,7 +16,7 @@ Benchmark a **public, attributable** GeoNames-derived offline dataset, using doc
 | --- | --- |
 | Emulator/API and Android build | API 35, `Android/sdk_phone64_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys` |
 | Synthetic JPEG generator and foreign-package insertion | The test generates a 64x48 JPEG, writes EXIF GPS 52.0907 N, 5.1214 E (fictional) and inserts and writes it as the **shell uid** with `content insert` / `content write`. `OWNER_PACKAGE_NAME` is not readable by ATLAS (null), so foreign ownership rests on the shell doing the insert and write |
-| Known fixture latitude/longitude | 52.0907, 5.1214 (control read of the same bytes through `readViewerExif` returns them) |
+| Known fixture latitude/longitude | 52.0907, 5.1214 (control read of the same bytes through `readViewerExif` returns them) <!-- guard: allow-public --> |
 | ATLAS reader invocation and observed value | `PlatformViewerMetadataReader.read` on the MediaStore content URI, ATLAS holding `READ_MEDIA_IMAGES` but not `ACCESS_MEDIA_LOCATION`: **latitude 0.0, longitude 0.0** (run 44895524788, head `dbdcf9e7`, assertion message) |
 | Android 10+ redaction conclusion | The platform redacts the coordinate for a foreign-owned file. Other EXIF still reads, so it is selective, not a failed read. `setRequireOriginal` without `ACCESS_MEDIA_LOCATION` is refused |
 | Required future permission path | `ACCESS_MEDIA_LOCATION` (manifest plus runtime grant) is required to see real coordinates of other apps' photos, such as the camera's. This unit does not change the manifest. That is a separate protected-path unit for Lukas |
