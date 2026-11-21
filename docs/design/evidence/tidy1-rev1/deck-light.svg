@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-label="Synthetic deck preflight at S24 plus resolution in light theme"><rect x="0" y="0" width="360" height="780" rx="0" fill="#FFFFFF" opacity="1"/>
+<text x="18" y="15" font-family="Funnel Sans, sans-serif" font-size="8" font-weight="500" fill="#5A5F7A" text-anchor="start">TIDY-1 • DECK • light • SYNTHETIC</text>
+<text x="340" y="15" font-family="Funnel Sans, sans-serif" font-size="8" font-weight="500" fill="#5A5F7A" text-anchor="end">1080 × 2340</text>
+<rect x="0" y="756" width="360" height="24" rx="0" fill="#FFFFFF" opacity="1"/>
+<text x="180" y="772" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="600" fill="#5A5F7A" text-anchor="middle">━━</text>
+<text x="16" y="48" font-family="Funnel Sans, sans-serif" font-size="27" font-weight="600" fill="#2639C9" text-anchor="start">‹</text>
+<text x="52" y="47" font-family="Funnel Sans, sans-serif" font-size="20" font-weight="700" fill="#2639C9" text-anchor="start">Declutter</text>
+<text x="344" y="48" font-family="Funnel Sans, sans-serif" font-size="25" font-weight="600" fill="#0E1030" text-anchor="end">⋮</text>
+<text x="18" y="79" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="400" fill="#5A5F7A" text-anchor="start">November 2026 · Album</text>
+<text x="18" y="103" font-family="Funnel Sans, sans-serif" font-size="16" font-weight="700" fill="#2639C9" text-anchor="start">Reviewed 312 of 480</text>
+<text x="342" y="102" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="500" fill="#5A5F7A" text-anchor="end">12 staged</text>
+<rect x="13" y="124" width="334" height="426" rx="8" fill="#070E21" opacity="1"/>
+<circle cx="253.48" cy="239.02" r="46.760000000000005" fill="#8C9BFF" opacity=".75"/>
+<path d="M13 456.28000000000003L119.88 294.4L196.70000000000002 392.38L273.52 243.28000000000003L347 383.86V550H13Z" fill="#3448E0"/>
+<path d="M13 507.40000000000003L163.3 413.68L347 486.09999999999997V550H13Z" fill="#2639C9"/>
+<circle cx="35" cy="145" r="9" fill="#2639C9" stroke="#FFFFFF" stroke-width="1.6"/>
+<text x="330" y="146" font-family="Funnel Sans, sans-serif" font-size="12" font-weight="500" fill="#FFFFFF" text-anchor="end">Photo 313</text>
+<rect x="12" y="549" width="90" height="48" rx="8" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/><text x="18" y="578" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#2639C9" text-anchor="start">Undo</text>
+<rect x="194" y="549" width="154" height="48" rx="8" fill="#F2F3F8" stroke="#5A5F7A" stroke-width="0.5"/><text x="342" y="578" font-family="Funnel Sans, sans-serif" font-size="13" font-weight="600" fill="#2639C9" text-anchor="end">Review staged (12)</text>
+<rect x="12" y="613" width="104" height="52" rx="22" fill="#2639C9" opacity="1"/>
+<text x="64" y="645" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Keep</text>
+<rect x="127" y="613" width="105" height="52" rx="22" fill="#F2F3F8" opacity="1"/>
+<text x="179.5" y="645" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030" text-anchor="middle">Skip</text>
+<rect x="243" y="613" width="105" height="52" rx="22" fill="#F2F3F8" opacity="1"/>
+<text x="295.5" y="645" font-family="Funnel Sans, sans-serif" font-size="14" font-weight="600" fill="#0E1030" text-anchor="middle">Stage Trash</text>
+<text x="180" y="687" font-family="Funnel Sans, sans-serif" font-size="11" font-weight="400" fill="#5A5F7A" text-anchor="middle">Swipe right Keep · left Stage Trash</text>
+<text x="180" y="721" font-family="Funnel Sans, sans-serif" font-size="10" font-weight="400" fill="#5A5F7A" text-anchor="middle">No file moves until two confirmations</text></svg>
