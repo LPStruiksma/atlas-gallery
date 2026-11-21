@@ -2,8 +2,8 @@
 
 Built from [design brief rev 2](https://github.com/LPStruiksma/atlas-gallery/issues/477#issuecomment-6985033497)
 (Design: [PASS](https://github.com/LPStruiksma/atlas-gallery/issues/477#issuecomment-6985083237)).
-Code: `app/src/main/java/nl/atlas/gallery/featureidentity/ui/`. Entry from the viewer ⋮ is IDS-11 (#478);
-nothing here touches `GalleryViewer.kt` or `MainActivity.kt`.
+Code: `app/src/main/java/nl/atlas/gallery/featureidentity/ui/`. Entry from the viewer ⋮ and selection
+More is IDS-11 (#478), described under [Entry points](#entry-points-ids-11-478) below.
 
 ## Flow
 
@@ -100,7 +100,7 @@ border and scale 1.08 (150 ms). A new batch from Change face/person starts after
 - **S8**: pick 3–12 photos. The first picked photo has nothing to match against, so a multi-face photo
   always asks "Which one is <name>?" ("this person" for a new profile) with "Skip this photo". Later
   photos are matched locally by the host (`SwapPersonHost.matchFace`) and ask only when the margin is
-  not clear. The photo source is supplied by the host; IDS-11 connects it to the ATLAS grid pick mode.
+  not clear. The photo source is supplied by the host (IDS-11: recent gallery stills with a detected face).
 - **S6**: no percentages; a progress bar and "Downloading…". A failed download says "The download
   stopped. It will pick up where it left off." with Try again. OD-1 (private use, weights downloaded
   after install from their original hosts) is the host's concern; the sheet only states the size.
@@ -158,3 +158,37 @@ Sheets 300 ms emphasized decelerate, crossfades 200 ms, selection 150 ms; all in
 motion (animator scale 0), where the S2 pulse and S3 shimmer also stop. Touch targets ≥ 48 dp,
 including small faces in S2 and S8. TalkBack: "Version 2 of 4, selected", "Original", "Hold to see
 original", "Compare all versions", and "Version 3 ready" announced politely.
+
+## Entry points (IDS-11, #478)
+
+Built from [design brief rev 2](https://github.com/LPStruiksma/atlas-gallery/issues/478#issuecomment-7027593393)
+(Design: [PASS](https://github.com/LPStruiksma/atlas-gallery/issues/478#issuecomment-7027918111)).
+
+- **Viewer ⋮** (`atlas-viewer-more`, unchanged conditions): "Swap person" (`atlas-viewer-swap-person`) sits
+  directly under "AI Edit" in the same menu. No new chrome icon; nothing else moves.
+- **Selection More**: with exactly one selected still photo the menu reads Favourite/Unfavourite, AI Edit,
+  Swap person (`atlas-selection-swap-person`), Copy to album, Move to album. Choosing it clears the
+  selection, as AI Edit does.
+- **Eligibility** (`SwapPersonEligibility`, shared by both): AI Edit's MediaStore conditions plus a supported
+  static image (JPEG, PNG, WebP, HEIC/HEIF) decided from the provider MIME type and the leading bytes,
+  never the file name. GIF, APNG, animated WebP, HEIF sequences, AVIF, video and non-MediaStore items
+  never show the row. The row is hidden, not greyed out, until the off-main check says yes. AI Edit's
+  own guard is unchanged.
+- **Open and return**: `SwapPersonEntry` copies the photo into the app cache (deleted on close), then shows
+  the flow full-screen. ✕, Discard, Not now and system Back return to the same viewer photo (or the grid
+  for a selection entry). After Save, View opens the copy through the existing pending-focus path
+  (`pendingAiSavedUri`), the same one AI Edit uses.
+- **Production host** (`AtlasSwapPersonHost`):
+  - S1 lists named People persons (People home summary; People stays the authority for names) plus
+    manual profiles. A People person gets an identity profile only when chosen.
+  - References: a look with fewer than 8 usable references is topped up from that person's People faces
+    (confirmed first, one face per photo, skipping existing ones). They show in "Photos used" (S7),
+    where the person can remove them. Fewer than 3 usable references shows "Add a few more photos".
+  - Target faces come from IDS-7 (`TargetFaceDetection` and `TargetFaceSelector`, 48 px floor).
+  - S8 offers recent gallery stills with a detected face. "Which one is ..." is skipped only when People's
+    face model gives a clear match (`SwapFaceMatch`: cosine ≥ 0.363 and 0.08 margin).
+  - S6 setup reads `IdentityModelStore` state. The download itself is IDS-19 (#619); until it lands, the
+    host reports the download as not done instead of faking an install.
+  - Save goes through IDS-10 `IdentityEditSave` with the original's MediaStore revision.
+- **Evidence**: `SwapPersonEntry*EvidenceTest` renders the declared states in
+  `scripts/ui-evidence.d/467-swap-person-entry.txt`.

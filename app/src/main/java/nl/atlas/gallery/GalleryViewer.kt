@@ -9,6 +9,10 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animate
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPosition
@@ -62,6 +66,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import nl.atlas.gallery.featuredesign.AtlasMotion
 import nl.atlas.gallery.featuredesign.AtlasTokens
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
@@ -106,6 +111,7 @@ import coil3.request.ImageRequest
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import coil3.request.crossfade
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -153,6 +159,12 @@ fun GalleryViewer(
     onTrashed: ((MediaRecord) -> Unit)? = null,
     // #553: the People row in swipe-up Details; null hides it.
     photoPeople: ViewerPhotoPeople? = null,
+    // IDS-11 (#478): "Swap person" under AI Edit in the ⋮ menu; null hides it.
+    swapPerson: ViewerSwapPerson? = null,
+    // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
+    // library or write action; SECURE also drops Details (lock-screen review).
+    access: ViewerAccess = ViewerAccess.LIBRARY,
+    motionProbe: ViewerFilmstripMotionProbe? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -163,7 +175,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onBack)
     }
 }
 
@@ -182,6 +194,9 @@ private fun GalleryViewerSnapshot(
     onTrashed: ((MediaRecord) -> Unit)?,
     favouriteOverrides: MutableMap<String, Boolean>,
     photoPeople: ViewerPhotoPeople?,
+    swapPerson: ViewerSwapPerson?,
+    access: ViewerAccess,
+    motionProbe: ViewerFilmstripMotionProbe?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -252,19 +267,44 @@ private fun GalleryViewerSnapshot(
     var controlledScrollDepth by remember { mutableIntStateOf(0) }
     var currentZoom by remember { mutableFloatStateOf(1f) }
     val latestZoom by rememberUpdatedState(currentZoom)
-    // One cancelable explicit selection channel for thumbnail taps and the
-    // end of a filmstrip scrub. A new immutable album snapshot resets it.
+    // One cancelable explicit selection channel, with a source flag so a
+    // thumbnail tap eases only the strip; scrub/edge selections stay instant.
+    // A new immutable album snapshot resets it.
     var selectionRequest by remember(CatalogSourceKey(items)) {
         mutableStateOf<ViewerJumpIntent?>(null)
+    }
+    // Keep a generation even when touch-down clears the active request.
+    // Otherwise two same-index taps separated by a fast cancel could become
+    // structurally equal and be conflated by snapshotFlow.
+    var lastIssuedSelection by remember(CatalogSourceKey(items)) {
+        mutableStateOf<ViewerJumpIntent?>(null)
+    }
+    fun requestViewerSelection(index: Int, origin: ViewerJumpOrigin = ViewerJumpOrigin.DIRECT) {
+        val intent = nextViewerJumpIntent(lastIssuedSelection, index, items.size, origin)
+        lastIssuedSelection = intent
+        selectionRequest = intent
     }
     // Track only the last *settled* preview focus, not every intermediate
     // scrub position. Directional prefetch remains useful after a long jump.
     var lastPrefetchFocus by remember(CatalogSourceKey(items)) { mutableIntStateOf(start) }
     // A single tap on a photo hides all chrome (and the system bars), without
     // changing the selected item, pager, zoom or the caller's Back stack.
+    // BENCH-1 (#572): which photo revisions' 2400 px base decoded with an
+    // Ultra HDR gain map (viewerHdrFactKey), as reported by their own page.
+    // An editor return is a new revision, so an old fact never carries over.
+    val gainmapFacts = remember { mutableStateMapOf<String, Boolean>() }
     var chromeVisible by remember { mutableStateOf(true) }
     // Details is opened deliberately; no metadata provider work in the pager.
+    // detailsMedia: the user committed to Details (settled or settling open);
+    // it gates provider reads and video playback. detailsShownMedia: the one
+    // details surface is on screen (from the first pixel of a swipe-up until
+    // it has fully closed). detailsProgress: 0 closed .. 1 open, written by
+    // the finger or the settle spring and read only in layout/draw lambdas.
     var detailsMedia by remember { mutableStateOf<MediaRecord?>(null) }
+    var detailsShownMedia by remember { mutableStateOf<MediaRecord?>(null) }
+    val detailsProgress = remember { mutableFloatStateOf(0f) }
+    var detailsJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val detailsShown by remember { derivedStateOf { detailsShownMedia != null } }
     var aiEditMenuOpen by remember { mutableStateOf(false) }
     // Pending consent requests survive activity recreation while Android's dialog is open.
     var pendingFavouriteUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -346,16 +386,37 @@ private fun GalleryViewerSnapshot(
     // One cancelable explicit navigation consumer. Null signals are retained
     // to cancel obsolete selection if a newer filmstrip swipe starts, rather
     // than leaving an old tap job running after that gesture.
-    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items)) {
+    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items), stripStridePx) {
         snapshotFlow { selectionRequest }.collectLatest { request ->
             if (request == null || request.index !in items.indices)
                 return@collectLatest
             controlledScrollDepth = acquireViewerScrollLease(controlledScrollDepth)
             try {
+                // The photo/selected semantics land first. Only the strip moves
+                // through frames; never animate through intervening photos.
                 if (pagerState.currentPage != request.index) {
                     timingProbe?.selectionRequested(request.index)
                     pagerState.scrollToPage(request.index)
                 }
+                val from = ViewerStripPosition(
+                    stripState.firstVisibleItemIndex, stripState.firstVisibleItemScrollOffset)
+                if (viewerShouldEaseStripJump(request.origin,
+                        AtlasMotion.animationsDisabled(context), from, request.index)) {
+                    // A second tap cancels collectLatest, then reads the actually
+                    // rendered position. requestScrollToItem is measure-safe and O(1):
+                    // no per-frame pager recomposition or intermediate image decode.
+                    animate(0f, 1f, animationSpec = tween(
+                        durationMillis = AtlasMotion.FILMSTRIP_TAP_MS,
+                        easing = AtlasMotion.FilmstripTapEase
+                    )) { fraction, _ ->
+                        val frame = viewerTapStripFrame(from, request.index,
+                            fraction, items.size, stripStridePx)
+                        stripState.requestScrollToItem(frame.index, frame.scrollOffsetPx)
+                        motionProbe?.stripFrame()
+                    }
+                }
+                // A final exact alignment is harmless after the t=260 ms frame.
+                // Direct scrub/edge requests, and remove-animations, only take this path.
                 stripState.scrollToItem(request.index)
             } finally {
                 controlledScrollDepth = releaseViewerScrollLease(controlledScrollDepth)
@@ -434,8 +495,7 @@ private fun GalleryViewerSnapshot(
                 val index = viewerStripCentreIndex(stripState)
                 if (index != null && index in items.indices) {
                     heldScrubIndex = index
-                    selectionRequest = nextViewerJumpIntent(
-                        selectionRequest, index, items.size)
+                    requestViewerSelection(index)
                 }
             } else {
                 wasUserScrubbing = false
@@ -490,11 +550,24 @@ private fun GalleryViewerSnapshot(
     }
     // Samsung hides the status and navigation bars together with its chrome.
     ViewerSystemBars(visible = chromeVisible)
+    // BENCH-1 (#572): window HDR only while the focused photo's current
+    // revision proved a gain map and no filmstrip scrub preview covers it.
+    // Read inside the HDR effect's own scope (a lambda), never here, so a
+    // scrub frame does not recompose the whole viewer.
+    ViewerHdrWindowMode(focusedHasGainmap = {
+        val focusedForHdr = items.getOrNull(pagerState.currentPage)
+        viewerFocusedHasGainmap(
+            uri = focusedForHdr?.uri, isVideo = focusedForHdr?.isVideo ?: true,
+            revision = focusedForHdr?.let {
+                viewerHdrRevision(editorReturn.mustReload(it.uri), editorReturn.revision)
+            } ?: 0L,
+            scrubPreviewShown = scrubOverlayState.value != null,
+            facts = gainmapFacts)
+    })
 
     // Live drag transforms are animated back on cancellation and read only by
     // their owning layers, not by the full viewer on each pointer frame.
     val dragOffset = remember { mutableFloatStateOf(0f) }
-    val showDragPreview by remember { derivedStateOf { dragOffset.floatValue < 0f } }
     val dragAnimation = remember { Animatable(0f) }
     var dragAnimationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val dragScope = rememberCoroutineScope()
@@ -511,6 +584,76 @@ private fun GalleryViewerSnapshot(
             }
         }
     }
+    // #details-motion: one surface, one progress value, one spring. Settling
+    // starts from the current position and the release velocity, and a new
+    // touch cancels it where it is (interruptible), so the motion never
+    // restarts from a fixed point or swaps surfaces.
+    val viewerHeightPx = remember { mutableIntStateOf(0) }
+    fun detailsPanelPx(): Float = viewerDetailsPanelPx(viewerHeightPx.intValue.toFloat())
+    val detailsFlingPx = with(density) { VIEWER_DETAILS_FLING_DP.dp.toPx() }
+    val detailsAnimationsDisabled = LocalViewerAnimationsDisabled.current
+    fun settleDetails(open: Boolean, velocityPerSecond: Float = 0f) {
+        detailsJob?.cancel()
+        detailsMedia = if (open) detailsShownMedia else null
+        val target = if (open) 1f else 0f
+        if (detailsAnimationsDisabled(context)) {
+            // System "remove animations": every transition cuts (Quiet Frame Motion).
+            detailsProgress.floatValue = target
+            if (!open) detailsShownMedia = null
+            return
+        }
+        detailsJob = dragScope.launch {
+            animate(detailsProgress.floatValue, target, velocityPerSecond,
+                VIEWER_DETAILS_SPRING) { value, _ -> detailsProgress.floatValue = value }
+            if (!open) detailsShownMedia = null
+        }
+    }
+    fun openDetails() {
+        if (!access.details) return
+        detailsShownMedia = items[viewerVisibleActionIndex(scrubOverlayState.value,
+            pagerState.currentPage, items.size)]
+        settleDetails(true)
+    }
+    /** A touch that stopped a settle without dragging: finish it toward its goal. */
+    fun resumeDetailsSettle() {
+        if (detailsShownMedia != null) settleDetails(detailsMedia != null)
+    }
+    val detailsScroll = remember {
+        object : NestedScrollConnection {
+            // Finger up while the surface is not fully open: raise it first.
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || available.y >= 0f) return Offset.Zero
+                val p = detailsProgress.floatValue
+                val panel = detailsPanelPx()
+                if (p >= 1f || panel <= 0f) return Offset.Zero
+                detailsJob?.cancel()
+                val next = (p - available.y / panel).coerceAtMost(1f)
+                detailsProgress.floatValue = next
+                return Offset(0f, -(next - p) * panel)
+            }
+            // Finger down once the rows are scrolled to the top: lower it.
+            override fun onPostScroll(
+                consumed: Offset, available: Offset, source: NestedScrollSource
+            ): Offset {
+                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                val p = detailsProgress.floatValue
+                val panel = detailsPanelPx()
+                if (p <= 0f || panel <= 0f) return Offset.Zero
+                detailsJob?.cancel()
+                val next = (p - available.y / panel).coerceAtLeast(0f)
+                detailsProgress.floatValue = next
+                return Offset(0f, (p - next) * panel)
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val p = detailsProgress.floatValue
+                val panel = detailsPanelPx()
+                if (p >= 1f || panel <= 0f) return Velocity.Zero
+                settleDetails(viewerDetailsSettleOpen(p, -available.y, panel, detailsFlingPx),
+                    -available.y / panel)
+                return available
+            }
+        }
+    }
     fun finishViewerDrag(velocityY: Float, gateOpen: Boolean) {
         when (viewerVerticalRelease(dragOffset.floatValue, velocityY, dragThresholdPx,
                 flingThresholdPx, latestZoom, gateOpen)) {
@@ -518,10 +661,8 @@ private fun GalleryViewerSnapshot(
                 returnToGallery()
             }
             ViewerVerticalSwipe.DETAILS -> {
-                val index = viewerVisibleActionIndex(scrubOverlayState.value,
-                    latestPagerState.currentPage, latestItemsState.value.size)
-                detailsMedia = latestItemsState.value[index]
                 dragOffset.floatValue = 0f
+                if (access.details) openDetails() else cancelViewerDrag()
             }
             ViewerVerticalSwipe.NONE -> cancelViewerDrag()
         }
@@ -530,7 +671,9 @@ private fun GalleryViewerSnapshot(
     // #509 layout: the photo is full-bleed on black and the chrome floats
     // over it (back pill top-left, action pill top-right, thin filmstrip and
     // an action pill at the bottom). No title, counter text, labels or rails.
-    Box(Modifier.fillMaxSize().background(Color.Black).testTag("atlas-viewer")) {
+    Box(Modifier.fillMaxSize().background(Color.Black)
+        .onSizeChanged { viewerHeightPx.intValue = it.height }
+        .testTag("atlas-viewer")) {
         // The photo follows a down-drag and shrinks against a dimming black
         // backdrop. For an up-drag the image scales above the rising details cue.
         // Gesture input precedes the moving layer. Coordinates must remain
@@ -551,6 +694,14 @@ private fun GalleryViewerSnapshot(
                         var lastElapsedMs = 0L
                         var upEligible = false
                         var tracking = false
+                        // #details-motion: an up-drag (or any vertical drag while
+                        // Details is on screen) moves the details surface 1:1
+                        // with the finger instead of the exit transform.
+                        var detailsGesture = false
+                        var detailsStartTravel = 0f
+                        // Grab a settling surface where it is (interruptible).
+                        detailsJob?.cancel()
+                        val detailsBase = detailsProgress.floatValue
                         val tracker = VelocityTracker()
                         tracker.addPosition(down.uptimeMillis, down.position)
                         dragAnimationJob?.cancel()
@@ -591,15 +742,37 @@ private fun GalleryViewerSnapshot(
                             upEligible = travelY < -touchSlopPx &&
                                 abs(travelY) > abs(travelX) * 1.4f
                             val verticallyDominant = abs(travelY) > abs(travelX) * 1.4f
-                            if (verticallyDominant && abs(travelY) > touchSlopPx) {
+                            if (verticallyDominant && abs(travelY) > touchSlopPx && !tracking) {
                                 tracking = true
+                                detailsGesture = detailsBase > 0f || travelY < 0f
+                                if (detailsGesture) {
+                                    detailsStartTravel = travelY
+                                    if (detailsShownMedia == null) {
+                                        detailsShownMedia = latestItemsState.value[
+                                            viewerVisibleActionIndex(scrubOverlayState.value,
+                                                latestPagerState.currentPage,
+                                                latestItemsState.value.size)]
+                                    }
+                                }
                             }
                             if (tracking) {
-                                dragOffset.floatValue = travelY
+                                if (detailsGesture) {
+                                    detailsProgress.floatValue = viewerDetailsDragProgress(
+                                        detailsBase, travelY - detailsStartTravel,
+                                        viewerDetailsPanelPx(size.height.toFloat()))
+                                } else {
+                                    dragOffset.floatValue = travelY
+                                }
                                 change.consume()
                             }
                         } while (event.changes.any { it.pressed })
-                        if (released && tracking) {
+                        if (released && tracking && detailsGesture) {
+                            val velocityUp = -tracker.calculateVelocity().y
+                            val panel = viewerDetailsPanelPx(size.height.toFloat())
+                            settleDetails(viewerDetailsSettleOpen(detailsProgress.floatValue,
+                                velocityUp, panel, detailsFlingPx),
+                                if (panel > 0f) velocityUp / panel else 0f)
+                        } else if (released && tracking) {
                             finishViewerDrag(tracker.calculateVelocity().y,
                                 if (dragOffset.floatValue > 0f)
                                     downExitEligible && viewerMayStartDownExit(
@@ -607,16 +780,32 @@ private fun GalleryViewerSnapshot(
                                         reversedUp, touchSlopPx) else upEligible)
                         } else if (released) {
                             cancelViewerDrag()
+                            if (detailsGesture || detailsBase > 0f) resumeDetailsSettle()
+                        } else if (detailsGesture || detailsBase > 0f) {
+                            resumeDetailsSettle()
                         }
                     }
                 }
             .graphicsLayer {
-            val offset = dragOffset.floatValue
-            val fraction = (abs(offset) / (size.height * .65f).coerceAtLeast(1f)).coerceIn(0f, 1f)
-            // Up: the photo lifts with the rising panel (as in Samsung Gallery).
-            translationY = if (offset > 0f) offset else offset * .35f
-            val scale = if (offset > 0f) 1f - .22f * fraction else 1f + .06f * fraction
-            scaleX = scale; scaleY = scale
+            val details = detailsProgress.floatValue
+            if (details > 0f) {
+                // #details-motion: the photo glides up with the details surface
+                // and shrinks only as much as it must to stay whole above it;
+                // a full-height photo's bottom edge rides the surface's top edge.
+                val shown = detailsShownMedia
+                val transform = viewerDetailsPhotoTransform(details, size.width, size.height,
+                    viewerDetailsPanelPx(size.height),
+                    if (shown != null && shown.widthPixels > 0 && shown.heightPixels > 0)
+                        shown.heightPixels.toFloat() / shown.widthPixels else 0f)
+                translationY = transform.translationY
+                scaleX = transform.scale; scaleY = transform.scale
+            } else {
+                val offset = dragOffset.floatValue.coerceAtLeast(0f)
+                val fraction = (offset / (size.height * .65f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                translationY = offset
+                val scale = 1f - .22f * fraction
+                scaleX = scale; scaleY = scale
+            }
         }.testTag("atlas-viewer-drag-photo")) {
         HorizontalPager(
             state = pagerState,
@@ -626,8 +815,18 @@ private fun GalleryViewerSnapshot(
             key = { index -> index },
             beyondViewportPageCount = 1,
             pageSpacing = 12.dp,
-            userScrollEnabled = currentZoom <= 1.01f && !stripState.isScrollInProgress,
+            userScrollEnabled = currentZoom <= 1.01f && !stripState.isScrollInProgress &&
+                !detailsShown,
             modifier = Modifier.fillMaxSize().testTag("atlas-main-pager")
+                // Take ownership as soon as a finger touches the photo; a real
+                // swipe must never compete with an in-flight tap-strip animation.
+                .pointerInput(pagerState) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false,
+                            pass = PointerEventPass.Initial)
+                        selectionRequest = null
+                    }
+                }
                 // #509 (Lukas 2026-11-10 00:02Z): like Samsung, swipe up on an
                 // unzoomed photo opens its details; swipe down closes the
                 // viewer (parity research VIEW:V22, V27). A zoomed photo's own pan
@@ -651,29 +850,38 @@ private fun GalleryViewerSnapshot(
                         if (reader == null) livePlayback.remove(media.uri)
                         else livePlayback[media.uri] = reader
                     },
-                    onToggleChrome = { chromeVisible = !chromeVisible }
+                    onToggleChrome = {
+                        if (detailsShownMedia != null) settleDetails(false)
+                        else chromeVisible = !chromeVisible
+                    }
                 )
             } else {
                 PhotoPage(media, page, items.size, focused, focused && !rapidlyChanging,
                     chromeVisible = chromeVisible,
                     observePreviewLoads = timingProbe != null,
+                    motionProbe = motionProbe,
                     faceBoxes = faceHighlights[media.uri].orEmpty(),
                     forceFresh = editorReturn.mustReload(media.uri),
                     refreshRevision = editorReturn.revision,
                     onZoomChanged = { level ->
                         if (focused) currentZoom = level
                     },
-                    onToggleChrome = { chromeVisible = !chromeVisible },
+                    onToggleChrome = {
+                        if (detailsShownMedia != null) settleDetails(false)
+                        else chromeVisible = !chromeVisible
+                    },
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
-                            selectionRequest = nextViewerJumpIntent(
-                                selectionRequest, target, items.size)
+                            requestViewerSelection(target)
                         }
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
                         { timingProbe.firstPreviewReady(page) }
                     } else null,
-                    openingPage = onEntryPage && page == start)
+                    openingPage = onEntryPage && page == start,
+                    onGainmapDecoded = { revision, hasGainmap ->
+                        gainmapFacts[viewerHdrFactKey(media.uri, revision)] = hasGainmap
+                    })
             }
         }
         }
@@ -687,7 +895,9 @@ private fun GalleryViewerSnapshot(
         // lookup or rebuild the pills on every frame. Details resolves the
         // photo the held scrub overlay shows at tap time instead.
         val current = items[pagerState.currentPage.coerceIn(items.indices)]
-        AnimatedVisibility(chromeVisible, Modifier.align(Alignment.TopCenter),
+        // While Details is on screen the photo and its facts own the screen,
+        // as in Samsung Gallery; the chrome fades out with the same 200 ms.
+        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.TopCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(AtlasTokens.Colors.Viewer.ChromeScrimTop, Color.Transparent)))
@@ -699,7 +909,7 @@ private fun GalleryViewerSnapshot(
         ) {
             ViewerPill {
                 IconButton(onClick = ::returnToGallery, modifier = Modifier.testTag("atlas-back")) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBackIos, "Back to gallery",
+                    Icon(Icons.AutoMirrored.Filled.ArrowBackIos, access.backDescription,
                         tint = Color.White, modifier = Modifier.padding(start = 6.dp))
                 }
             }
@@ -749,20 +959,28 @@ private fun GalleryViewerSnapshot(
                             text = { Text("AI Edit") },
                             modifier = Modifier.testTag("atlas-viewer-ai-edit"),
                             onClick = { aiEditMenuOpen = false; onAiEdit(current) })
+                        // IDS-11 (#478): directly under AI Edit, only for a supported
+                        // still image (hidden, never greyed out, until that is known).
+                        val swapPort = swapPerson
+                        val swapOk by produceState(false, current.uri, swapPort) {
+                            value = false
+                            value = swapPort?.eligible?.invoke(current) == true
+                        }
+                        if (swapPort != null && swapOk) DropdownMenuItem(
+                            text = { Text("Swap person") },
+                            modifier = Modifier.testTag("atlas-viewer-swap-person"),
+                            onClick = { aiEditMenuOpen = false; swapPort.open(current) })
                     }
                 }
-                IconButton(
-                    onClick = {
-                        detailsMedia = items[viewerVisibleActionIndex(scrubOverlayState.value,
-                            pagerState.currentPage, items.size)]
-                    },
+                if (access.details) IconButton(
+                    onClick = ::openDetails,
                     modifier = Modifier.testTag("atlas-viewer-details-open")
                 ) {
                     Icon(Icons.Outlined.Info, "Photo or video details", tint = Color.White)
                 }
             }
         } }
-        AnimatedVisibility(chromeVisible, Modifier.align(Alignment.BottomCenter),
+        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.BottomCenter),
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, AtlasTokens.Colors.Viewer.ChromeScrimBottom)))
@@ -771,6 +989,8 @@ private fun GalleryViewerSnapshot(
                 .testTag("atlas-viewer-bottom-chrome"),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // #573: one caller-granted item has no strip (never a lone filmstrip tile).
+            if (access == ViewerAccess.LIBRARY || items.size > 1)
             BoxWithConstraints(Modifier.fillMaxWidth().height(STRIP_HEIGHT)) {
                 val contentPad = (maxWidth - STRIP_TILE_WIDTH) / 2
                 LazyRow(
@@ -780,6 +1000,16 @@ private fun GalleryViewerSnapshot(
                     horizontalArrangement = Arrangement.spacedBy(STRIP_TILE_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxSize().testTag("atlas-filmstrip")
+                        // Cancel even during the held pre-touch-slop phase.
+                        // The down isn't consumed: LazyRow drag/fling and tile
+                        // click still own their normal gesture handlers.
+                        .pointerInput(stripState) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial)
+                                selectionRequest = null
+                            }
+                        }
                 ) {
                     // Positional keys avoid writing private MediaStore URIs to
                     // LazyRow saveable-state keys. A different catalogue
@@ -804,8 +1034,7 @@ private fun GalleryViewerSnapshot(
                                 stateDescription = if (selected) "Currently displayed" else "Not selected"
                             }
                             .clickable(role = Role.Button) {
-                                selectionRequest = nextViewerJumpIntent(
-                                    selectionRequest, index, items.size)
+                                requestViewerSelection(index, ViewerJumpOrigin.THUMBNAIL)
                             }) {
                             MediaPreview(
                                 // The parent already announces Photo/Video N of M
@@ -824,8 +1053,10 @@ private fun GalleryViewerSnapshot(
             }
             Spacer(Modifier.height(10.dp))
             val showEdit = onEdit != null && PhotoEditorHandoff.eligible(current)
-            val showShare = ViewerShareHandoff.eligible(current)
-            val showFavourite = viewerCanChangeInMediaStore(current.uri, Build.VERSION.SDK_INT)
+            // #573: a caller's grant is read-only and not ours to pass on.
+            val showShare = access == ViewerAccess.LIBRARY && ViewerShareHandoff.eligible(current)
+            val showFavourite = access == ViewerAccess.LIBRARY &&
+                viewerCanChangeInMediaStore(current.uri, Build.VERSION.SDK_INT)
             val showTrash = showFavourite && onTrashed != null
             // Samsung order: favourite · edit · share · delete.
             if (showFavourite || showEdit || showShare || showTrash)
@@ -903,30 +1134,29 @@ private fun GalleryViewerSnapshot(
                 }
             } else Spacer(Modifier.height(10.dp))
         } }
-        // Present actual metadata (not an empty cue) during the held up-drag.
-        // The settled ModalBottomSheet still mounts only on release, so no
-        // MediaStore provider query runs merely because a gesture began.
-        // Drawn above the filmstrip and pills and kept above the navigation
-        // bar, so the rising panel is visible from the first pixels of a drag.
-        if (showDragPreview && detailsMedia == null) Box(Modifier.align(Alignment.BottomCenter)
-            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-            .fillMaxWidth().height(240.dp)
-            .graphicsLayer {
-                val offset = dragOffset.floatValue.coerceAtMost(0f)
-                translationY = 240.dp.toPx() + offset.coerceAtLeast(-240.dp.toPx())
-                alpha = if (offset < 0f) 0.6f + 0.4f *
-                    (-offset / 240.dp.toPx()).coerceIn(0f, 1f) else 0f
-            }.background(AtlasTokens.Colors.Viewer.Backdrop)
-            .testTag("atlas-details-drag-preview")) {
-            // Resolved here, not in the viewer scope, so scrub frames don't
-            // recompose the whole viewer.
-            ViewerDetailsPreview(items[viewerVisibleActionIndex(scrubOverlayState.value,
-                pagerState.currentPage, items.size)])
+        // #details-motion: the ONE details surface, present from the first
+        // pixel of a swipe-up (or the Info tap) until it has fully closed.
+        // Its position is the shared progress, applied in the layer only, so
+        // a drag never recomposes the viewer or the rows. Its tag says whether
+        // the user committed (provider reads run) or is still dragging.
+        detailsShownMedia?.let { shown ->
+            val panelDp = with(density) { detailsPanelPx().toDp() }
+            ViewerDetailsSurface(
+                shown,
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(panelDp)
+                    .graphicsLayer {
+                        translationY = size.height * (1f - detailsProgress.floatValue)
+                    }
+                    .nestedScroll(detailsScroll)
+                    .testTag(if (detailsMedia != null) "atlas-viewer-details"
+                        else "atlas-details-drag-preview"),
+                photoPeople = photoPeople,
+                loadMetadata = detailsMedia != null,
+                contentAlpha = { viewerDetailsContentAlpha(detailsProgress.floatValue) }
+            )
         }
-    }
-    detailsMedia?.let { selected ->
-        ViewerDetailsSheet(selected, onDismiss = { detailsMedia = null },
-            photoPeople = photoPeople)
+        // Registered after the viewer's own Back, so it wins while shown.
+        BackHandler(enabled = detailsShown) { settleDetails(false) }
     }
 }
 
@@ -945,6 +1175,20 @@ private val CHROME_EXIT = fadeOut(tween(200))
 // Favourite and Trash go through MediaStore consent requests, which exist from
 // API 30 (minSdk is 29) and only accept MediaStore item URIs (not documents,
 // files or test fixtures). Below API 30 both buttons stay hidden.
+/**
+ * BENCH-2 (#573): where the viewer's items came from.
+ * - [LIBRARY]: ATLAS's own catalogue; every action the host wires is shown.
+ * - [EXTERNAL]: an item another app granted (Open with, camera review). Read-only:
+ *   no favourite, share, trash or edit; Details stays (it reads only this item).
+ * - [SECURE]: `MediaStore.ACTION_REVIEW_SECURE` over the lock screen. Only the
+ *   captured item and in-viewer media controls; no Details, no library, no share.
+ */
+enum class ViewerAccess(val details: Boolean, val backDescription: String) {
+    LIBRARY(details = true, backDescription = "Back to gallery"),
+    EXTERNAL(details = true, backDescription = "Back"),
+    SECURE(details = false, backDescription = "Back to camera")
+}
+
 internal fun viewerCanChangeInMediaStore(uri: String, sdkInt: Int): Boolean =
     sdkInt >= 30 && uri.startsWith("content://media/")
 
@@ -1118,7 +1362,7 @@ private fun ViewerSystemBars(visible: Boolean) {
     }
 }
 
-private tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
+internal tailrec fun android.content.Context.viewerHostActivity(): android.app.Activity? =
     when (this) {
         is android.app.Activity -> this
         is android.content.ContextWrapper -> baseContext.viewerHostActivity()
@@ -1239,14 +1483,17 @@ private fun PhotoPage(
     focused: Boolean, fullResolution: Boolean,
     chromeVisible: Boolean,
     observePreviewLoads: Boolean,
+    motionProbe: ViewerFilmstripMotionProbe?,
     faceBoxes: List<IndexedFaceBox>,
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
-    openingPage: Boolean = false
+    openingPage: Boolean = false,
+    onGainmapDecoded: (revision: Long, hasGainmap: Boolean) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    SideEffect { motionProbe?.pageComposed(pageIndex) }
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
     // Gesture loops below are deliberately NOT restarted by recomposition,
     // so they must call the latest callbacks rather than captured ones.
@@ -1279,6 +1526,12 @@ private fun PhotoPage(
         derivedStateOf { zoomPose.scale > 1.01f }
     }
     var zoomedOnce by remember(media.uri, focused, imageRevision) { mutableStateOf(false) }
+    // FLOW-4 (#713): the running double-tap zoom animation, if any. Any new
+    // touch on the photo cancels it at its current pose (no snap-back).
+    val zoomPoseProbe = LocalViewerZoomPoseProbe.current
+    val doubleTapZoom = remember(media.uri, focused, imageRevision) {
+        arrayOfNulls<kotlinx.coroutines.Job>(1)
+    }
     LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
     LaunchedEffect(viewport, decodedSize, tiledSize) {
         zoomPose = viewerReboundZoom(zoomPose, viewport.width, viewport.height,
@@ -1345,6 +1598,9 @@ private fun PhotoPage(
                     // while magnified; two-finger transitions remain smooth.
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
+                        // FLOW-4 (#713): a new touch takes over from the
+                        // animated double-tap zoom wherever it has got to.
+                        doubleTapZoom[0]?.cancel()
                         // A pinch is a single atomic gesture: when its second
                         // finger lifts (or the photo reaches 1x), the remaining
                         // movement must NOT unexpectedly page to another photo.
@@ -1402,15 +1658,47 @@ private fun PhotoPage(
                 .pointerInput(media.uri, imageRevision, focused) {
                     // Same identity-only key: a pending single tap waits for
                     // the double-tap timeout and must survive the HQ decode.
-                    detectTapGestures(
-                        onTap = { latestToggleChrome() },
-                        onDoubleTap = { tap ->
-                            zoomPose = viewerDoubleTapZoom(zoomPose, tap.x, tap.y,
-                                viewport.width, viewport.height,
-                                decodedSize.width, decodedSize.height)
-                            latestZoomChanged(zoomPose.scale)
-                        }
-                    )
+                    // The animation is a child of this scope, so a page or
+                    // focus change (which restarts this block) also ends it.
+                    coroutineScope {
+                        detectTapGestures(
+                            onTap = { latestToggleChrome() },
+                            onDoubleTap = { tap ->
+                                doubleTapZoom[0]?.cancel()
+                                val from = zoomPose
+                                val to = viewerDoubleTapZoom(from, tap.x, tap.y,
+                                    viewport.width, viewport.height,
+                                    decodedSize.width, decodedSize.height)
+                                if (to == from || AtlasMotion.animationsDisabled(context)) {
+                                    // Reduced motion: cut straight to the end pose.
+                                    zoomPose = to
+                                    latestZoomChanged(to.scale)
+                                } else {
+                                    // FLOW-4 (#713): 160 ms sine in-out around the
+                                    // tapped point (VIEW:V20). Zooming in locks the
+                                    // pager at once; zooming out keeps it locked
+                                    // until the photo is back at fit.
+                                    if (to.scale > from.scale) latestZoomChanged(to.scale)
+                                    doubleTapZoom[0] = launch {
+                                        try {
+                                            animate(0f, 1f, animationSpec = tween(
+                                                AtlasMotion.DOUBLE_TAP_ZOOM_MS,
+                                                easing = AtlasMotion.SineInOut70)
+                                            ) { progress, _ ->
+                                                zoomPose = viewerDoubleTapFrame(from, to,
+                                                    tap.x, tap.y,
+                                                    viewport.width, viewport.height,
+                                                    decodedSize.width, decodedSize.height,
+                                                    progress)
+                                            }
+                                        } finally {
+                                            latestZoomChanged(zoomPose.scale)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
                 // Raw pointerInput gestures do not supply TalkBack with an
                 // activation action. Expose the same chrome toggle, even in
@@ -1422,6 +1710,7 @@ private fun PhotoPage(
                         this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
                         this[ViewerPhotoSharpAtKey] = sharpAt
                         this[ViewerPhotoSettledAtKey] = settledAt
+                        if (zoomPoseProbe) this[ViewerZoomPoseKey] = zoomPose
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
                         onClick(label = if (chromeVisible) "Hide gallery controls"
@@ -1441,6 +1730,7 @@ private fun PhotoPage(
                 ViewerPhotoPreview(media,
                     Modifier.fillMaxSize().clearAndSetSemantics {},
                     onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    motionProbe = motionProbe, pageIndex = pageIndex,
                     onFirstFrame = {
                         previewFailed = false
                         if (firstFrameAt == 0L) firstFrameAt = System.nanoTime()
@@ -1449,6 +1739,7 @@ private fun PhotoPage(
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
                     val request = remember(media, epoch, imageRevision) {
+                        motionProbe?.baseRequested(pageIndex)
                         viewerBaseRequestOrNull(context, media, epoch, forceFresh, imageRevision,
                             requireKey = false)!!
                     }
@@ -1460,7 +1751,10 @@ private fun PhotoPage(
                             previewFailed = false
                             decodedSize = IntSize(result.result.image.width, result.result.image.height)
                             if (sharpAt == 0L) sharpAt = System.nanoTime()
-                        })
+                            onGainmapDecoded(imageRevision, viewerImageHasGainmap(result.result.image))
+                        },
+                        // A failed decode is ordinary SDR, never a kept older fact.
+                        onError = { onGainmapDecoded(imageRevision, false) })
                     // PERF-32 (#334): full-resolution tiles over this base
                     // once the photo is magnified past what 2400 px can show.
                     ViewerRegionTileLayer(
@@ -1501,13 +1795,15 @@ private fun ViewerPhotoPreview(
     media: MediaRecord, modifier: Modifier,
     onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
     onDecodeError: () -> Unit,
-    forceFresh: Boolean, refreshRevision: Long
+    forceFresh: Boolean, refreshRevision: Long,
+    motionProbe: ViewerFilmstripMotionProbe?, pageIndex: Int
 ) {
     val context = LocalContext.current
     val epoch = LocalGalleryPublicationEpoch.current
     // An editor return must show its new pixels, never an older copy.
     val instant = LocalViewerInstantOpen.current && !forceFresh
     val request = remember(media, epoch, forceFresh, refreshRevision, instant) {
+        motionProbe?.previewRequested(pageIndex)
         val preview = mediaPreviewRequest(context, media, ViewerInstantPreview.VIEWER_PREVIEW_PIXELS,
             epoch, forceFresh, refreshRevision)
         val cache = if (instant) SingletonImageLoader.get(context).memoryCache else null
@@ -1532,8 +1828,10 @@ private fun ViewerPhotoPreview(
         contentScale = ContentScale.Fit, modifier = modifier,
         onState = { state ->
             when (state) {
-                is AsyncImagePainter.State.Loading ->
+                is AsyncImagePainter.State.Loading -> {
+                    motionProbe?.previewLoading(pageIndex)
                     if (state.painter != null) currentOnFirstFrame()
+                }
                 is AsyncImagePainter.State.Success -> {
                     currentOnFirstFrame()
                     previewLoaded = true
@@ -1573,6 +1871,15 @@ internal val ViewerPhotoSharpAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhot
  * the decode lands, so a gesture test that zooms earlier races the decode.
  */
 internal val ViewerPhotoDecodedKey = SemanticsPropertyKey<Boolean>("AtlasViewerPhotoDecoded")
+
+/**
+ * FLOW-4 (#713) emulator proof only: when [LocalViewerZoomPoseProbe] is true,
+ * the focused photo surface publishes its live zoom pose, so a test can read
+ * the double-tap animation frame by frame. Off in the app, so no frame of a
+ * real gesture ever touches semantics for it.
+ */
+internal val ViewerZoomPoseKey = SemanticsPropertyKey<ViewerZoomPosition>("AtlasViewerZoomPose")
+internal val LocalViewerZoomPoseProbe = staticCompositionLocalOf { false }
 
 /** Pause when leaving the foreground; never auto-resume on a later event. */
 internal fun viewerVideoMustPause(event: Lifecycle.Event): Boolean =
@@ -1807,6 +2114,13 @@ internal fun VideoPage(
  * gets the shown item and, for a video, the frame time on screen (ms).
  */
 class ViewerFindSimilar(val onFindSimilar: (MediaRecord, Long?) -> Unit)
+
+/** IDS-11 (#478): the viewer's "Swap person" hook, supplied by the host. */
+class ViewerSwapPerson(
+    /** Off main: true when this photo is a supported still image (SwapPersonEligibility). */
+    val eligible: suspend (MediaRecord) -> Boolean,
+    val open: (MediaRecord) -> Unit
+)
 
 /** VS-F2b (#468): the viewer's "Find this person" hook, supplied by the host. */
 class ViewerFaceSearch(
