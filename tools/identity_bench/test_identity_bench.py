@@ -205,7 +205,7 @@ class PasteBack(unittest.TestCase):
         self.assertTrue(np.array_equal(boosted.crop_after, 255 - boosted.crop_before))
         outside = boosted.mask == 0
         self.assertTrue(np.array_equal(boosted.image[outside], source[outside]))
-        self.assertEqual(pipeline.Config("x", boost=2, restore=True).label, "x+boost2+gfpgan")
+        self.assertEqual(pipeline.Config("fake", boost=2, restore=True).label, "fake+boost2+gfpgan")
 
     def test_no_swap_control_changes_almost_nothing(self):
         source = photo()
@@ -221,9 +221,9 @@ class PasteBack(unittest.TestCase):
             self.assertGreater(tools.meter.rows[stage]["peak_rss_mb"], 0)
 
     def test_candidate_labels(self):
-        self.assertEqual(pipeline.Config("x").label, "x")
-        self.assertEqual(pipeline.Config("x", restore=True).label, "x+gfpgan")
-        self.assertEqual(pipeline.Config("x", mask="box", colour=False).label, "x+mask-box+no-colour")
+        self.assertEqual(pipeline.Config("fake").label, "fake")
+        self.assertEqual(pipeline.Config("fake", restore=True).label, "fake+gfpgan")
+        self.assertEqual(pipeline.Config("fake", mask="box", colour=False).label, "fake+mask-box+no-colour")
 
 
 class Identity(unittest.TestCase):
