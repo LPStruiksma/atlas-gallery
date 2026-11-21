@@ -204,7 +204,8 @@ class AtlasRunListener : RunListener() {
         try {
             body()
         } catch (t: Throwable) {
-            Log.w(BASELINE_LOG_TAG, "listener $callback skipped: ${t.javaClass.simpleName}: ${t.message}")
+            Log.w(BASELINE_LOG_TAG, "listener $callback skipped: ${t.javaClass.simpleName}: ${t.message}" +
+                (t.cause?.let { " caused by ${it.javaClass.simpleName}: ${it.message}" } ?: ""))
         }
     }
 
@@ -354,15 +355,22 @@ internal data class DeviceBaseline(
  */
 internal data class Focus(val topPackage: String?, val anrDialog: Boolean) {
     companion object {
-        private val WINDOW = Regex("""Window\{\S+ u\d+ ([^}]*)}""")
-
+        /**
+         * Plain string parsing, no Regex: the first version's pattern ended in
+         * an unescaped `}`, which Android's ICU regex rejects, and the class
+         * failed to load on the emulator (A/B run 44897203737).
+         */
         fun parse(line: String?): Focus {
-            val title = line?.let { WINDOW.find(it)?.groupValues?.get(1)?.trim() }
-                ?: return Focus(topPackage = null, anrDialog = false)
+            val start = line?.indexOf("Window{") ?: -1
+            val end = if (start < 0) -1 else line!!.indexOf('}', start)
+            if (end < 0) return Focus(topPackage = null, anrDialog = false)
+            // "<hash> u<user> <title>"
+            val parts = line!!.substring(start + "Window{".length, end).split(' ', limit = 3)
+            val title = parts.getOrNull(2)?.trim().orEmpty()
             val anr = title.startsWith("Application Not Responding", ignoreCase = true) ||
                 title.contains("isn't responding", ignoreCase = true)
             val pkg = title.substringBefore('/', missingDelimiterValue = "")
-                .takeIf { '/' in title && it.isNotBlank() && ' ' !in it }
+                .takeIf { it.isNotBlank() && ' ' !in it }
             return Focus(topPackage = if (anr) null else pkg, anrDialog = anr)
         }
     }

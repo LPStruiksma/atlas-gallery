@@ -43,6 +43,8 @@ test('a test that leaves nothing behind costs no accessibility window reads (#87
     'interactive windows only to answer a dialog that was found');
   assert.match(listener, /startsWith\("mInputShown=true"\)/, 'the keyboard flag that caught the window-list miss');
   assert.match(listener, /"dumpsys window displays"/);
+  const focus = listener.slice(listener.indexOf('internal data class Focus('));
+  assert.doesNotMatch(focus, /Regex\(/, 'no Regex in Focus: an unescaped } failed to load on Android (run 44897203737)');
 });
 
 test('the keyboard is hidden before a display reset, and a listener never fails a test', () => {
