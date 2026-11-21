@@ -2,6 +2,7 @@ package nl.atlas.gallery.featurepeopleui
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
 import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
@@ -156,6 +157,10 @@ class SamePersonQueueCursor(
                 index.forGroup(group, named)
                 for (q in named) {
                     val own = confirmed[q.person] ?: continue
+                    // A confirmed named person can also be mixed; never ask
+                    // about that side until its actual membership changes.
+                    if (own.size in MixedGroup.MIN_MEMBERS..MixedGroup.MAX_MEMBERS &&
+                        MixedGroup.of(own) in clusters.reviews.mixedGroups) continue
                     bucket += Scored(SamePersonQueueItem(PersonPageTarget.Named(q.person),
                         state.names[q.person], own.size, sample(own),
                         group.id, size, sample(group.members)), q.strength, q, null)
@@ -220,6 +225,16 @@ fun samePersonQueueMixed(
     if (subject && subjectSide is PersonPageTarget.Unnamed) groups += subjectSide.cluster
     if (other) groups += item.other
     return if (groups.isEmpty()) null else PeopleReviewAction.MarkMixedGroups(groups)
+}
+
+/** HUB-1C: either or both named/unnamed sides, in one all-or-nothing intent. */
+fun samePersonQueueMixedSides(
+    item: SamePersonQueueItem, subject: Boolean, other: Boolean
+): PeopleReviewAction.MarkMixedSides? {
+    val sides = LinkedHashSet<PersonPageTarget>()
+    if (subject) sides += item.subject
+    if (other) sides += PersonPageTarget.Unnamed(item.other)
+    return if (sides.isEmpty()) null else PeopleReviewAction.MarkMixedSides(sides)
 }
 
 /** The owner's answer to [item]: the same action its person page would send. */

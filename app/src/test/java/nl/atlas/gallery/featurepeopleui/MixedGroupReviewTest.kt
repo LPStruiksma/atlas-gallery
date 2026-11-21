@@ -135,6 +135,53 @@ class MixedGroupReviewTest {
         assertEquals(1, samePersonQueue(marked).open)
     }
 
+    @Test fun typedNamedAndBothSideMarksAreAtomicAndPrivacyPartitioned() {
+        val fresh = state()
+        val person = PersonKey("native-person")
+        val named = requireNotNull(reviewPeopleCluster(fresh,
+            PeopleReviewAction.NameCluster(fresh.group(6).id, person, "Test person")))
+        val question = samePersonQueue(named).items.first {
+            it.subject == PersonPageTarget.Named(person)
+        }
+        val namedOnly = requireNotNull(samePersonQueueMixedSides(question,
+            subject = true, other = false))
+        assertEquals(setOf(PersonPageTarget.Named(person)), namedOnly.sides)
+        val marked = requireNotNull(reviewPeopleCluster(named, namedOnly))
+        assertEquals(named.undoHistory.size + 1, marked.undoHistory.size)
+        assertTrue(samePersonQueue(marked).items.none {
+            it.subject == PersonPageTarget.Named(person)
+        })
+        val row = needsSplittingLists(marked).visible.single {
+            it.target == PersonPageTarget.Named(person)
+        }
+        assertEquals(6, row.faces)
+        assertTrue(needsSplittingLists(marked).hidden.isEmpty())
+
+        val hidden = requireNotNull(reviewPeopleCluster(marked,
+            PeopleReviewAction.SetPersonHidden(person, true)))
+        assertTrue(needsSplittingLists(hidden).visible.none {
+            it.target == PersonPageTarget.Named(person)
+        })
+        assertEquals(listOf(row), needsSplittingLists(hidden).hidden)
+        val restored = requireNotNull(reviewPeopleCluster(marked, PeopleReviewAction.Undo))
+        assertTrue(needsSplittingLists(restored).visible.none {
+            it.target == PersonPageTarget.Named(person)
+        })
+
+        val both = requireNotNull(samePersonQueueMixedSides(question,
+            subject = true, other = true))
+        assertEquals(2, both.sides.size)
+        val twice = requireNotNull(reviewPeopleCluster(named, both))
+        assertEquals(named.undoHistory.size + 1, twice.undoHistory.size)
+        assertEquals(2, needsSplittingLists(twice).visible.size)
+        assertNull(samePersonQueueMixedSides(question, subject = false, other = false))
+        // One stale target refuses the complete intent.
+        val stale = PersonPageTarget.Unnamed(FaceClusterId(
+            NativeFaceObservationId("f".repeat(32))))
+        assertNull(reviewPeopleCluster(named, PeopleReviewAction.MarkMixedSides(
+            setOf(PersonPageTarget.Named(person), stale))))
+    }
+
     @Test fun sameInputIsIdempotentAndBadInputMarksNothing() {
         val s = state()
         val once = requireNotNull(mark(s, listOf(s.group(5).id)))
