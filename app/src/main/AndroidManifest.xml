@@ -30,6 +30,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- #573 Phase B: other apps and the camera hand ATLAS photos and videos.
+                 MainActivity re-checks every one (featureintents): content:// only,
+                 provider MIME type, live grant; secure review alone shows over the
+                 lock screen. The filters only make ATLAS a listed choice. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="image/*" />
+                <data android:scheme="content" android:mimeType="video/*" />
+            </intent-filter>
         </activity>
         <!-- Export #45 shares only an explicitly generated aggregate text report. -->
         <provider
