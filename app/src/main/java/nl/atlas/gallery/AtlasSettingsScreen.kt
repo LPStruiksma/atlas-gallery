@@ -86,6 +86,8 @@ internal fun AtlasSettingsScreen(
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
     onClearSearchHistory: () -> Unit = {},
+    /** INSIGHT-1 (#587): opens Library insights; null hides the row. */
+    onLibraryInsights: (() -> Unit)? = null,
     performance: PerformanceAggregates = PerformanceSession.aggregate,
     /** #675: release notes bundled by the signed release job; null in debug builds. */
     changelog: AtlasChangelog? = LocalContext.current.let { c -> remember(c) { AtlasChangelog.load(c) } }
@@ -146,6 +148,10 @@ internal fun AtlasSettingsScreen(
             SettingsActionRow("People numbers", "atlas-people-numbers-open", onPeopleNumbers)
             SettingsActionRow("Export names", "atlas-people-names-export", onExportNames)
             SettingsActionRow("Import names", "atlas-people-names-import", onImportNames)
+        }
+        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
+            SettingsActionRow("Library insights", "atlas-settings-library-insights",
+                onLibraryInsights, "Size by folder, type and year")
         }
         SettingsGroup("Display", "atlas-settings-display") {
             // #662 follows the phone theme. This is a status, not a new preference.
