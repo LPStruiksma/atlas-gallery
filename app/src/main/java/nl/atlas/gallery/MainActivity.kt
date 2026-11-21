@@ -1979,7 +1979,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 // Move picker was up left "Select items" (0) and the target tap
                 // did nothing. Keep the selection on its own list until the new
                 // scope has settled; this effect runs again when it has.
-                if (sortPending || albumSelectionPending || scopedPending) {
+                if (false && (sortPending || albumSelectionPending || scopedPending)) {
                     SelectionRepublicationSeam.observer?.invoke(SelectionRebase(
                         publishedGallery.epoch, selection.count, selection.count, deferred = true))
                     return@LaunchedEffect
