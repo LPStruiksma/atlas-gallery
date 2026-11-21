@@ -490,7 +490,7 @@ COUNTS = [312, 0, 418, 655, 980, 1420, 2210, 1835, 702, 0, 268, 0]
 
 
 def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=True, dense=False,
-                no_geo=False, year="2026", seed=3, grid=False) -> int:
+                no_geo=False, year="2026", seed=3, grid=True) -> int:
     """The atlas slides down over the grid by ``open_frac`` of its full height. Returns its bottom."""
     counts = counts if counts is not None else COUNTS
     full_h = px(560) if places else px(260)
@@ -513,11 +513,15 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     # month bars, height ~ count, tallest labelled so the scale reads without ambiguity
     mx = max(counts) or 1
     f_m = s.fonts.get("sans", 600, px(12) * min(s.font_scale, 1.6))
-    per_row = 6 if grid else 12
+    # #817: one 12-column row makes essential taps 29 dp wide. Keep the
+    # 2 x 6, 58.7 x 80 dp layout normative in every open atlas state.
+    if not grid:
+        raise ValueError("L6 single-row 29 dp targets are not accessible")
+    per_row = 6
     bw = (DEVICE_W - px(2 * SIDE)) / per_row
     bx0 = px(SIDE)
-    bar_max = px(44) if grid else px(96)
-    row_bases = [px(118), px(198)] if grid else [px(170)]  # grid rows: 80 dp pitch, boxes touch, never overlap
+    bar_max = px(44)
+    row_bases = [px(118), px(198)]  # 80 dp pitch, targets touch but do not overlap
     month_boxes = []
     place_pts: dict[str, tuple[float, float]] = {}
     for i, c in enumerate(counts):
@@ -530,8 +534,7 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
             ld.line([x + px(4), base_y, x + bw - px(4), base_y], fill=s.t["ink2"], width=px(1))
         else:
             ld.rounded_rectangle([x + px(4), base_y - bh, x + bw - px(4), base_y], radius=px(4), fill=colr)
-        short = s.font_scale > 1.4 and not grid
-        ld.text((x + bw / 2, base_y + px(6)), MONTHS[i][:1] if short else MONTHS[i], font=f_m,
+        ld.text((x + bw / 2, base_y + px(6)), MONTHS[i], font=f_m,
                 fill=s.t["ink"], anchor="ma")
         if i == current:
             r = px(10)
@@ -547,12 +550,30 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
         my0, my1 = int(legend_y + px(24) * min(s.font_scale, 1.6)), full_h - px(24)
         ld.rounded_rectangle([px(SIDE), my0, DEVICE_W - px(SIDE), my1], radius=px(22), fill=s.t["ground"])
         if no_geo:
-            fb = s.fonts.get("sans", 400, px(15) * s.font_scale)
-            ld.text((px(SIDE) + px(16), my0 + px(24)), "No places yet.", font=fb, fill=s.t["ink"])
-            ld.text((px(SIDE) + px(16), my0 + px(24) + px(22) * s.font_scale),
-                    "Photos with a location will appear here.", font=fs2(s), fill=s.t["ink2"])
-            ld.text((px(SIDE) + px(16), my0 + px(24) + px(44) * s.font_scale),
-                    "Turn on location tags in the Camera app.", font=fs2(s), fill=s.t["ink2"])
+            # Wrap long copy at the chosen font scale. One-line 200% copy
+            # previously escaped the map/card right edge.
+            x = px(SIDE) + px(16)
+            width = DEVICE_W - px(SIDE) - px(16) - x
+            yy = my0 + px(18)
+            for copy, font, color in (
+                ("No places yet.", s.fonts.get("sans", 600, px(15) * s.font_scale), s.t["ink"]),
+                ("Photos with a location will appear here.", fs2(s), s.t["ink2"]),
+                ("Turn on location tags in the Camera app.", fs2(s), s.t["ink2"]),
+            ):
+                line, lines = "", []
+                for word in copy.split():
+                    attempt = (line + " " + word).strip()
+                    if line and ld.textlength(attempt, font=font) > width:
+                        lines.append(line)
+                        line = word
+                    else:
+                        line = attempt
+                if line:
+                    lines.append(line)
+                for part in lines:
+                    ld.text((x, yy), part, font=font, fill=color)
+                    yy += max(px(18), int(px(18) * s.font_scale))
+                yy += px(8)
         else:
             r = random.Random(seed)
             # schematic dots only: no tiles, no coastline, no coordinates
@@ -589,7 +610,10 @@ def atlas_panel(s: Screen, open_frac: float, *, counts=None, current=10, places=
     s.place_centers = {n: (x, y0 + yy - (full_h - h)) for n, (x, yy) in place_pts.items()}
     if open_frac >= 1:
         for n, (x, yy) in s.place_centers.items():
-            s.target([x - px(9), yy - px(9), x + px(9), yy + px(9)], f"place {n}")
+            # Visible dot is intentionally small; the effective tap target
+            # is 48 dp in both dimensions, including for TalkBack focus.
+            s.target([x - px(24), yy - px(24), x + px(24), yy + px(24)], f"place {n}",
+                     actual=True, show_size=(n == "Coast"))
         for i, (a, b, c, d_) in enumerate(month_boxes):
             s.target([a, y0 + b, c, y0 + d_], f"month {MONTHS[i]}", actual=True, show_size=(i == 0))
     return y0 + h
