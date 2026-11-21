@@ -4,7 +4,7 @@ In **People → ⋮ → Same person?**, each question compares two groups of fac
 
 When either group appears to contain multiple people, choose **Not one person** beneath that side. You can select one or both sides and confirm **Mark this group** or **Mark both groups**. A successful mark records the group as needing a manual split and removes its question from the queue. **Undo** reverses that last successful mark only while no other review has replaced it; it restores the previous queue and count. Marking does not itself split, join, name or move faces.
 
-**People → ⋮ → Needs splitting (N)** opens the groups marked in the currently authorized visible People scope. A named group opens its existing person page; an unnamed group enters the existing manual review flow. This release does not yet deep-link that flow to an individual unnamed group.
+**People → ⋮ → Needs splitting (N)** opens the groups marked in the currently authorized visible People scope. A named group opens its existing person page; an unnamed group opens that group's existing page and manual split controls.
 
 **People → ⋮ → Hidden → ⋮ → Needs splitting** lists marked hidden named people separately, inside Hidden only. The ordinary People count and list never include hidden people, and the Hidden entry gives no hidden count. Changing visibility or photo access re-evaluates the lists from the current authorized review state.
 
