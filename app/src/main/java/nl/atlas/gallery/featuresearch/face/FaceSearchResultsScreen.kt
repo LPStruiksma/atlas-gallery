@@ -1,6 +1,7 @@
 package nl.atlas.gallery.featuresearch.face
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -473,5 +474,18 @@ private fun ResultTile(hit: FaceSearchHit, tag: String, onClick: () -> Unit) {
         }
         .clickable(onClick = onClick)) {
         MediaPreview(hit.record, Modifier.fillMaxSize(), ContentScale.Crop, 256)
+        // Under Screen sort, probable hits are interleaved with confirmed ones.
+        // A 1dp outline alone is not a visible confidence-tier distinction.
+        if (possible) {
+            Text("Possible",
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .testTag("atlas-face-result-possible-label"),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
