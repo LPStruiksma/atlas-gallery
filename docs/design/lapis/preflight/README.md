@@ -8,7 +8,7 @@
 | [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
 | [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay | 18 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
-| [brand-l8-justified.png](brand-l8-justified.png) | L8 justified day rows | 16 |
+| [brand-l8-justified.png](brand-l8-justified.png) | L8 justified day rows; pinch storyboard and month/year signature repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) | 26 |
 
 Each sheet opens with two full-scale 1080 × 2340 frames (light 100 % and dark 200 %), then labelled state panels (the same full frames at 50 %), then tables: a dated **source → observed convention → Atlas adaptation/deviation** row set, and the unit's copy, TalkBack, tap-path, gesture or layout rules. [manifest.json](manifest.json) records every sheet's size, SHA-256, panel codes, font hashes and Pillow version.
 
@@ -42,3 +42,24 @@ python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a
 ```
 
 Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
+
+## L8 pinch anchor and month/year signature (#836)
+
+The [blocking L8 preflight](https://github.com/LPStruiksma/atlas-gallery/issues/661#issuecomment-7056128733) found that the #770 frames C1–C4 claimed "same screen point" while the tile only kept its Y, and that month/year frames showed no selection sphere or thumb. The repaired sheet replaces both.
+
+**Geometry is computed, not drawn by hand.** `tools/design/lapis_screens.py` builds one synthetic 970-item library (November 268, September 702, as in the L6 counts), lays it out as justified day rows and edge-aligned 4- and 8-column square grids, and `storyboard()` derives every pinch step. The frames, their annotation cards and the measured table on the sheet print those numbers; `tools/design/tests/test_lapis_l8_pinch.py` asserts them.
+
+**Rule drawn:** the pinch keeps the media key under the focal point F (the two-finger centroid) and restores the same relative height inside it by choosing the new scroll offset, clamped to the content. A key's column in a square grid is its position in the month modulo the column count, so its horizontal position is quantized.
+
+| Frames | What it shows | Measured |
+|---|---|---|
+| C1–C4 | Pinch in day → month → year on key 88 | same key under F at every step; height residual 0 px; centre shift X −144 px (month), −68 px (year) |
+| C5–C7 | Pinch out year → month → day, F unchanged | key under F is still 88; day scroll returns to exactly 8354 px |
+| C8–C10 | Interior key 83 (wide photo mid-row) | height kept, but the fixed column moves it +388 px (month) and −475 px (year): F then rests on keys 82 and 84 |
+| C11, C12 | Top and bottom of the library | scroll clamps at 0 / at the end; the key lands −31 px / +53 px from its focal height |
+| B1–B4 | Month and year, light 100 % and dark 200 % | ordered spheres 1–3 with 2 dp white halo, video badge (month) or play glyph (year), 46 dp "Nov" thumb in a 48 dp target, scaled headings |
+| E3 | Month loading, dark 200 % | surface squares hold their place; selection and thumb already work |
+
+**Measured constraint.** 4- and 8-column tile centres sit at odd/8 and odd/16 of the width and never coincide. One stationary F can stay on the same key in both month and year only for keys in year columns 0 and 7 (`same_point_columns()`); elsewhere the key keeps its height and slides to its column. No frame or caption claims a 0 px centre shift.
+
+**Open for Strategy before the re-preflight:** (1) accept the invariant "same photo at the same height under the fingers; it slides to its column" for #661, or choose another; (2) year tiles are 46.25 dp, below 48 dp when a tile tap toggles selection (flagged in B3/B4): keep 8 columns or use 7 (52.6 dp). Runtime motion stays with [FLOW-2 #712](https://github.com/LPStruiksma/atlas-gallery/issues/712); S24+ frames, TalkBack and the 150k FrameMetrics fling gate stay with the #661 build.

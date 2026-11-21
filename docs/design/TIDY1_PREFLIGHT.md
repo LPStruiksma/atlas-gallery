@@ -1,5 +1,7 @@
 # TIDY-1 design preflight · rev 1 · 2026-11-21
 
+> **Revision 2 preflight correction:** [TIDY1_PREFLIGHT_REV2.md](TIDY1_PREFLIGHT_REV2.md) supersedes this revision's confirmation copy, palette and exception-state frames. The source/Keep/progress safety contract below remains applicable.
+
 Status: **proposal, not an implemented screen or measured Android render**. Owner issue: [#577](https://github.com/LPStruiksma/atlas-gallery/issues/577). Preflight finding: [review #7052459038](https://github.com/LPStruiksma/atlas-gallery/issues/577#issuecomment-7052459038). This revision supplies synthetic annotated S24+ frames for independent Design preflight; implementation and exact-head emulator evidence still follow a separate Dev/Review turn.
 
 Owner words: "what features or mechanics or optimizations, or just otherwise app functionalities, we can take from other very cool, highly rated or innovative gallery apps and introduce into Atlas".
