@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
@@ -52,11 +53,13 @@ class UsageSettingsEvidenceTest {
     private var fontScale by mutableStateOf(1f)
     private var enabled by mutableStateOf(false)
     private var hasData by mutableStateOf(false)
+    /** False models Settings opened before the recorder finished loading: no state to show yet. */
+    private var ready by mutableStateOf(true)
     private var exportResult = UsageExportFile.Result.SHEET_OPENED
     private var exports = 0
     private var switchCalls = mutableListOf<Boolean>()
 
-    private fun show() {
+    private fun show(waitForRows: Boolean = true) {
         compose.setContent {
             val base = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
@@ -70,7 +73,7 @@ class UsageSettingsEvidenceTest {
                                 versionName = "0.0.0-test", onVisualIndex = {},
                                 onPeopleNumbers = {}, onPhotoDetails = {}, onImportV4 = {},
                                 onLinkV4 = {}, onDiagnostics = {},
-                                usageEnabled = enabled, usageHasData = hasData,
+                                usageEnabled = if (ready) enabled else null, usageHasData = hasData,
                                 onUsageEnabled = { switchCalls += it; enabled = it },
                                 onExportUsage = { exports++; exportResult },
                                 onClearUsage = { hasData = false })
@@ -81,7 +84,7 @@ class UsageSettingsEvidenceTest {
         }
         compose.waitForNode(hasTestTag("atlas-settings-advanced"))
         compose.onNodeWithTag("atlas-settings-advanced").performScrollTo().performClick()
-        compose.waitForNode(hasTestTag("atlas-settings-usage-record"))
+        if (waitForRows) compose.waitForNode(hasTestTag("atlas-settings-usage-record"))
     }
 
     /** Scrolls so the three rows are fully in view, ending at Clear usage. */
@@ -160,4 +163,20 @@ class UsageSettingsEvidenceTest {
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertHasNoClick() =
         this.assert(androidx.compose.ui.test.SemanticsMatcher.keyNotDefined(
             androidx.compose.ui.semantics.SemanticsActions.OnClick))
+
+    /** Review #890: Settings opened before the recorder is ready shows no usage rows, then all three. */
+    @Test fun rowsAppearOnceTheRecorderIsReady() {
+        ready = false
+        show(waitForRows = false)
+        compose.onNodeWithTag("atlas-settings-export-diagnostics").performScrollTo()
+        compose.waitForIdle()
+        listOf("record", "export", "clear").forEach {
+            compose.onNodeWithTag("atlas-settings-usage-$it").assertDoesNotExist()
+        }
+        compose.runOnIdle { ready = true }
+        compose.waitForNode(hasTestTag("atlas-settings-usage-record"))
+        scrollToRows()
+        compose.onNodeWithTag("atlas-settings-usage-record").assertIsOff()
+        compose.onNodeWithTag("atlas-settings-usage-export").assertIsDisplayed()
+    }
 }
