@@ -7,6 +7,7 @@ import kotlin.math.floor
 import nl.atlas.gallery.featureface.AndroidBitmapFaceFrame
 import nl.atlas.gallery.featureface.BoundedFaceFrame
 import nl.atlas.gallery.featureface.FaceEmbeddedDetection
+import nl.atlas.gallery.featureface.FaceQualityScoredDetection
 import nl.atlas.gallery.featureface.FaceEmbeddingReservation
 import nl.atlas.gallery.featureface.FaceInferenceReservation
 import nl.atlas.gallery.featureface.FaceMediaKey
@@ -34,8 +35,9 @@ import nl.atlas.gallery.featurepersistence.IndexedMedia
  * never the legacy box-only locator method.
  */
 class FaceEmbeddingPipeline(
-    private val detectorVersion: String,
-    private val embedderVersion: String,
+    val detectorVersion: String,
+    val embedderVersion: String,
+    private val qualityOnly: ((BoundedFaceFrame) -> List<FaceQualityScoredDetection>)? = null,
     private val infer: (BoundedFaceFrame) -> List<FaceEmbeddedDetection>
 ) : OnDeviceFaceLocator {
     private val slot = ReentrantLock()
@@ -48,6 +50,15 @@ class FaceEmbeddingPipeline(
         error("Embedding pipeline must use its exclusive detectAndEmbed reservation")
 
     override fun canStart(): Boolean = !slot.isLocked
+
+    val supportsQualityOnly: Boolean get() = qualityOnly != null
+
+    /** Same exclusive YuNet/SFace inference slot; a backfill never re-embeds. */
+    fun scoreWithoutEmbeddings(frame: BoundedFaceFrame): List<FaceQualityScoredDetection>? {
+        val scorer = qualityOnly ?: return null
+        if (!slot.tryLock()) return null
+        try { return scorer(frame) } finally { slot.unlock() }
+    }
 
     override fun tryReserve(): FaceInferenceReservation? {
         if (!slot.tryLock()) return null
@@ -76,11 +87,22 @@ class FaceEmbeddingPipeline(
     companion object {
         fun forOnnx(detector: OnnxFaceDetector, embedder: OnnxFaceEmbedder): FaceEmbeddingPipeline {
             require(embedder.embedderVersion == SFaceModel.EMBEDDER_VERSION)
-            return FaceEmbeddingPipeline(detector.detectorVersion, embedder.embedderVersion) { frame ->
+            return FaceEmbeddingPipeline(detector.detectorVersion, embedder.embedderVersion,
+                qualityOnly = { frame ->
+                    val owned = frame as? AndroidBitmapFaceFrame
+                        ?: throw IllegalArgumentException("Quality backfill needs a bounded bitmap")
+                    detector.detectFaces(owned.bitmap).map { face ->
+                        FaceQualityScoredDetection(FacePixelBounds(
+                            floor(face.left.toDouble()).toInt(), floor(face.top.toDouble()).toInt(),
+                            ceil(face.right.toDouble()).toInt(), ceil(face.bottom.toDouble()).toInt()
+                        ), embedder.scoreWithoutEmbedding(owned.bitmap, face, owned.sourceScale))
+                    }
+                }) { frame ->
                 val bitmap = (frame as? AndroidBitmapFaceFrame)?.bitmap
                     ?: throw IllegalArgumentException("SFace needs a private bounded bitmap")
                 detector.detectFaces(bitmap).map { face ->
-                    val (embedding, quality) = embedder.embedWithQuality(bitmap, face)
+                    val (embedding, quality) = embedder.embedWithQuality(bitmap, face,
+                        (frame as AndroidBitmapFaceFrame).sourceScale)
                     FaceEmbeddedDetection(FacePixelBounds(
                         floor(face.left.toDouble()).toInt(), floor(face.top.toDouble()).toInt(),
                         ceil(face.right.toDouble()).toInt(), ceil(face.bottom.toDouble()).toInt()

@@ -60,6 +60,20 @@ object AtlasTokens {
             val DarkSurface = Color(0xFF17191F)
             val DarkAccent = Viewer.SelectionAccent
         }
+        /**
+         * AI Edit editor (#431, Quiet Frame v3): black viewer ground and the lapis action slab.
+         * Local here until the Lapis Atlas tokens land (BRAND-L2); then these map onto them.
+         */
+        object AiEdit {
+            val Ground = Color(0xFF000000)
+            val Slab = Color(0xFF3448E0)
+            val OnBrand = Color(0xFFFFFFFF)
+            val OnBrandSecondary = Color(0xFFDCE1FF)
+            val Surface = Color(0xFF14152A)
+            val Ink = Color(0xFFF2F3F8)
+            val InkSecondary = Color(0xFF9AA0B8)
+            val BrandText = Color(0xFF8C9BFF)
+        }
         object Light {
             val PrimaryContainer = Color(0xFFDCE6FF)
             val OnPrimaryContainer = Color(0xFF0B2A66)
@@ -101,6 +115,8 @@ object AtlasTokens {
     object Radii {
         val Cover = 20.dp
         val EmptyVisual = 28.dp
+        /** Quiet Frame bottom sheet, top corners only. */
+        val Sheet = 28.dp
         val GridTile = 3.dp
         val PersonCard = 20.dp
         val PersonCover = 18.dp

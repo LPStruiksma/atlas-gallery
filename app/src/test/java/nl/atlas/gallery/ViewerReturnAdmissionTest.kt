@@ -43,4 +43,11 @@ class ViewerReturnAdmissionTest {
         assertTrue(viewerReturnCanApply(intent, source, 0, true, source.lastIndex, source.size, 42L))
         assertFalse(viewerReturnCanApply(intent, copied, 0, true, copied.lastIndex, copied.size, 42L))
     }
+
+    @Test fun visibleItemKeepsScrollOffsetOffscreenItemSeeks() {
+        assertTrue(viewerReturnOverlapsViewport(300, 200, 0, 1000))
+        assertTrue(viewerReturnOverlapsViewport(900, 200, 0, 1000))
+        assertFalse(viewerReturnOverlapsViewport(1000, 200, 0, 1000))
+        assertFalse(viewerReturnOverlapsViewport(-300, 200, 0, 1000))
+    }
 }

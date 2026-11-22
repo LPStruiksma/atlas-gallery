@@ -21,11 +21,8 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.printToString
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -57,6 +54,11 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Rule
 import org.junit.rules.ExternalResource
 import org.junit.rules.RuleChain
@@ -221,10 +223,27 @@ class PeopleDiscoveryHostTest {
         assertEquals(startsAfter, scheduler.starts.get())
     }
 
+    @Test fun aggregateDiagnosticsAreOptedInAndGrantFenced() {
+        val h = host()
+        assertEquals(false, h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").dirty)
+        h.start("scope", inventory)
+        val observed = h.aggregateDiagnostics("scope")
+        assertEquals(true, observed.optedIn)
+        assertNotNull(observed.dirty)
+        assertNotNull(observed.pending)
+        assertNull(h.aggregateDiagnostics("another-scope").dirty)
+        granted = false
+        assertNull(h.aggregateDiagnostics("scope").optedIn)
+        assertNull(h.aggregateDiagnostics("scope").pending)
+    }
+
     // The Compose rule must dispose its content before the SQLite fixture closes.
     // JUnit @After runs *before* rule teardown; closing there races the review
-    // screen's outstanding database reads on API35.
-    @get:Rule val rules: RuleChain = RuleChain.outerRule(object : ExternalResource() {
+    // screen's outstanding database reads on API35. No keyboard slides up:
+    // these tests are about naming and scans, not layout above the keyboard.
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.None))
+        .around(object : ExternalResource() {
         override fun after() {
             PeopleScanWorkRuntime.clear()
             if (::store.isInitialized) store.close()
@@ -234,34 +253,14 @@ class PeopleDiscoveryHostTest {
 
     private fun batch() = runBlocking { runPeopleScanBatch(target) { false } }
 
-    /** A timeout names what was awaited and dumps the screen, so CI logs say why. */
-    private fun waitFor(label: String, condition: () -> Boolean) {
-        try {
-            compose.waitUntil(20_000, condition)
-        } catch (e: Throwable) {
-            val tree = runCatching { compose.onRoot().printToString() }.getOrDefault("?")
-            throw AssertionError("Timed out waiting for $label. Screen:\n$tree", e)
-        }
-    }
-
-    private fun waitForText(text: String) = waitFor("text '$text'") {
-        compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
-    }
-
     /** #643: the scan count is the progress line's state, not text on screen. */
-    private fun waitForProgress(line: String) = waitFor("progress '$line'") {
-        compose.onAllNodes(hasTestTag("atlas-people-progress-line") and
-            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, line))
-            .fetchSemanticsNodes().isNotEmpty()
-    }
+    private fun progress(line: String) = hasTestTag("atlas-people-progress-line") and
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, line)
 
-    /** #643: scan and review actions sit in People ⋮. */
+    /** #643: scan and review actions sit in People ⋮, a popup: wait for the item (rule 5). */
     private fun openMenuFor(tag: String) {
-        waitFor("⋮") { compose.onAllNodesWithTag("atlas-header-more")
-            .fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("atlas-header-more").performClick()
-        waitFor("menu item $tag") { compose.onAllNodesWithTag(tag)
-            .fetchSemanticsNodes().isNotEmpty() }
+        compose.tap(hasTestTag("atlas-header-more"))
+        compose.waitForNode(hasTestTag(tag), WAIT_MS)
     }
 
     @Test fun peopleUiScansWeakMetadataPhotoWithoutAttentionBanner() {
@@ -282,14 +281,14 @@ class PeopleDiscoveryHostTest {
                 onResumeDiscovery = discovery.onResume
             )
         }
-        waitForText("Discover faces")
-        compose.onNodeWithText("Discover faces").performClick()
-        waitFor("weak photo scanner start") { scheduler.starts.get() == 1 }
-        waitForProgress("Starting · 0 of 1")
+        compose.waitForNode(hasText("Discover faces", substring = true), WAIT_MS)
+        compose.tap(hasText("Discover faces"))
+        compose.awaitThat("weak photo scanner start", WAIT_MS) { scheduler.starts.get() == 1 }
+        compose.waitForNode(progress("Starting · 0 of 1"), WAIT_MS)
         assertEquals(1, host.status(grant).provenance!!.weakPhotoRows)
         assertEquals(1, host.status(grant).provenance!!.sourcePhotoRows)
         assertEquals(1, batch()!!.photosIndexed)
-        waitFor("weak photo counted") { host.status(grant).ui.processed == 1 }
+        compose.awaitThat("weak photo counted", WAIT_MS) { host.status(grant).ui.processed == 1 }
         assertEquals(1, decoded.get())
         assertTrue(compose.onAllNodesWithText("Face discovery needs attention")
             .fetchSemanticsNodes().isEmpty())
@@ -311,14 +310,14 @@ class PeopleDiscoveryHostTest {
         }
 
         // Page is loaded before any batch has produced a face.
-        waitForText("No unknown-face observations are awaiting review.")
+        compose.waitForNode(hasText("No unknown-face observations are awaiting review.", substring = true), WAIT_MS)
         compose.onAllNodesWithTag("atlas-unknown-identity-group")
             .fetchSemanticsNodes().let { assertTrue(it.isEmpty()) }
 
         drain()
         assertEquals("scan stays in the same grant/index epoch", firstEpoch,
             host.displayEpoch("gallery-7"))
-        waitFor("new face groups on the already-open review") {
+        compose.awaitThat("new face groups on the already-open review", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-unknown-identity-group")
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -350,14 +349,14 @@ class PeopleDiscoveryHostTest {
         }
 
         // Nothing runs before the explicit opt-in.
-        waitForText("Discover faces")
+        compose.waitForNode(hasText("Discover faces", substring = true), WAIT_MS)
         assertNull("no host session before opt-in", batch())
         assertEquals(0, scheduler.starts.get())
         assertEquals(0, decoded.get())
 
-        compose.onNodeWithText("Discover faces").performClick()
-        waitFor("scheduler start") { scheduler.starts.get() == 1 }
-        waitForProgress("Starting · 0 of 10")
+        compose.tap(hasText("Discover faces"))
+        compose.awaitThat("scheduler start", WAIT_MS) { scheduler.starts.get() == 1 }
+        compose.waitForNode(progress("Starting · 0 of 10"), WAIT_MS)
         // #664: pause/resume moved to Settings; the scan keeps progressing
         // without opening the old People overflow control here.
 
@@ -367,7 +366,7 @@ class PeopleDiscoveryHostTest {
         assertTrue("batch indexed photos: $first", first!!.photosIndexed in 1..8)
         assertTrue(first.stop == FaceBatchStop.PHOTO_LIMIT || first.stop == FaceBatchStop.TIME_LIMIT)
         assertEquals(1, scheduler.nexts.get())
-        waitForProgress("Starting · ${first.photosIndexed} of 10")
+        compose.waitForNode(progress("Starting · ${first.photosIndexed} of 10"), WAIT_MS)
 
         // Drain: the last batch publishes clusters (scanFinished) and chains nothing.
         var stop = first.stop
@@ -383,14 +382,14 @@ class PeopleDiscoveryHostTest {
 
         // #516/#643/#46: a drained scan keeps its truthful Finished status,
         // but the animated progress bar is reserved for active work.
-        waitForProgress("Finished · 10 of 10")
-        waitFor("animated progress bar gone") {
+        compose.waitForNode(progress("Finished · 10 of 10"), WAIT_MS)
+        compose.awaitThat("animated progress bar gone", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-people-progress")
                 .fetchSemanticsNodes().isEmpty()
         }
         openMenuFor("atlas-people-review")
-        compose.onNodeWithTag("atlas-people-review").performClick()
-        waitFor("unknown identity groups") {
+        compose.tap(hasTestTag("atlas-people-review"))
+        compose.awaitThat("unknown identity groups", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-unknown-identity-group")
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -407,11 +406,14 @@ class PeopleDiscoveryHostTest {
         // Revoke: grant gone. Worker refused, store hides the epoch, UI drops review.
         granted = false
         grant = null
-        waitFor("scheduler cancel on revoke") { scheduler.cancels.get() >= 1 }
+        compose.awaitThat("scheduler cancel on revoke", WAIT_MS) { scheduler.cancels.get() >= 1 }
+        // revoke() cancels the scheduler before it invalidates the store, on
+        // the publication's IO thread: wait for that step too, then assert.
+        compose.awaitThat("store hides the epoch on revoke", WAIT_MS) { store.progress(epoch) == null }
         assertNull(batch())
         assertNull(store.progress(epoch))
         assertNull(store.clusterState(epoch))
-        waitFor("unknown groups hidden after revoke") {
+        compose.awaitThat("unknown groups hidden after revoke", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-unknown-identity-group")
                 .fetchSemanticsNodes().isEmpty()
         }
@@ -470,17 +472,17 @@ class PeopleDiscoveryHostTest {
                 )
             }
         }
-        waitForText("Discover faces")
-        compose.onNodeWithText("Discover faces").performClick()
-        waitFor("scheduler start") { scheduler.starts.get() == 1 }
+        compose.waitForNode(hasText("Discover faces", substring = true), WAIT_MS)
+        compose.tap(hasText("Discover faces"))
+        compose.awaitThat("scheduler start", WAIT_MS) { scheduler.starts.get() == 1 }
         drain()
         assertEquals(10, decoded.get())
         val epoch = host.displayEpoch("gallery-7")!!
 
         // The identity section is editable: no read-only note, the rescan note instead.
         openMenuFor("atlas-people-review")
-        compose.onNodeWithTag("atlas-people-review").performClick()
-        waitFor("unknown identity groups") {
+        compose.tap(hasTestTag("atlas-people-review"))
+        compose.awaitThat("unknown identity groups", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-unknown-identity-group")
                 .fetchSemanticsNodes().isNotEmpty()
         }
@@ -489,15 +491,19 @@ class PeopleDiscoveryHostTest {
         val group = host.reviewPage("gallery-7")!!.clusters!!.clusters.unknownClusters.first()
         val person = PersonKey("native-" + group.id.anchor.localHex)
 
-        compose.onAllNodesWithText("Name this person")[0].performTextInput("Synthetic Ada")
-        compose.onAllNodesWithText("Create person")[0].performClick()
-        waitFor("name committed") {
+        // Type into the first group's name field, then tap its Create: the
+        // only enabled one, since the other groups have no name.
+        val nameField = compose.onAllNodesWithTag("atlas-group-name")[0].fetchSemanticsNode().id
+        compose.typeText(SemanticsMatcher("the first group's name field") { it.id == nameField },
+            "Synthetic Ada")
+        compose.tap(hasTestTag("atlas-group-create-person") and isEnabled())
+        compose.awaitThat("name committed", WAIT_MS) {
             store.peopleReview(epoch)?.names?.get(person) == "Synthetic Ada"
         }
         val stored = store.peopleReview(epoch)!!
         assertEquals(group.members.toSet(),
             stored.clusters.reviews.confirmed.filterValues { it == person }.keys)
-        waitFor("reviewed person card") {
+        compose.awaitThat("reviewed person card", WAIT_MS) {
             runCatching {
                 compose.onNodeWithTag("atlas-unknown-face-review-screen")
                     .performScrollToNode(hasTestTag("atlas-reviewed-identity-album"))
@@ -510,23 +516,23 @@ class PeopleDiscoveryHostTest {
         // The Undo row is at the end of the list; Back is its first row.
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasText("Back to People"))
-        compose.onNodeWithText("Back to People").performClick()
-        waitFor("people home") {
+        compose.tap(hasText("Back to People"))
+        compose.awaitThat("people home", WAIT_MS) {
             compose.onAllNodesWithTag("atlas-people-home").fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithTag("atlas-people-home")
             .performScrollToNode(hasTestTag("atlas-native-person-album"))
-        compose.onNodeWithTag("atlas-native-person-album").performClick()
-        waitFor("person album") { album != null }
+        compose.tap(hasTestTag("atlas-native-person-album"))
+        compose.awaitThat("person album", WAIT_MS) { album != null }
         val photos = store.personMedia(epoch, person).size
         assertEquals("one synthetic face per photo", group.members.size, photos)
-        waitForText(nl.atlas.gallery.featurepeopleui.personPageCount(photos, 0))
+        compose.waitForNode(hasText(nl.atlas.gallery.featurepeopleui.personPageCount(photos, 0), substring = true), WAIT_MS)
         compose.onNodeWithText("Synthetic Ada").assertExists()
 
         // A new process over the same private store: the opt-in is gone, the
         // name is not. After a fresh opt-in nothing is decoded again.
-        compose.onNodeWithTag("atlas-header-back").performClick()
-        waitFor("album closed") { album == null }
+        compose.tap(hasTestTag("atlas-header-back"))
+        compose.awaitThat("album closed", WAIT_MS) { album == null }
         grant = null
         compose.waitForIdle()
         store.close()
@@ -559,8 +565,9 @@ class PeopleDiscoveryHostTest {
      * #532 equality: the lean People home read equals what the full cluster
      * read shows on People home (the visible ordered list of person + name,
      * via peopleWithPresentFaces + peopleAlbumsForGrant), plus per-person
-     * present-face counts (confirmed plus matched, #580) and the lowest
-     * present confirmed face as cover.
+     * present-face counts (confirmed plus matched, #580) and a cover from
+     * current, published person membership (COVER-2 quality ranking is tested
+     * separately in BestShotCoverAndroidTest).
      */
     private fun assertHomeEqualsFullRead(epoch: String): Map<PersonKey, Int> {
         val home = store.peopleHome(epoch)!!
@@ -573,7 +580,7 @@ class PeopleDiscoveryHostTest {
         val presentByPerson = expected.clusters.reviews.confirmed
             .filterKeys { it in expected.clusters }.entries
             .groupBy({ it.value }, { it.key.localHex })
-        // #580: faces grouping added on its own count too; the cover stays confirmed.
+        // #580: matched members contribute to the face count and can supply a COVER-2 cover.
         val matchedByPerson = expected.clusters.matched.entries
             .groupBy({ it.value.person }, { it.key.localHex })
         val summary = nl.atlas.gallery.featurepeopleui.PeopleHomeSummary(epoch, generation,
@@ -589,9 +596,12 @@ class PeopleDiscoveryHostTest {
             expected.names.keys.associateWith {
                 (presentByPerson[it]?.size ?: 0) + (matchedByPerson[it]?.size ?: 0) },
             home.people.mapValues { it.value.faceCount })
-        assertEquals("cover = lowest present face",
-            expected.names.keys.associateWith { presentByPerson[it]?.minOrNull() },
-            home.people.mapValues { it.value.coverFaceUid })
+        for ((person, entry) in home.people) {
+            val present = presentByPerson[person].orEmpty().toSet() +
+                matchedByPerson[person].orEmpty().toSet()
+            assertTrue("cover must be a current member of $person",
+                entry.coverFaceUid in present)
+        }
         return home.people.mapValues { it.value.faceCount }
     }
 
@@ -636,17 +646,22 @@ class PeopleDiscoveryHostTest {
             assertTrue(store.materializeClusters(epoch))
         }
         val faces = group.members.map { it.localHex }.sorted()
-        // The cover (lowest face) goes stale by source revision.
+        // One member goes stale by source revision; the selected cover may be
+        // any current quality-ranked member, not necessarily the lowest UID.
         db.execSQL("UPDATE embeddings SET source_revision=? WHERE face_uid=?",
             arrayOf("obsolete-revision", faces[0]))
         republish()
         assertEquals(group.members.size - 1, assertHomeEqualsFullRead(epoch)[person])
-        assertEquals(faces[1], store.peopleHome(epoch)!!.people[person]?.coverFaceUid)
+        val currentCover = store.peopleHome(epoch)!!.people[person]?.coverFaceUid
+        assertTrue("invalidated source must not be the cover",
+            currentCover in faces.drop(1))
 
         db.execSQL("UPDATE embeddings SET model_version=? WHERE face_uid=?",
             arrayOf("obsolete-model", faces[1]))
         republish()
         assertEquals(group.members.size - 2, assertHomeEqualsFullRead(epoch)[person])
+        assertTrue("stale model must not be the cover",
+            store.peopleHome(epoch)!!.people[person]?.coverFaceUid in faces.drop(2))
 
         // Live fallback (a file from before the summary) gives the same rows.
         val served = store.peopleHome(epoch)
@@ -938,5 +953,9 @@ class PeopleDiscoveryHostTest {
         var guard = 0
         while (batch()!!.stop != FaceBatchStop.NO_PENDING && guard < 20) guard++
         assertEquals("newest five, newest first", listOf(10, 9, 8, 7, 6), order.toList())
+    }
+
+    private companion object {
+        const val WAIT_MS = 20_000L
     }
 }

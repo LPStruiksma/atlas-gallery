@@ -116,6 +116,21 @@ internal fun encodePersonSelectionForRotation(
 } else emptyList()
 
 /**
+ * Choose only a currently listed member for a named-person portrait. Both
+ * Hidden list and the person header consume this same deterministic fallback.
+ */
+internal fun personPagePortraitFace(
+    faces: List<NativeFaceObservationId>?,
+    manualUid: String?,
+    currentUid: String?,
+    homeCover: NativeFaceObservationId?
+): NativeFaceObservationId? =
+    manualUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: currentUid?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
+        ?: homeCover?.takeIf { faces == null || it in faces }
+        ?: faces?.firstOrNull()
+
+/**
  * The person page (#434 album, #551 Samsung page and actions): the photos and
  * videos holding the person's faces, resolved through the live grant on IO
  * and narrowed on Default, newest first. Every action is computed from the
@@ -169,6 +184,27 @@ internal fun NativePersonAlbumRoute(
                 byUri)
         }
     }
+    // PERF (#119): a named person's photos straight from the per-person index
+    // (one indexed read, each photo resolved through the live grant, no
+    // People snapshot), shown until the full page above is ready. The full
+    // snapshot can take long to load on a large library or while a scan is
+    // publishing; selection actions still wait for it.
+    val quickPerson = request.person
+    val quick by produceState<List<MediaRecord>?>(null, CatalogSourceKey(sorted),
+        galleryGrant, request) {
+        value = null
+        if (quickPerson == null) return@produceState
+        val uris = withContext(Dispatchers.IO) { host.personAlbumUris(galleryGrant, quickPerson) }
+            ?: return@produceState
+        value = withContext(Dispatchers.Default) {
+            val worker = currentCoroutineContext()
+            selectPersonPageMedia(sorted, uris) { worker.ensureActive() }
+        }
+    }
+    // The portrait People shows for this person, known before the snapshot loads.
+    val summaryCover = quickPerson?.let { people?.people?.get(it)?.coverFaceUid }
+        ?.let { uid -> runCatching { NativeFaceObservationId(uid) }.getOrNull() }
+    val cropEpoch = epoch ?: people?.permissionEpoch
     var dialog by remember(request) { mutableStateOf<PersonPageDialog?>(null) }
     // Save only a bounded tuple. A restored snapshot is never actionable
     // until the current grant, People scope and source have been validated.
@@ -182,6 +218,14 @@ internal fun NativePersonAlbumRoute(
     val chosenCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
         value = request.person?.let { person ->
             withContext(Dispatchers.IO) { host.currentPersonCover(galleryGrant, person) }
+        }
+    }
+    // People home intentionally excludes hidden people. Resolve their current
+    // default from the store, with the same grant/model/member fences as home.
+    val displayCover by produceState<String?>(null, galleryGrant, request.target, version, epoch) {
+        value = null
+        value = request.person?.let { person ->
+            withContext(Dispatchers.IO) { host.currentPersonDisplayCover(galleryGrant, person) }
         }
     }
     val scope = rememberCoroutineScope()
@@ -231,7 +275,7 @@ internal fun NativePersonAlbumRoute(
         }
     }
     val visibleMedia = when {
-        media == null -> null
+        media == null -> quick?.takeIf { searchText.isBlank() }
         searchText.isBlank() -> media.items
         else -> currentScopedMediaSearchOrNull(searchSnapshot, media.items, media.items,
             facetPeople, galleryGrant, searchText, AtlasSearchScope.THIS_SCREEN)
@@ -316,14 +360,20 @@ internal fun NativePersonAlbumRoute(
             }
         })
     val portrait: @Composable (NativeFaceObservationId?) -> Unit = { face ->
-        PersonFaceImage(host, epoch, face)
+        PersonFaceImage(host, cropEpoch, face)
     }
+    // Reuse the canonical person cover on rename/merge choice cards too.
+    // An unnamed group without a canonical summary keeps its stable fallback.
+    fun albumPortrait(album: NativePersonAlbum): NativeFaceObservationId? =
+        people?.people?.get(album.person)?.coverFaceUid
+            ?.let { uid -> album.observations.firstOrNull { it.localHex == uid } }
+            ?: album.observations.firstOrNull()
     PersonPageScreen(
         ui = PersonPageUi(
             name = facts?.name ?: (request.target as? PersonPageTarget.Named)?.let { request.name },
             // Keep the timeline/header composition stable while the worker
             // narrows this person's already-authorized list.
-            items = if (media == null) null else visibleMedia.orEmpty(),
+            items = if (media == null) visibleMedia else visibleMedia.orEmpty(),
             hidden = facts?.hidden == true,
             mayHide = request.target is PersonPageTarget.Named
         ),
@@ -332,8 +382,7 @@ internal fun NativePersonAlbumRoute(
         searching = media != null && searchText.isNotBlank() && visibleMedia == null,
         opening = request.opening,
         portrait = { portrait(
-            chosenCover?.let { uid -> faces?.firstOrNull { it.localHex == uid } }
-                ?: facts?.coverFace) },
+            personPagePortraitFace(faces, chosenCover, displayCover, summaryCover)) },
         onBack = onBack,
         onOpen = { record ->
             visibleMedia?.takeIf { shown -> shown.any { it.uri == record.uri } }
@@ -345,7 +394,7 @@ internal fun NativePersonAlbumRoute(
             PersonNameDialog(
                 initial = facts?.name.orEmpty(),
                 suggestions = { typed -> nameSuggestions(state, request.target, typed) },
-                suggestionPortrait = { portrait(it.observations.firstOrNull()) },
+                suggestionPortrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onSave = { typed ->
                     val live = epoch?.let { host.liveReview(it) }
@@ -366,7 +415,7 @@ internal fun NativePersonAlbumRoute(
         mergePicker = {
             PersonMergePicker(
                 people = mergeCandidates(state, request.target),
-                portrait = { portrait(it.observations.firstOrNull()) },
+                portrait = { portrait(albumPortrait(it)) },
                 onDismiss = { dialog = null },
                 onPick = { dialog = PersonPageDialog.ConfirmMerge(it) }
             )
@@ -463,6 +512,12 @@ internal fun PersonFaceImage(host: PeopleDiscoveryHost, epoch: String?, face: Na
     } else PersonPortraitFallback()
 }
 
+/** Use a current authorized winner only while it is in this person's live face list. */
+internal fun hiddenPortraitFace(
+    faces: List<NativeFaceObservationId>, selectedUid: String?
+): NativeFaceObservationId? =
+    personPagePortraitFace(faces, null, selectedUid, null)
+
 /**
  * People ⋮ → Hidden: the hidden named people of the live snapshot. Tapping
  * one opens its page through [onOpen].
@@ -481,9 +536,19 @@ internal fun HiddenPeopleRoute(
         state?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
             hiddenOnly = true) }.orEmpty()
     }
+    val hiddenCovers by produceState<Map<PersonKey, String>>(emptyMap(), version, state) {
+        // Reset on a scope change; never reuse a portrait chosen under an old grant.
+        value = emptyMap()
+        value = withContext(Dispatchers.IO) {
+            host.currentHiddenPersonCovers(state?.permissionEpoch)
+        }
+    }
     HiddenPeopleScreen(
         people = hidden,
-        portrait = { PersonFaceImage(host, state?.permissionEpoch, it.observations.firstOrNull()) },
+        portrait = { album ->
+            PersonFaceImage(host, state?.permissionEpoch,
+                hiddenPortraitFace(album.observations, hiddenCovers[album.person]))
+        },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
         onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }

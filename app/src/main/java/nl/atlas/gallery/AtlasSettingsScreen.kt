@@ -17,21 +17,35 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
 import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
@@ -63,6 +77,9 @@ internal fun AtlasSettingsScreen(
     onReadLastCrash: () -> String? = { null },
     onCopyLastCrash: (String) -> Unit = {},
     onShareLastCrash: (String) -> Unit = {},
+    onReadDiagnostics: suspend () -> String = { "ATLAS diagnostics unavailable" },
+    onCopyDiagnostics: (String) -> Unit = {},
+    onShareDiagnostics: (String) -> Unit = {},
     onExportNames: () -> Unit = {},
     onImportNames: () -> Unit = {},
     onScanNow: (() -> Unit)? = null,
@@ -70,10 +87,48 @@ internal fun AtlasSettingsScreen(
     /** FIND-3a (#182): "Save search history" switch; null hides the Search group. */
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
-    onClearSearchHistory: () -> Unit = {}
+    onClearSearchHistory: () -> Unit = {},
+    /** INSIGHT-1 (#587): opens Library insights; null hides the row. */
+    onLibraryInsights: (() -> Unit)? = null,
+    performance: PerformanceAggregates = PerformanceSession.aggregate,
+    /** USAGE-0 (#173): null hides the three usage rows (previews and old call sites). */
+    usageEnabled: Boolean? = null,
+    usageHasData: Boolean = false,
+    onUsageEnabled: (Boolean) -> Unit = {},
+    onExportUsage: () -> UsageExportFile.Result = { UsageExportFile.Result.NOTHING_RECORDED },
+    onClearUsage: () -> Unit = {},
+    /** #675: release notes bundled by the signed release job; null in debug builds. */
+    changelog: AtlasChangelog? = LocalContext.current.let { c -> remember(c) { AtlasChangelog.load(c) } }
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
+    var performanceExpanded by rememberSaveable { mutableStateOf(false) }
+    // Aggregate is not Compose state; refresh the read-only report once its
+    // latest preview and heap samples have been forwarded.
+    var performanceReadVersion by remember { mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(performanceExpanded) {
+        if (performanceExpanded) {
+            PerformanceSession.updateViewer()
+            PerformanceSession.sampleHeap()
+            performanceReadVersion++
+        }
+    }
+    var exportExpanded by rememberSaveable { mutableStateOf(false) }
+    var exported by remember { mutableStateOf<String?>(null) }
+    var exportFailed by remember { mutableStateOf(false) }
+    if (exportExpanded) {
+        LaunchedEffect(exportExpanded) {
+            exported = null
+            exportFailed = false
+            try {
+                exported = onReadDiagnostics()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                exportFailed = true
+            }
+        }
+    }
     val scanAction = when (scanPhase) {
         FaceDiscoveryPhase.SCANNING -> onPauseScan
         FaceDiscoveryPhase.PAUSED -> onResumeScan
@@ -82,6 +137,12 @@ internal fun AtlasSettingsScreen(
     val scanValue = scanStatusNote ?: if (scanLoading) "Restoring…" else faceScanSettingsValue(
         scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
 
+    val usageSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val usageScope = androidx.compose.runtime.rememberCoroutineScope()
+    fun usageMessage(text: String) {
+        usageScope.launch { usageSnackbar.currentSnackbarData?.dismiss(); usageSnackbar.showSnackbar(text) }
+    }
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .testTag("atlas-settings-screen")
@@ -129,6 +190,25 @@ internal fun AtlasSettingsScreen(
                 if (showPhotoDetails) {
                     SettingsActionRow("Photo details", "atlas-people-details", onPhotoDetails)
                 }
+                SettingsActionRow("Performance", "atlas-settings-performance",
+                    onClick = { performanceExpanded = !performanceExpanded },
+                    value = if (performanceExpanded) "Hide" else "Show")
+                if (performanceExpanded) {
+                    // Explicit read, not a hot polling loop or a MediaStore query.
+                    // #121 brief rev 2: six headline rows first, action details below.
+                    val overview = remember(performanceReadVersion) {
+                        PerformanceReport.overview(performance)
+                    }
+                    val actions = remember(performanceReadVersion) {
+                        PerformanceReport.actions(performance)
+                    }
+                    overview.forEach { SettingsMetricRow(it) }
+                    Text("Action details",
+                        Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)
+                            .testTag("atlas-perf-actions-heading"),
+                        style = MaterialTheme.typography.titleSmall)
+                    actions.forEach { SettingsMetricRow(it) }
+                }
                 SettingsActionRow("Diagnostics", "atlas-settings-diagnostics", onDiagnostics)
                 SettingsActionRow("Last crash", "atlas-settings-last-crash",
                     onClick = { crashExpanded = !crashExpanded },
@@ -154,7 +234,78 @@ internal fun AtlasSettingsScreen(
                         }
                     }
                 }
+                SettingsActionRow("Export diagnostics", "atlas-settings-export-diagnostics",
+                    onClick = { exportExpanded = !exportExpanded },
+                    value = if (exportExpanded) "Hide" else "Show")
+                if (exportExpanded) {
+                    // Explicit user action only. No identifier or media leaves the device
+                    // without the user's separate Copy or Share tap.
+                    val report = exported
+                    Text(when {
+                        exportFailed -> "Could not prepare diagnostics"
+                        report == null -> "Preparing aggregate diagnostics…"
+                        else -> report
+                    }, modifier = Modifier.fillMaxWidth().padding(12.dp)
+                        .testTag("atlas-settings-export-diagnostics-text"),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 18, overflow = TextOverflow.Ellipsis)
+                    if (report != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onCopyDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-copy")) {
+                                Text("Copy")
+                            }
+                            TextButton(onClick = { onShareDiagnostics(report) },
+                                modifier = Modifier.testTag("atlas-settings-export-diagnostics-share")) {
+                                Text("Share text file")
+                            }
+                        }
+                    }
+                }
+                if (usageEnabled != null) {
+                    // USAGE-0 (#173): off by default. Daily counts and timings, closed IDs only.
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                            .toggleable(value = usageEnabled, role = Role.Switch,
+                                onValueChange = onUsageEnabled)
+                            .testTag("atlas-settings-usage-record"),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                            Text("Record usage for tuning", style = MaterialTheme.typography.bodyLarge)
+                            Text("Daily counts, timings and scan speed. No photos, names or places.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(checked = usageEnabled, onCheckedChange = null)
+                    }
+                    SettingsActionRow("Export usage", "atlas-settings-usage-export",
+                        onClick = if (usageHasData) ({
+                            when (onExportUsage()) {
+                                UsageExportFile.Result.WRITE_FAILED ->
+                                    usageMessage("Couldn\u2019t prepare usage file. Try again.")
+                                UsageExportFile.Result.SHARE_FAILED ->
+                                    usageMessage("Couldn\u2019t open sharing. Try again.")
+                                UsageExportFile.Result.NOTHING_RECORDED ->
+                                    usageMessage("Nothing recorded yet")
+                                UsageExportFile.Result.SHEET_OPENED -> Unit
+                            }
+                        }) else null,
+                        value = if (usageHasData) null else "Nothing recorded yet",
+                        enabled = usageHasData)
+                    SettingsActionRow("Clear usage", "atlas-settings-usage-clear",
+                        onClick = if (usageHasData) ({
+                            onClearUsage()
+                            usageMessage("Usage cleared")
+                        }) else null, enabled = usageHasData)
+                }
             }
+        }
+        // #587: below Advanced too, so existing rows keep their place on screen.
+        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
+            SettingsActionRow("Library insights", "atlas-settings-library-insights",
+                onLibraryInsights, "Size by folder, type and year")
         }
         // #427 review: below Advanced, so the existing groups keep their place on screen.
         if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
@@ -180,6 +331,38 @@ internal fun AtlasSettingsScreen(
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
+            var whatsNewOpen by rememberSaveable { mutableStateOf(false) }
+            SettingsActionRow("What's new", "atlas-settings-whats-new",
+                onClick = { whatsNewOpen = true }, value = whatsNewRowValue(changelog))
+            if (whatsNewOpen) AtlasWhatsNewDialog(changelog, versionName) { whatsNewOpen = false }
+        }
+    }
+    androidx.compose.material3.SnackbarHost(usageSnackbar,
+        Modifier.align(androidx.compose.ui.Alignment.BottomCenter).testTag("atlas-settings-snackbar"))
+    }
+}
+
+@Composable
+private fun AtlasWhatsNewDialog(changelog: AtlasChangelog?, installedVersion: String,
+                                onClose: () -> Unit) {
+    // Same full-screen sub-screen shape as AI Edit settings (#430).
+    val dark = LocalAtlasDark.current
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false, dismissOnClickOutside = false)
+    ) {
+        val view = LocalView.current
+        LaunchedEffect(view, dark) {
+            val window = (view.parent as? DialogWindowProvider)?.window ?: return@LaunchedEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground) {
+            AtlasWhatsNewScreen(changelog, installedVersion, onBack = onClose)
         }
     }
 }
@@ -210,20 +393,90 @@ private fun SettingsActionRow(
     label: String,
     tag: String,
     onClick: (() -> Unit)? = null,
-    value: String? = null
+    value: String? = null,
+    enabled: Boolean = true
 ) {
-    Row(
+    SettingsRowLayout(
         Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .then(if (enabled) Modifier else Modifier.alpha(0.5f))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(tag),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        if (value != null) {
-            Spacer(Modifier.width(12.dp))
-            Text(value, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        label = { Text(label, Modifier.testTag("$tag-label"), style = MaterialTheme.typography.bodyLarge) },
+        value = value?.let { text ->
+            {
+                Text(text, Modifier.testTag("$tag-value"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
+    )
+}
+
+/**
+ * Settings row: label left, value right on one line when both fit at full width;
+ * otherwise the value moves under the label. The label is never squeezed, so a long
+ * status (e.g. "Waiting for charging · use Scan now while unplugged") cannot push the
+ * title into a one-letter column.
+ */
+@Composable
+internal fun SettingsRowLayout(
+    modifier: Modifier,
+    label: @Composable () -> Unit,
+    value: (@Composable () -> Unit)?
+) {
+    val gap = 12.dp
+    val stackedGap = 2.dp
+    val vertical = 8.dp
+    Layout(
+        content = { label(); value?.invoke() },
+        modifier = modifier
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val pad = vertical.roundToPx()
+        val labelM = measurables[0]
+        val valueM = measurables.getOrNull(1)
+        val gapPx = gap.roundToPx()
+        val loose = Constraints(maxWidth = width)
+        val stack = valueM != null && settingsRowStacks(
+            labelM.maxIntrinsicWidth(Constraints.Infinity), gapPx,
+            valueM.maxIntrinsicWidth(Constraints.Infinity), width)
+        val labelP = labelM.measure(loose)
+        if (valueM == null) {
+            val h = maxOf(constraints.minHeight, labelP.height + 2 * pad)
+            return@Layout layout(width, h) { labelP.place(0, (h - labelP.height) / 2) }
+        }
+        if (stack) {
+            val valueP = valueM.measure(loose)
+            val inner = labelP.height + stackedGap.roundToPx() + valueP.height
+            val h = maxOf(constraints.minHeight, inner + 2 * pad)
+            val top = (h - inner) / 2
+            layout(width, h) {
+                labelP.place(0, top)
+                valueP.place(0, top + labelP.height + stackedGap.roundToPx())
+            }
+        } else {
+            val valueP = valueM.measure(Constraints(maxWidth = maxOf(0, width - labelP.width - gapPx)))
+            val h = maxOf(constraints.minHeight, maxOf(labelP.height, valueP.height) + 2 * pad)
+            layout(width, h) {
+                labelP.place(0, (h - labelP.height) / 2)
+                valueP.place(width - valueP.width, (h - valueP.height) / 2)
+            }
+        }
+    }
+}
+
+/** True when label and value do not fit side by side at their natural one-line widths. */
+internal fun settingsRowStacks(labelWidth: Int, gap: Int, valueWidth: Int, available: Int): Boolean =
+    labelWidth + gap + valueWidth > available
+
+@Composable
+private fun SettingsMetricRow(row: PerformanceReport.Row) {
+    // Label above, value below: a long value wraps under the label and never
+    // squeezes it (#610), also at 200% font. Read-only, no click target.
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(row.tag)) {
+        Text(row.label, style = MaterialTheme.typography.bodyLarge)
+        Text(row.value, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

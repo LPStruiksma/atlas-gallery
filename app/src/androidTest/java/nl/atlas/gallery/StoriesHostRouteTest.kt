@@ -3,7 +3,6 @@ package nl.atlas.gallery
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.MaterialTheme
-import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -13,6 +12,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -80,7 +85,9 @@ class StoriesHostRouteTest {
             val deck = if (empty || revision !in releasedRevisions) null else
                 planStoryDeck(records, requireNotNull(tokens), System.currentTimeMillis(), zone)
             val playback = rememberStoryPlaybackState(deck)
-            AtlasGalleryTheme(dark = dark) {
+            // #366: the app pads this route below the status bar (Scaffold
+            // content Column); a bare setContent drew the header under it.
+            AtlasEvidenceHarness(dark = dark) {
                 AtlasStoriesScreen(
                     deck = deck,
                     currentGrantEpoch = tokens?.grantEpoch,
@@ -94,10 +101,12 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
         rule.onNodeWithTag("atlas-stories-planning").assertDoesNotExist()
         rule.waitForIdle()
+        rule.awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-empty-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-empty").assertExists()
+        rule.awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-empty-dark.png")
 
         // This is an actual saved playback position, not a forced planning tag.
@@ -116,10 +125,16 @@ class StoriesHostRouteTest {
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
         rule.onNodeWithTag("atlas-stories-empty").assertDoesNotExist()
         rule.waitForIdle()
+        // #136 state 7: the line appears only after the 300 ms quiet period.
+        rule.waitUntil(5_000L) {
+            rule.onAllNodesWithTag("atlas-quiet-loading-line").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.awaitStatusBarIconInk(dark = false)
         saveUiEvidence("stories-136-planning-light.png")
         dark = true
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-stories-planning").assertExists()
+        rule.awaitStatusBarIconInk(dark = true)
         saveUiEvidence("stories-136-planning-dark.png")
     }
 

@@ -155,6 +155,30 @@ class ProviderKeyCheckerTest {
         assertEquals(KeyStatus.NO_CHECK, KeyCheckOutcome.NO_CHECK.toStatus())
     }
 
+    /**
+     * #462: fal has no documented free check yet, but if one is added, or anything else reuses
+     * the fal profile's authentication, the request carries fal's `Key` scheme, never Bearer.
+     * The rule here is hypothetical and the server is the loopback fake; nothing reaches fal.
+     */
+    @Test fun anyFalRequestFromSettingsUsesTheKeyScheme() {
+        FakeServer(200).use { server ->
+            val fal = ProviderRegistry.FAL_PRESET
+            val profile = ProviderProfile("fal-1", fal.title, fal.baseUrl!!, fal.authType,
+                fal.headerName, ProviderKind.FAL)
+            assertEquals(KeyCheckOutcome.WORKS, checker(server.port)
+                .check(profile, key, KeyCheckRule("hypothetical", emptySet())))
+            assertEquals("Key $key", server.seen.single().headers["authorization"])
+        }
+        FakeServer(200).use { server ->
+            val fal = ProviderRegistry.FAL_PRESET
+            val stale = ProviderProfile("fal-2", fal.title, fal.baseUrl!!, ProviderAuthType.BEARER,
+                fal.headerName, ProviderKind.FAL)
+            assertEquals(KeyCheckOutcome.REJECTED, checker(server.port)
+                .check(stale, key, KeyCheckRule("hypothetical", emptySet())))
+            assertTrue(server.seen.isEmpty())
+        }
+    }
+
     @Test fun missingKeyIsRejectedWithoutARequest() {
         FakeServer(200).use { server ->
             assertEquals(KeyCheckOutcome.REJECTED,

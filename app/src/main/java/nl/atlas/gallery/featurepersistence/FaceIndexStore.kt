@@ -12,6 +12,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.FaceQuality
+import nl.atlas.gallery.featureface.FaceMediaKey
+import nl.atlas.gallery.featureface.UnknownFaceBox
+import nl.atlas.gallery.featureface.FaceQualityBackfillFace
+import nl.atlas.gallery.featureface.FaceQualityBackfillSource
 import nl.atlas.gallery.featurepeople.cluster.ClusterPolicy
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterDiagnostics
@@ -214,7 +218,7 @@ class FaceIndexStore(
                     CROSS JOIN catalog mc ON mc.media_key=mf.media_key AND mc.state='processed'
                         AND mc.revision=me.source_revision
                     WHERE pm.person_key=n.person_key),
-                MIN(p.face_uid)
+                MIN(p.face_uid) /* non-null bootstrap; selection below replaces it */
             FROM people_names n
             CROSS JOIN people_confirmed p ON p.person_key=n.person_key
             CROSS JOIN embeddings e ON e.face_uid=p.face_uid AND e.model_version=?1
@@ -303,6 +307,7 @@ class FaceIndexStore(
         ensureQualityColumns(db)
         createPeopleHomeTables(db)
         createPeopleCoverTable(db)
+        createAutoCoverTable(db)
         createClusterPolicyTable(db)
         createSameUnknownTable(db)
         createMixedGroupTable(db)
@@ -367,6 +372,7 @@ class FaceIndexStore(
         createEmbeddingTables(db)
         createPeopleReviewTables(db)
         createPeopleCoverTable(db)
+        createAutoCoverTable(db)
         createModelCarryTable(db)
     }
     /**
@@ -422,6 +428,8 @@ class FaceIndexStore(
         if ("quality_score" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SCORE_COLUMN")
         if ("quality_version" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_VERSION_COLUMN")
         if ("quality_below_size_floor" !in found) db.execSQL("ALTER TABLE faces ADD COLUMN $QUALITY_SIZE_COLUMN")
+        // Index only the legacy rows that actually need maintenance; no per-scan cost.
+        db.execSQL("CREATE INDEX IF NOT EXISTS face_quality_pending ON faces(media_key) WHERE quality_score IS NULL")
     }
 
     private fun createClusterGeneration(db: SQLiteDatabase) {
@@ -518,6 +526,15 @@ class FaceIndexStore(
             .use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null }
     private fun hasMembership(db: SQLiteDatabase): Boolean =
         db.rawQuery("SELECT 1 FROM cluster_members LIMIT 1", null).use { it.moveToFirst() }
+
+    /**
+     * #75: whether [epoch] is readable and holds published face groups. With
+     * a null [peopleHome] that means "not readable yet" (a regroup or the
+     * #580 refill), never "nobody": the first scan before any publication
+     * has no membership.
+     */
+    fun hasPublishedMembership(epoch: String): Boolean =
+        authorizedEmbeddingRead(epoch, false) { db, _ -> hasMembership(db) }
 
     /**
      * #579: membership published under other grouping rules must be
@@ -621,6 +638,108 @@ class FaceIndexStore(
             frame_ms INTEGER)""")
     }
 
+
+    /**
+     * COVER-2 automatic winner is derived, not a user choice. The winner is
+     * persisted to keep hysteresis stable across process death and publications.
+     * No FK to embeddings: old hints are ignored unless they remain live members.
+     * COVER-3 manual override facts are never rewritten here.
+     */
+    private fun createAutoCoverTable(db: SQLiteDatabase) {
+        db.execSQL("""CREATE TABLE IF NOT EXISTS people_auto_cover(
+            person_key TEXT PRIMARY KEY NOT NULL CHECK(length(person_key) BETWEEN 1 AND 256),
+            face_uid TEXT NOT NULL CHECK(length(face_uid)=32))""")
+    }
+
+    /** Indexed current-model, current-source and published members only. */
+    private fun autoCoverCandidates(
+        db: SQLiteDatabase, version: String, person: String? = null
+    ): Map<String, List<BestShotCandidate>> {
+        val results = LinkedHashMap<String, MutableList<BestShotCandidate>>()
+        for ((table, alias) in listOf("people_confirmed" to "pc", "people_matched" to "pm")) {
+            val filter = if (person == null) "" else " AND $alias.person_key=?"
+            val args = if (person == null) arrayOf(version) else arrayOf(version, person)
+            meteredStatements++
+            db.rawQuery("""SELECT $alias.person_key,e.face_uid,f.quality_score,
+                    f.quality_version,f.quality_below_size_floor,f.frame_ms
+                FROM $table $alias
+                CROSS JOIN embeddings e ON e.face_uid=$alias.face_uid AND e.model_version=?
+                CROSS JOIN faces f ON f.face_uid=e.face_uid
+                CROSS JOIN catalog c ON c.media_key=f.media_key AND c.state='processed'
+                    AND c.revision=e.source_revision
+                WHERE EXISTS (SELECT 1 FROM people_names n WHERE n.person_key=$alias.person_key)
+                    AND NOT EXISTS (SELECT 1 FROM face_reviews r
+                        WHERE r.media_key=f.media_key AND r.ordinal=f.ordinal
+                        AND r.decision='NOT_A_FACE')
+                    $filter
+                ORDER BY $alias.person_key,e.face_uid""", args).use { cursor ->
+                while (cursor.moveToNext()) {
+                    meteredRowsRead++
+                    results.getOrPut(cursor.getString(0)) { ArrayList() } += BestShotCandidate(
+                        cursor.getString(1),
+                        if (cursor.isNull(2)) null else cursor.getFloat(2),
+                        if (cursor.isNull(3)) null else cursor.getInt(3),
+                        if (cursor.isNull(4)) null else cursor.getInt(4) != 0,
+                        if (cursor.isNull(5)) null else cursor.getLong(5)
+                    )
+                }
+            }
+        }
+        return results
+    }
+
+    private fun autoCoverHint(db: SQLiteDatabase, person: String): String? =
+        db.rawQuery("SELECT face_uid FROM people_auto_cover WHERE person_key=?",
+            arrayOf(person)).use { if (it.moveToFirst()) it.getString(0) else null }
+
+    /**
+     * Existing publication/review refreshes all named people in one indexed
+     * member scan. A quality-only backfill refreshes just its affected people.
+     */
+    private fun refreshAutomaticCovers(
+        db: SQLiteDatabase, version: String, only: Set<String>? = null
+    ) {
+        if (only != null && only.isEmpty()) return
+        // Hidden named people are absent from people_home but still need their
+        // ranked automatic winner refreshed on publication and review writes.
+        val people = only ?: db.rawQuery("SELECT person_key FROM people_names", null).use { c ->
+            buildSet { while (c.moveToNext()) add(c.getString(0)) }
+        }
+        val candidates = if (only == null) autoCoverCandidates(db, version)
+            else buildMap {
+                // Quality-only work affects at most one source's faces. Never
+                // scan every named member when that source touched 2+ people.
+                for (person in people) putAll(autoCoverCandidates(db, version, person))
+            }
+        for (person in people) {
+            val prior = autoCoverHint(db, person)
+            val selected = BestShotSelector.choose(candidates[person].orEmpty(), prior)?.faceUid
+            when {
+                selected == null -> db.delete("people_auto_cover", "person_key=?", arrayOf(person))
+                selected != prior -> {
+                    val inserted = db.insertWithOnConflict("people_auto_cover", null,
+                        ContentValues().apply {
+                            put("person_key", person); put("face_uid", selected)
+                        }, SQLiteDatabase.CONFLICT_REPLACE)
+                    check(inserted != -1L) { "Automatic People cover could not be persisted" }
+                }
+            }
+            if (selected != null) {
+                db.execSQL("""UPDATE people_home SET cover_uid=?
+                    WHERE person_key=? AND cover_uid<>?""",
+                    arrayOf(selected, person, selected))
+            }
+        }
+        if (only == null) db.execSQL("""DELETE FROM people_auto_cover
+            WHERE NOT EXISTS (SELECT 1 FROM people_names n
+                WHERE n.person_key=people_auto_cover.person_key)""")
+    }
+
+    /** Read-only live fallback after cascading face removal invalidates a generation. */
+    private fun liveAutomaticCover(db: SQLiteDatabase, version: String, person: String): String? =
+        BestShotSelector.choose(autoCoverCandidates(db, version, person)[person].orEmpty(),
+            autoCoverHint(db, person))?.faceUid
+
     /** Exact source/face geometry plus current confirmed or published matched membership. */
     private fun resolvedPersonCover(db: SQLiteDatabase, version: String, person: String): String? =
         db.rawQuery("""SELECT f.face_uid FROM people_cover_override o
@@ -705,6 +824,34 @@ class FaceIndexStore(
     fun personCoverOverride(epoch: String, person: PersonKey): String? =
         authorizedEmbeddingRead(epoch, null) { db, version ->
             if (!servable(db)) null else resolvedPersonCover(db, version, person.value)
+        }
+
+    /**
+     * Current canonical portrait for a named person, including one hidden from
+     * People home. The manual choice wins; fallback reranks only currently
+     * processed, model/source-matched published members under the live grant.
+     */
+    fun personDisplayCover(epoch: String, person: PersonKey): String? =
+        authorizedEmbeddingRead(epoch, null) { db, version ->
+            if (!servable(db)) null else
+                resolvedPersonCover(db, version, person.value)
+                    ?: liveAutomaticCover(db, version, person.value)
+        }
+
+    /**
+     * Hidden rows are not in People home. Resolve their manual/automatic covers
+     * in one authorized transaction, and never expose a visible person or an
+     * unprocessed/stale member through this separate Hidden list projection.
+     */
+    fun hiddenPersonCovers(epoch: String): Map<PersonKey, String> =
+        authorizedEmbeddingRead(epoch, emptyMap<PersonKey, String>()) { db, version ->
+            if (!servable(db)) emptyMap() else buildMap {
+                for (person in hiddenPeople(db)) {
+                    val cover = resolvedPersonCover(db, version, person)
+                        ?: liveAutomaticCover(db, version, person)
+                    if (cover != null) put(PersonKey(person), cover)
+                }
+            }
         }
 
     /** Returns false without mutation for a stale grant, face or person. */
@@ -1371,6 +1518,95 @@ class FaceIndexStore(
         } }
     }
 
+    /**
+     * COVER-0b: one existing processed media source with NULL quality, carrying
+     * only the source-key/box/frame and already-stored face uid. The active
+     * embedding version and revision must match; neither old-model vectors
+     * nor inaccessible/stale catalog rows may enter maintenance.
+     *
+     * The keyset cursor lets a batch skip undecodable or unmatched sources
+     * without repeatedly decoding the same source in a tight WorkManager loop.
+     */
+    fun pendingQualitySource(epoch: String, afterMediaKey: String? = null): FaceQualityBackfillSource? =
+        authorizedEmbeddingRead(epoch, null) { db, embedderVersion ->
+            val suffix = if (afterMediaKey == null) "" else " AND f.media_key > ?"
+            val args = if (afterMediaKey == null) arrayOf(embedderVersion)
+                else arrayOf(embedderVersion, afterMediaKey)
+            val header = db.rawQuery("""SELECT f.media_key,c.revision,c.detector_version
+                FROM faces f JOIN catalog c ON c.media_key=f.media_key
+                JOIN embeddings e ON e.face_uid=f.face_uid AND e.source_revision=c.revision
+                WHERE f.quality_score IS NULL AND c.state='processed'
+                AND e.model_version=?$suffix
+                ORDER BY f.media_key,f.ordinal LIMIT 1""", args).use { cursor ->
+                if (!cursor.moveToFirst()) null else Triple(
+                    cursor.getString(0), cursor.getString(1), cursor.getString(2))
+            } ?: return@authorizedEmbeddingRead null
+            val faces = db.rawQuery("""SELECT f.face_uid,f.l,f.t,f.r,f.b,f.frame_ms
+                FROM faces f JOIN embeddings e ON e.face_uid=f.face_uid
+                WHERE f.media_key=? AND f.quality_score IS NULL
+                AND e.source_revision=? AND e.model_version=?
+                ORDER BY f.ordinal LIMIT 32""",
+                arrayOf(header.first, header.second, embedderVersion)).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) add(FaceQualityBackfillFace(
+                        cursor.getString(0),
+                        UnknownFaceBox(cursor.getFloat(1), cursor.getFloat(2),
+                            cursor.getFloat(3), cursor.getFloat(4)),
+                        if (cursor.isNull(5)) null else cursor.getLong(5)))
+                }
+            }
+            if (faces.isEmpty()) null else FaceQualityBackfillSource(
+                FaceMediaKey(header.first, header.second), header.third, embedderVersion, faces)
+        }
+
+    /**
+     * Single short SQLite transaction: a re-grant, changed source, new model,
+     * or a competing scan defeats this write. Never replace a known score and
+     * never update vectors, clustering, review decisions or identity rows.
+     */
+    fun backfillQualityIfNull(
+        epoch: String, source: FaceQualityBackfillSource, scores: Map<String, FaceQuality>
+    ): Int {
+        validEpoch(epoch)
+        require(scores.keys.all { uid -> source.faces.any { it.uid == uid } })
+        if (scores.isEmpty()) return 0
+        return write { db ->
+            if (currentEpoch(db) != epoch ||
+                storedEmbedderVersion(db) != source.embedderVersion) return@write 0
+            val stillCurrent = db.rawQuery("""SELECT 1 FROM catalog
+                WHERE media_key=? AND revision=? AND detector_version=?
+                AND state='processed'""",
+                arrayOf(source.media.canonicalMediaKey, source.media.sourceRevision,
+                    source.detectorVersion)).use { it.moveToFirst() }
+            if (!stillCurrent) return@write 0
+            var written = 0
+            val affected = LinkedHashSet<String>()
+            for ((uid, quality) in scores) {
+                val values = ContentValues().apply {
+                    put("quality_score", quality.score.toDouble())
+                    put("quality_version", quality.qualityVersion)
+                    put("quality_below_size_floor", if (quality.belowSizeFloor) 1 else 0)
+                }
+                val updated = db.update("faces", values,
+                    """face_uid=? AND media_key=? AND quality_score IS NULL
+                    AND EXISTS(SELECT 1 FROM embeddings e WHERE e.face_uid=faces.face_uid
+                        AND e.source_revision=? AND e.model_version=?)""",
+                    arrayOf(uid, source.media.canonicalMediaKey,
+                        source.media.sourceRevision, source.embedderVersion))
+                written += updated
+                if (updated > 0) db.rawQuery("""SELECT person_key FROM people_confirmed WHERE face_uid=?
+                    UNION SELECT person_key FROM people_matched WHERE face_uid=?""",
+                    arrayOf(uid, uid)).use { cursor ->
+                    while (cursor.moveToNext()) affected += cursor.getString(0)
+                }
+            }
+            // Identity revision is unchanged by this backfill. Update cached
+            // home covers in the very same transaction, limited to its people.
+            refreshAutomaticCovers(db, source.embedderVersion, affected)
+            written
+        }
+    }
+
     /** Empty: every face is a photo face. Else one non-negative time (or null) per box. */
     private fun requireFrames(boxes: Int, frameMs: List<Long?>) =
         require((frameMs.isEmpty() || frameMs.size == boxes) &&
@@ -1519,6 +1755,18 @@ class FaceIndexStore(
         if (currentEpoch(db) != epoch) return false
         val gen = generation(db)
         return gen.dirty && gen.pending >= PUBLICATION_CONTINUES
+    }
+
+    /**
+     * Epoch-fenced, read-only dirty/pending aggregate for diagnostics.
+     * Do not change the publication gate or read any identity rows.
+     */
+    fun clusterGenerationDiagnostics(epoch: String): Pair<Boolean, Int>? {
+        validEpoch(epoch)
+        val db = readableDatabase
+        if (currentEpoch(db) != epoch) return null
+        val state = generation(db)
+        return state.dirty to state.pending.coerceAtLeast(0)
     }
 
     /**
@@ -1691,6 +1939,7 @@ class FaceIndexStore(
                 "Cluster publication changed membership or anchor"
             }
             writeMatched(db, PeopleReviewRecords.matchedRows(state))
+            writeMixedGroups(db, PeopleReviewRecords.rows(state.reviews).mixedGroups)
             meteredStatements += 2
             val (dirty, due) = if (more) 1 to PUBLICATION_CONTINUES else 0 to 0
             db.execSQL("""UPDATE cluster_generation SET dirty=?,pending=?,published=?
@@ -1708,6 +1957,27 @@ class FaceIndexStore(
             if (!more) finishedPublication = state
             true
         }
+
+    /**
+     * HUB-1B (#211): a publication re-states "not one person" facts for the
+     * groups that carried them ([ClusterPublication.publish]), in its own
+     * transaction, so a reader never sees new membership with old marks.
+     */
+    private fun writeMixedGroups(db: SQLiteDatabase, rows: Set<Pair<String, String>>) {
+        val delta = PeopleReviewRecords.setDelta(reviewRows(db).mixedGroups, rows)
+        for ((anchor, fingerprint) in delta.delete) {
+            meteredStatements++
+            db.delete("people_mixed_group", "anchor_uid=? AND fingerprint=?",
+                arrayOf(anchor, fingerprint))
+        }
+        for ((anchor, fingerprint) in delta.insert) {
+            meteredStatements++
+            db.insertOrThrow("people_mixed_group", null, ContentValues().apply {
+                put("anchor_uid", anchor); put("fingerprint", fingerprint)
+            })
+        }
+        check(reviewRows(db).mixedGroups == rows) { "Cluster publication lost mixed groups" }
+    }
 
     /**
      * Never show incomplete cluster membership, including after a restart:
@@ -2015,8 +2285,10 @@ class FaceIndexStore(
                 while (c.moveToNext()) {
                     val person = PersonKey(c.getString(0))
                     val choice = resolvedPersonCover(db, version, person.value)
+                    val automatic = if (built == revision) c.getString(3)
+                        else liveAutomaticCover(db, version, person.value) ?: c.getString(3)
                     people[person] = StoredPersonSummary(c.getString(1), c.getInt(2),
-                        choice ?: c.getString(3))
+                        choice ?: automatic)
                 }
             }
             // PERF-11: aggregate distinct person-media pairs in one SQL pass.
@@ -2087,6 +2359,7 @@ class FaceIndexStore(
         db.delete("people_home", null, null)
         db.execSQL("""INSERT INTO people_home(person_key,name,face_count,cover_uid)
             $PEOPLE_HOME_SELECT""", arrayOf(version))
+        refreshAutomaticCovers(db, version)
         db.execSQL("UPDATE people_home_generation SET revision=? WHERE singleton=1",
             arrayOf<Any>(reviewRevision(db)))
     }
