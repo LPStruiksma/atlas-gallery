@@ -8,8 +8,8 @@ import java.io.IOException
 import java.nio.FloatBuffer
 
 /*
- * IDS-18: optional offline MediaPipe multiclass ONNX adapter. The binary is
- * deliberately not present until hash, parity and Android proofs are complete.
+ * IDS-18: offline MediaPipe multiclass ONNX adapter. The converted model is bundled
+ * in assets (hash, licence and LiteRT parity in its SOURCE.md).
  * Six NHWC classes: 0 background, 1 hair, 2 body, 3 face-skin, 4 clothes,
  * 5 other. Invalid/missing asset never requires a download.
  */

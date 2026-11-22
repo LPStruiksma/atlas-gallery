@@ -10,7 +10,8 @@ class PinsAndLayout(unittest.TestCase):
     def test_pins_agree_with_existing_bench(self):
         self.assertEqual(mp.SOURCE_SIZE, 16_371_837)
         self.assertEqual(mp.SOURCE_SHA256, "c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0")
-        self.assertEqual(mp.CONVERTER_VERSION, "0.4.1")
+        self.assertEqual((mp.CONVERTER, mp.CONVERTER_VERSION), ("tf2onnx", "1.17.0"))
+        self.assertEqual((mp.TENSORFLOW_VERSION, mp.OPSET), ("2.21.0", 17))
 
     def test_bytes_are_verified_before_converting(self):
         with tempfile.TemporaryDirectory() as d:
