@@ -21,6 +21,9 @@ class AtlasApplication : Application() {
         super.onCreate()
         // Keep performance samples for this app version across restarts (numbers only).
         PerformanceSession.install(this)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { PerformanceSession.restoreSaved() }
+        }
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityPaused(activity: android.app.Activity) = PerformanceSession.flush()
             override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) = Unit

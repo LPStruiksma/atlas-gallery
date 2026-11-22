@@ -32,14 +32,17 @@ class PerformanceAggregates(
     private val samples = HashMap<String, ArrayDeque<Double>>()
     private val unsaved = HashMap<String, Int>()
 
-    init {
-        // Restore the version's earlier samples, keeping only the newest `capacity`.
-        store?.load()?.forEach { (metric, values) ->
-            if (metric in keys) {
-                val ring = ArrayDeque<Double>()
-                values.filter { it.isFinite() && it >= 0.0 }.takeLast(capacity).forEach { ring.addLast(it) }
-                if (ring.isNotEmpty()) samples[metric] = ring
-            }
+    /**
+     * Puts samples saved by earlier runs in front of anything recorded since start, keeping
+     * the newest `capacity`. Call off the main thread: the store reads SharedPreferences.
+     */
+    @Synchronized fun restore(saved: Map<String, List<Double>>) {
+        saved.forEach { (metric, values) ->
+            if (metric !in keys) return@forEach
+            val older = values.filter { it.isFinite() && it >= 0.0 }
+            val merged = ArrayDeque(older + samples[metric].orEmpty())
+            while (merged.size > capacity) merged.removeFirst()
+            if (merged.isNotEmpty()) samples[metric] = merged
         }
     }
 
@@ -117,18 +120,30 @@ internal object PerformanceSession {
     var aggregate = PerformanceAggregates()
         private set
 
+    private var store: PerformancePrefsStore? = null
+
     /**
-     * Keeps samples for the installed app version across restarts (#PERF-KEEP). Earlier
-     * versions stay until ten newer versions exist, so version-to-version comparisons work.
+     * Keeps samples for the installed app version across restarts (#PERF-KEEP). Creates the
+     * store only; no SharedPreferences read happens here, so it is safe on the main thread.
      */
     fun install(context: android.content.Context) {
         @Suppress("DEPRECATION")
         val version = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
         }.getOrNull() ?: return
-        val store = PerformancePrefsStore(context, version)
-        store.pruneOldVersions(keepVersions = 10)
-        aggregate = PerformanceAggregates(store = store)
+        val installed = PerformancePrefsStore(context, version)
+        store = installed
+        aggregate = PerformanceAggregates(store = installed)
+    }
+
+    /**
+     * Reads the saved samples and prunes old versions (keeps the newest ten). Call from a
+     * background thread: reading SharedPreferences on the main thread trips StrictMode.
+     */
+    fun restoreSaved() {
+        val installed = store ?: return
+        installed.pruneOldVersions(keepVersions = 10)
+        aggregate.restore(installed.load())
     }
 
     fun flush() = aggregate.flush()

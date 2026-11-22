@@ -104,6 +104,16 @@ class PerformanceAggregatesTest {
         assertEquals(0, samples.snapshot("not_a_metric").count)
     }
 
+    @Test fun restoreKeepsSavedSamplesBeforeNewOnes() {
+        val samples = PerformanceAggregates(capacity = 3)
+        samples.record("viewer_ms", 40.0)
+        samples.restore(mapOf("viewer_ms" to listOf(10.0, 20.0, 30.0), "not_a_metric" to listOf(1.0)))
+        val row = samples.snapshot("viewer_ms")
+        assertEquals(3, row.count)
+        assertEquals(40.0, row.max!!, 0.0)
+        assertEquals(20.0, row.p50!!, 0.0)
+    }
+
     @Test fun savesEveryFewSamplesAndOnFlush() {
         val store = FakeStore()
         val samples = PerformanceAggregates(capacity = 256, store = store)
