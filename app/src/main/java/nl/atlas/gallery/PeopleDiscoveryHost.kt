@@ -1776,7 +1776,12 @@ internal class PeopleDiscoveryHost(
                             ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
                                 it.embedderVersion == pipeline.embedderVersion } },
                         store = { source, scores ->
-                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                            store.backfillQualityIfNull(owned.epoch, source, scores).also { written ->
+                                // The review revision does not change for quality-only writes.
+                                // Evict the home projection before the next Compose refresh.
+                                if (written > 0) synchronized(reviewLock) { liveHome = null }
+                            }
+                        },
                         reader = scanReader,
                         scoreOnly = pipeline::scoreWithoutEmbeddings,
                         canContinue = guard
@@ -2372,6 +2377,29 @@ internal class PeopleDiscoveryHost(
     }
 
     /**
+     * COVER-2: read a named person's effective best shot, even when hidden
+     * from the People-home projection. Both the live Android grant and store
+     * epoch must still match; never cache a face UID beyond that scope.
+     * Blocking; IO only.
+     */
+    fun currentPersonDisplayCover(galleryGrant: String?, person: PersonKey): String? {
+        val epoch = displayEpoch(galleryGrant) ?: return null
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) null
+            else store.personDisplayCover(epoch, person)
+        }
+    }
+
+    /** One authorized batch of effective portraits for the Hidden list. IO only. */
+    fun currentHiddenPersonCovers(epoch: String?): Map<PersonKey, String> {
+        if (epoch == null) return emptyMap()
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) emptyMap()
+            else store.hiddenPersonCovers(epoch)
+        }
+    }
+
+    /**
      * #62: scoped native names backup, distinct from the old V4 path-bearing
      * format. Both calls are blocking and must run on Dispatchers.IO.
      */
@@ -2959,6 +2987,14 @@ internal fun PeopleReviewRoute(
     val current = page?.takeIf {
         loadedVersion == version && it.queue.permissionEpoch == liveEpoch
     }
+    // Display hints are only valid for this exact published review generation.
+    // Never use a stale home cover after a grant or membership change.
+    val coverHints = host.liveHomePeople(liveEpoch)
+        ?.takeIf { it.sourceGeneration == current?.clusters?.sourceGeneration }
+        ?.people?.mapNotNull { (person, data) ->
+            runCatching { NativeFaceObservationId(data.coverFaceUid) }.getOrNull()
+                ?.let { person to it }
+        }?.toMap().orEmpty()
     UnknownFacesReviewScreen(
         queue = current?.queue,
         currentPermissionEpoch = liveEpoch,
@@ -2986,6 +3022,7 @@ internal fun PeopleReviewRoute(
         onClose = onClose,
         onNextPage = current?.nextCursor?.let { next -> { after = next } },
         clusterReview = current?.clusters,
+        coverByPerson = coverHints,
         liveClusterReviewAtAction = { host.liveReview(liveEpoch) },
         onClusterReviewCommand = { command ->
             scope.launch {
