@@ -47,3 +47,16 @@ Set **both optional weights to 0.0 until validated**. If enabled later, constrai
 ## Completion status
 
 The feasibility/licence and existing-model-cost comparison above are **completed research**. **Benchmark acceptance remains open**: no trained expression classifier, no licensed preference-pair dataset, no COVER-1 emulator candidate run and hence no observed human pairwise accuracy. The table intentionally marks all four unknowns rather than inventing numbers. COVER-2 may safely use COVER-0 without waiting; product-quality claims for expression or aesthetics cannot be made until the measurement gate is fulfilled.
+
+
+## COVER-2 integration
+
+The automatic profile-cover selector (#166) uses only the existing
+`FaceQualityScorer.VERSION=2` score, source-pixel size eligibility and
+photo/video frame metadata. Expression and aesthetics weights remain zero.
+There is no new attractiveness comparison, identity scoring or neural model
+in this selection policy. The same person's eligible shots can change the
+automatic cover after a higher-quality arrival; the human-picked COVER-3
+portrait remains authoritative until cleared or invalidated. This is a
+selection policy, **not** a validated aesthetics benchmark or a claim that
+subjective attractiveness is measured.
