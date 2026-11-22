@@ -47,6 +47,7 @@ on:
       - 'scripts/ci_enable_kvm.sh'
       - 'scripts/ci_install_emulator_image.sh'
 permissions:
+  actions: read
   contents: read
 concurrency:
   group: atlas-android-${{ github.workflow }}-${{ github.ref }}
@@ -187,6 +188,8 @@ jobs:
         run: bash scripts/ci_install_emulator_image.sh
       - name: Emulator Compose interactions + private People upgrade preservation
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
           # PR checks default to API35; manual dispatch supports a separate
           # API34 acceptance run without doubling every PR's emulator minutes.
