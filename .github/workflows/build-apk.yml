@@ -222,7 +222,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}
+          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}-${{ matrix.arm }}
           path: |
             ui-evidence/*
             app/build/outputs/androidTest-results/**
