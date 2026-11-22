@@ -18,3 +18,12 @@ internal data class ManualFaceScanGuard(
         else -> null
     }
 }
+
+/**
+ * A remembered manual-scan wait is only shown while the live guard still
+ * holds. A "Waiting for phone to cool" from an earlier Scan now must clear
+ * once the phone is cool again, rather than sticking until the next tap.
+ * Returns the live reason (which may differ from the remembered one) or null.
+ */
+internal fun currentManualWait(remembered: String?, live: ManualFaceScanGuard): String? =
+    if (remembered == null) null else live.holdReason()
