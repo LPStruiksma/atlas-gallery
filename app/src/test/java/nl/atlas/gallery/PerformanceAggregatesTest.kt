@@ -118,6 +118,7 @@ class PerformanceAggregatesTest {
     @Test fun savesEveryFewSamplesAndOnFlush() {
         val store = FakeStore()
         val samples = PerformanceAggregates(capacity = 256, store = store)
+        samples.restore(emptyMap())
         repeat(PerformanceAggregates.SAVE_EVERY - 1) { samples.record("viewer_ms", 10.0) }
         assertFalse(store.saved.containsKey("viewer_ms"))
         samples.record("viewer_ms", 10.0)
@@ -134,7 +135,19 @@ class PerformanceAggregatesTest {
             override fun save(metric: String, values: List<Double>) { saves++ }
         }
         val full = PerformanceAggregates(capacity = 16, store = counting)
+        full.restore(emptyMap())
         repeat(16 * PerformanceAggregates.SAVE_EVERY) { full.record("viewer_ms", 1.0) }
         assertEquals(16, saves)
+    }
+
+    @Test fun doesNotOverwritePriorHistoryBeforeRestore() {
+        val store = FakeStore(mapOf("viewer_ms" to listOf(1.0, 2.0)))
+        val samples = PerformanceAggregates(capacity = 256, store = store)
+        repeat(PerformanceAggregates.SAVE_EVERY * 2) { samples.record("viewer_ms", 9.0) }
+        samples.flush()
+        assertFalse(store.saved.containsKey("viewer_ms"))
+        samples.restore(store.load())
+        samples.flush()
+        assertEquals(2 + PerformanceAggregates.SAVE_EVERY * 2, store.saved["viewer_ms"]!!.size)
     }
 }

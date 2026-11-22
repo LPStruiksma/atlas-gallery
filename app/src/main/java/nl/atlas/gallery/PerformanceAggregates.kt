@@ -31,6 +31,9 @@ class PerformanceAggregates(
         (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
     private val unsaved = HashMap<String, Int>()
+    // Nothing is written until restore() has merged the saved history, so an early save
+    // cannot replace the previous run's samples before they are read back.
+    private var restored = false
 
     /**
      * Puts samples saved by earlier runs in front of anything recorded since start, keeping
@@ -44,6 +47,7 @@ class PerformanceAggregates(
             while (merged.size > capacity) merged.removeFirst()
             if (merged.isNotEmpty()) samples[metric] = merged
         }
+        restored = true
     }
 
     @Synchronized fun record(metric: String, value: Double): Boolean {
@@ -52,7 +56,7 @@ class PerformanceAggregates(
         ring.addLast(value)
         if (ring.size > capacity) ring.removeFirst()
         val pending = (unsaved[metric] ?: 0) + 1
-        if (pending >= SAVE_EVERY) {
+        if (restored && store != null && pending >= SAVE_EVERY) {
             store?.save(metric, ring.toList())
             unsaved[metric] = 0
         } else {
@@ -64,6 +68,7 @@ class PerformanceAggregates(
     /** Writes any samples not yet saved, so a normal shutdown loses nothing. */
     @Synchronized fun flush() {
         val store = store ?: return
+        if (!restored) return
         samples.forEach { (metric, ring) ->
             if ((unsaved[metric] ?: 0) > 0) {
                 store.save(metric, ring.toList())
