@@ -354,7 +354,7 @@ run_quarantined_emulator_tests() {
   adb install -r "$TEST" >/dev/null || {
     echo "::warning::#970 could not install the test APK for quarantined tests"; return 0;
   }
-  while read -r target issue; do
+  while read -r target issue <&3; do
     [[ -z "$target" ]] && continue
     capture="/tmp/atlas-quarantine-${issue#\#}.txt"
     adb logcat -c || true
@@ -374,7 +374,7 @@ run_quarantined_emulator_tests() {
     timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V AndroidRuntime:E TestRunner:E \
       || echo "Quarantine logcat unavailable (device gone or timed out)"
     echo "::endgroup::"
-  done < <(quarantined_emulator_tests)
+  done 3< <(quarantined_emulator_tests)
 }
 run_quarantined_emulator_tests
 echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
