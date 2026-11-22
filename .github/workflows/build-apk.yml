@@ -120,7 +120,7 @@ jobs:
           if-no-files-found: error
           retention-days: 2
   plan-emulator-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.select.outputs.matrix }}
     steps:
