@@ -1,3 +1,4 @@
-# RC5 #920: five full class runs per shard per batch (three batches => 15)
+# RC5 #920: one validity run per test class, per arm and shard.
+# Expand to five only after the same-run artifact and OFF launch checks pass.
 1 nl.atlas.gallery.featureintents.ExternalPickerJourneyTest
 1 nl.atlas.gallery.featureintents.ExternalNeighboursJourneyTest
