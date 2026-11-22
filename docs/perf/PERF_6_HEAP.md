@@ -44,6 +44,12 @@ with the pre-change materialized projection, checks newest-first reuse and
 full-key/revision lookup, and asserts **at most 16 bytes per gallery row of
 structural retained People indices** (8 B per admitted row plus up to 4 B
 for sorting, or up to 4 B for source offsets above the 20-bit direct limit).
-GC-dependent heap deltas are printed, not asserted. These are JVM measurements;
-the separate PERF-0 emulator `heap_fraction` from exact-head CI is the
-device-level peak-heap acceptance evidence.
+GC-dependent heap deltas are printed, not asserted. These are JVM measurements.
+
+The device-level evidence is `PeopleProjectionHeapAndroidTest`, which runs in
+the emulator suite. It holds the 250k synthetic gallery list, the People view
+and the face directory, then logs one
+`ATLAS_SCALE: PERF-6b-people-projection` line with PERF-0 `heap_fraction`
+(Java heap used / maximum), the same ratio for the old materialized
+projection, and People bytes per item before and after. It asserts digest
+parity and `heap_fraction < 0.60` (the PERF-6 target, #127).
