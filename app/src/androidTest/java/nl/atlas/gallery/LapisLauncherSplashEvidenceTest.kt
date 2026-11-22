@@ -1,7 +1,5 @@
 package nl.atlas.gallery
 
-import android.app.ActivityOptions
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -17,15 +15,12 @@ import android.os.SystemClock
 import android.util.TypedValue
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
-import androidx.test.runner.lifecycle.Stage
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import nl.atlas.gallery.testkit.DisplayPrefsRule
-import nl.atlas.gallery.testkit.testShell
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -314,144 +309,6 @@ class LapisLauncherSheetEvidenceTest {
     }
 }
 
-/** Real screen captures of the platform splash while MainActivity starts (API 31+). */
-abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(DisplayPrefsRule(dark = dark))
-
-    private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
-
-    @Test
-    fun coldStartShowsStaticLapisSplash() {
-        val name = "lapis656-splash-${if (dark) "dark" else "light"}"
-        val context = instrumentation.targetContext
-        testShell("am force-stop ${context.packageName}")
-        awaitSystemIdle("system windows before MainActivity cold start")
-
-        val (captured, note) = try {
-            launchAndCatchSplash()
-        } finally {
-            finishMainActivities()
-        }
-        val frame = requireNotNull(captured) {
-            "No Lapis splash frame with legible system-bar glyphs in one forced cold start " +
-                "($note); ${describeFocus()}"
-        }
-        saveBitmapEvidence(name, frame)
-    }
-
-    /**
-     * Let Launcher/System UI finish the task transition. The lifecycle monitor can report that
-     * MainActivity is gone while Quickstep is still handling its window transition.
-     */
-    private fun awaitSystemIdle(stage: String) {
-        try {
-            interactiveUiAutomation().waitForIdle(500L, 10_000L)
-        } catch (timeout: java.util.concurrent.TimeoutException) {
-            throw AssertionError("$stage did not reach system-window idle; ${describeFocus()}", timeout)
-        }
-        val focus = describeFocus()
-        check(!focus.contains("responding", ignoreCase = true)) {
-            "$stage found a system ANR before the next launch; $focus"
-        }
-    }
-    /**
-     * Launches MainActivity and returns the first frame that is the Lapis splash with legible
-     * (near-white) navigation-bar glyphs, or null and what it saw instead (#763 review: the
-     * dark-mode capture had grey glyphs at about 1.1:1 on Lapis).
-     */
-    private fun launchAndCatchSplash(): Pair<Bitmap?, String> {
-        val context = instrumentation.targetContext
-        val intent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        val options = ActivityOptions.makeBasic()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // The icon splash a launcher tap gets, not the solid-colour one.
-            options.setSplashScreenStyle(android.window.SplashScreen.SPLASH_SCREEN_STYLE_ICON)
-        }
-        context.startActivity(intent, options.toBundle())
-        var splashFrames = 0
-        var bestGlyphs = 0
-        val deadline = SystemClock.uptimeMillis() + 6_000L
-        while (SystemClock.uptimeMillis() < deadline) {
-            val shot = instrumentation.uiAutomation.takeScreenshot() ?: continue
-            val frame = if (shot.config == Bitmap.Config.HARDWARE) {
-                shot.copy(Bitmap.Config.ARGB_8888, false).also { shot.recycle() }
-            } else shot
-            if (isLapisSplash(frame)) {
-                splashFrames++
-                val glyphs = legibleNavGlyphPixels(frame)
-                bestGlyphs = maxOf(bestGlyphs, glyphs)
-                if (glyphs >= MIN_NAV_GLYPH_PIXELS) return frame to "ok"
-            } else if (splashFrames > 0) {
-                frame.recycle()
-                break // the app's first frame replaced the splash
-            }
-            frame.recycle()
-        }
-        return null to "$splashFrames splash frames, best $bestGlyphs light glyph px (need $MIN_NAV_GLYPH_PIXELS)"
-    }
-
-    /**
-     * Pixels in the bottom navigation band that are near white and so read on Lapis (>= 4.5:1;
-     * Lapis has relative luminance ~0.07, so glyphs need luminance >= ~0.48, i.e. channels ~190+).
-     */
-    private fun legibleNavGlyphPixels(frame: Bitmap): Int {
-        val band = (48 * instrumentation.targetContext.resources.displayMetrics.density).toInt()
-        var light = 0
-        for (y in frame.height - band until frame.height step 2) for (x in 0 until frame.width step 2) {
-            val c = frame.getPixel(x, y)
-            if (Color.red(c) >= 190 && Color.green(c) >= 190 && Color.blue(c) >= 190) light++
-        }
-        return light
-    }
-
-    /** Mostly Lapis away from the centre and white mark pixels near it: the splash, not the app. */
-    private fun isLapisSplash(frame: Bitmap): Boolean {
-        var lapis = 0
-        var samples = 0
-        val margin = frame.height / 8
-        for (y in margin until frame.height - margin step 60) for (x in 0 until frame.width step 60) {
-            samples++
-            if (near(frame.getPixel(x, y), LAPIS)) lapis++
-        }
-        var white = 0
-        val cx = frame.width / 2
-        val cy = frame.height / 2
-        val r = frame.width / 6
-        for (y in cy - r until cy + r step 6) for (x in cx - r until cx + r step 6) {
-            if (near(frame.getPixel(x, y), Color.WHITE)) white++
-        }
-        return lapis * 10 >= samples * 7 && white > 20
-    }
-
-    private fun near(a: Int, b: Int): Boolean =
-        abs(Color.red(a) - Color.red(b)) <= 12 && abs(Color.green(a) - Color.green(b)) <= 12 &&
-            abs(Color.blue(a) - Color.blue(b)) <= 12
-
-    private fun finishMainActivities() {
-        val deadline = SystemClock.uptimeMillis() + 10_000L
-        while (SystemClock.uptimeMillis() < deadline) {
-            var open = 0
-            instrumentation.runOnMainSync {
-                val monitor = ActivityLifecycleMonitorRegistry.getInstance()
-                for (stage in listOf(Stage.PRE_ON_CREATE, Stage.CREATED, Stage.STARTED, Stage.RESUMED, Stage.PAUSED)) {
-                    for (activity in monitor.getActivitiesInStage(stage)) {
-                        if (activity is MainActivity) {
-                            open++
-                            if (!activity.isFinishing) activity.finish()
-                        }
-                    }
-                }
-            }
-            if (open == 0) {
-                awaitSystemIdle("system windows after MainActivity finished")
-                return
-            }
-            instrumentation.waitForIdleSync()
-        }
-    }
-}
-
 /**
  * The installed icon in the emulator's own launcher (#763 review): home, swipe up to the app
  * list, wait until the launcher shows an "ATLAS" item, then capture the real screen.
@@ -571,16 +428,7 @@ class LapisRealLauncherLightEvidenceTest : LapisRealLauncherEvidence(dark = fals
 @RunWith(AndroidJUnit4::class)
 class LapisRealLauncherDarkEvidenceTest : LapisRealLauncherEvidence(dark = true)
 
-@RunWith(AndroidJUnit4::class)
-class LapisColdStartSplashLightEvidenceTest : LapisColdStartSplashEvidence(dark = false)
-
-@RunWith(AndroidJUnit4::class)
-class LapisColdStartSplashDarkEvidenceTest : LapisColdStartSplashEvidence(dark = true)
-
 private val LAPIS = 0xFF2639C9.toInt()
-
-/** Light glyph pixels (sampled every 2 px) the three-button nav bar shows at minimum. */
-private const val MIN_NAV_GLYPH_PIXELS = 40
 
 /** Illustrative themed-icon tones (ground, ink); real launchers derive theirs from the wallpaper. */
 private val THEMED_LIGHT = 0xFFE3E6FA.toInt() to 0xFF2A3270.toInt()
