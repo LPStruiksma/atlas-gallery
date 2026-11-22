@@ -29,6 +29,88 @@ gradle() {
     "$@"
 }
 
+# RC5 #920 proof-only: use one immutable APK pair from one completed build job.
+# This manifest is parsed as data and never evaluated as shell.
+rc5_load_shared_apks() {
+  local manifest="scripts/ci-opt-in/rc5-920-apk-source"
+  local repo="${GITHUB_REPOSITORY:-LPStruiksma/atlas-gallery}"
+  local run_id source_ref source_sha app_id app_archive_sha app_sha test_id test_archive_sha test_sha
+  local api metadata actual_run actual_sha actual_expired spec id expected zip_sha tmp app_zip test_zip
+
+  [[ -f "$manifest" ]] || { echo "::error::Missing RC5 APK source manifest"; return 1; }
+  run_id="$(sed -n 's/^run_id=//p' "$manifest")"
+  source_ref="$(sed -n 's/^source_ref=//p' "$manifest")"
+  source_sha="$(sed -n 's/^source_sha=//p' "$manifest")"
+  app_id="$(sed -n 's/^app_artifact_id=//p' "$manifest")"
+  app_archive_sha="$(sed -n 's/^app_archive_sha256=//p' "$manifest")"
+  app_sha="$(sed -n 's/^app_sha256=//p' "$manifest")"
+  test_id="$(sed -n 's/^test_artifact_id=//p' "$manifest")"
+  test_archive_sha="$(sed -n 's/^test_archive_sha256=//p' "$manifest")"
+  test_sha="$(sed -n 's/^test_sha256=//p' "$manifest")"
+
+  [[ "$run_id" =~ ^[0-9]+$ && "$source_sha" =~ ^[0-9a-f]{40}$ &&
+     "$app_id" =~ ^[0-9]+$ && "$test_id" =~ ^[0-9]+$ &&
+     "$app_archive_sha" =~ ^[0-9a-f]{64}$ && "$test_archive_sha" =~ ^[0-9a-f]{64}$ &&
+     "$app_sha" =~ ^[0-9a-f]{64}$ && "$test_sha" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "::error::Malformed RC5 APK source manifest"; return 1;
+  }
+
+  api="https://api.github.com/repos/$repo/actions/artifacts"
+  tmp="$(mktemp -d)"
+  app_zip="$tmp/app.zip"
+  test_zip="$tmp/test.zip"
+
+  # Validate artifact ID, workflow run, source SHA, expiry and server digest.
+  for spec in "$app_id:$app_archive_sha" "$test_id:$test_archive_sha"; do
+    id="${spec%%:*}"
+    expected="${spec#*:}"
+    metadata="$(curl -fLsS -H 'Accept: application/vnd.github+json' \
+      -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$id")"
+    actual_run="$(jq -r '.workflow_run.id // empty' <<< "$metadata")"
+    actual_sha="$(jq -r '.workflow_run.head_sha // empty' <<< "$metadata")"
+    actual_expired="$(jq -r '.expired' <<< "$metadata")"
+    [[ "$actual_run" == "$run_id" && "$actual_sha" == "$source_sha" &&
+       "$actual_expired" == "false" &&
+       "$(jq -r '.digest // empty' <<< "$metadata")" == "sha256:$expected" ]] || {
+      echo "::error::RC5 artifact provenance mismatch: id=$id run=$actual_run sha=$actual_sha expired=$actual_expired"
+      rm -rf "$tmp"
+      return 1
+    }
+  done
+
+  curl -fLsS --retry 2 --retry-delay 2 -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$app_id/zip" -o "$app_zip"
+  curl -fLsS --retry 2 --retry-delay 2 -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$test_id/zip" -o "$test_zip"
+
+  zip_sha="$(sha256sum "$app_zip" | awk '{print $1}')"
+  [[ "$zip_sha" == "$app_archive_sha" ]] || {
+    echo "::error::RC5 app artifact ZIP SHA mismatch: $zip_sha"; rm -rf "$tmp"; return 1;
+  }
+  zip_sha="$(sha256sum "$test_zip" | awk '{print $1}')"
+  [[ "$zip_sha" == "$test_archive_sha" ]] || {
+    echo "::error::RC5 AndroidTest artifact ZIP SHA mismatch: $zip_sha"; rm -rf "$tmp"; return 1;
+  }
+
+  unzip -p "$app_zip" app-debug.apk > "$tmp/app-debug.apk"
+  unzip -p "$test_zip" app-debug-androidTest.apk > "$tmp/app-debug-androidTest.apk"
+  [[ -s "$tmp/app-debug.apk" && -s "$tmp/app-debug-androidTest.apk" ]] || {
+    echo "::error::RC5 shared APK artifact is missing an expected APK"; rm -rf "$tmp"; return 1;
+  }
+  [[ "$(sha256sum "$tmp/app-debug.apk" | awk '{print $1}')" == "$app_sha" ]] || {
+    echo "::error::RC5 shared app APK SHA mismatch"; rm -rf "$tmp"; return 1;
+  }
+  [[ "$(sha256sum "$tmp/app-debug-androidTest.apk" | awk '{print $1}')" == "$test_sha" ]] || {
+    echo "::error::RC5 shared AndroidTest APK SHA mismatch"; rm -rf "$tmp"; return 1;
+  }
+
+  mkdir -p "$(dirname "$NEW")" "$(dirname "$TEST")"
+  cp "$tmp/app-debug.apk" "$NEW"
+  cp "$tmp/app-debug-androidTest.apk" "$TEST"
+  echo "RC5_920_SHARED_APKS run=$run_id ref=$source_ref sha=$source_sha app_artifact=$app_id app_sha256=$app_sha test_artifact=$test_id test_sha256=$test_sha"
+  rm -rf "$tmp"
+}
+
 # #143: the same synthetic test APK runs on the installed baseline and the
 # candidate at 1080x2340. Save a render for each system theme; the baseline
 # intentionally does not assert candidate-only grid geometry.
@@ -282,6 +364,9 @@ LISTENER=nl.atlas.gallery.testkit.AtlasRunListener
 if [[ "$SHARD_INDEX" != "0" ]]; then
   gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 fi
+if [[ -f scripts/ci-opt-in/rc5-920-apk-source ]]; then
+  rc5_load_shared_apks
+fi
 adb install -r "$NEW"
 adb install -r "$TEST"
 adb logcat -c || true
@@ -310,10 +395,14 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
   # #920 proof-only: a per-branch marker changes only listener and IME args.
   arm="$(tr -d '\r\n' < scripts/ci-opt-in/rc5-920-arm)"
   case "$arm" in OFF|NO-IME-POLL|FULL) ;; *) echo "::error::Bad RC5 arm $arm"; exit 1;; esac
-  stress_listener="$LISTENER"
   ime_poll=on
-  if [[ "$arm" == "OFF" ]]; then stress_listener=""; fi
   if [[ "$arm" == "NO-IME-POLL" ]]; then ime_poll=off; fi
+  listener_args=()
+  selftest_args=()
+  if [[ "$arm" != "OFF" ]]; then
+    listener_args=(-e listener "$LISTENER")
+    selftest_args=(-e atlas_listener_selftest true)
+  fi
   echo "RC5_920 frozen_source=4a700e4be78850a78cf713095ae7a1908c4c6443 head=$(git rev-parse HEAD) arm=$arm shard=$SHARD_INDEX"
   sha256sum "$NEW" "$TEST" | sed 's/^/RC5_920 APK_SHA256 /'
   stress_fail=0
@@ -331,7 +420,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       # </dev/null: adb shell would otherwise read the rest of the list.
       # atlas_listener_selftest turns on AtlasRunListenerSelfTest; no other test reads it.
       start_seconds=$SECONDS
-      adb shell am instrument -w -r -e listener "$stress_listener" -e atlas_rc5_ime_poll "$ime_poll" -e atlas_listener_selftest true \
+      adb shell am instrument -w -r "${listener_args[@]}" -e atlas_rc5_ime_poll "$ime_poll" "${selftest_args[@]}" \
         -e class "$stress_target" "$RUNNER" > "$stress_out" 2>&1 < /dev/null || true
       duration=$((SECONDS - start_seconds))
       run_id="$SHARD_INDEX-$arm-${stress_target##*.}-$stress_run"
@@ -339,16 +428,17 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       timeout 30 adb logcat -d -v time -s ATLAS_BASELINE:V ATLAS_DIAG:V ATLAS_TESTKIT:V ATLAS_TOUCH1:V AtlasSystemWindows:V \
         > "ui-evidence/rc5-920-$run_id-logcat.txt" || true
       callbacks="$(grep -c "RC5_CALLBACK mode=" "ui-evidence/rc5-920-$run_id-logcat.txt" || true)"
-      if [[ "$arm" == "OFF" && "$callbacks" != "0" ]]; then
+      passed_tests="$(sed -nE 's/^OK \(([0-9]+) tests?\)$/\1/p' "$stress_out" | tail -1)"
+      if [[ "$arm" == "OFF" && ( ! "$passed_tests" =~ ^[1-9][0-9]*$ || "$callbacks" != "0" ) ]]; then
         echo "::error::OFF listener unexpectedly active: $callbacks callbacks"
         stress_fail=1
       elif [[ "$arm" != "OFF" ]]; then
-        if [[ "$callbacks" == "0" ]] || ! grep -Fq "RC5_CALLBACK mode=$arm " "ui-evidence/rc5-920-$run_id-logcat.txt"; then
-          echo "::error::Listener not active in expected mode $arm (callbacks=$callbacks)"
+        if [[ ! "$passed_tests" =~ ^[1-9][0-9]*$ || "$callbacks" != "$passed_tests" ]] || ! grep -Fq "RC5_CALLBACK mode=$arm " "ui-evidence/rc5-920-$run_id-logcat.txt"; then
+          echo "::error::Listener callbacks/mode mismatch in $arm (tests=$passed_tests callbacks=$callbacks)"
           stress_fail=1
         fi
       fi
-      echo "RC5_920 arm=$arm shard=$SHARD_INDEX class=$stress_target repeat=$stress_run/$stress_count seconds=$duration callbacks=$callbacks"
+      echo "RC5_920 arm=$arm shard=$SHARD_INDEX class=$stress_target repeat=$stress_run/$stress_count seconds=$duration tests=$passed_tests callbacks=$callbacks"
       grep -E 'checked [0-9]+ test|ATLAS_DIAG|drift |listener testStarted skipped' "ui-evidence/rc5-920-$run_id-logcat.txt" || true
       if grep -Eq '^OK \([1-9][0-9]* tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
