@@ -303,9 +303,17 @@ if [[ "$SHARD_INDEX" != "0" ]]; then
 fi
 if [[ -f scripts/ci-opt-in/rc5-920-arms ]]; then
   rc5_load_same_run_apks
+  # The same-run APK was signed on the build runner. Remove any candidate
+  # produced during the stateful preamble so an old debug signer/data set
+  # cannot contaminate the isolated measurement installation.
+  adb uninstall nl.atlas.gallery >/dev/null 2>&1 || true
+  adb uninstall nl.atlas.gallery.test >/dev/null 2>&1 || true
+  adb install "$NEW"
+  adb install "$TEST"
+else
+  adb install -r "$NEW"
+  adb install -r "$TEST"
 fi
-adb install -r "$NEW"
-adb install -r "$TEST"
 adb logcat -c || true
 health_out=/tmp/atlas-keyboard-health.txt
 adb shell am instrument -w -r -e atlas_keyboard_health true -e listener "$LISTENER" \
@@ -329,18 +337,22 @@ fi
 # per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   adb logcat -G 16M || true
-  # Every mode uses one immutable same-run APK pair on both shards.
+  # Each arm gets a fresh emulator from the workflow matrix; all download the same build artifacts.
   mapfile -t rc5_arms < scripts/ci-opt-in/rc5-920-arms
   [[ "${rc5_arms[*]}" == "OFF NO-IME-POLL FULL" ]] || {
-    echo "::error::Expected exact RC5 arm sequence: OFF NO-IME-POLL FULL"
+    echo "::error::Expected exact RC5 arm set: OFF NO-IME-POLL FULL"
     exit 1
   }
+  arm="${ATLAS_RC5_ARM:-}"
+  case " ${rc5_arms[*]} " in
+    *" $arm "*) ;;
+    *) echo "::error::Missing or invalid RC5 arm '$arm'"; exit 1;;
+  esac
+  case "$arm" in OFF|NO-IME-POLL|FULL) ;; *) echo "::error::Bad RC5 arm $arm"; exit 1;; esac
   stress_fail=0
   stress_out=/tmp/atlas-stress.txt
   mkdir -p ui-evidence
-  for arm in "${rc5_arms[@]}"; do
-    case "$arm" in OFF|NO-IME-POLL|FULL) ;; *) echo "::error::Bad RC5 arm $arm"; exit 1;; esac
-    ime_poll=on
+  ime_poll=on
     if [[ "$arm" == "NO-IME-POLL" ]]; then ime_poll=off; fi
     listener_args=()
     selftest_args=()
@@ -400,8 +412,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       echo "::endgroup::"
     done
   done < scripts/ci-opt-in/stress-classes
-  done # every arm was measured on this same shard and APK pair
-  echo "NOTICE: RC5 #920 disposable proof head, full suite skipped; NEVER MERGE"
+  echo "NOTICE: RC5 #920 disposable proof head for arm=$arm, full suite skipped; NEVER MERGE"
   exit "$stress_fail"
 fi
 
