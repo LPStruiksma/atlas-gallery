@@ -152,6 +152,8 @@ class Hub1CSyntheticUiEvidenceTest {
         )
         var hiddenOnly by mutableStateOf(false)
         var authorized by mutableStateOf(true)
+        var load by mutableStateOf(NeedsSplittingLoad.Ready)
+        var retried = 0
         var opened: PersonPageTarget? = null
         var wentBack = false
         compose.setContent {
@@ -162,7 +164,9 @@ class Hub1CSyntheticUiEvidenceTest {
                     authorized = authorized,
                     face = { syntheticPortrait() },
                     onBack = { wentBack = true },
-                    onOpen = { opened = it.target }
+                    onOpen = { opened = it.target },
+                    load = load,
+                    onRetry = { retried++ }
                 )
             }
         }
@@ -184,10 +188,22 @@ class Hub1CSyntheticUiEvidenceTest {
         compose.onNodeWithTag("atlas-header-back").performClick()
         assertTrue(wentBack)
 
+        // #212 v3: settling shows a quiet loading line, never "(0)" or stale rows.
+        load = NeedsSplittingLoad.Loading
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-needs-splitting-loading").assertIsDisplayed()
+        compose.onNodeWithTag("atlas-needs-splitting-row").assertDoesNotExist()
+        saveUiEvidence("hub1c-needs-splitting-loading.png")
+
+        // A revoked grant or read error fails closed with a working Retry.
+        load = NeedsSplittingLoad.Unavailable
         authorized = false
         compose.waitForIdle()
-        compose.onNodeWithText("People review not available").assertIsDisplayed()
+        compose.onNodeWithText("Couldn\u2019t load groups.").assertIsDisplayed()
         compose.onNodeWithTag("atlas-needs-splitting-row").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-needs-splitting-retry").assertIsDisplayed()
+            .assertHasClickAction().assertHeightIsAtLeast(48.dp).performClick()
+        assertEquals(1, retried)
         saveUiEvidence("hub1c-needs-splitting-revoked.png")
     }
 

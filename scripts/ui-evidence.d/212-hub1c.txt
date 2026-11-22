@@ -17,5 +17,13 @@ hub1c-show-skipped-dark
 hub1c-needs-splitting-visible
 hub1c-needs-splitting-hidden
 hub1c-needs-splitting-revoked
+hub1c-needs-splitting-loading
+# Hub1CNeedsSplittingJourneyTest: the real MainActivity over a synthetic library.
+hub1c-journey-people-menu
+hub1c-journey-visible-list
+hub1c-journey-back-to-visible-list
+hub1c-journey-hidden-filter
+hub1c-journey-hidden-list
+hub1c-journey-back-to-hidden-list
 hub1c-hidden-scoped-filter
 hub1c-large-text-130

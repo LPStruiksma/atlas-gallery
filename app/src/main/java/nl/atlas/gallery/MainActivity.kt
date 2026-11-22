@@ -3333,6 +3333,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     peopleReviewOpen = false
                     hiddenPeopleOpen = false
+                    needsSplittingOpen = false
+                    hiddenNeedsSplittingOpen = false
                     nativePersonAlbum = NativePersonAlbumRequest(person.person, person.name)
                 }
             },
@@ -3431,6 +3433,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 personFilter = null
                 nativePersonAlbum = null
                 hiddenPeopleOpen = false
+                needsSplittingOpen = false
+                hiddenNeedsSplittingOpen = false
             },
             onClose = {
                 val origin = faceOrigin
@@ -3570,6 +3574,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     nativePersonAlbum = null
                     hiddenPeopleOpen = false
+                    needsSplittingOpen = false
+                    hiddenNeedsSplittingOpen = false
                     album = null
                     albumVolume = null
                     albumReturnToAlbums = false
@@ -4460,8 +4466,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                     target, "Unnamed group")
                                         }
                                     }
-                                    needsSplittingOpen = false
-                                    hiddenNeedsSplittingOpen = false
+                                    // #212 v3: keep the filtered list underneath the
+                                    // group page, so Back returns to it and it
+                                    // revalidates its rows and count from the live
+                                    // review snapshot.
                                 }
                             )
                         } else if (hiddenPeopleOpen) {
