@@ -21,16 +21,37 @@ internal class AiEditWorkingStore(context: Context, sessionId: String) {
     }.canonicalFile
 
     fun existing(): Set<String> = dir.listFiles().orEmpty()
-        .filter { it.isFile && it.name.matches(Regex("candidate-[a-f0-9-]{36}\\.png")) }
+        .filter { it.isFile && it.name.matches(CANDIDATE) }
         .mapTo(HashSet()) { it.name }
 
     fun candidateFile(fileName: String): File {
-        require(fileName.matches(Regex("candidate-[a-f0-9-]{36}\\.png")))
+        require(fileName.matches(CANDIDATE))
         val file = File(dir, fileName).canonicalFile
-        check(file.parentFile == dir && file.exists() && file.length() in 1L..16_777_216L) {
+        check(file.parentFile == dir && file.exists() && file.length() in 1L..MAX_CANDIDATE_BYTES) {
             "Temporary AI Edit candidate is no longer available"
         }
         return file
+    }
+
+    /** Private folder a hosted adapter downloads into; results are adopted from here. */
+    fun resultsDirectory(): File = File(dir, "results").apply { check(isDirectory || mkdirs()) }
+
+    /** The session folder itself, for the request journal. */
+    fun sessionDirectory(): File = dir
+
+    /**
+     * Moves one verified adapter output (in [resultsDirectory]) into the session as a candidate.
+     * Only files inside that folder, with an image extension, within the size cap, are accepted.
+     */
+    fun adoptResult(path: String): String {
+        val source = File(path).canonicalFile
+        check(source.parentFile == resultsDirectory().canonicalFile && source.isFile &&
+            source.length() in 1L..MAX_CANDIDATE_BYTES) { "Result is not a private adapter output" }
+        val ext = source.extension.lowercase().takeIf { it in setOf("png", "jpg", "webp") }
+            ?: error("Unsupported result format")
+        val name = "candidate-${UUID.randomUUID()}.$ext"
+        check(source.renameTo(File(dir, name))) { "Could not keep the result" }
+        return name
     }
 
     /** Decode a bounded 64px synthetic input. Neither original bytes nor metadata reach a provider. */
@@ -92,7 +113,14 @@ internal class AiEditWorkingStore(context: Context, sessionId: String) {
 
     fun cleanUp() {
         // Only files created for this session; never touch any other app/private gallery data.
+        File(dir, "results").listFiles()?.forEach { if (it.isFile) it.delete() }
+        File(dir, "results").delete()
         dir.listFiles()?.forEach { if (it.isFile) it.delete() }
         dir.delete()
+    }
+
+    companion object {
+        private val CANDIDATE = Regex("candidate-[a-f0-9-]{36}\\.(png|jpg|webp)")
+        private const val MAX_CANDIDATE_BYTES = 40_000_000L
     }
 }

@@ -143,7 +143,9 @@ class AiEditSettingsEvidenceTest {
             // 2: what this build offers, then every preset in fixed order.
             compose.onNodeWithTag("aie-add-service").performClick()
             waitFor("aie-preset-ATLAS_PROTOCOL")
-            compose.onNodeWithTag("aie-preset-GEMINI").assertDoesNotExist()
+            // #431: this build runs both hosted services, so main offers them too.
+            compose.onNodeWithTag("aie-preset-GEMINI").assertExists()
+            compose.onNodeWithTag("aie-preset-FAL").assertExists()
             shot("aie-19-add-main-$t")
             registry = everyKind
             waitFor("aie-preset-GEMINI")
