@@ -10,6 +10,10 @@
 
 Signed releases are published on [GitHub Releases](https://github.com/LPStruiksma/atlas-gallery/releases) from `main` by [release-signed.yml](.github/workflows/release-signed.yml), and the phone updates through Obtainium. See [docs/RELEASE_PHONE_UPDATES.md](docs/RELEASE_PHONE_UPDATES.md). Older signing documents (`docs/STABLE_SIGNING.md`, `docs/P0_SIGNING_AND_FRESH_START.md`) describe earlier debug-key and Mac-paste routes and are history, apart from the Mac fallback named in that page. Package `nl.atlas.gallery`. The version code is derived from the build time.
 
+## Opening from other apps
+
+ATLAS registers for the standard Android actions (#573): `ACTION_VIEW` and the camera's `MediaStore.ACTION_REVIEW` / `ACTION_REVIEW_SECURE` open one photo or video read-only (no favourite, share, trash or edit; ordinary view can swipe through the item's folder when ATLAS can already read it), and `ACTION_GET_CONTENT` / `ACTION_PICK` open a picker over Pictures and Albums that returns only the chosen `content://` items with a read grant. Only `content://` items whose provider type is a photo or video are accepted; secure review alone shows over the lock screen and offers nothing but that capture. Code: `app/src/main/java/nl/atlas/gallery/featureintents/`.
+
 ## Privacy (public repository)
 
 No personal photos, videos, face embeddings, People databases, private evaluation material, credentials or signing keys go into commits, test fixtures, CI logs or artifacts. Tests use synthetic or licensed media. Measurements on the owner's phone report aggregates only.

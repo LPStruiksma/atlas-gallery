@@ -1,0 +1,12 @@
+# BRAND-L3 #656: Lapis launcher icon and splash (LapisLauncherSplashEvidenceTest.kt).
+# Real platform splash captures while MainActivity starts (API 31+ windowSplashScreen*).
+lapis656-splash-light
+lapis656-splash-dark
+# The shipped adaptive icon drawn by Android at 48 dp on a synthetic busy launcher.
+lapis656-launcher-light
+lapis656-launcher-dark
+# The API 29-30 starting window (values/ windowBackground layer-list) drawn by Android.
+lapis656-splash-api29-30
+# The installed icon in the emulator's own launcher app list (real screen).
+lapis656-real-launcher-light
+lapis656-real-launcher-dark

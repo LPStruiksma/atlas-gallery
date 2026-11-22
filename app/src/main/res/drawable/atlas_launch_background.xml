@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BRAND-L3 (#656): static cold-start window for API 29-30, used as Theme.Atlas.Launch's
+     windowBackground. Lapis ground in light and dark, the launcher foreground mark centred,
+     no wordmark, no animation. 288 dp matches the API 31+ platform splash icon box, so both
+     API families show the mark at the same size. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/atlas_lapis" />
+    <item
+        android:width="288dp"
+        android:height="288dp"
+        android:gravity="center"
+        android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

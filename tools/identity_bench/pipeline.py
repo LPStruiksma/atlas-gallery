@@ -151,6 +151,62 @@ def source_encoder(swapper: str) -> str:
     return SOURCE_ENCODERS.get(swapper, "arcface_w600k_r50")
 
 
+# Explicit bench-use decisions from docs/identity-studio/LICENCES.md (IDS-13).
+# Research-only is permitted for the host bench, never for shipping. Adding a
+# model requires a new, source-backed register row AND an explicit decision here.
+BENCH_ALLOWED = frozenset({
+    "inswapper_128", "hyperswap_1a_256", "hyperswap_1b_256",
+    "hyperswap_1c_256", "simswap_256", "crossface_simswap",
+    "ghost_1_256", "ghost_2_256", "ghost_3_256", "crossface_ghost",
+    "arcface_w600k_r50", "glintr100", "bisenet_resnet_34",
+    "selfie_multiclass_256", "gfpgan_1.4", "yunet", "sface",
+    "ghost1_generator_fp32", "ghost1_generator_fp16", "ghost1_generator_int8",
+    "ghost_backbone_fp32", "ghost_backbone_fp16", "ghost_backbone_int8",
+})
+BENCH_BLOCKED = frozenset({"alphaface_256"})
+
+
+def require_bench_model(name: str) -> None:
+    """Fail closed before any cache lookup or network request."""
+    if name in BENCH_BLOCKED:
+        raise PermissionError(
+            f"{name}: refused by docs/identity-studio/LICENCES.md; "
+            "author permission has not been obtained for AlphaFace weights. "
+            "Historical measurements are not permission to re-run; first "
+            "update the register with source-linked author permission.")
+    if name not in BENCH_ALLOWED:
+        raise PermissionError(
+            f"{name}: no approved bench-use decision in "
+            "docs/identity-studio/LICENCES.md; refuse until its model "
+            "and dependent weights have a source-backed register row.")
+
+
+def candidate_dependencies(config) -> tuple:
+    """Validate known candidate models, converter, encoder, mask and judge."""
+    name = config.swapper
+    if name != "control-none" and name not in SWAPPERS:
+        raise PermissionError(
+            f"{name}: not a registered bench candidate in "
+            "docs/identity-studio/LICENCES.md")
+    dependencies = ["yunet", "glintr100", "sface"]
+    if name != "control-none":
+        dependencies.extend((name, source_encoder(name)))
+        kind = SWAPPERS[name][0]
+        if kind in ("ghost", "simswap"):
+            dependencies.append("crossface_" + kind)
+    if config.mask in ("parse", "parse-both"):
+        dependencies.append("bisenet_resnet_34")
+    elif config.mask == "mp":
+        dependencies.append("selfie_multiclass_256")
+    elif config.mask not in ("box", "hard-box"):
+        raise ValueError(f"unknown bench mask: {config.mask}")
+    if config.restore:
+        dependencies.append("gfpgan_1.4")
+    for dependency in dependencies:
+        require_bench_model(dependency)
+    return tuple(dict.fromkeys(dependencies))
+
+
 # BiSeNet classes that belong to the replaced face: skin, brows, eyes, nose,
 # mouth, lips.  Glasses (6), ears, hair, neck and cloth stay the target's.
 FACE_CLASSES = (1, 2, 3, 4, 5, 10, 11, 12, 13)
@@ -175,6 +231,7 @@ def sha256_file(path: str) -> str:
 
 def model_path(name: str, fetch: bool = True) -> str:
     """Path of a pinned model, downloaded from its original host on first use."""
+    require_bench_model(name)
     if name in SHIPPED_MODELS:
         rel, digest = SHIPPED_MODELS[name]
         path = os.path.join(SHIPPED, rel)
@@ -568,6 +625,13 @@ class Config:
     # sub-crops of the network's own size (boost^2 network calls).
     boost: int = 1
 
+    def __post_init__(self):
+        # The synthetic 'fake' network is supplied directly by unit tests; it
+        # never resolves weights. All actual runnable candidates are checked
+        # at construction, before Bench can load its shared research judge.
+        if self.swapper != "fake":
+            candidate_dependencies(self)
+
     @property
     def label(self) -> str:
         parts = [self.swapper]
@@ -639,6 +703,8 @@ def swap_face(image: np.ndarray, marks, source_raw: np.ndarray, config: Config, 
     reference photos.  `jitter` (5 x 2 pixels) perturbs the landmarks for the
     stability check.  `swapper` lets a test inject a stand-in network.
     """
+    if swapper is None:
+        candidate_dependencies(config)
     meter = tools.meter
     net = swapper or tools.swapper(config.swapper)
     marks = np.asarray(marks, np.float64) + (0 if jitter is None else jitter)

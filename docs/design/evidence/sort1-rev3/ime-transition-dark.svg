@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="ime-transition" data-theme="dark" data-synthetic="true" data-density-illustrative="3" data-font-scale="1" data-query="canal">
+<title id="title">Search — synthetic dark design proposal</title>
+<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#000000"/>
+<text x="16" y="84" fill="#8C9BFF" font-size="38" font-family="Funnel Display, sans-serif" font-weight="700" letter-spacing="-0.03em" data-role="screen-title" data-spec="38/44sp; 76/88sp at 200%">Search</text>
+<text x="16" y="118" fill="#9AA0B8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">Query retained</text>
+<rect x="295" y="35" width="52" height="52" rx="15" fill="#14152A" data-target="sort"/>
+<text x="303" y="67" fill="#8C9BFF" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Sort</text>
+<g data-transition="keyboard">
+<rect x="16" y="142" width="328" height="187" rx="15" fill="#14152A"/>
+<text x="28" y="165" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">1 · Keyboard visible</text>
+<rect x="28" y="177" width="304" height="43" rx="9" fill="#000000"/>
+<text x="43" y="205" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
+<rect x="28" y="229" width="304" height="90" rx="8" fill="#343955"/>
+<rect x="35" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="77" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="119" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="161" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="203" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="245" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="287" y="238" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="35" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="77" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="119" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="161" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="203" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="245" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="287" y="265" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="35" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="77" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="119" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="161" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="203" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="245" y="292" width="36" height="20" rx="4" fill="#000000"/>
+<rect x="287" y="292" width="36" height="20" rx="4" fill="#000000"/>
+</g>
+<g data-transition="dismissed">
+<rect x="16" y="347" width="328" height="187" rx="15" fill="#14152A"/>
+<text x="28" y="370" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">2 · IME dismissed</text>
+<rect x="28" y="382" width="304" height="43" rx="9" fill="#000000"/>
+<text x="43" y="410" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
+<text x="30" y="460" fill="#F2F3F8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">234 matching media · query retained</text>
+<rect x="30" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
+<rect x="131" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
+<rect x="232" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
+</g>
+<g data-transition="sheet">
+<rect x="16" y="552" width="328" height="187" rx="15" fill="#14152A"/>
+<text x="28" y="575" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">3 · Sort opened</text>
+<rect x="28" y="587" width="304" height="43" rx="9" fill="#000000"/>
+<text x="43" y="615" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
+<rect x="28" y="639" width="304" height="87" rx="12" fill="#000000"/>
+<text x="40" y="660" fill="#F2F3F8" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Sort by</text>
+<rect x="39" y="668" width="282" height="48" rx="6" fill="#14152A"/>
+<text x="51" y="697" fill="#F2F3F8" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="400">Relevance selected</text>
+</g>
+<text x="16" y="767" fill="#9AA0B8" font-size="11" font-family="Funnel Sans, sans-serif" font-weight="400">Full six-key list shown in search-relevance</text>
+<rect x="0" y="757" width="360" height="23" rx="0" fill="#000000"/>
+<rect x="126" y="768" width="108" height="4" rx="2" fill="#F2F3F8"/>
+</svg>

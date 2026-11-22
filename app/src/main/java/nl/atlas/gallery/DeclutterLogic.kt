@@ -78,6 +78,9 @@ class DeclutterSession private constructor(
 
     val position: Int get() = tail?.depth ?: 0
 
+    /** Most recent decision, O(1); null before the first one. */
+    val lastDecision: DeclutterDecision? get() = tail?.decision
+
     /** Explicit O(reviewed) inspection; not used on the high-frequency swipe path. */
     val history: List<DeclutterDecision>
         get() {
@@ -157,6 +160,14 @@ class DeclutterSession private constructor(
 
     fun stagedBytes(): Long = stagedByteTotal
 }
+
+/**
+ * Any source list (album, month, search or similar-photo group) in the
+ * source's own order, de-duplicated by URI. Unlike the folder builder it never
+ * re-sorts. The result is certified like the folder deck.
+ */
+fun sourceDeclutterDeck(items: List<MediaRecord>): List<MediaRecord> =
+    VerifiedUniqueDeclutterDeck(items.distinctBy { it.uri })
 
 /** A *single exact physical folder*, no recursion, no implicit all-library session. */
 fun folderDeclutterDeck(all: List<MediaRecord>, folder: String): List<MediaRecord> {
