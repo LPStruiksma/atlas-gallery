@@ -74,6 +74,7 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.ManualFaceScanGuard
+import nl.atlas.gallery.featureface.currentManualWait
 import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceUnknownInboxBridge
@@ -2098,12 +2099,20 @@ internal class PeopleDiscoveryHost(
             ManualFaceScanGuard(p.batteryPercent, p.thermalStatus,
                 foregroundVisible).holdReason()
         } else null
+        // A wait remembered from an earlier Scan now is re-checked against live
+        // sensors, so a cleared hold (e.g. the phone cooled) stops showing.
+        val remembered = lastManualWait
+        val rememberedWait = if (manualForegroundActive || remembered == null) null else {
+            val p = power()
+            currentManualWait(remembered, ManualFaceScanGuard(p.batteryPercent,
+                p.thermalStatus, foregroundVisible)).also { if (it == null) lastManualWait = null }
+        }
         val pending = progress.pending + progress.running > 0
         val note = if (!pending || snap.paused) null else when {
             manualWait != null -> manualWait
             manualForegroundActive -> null
-            !power().charging -> lastManualWait ?: "Waiting for charging · use Scan now while unplugged"
-            else -> lastManualWait
+            !power().charging -> rememberedWait ?: "Waiting for charging · use Scan now while unplugged"
+            else -> rememberedWait
         }
         val active = manualForegroundActive || scanBatchEpoch == scoped.epoch
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
