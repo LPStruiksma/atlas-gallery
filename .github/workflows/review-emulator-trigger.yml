@@ -26,7 +26,7 @@ on:
 permissions:
   contents: read
   actions: write
-  issues: write
+  pull-requests: write
 jobs:
   dispatch-emulators:
     if: ${{ github.event.label.name == 'emulator:run' && github.event.pull_request.head.repo.full_name == github.repository }}
@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           # The label is a one-shot request: always consumed, so a new head needs it again.
-          trap 'gh api -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/emulator%3Arun" >/dev/null || true' EXIT
+          trap 'gh api -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/emulator%3Arun" >/dev/null || echo "::warning::Could not remove the emulator:run label from PR #$PR_NUMBER; remove it by hand."' EXIT
           if [[ "$IS_DRAFT" == "true" ]]; then
             echo "::error::PR #$PR_NUMBER is a draft: no emulator run started. Mark it ready, then add emulator:run again."
             exit 1
