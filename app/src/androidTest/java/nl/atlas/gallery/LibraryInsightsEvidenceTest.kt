@@ -48,6 +48,7 @@ import java.util.Locale
  * both themes, from synthetic numbers only (no MediaStore, no personal media).
  */
 @RunWith(AndroidJUnit4::class)
+// Codex #987: replace slow repeated 30,000-row crawl with indexed jump.
 class LibraryInsightsEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
