@@ -87,4 +87,43 @@ class PerformanceAggregatesTest {
         assertEquals(null, ColdStartClock({ 0L }, { 5_000L }).elapsedMs())
         assertEquals(null, ColdStartClock({ 6_000L }, { 5_000L }).elapsedMs())
     }
+
+    private class FakeStore(private val initial: Map<String, List<Double>> = emptyMap()) :
+        PerformanceAggregates.PerformanceStore {
+        val saved = HashMap<String, List<Double>>()
+        override fun load(): Map<String, List<Double>> = initial
+        override fun save(metric: String, values: List<Double>) { saved[metric] = values }
+    }
+
+    @Test fun restoresSamplesFromStoreAndKeepsNewestCapacity() {
+        val store = FakeStore(mapOf("grid_frame_ms" to listOf(1.0, 2.0, 3.0, 4.0, 5.0), "not_a_metric" to listOf(9.0)))
+        val samples = PerformanceAggregates(capacity = 3, store = store)
+        val row = samples.snapshot("grid_frame_ms")
+        assertEquals(3, row.count)
+        assertEquals(5.0, row.max!!, 0.0)
+        assertEquals(0, samples.snapshot("not_a_metric").count)
+    }
+
+    @Test fun savesEveryFewSamplesAndOnFlush() {
+        val store = FakeStore()
+        val samples = PerformanceAggregates(capacity = 256, store = store)
+        repeat(PerformanceAggregates.SAVE_EVERY - 1) { samples.record("viewer_ms", 10.0) }
+        assertFalse(store.saved.containsKey("viewer_ms"))
+        samples.record("viewer_ms", 10.0)
+        assertEquals(PerformanceAggregates.SAVE_EVERY, store.saved["viewer_ms"]!!.size)
+        samples.record("viewer_ms", 20.0)
+        samples.flush()
+        assertEquals(PerformanceAggregates.SAVE_EVERY + 1, store.saved["viewer_ms"]!!.size)
+    }
+
+    @Test fun fullRingSavesOnlyEverySaveEveryRecords() {
+        var saves = 0
+        val counting = object : PerformanceAggregates.PerformanceStore {
+            override fun load() = emptyMap<String, List<Double>>()
+            override fun save(metric: String, values: List<Double>) { saves++ }
+        }
+        val full = PerformanceAggregates(capacity = 16, store = counting)
+        repeat(16 * PerformanceAggregates.SAVE_EVERY) { full.record("viewer_ms", 1.0) }
+        assertEquals(16, saves)
+    }
 }

@@ -19,6 +19,17 @@ import nl.atlas.gallery.featureidentity.install.IdentityModelInstaller
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Keep performance samples for this app version across restarts (numbers only).
+        PerformanceSession.install(this)
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityPaused(activity: android.app.Activity) = PerformanceSession.flush()
+            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) = Unit
+            override fun onActivityStarted(activity: android.app.Activity) = Unit
+            override fun onActivityResumed(activity: android.app.Activity) = Unit
+            override fun onActivityStopped(activity: android.app.Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) = Unit
+            override fun onActivityDestroyed(activity: android.app.Activity) = Unit
+        })
         // #435: load the preference files the first Photos grid reads, off Main.
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }

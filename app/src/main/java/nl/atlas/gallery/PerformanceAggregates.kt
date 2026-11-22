@@ -3,12 +3,23 @@ package nl.atlas.gallery
 import kotlin.math.ceil
 
 /**
- * Numeric-only, process-local performance samples. No IDs, paths, URIs, names,
- * file access, persistent storage or network reporting. A fixed allowlist also
- * prevents arbitrary caller-provided metric labels from storing private data.
+ * Numeric-only performance samples. No IDs, paths, URIs, names, file access or
+ * network reporting. Samples may be kept per app version through [PerformanceStore]
+ * (plain numbers only, so comparisons across versions survive an app restart). A
+ * fixed allowlist also prevents arbitrary caller-provided metric labels from
+ * storing private data.
  */
-class PerformanceAggregates(private val capacity: Int = 256) {
+class PerformanceAggregates(
+    private val capacity: Int = 256,
+    private val store: PerformanceStore? = null
+) {
     init { require(capacity in 1..4096) }
+
+    /** Numeric-only persistence for one app version. Values are doubles; no labels. */
+    interface PerformanceStore {
+        fun load(): Map<String, List<Double>>
+        fun save(metric: String, values: List<Double>)
+    }
 
     data class Summary(
         val count: Int, val p50: Double?, val p90: Double?, val p95: Double?,
@@ -19,13 +30,48 @@ class PerformanceAggregates(private val capacity: Int = 256) {
         "face_photos_min", "visual_photos_min", "heap_fraction") +
         (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
+    private val unsaved = HashMap<String, Int>()
+
+    init {
+        // Restore the version's earlier samples, keeping only the newest `capacity`.
+        store?.load()?.forEach { (metric, values) ->
+            if (metric in keys) {
+                val ring = ArrayDeque<Double>()
+                values.filter { it.isFinite() && it >= 0.0 }.takeLast(capacity).forEach { ring.addLast(it) }
+                if (ring.isNotEmpty()) samples[metric] = ring
+            }
+        }
+    }
 
     @Synchronized fun record(metric: String, value: Double): Boolean {
         if (metric !in keys || !value.isFinite() || value < 0.0) return false
         val ring = samples.getOrPut(metric) { ArrayDeque() }
         ring.addLast(value)
         if (ring.size > capacity) ring.removeFirst()
+        val pending = (unsaved[metric] ?: 0) + 1
+        if (pending >= SAVE_EVERY) {
+            store?.save(metric, ring.toList())
+            unsaved[metric] = 0
+        } else {
+            unsaved[metric] = pending
+        }
         return true
+    }
+
+    /** Writes any samples not yet saved, so a normal shutdown loses nothing. */
+    @Synchronized fun flush() {
+        val store = store ?: return
+        samples.forEach { (metric, ring) ->
+            if ((unsaved[metric] ?: 0) > 0) {
+                store.save(metric, ring.toList())
+                unsaved[metric] = 0
+            }
+        }
+    }
+
+    companion object {
+        /** Up to this many samples per metric may be lost if the process dies without a flush. */
+        const val SAVE_EVERY = 16
     }
 
     @Synchronized fun snapshot(metric: String): Summary {
@@ -68,7 +114,24 @@ class ColdStartClock(
 
 /** One-process capture only; UI reads a snapshot on demand. */
 internal object PerformanceSession {
-    val aggregate = PerformanceAggregates()
+    var aggregate = PerformanceAggregates()
+        private set
+
+    /**
+     * Keeps samples for the installed app version across restarts (#PERF-KEEP). Earlier
+     * versions stay until ten newer versions exist, so version-to-version comparisons work.
+     */
+    fun install(context: android.content.Context) {
+        @Suppress("DEPRECATION")
+        val version = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+        }.getOrNull() ?: return
+        val store = PerformancePrefsStore(context, version)
+        store.pruneOldVersions(keepVersions = 10)
+        aggregate = PerformanceAggregates(store = store)
+    }
+
+    fun flush() = aggregate.flush()
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private var peakHeapFraction = 0.0
