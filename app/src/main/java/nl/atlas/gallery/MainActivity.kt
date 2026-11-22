@@ -2301,7 +2301,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mountedItemCount = timelineGridState.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch
                 ) == slot
-            ) timelineGridState.scrollToItem(slot)
+            ) {
+                // Keep the exact pre-open offset; only seek when the photo the
+                // user ended on is offscreen.
+                if (!timelineGridState.isItemOnScreen(slot)) timelineGridState.scrollToItem(slot)
+            }
         } else {
             val destination = when (route) {
                 2 -> personGridState
@@ -2321,7 +2325,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mediaIndex = index,
                     mountedItemCount = destination.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch)
-            ) destination.scrollToItem(index)
+            ) {
+                if (!destination.isItemOnScreen(index)) destination.scrollToItem(index)
+            }
         }
         if (pendingViewerReturn === request) pendingViewerReturn = null
     }
