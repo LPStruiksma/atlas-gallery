@@ -119,36 +119,42 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
           retention-days: 2
+  plan-emulator-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Select the normal or RC5 proof emulator matrix
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f scripts/ci-opt-in/rc5-920-arms && -f scripts/ci-opt-in/stress-classes ]]; then
+            echo 'matrix={"include":[{"shard":0,"arm":"OFF"},{"shard":1,"arm":"OFF"},{"shard":0,"arm":"NO-IME-POLL"},{"shard":1,"arm":"NO-IME-POLL"},{"shard":0,"arm":"FULL"},{"shard":1,"arm":"FULL"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"shard":0,"arm":"STANDARD"},{"shard":1,"arm":"STANDARD"}]}' >> "$GITHUB_OUTPUT"
+          fi
   emulator-ui-shard:
     # AutoDev Actions-minutes rule: draft PR heads and heads without next:review get build + JVM
     # tests only; the API35 emulator job runs on a non-draft PR labelled next:review and on
     # opted-in manual runs (which is how review-emulator-trigger.yml starts it).
     # Job names stay static: a run cancelled before it starts must not leave checks under an
     # unevaluated expression name, which would block the merge join for that head.
-    # #588: the instrumented suite outgrew one 40-minute job, so it runs as two
-    # shards (each with its own cap). Shard 0 also runs the upgrade phases. The
-    # emulator-ui job below is the single check that joins and reviews read.
+    # #588: standard CI runs shards 0 and 1. The proof-only RC5 marker selects
+    # six isolated arm×shard jobs instead, all using this run's build artifacts.
+    # Shard 0 also runs the stateful upgrade phases. The aggregate check joins both.
     if: ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
     name: emulator-ui shard ${{ matrix.shard }} arm ${{ matrix.arm }}
-    needs: build
+    needs: [build, plan-emulator-matrix]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - shard: 0
-            arm: OFF
-          - shard: 1
-            arm: OFF
-          - shard: 0
-            arm: NO-IME-POLL
-          - shard: 1
-            arm: NO-IME-POLL
-          - shard: 0
-            arm: FULL
-          - shard: 1
-            arm: FULL
+      matrix: ${{ fromJSON(needs.plan-emulator-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
