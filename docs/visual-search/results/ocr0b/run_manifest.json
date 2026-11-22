@@ -1,0 +1,37 @@
+{
+  "parent": "d12bff6a068a9f9bf1d6d759a5308edb6b68bf02",
+  "captured_utc": "2026-11-21",
+  "verdict": "REJECT",
+  "rights": "NOT CLEARED",
+  "instructions": {
+    "live_main": "NOT MEASURED",
+    "error": "curl: (22) The requested URL returned error: 403"
+  },
+  "environment": {
+    "python": "3.11.8",
+    "dependency_install": "NOT MEASURED",
+    "command": "python3 -m venv /tmp/ocr0b-venv && /tmp/ocr0b-venv/bin/pip install -q -r tools/ocr_bench/requirements-ocr.txt onnx==1.20.1",
+    "error": "ProxyError: Tunnel connection failed: 403 Forbidden; ERROR: Could not find a version that satisfies the requirement onnx==1.20.1 (from versions: none)"
+  },
+  "quantization": {
+    "ppocr_detector": "NOT MEASURED",
+    "ppocr_recognizer": "NOT MEASURED",
+    "doctr_detector": "NOT MEASURED",
+    "doctr_recognizer": "NOT MEASURED",
+    "reason": "ONNX dependencies and pinned model downloads were unavailable after the dependency installation failed"
+  },
+  "inference_validation": "NOT MEASURED",
+  "host_cpu": {
+    "cold_decode_det_rec_total_median_p95": "NOT MEASURED",
+    "warm_decode_det_rec_total_median_p95": "NOT MEASURED",
+    "rss": "NOT MEASURED"
+  },
+  "prefilter": {
+    "dev_threshold": "NOT MEASURED",
+    "test_en_nl_recall_false_skips_no_text_pass_skip": "NOT MEASURED",
+    "reason": "Pillow and numpy were unavailable and the deterministic corpus could not be generated"
+  },
+  "projection_150000": "NOT MEASURED: requires measured stage costs, admission fraction and RSS",
+  "s24_plus": "NOT MEASURED; no phone performance, energy or thermal claim",
+  "policy": "No app, Gradle, protected path, owner photo, weight, dictionary or binary was added"
+}

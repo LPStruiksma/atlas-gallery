@@ -81,9 +81,15 @@ internal object PerformanceSession {
     // filmstrip selections are A4. No selected index or URI is retained here.
     private var pendingViewerOpenPreview = false
 
-    fun recordActionMs(action: Int, elapsedMs: Double): Boolean {
+    /**
+     * [usage] false for per-frame callers, which feed [UsageRecorder.scrollFrame]
+     * themselves so one scroll counts once (USAGE-0, #173).
+     */
+    fun recordActionMs(action: Int, elapsedMs: Double, usage: Boolean = true): Boolean {
         if (action !in 1..11) return false
-        return aggregate.record("action_a${action}_ms", elapsedMs)
+        val accepted = aggregate.record("action_a${action}_ms", elapsedMs)
+        if (accepted && usage) UsageRecorder.measured(action, elapsedMs)
+        return accepted
     }
 
     fun recordActionElapsedNs(action: Int, beganNs: Long): Boolean {
@@ -94,12 +100,13 @@ internal object PerformanceSession {
     }
 
     /** Only while a grid is actively scrolling; consecutive Compose/Choreographer frames. */
-    fun recordGridFrame(frameMs: Double, budgetMs: Double) {
+    fun recordGridFrame(frameMs: Double, budgetMs: Double, usageA2: Boolean = true) {
         if (!frameMs.isFinite() || frameMs <= 0.0 ||
             !budgetMs.isFinite() || budgetMs <= 0.0) return
         if (aggregate.record("grid_frame_ms", frameMs)) {
             aggregate.record("grid_frame_over_budget", if (frameMs > budgetMs) 1.0 else 0.0)
-            recordActionMs(2, frameMs)
+            recordActionMs(2, frameMs, usage = false)
+            if (usageA2) UsageRecorder.scrollFrame(2, frameMs, frameMs > budgetMs)
         }
     }
 
@@ -113,7 +120,10 @@ internal object PerformanceSession {
         if (metric != "face_photos_min" && metric != "visual_photos_min") return false
         if (completed <= 0 || elapsedMs <= 0) return false
         val accepted = aggregate.record(metric, completed * 60_000.0 / elapsedMs)
-        if (accepted) recordActionMs(5, elapsedMs.toDouble())
+        if (accepted) {
+            recordActionMs(5, elapsedMs.toDouble())
+            UsageRecorder.scanner(completed, elapsedMs)
+        }
         return accepted
     }
 
