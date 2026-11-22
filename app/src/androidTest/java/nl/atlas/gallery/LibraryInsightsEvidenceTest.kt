@@ -48,7 +48,6 @@ import java.util.Locale
  * both themes, from synthetic numbers only (no MediaStore, no personal media).
  */
 @RunWith(AndroidJUnit4::class)
-// Codex #987: replace slow repeated 30,000-row crawl with indexed jump.
 class LibraryInsightsEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
@@ -205,10 +204,10 @@ class LibraryInsightsEvidenceTest {
         state = InsightsUiState.Ready(huge)
         show()
         compose.onNodeWithTag("atlas-insights-all-folders").performClick()
-        compose.onNodeWithTag("atlas-insights-list").performScrollToNode(row("Folder29999"))
         assertTrue(compose.onAllNodesWithTag("atlas-insights-row").fetchSemanticsNodes().size < 100)
         both("huge", scroll = {
-            compose.onNodeWithTag("atlas-insights-list").performScrollToNode(row("Folder29999"))
+            compose.onNodeWithTag("atlas-insights-list").performScrollToIndex(30_001)
+            compose.onNode(row("Folder29999")).assertIsDisplayed()
         })
     }
 
