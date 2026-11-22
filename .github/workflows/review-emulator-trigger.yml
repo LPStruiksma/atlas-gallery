@@ -1,9 +1,12 @@
 name: ATLAS review emulator trigger
-# Actions-minutes rule (autodev CI audit 2026-11-12): build-apk.yml runs the API35 emulator
-# shards only on a non-draft PR labelled next:review. When that label is ADDED without a new
-# push, this job dispatches build-apk.yml on the PR branch head, so the head handed to Review
-# gets its exact-head emulator-ui check. Every other label event skips this one cheap job;
-# no build or emulator check is ever created, skipped or cancelled by a label change.
+# Review reads the code first; the full emulator run starts on request (goal #986, U5 #990).
+# build-apk.yml runs the API35 emulator shards only on workflow_dispatch with run_ui_tests, so a
+# push, a ready_for_review or the label next:review never starts the ~48-minute suite. Adding
+# the label `emulator:run` to a non-draft PR dispatches build-apk.yml once on the PR branch,
+# for the head the label was added on, and then removes the label. A new head needs the label
+# again. Review adds it when its code verdict is "CLEAN pending CI"; Dev may add it on request.
+# Every other label event skips this one cheap job; no build or emulator check is ever created,
+# skipped or cancelled by a label change.
 # Same-repository branches only (fork PRs get a read-only token and are not used here).
 on:
   pull_request:
@@ -23,19 +26,33 @@ on:
 permissions:
   contents: read
   actions: write
+  issues: write
 jobs:
   dispatch-emulators:
-    if: ${{ github.event.label.name == 'next:review' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event.label.name == 'emulator:run' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Dispatch build-apk.yml (build + API35 emulator shards) on the PR head
+      - name: Dispatch build-apk.yml (build + API35 emulator shards) on the labelled head, then remove the label
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
+          # The label is a one-shot request: always consumed, so a new head needs it again.
+          trap 'gh api -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/emulator%3Arun" >/dev/null || true' EXIT
+          if [[ "$IS_DRAFT" == "true" ]]; then
+            echo "::error::PR #$PR_NUMBER is a draft: no emulator run started. Mark it ready, then add emulator:run again."
+            exit 1
+          fi
+          tip=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq .head.sha)
+          if [[ "$tip" != "$HEAD_SHA" ]]; then
+            echo "::error::The head moved from $HEAD_SHA to $tip after the label was added: no emulator run started. Add emulator:run again for the new head."
+            exit 1
+          fi
           echo "Dispatching emulators for $HEAD_REF at $HEAD_SHA"
           gh workflow run build-apk.yml --ref "$HEAD_REF" -f run_ui_tests=true -f api_level=35
