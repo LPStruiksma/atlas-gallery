@@ -45,7 +45,9 @@ rc5_load_same_run_apks() {
   cp "$test_source" "$TEST"
   app_sha="$(sha256sum "$NEW" | awk '{print $1}')"
   test_sha="$(sha256sum "$TEST" | awk '{print $1}')"
-  echo "RC5_920_SHARED_APKS run=${GITHUB_RUN_ID:-unknown} source=${GITHUB_SHA:-unknown} app_sha256=$app_sha test_sha256=$test_sha"
+  mkdir -p ui-evidence
+  echo "RC5_920_SHARED_APKS run=${GITHUB_RUN_ID:-unknown} source=${GITHUB_SHA:-unknown} app_sha256=$app_sha test_sha256=$test_sha" \
+    | tee "ui-evidence/rc5-920-apk-pair-${ATLAS_RC5_ARM:-unknown}-${SHARD_INDEX:-unknown}.txt"
 }
 
 # #143: the same synthetic test APK runs on the installed baseline and the
