@@ -29,7 +29,7 @@ gradle() {
     "$@"
 }
 
-# RC5 #920 proof-only: both emulator shards consume the two APK artifacts
+# RC5 #920 proof-only: all six arm/shard jobs consume the two APK artifacts
 # uploaded by this very workflow run's build job. No cross-run API token is used.
 rc5_load_same_run_apks() {
   local app_source="rc5-apks/app/app-debug.apk"
