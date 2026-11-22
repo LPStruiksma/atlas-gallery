@@ -425,8 +425,10 @@ lapis_cold_start_splash_986() {
     local previous= focus= stable=0 deadline=$((SECONDS + 15))
     adb shell input keyevent KEYCODE_HOME
     while (( SECONDS < deadline )); do
-      focus="$(adb shell dumpsys window windows | tr -d '\r' |
-        grep -E 'mCurrentFocus=|mFocusedApp=' | head -2 || true)"
+      # `dumpsys window windows` carries no focus lines on API 35; plain `dumpsys window` does
+      # (same source as SystemWindows.kt).
+      focus="$(adb shell dumpsys window | tr -d '\r' | sed 's/^[[:space:]]*//' |
+        grep -E '^(mCurrentFocus|mFocusedApp)=' | sort -u | head -2 || true)"
       if grep -Eqi "isn't responding|Application Not Responding|Application Error" <<<"$focus"; then
         echo "::error::U2 splash found a system ANR: $focus"; return 1
       fi
@@ -520,9 +522,12 @@ PY
       wait "$start_pid" || launch_failed=1
       if [[ "$launch_failed" == 0 ]] && ! grep -Fq 'Status: ok' "$start_out"; then launch_failed=1; fi
       selected=
+      frame_notes=
       if [[ "$launch_failed" == 0 ]]; then
-        for frame in "/tmp/atlas-lapis-$theme-$launch"/*.png; do
+        for frame in $(seq 1 16); do
+          frame="/tmp/atlas-lapis-$theme-$launch/$frame.png"
           if note="$(is_static_lapis_splash "$frame")"; then selected="$frame"; break; fi
+          frame_notes+=" ${frame##*/}:[${note:-unreadable}]"
         done
       fi
       if [[ -n "$selected" ]]; then
@@ -530,6 +535,7 @@ PY
         adb push "$selected" "$remote/IMG_20010101_000000_lapis656-splash-$theme.png" >/dev/null
       else
         echo "FAIL: U2 splash $theme launch $launch/3 (no qualifying frame; am-start status=$launch_failed)"
+        echo "U2 splash $theme launch $launch frames (capture order):$frame_notes"
         cat "$start_out"
         splash_failed=1
       fi
