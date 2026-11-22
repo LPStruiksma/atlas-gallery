@@ -114,6 +114,25 @@ One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a t
 
 Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
 
+## Quarantined tests
+
+The blocking emulator instrumentation suite excludes exactly these two flaky
+test methods:
+
+- `nl.atlas.gallery.LapisColdStartSplashLightEvidenceTest#coldStartShowsStaticLapisSplash` ([#967](https://github.com/LPStruiksma/atlas-gallery/issues/967))
+- `nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives` ([#968](https://github.com/LPStruiksma/atlas-gallery/issues/968))
+
+Their method-level selectors live in the `quarantined_emulator_tests` function
+in `scripts/ci_android_upgrade_emulator.sh`, which is the single quarantine
+list. Each method still runs separately on every emulator shard after the
+blocking suite. CI prints its instrumentation transcript, focused logcat, and
+an explicit `QUARANTINE … PASS/FAIL (non-blocking)` result. A quarantined
+failure is a warning and does not fail the shard. Every other connected test
+remains blocking, as do the upgrade, recovery, and later real-process checks.
+Remove a selector as soon as its tracked issue is fixed and stress evidence
+confirms the repair; do not add a test without its own tracking issue and
+review.
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.

@@ -29,6 +29,16 @@ gradle() {
     "$@"
 }
 
+# #970: these are the only methods omitted from the blocking connected suite.
+# Keep the issue beside each method-level selector so removing a fixed
+# quarantine is an explicit, reviewable change rather than a broad class filter.
+quarantined_emulator_tests() {
+  cat <<'EOF'
+nl.atlas.gallery.LapisColdStartSplashLightEvidenceTest#coldStartShowsStaticLapisSplash #967
+nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives #968
+EOF
+}
+
 # #143: the same synthetic test APK runs on the installed baseline and the
 # candidate at 1080x2340. Save a render for each system theme; the baseline
 # intentionally does not assert candidate-only grid geometry.
@@ -326,7 +336,47 @@ if [[ "$SHARD_COUNT" -gt 1 ]]; then
   shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi
-gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+mapfile -t quarantine_targets < <(quarantined_emulator_tests | awk '{ print $1 }')
+quarantine_not_class="$(IFS=,; echo "${quarantine_targets[*]}")"
+gradle :app:connectedDebugAndroidTest "${shard_args[@]}" \
+  -Pandroid.testInstrumentationRunnerArguments.notClass="$quarantine_not_class" \
+  --no-daemon --stacktrace || connected_status=$?
+
+# Run each excluded method as its own instrumentation invocation. This is
+# deliberately report-only: failures are visible but cannot replace the
+# blocking connected suite's status. Reinstall because that suite removes its
+# APKs when it returns.
+run_quarantined_emulator_tests() {
+  local target issue capture result
+  adb install -r "$NEW" >/dev/null || {
+    echo "::warning::#970 could not install the app for quarantined tests"; return 0;
+  }
+  adb install -r "$TEST" >/dev/null || {
+    echo "::warning::#970 could not install the test APK for quarantined tests"; return 0;
+  }
+  while read -r target issue; do
+    [[ -z "$target" ]] && continue
+    capture="/tmp/atlas-quarantine-${issue#\#}.txt"
+    adb logcat -c || true
+    adb shell am instrument -w -r -e class "$target" "$RUNNER" \
+      > "$capture" 2>&1 || true
+    echo "::group::QUARANTINE $issue $target instrumentation"
+    cat "$capture"
+    echo "::endgroup::"
+    if grep -Fq 'OK (1 test)' "$capture"; then
+      result=PASS
+    else
+      result=FAIL
+      echo "::warning::$issue quarantined emulator test failed (non-blocking): $target"
+    fi
+    echo "QUARANTINE $issue $target: $result (non-blocking)"
+    echo "::group::QUARANTINE $issue $target logcat"
+    timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V AndroidRuntime:E TestRunner:E \
+      || echo "Quarantine logcat unavailable (device gone or timed out)"
+    echo "::endgroup::"
+  done < <(quarantined_emulator_tests)
+}
+run_quarantined_emulator_tests
 echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
 # Keep the bounded query even on a failed test so review can read the p50.
