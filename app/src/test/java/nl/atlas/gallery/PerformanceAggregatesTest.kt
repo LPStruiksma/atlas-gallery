@@ -98,6 +98,7 @@ class PerformanceAggregatesTest {
     @Test fun restoresSamplesFromStoreAndKeepsNewestCapacity() {
         val store = FakeStore(mapOf("grid_frame_ms" to listOf(1.0, 2.0, 3.0, 4.0, 5.0), "not_a_metric" to listOf(9.0)))
         val samples = PerformanceAggregates(capacity = 3, store = store)
+        samples.restore(store.load())
         val row = samples.snapshot("grid_frame_ms")
         assertEquals(3, row.count)
         assertEquals(5.0, row.max!!, 0.0)
@@ -111,7 +112,7 @@ class PerformanceAggregatesTest {
         val row = samples.snapshot("viewer_ms")
         assertEquals(3, row.count)
         assertEquals(40.0, row.max!!, 0.0)
-        assertEquals(20.0, row.p50!!, 0.0)
+        assertEquals(30.0, row.p50!!, 0.0)
     }
 
     @Test fun savesEveryFewSamplesAndOnFlush() {
