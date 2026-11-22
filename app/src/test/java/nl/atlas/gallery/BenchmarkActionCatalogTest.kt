@@ -46,6 +46,7 @@ class BenchmarkActionCatalogTest {
         val port = object : BenchmarkStepPort {
             override fun assertPrecondition(step: BenchmarkStep) = false
             override fun executeSynthetic(step: BenchmarkStep): Long { executed = true; return 1 }
+            override fun assertResult(step: BenchmarkStep) = true
         }
         try {
             BenchmarkActionCatalog.runOne(UsageAction.A1, port)
@@ -58,11 +59,29 @@ class BenchmarkActionCatalogTest {
         val port = object : BenchmarkStepPort {
             override fun assertPrecondition(step: BenchmarkStep) = true
             override fun executeSynthetic(step: BenchmarkStep): Long = 1
+            override fun assertResult(step: BenchmarkStep) = true
         }
         rejected { BenchmarkActionCatalog.runOne(UsageAction.A5, port) }
         assertEquals(17L, BenchmarkActionCatalog.runOne(UsageAction.A1, object : BenchmarkStepPort {
             override fun assertPrecondition(step: BenchmarkStep) = true
             override fun executeSynthetic(step: BenchmarkStep) = 17L
+            override fun assertResult(step: BenchmarkStep) = true
         }))
+    }
+
+    @Test fun failedResultAssertionDiscardsTiming() {
+        var executed = false
+        var checked: BenchmarkStep? = null
+        val port = object : BenchmarkStepPort {
+            override fun assertPrecondition(step: BenchmarkStep) = true
+            override fun executeSynthetic(step: BenchmarkStep): Long { executed = true; return 42 }
+            override fun assertResult(step: BenchmarkStep): Boolean { checked = step; return false }
+        }
+        try {
+            BenchmarkActionCatalog.runOne(UsageAction.A1, port)
+            fail("Expected failed result assertion")
+        } catch (_: IllegalStateException) { /* expected */ }
+        assertTrue(executed)
+        assertEquals(UsageAction.A1, checked?.action)
     }
 }

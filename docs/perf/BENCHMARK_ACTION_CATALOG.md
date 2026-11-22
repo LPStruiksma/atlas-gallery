@@ -35,13 +35,13 @@ Source of truth: `UsageAction` in `app/src/main/java/nl/atlas/gallery/UsageAggre
 
 ## Runner interface and safety
 
-`BenchmarkStepPort.assertPrecondition(step)` must validate the synthetic dataset, starting screen and expected control **before** timing; `executeSynthetic(step)` must return a nonnegative elapsed duration only after the asserted step completes. `runOne` gates on availability and the precondition. The next unit must add a cancellable Android implementation, fixture setup/teardown, result assertions, timing aggregation and a device-level verification matrix. Do not use production photos, names, URIs, permissions, network, camera, or trash changes. Never export per-media identifiers.
+`BenchmarkStepPort.assertPrecondition(step)` must validate the synthetic dataset, starting screen and expected control **before** timing; `executeSynthetic(step)` performs the step and returns a nonnegative elapsed duration; `assertResult(step)` must then verify the step's control assertion on the resulting screen. `runOne` gates on availability and the precondition, and discards the timing (fails) when the result assertion does not pass, so an action that never reached its expected UI result is never recorded. The next unit must add a cancellable Android implementation, fixture setup/teardown, result assertions, timing aggregation and a device-level verification matrix. Do not use production photos, names, URIs, permissions, network, camera, or trash changes. Never export per-media identifiers.
 
 ## Updating IDs
 
 1. Add/remove the `UsageAction` enum ID only with a deliberate usage-export compatibility decision; do not renumber existing IDs silently (the private codec uses ordinals).
 2. Add/remove the corresponding catalog row and update the version. Specify a step key and both assertions only when a safe synthetic runner contract exists; otherwise use `UNAVAILABLE` and state why.
-3. Run `BenchmarkActionCatalogTest` and `UsageAggregatesTest` in exact-head JVM CI. Check the 22-row inventory, duplicate and missing/stale checks, changed-control failure, and absence of any reported device timing.
+3. Run `BenchmarkActionCatalogTest` and `UsageAggregatesTest` in exact-head JVM CI. Check the 22-row inventory, duplicate and missing/stale checks, changed-control failure, failed-result failure, and absence of any reported device timing.
 4. Update this table and review compatibility with `scripts/usage_rank.py` and `docs/perf/USAGE_EXPORT.md`. A D-screen ID change is a separate usage schema decision.
 
 No device timings, throughput, FPS or real-world performance results are claimed.

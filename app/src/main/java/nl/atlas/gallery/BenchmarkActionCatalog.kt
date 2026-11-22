@@ -27,8 +27,10 @@ data class BenchmarkStep(
 interface BenchmarkStepPort {
     /** Verify a visible control and synthetic fixture before timing starts. */
     fun assertPrecondition(step: BenchmarkStep): Boolean
-    /** Return elapsed nanoseconds only after an asserted, completed synthetic action. */
+    /** Perform the synthetic action and return its elapsed nanoseconds. */
     fun executeSynthetic(step: BenchmarkStep): Long
+    /** Verify [BenchmarkStep.controlAssertion] on the resulting screen after the action. */
+    fun assertResult(step: BenchmarkStep): Boolean
 }
 
 /** Bump only when the ID set, status, step key or assertion contract changes. */
@@ -94,7 +96,7 @@ object BenchmarkActionCatalog {
         }
     }
 
-    /** Never run a step if its current control assertion cannot be established. */
+    /** Never run a step without its precondition, and never accept a timing whose result assertion fails. */
     fun runOne(action: UsageAction, port: BenchmarkStepPort): Long {
         validate()
         val step = steps.single { it.action == action }
@@ -102,6 +104,7 @@ object BenchmarkActionCatalog {
         check(port.assertPrecondition(step)) { "Synthetic control assertion failed before timing" }
         val elapsed = port.executeSynthetic(step)
         check(elapsed >= 0) { "Invalid elapsed duration" }
+        check(port.assertResult(step)) { "Synthetic result assertion failed; timing discarded" }
         return elapsed
     }
 }
