@@ -2057,7 +2057,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         originalProportions, timelineEnabled, personFilter, albumRoute,
         pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending,
         scopedPending) {
-        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+        val invalidScope = tab != 0 || (!originalProportions && !timelineEnabled) ||
             personFilter != null || !grants.hasAny ||
             !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
         if (invalidScope) {
@@ -3487,7 +3487,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
                 tab == 0 && personFilter == null && !statusOpen &&
-                    !originalProportions && timelineEnabled
+                    (originalProportions || timelineEnabled)
             }
             // #556: Samsung swaps the tab bar for the selection actions.
             if (photosSelection != null) {
@@ -3577,10 +3577,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // #652: on the Photos timeline/grid, album detail and the Albums grid,
         // content draws under the floating tab pill; the grids add the bar's
         // height as bottom content padding so their last row stays reachable.
-        // Every other screen (and selection mode's opaque bar) stays above it.
-        val navPillShown = !(batchSelection != null && tab == 0 && personFilter == null &&
-            !statusOpen && !originalProportions && timelineEnabled)
-        val drawUnderBar = navPillShown && access && !statusOpen && !settingsOpen && personFilter == null &&
+        // Every other screen stays above it. Photos selection draws under its
+        // opaque action bar too: the grid's height must not change when the
+        // bars swap, or the 150k-row layout re-plans, the grid blanks and the
+        // long-press drag under the finger is cancelled after one photo.
+        val drawUnderBar = access && !statusOpen && !settingsOpen && personFilter == null &&
             (tab == 0 || (tab == 1 && !storiesOpen && !photoDnaOpen))
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
@@ -3751,7 +3752,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
                 !headerScrollsWithGrid && !searchOwnsTop) {
-                galleryHeader()
+                val ratioSelection = batchSelection?.takeIf {
+                    photosControls && originalProportions && !settingsOpen
+                }
+                // Original rows: the selection top bar takes the header's place.
+                if (ratioSelection != null) {
+                    SamsungSelectionTopBar(
+                        count = ratioSelection.count,
+                        allSelected = visible.isNotEmpty() && ratioSelection.count >= visible.size,
+                        enabled = !batchOperating,
+                        onToggleAll = {
+                            val now = batchSelection
+                            if (now != null && !batchOperating &&
+                                now.isCurrentFor(visible, publishedGallery.epoch,
+                                    galleryAccessCurrent())) {
+                                batchSelection = now.replaced(toggleAll(
+                                    visible.size, now.uris
+                                ) { visible.getOrNull(it)?.uri })
+                            }
+                        }
+                    )
+                } else galleryHeader()
             }
             if (notification != null) {
                 Text(notification!!, Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
@@ -3969,6 +3990,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             pendingRatioAnchor = null
                                             pendingRatioReturn = null
+                                            // A selection never survives a layout switch.
+                                            batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingViewerReturn = request.focal?.let {
                                                 PendingViewerReturn(visible, it.mediaKey, 0,
                                                     publishedGallery.epoch)
@@ -3978,6 +4002,32 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                     ?: GridDensity.LARGE
                                             timelineEnabled = ratioReturnToTimeline
                                             originalProportions = false
+                                        }
+                                    },
+                                    selectedMediaUris = batchSelection?.takeIf {
+                                        it.isCurrentFor(visible, publishedGallery.epoch,
+                                            galleryAccessCurrent())
+                                    }?.uris,
+                                    onSelectionChange = { uris ->
+                                        val selection = batchSelection
+                                        if (!batchOperating && galleryAccessCurrent()) {
+                                            if (selection == null) {
+                                                selectionAlbumRoute = albumRoute
+                                                batchSelection = GalleryBatchSelection.of(
+                                                    visible, publishedGallery.epoch, uris)
+                                            } else if (selection.isCurrentFor(visible,
+                                                    publishedGallery.epoch, true)) {
+                                                batchSelection = selection.replaced(uris)
+                                            }
+                                        }
+                                    },
+                                    onMediaToggle = { media ->
+                                        val selection = batchSelection
+                                        if (selection != null && !batchOperating &&
+                                            selection.isCurrentFor(visible,
+                                                publishedGallery.epoch, galleryAccessCurrent())) {
+                                            // Samsung: unchecking the last item keeps selection open.
+                                            batchSelection = selection.toggledKeepingMode(media)
                                         }
                                     },
                                     onLayoutReady = { ready ->
