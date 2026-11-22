@@ -192,6 +192,10 @@ class PinchCrossFlowEvidenceTest {
         assertEquals("$label: late sideways jump", settled.left, later.left, 1f)
     }
 
+    private fun crossLayerShown() = compose.onAllNodes(SemanticsMatcher.expectValue(
+        SemanticsProperties.TestTag, "atlas-pinch-cross-layer"), useUnmergedTree = true)
+        .fetchSemanticsNodes().isNotEmpty()
+
     @Test fun pinchFlowsBetweenLevelsDark() = pinchFlowsBetweenLevels(dark = true)
 
     @Test fun pinchFlowsBetweenLevelsLight() = pinchFlowsBetweenLevels(dark = false)
@@ -234,14 +238,44 @@ class PinchCrossFlowEvidenceTest {
         inward.to(.5f); saveUiEvidence("flow1-$theme-in-50.png")
         inward.to(.75f); saveUiEvidence("flow1-$theme-in-75.png")
         // Half-way through the settle: still one continuous picture, no cut.
+        // Then step the settle frame by frame: keep the last frame that still
+        // shows the pinch layer and the first frame of the real LazyGrid.
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         compose.mainClock.autoAdvance = false
         inward.release()
         compose.mainClock.advanceTimeBy(48L)
         saveUiEvidence("flow1-$theme-in-settling.png")
+        var lastOverlay: Bitmap? = null
+        var firstGrid: Bitmap? = null
+        for (frame in 0 until 60) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            val shot = automation.takeScreenshot() ?: continue
+            if (crossLayerShown()) { lastOverlay?.recycle(); lastOverlay = shot }
+            else { firstGrid = shot; break }
+        }
         compose.mainClock.autoAdvance = true
         compose.waitForIdle()
         grid.assert(columns(7))
         saveUiEvidence("flow1-$theme-in-settled-7.png")
+
+        // Handover frame pair over the whole grid viewport (preflight note 1,
+        // review 4): the pinch layer must already show the photos, in the
+        // places, that the real grid opens with. A blink to empty tiles or a
+        // shifted grid differs on most pixels.
+        val g = grid.fetchSemanticsNode().boundsInRoot
+        val diff = if (lastOverlay != null && firstGrid != null)
+            handoverFrameDiff(lastOverlay, firstGrid, g) else null
+        val report = JSONObject().put("unit", "711-timeline-handover").put("theme", theme)
+            .put("emulator", BenchmarkReport.isEmulator())
+            .put("overlay_frame", lastOverlay != null).put("grid_frame", firstGrid != null)
+            .put("mean_abs_diff", diff?.first ?: -1.0).put("pixels_over_32_pct", diff?.second ?: -1.0)
+            .toString()
+        println("${BenchmarkReport.TAG} 711-timeline-handover json $report")
+        Log.i(BenchmarkReport.TAG, "711-timeline-handover json $report")
+        lastOverlay?.recycle(); firstGrid?.recycle()
+        assertTrue("handover frames captured: $report", diff != null)
+        assertTrue("handover frame pair close (mean channel diff < 40): $report", diff!!.first < 40.0)
         assertAnchoredAndStill(tag, focusRoot, "commit 4->7")
 
         if (!dark) return@withAnimatorScale
@@ -572,6 +606,33 @@ class PinchCrossFlowEvidenceTest {
  * the pinch layer, which only draws memory-cached tiles, would render empty
  * here while it shows photos on a phone.
  */
+/**
+ * Handover check shared by the FLOW-1 journeys: mean absolute channel
+ * difference and % of pixels differing by more than 32, inside [area]
+ * (every second pixel of every second row).
+ */
+internal fun handoverFrameDiff(a: Bitmap, b: Bitmap, area: Rect): Pair<Double, Double> {
+    val left = area.left.toInt().coerceAtLeast(0)
+    val top = area.top.toInt().coerceAtLeast(0)
+    val right = minOf(area.right.toInt(), a.width, b.width)
+    val bottom = minOf(area.bottom.toInt(), a.height, b.height)
+    if (right <= left || bottom <= top) return -1.0 to -1.0
+    var sum = 0L; var over = 0L; var n = 0L
+    val rowA = IntArray(right - left); val rowB = IntArray(right - left)
+    for (y in top until bottom step 2) {
+        a.getPixels(rowA, 0, rowA.size, left, y, rowA.size, 1)
+        b.getPixels(rowB, 0, rowB.size, left, y, rowB.size, 1)
+        for (x in rowA.indices step 2) {
+            val p = rowA[x]; val q = rowB[x]
+            val d = maxOf(abs(Color.red(p) - Color.red(q)), abs(Color.green(p) - Color.green(q)),
+                abs(Color.blue(p) - Color.blue(q)))
+            sum += d; if (d > 32) over++; n++
+        }
+    }
+    if (n == 0L) return -1.0 to -1.0
+    return BenchmarkReport.round1(sum.toDouble() / n) to BenchmarkReport.round1(100.0 * over / n)
+}
+
 internal const val SYNTHETIC_PROVIDER_VERSION = "synthetic-711"
 
 @Composable

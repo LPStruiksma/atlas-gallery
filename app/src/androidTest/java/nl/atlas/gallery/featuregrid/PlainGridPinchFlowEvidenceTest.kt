@@ -175,7 +175,7 @@ class PlainGridPinchFlowEvidenceTest {
         // real-grid frame, inside the grid. The layer is drawn from the memory
         // cache and the grid from its own decode, so a small difference is fine.
         val diff = if (lastOverlay != null && firstGrid != null)
-            frameDiff(lastOverlay, firstGrid, g) else null
+            handoverFrameDiff(lastOverlay, firstGrid, g) else null
         val report = JSONObject().put("unit", "711-plain-handover").put("theme", theme)
             .put("emulator", BenchmarkReport.isEmulator())
             .put("anchor_top_delta_px", BenchmarkReport.round1((settled.top - g.top - drawn.top).toDouble()))
@@ -264,28 +264,6 @@ class PlainGridPinchFlowEvidenceTest {
         val after = checkNotNull(boundsOf(tag)) { "middle photo $tag not shown after Smaller tiles" }
         assertTrue("middle photo stays near the middle ($after vs ${g.center.y})",
             abs(after.center.y - g.center.y) < after.height * 1.5f)
-    }
-
-    /** Mean absolute channel difference and % of pixels differing by more than 32, inside [area]. */
-    private fun frameDiff(a: Bitmap, b: Bitmap, area: Rect): Pair<Double, Double> {
-        val left = area.left.toInt().coerceAtLeast(0)
-        val top = area.top.toInt().coerceAtLeast(0)
-        val right = minOf(area.right.toInt(), a.width, b.width)
-        val bottom = minOf(area.bottom.toInt(), a.height, b.height)
-        var sum = 0L; var over = 0L; var n = 0L
-        val rowA = IntArray(right - left); val rowB = IntArray(right - left)
-        for (y in top until bottom step 2) {
-            a.getPixels(rowA, 0, rowA.size, left, y, rowA.size, 1)
-            b.getPixels(rowB, 0, rowB.size, left, y, rowB.size, 1)
-            for (x in rowA.indices step 2) {
-                val p = rowA[x]; val q = rowB[x]
-                val d = maxOf(abs(Color.red(p) - Color.red(q)), abs(Color.green(p) - Color.green(q)),
-                    abs(Color.blue(p) - Color.blue(q)))
-                sum += d; if (d > 32) over++; n++
-            }
-        }
-        if (n == 0L) return -1.0 to -1.0
-        return BenchmarkReport.round1(sum.toDouble() / n) to BenchmarkReport.round1(100.0 * over / n)
     }
 
     private fun fixtures(count: Int): List<MediaRecord> {
