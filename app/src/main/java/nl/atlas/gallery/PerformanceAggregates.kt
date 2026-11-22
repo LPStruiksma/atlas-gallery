@@ -138,7 +138,7 @@ internal object PerformanceSession {
 
     /**
      * Reads the saved samples and prunes old versions (keeps the newest ten). Call from a
-     * background thread: reading SharedPreferences on the main thread trips StrictMode.
+     * background thread: reading SharedPreferences on the main thread trips the disk-read policy in debug builds.
      */
     fun restoreSaved() {
         val installed = store ?: return
