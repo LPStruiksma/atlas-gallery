@@ -57,6 +57,13 @@ import nl.atlas.gallery.SharedPhotoOrigins
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.selected
+import nl.atlas.gallery.featureorganization.DragSelectRange
+import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 
 private const val DENSITY_PREFS = "atlas_featuregrid_density"
 
@@ -127,7 +134,13 @@ fun AtlasFeatureGrid(
     /** Shown when [items] is empty and not [busy] (#654: Search says "No results"). */
     emptyText: String = "No photos yet",
     /** #134: one short neutral line under [emptyText] (Search: no results). */
-    emptyDetail: String? = null
+    emptyDetail: String? = null,
+    /** Live batch selection (null outside selection mode), as on the timeline grid. */
+    selectedMediaUris: Set<String>? = null,
+    /** Long-press (and drag) selection; null turns selection off (Search, People). */
+    onSelectionChange: ((Set<String>) -> Unit)? = null,
+    /** A tap while selecting toggles the tile instead of opening it. */
+    onMediaToggle: ((MediaRecord) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val prefs = remember(context) {
@@ -154,6 +167,12 @@ fun AtlasFeatureGrid(
     var pendingAnchor by remember { mutableStateOf<GridAnchorCommit?>(null) }
     val currentOpen by rememberUpdatedState(onOpen)
     val originalCurrent by rememberUpdatedState(onOriginalProportionsRequested)
+    val selectionCurrent by rememberUpdatedState(selectedMediaUris)
+    val selectionChangeCurrent by rememberUpdatedState(onSelectionChange)
+    val toggleCurrent by rememberUpdatedState(onMediaToggle)
+    val haptics = LocalHapticFeedback.current
+    val frameScope = rememberCoroutineScope()
+    val dragHolder = remember { arrayOfNulls<DragSelectRange>(1) }
 
     fun requestOriginal(focus: Offset) {
         val info = state.layoutInfo
@@ -272,7 +291,31 @@ fun AtlasFeatureGrid(
             }) { next, focus ->
                 if (next == GalleryZoomStop.ORIGINAL) requestOriginal(focus)
                 else next.squareDensityOrNull()?.let { chooseDensity(it, focus) }
-            }.semantics {
+            }
+            // Samsung long-press drag selection, as on the timeline and original rows.
+            // Every slot of the plain grid is a media item at the same index.
+            .gridDragSelect(
+                enabled = onSelectionChange != null,
+                gridState = state,
+                frameScope = frameScope,
+                isMediaSlot = { it in items.indices },
+                onStart = start@{ mediaIndex ->
+                    val sink = selectionChangeCurrent ?: return@start false
+                    val range = DragSelectRange.start(mediaIndex,
+                        selectionCurrent.orEmpty()) { items.getOrNull(it)?.uri }
+                        ?: return@start false
+                    dragHolder[0] = range
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    sink(range.selection)
+                    true
+                },
+                onExtend = { mediaIndex ->
+                    val range = dragHolder[0]
+                    if (range != null) selectionChangeCurrent?.invoke(range.extendTo(mediaIndex))
+                },
+                onEnd = { dragHolder[0] = null }
+            )
+            .semantics {
                 val actions = buildList {
                     if (originalCurrent != null) add(
                         CustomAccessibilityAction(ORIGINAL_PROPORTIONS_ACTION) {
@@ -299,13 +342,31 @@ fun AtlasFeatureGrid(
                 // Keep coordinates outside Compose state: scroll frames must not
                 // recompose every visible tile merely to track its rectangle.
                 val sourceBounds = remember(media.uri) { arrayOf<Rect?>(null) }
+                val selecting = selectedMediaUris != null && onMediaToggle != null
+                val isSelected = selecting && media.uri in selectedMediaUris.orEmpty()
                 Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(AtlasTokens.Radii.GridTile))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
-                    .clickable(onClickLabel = "Open ${media.name}") {
-                        SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
-                        currentOpen(media)
+                    // The pointer long press belongs to the grid's drag
+                    // detector; TalkBack gets the same start as an action.
+                    .then(if (onSelectionChange != null && !selecting) Modifier.semantics {
+                        onLongClick("Select ${media.name}") {
+                            selectionChangeCurrent?.invoke(selectionCurrent.orEmpty() + media.uri)
+                            true
+                        }
+                    } else Modifier)
+                    .clickable(onClickLabel = if (selecting) "Select ${media.name}"
+                        else "Open ${media.name}") {
+                        // Live state at click time: never open mid-selection.
+                        val toggle = toggleCurrent
+                        if (selectionCurrent != null && toggle != null) toggle(media)
+                        else {
+                            SharedPhotoOrigins.offer(media, catalogueEpoch, sourceBounds[0])
+                            currentOpen(media)
+                        }
                     }
+                    .then(if (selecting) Modifier.semantics { selected = isSelected }
+                        else Modifier)
                     .testTag("atlas-grid-media-${media.id}-${if (media.isVideo) "video" else "photo"}")) {
                     // Existing Coil media request and cache remain owned by the host.
                     // A fixed request size across 3/4/7 does not force extra decodes
@@ -313,6 +374,9 @@ fun AtlasFeatureGrid(
                     MediaPreview(media, Modifier.fillMaxSize(), ContentScale.Crop, previewPixels, gridTile = true)
                     if (media.isVideo) Text("▶", Modifier.align(Alignment.BottomEnd)
                         .padding(6.dp), style = MaterialTheme.typography.titleMedium)
+                    // Samsung: every tile shows its circle while selecting.
+                    if (selecting) SelectionCheckCircle(isSelected,
+                        Modifier.align(Alignment.TopStart).padding(5.dp))
                 }
             }
         }
