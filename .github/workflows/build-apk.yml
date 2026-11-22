@@ -255,15 +255,55 @@ jobs:
         with:
           pattern: ATLAS-android-UI-evidence-shard-*
           path: shards
-      - name: Merge shard screenshots and check the full UI-evidence set
+      - name: Merge shard evidence and validate the applicable proof
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p ui-evidence
           for dir in shards/*/ui-evidence; do
-            [[ -d "$dir" ]] && cp -n "$dir"/*.png ui-evidence/ 2>/dev/null || true
+            [[ -d "$dir" ]] || continue
+            cp -n "$dir"/*.png ui-evidence/ 2>/dev/null || true
+            cp -n "$dir"/*.txt ui-evidence/ 2>/dev/null || true
           done
-          bash scripts/ci_ui_evidence.sh verify
+
+          if [[ -f scripts/ci-opt-in/rc5-920-arms ]]; then
+            # RC5 stress-only jobs intentionally do not produce the normal app screenshots.
+            # Require the complete six-job arm/shard set and both raw files per test case.
+            mapfile -t pair_files < <(find shards -type f -path '*/ui-evidence/rc5-920-apk-pair-*.txt' | sort)
+            [[ "${#pair_files[@]}" -eq 6 ]] || {
+              echo "::error::Expected six RC5 APK-pair fingerprints, found ${#pair_files[@]}"; exit 1;
+            }
+            app_test_pair=""
+            for arm in OFF NO-IME-POLL FULL; do
+              for shard in 0 1; do
+                dir="shards/ATLAS-android-UI-evidence-shard-$shard-$arm/ui-evidence"
+                pair_file="$dir/rc5-920-apk-pair-$arm-$shard.txt"
+                [[ -s "$pair_file" ]] || { echo "::error::Missing RC5 pair evidence: $pair_file"; exit 1; }
+                grep -Eq "^RC5_920_SHARED_APKS run=$GITHUB_RUN_ID source=$GITHUB_SHA app_sha256=[0-9a-f]{64} test_sha256=[0-9a-f]{64}$" "$pair_file" || {
+                  echo "::error::Malformed or wrong-run RC5 APK fingerprint: $pair_file"; exit 1;
+                }
+                pair="$(sed -E 's/.* app_sha256=([0-9a-f]{64}) test_sha256=([0-9a-f]{64})$/\1 \2/' "$pair_file")"
+                if [[ -z "$app_test_pair" ]]; then app_test_pair="$pair"; fi
+                [[ "$pair" == "$app_test_pair" ]] || {
+                  echo "::error::RC5 APK pair differs across arm/shard jobs"; exit 1;
+                }
+                for test_class in ExternalPickerJourneyTest ExternalNeighboursJourneyTest; do
+                  base="rc5-920-$shard-$arm-$test_class-1"
+                  [[ -s "$dir/$base-instrument.txt" && -s "$dir/$base-logcat.txt" ]] || {
+                    echo "::error::Missing RC5 instrument/logcat evidence for $arm shard $shard $test_class"; exit 1;
+                  }
+                done
+              done
+            done
+            instrument_count="$(find shards -type f -path '*/ui-evidence/rc5-920-*-instrument.txt' | wc -l)"
+            logcat_count="$(find shards -type f -path '*/ui-evidence/rc5-920-*-logcat.txt' | wc -l)"
+            [[ "$instrument_count" == "12" && "$logcat_count" == "12" ]] || {
+              echo "::error::Expected 12 RC5 instrument and 12 logcat files; found $instrument_count/$logcat_count"; exit 1;
+            }
+            echo "PASS: six arm/shard jobs shared app/test APK SHA pair $app_test_pair and produced 12 instrument + 12 logcat records"
+          else
+            bash scripts/ci_ui_evidence.sh verify
+          fi
       - name: Upload merged screenshots and shard test results
         if: always()
         uses: actions/upload-artifact@v4
