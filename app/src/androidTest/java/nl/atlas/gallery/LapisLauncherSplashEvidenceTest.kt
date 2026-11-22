@@ -356,13 +356,43 @@ abstract class LapisColdStartSplashEvidence(private val dark: Boolean) {
         context.startActivity(intent, options.toBundle())
         var splashFrames = 0
         var bestGlyphs = 0
+        var sampledFrames = 0
+        val density = context.resources.displayMetrics.density
+        val navigationMode = runCatching {
+            nl.atlas.gallery.testkit.testShell("settings get secure navigation_mode").trim()
+        }.getOrElse { "unavailable: ${it.javaClass.simpleName}" }
+        android.util.Log.i("ATLAS_LAPIS_DIAG", "launch dark=$dark density=$density navMode=$navigationMode start=${SystemClock.uptimeMillis()} focus=${describeFocus()}")
         val deadline = SystemClock.uptimeMillis() + 6_000L
         while (SystemClock.uptimeMillis() < deadline) {
             val shot = instrumentation.uiAutomation.takeScreenshot() ?: continue
             val frame = if (shot.config == Bitmap.Config.HARDWARE) {
                 shot.copy(Bitmap.Config.ARGB_8888, false).also { shot.recycle() }
             } else shot
-            if (isLapisSplash(frame)) {
+            val splash = isLapisSplash(frame)
+            if (sampledFrames < 12) {
+                val band = (48 * density).toInt().coerceIn(1, frame.height)
+                val upper = frame.height - band
+                var nearWhite = 0
+                var midGrey = 0
+                var darkPixels = 0
+                for (y in upper until frame.height step 2) for (x in 0 until frame.width step 2) {
+                    val pixel = frame.getPixel(x, y)
+                    val minimum = minOf(Color.red(pixel), Color.green(pixel), Color.blue(pixel))
+                    when {
+                        minimum >= 190 -> nearWhite++
+                        minimum >= 100 -> midGrey++
+                        else -> darkPixels++
+                    }
+                }
+                android.util.Log.i(
+                    "ATLAS_LAPIS_DIAG",
+                    "dark=$dark frame=$sampledFrames elapsedMs=${SystemClock.uptimeMillis() - (deadline - 6_000L)} " +
+                        "size=${frame.width}x${frame.height} density=$density bandY=$upper..${frame.height} " +
+                        "splash=$splash nearWhite=$nearWhite midGrey=$midGrey dark=$darkPixels"
+                )
+            }
+            sampledFrames++
+            if (splash) {
                 splashFrames++
                 val glyphs = legibleNavGlyphPixels(frame)
                 bestGlyphs = maxOf(bestGlyphs, glyphs)
