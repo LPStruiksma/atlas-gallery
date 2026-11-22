@@ -37,3 +37,11 @@ Run `python3 -m tools.ocr_bench.ocr0b prefilter CORPUS WORK/prefilter.json --min
 The threshold is chosen solely from the fixed development split; output independently reports
 locked-test EN/NL and kind recall, false skips, no-text pass/skip, bytes read and latency. This
 command does not invoke OCR, so an OCR empty prediction cannot become a prefilter skip.
+
+Measure a candidate with the existing inference instrumentation and produce the charging-only
+projection with `python3 -m tools.ocr_bench.ocr0b benchmark ppocr CORPUS MODELS WORK/bench.json
+--prefilter-results WORK/prefilter.json` (use `doctr` for the other candidate). The first result
+includes model construction and is cold; warmups are discarded before the warm sample. Output
+reports independently measured decode, detector, recognizer and end-to-end totals, process peak
+RSS, and uses the documented zero-based nearest-rank-down percentile (`floor(q * (n - 1))`). A
+missing runtime, model, or unexecuted inference stage remains **NOT MEASURED**; it is never zero.
