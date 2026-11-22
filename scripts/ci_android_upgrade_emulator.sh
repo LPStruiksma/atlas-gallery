@@ -429,10 +429,15 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
         > "ui-evidence/rc5-920-$run_id-logcat.txt" || true
       callbacks="$(grep -c "RC5_CALLBACK mode=" "ui-evidence/rc5-920-$run_id-logcat.txt" || true)"
       passed_tests="$(sed -nE 's/^OK \(([0-9]+) tests?\)$/\1/p' "$stress_out" | tail -1)"
-      if [[ "$arm" == "OFF" && ( ! "$passed_tests" =~ ^[1-9][0-9]*$ || "$callbacks" != "0" ) ]]; then
-        echo "::error::OFF listener unexpectedly active: $callbacks callbacks"
-        stress_fail=1
-      elif [[ "$arm" != "OFF" ]]; then
+      if [[ "$arm" == "OFF" ]]; then
+        if [[ ! "$passed_tests" =~ ^[1-9][0-9]*$ ]]; then
+          echo "::error::OFF arm launched no tests"
+          stress_fail=1
+        elif [[ "$callbacks" != "0" ]]; then
+          echo "::error::OFF listener unexpectedly active: $callbacks callbacks"
+          stress_fail=1
+        fi
+      else
         if [[ ! "$passed_tests" =~ ^[1-9][0-9]*$ || "$callbacks" != "$passed_tests" ]] || ! grep -Fq "RC5_CALLBACK mode=$arm " "ui-evidence/rc5-920-$run_id-logcat.txt"; then
           echo "::error::Listener callbacks/mode mismatch in $arm (tests=$passed_tests callbacks=$callbacks)"
           stress_fail=1
