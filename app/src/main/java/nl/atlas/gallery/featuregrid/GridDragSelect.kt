@@ -80,16 +80,7 @@ private fun LazyGridState.hitSlot(x: Float, y: Float): Int? {
 
 /**
  * Samsung long-press drag selection (parity research `GRID:S1`, `S2`) for a lazy grid.
- *
- * A finger held still for the long-press timeout over a media slot starts
- * selection there ([onStart] returns false to refuse). Without lifting, every
- * move reports the media slot under the finger to [onExtend]; gaps and headers
- * keep the last slot. Within 28 dp of the visible top (below the pinned bar
- * over the grid's top content padding) or the bottom edge the grid scrolls
- * itself, faster the deeper the finger is in the zone, and the range is
- * re-read after every step. A second finger ends the drag. Once selection has
- * started every event is consumed in the Initial pass, so the grid neither
- * scrolls under the finger nor delivers a tap to the tile on release.
+ * See [dragSelectGesture]; this binds it to the grid's own measured cells.
  */
 internal fun Modifier.gridDragSelect(
     enabled: Boolean,
@@ -99,7 +90,38 @@ internal fun Modifier.gridDragSelect(
     onStart: (slotIndex: Int) -> Boolean,
     onExtend: (slotIndex: Int) -> Unit,
     onEnd: () -> Unit
-): Modifier = if (!enabled) this else pointerInput(gridState) {
+): Modifier = dragSelectGesture(enabled, gridState, frameScope,
+    hitSlot = { x, y -> gridState.hitSlot(x, y) },
+    visibleTop = { gridState.layoutInfo.beforeContentPadding.toFloat() },
+    scrollBy = { gridState.scrollBy(it) },
+    isMediaSlot = isMediaSlot, onStart = onStart, onExtend = onExtend, onEnd = onEnd)
+
+/**
+ * Samsung long-press drag selection over any lazy layout.
+ *
+ * A finger held still for the long-press timeout over a media slot starts
+ * selection there ([onStart] returns false to refuse). Without lifting, every
+ * move reports the media slot under the finger to [onExtend]; gaps and headers
+ * keep the last slot. Within 28 dp of the visible top ([visibleTop], below a
+ * pinned bar over the top content padding) or the bottom edge the layout
+ * scrolls itself, faster the deeper the finger is in the zone, and the range
+ * is re-read after every step. A second finger ends the drag. Once selection
+ * has started every event is consumed in the Initial pass, so the layout
+ * neither scrolls under the finger nor delivers a tap to the tile on release.
+ * [hitSlot] must read live layout geometry on every call.
+ */
+internal fun Modifier.dragSelectGesture(
+    enabled: Boolean,
+    key: Any?,
+    frameScope: CoroutineScope,
+    hitSlot: (x: Float, y: Float) -> Int?,
+    visibleTop: () -> Float,
+    scrollBy: suspend (Float) -> Float,
+    isMediaSlot: (Int) -> Boolean,
+    onStart: (slotIndex: Int) -> Boolean,
+    onExtend: (slotIndex: Int) -> Unit,
+    onEnd: () -> Unit
+): Modifier = if (!enabled) this else pointerInput(key) {
     val edge = 28.dp.toPx()
     val maxStep = 10.dp.toPx()
     awaitEachGesture {
@@ -118,13 +140,13 @@ internal fun Modifier.gridDragSelect(
         }
         // Non-null means the loop ended before the timeout: tap, scroll or pinch.
         if (ended != null) return@awaitEachGesture
-        val startSlot = gridState.hitSlot(down.position.x, down.position.y)
+        val startSlot = hitSlot(down.position.x, down.position.y)
             ?.takeIf(isMediaSlot) ?: return@awaitEachGesture
         if (!onStart(startSlot)) return@awaitEachGesture
         var finger: Offset = down.position
         var lastSlot = startSlot
         fun extend() {
-            val slot = gridState.hitSlot(finger.x, finger.y)
+            val slot = hitSlot(finger.x, finger.y)
             if (slot != null && slot != lastSlot && isMediaSlot(slot)) {
                 lastSlot = slot
                 onExtend(slot)
@@ -142,15 +164,15 @@ internal fun Modifier.gridDragSelect(
                 finger = change.position
                 extend()
                 val step = dragAutoScrollStep(finger.y, height, edge, maxStep,
-                    top = gridState.layoutInfo.beforeContentPadding.toFloat())
+                    top = visibleTop())
                 if (step != 0f && scrollJob?.isActive != true) {
                     scrollJob = frameScope.launch {
                         while (isActive) {
                             withFrameNanos { }
                             val now = dragAutoScrollStep(finger.y, height, edge, maxStep,
-                                top = gridState.layoutInfo.beforeContentPadding.toFloat())
+                                top = visibleTop())
                             if (now == 0f) break
-                            val moved = gridState.scrollBy(now)
+                            val moved = scrollBy(now)
                             extend()
                             if (moved == 0f) break
                         }
