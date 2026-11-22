@@ -474,7 +474,14 @@ run_perf_a1_cached_frame() (
 
   local -a times=() pids=()
   local i attempt pid capture line ms logged_pid ready refreshed
-  for i in 1 2 3 4 5; do
+  # A cold launch whose first Photos draw was already the *fresh* publication
+  # (the cache was never drawn) measures nothing: it is an invalid attempt, not
+  # a slow sample. Allow at most two such attempts per run, each a new process,
+  # each printed; they never reach the latency aggregate. A cached draw whose
+  # completed frame cannot be matched stays a hard failure.
+  local invalid_attempts=0 max_invalid_attempts=2
+  while (( ${#times[@]} < 5 )); do
+    i=$(( ${#times[@]} + 1 ))
     if (( i > 1 )); then
       # The previous verify was in another runner process; rewrite the same
       # synthetic cache before this sample's timer starts.
@@ -520,6 +527,12 @@ run_perf_a1_cached_frame() (
         match_seen=1
       fi
       echo "ATLAS_PERF_A1 sample mode=cold index=$i pid=$pid outcome=no_completed_cached_frame cached_draw=$draw_seen vsync_match=$match_seen refreshed=$refreshed emulator=$model api=$api head=$head"
+      if [[ "$draw_seen" == "0" && "$refreshed" == "1" ]] &&
+         (( invalid_attempts < max_invalid_attempts )); then
+        invalid_attempts=$(( invalid_attempts + 1 ))
+        echo "ATLAS_PERF_A1 invalid_attempt index=$i pid=$pid reason=fresh_publication_before_cached_draw count=$invalid_attempts max=$max_invalid_attempts retry=new_process"
+        continue
+      fi
       # At most four snapshots from this exact PID; diagnostic lines cannot
       # satisfy the completed-frame requirement or enter latency aggregates.
       printf '%s\n' "$capture" | grep "^event=frame_diag pid=$pid " | tail -4 || true
@@ -561,16 +574,16 @@ run_perf_a1_cached_frame() (
     fi
     a1_phase verify verifyFreshPicturesAndCacheAfterColdFrame
   done
-  [[ "${#times[@]}" == "5" && "${#pids[@]}" == "5" ]] || {
+  [[ "${#times[@]}" == "5" && "${#pids[@]}" == "$(( 5 + invalid_attempts ))" ]] || {
     echo "::error::PERF-A1A fewer than five independent process-cold samples"; exit 1;
   }
   printf '%s\n' "${times[@]}" | sort -n | awk \
-    -v model="$model" -v api="$api" -v head="$head" '{
+    -v model="$model" -v api="$api" -v head="$head" -v inv="$invalid_attempts" '{
       v[NR]=$1
     } END {
       p50=v[int((NR*50+99)/100)]
       p95=v[int((NR*95+99)/100)]
-      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s\n", NR, p50, p95, model, api, head
+      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s invalid_attempts=%d\n", NR, p50, p95, model, api, head, inv
     }'
 )
 
