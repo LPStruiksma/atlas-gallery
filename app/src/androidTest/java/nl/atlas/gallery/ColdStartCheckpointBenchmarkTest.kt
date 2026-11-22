@@ -62,11 +62,11 @@ class ColdStartCheckpointBenchmarkTest {
         val repo = GalleryRepository(context)
         // Warm-up and the "cached catalogue" a cold start would have on screen.
         // The provider may still touch the fresh rows (scanner, thumbnails):
-        // wait until two reads in a row see the same generations.
+        // rescan (each read takes real time) until two reads in a row see the
+        // same generations, or give up after 15 s and measure what is there.
         var cached = repo.loadWithCheckpoint()
         val settleBy = SystemClock.uptimeMillis() + 15_000L
         while (SystemClock.uptimeMillis() < settleBy) {
-            Thread.sleep(500L)
             val again = repo.loadWithCheckpoint(previous = cached.items)
             val settled = again.checkpoint == cached.checkpoint
             cached = again
