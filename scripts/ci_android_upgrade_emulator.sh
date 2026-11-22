@@ -55,6 +55,7 @@ rc5_load_shared_apks() {
     echo "::error::Malformed RC5 APK source manifest"; return 1;
   }
 
+  : "${GH_TOKEN:?Missing GH_TOKEN with actions:read permission}"
   api="https://api.github.com/repos/$repo/actions/artifacts"
   tmp="$(mktemp -d)"
   app_zip="$tmp/app.zip"
@@ -64,7 +65,7 @@ rc5_load_shared_apks() {
   for spec in "$app_id:$app_archive_sha" "$test_id:$test_archive_sha"; do
     id="${spec%%:*}"
     expected="${spec#*:}"
-    metadata="$(curl -fLsS -H 'Accept: application/vnd.github+json' \
+    metadata="$(curl -fLsS -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
       -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$id")"
     actual_run="$(jq -r '.workflow_run.id // empty' <<< "$metadata")"
     actual_sha="$(jq -r '.workflow_run.head_sha // empty' <<< "$metadata")"
@@ -78,9 +79,9 @@ rc5_load_shared_apks() {
     }
   done
 
-  curl -fLsS --retry 2 --retry-delay 2 -H 'Accept: application/vnd.github+json' \
+  curl -fLsS --retry 2 --retry-delay 2 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
     -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$app_id/zip" -o "$app_zip"
-  curl -fLsS --retry 2 --retry-delay 2 -H 'Accept: application/vnd.github+json' \
+  curl -fLsS --retry 2 --retry-delay 2 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
     -H 'X-GitHub-Api-Version: 2022-11-28' "$api/$test_id/zip" -o "$test_zip"
 
   zip_sha="$(sha256sum "$app_zip" | awk '{print $1}')"
