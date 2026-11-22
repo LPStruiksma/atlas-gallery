@@ -30,7 +30,11 @@ test('external shell phase performs three independent launches for both themes',
 });
 
 test('phase retains splash pixels, system bars, evidence, and Quickstep idle boundaries', () => {
-  assert.match(splash, /lapis \* 10 >= samples \* 7 and white > 20 and glyphs >= 40/);
+  // Blocking proof: splash present (Lapis field + white mark). Nav-bar glyph contrast is logged
+  // non-blocking until #997 is fixed (decision on #995, 2026-11-22); keep both visible.
+  assert.match(splash, /lapis \* 10 >= samples \* 7 and white > 20 else 1/);
+  assert.match(splash, /U2 NAV-CONTRAST \$theme launch \$launch\/3: PASS/);
+  assert.match(splash, /U2 NAV-CONTRAST \$theme launch \$launch\/3: FAIL .*#997/);
   assert.match(splash, /IMG_20010101_000000_lapis656-splash-\$theme\.png/);
   assert.match(splash, /await_launcher_idle_925/);
   assert.match(splash, /isn't responding\|Application Not Responding\|Application Error/);

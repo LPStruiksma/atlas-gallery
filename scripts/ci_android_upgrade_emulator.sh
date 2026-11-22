@@ -499,7 +499,9 @@ glyphs, band = 0, int(48 * density)
 for y in range(h - band, h, 2):
     for x in range(0, w, 2): glyphs += min(rgb(x, y)) >= 190
 print(f"lapis={lapis}/{samples} white={white} nav_glyphs={glyphs}")
-raise SystemExit(0 if lapis * 10 >= samples * 7 and white > 20 and glyphs >= 40 else 1)
+# Blocking: the splash is present (Lapis field + white mark). Nav-bar glyph contrast is reported
+# separately and is non-blocking until #997 is fixed (decision on #995, 2026-11-22).
+raise SystemExit(0 if lapis * 10 >= samples * 7 and white > 20 else 1)
 PY
   }
 
@@ -532,6 +534,12 @@ PY
       fi
       if [[ -n "$selected" ]]; then
         echo "PASS: U2 splash $theme launch $launch/3 ($note)"
+        nav_glyphs="${note##*nav_glyphs=}"
+        if [[ "$nav_glyphs" =~ ^[0-9]+$ ]] && (( nav_glyphs >= 40 )); then
+          echo "U2 NAV-CONTRAST $theme launch $launch/3: PASS (nav_glyphs=$nav_glyphs, non-blocking, #997)"
+        else
+          echo "::warning::U2 NAV-CONTRAST $theme launch $launch/3: FAIL (nav_glyphs=${nav_glyphs:-?} < 40 near-white pixels in the nav band; non-blocking, #997)"
+        fi
         adb push "$selected" "$remote/IMG_20010101_000000_lapis656-splash-$theme.png" >/dev/null
       else
         echo "FAIL: U2 splash $theme launch $launch/3 (no qualifying frame; am-start status=$launch_failed)"
