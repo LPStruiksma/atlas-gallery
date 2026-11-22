@@ -45,7 +45,7 @@ class PeopleProjectionHeapAndroidTest {
 
     private fun usedHeap(): Long {
         val runtime = Runtime.getRuntime()
-        repeat(5) { System.gc(); Thread.sleep(80) }
+        repeat(5) { System.gc() }
         return runtime.totalMemory() - runtime.freeMemory()
     }
 
