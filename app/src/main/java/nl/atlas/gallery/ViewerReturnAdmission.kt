@@ -1,5 +1,23 @@
 package nl.atlas.gallery
 
+import androidx.compose.foundation.lazy.grid.LazyGridState
+
+/**
+ * True when the grid item at [index] is already on screen, so returning from
+ * the viewer must keep the user's exact scroll offset instead of pulling the
+ * opened photo to the top row. Items that overlap the viewport count.
+ */
+internal fun LazyGridState.isItemOnScreen(index: Int): Boolean {
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return false
+    return viewerReturnOverlapsViewport(
+        item.offset.y, item.size.height, info.viewportStartOffset, info.viewportEndOffset)
+}
+
+internal fun viewerReturnOverlapsViewport(
+    itemTop: Int, itemHeight: Int, viewportStart: Int, viewportEnd: Int
+): Boolean = itemTop + itemHeight > viewportStart && itemTop < viewportEnd
+
 /**
  * A URI-based return intent captured by the fullscreen viewer before its
  * destination grid is remounted. No index is persisted across publications.

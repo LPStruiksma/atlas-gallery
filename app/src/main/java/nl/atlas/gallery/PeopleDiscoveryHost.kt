@@ -74,6 +74,7 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.ManualFaceScanGuard
+import nl.atlas.gallery.featureface.currentManualWait
 import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceUnknownInboxBridge
@@ -2085,12 +2086,20 @@ internal class PeopleDiscoveryHost(
             ManualFaceScanGuard(p.batteryPercent, p.thermalStatus,
                 foregroundVisible).holdReason()
         } else null
+        // A wait remembered from an earlier Scan now is re-checked against live
+        // sensors, so a cleared hold (e.g. the phone cooled) stops showing.
+        val remembered = lastManualWait
+        val rememberedWait = if (manualForegroundActive || remembered == null) null else {
+            val p = power()
+            currentManualWait(remembered, ManualFaceScanGuard(p.batteryPercent,
+                p.thermalStatus, foregroundVisible)).also { if (it == null) lastManualWait = null }
+        }
         val pending = progress.pending + progress.running > 0
         val note = if (!pending || snap.paused) null else when {
             manualWait != null -> manualWait
             manualForegroundActive -> null
-            !power().charging -> lastManualWait ?: "Waiting for charging · use Scan now while unplugged"
-            else -> lastManualWait
+            !power().charging -> rememberedWait ?: "Waiting for charging · use Scan now while unplugged"
+            else -> rememberedWait
         }
         val active = manualForegroundActive || scanBatchEpoch == scoped.epoch
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
@@ -2255,6 +2264,13 @@ internal class PeopleDiscoveryHost(
         liveReview?.takeIf {
             it.state.permissionEpoch == epoch && it.storeGeneration == generation
         }?.let { if (live) servedReview = it; return it }
+        // OOM fix (264k faces): drop the stale snapshot before reading its
+        // replacement, so a reload after a publication never holds two full
+        // copies. The served one stays only while a restage may still need it.
+        liveReview?.let { stale ->
+            liveReview = null
+            if (live && servedReview === stale && !restageReadGap(epoch)) servedReview = null
+        }
         val stored = store.peopleReview(epoch)
             ?: return if (live || held) heldReview(epoch) else null
         LiveReview(PeopleClusterReviewState(epoch, "$epoch|${stored.generation}",
@@ -2678,7 +2694,8 @@ internal class PeopleDiscoveryHost(
         }
 
         override fun personName(epoch: String, person: PersonKey): String? =
-            if (scope(epoch) == null) null else currentReview(epoch)?.state?.names?.get(person)
+            // A name only: never load the whole People snapshot for it (OOM fix).
+            if (scope(epoch) == null) null else store.personName(epoch, person)
 
         override fun queryCapture(epoch: String): QueryFaceCapture? {
             val s = scope(epoch) ?: return null
