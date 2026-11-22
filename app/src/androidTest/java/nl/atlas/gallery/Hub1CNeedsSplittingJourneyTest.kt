@@ -11,7 +11,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.MediaStore
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -186,18 +185,18 @@ class Hub1CNeedsSplittingJourneyTest {
             host.review(PeopleClusterReviewCommand(first,
                 PeopleReviewAction.MarkMixedSides(setOf(PersonPageTarget.Unnamed(group.id))))))
         openPeopleMenuItem("Needs splitting (1)")
-        waitFor(hasTestTag("atlas-needs-splitting"))
-        waitFor(hasText("Unnamed group"))
+        compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText("Unnamed group"), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-visible-list.png")
         compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        waitFor(hasTestTag("atlas-person-page"))
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
         // Back from the group returns to the visible list, not to People.
-        waitFor(hasTestTag("atlas-needs-splitting"))
-        waitFor(hasText("Unnamed group"))
+        compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText("Unnamed group"), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-back-to-visible-list.png")
         dismissWithBack(compose, hasTestTag("atlas-needs-splitting"))
-        waitFor(hasTestTag("atlas-people-home"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
 
         // 2. Named: the same members, now a named person, keep a visible mark.
         val unnamed = requireNotNull(host.liveReview(epoch))
@@ -214,15 +213,15 @@ class Hub1CNeedsSplittingJourneyTest {
         assertEquals(listOf(PersonPageTarget.Named(person)),
             needsSplittingLists(host.liveReview(epoch)).visible.map { it.target })
         openPeopleMenuItem("Needs splitting (1)", evidence = "hub1c-journey-people-menu.png")
-        waitFor(hasTestTag("atlas-needs-splitting"))
-        waitFor(hasText(NAME))
+        compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
         compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        waitFor(hasTestTag("atlas-person-page"))
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
-        waitFor(hasTestTag("atlas-needs-splitting"))
-        waitFor(hasText(NAME))
+        compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
         dismissWithBack(compose, hasTestTag("atlas-needs-splitting"))
-        waitFor(hasTestTag("atlas-people-home"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
 
         // 3. Hidden: hiding the person moves its mark to Hidden only.
         val visible = requireNotNull(host.liveReview(epoch))
@@ -238,19 +237,19 @@ class Hub1CNeedsSplittingJourneyTest {
             compose.exists(hasText("Needs splitting (0)"), useUnmergedTree = true)
         }
         compose.tap(hasTestTag("atlas-people-hidden-open"))
-        waitFor(hasTestTag("atlas-people-hidden"))
-        waitFor(hasText("Needs splitting (1)"))
+        compose.waitForNode(hasTestTag("atlas-people-hidden"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText("Needs splitting (1)"), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-hidden-filter.png")
         compose.tap(hasTestTag("atlas-hidden-needs-splitting-open"))
-        waitFor(hasTestTag("atlas-hidden-needs-splitting"))
-        waitFor(hasText(NAME))
+        compose.waitForNode(hasTestTag("atlas-hidden-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-hidden-list.png")
         compose.tap(hasTestTag("atlas-needs-splitting-row"))
-        waitFor(hasTestTag("atlas-person-page"))
+        compose.waitForNode(hasTestTag("atlas-person-page"), WAIT_MS, useUnmergedTree = true)
         dismissWithBack(compose, hasTestTag("atlas-person-page"))
         // Back returns to Hidden's marked filter, which revalidates.
-        waitFor(hasTestTag("atlas-hidden-needs-splitting"))
-        waitFor(hasText(NAME))
+        compose.waitForNode(hasTestTag("atlas-hidden-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
         saveUiEvidence("hub1c-journey-back-to-hidden-list.png")
 
         // 4. Unhide while the Hidden list is open: the row leaves it at once.
@@ -262,19 +261,16 @@ class Hub1CNeedsSplittingJourneyTest {
             !compose.exists(hasTestTag("atlas-needs-splitting-row"), useUnmergedTree = true)
         }
         dismissWithBack(compose, hasTestTag("atlas-hidden-needs-splitting"))
-        waitFor(hasTestTag("atlas-people-hidden"))
+        compose.waitForNode(hasTestTag("atlas-people-hidden"), WAIT_MS, useUnmergedTree = true)
         dismissWithBack(compose, hasTestTag("atlas-people-hidden"))
-        waitFor(hasTestTag("atlas-people-home"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
         openPeopleMenuItem("Needs splitting (1)")
-        waitFor(hasTestTag("atlas-needs-splitting"))
-        waitFor(hasText(NAME))
+        compose.waitForNode(hasTestTag("atlas-needs-splitting"), WAIT_MS, useUnmergedTree = true)
+        compose.waitForNode(hasText(NAME), WAIT_MS, useUnmergedTree = true)
     }
 
-    private fun waitFor(matcher: SemanticsMatcher) =
-        compose.waitForNode(matcher, WAIT_MS, useUnmergedTree = true)
-
     private fun openPeopleMenuItem(label: String, evidence: String? = null) {
-        waitFor(hasTestTag("atlas-people-home"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
         compose.tap(hasTestTag("atlas-header-more"))
         compose.awaitThat("People ⋮ shows $label") {
             compose.exists(hasText(label), useUnmergedTree = true)
@@ -285,7 +281,7 @@ class Hub1CNeedsSplittingJourneyTest {
 
     private fun openPeople() {
         compose.tap(hasTestTag("atlas-nav-people"))
-        waitFor(hasTestTag("atlas-people-home"))
+        compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
     }
 
     private fun startDiscovery() {
