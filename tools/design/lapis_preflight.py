@@ -41,6 +41,47 @@ OUT = REPO / "docs/design/lapis/preflight"
 VERIFIED = "2026-11-21"
 ISSUE = "https://github.com/LPStruiksma/atlas-gallery/issues/"
 
+L7_TRANSITION_HEAD = ["Transition", "Screen / host", "Query: owner and value", "Scope", "Focus / IME",
+                      "Back goes to", "Kept or discarded"]
+L7_TRANSITION_W = [0.13, 0.13, 0.15, 0.1, 0.14, 0.14, 0.21]
+L7_TRANSITIONS = [
+    ["1 Search collapsed", "Pictures, Collections, person, album, Declutter", "Local to the screen; empty",
+     "This screen", "Sphere in the slab (48 dp); no IME", "Previous screen, as today", "All screen state kept"],
+    ["2 Scoped query with keyboard", "Same screen under the bar", "Local to the screen; typed text, e.g. 'bike'",
+     "This screen (selected)", "Field focused at once (Quiet Frame v3); IME open", "Back 1 (below)",
+     "Scroll, selection and any staged choices kept"],
+    ["3 IME hidden by Back", "Same screen, bar still open", "Local; value kept", "This screen",
+     "IME hidden; focus stays in the bar", "Back 2 (below)", "Everything kept"],
+    ["4 Bar collapsed by Back", "Same screen", "Local; cleared when the bar closes (FIND-5: close clears the query)",
+     "This screen", "Back on the sphere; no IME", "Previous screen on the next Back", "Scroll and selection kept; query discarded"],
+    ["5 Whole library, empty query", "Existing Search tab (tab 3) opens; person / album route is replaced",
+     "Search tab owns it; blank", "Whole library (Search tab's own facets)", "Bar closed, IME released",
+     "See 8", "Local query discarded; screen state per rows 9-11"],
+    ["6 Whole library, with a query", "Same as 5", "Local query 'bike' is NOT carried; Search tab starts blank",
+     "Whole library", "Bar closed, IME released; the board does not claim a focus state in the Search tab",
+     "See 8", "Query discarded on purpose; nothing shown in place"],
+    ["7 Arrival in global Search", "Search tab, schematic B5", "Search tab; blank", "Whole library",
+     "As the existing Search tab; not restyled here", "Search tab's back stack", "Search tab unchanged by L7"],
+    ["8 Back from global Search", "Search tab", "Search tab; discarded", "-", "IME hidden first, as today",
+     "Search tab's normal back stack; the closed scoped route is not reopened",
+     "Person / album route stays closed (replaced by the handoff)"],
+    ["9 Person route, Whole library", "Person screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8",
+     "Route replaced. Whether an active selection is warned is not visible in the code read for this sheet: "
+     "#660 must keep it or confirm; no silent discard is sanctioned"],
+    ["10 Album route, Whole library", "Album screen replaced by Search tab", "Local; discarded",
+     "Whole library", "As 5", "As 8", "Same rule as 9"],
+    ["11 Declutter, Whole library", "Declutter closes (closeDeclutter), Search tab opens",
+     "Local; discarded", "Whole library", "As 5", "As 8",
+     "With staged choices: existing confirmation 'Search whole library?' (Stay / Search library) says they are "
+     "cleared and nothing moves to Trash. Nothing staged: straight through. No Trash is ever submitted"],
+]
+L7_TRANSITION_NOTE = ("Source: MainActivity onScopeChange LIBRARY branch (personFilter, album and overviewQuery "
+                      "cleared, tab = 3) and DeclutterScreen's leave confirmation, read on main at the Dev claim; "
+                      "FIND-5 D-search-tab and Back order. Consistent with #804's Stories handoff as a reference "
+                      "only; not a new implementation claim. Synthetic evidence, not device behaviour: S24+ runtime "
+                      "checks (light/dark, 100 % / 200 %, TalkBack, IME) remain a separate pre-merge obligation.")
+
 # Public sources opened and checked on VERIFIED; the quoted observation is what the page says.
 REF = {
     "navbar": ("Android Developers, Compose Navigation bar",
@@ -72,6 +113,19 @@ REF = {
     "people": ("ATLAS People home today (main)",
                "atlas-gallery main: app/src/main/java/nl/atlas/gallery/featurepeopleui/PeopleHomeScreen.kt",
                "People are entered through circular (CircleShape) face crops."),
+    "apple5": ("Apple Support, Find and name people and pets in Photos on iPhone",
+               "support.apple.com/guide/iphone/find-and-name-people-and-pets-iph9c7ee918c/ios",
+               "People & Pets is a separate collection with named person/pet photo thumbnails and a sort control; "
+               "the depicted thumbnails are individual portraits, not mixed four-photo strips."),
+    "immich5": ("Immich, Facial Recognition documentation",
+                "docs.immich.app/features/facial-recognition/",
+                "Detected faces are grouped into named people; opening a person shows the associated assets. "
+                "The current exact mobile thumbnail layout is not verified by this source."),
+    "immich_album": ("Immich release v2.4.0, 18 December 2025",
+                     "immich.app/blog/v2.4.0-release",
+                     "Mobile album sorting and layout preferences persist; no four-photo strip or direct "
+                     "named-album navigation is established by this release."),
+
     "grid": ("Android Developers, Compose lists and grids",
              "developer.android.com/develop/ui/compose/lists",
              "LazyVerticalGrid forms equal columns, e.g. GridCells.Adaptive(minSize = 128.dp)."),
@@ -227,7 +281,8 @@ class Gen:
         f1 = self.scr(viewer=True)
         L.viewer(f1)
         panels.append(Panel("F1", "Viewer", "Black ground, actions on the #3448E0 slab, current filmstrip item "
-                            "with a #8C9BFF sphere and 2 dp white ring.", f1))
+                            "with a #8C9BFF sphere and 2 dp white ring. Seven 40 dp tiles, 8 dp gaps: 48 dp pitch, so the "
+                            "seven 48 dp effective targets touch but never overlap.", f1))
         g1 = self.scr()
         g1.status_bar()
         yy = L.title(g1, "Pictures")
@@ -314,14 +369,17 @@ class Gen:
     def l5_collections(self, s: Screen, people_inline=True, focus=False):
         s.status_bar()
         y = L.title(s, "Collections")
+        # Only visible named/recent members are two-tap direct destinations.
+        # Category rows open landings rather than a particular off-screen member.
         rows = [
-            ("Albums", "24 albums, latest 12 November 2026", 0, 11),
-            ("Noor", "1.204 photos, latest 14 November 2026", 1, 21) if people_inline else None,
-            ("Bram", "866 photos, latest 9 November 2026", 2, 31) if people_inline else None,
+            ("Noor", "1.204 photos, latest 14 November 2026", 1, 21),
+            ("Coastal weekend", "84 photos, latest 12 November 2026", 0, 11),
+            ("Dunes trip", "38 photos, latest 8 October 2026", 2, 51),
+            ("Albums", "24 albums, latest 12 November 2026", 0, 61),
             ("People and pets", "500 people and 3 pets", 3, 41),
-            ("Places", "38 places, latest Amsterdam", 0, 51),
-            ("Stories", "8 stories, latest 2 November 2026", 1, 61),
-            ("Favourites", "212 photos, latest 13 November 2026", 2, 71),
+            ("Places", "38 places, latest Amsterdam", 0, 71),
+            ("Stories", "8 stories, latest 2 November 2026", 1, 81),
+            ("Favourites", "212 photos, latest 13 November 2026", 2, 91),
         ]
         k = 0
         for row in rows:
@@ -329,7 +387,11 @@ class Gen:
                 continue
             k += 1
             name, line, rk, seed = row
-            if y > s.bottom - L.px(200):
+            # At high font scale, stop before a partial photo strip would sit
+            # underneath the slab. Remaining rows are reachable by scrolling.
+            if s.font_scale >= 1.75 and k > 2:
+                break
+            if y > s.bottom - L.px(240):
                 break
             y = L.collection_row(s, y, name, line, L.STRIP_RATIOS[rk], seed,
                                  focus_label=f"{name}, {line}" if focus else None)
@@ -346,11 +408,10 @@ class Gen:
         a2 = self.scr("dark", 2.0)
         self.l5_collections(a2)
         b.heroes([
-            Panel("A1", "Collections, light, 100 %", "Rows in brief order. The two most recent people appear as "
-                  "their own rows so a person is two taps from anywhere. Strip: latest 4 photos, real shape, "
-                  "8 dp radius. TalkBack reads one merged node per row (dots).", a1),
-            Panel("A2", "Collections, dark, 200 %", "Names and counts wrap to two lines; strip height stays 72 dp; "
-                  "each row remains one target.", a2),
+            Panel("A1", "Collections, light, 100 %", "Recent Noor, Coastal weekend and Dunes trip rows "
+                  "open in two taps; category rows below open landings.", a1),
+            Panel("A2", "Collections, dark, 200 %", "Only complete recent rows sit above navigation. "
+                  "Slab geometry follows #816.", a2),
         ], self.LEGEND)
         panels = []
         s = self.scr()
@@ -383,17 +444,41 @@ class Gen:
         panels.append(Panel("C1", "Tap path 1", "From Pictures (or any screen with the slab): Collections.", s))
         s = self.scr()
         self.l5_collections(s)
-        L.finger(s, (L.px(200), s.top + L.px(230)), None, "tap 2: Noor")
-        panels.append(Panel("C2", "Tap path 2", "Recent people, albums and places have their own rows: tap 2 "
-                            "opens the person. Others: search in Collections (D2).", s))
+        L.finger(s, (L.px(200), s.top + L.px(125)), None, "tap 2: Noor")
+        panels.append(Panel("C2", "Named person · tap 2", "Noor is a direct recent row; "
+                            "People and pets is a category landing instead.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Noor", "1.204 photos, latest 14 November 2026")
         L.square_grid(s, y, s.bottom, seed=21, header="November 2026")
         s.note((DEVICE_W - L.px(8), s.top + L.px(4)), "existing person page, unchanged")
         s.gesture_bar()
-        panels.append(Panel("C3", "Person opened", "The existing person screen opens; Back returns to "
-                            "Collections, a second Back to Pictures.", s))
+        panels.append(Panel("C3", "Noor opened", "Existing person detail; system Back returns to "
+                            "Collections, then Pictures.", s))
+        s = self.scr()
+        self.l5_collections(s)
+        L.finger(s, (L.px(194), s.top + L.px(270)), None, "tap 2: Coastal weekend")
+        panels.append(Panel("C4", "Named album · tap 2", "Collections then Coastal weekend opens "
+                            "the named album. Choosing Albums category adds another tap.", s))
+        s = self.scr()
+        s.status_bar()
+        y = L.title(s, "Coastal weekend", "84 photos, latest 12 November 2026")
+        L.square_grid(s, y, s.bottom, seed=11, header="November 2026")
+        s.gesture_bar()
+        panels.append(Panel("C5", "Coastal weekend opened", "Existing album detail; "
+                            "system Back returns to Collections, then Pictures.", s))
+        s = self.scr()
+        self.l5_collections(s)
+        L.finger(s, (L.px(194), s.top + L.px(420)), None, "tap 2: Dunes trip")
+        panels.append(Panel("C6", "Named place · tap 2", "Collections then Dunes trip opens "
+                            "the named place/trip. The Places category is another destination.", s))
+        s = self.scr()
+        s.status_bar()
+        y = L.title(s, "Dunes trip", "38 photos, latest 8 October 2026")
+        L.square_grid(s, y, s.bottom, seed=51, header="October 2026")
+        s.gesture_bar()
+        panels.append(Panel("C7", "Dunes trip opened", "Existing place detail; "
+                            "system Back returns to Collections, then Pictures.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "People and pets", "500 people and 3 pets")
@@ -409,23 +494,26 @@ class Gen:
             s.target(bb, c)
             xx += w + L.px(8)
         y += L.px(52)
-        for i, (n, c) in enumerate((("Noor", "1.204 photos"), ("Bram", "866 photos"), ("Sem", "702 photos"),
-                                    ("Lotte", "655 photos"), ("Pip (dog)", "540 photos"))):
+        for i, (n, c) in enumerate((("Noor", "1.204 photos"), ("Bram", "866 photos"))):
             y = L.collection_row(s, y, n, f"{c}, latest {14 - i} November 2026", L.STRIP_RATIOS[i % 4], 80 + i * 7)
         sb = s.slab("Collections", search=False)
         L.search_bar(s, sb[1], "", False, scope="This screen")
-        panels.append(Panel("D1", "500 people", "Sort by most photos, name or latest; scoped search sits above "
-                            "the slab, so nobody scrolls 500 rows.", s))
-        s = self.scr()
+        panels.append(Panel("D1", "500 people · category", "Sort by most photos, name or latest. "
+                            "A named person off-screen needs category navigation or a Collections-scoped "
+                            "query. The first two rows are only a sample.", s))
+        s = self.scr("dark", 2.0)
         s.status_bar()
-        y = L.title(s, "People and pets")
-        y = L.collection_row(s, y, "Noor", "1.204 photos, latest 14 November 2026", L.STRIP_RATIOS[0], 21)
-        y = L.collection_row(s, y, "Nora", "88 photos, latest 2 June 2026", L.STRIP_RATIOS[3], 91)
-        kb = s.keyboard(["noor", "nora", "north"])
+        L.title(s, "Collections")
+        kb = s.keyboard(["lotte", "lot", "photo"])
         sb = s.slab("Collections", y_bottom=kb, search=False)
-        L.search_bar(s, sb[1], "no", True, scope="This screen")
-        panels.append(Panel("D2", "Scoped search", "'This screen' searches people only; 'Whole library' hands "
-                            "the query to AtlasSearch (#175). Matches stay above the keyboard.", s))
+        L.search_bar(s, sb[1], "lotte", True, scope="This screen",
+                     items=[("Person", "Lotte")], thumbs=True)
+        s.note((L.px(8), s.top + L.px(8)), "3 taps + typing: Collections > search > Lotte result")
+        panels.append(Panel("D2", "500 people · search, dark 200 %", "Lotte is not a visible "
+                            "recent row: tap 1 Collections, tap 2 scoped search, type, tap 3 "
+                            "direct Lotte result. Back hides IME, then closes the query panel; "
+                            "the next Back returns to Pictures. Proposed scoped Collections "
+                            "index, not proven global AtlasSearch entity results.", s))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Collections")
@@ -473,34 +561,51 @@ class Gen:
         panels.append(Panel("E3", "Error, dark", "Plain message and a 48 dp retry.", s))
         b.grid("States and tap paths", panels, cols=5, scale=0.5)
         b.table("Tap counts (from any screen with the slab)", ["Goal", "Taps", "Path"], [
-            ["A recent person (top 2)", "2", "Collections › person row (C1-C3)."],
-            ["Any of 500 people", "2 + typing", "Collections › search sphere, type, pick (D2); or 3 taps via People "
-             "and pets."],
-            ["An album", "2", "Collections › album row (recent albums inline, as people)."],
-            ["A place or trip", "2", "Collections › place row; or Pictures › atlas place (L6)."],
-            ["Back", "1 per level", "System Back returns along the same path; nothing is intercepted."],
-        ], [0.25, 0.12, 0.63])
+            ["Named person: Noor, recent", "2", "Collections (tap 1) > Noor row (tap 2) > person (C1-C3)."],
+            ["Named album: Coastal weekend", "2", "Collections (tap 1) > Coastal weekend row (tap 2) "
+             "> album (C4-C5)."],
+            ["Named place/trip: Dunes trip", "2", "Collections (tap 1) > Dunes trip row (tap 2) "
+             "> place detail (C6-C7)."],
+            ["Off-screen person: Lotte (of 500)", "3 + typing", "Collections (tap 1) > scoped search "
+             "(tap 2) > type 'lotte' > direct Lotte result (tap 3) (D2)."],
+            ["People and pets category", "3 for visible", "Collections > category > visible member. "
+             "Off-screen members require scroll or further search actions."],
+            ["Global search sphere", "Unknown", "No observed evidence that the global #175 search "
+             "opens named person/album/place destinations directly."],
+            ["System Back", "Per level", "Detail > Collections > original slab screen. With IME: "
+             "Back hides keyboard before closing scoped search."],
+        ], [0.27, 0.14, 0.59])
         b.table("Destination parity (every former entry keeps a row)", ["Destination", "Row and order",
                                                                          "Opens", "Shown in"], [
-            ["Albums", "1 · count and latest date", "Existing Albums screen", "A1, C2"],
-            ["People and pets", "2 · recent people as own rows, then the section row", "Existing People screen "
-             "and person page", "A1, C2, C3, D1, D2"],
-            ["Places", "3", "Existing Places screen; also the L6 atlas", "A1"],
-            ["Stories", "4", "Existing Stories screen", "A1"],
-            ["Favourites", "5", "Existing Favourites view", "A1"],
-            ["Videos", "6", "Existing Videos view", "D3"],
-            ["Recent", "7", "Existing Recent view", "D3"],
-            ["Categories, incl. Screenshots", "8 · one row, sub-categories inside", "Existing category screens",
+            ["Noor, Coastal weekend, Dunes trip (named recent rows)", "1-3 · direct rows, before the categories",
+             "Person page, album, place/trip detail", "A1, A2, C1-C7"],
+            ["Albums", "4 · category: count and latest date", "Existing Albums screen", "A1, C2, E2"],
+            ["People and pets", "5 · category: section row after the named rows", "Existing People screen "
+             "and person page", "E2, D1, D2"],
+            ["Places", "6 · category", "Existing Places screen; also the L6 atlas", "Scroll; not drawn"],
+            ["Stories", "7 · category", "Existing Stories screen", "Scroll; not drawn"],
+            ["Favourites", "8 · category", "Existing Favourites view", "Scroll; not drawn"],
+            ["Videos", "9", "Existing Videos view", "D3"],
+            ["Recent", "10", "Existing Recent view", "D3"],
+            ["Categories, incl. Screenshots", "11 · one row, sub-categories inside", "Existing category screens",
              "D3"],
-            ["Shared albums", "9", "Existing Shared albums screen", "D3"],
-            ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "10-13 · end of list",
+            ["Shared albums", "12", "Existing Shared albums screen", "D3"],
+            ["Cleanup suggestions, Trash, Hidden / Secure folder, Settings", "13-16 · end of list",
              "Existing screens; Hidden asks to unlock first", "E1"],
-        ], [0.24, 0.28, 0.3, 0.18], "Two taps to the row's screen from any screen with the slab (Collections, then "
-           "the row); rows below the fold need a scroll, not an extra tap. Sort and scoped search per #175 still "
-           "apply inside each destination.")
+        ], [0.24, 0.28, 0.3, 0.18], "Only visible named/recent members are two-tap direct "
+           "destinations. Category rows open landings, not a specific off-screen member; search "
+           "requires a separate result tap. No universal two-tap promise or unverified global results.")
         b.table("Reference decisions", DECISION_HEAD, [
-            ref_row("people", "Deviation: no circles. People rows show name, count, latest date and a strip of real "
-                    "photos, as Quiet Frame v3 requires; the person screen behind the row is unchanged."),
+            ref_row("apple5", "Deviation: Apple documents People & Pets as a category of portrait "
+                    "thumbnails with a sort control; Atlas keeps category access but uses four "
+                    "mixed-aspect recent photo shapes per visible named row, radius 8 dp. Apple's "
+                    "exact high-font geometry is not established by this source."),
+            ref_row("immich5", "Deviation: Immich groups named faces and opens the assets for a person. "
+                    "Atlas keeps that detail destination while avoiding a sole face-cover thumbnail. "
+                    "Current exact Immich mobile people composition is unknown; no tap equivalence inferred."),
+            ref_row("immich_album", "Deviation: Atlas exposes selected recent named albums inline "
+                    "but keeps the full Albums landing and sort. Immich's persisted album layout "
+                    "preference does not prove a mixed-aspect strip or direct-result search."),
             ref_row("semantics", "Adopted: one merged TalkBack node per row, read as 'Noor, 1.204 photos, latest "
                     "14 November 2026, button'. Strip thumbnails are not separate stops."),
             ref_row("searchbar", "Adapted: the bar sits above the slab (L7) with This screen / Whole library; "
@@ -520,6 +625,8 @@ class Gen:
             y += s.line_h("secondary") + L.px(4)
         L.square_grid(s, y, s.bottom, seed=kw.pop("seed", 1), header=kw.pop("header", "Today"))
         if frac > 0:
+            # Chosen 2 x 6 layout in every open-atlas state.
+            kw.setdefault("grid", True)
             bottom = L.atlas_panel(s, frac, **kw)
             if finger:
                 L.finger(s, (DEVICE_W // 2, bottom - L.px(30)), (DEVICE_W // 2, bottom - L.px(30) + finger),
@@ -536,11 +643,10 @@ class Gen:
         a1 = self.l6_frame(frac=1.0)
         a2 = self.l6_frame("dark", 2.0, frac=1.0)
         b.heroes([
-            Panel("A1", "Atlas open, light, 100 %", "Month bars sized by count (tallest labelled), sphere on the "
-                  "current month, schematic dot map with labelled places. Bars are 29 dp wide: see the flagged "
-                  "targets and the 2 x 6 alternative (C6).", a1),
-            Panel("A2", "Atlas open, dark, 200 %", "Month labels shorten to one letter; the year and totals scale. "
-                  "The atlas stops above the slab and the gesture inset.", a2),
+            Panel("A1", "Atlas open, light, 100 %", "Normative 2 x 6 month bars: 58.7 x 80 dp non-overlapping "
+                  "targets, counted bars and held current-month sphere. Schematic places stay below.", a1),
+            Panel("A2", "Atlas open, dark, 200 %", "Same 2 x 6 month targets and three-letter labels "
+                  "at 200 % font. The year, total, map, slab and insets remain in frame.", a2),
         ], self.LEGEND)
         panels = [
             Panel("B1", "Closed, first use", "Hint line under the title until the atlas has been opened once.",
@@ -581,6 +687,18 @@ class Gen:
         p8.gesture_bar()
         panels.append(Panel("B8", "Place in the grid", "Pictures shows only that place, newest first. Back or "
                             "'Clear place' restores the full grid and scroll position.", p8))
+        panels.append(Panel("B9", "Empty year, dark 200 %", "Same accessible 2 x 6 targets; "
+                             "empty months show baselines, with insets and slab present.",
+                             self.l6_frame("dark", 2.0, frac=1.0, year="2019",
+                                           counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0, 15, 0], current=6)))
+        p10 = self.scr("dark", 2.0)
+        p10.status_bar()
+        yy = L.title(p10, "Coast", "1.408 photos, July and August 2026")
+        L.square_grid(p10, yy, p10.bottom, seed=14, header="August 2026")
+        p10.slab("Pictures")
+        p10.gesture_bar()
+        panels.append(Panel("B10", "Place-filtered grid, dark 200 %", "Filtering remains in Pictures; "
+                             "Back restores its previous position and the title remains legible.", p10))
         panels.append(Panel("C1", "Year with empty months", "Empty months draw a baseline only, never a fake "
                             "bar.", self.l6_frame(frac=1.0, year="2019", counts=[0, 0, 40, 0, 0, 220, 610, 0, 0, 0,
                                                                                     15, 0], current=6)))
@@ -588,28 +706,25 @@ class Gen:
                             self.l6_frame(frac=1.0, no_geo=True)))
         panels.append(Panel("C3", "Dense places", "Overlapping dots merge into a counted cluster; tap zooms the "
                             "list to those places.", self.l6_frame(frac=1.0, dense=True)))
-        s = self.scr("dark")
-        s.status_bar()
-        y = L.title(s, "Pictures")
-        L.message(s, y + L.px(8), "Couldn't read dates and places.", "Your pictures are safe. Try again.",
-                  "Try again")
-        s.slab("Pictures")
-        s.gesture_bar()
-        panels.append(Panel("C4", "Metadata error, dark", "Pull still opens; the atlas shows this message "
-                            "instead of bars.", s))
+        panels.append(Panel("C4", "Metadata error in open atlas, dark",
+                            "Atlas remains an overlay over the Pictures grid, not a full-screen Pictures "
+                            "failure: no stale month/place actions; 56 dp Retry, 48 dp Close and system Back "
+                            "return safely without changing the grid.",
+                            self.l6_frame("dark", frac=1.0, error=True)))
         panels.append(Panel("C5", "Large library", "Bars scale to the tallest month; totals use full counts.",
                             self.l6_frame(frac=1.0, counts=[9120, 8400, 11020, 12804, 15500, 18210, 22340, 21900,
                                                              13000, 7800, 6100, 2718])))
-        panels.append(Panel("C6", "Alternative: 2 x 6 months", "Two rows of six: 58 x 80 dp month targets, rows "
-                            "touch but never overlap. Recommended over 29 dp one-row bars.", self.l6_frame(frac=1.0, grid=True)))
+        panels.append(Panel("C6", "Chosen: 2 x 6 target anatomy", "Normative everywhere the atlas is "
+                             "open: twelve 58.7 x 80 dp month targets. Rows touch but never overlap.",
+                             self.l6_frame(frac=1.0)))
         s = self.scr()
         s.status_bar()
         y = L.title(s, "Atlas", "TalkBack list view")
         items = [("Months", None)] + [(f"{m}, {L._nl(c)} photos" if c else f"{m}, no photos", 1)
                                       for m, c in zip(["January", "February", "March", "April", "May", "June"],
                                                       L.COUNTS[:6])]
-        items += [("Places", None), ("Amsterdam, 6.120 photos", 1), ("Coast, 1.408 photos", 1),
-                  ("Mountains, 912 photos", 1)]
+        # The first viewport shows Jan-Jun; the scrolled continuation
+        # includes Jul-Dec before Places (D3).
         k = 0
         for text_, kind in items:
             if kind is None:
@@ -624,12 +739,38 @@ class Gen:
                 y += L.px(48)
         s.slab("Pictures")
         s.gesture_bar()
-        panels.append(Panel("D1", "TalkBack lists", "With TalkBack the map is replaced by lists: months, then "
-                            "places, e.g. 'Amsterdam, 6.120 photos'. Each is a 48 dp row.", s))
+        panels.append(Panel("D1", "TalkBack months, first viewport", "The list begins with January-June; "
+                             "scroll to July-December, then Places. Rows have 48 dp targets.", s))
         d2 = self.l6_frame(frac=1.0)
         d2.note((L.px(8), d2.top + L.px(580)), "Remove animations: closed › open in one frame")
-        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once.",
-                            d2))
+        panels.append(Panel("D2", "Remove animations on", "Pull or tap opens at once; push up closes at once. "
+                             "See the timed synthetic SVG for the tracked and reverse movement.", d2))
+        d3 = self.scr()
+        d3.status_bar()
+        yy = L.title(d3, "Atlas", "TalkBack list, scrolled")
+        d3_items = [("Months continued", None)] + [
+            (f"{name}, {L._nl(count)} photos" if count else f"{name}, no photos", 1)
+            for name, count in zip(
+                ["July", "August", "September", "October", "November", "December"], L.COUNTS[6:]
+            )
+        ] + [("Places", None), ("Amsterdam, 6.120 photos", 1),
+             ("Coast, 1.408 photos", 1), ("Mountains, 912 photos", 1)]
+        focus_no = 6
+        for name, kind in d3_items:
+            if kind is None:
+                d3.text((L.px(L.SIDE), yy + L.px(8)), name, "section")
+                yy += d3.line_h("section") + L.px(12)
+            else:
+                focus_no += 1
+                d3.text((L.px(L.SIDE), yy + L.px(14)), name, "body", anchor="lm")
+                d3.target([0, yy - L.px(10), DEVICE_W, yy + L.px(38)], name)
+                if focus_no in (7, 12, 13):
+                    d3.focus_order((L.px(6), yy + L.px(14)), name)
+                yy += L.px(48)
+        d3.slab("Pictures")
+        d3.gesture_bar()
+        panels.append(Panel("D3", "TalkBack months then places", "Scrolled list: July-December precede "
+                             "Amsterdam, Coast and Mountains; each row is 48 dp.", d3))
         b.grid("Storyboard and states", panels)
         b.table("Gesture precedence", ["Situation", "What a downward drag does", "Alternative"], [
             ["Grid scrolled to the top", "Opens the atlas, finger-tracked", "Tap the month sphere"],
@@ -642,8 +783,9 @@ class Gen:
                     "push up or Back closes. It is a scrim-free overlay, so the grid position is kept."),
             ref_row("nested", "Adopted: the grid consumes the drag until it is at the top; only the remaining "
                     "downward delta pulls the atlas."),
-            ref_row("touch", "Open issue: 12 bars in one row are 29 dp wide. Either accept full-height 29 x 96 dp "
-                    "targets with drag-to-scrub, or use 2 x 6 (C6, 58 dp). Recommended: 2 x 6."),
+            ref_row("touch", "Selected: 2 x 6 month targets of 58.7 x 80 dp replace the 29 dp strip "
+                     "in every open state. Smaller visible place dots use 48 dp effective targets. "
+                     "Labels remain legible at 200 %."),
         ], DECISION_W, DECISION_NOTE + " No map tiles, network call or new permission is involved.")
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")
@@ -669,12 +811,33 @@ class Gen:
         L.search_bar(s, sb[1], query, keyboard, scope, items=items, thumbs=thumbs, entries=entries)
         return s
 
+    def l7_handoff(self, theme="light", scale=1.0):
+        """Arrival frame after Whole library (#824): the existing Search tab, blank query, no keyboard.
+        Schematic only; the Search tab itself is unchanged and is not redrawn in detail."""
+        s = self.scr(theme, scale)
+        s.status_bar()
+        y = L.title(s, "Search")
+        x0, x1 = L.px(16), DEVICE_W - L.px(16)
+        bar_h = max(L.px(52), s.line_h("body") + L.px(24))
+        s.rrect([x0, y, x1, y + bar_h], 24, fill=s.t["surface"])
+        s.magnifier((x0 + L.px(26), y + bar_h / 2), L.px(8), s.t["ink2"])
+        s.d.text((x0 + L.px(48), y + bar_h / 2), "Search photos, people, places", font=s.font("body"),
+                 fill=s.t["ink2"], anchor="lm")
+        s.target([x0, y, x1, y + bar_h], "Search field")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(28)),
+               "existing Search tab (tab 3), query blank, keyboard released; layout unchanged")
+        s.note((DEVICE_W - L.px(8), y + bar_h + L.px(64)),
+               "L7 bar closed; scoped person / album route replaced")
+        s.gesture_bar()
+        return s
+
     def l7(self) -> Board:
         b = Board(self.fonts, "brand-l7-search")
         b.header("BRAND-L7 · Search under the thumb",
                  "The search sphere grows into a full-width AtlasSearch bar right above the slab.",
-                 self.facts(660, "Host: only placement changes. The shared AtlasSearch host and back end (#175) "
-                            "stay; L7 moves the entry to the slab sphere and the panel above the slab."))
+                 self.facts(660, "Host: placement and focus-on-open change. The shared AtlasSearch host, back end (#175) "
+                            "and the Whole library handoff stay as on main (#824): Whole library leaves this bar "
+                            "and opens the existing Search tab with a blank query."))
         a1 = self.l7_open(items=self.SUGG, entries=True)
         a1.focus_order((L.px(60), a1.slab_box[1] - L.px(70)), "Search field")
         a2 = self.l7_open("dark", 2.0, items=self.SUGG, entries=True)
@@ -702,11 +865,10 @@ class Gen:
                             "keyboard.", self.l7_open(query="bik", thumbs=True,
                                                       items=[("Suggestion", "bike"), ("Place", "Bike trip album"),
                                                              ("Person", "Bike club"), ("More", "Search 'bik'")])))
-        panels.append(Panel("B5", "Whole library", "Switching scope keeps the query and the keyboard.",
-                            self.l7_open(query="bike", scope="Whole library",
-                                         items=[("Suggestion", "bike"), ("Suggestion", "bike 2019"),
-                                                ("More", "Search 'bike' everywhere")])))
-        s = self.l7_open(query="bike", scope="Whole library", keyboard=False)
+        panels.append(Panel("B5", "Whole library: handoff", "Choosing Whole library closes this bar, releases the "
+                            "keyboard, clears the local query and opens the existing Search tab with a blank "
+                            "query. Nothing is shown in place (#824).", self.l7_handoff()))
+        s = self.l7_open(query="bike", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "86 pictures for 'bike'", "section")
@@ -718,7 +880,8 @@ class Gen:
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         L.message(s, s.top + L.px(24), "No pictures match 'bike 2019' on this screen.",
                   "Try fewer words, or search your whole library.", "Search whole library")
-        panels.append(Panel("B7", "No results", "One sentence, one next step.", s))
+        panels.append(Panel("B7", "No results", "One sentence, one next step. 'Search whole library' is the same "
+                            "handoff as the Whole library chip: the query is not carried over.", s))
         s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
@@ -744,21 +907,21 @@ class Gen:
                             "place.", self.l7_open(base="Collections", query="tr",
                                                    items=[("Suggestion", "Trash"), ("Suggestion", "Trip to the "
                                                                                     "coast")])))
-        panels.append(Panel("B13", "Large library, 200 %, keyboard", "Whole library at 200 % with the "
+        panels.append(Panel("B13", "Large library, 200 %, keyboard", "This screen at 200 % with the "
                             "keyboard: chips wrap, the suggestion list scrolls inside the panel (count noted).",
-                            self.l7_open("dark", 2.0, query="beach", scope="Whole library", entries=True,
+                            self.l7_open("dark", 2.0, query="beach", entries=True,
                                          items=[("Suggestion", "beach"), ("Suggestion", "beach 2019"),
                                                 ("Suggestion", "beach with Noor"), ("Place", "Coast"),
-                                                ("More", "Search 'beach' everywhere")])))
-        s = self.l7_open(query="beach", scope="Whole library", keyboard=False)
+                                                ("More", "More search options")])))
+        s = self.l7_open(query="beach", keyboard=False)
         top = s.panel_top - L.px(8)
         s.d.rectangle([0, s.top, DEVICE_W, top], fill=s.t["ground"])
         s.text((L.px(L.SIDE), s.top + L.px(12)), "12.840 pictures for 'beach'", "section")
         L.square_grid(s, s.top + L.px(48), top - L.px(96), cols=6, seed=17, header="August 2026",
                       headers_every=18, month_names=["July 2025", "August 2019"])
         L.fast_thumb(s, 0.55, "2019", s.top + L.px(56), top - L.px(60))
-        panels.append(Panel("B14", "Large library results", "12.840 results load page by page; the held-sphere "
-                            "thumb jumps through the result years. Bar and query stay.", s))
+        panels.append(Panel("B14", "Large library results", "12.840 results on this screen load page by page; the "
+                            "held-sphere thumb jumps through the result years. Bar and query stay.", s))
         s = self.scr()
         L.pictures(s)
         y0s = s.slab_box[1]
@@ -785,12 +948,16 @@ class Gen:
             ["Traversal", "Field › scope chips › suggestions top to bottom › close › slab", "Focus starts in the "
              "field (it opens with the keyboard)"],
         ], [0.18, 0.5, 0.32])
+        b.table("Search state transitions (#824)", L7_TRANSITION_HEAD, L7_TRANSITIONS, L7_TRANSITION_W,
+                L7_TRANSITION_NOTE)
         b.table("Reference decisions", DECISION_HEAD, [
             ref_row("searchbar", "Adapted: suggestions and results stack upward from the bar so they stay above "
                     "the keyboard and near the thumb, instead of below a top bar."),
-            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus (the keyboard opens with it, "
-                    "per Quiet Frame v3). Kept: the This screen / Whole library chips, query handoff and the "
-                    "two-step Back."),
+            ref_row("find5", "Changed: the bar is at the bottom and does auto-focus when it opens (L7 opening, "
+                    "Quiet Frame v3); FIND-5 opens non-focused. Kept, unchanged: the This screen / Whole library "
+                    "chips, the two-step Back and the Whole library handoff of main (close scope, release focus, "
+                    "clear the local query, open the Search tab blank). Focus-on-open does not change the scope "
+                    "handoff; a retained-query in-place library mode would need its own reviewed UI change."),
         ], DECISION_W, DECISION_NOTE)
         b.footer(f"Generated by tools/design/lapis_preflight.py · synthetic only · references checked {VERIFIED} · "
                  "not a device capture")

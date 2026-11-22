@@ -74,6 +74,7 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.ManualFaceScanGuard
+import nl.atlas.gallery.featureface.currentManualWait
 import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceUnknownInboxBridge
@@ -1757,7 +1758,12 @@ internal class PeopleDiscoveryHost(
                             ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
                                 it.embedderVersion == pipeline.embedderVersion } },
                         store = { source, scores ->
-                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                            store.backfillQualityIfNull(owned.epoch, source, scores).also { written ->
+                                // The review revision does not change for quality-only writes.
+                                // Evict the home projection before the next Compose refresh.
+                                if (written > 0) synchronized(reviewLock) { liveHome = null }
+                            }
+                        },
                         reader = scanReader,
                         scoreOnly = pipeline::scoreWithoutEmbeddings,
                         canContinue = guard
@@ -2080,12 +2086,20 @@ internal class PeopleDiscoveryHost(
             ManualFaceScanGuard(p.batteryPercent, p.thermalStatus,
                 foregroundVisible).holdReason()
         } else null
+        // A wait remembered from an earlier Scan now is re-checked against live
+        // sensors, so a cleared hold (e.g. the phone cooled) stops showing.
+        val remembered = lastManualWait
+        val rememberedWait = if (manualForegroundActive || remembered == null) null else {
+            val p = power()
+            currentManualWait(remembered, ManualFaceScanGuard(p.batteryPercent,
+                p.thermalStatus, foregroundVisible)).also { if (it == null) lastManualWait = null }
+        }
         val pending = progress.pending + progress.running > 0
         val note = if (!pending || snap.paused) null else when {
             manualWait != null -> manualWait
             manualForegroundActive -> null
-            !power().charging -> lastManualWait ?: "Waiting for charging · use Scan now while unplugged"
-            else -> lastManualWait
+            !power().charging -> rememberedWait ?: "Waiting for charging · use Scan now while unplugged"
+            else -> rememberedWait
         }
         val active = manualForegroundActive || scanBatchEpoch == scoped.epoch
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
@@ -2347,6 +2361,29 @@ internal class PeopleDiscoveryHost(
         val epoch = displayEpoch(galleryGrant) ?: return null
         return synchronized(reviewLock) {
             if (!scopeCurrent(epoch)) null else store.personCoverOverride(epoch, person)
+        }
+    }
+
+    /**
+     * COVER-2: read a named person's effective best shot, even when hidden
+     * from the People-home projection. Both the live Android grant and store
+     * epoch must still match; never cache a face UID beyond that scope.
+     * Blocking; IO only.
+     */
+    fun currentPersonDisplayCover(galleryGrant: String?, person: PersonKey): String? {
+        val epoch = displayEpoch(galleryGrant) ?: return null
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) null
+            else store.personDisplayCover(epoch, person)
+        }
+    }
+
+    /** One authorized batch of effective portraits for the Hidden list. IO only. */
+    fun currentHiddenPersonCovers(epoch: String?): Map<PersonKey, String> {
+        if (epoch == null) return emptyMap()
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) emptyMap()
+            else store.hiddenPersonCovers(epoch)
         }
     }
 
@@ -2938,6 +2975,14 @@ internal fun PeopleReviewRoute(
     val current = page?.takeIf {
         loadedVersion == version && it.queue.permissionEpoch == liveEpoch
     }
+    // Display hints are only valid for this exact published review generation.
+    // Never use a stale home cover after a grant or membership change.
+    val coverHints = host.liveHomePeople(liveEpoch)
+        ?.takeIf { it.sourceGeneration == current?.clusters?.sourceGeneration }
+        ?.people?.mapNotNull { (person, data) ->
+            runCatching { NativeFaceObservationId(data.coverFaceUid) }.getOrNull()
+                ?.let { person to it }
+        }?.toMap().orEmpty()
     UnknownFacesReviewScreen(
         queue = current?.queue,
         currentPermissionEpoch = liveEpoch,
@@ -2965,6 +3010,7 @@ internal fun PeopleReviewRoute(
         onClose = onClose,
         onNextPage = current?.nextCursor?.let { next -> { after = next } },
         clusterReview = current?.clusters,
+        coverByPerson = coverHints,
         liveClusterReviewAtAction = { host.liveReview(liveEpoch) },
         onClusterReviewCommand = { command ->
             scope.launch {

@@ -31,6 +31,10 @@ object AtlasMotion {
     /** Viewer double-tap zoom (VIEW:V20). */
     const val DOUBLE_TAP_ZOOM_MS = 160
 
+    /** FLOW-5 (#714): thumbnail tap lands the photo instantly, but eases the strip. */
+    const val FILMSTRIP_TAP_MS = 260
+    val FilmstripTapEase: Easing = CubicBezierEasing(0.22f, 0.25f, 0f, 1f)
+
     /** Grid tile ↔ viewer shared element (VIEW:V23). */
     const val SHARED_ELEMENT_MS = 200
 
