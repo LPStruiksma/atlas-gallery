@@ -2296,7 +2296,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         originalProportions, timelineEnabled, personFilter, albumRoute,
         pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending,
         scopedPending) {
-        val invalidScope = tab != 0 || (!originalProportions && !timelineEnabled) ||
+        // Every Photos layout (timeline, plain grid, original rows) selects.
+        val invalidScope = tab != 0 ||
             personFilter != null || !grants.hasAny ||
             !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
         if (invalidScope) {
@@ -3725,8 +3726,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         bottomBar = {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
-                tab == 0 && personFilter == null && !statusOpen &&
-                    (originalProportions || timelineEnabled)
+                tab == 0 && personFilter == null && !statusOpen
             }
             // #556: Samsung swaps the tab bar for the selection actions.
             if (photosSelection != null) {
@@ -3841,6 +3841,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             // the toggles keep their exact former handlers and test tags.
             val photosControls = access && tab == 0 && personFilter == null && !statusOpen
             val toggleTimeline: () -> Unit = {
+                // A selection never survives a layout switch.
+                batchSelection = null
+                pendingSelectionRestore = null
                 // The two layouts cannot share raw grid slots;
                 // a switch back starts in its own remembered grid.
                 if (originalProportions) {
@@ -3992,9 +3995,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
                 !headerScrollsWithGrid && !searchOwnsTop) {
                 val ratioSelection = batchSelection?.takeIf {
-                    photosControls && originalProportions && !settingsOpen
+                    photosControls && !settingsOpen
                 }
-                // Original rows: the selection top bar takes the header's place.
+                // Original rows and the plain grid: the selection top bar takes
+                // the header's place (the timeline draws its own in the grid).
                 if (ratioSelection != null) {
                     SamsungSelectionTopBar(
                         count = ratioSelection.count,
@@ -4403,7 +4407,33 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                             originalProportions = true
                                         }
                                     },
-                                    entryDensity = timelineEntryDensity
+                                    entryDensity = timelineEntryDensity,
+                                    // The plain grid selects like the timeline (Lukas 2026-11-22).
+                                    selectedMediaUris = batchSelection?.takeIf {
+                                        it.isCurrentFor(visible, publishedGallery.epoch,
+                                            galleryAccessCurrent())
+                                    }?.uris,
+                                    onSelectionChange = { uris ->
+                                        val selection = batchSelection
+                                        if (!batchOperating && galleryAccessCurrent()) {
+                                            if (selection == null) {
+                                                selectionAlbumRoute = albumRoute
+                                                batchSelection = GalleryBatchSelection.of(
+                                                    visible, publishedGallery.epoch, uris)
+                                            } else if (selection.isCurrentFor(visible,
+                                                    publishedGallery.epoch, true)) {
+                                                batchSelection = selection.replaced(uris)
+                                            }
+                                        }
+                                    },
+                                    onMediaToggle = { media ->
+                                        val selection = batchSelection
+                                        if (selection != null && !batchOperating &&
+                                            selection.isCurrentFor(visible,
+                                                publishedGallery.epoch, galleryAccessCurrent())) {
+                                            batchSelection = selection.toggledKeepingMode(media)
+                                        }
+                                    }
                                 )
                             }
                         }
