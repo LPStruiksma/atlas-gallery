@@ -61,7 +61,38 @@ Straighten uses a continuous dial with a centered zero marker and readable live 
 
 ### Adjust — M3
 
-Entry → Auto and a horizontally scrollable row of actual adjustment groups (Light, Colour, Curves, Mix, Spot). Light selects Brightness, Exposure, Contrast, Highlights, Shadows, Light balance; Colour selects Saturation, Hue, White balance, Temperature, Tint; Curves opens a photograph-visible grid with RGB and component chips, explicit point add/remove, and Reset curve; Mix has target color swatches (not arbitrary face circles), Hue/Saturation/Luminance sliders and eyedropper with up to **three custom sampled colors**; Spot permits Add, Remove and Brush erase with visibly bounded brush. Active value and reset sit above the single full-width control. Value ranges, increments, neutral positions, availability and curve constraints are **to be taken from the engine + canary**, not invented here. Cancel reverts uncommitted preview; Apply commits one edit; rapid drag does not build undo history for every frame.
+Entry opens the single Adjust deck with **Auto as the first visible suggestion action**, followed by the horizontally scrollable Light, Colour, Curves, Mix and Spot groups. The proposed organization is Atlas-specific; it does not claim to reproduce a current Samsung tab order. Auto is a suggestion, never an implicit edit: **Accept** stages the suggested tone result inside the current Adjust transaction; **Dismiss** closes the suggestion and leaves the staged preview unchanged. After the suggestion is accepted, Apply is still required to create a recipe/history step.
+
+- **Light:** Brightness, Exposure, Contrast, Highlights, Shadows and Light balance. Show exactly one active slider, its current example value and a discoverable neutral/reset affordance.
+- **Colour:** Saturation, Hue, White balance, Temperature and Tint. Show exactly one active slider and its current value; neutral/reset returns that active control to its neutral/default state.
+- **Curves:** photograph-visible graph, RGB plus component channels, selected editable point, and explicit Add point / Remove point actions. Point dragging remains a provisional gesture until Apply.
+- **Mix:** selected colour with Hue, Saturation and Luminance controls, an eyedropper, and no more than **three** user-sampled custom swatches. When all three slots are occupied, Add sample is unavailable; removing one frees a slot.
+- **Spot:** Add, Remove and Brush erase modes. The active brush is drawn as a bounded circle on the photo; the boundary remains visible during touch/drag and the action affects the staged spot adjustment only.
+
+Numeric ranges, increments, units and engine-specific limits remain **D** until sourced from the engine or a canary. Example slider readouts in the SVG demonstrate a value label only; they are not proposed bounds or calibrated S24+ readings.
+
+#### EDIT-14D — Adjust entry, staged transaction and panel-specific states
+
+The matching [Adjust SVG](adjust.svg) contains paired light/dark 360 × 780 dp planning frames (main frames at ×3 = 1080 × 2340 px; focused state frames at ×2 = 720 × 1560 px). All frames retain the same synthetic photo context and use the approved Quiet Frame v3 light/dark tokens. They are proposed vector design evidence, not Android renders, measured S24+ behavior or proof of runtime geometry.
+
+| State | Visible evidence and behavior |
+|---|---|
+| First entry / Auto | Auto is the first visible suggestion action, before the Light / Colour / Curves / Mix / Spot group strip. Its suggestion has separate **Accept** and **Dismiss** actions. Accept stages one Auto result; Dismiss leaves the preview unchanged. |
+| Light slider | Active Exposure slider, example current value, visible neutral value and Reset. The track, thumb and step affordance are touch/drag targets; drag updates only the staged preview. |
+| Curves | RGB and component-channel selection, graph with a selected point, and explicit Add point / Remove point affordances. The selected point is draggable; add/remove and drag remain provisional until Apply. |
+| Mix | Hue / Saturation / Luminance controls, eyedropper, and exactly three visible custom sampled swatches in the full state. No fourth sample is shown or implied. |
+| Spot | Add / Remove / Brush erase mode selection and a visible bounded brush circle over the photo. The brush ring denotes the active affected area; it is not an unbounded gesture or measured device brush size. |
+
+**Three distinct transaction actions are always visible in the normal Adjust deck:**
+
+- **Cancel** discards the current uncommitted Adjust preview and any in-progress gesture, returning to the state before this Adjust transaction. It is not Reset and does not create a history step.
+- **Reset** returns only the active control or subtool to its neutral/default state within the current staged transaction. It does not discard the rest of the Adjust preview and is not a synonym for Cancel.
+- **Apply** commits the staged Adjust change as **one** recipe/history step, regardless of the number of slider frames or provisional gestures. It is not a Save action. The editor shell remains the sole owner of Save / Save as copy; this panel adds no save path.
+
+The shell Back action never silently commits or discards a pending Adjust transaction. With staged changes present, it first offers **Discard changes** or **Keep editing**; the explicit Cancel action remains available in the deck. After Apply, shell Undo reverses the one committed Adjust history step. Reset and Dismiss do not add history entries.
+
+**Interaction and accessibility annotations apply to every focused state:** focus order is shared shell controls → photo context → Auto suggestion / selected group → active value and control → Cancel → Reset → Apply. Every action and draggable control has a ≥48 dp logical hit area, including slider thumb/step actions, curve point and Add/Remove actions, eyedropper and swatch actions, Spot mode buttons and the bounded brush target. Sliders and points support touch/drag with a visible active value/selection; the photo remains visible above the deck while editing and is not obscured by an expanded picker. At 200% font, labels wrap or move into a vertically scrollable deck, the action row can grow to two lines while preserving ≥48 dp targets, and a meaningful photo anchor remains visible; no labels are shrunk or clipped to keep all groups on one line. Actual TalkBack traversal, logical hit rectangles, font scaling, insets and reach must still be validated in Compose and on the later S24+ canary.
+
 
 ### Filters — M3
 
