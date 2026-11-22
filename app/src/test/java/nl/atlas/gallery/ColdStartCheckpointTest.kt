@@ -115,4 +115,60 @@ class ColdStartCheckpointTest {
         assertTrue(mergeGalleryMediaDelta(cached, emptyList()) === cached)
         assertNotNull(COLD_DELTA_MAX_CHANGES)
     }
+
+    private fun presence(rows: List<MediaRecord>, changedAbove: Long) = rows.map {
+        GalleryColdPresence(GalleryMediaDeltaKey.of(it), it.generationModified > changedAbove)
+    }
+
+    /**
+     * Review of #977: the cold delta lists exactly what the full scan lists,
+     * in the same order (images then videos, each newest first), for an add,
+     * an edit, a delete, a new video and a second volume.
+     */
+    @Test fun assembledDeltaEqualsTheFullScanListInOrder() {
+        // Full-scan order: images DATE_ADDED DESC (here: id DESC), then videos.
+        val cached = listOf(record(5, volume = "1234-abcd"), record(3), record(2), record(1),
+            record(4, video = true))
+        val edited = record(2, generation = 600, name = "Invented 2 edited.jpg")
+        val addedImage = record(6, generation = 601)
+        val addedVideo = record(7, video = true, generation = 602)
+        // While ATLAS was not running: 6 added (newest), 2 edited, 3 deleted, 7 added.
+        val providerImages = listOf(addedImage, record(5, volume = "1234-abcd"), edited, record(1))
+        val providerVideos = listOf(addedVideo, record(4, video = true))
+        val fullScan = providerImages + providerVideos
+        val changed = (providerImages + providerVideos).filter { it.generationModified > 500 }
+            .associateBy(GalleryMediaDeltaKey::of)
+        val assembled = assembleColdDelta(cached,
+            presence(providerImages, 500), presence(providerVideos, 500), changed)!!
+        assertEquals(fullScan.map(GalleryMediaDeltaKey::of), assembled.map(GalleryMediaDeltaKey::of))
+        assertEquals(fullScan, assembled)
+        // Unchanged rows keep their objects (no second copy of the library).
+        assertTrue(assembled[1] === cached[0])
+        assertTrue(assembled[5] === cached[4])
+    }
+
+    @Test fun anUnchangedLibraryAssemblesToTheCachedListItself() {
+        val cached = (1000L downTo 1L).map { record(it) }
+        val assembled = assembleColdDelta(cached, presence(cached, 5000), emptyList(), emptyMap())
+        assertTrue(assembled === cached)
+    }
+
+    @Test fun aChangedRowThatWasNotReReadFallsBackToTheFullScan() {
+        val cached = listOf(record(2), record(1))
+        val rows = listOf(GalleryColdPresence(GalleryMediaDeltaKey.of(record(2)), changed = true),
+            GalleryColdPresence(GalleryMediaDeltaKey.of(record(1)), changed = false))
+        assertNull(assembleColdDelta(cached, rows, emptyList(), emptyMap()))
+        // A present row nobody has a record for: also the full scan.
+        val unknown = listOf(GalleryColdPresence(GalleryMediaDeltaKey.of(record(9)), false))
+        assertNull(assembleColdDelta(cached, unknown, emptyList(), emptyMap()))
+    }
+
+    @Test fun aRowAddedDuringTheReadGoesFirstInItsCollection() {
+        val cached = listOf(record(1), record(3, video = true))
+        val late = record(8, generation = 700)
+        val assembled = assembleColdDelta(cached, presence(listOf(record(1)), 500),
+            presence(listOf(record(3, video = true)), 500),
+            mapOf(GalleryMediaDeltaKey.of(late) to late))!!
+        assertEquals(listOf(8L, 1L, 3L), assembled.map { it.id })
+    }
 }

@@ -230,10 +230,13 @@ class GalleryRepository(private val context: Context) {
     /**
      * #602: a cold start (an app update always is one) resumes from the
      * checkpoint saved with the cached catalogue instead of rereading every
-     * row: full-projection rows only for generations after the checkpoint,
-     * plus one `_ID`/volume-only pass per collection that finds rows deleted
-     * while ATLAS was not running. Any doubt (API 29, a provider reset, a
-     * mounted or removed volume, a generation going back, more than
+     * row: one presence pass per collection (`_ID`, volume and generations,
+     * in the full scan's `DATE_ADDED DESC` order) finds deleted and changed
+     * rows and the order to publish; full-projection rows are read only for
+     * the volumes and collections that changed. The result equals the full
+     * scan's list, order included ([assembleColdDelta]). Any doubt (API 29,
+     * a provider reset, a mounted or removed volume, a generation going back,
+     * more than
      * [COLD_DELTA_MAX_CHANGES] changed rows) throws [GalleryDeltaUnavailable]
      * and the caller runs the full scan. Generations that move during this
      * read are accepted only with [allowTrailingChanges], as for the full scan.
@@ -252,68 +255,90 @@ class GalleryRepository(private val context: Context) {
         if (!coldDeltaMayResume(checkpoint, versions, generations))
             throw GalleryDeltaUnavailable()
         val zone = java.time.ZoneId.systemDefault()
-        val reuse = GalleryScanRecordReuse(previous)
-        val changes = ArrayList<GalleryMediaDeltaChange>()
-        var changed = 0
-        for ((volume, since) in checkpoint.generations) {
-            for (video in listOf(false, true)) {
-                checkActive()
-                val rows = ArrayList<MediaRecord>()
-                val collection = if (video) MediaStore.Video.Media.getContentUri(volume)
-                    else MediaStore.Images.Media.getContentUri(volume)
-                readMedia(collection, video, rows, null, checkActive, versions, zone, reuse,
-                    "${MediaStore.MediaColumns.GENERATION_ADDED} > ? OR " +
-                        "${MediaStore.MediaColumns.GENERATION_MODIFIED} > ?",
-                    arrayOf(since.toString(), since.toString()),
-                    COLD_DELTA_MAX_CHANGES - changed)
-                changed += rows.size
-                rows.forEach { changes += GalleryMediaDeltaChange(GalleryMediaDeltaKey.of(it), it) }
-            }
-        }
-        // Deletions leave no generation behind: compare identities instead.
-        val present = HashSet<GalleryMediaDeltaKey>(previous.size + changed)
+        // One cheap pass per collection, in the full scan's order: identity,
+        // volume and generations only. It finds deletions (absent rows),
+        // changes (generation above the checkpoint) and the order to publish.
+        val images = ArrayList<GalleryColdPresence>(previous.size)
+        val videos = ArrayList<GalleryColdPresence>()
+        var changedCount = 0
         for (video in listOf(false, true)) {
             checkActive()
-            readMediaKeys(if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, video, versions.keys,
-                present, checkActive)
+            changedCount += readColdPresence(if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, video, checkpoint.generations,
+                if (video) videos else images, COLD_DELTA_MAX_CHANGES - changedCount, checkActive)
         }
-        changes += coldDeltaDeletions(previous, present)
+        // Full-projection rows only where the presence pass saw a change.
+        val changedVolumes = LinkedHashSet<Pair<String, Boolean>>()
+        for (row in images) if (row.changed) changedVolumes += row.key.volume to false
+        for (row in videos) if (row.changed) changedVolumes += row.key.volume to true
+        val reuse = GalleryScanRecordReuse(previous)
+        val changed = LinkedHashMap<GalleryMediaDeltaKey, MediaRecord>()
+        for ((volume, video) in changedVolumes) {
+            checkActive()
+            val since = checkpoint.generations[volume] ?: throw GalleryDeltaUnavailable()
+            val rows = ArrayList<MediaRecord>()
+            val collection = if (video) MediaStore.Video.Media.getContentUri(volume)
+                else MediaStore.Images.Media.getContentUri(volume)
+            readMedia(collection, video, rows, null, checkActive, versions, zone, reuse,
+                "${MediaStore.MediaColumns.GENERATION_ADDED} > ? OR " +
+                    "${MediaStore.MediaColumns.GENERATION_MODIFIED} > ?",
+                arrayOf(since.toString(), since.toString()),
+                COLD_DELTA_MAX_CHANGES)
+            rows.forEach { changed[GalleryMediaDeltaKey.of(it)] = it }
+        }
         val endVersions = mediaProviderVersions()
         val endGenerations = mediaProviderGenerations(endVersions.keys)
         val coherent = sameMediaProviderScanSnapshot(versions, endVersions, generations, endGenerations)
         val trailing = !coherent && allowTrailingChanges &&
             mediaProviderOnlyAdvancedDuringScan(versions, endVersions, generations, endGenerations)
         if (!coherent && !trailing) throw GalleryProviderSnapshotChanged()
-        val items = mergeGalleryMediaDelta(previous, changes)
-        lastReusedCount = previous.size - changes.size.coerceAtMost(previous.size)
+        // A present row without a record (changed between the two reads and
+        // not re-read): any doubt, the authoritative full scan.
+        val items = assembleColdDelta(previous, images, videos, changed)
+            ?: throw GalleryProviderSnapshotChanged()
+        lastReusedCount = (items.size - changed.size).coerceAtLeast(0)
         android.util.Log.i("ATLAS_SCAN", "event=cold_delta rows=${items.size} " +
-            "changed=$changed deleted=${changes.size - changed} trailing=$trailing")
+            "changed=${changed.size} deleted=${(previous.size + changed.size - items.size)
+                .coerceAtLeast(0)} trailing=$trailing")
         if (trailing) GalleryMediaScan(items, GalleryMediaCheckpoint(versions, generations),
             trailingChanges = true)
         else GalleryMediaScan(items, GalleryMediaCheckpoint(endVersions, endGenerations))
     }
 
-    /** `_ID` and volume only: the cheap presence pass of [loadSinceCheckpoint]. */
-    private fun readMediaKeys(
-        uri: android.net.Uri, video: Boolean, volumes: Set<String>,
-        target: MutableSet<GalleryMediaDeltaKey>, checkActive: () -> Unit
-    ) {
+    /**
+     * #602: the cold delta's presence pass over one collection, sorted like
+     * the full scan (`DATE_ADDED DESC`). Returns how many rows changed since
+     * [since]; more than [maxChanged] makes the full scan simpler.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+    private fun readColdPresence(
+        uri: android.net.Uri, video: Boolean, since: Map<String, Long?>,
+        target: MutableList<GalleryColdPresence>, maxChanged: Int, checkActive: () -> Unit
+    ): Int {
         val cursor = requireMediaCatalogueCursor(context.contentResolver.query(uri,
-            arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.VOLUME_NAME),
-            null, null, null))
+            arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.VOLUME_NAME,
+                MediaStore.MediaColumns.GENERATION_ADDED,
+                MediaStore.MediaColumns.GENERATION_MODIFIED),
+            null, null, "${MediaStore.MediaColumns.DATE_ADDED} DESC"))
+        var changed = 0
         cursor.use {
             val idxId = it.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
             val idxVolume = it.getColumnIndexOrThrow(MediaStore.MediaColumns.VOLUME_NAME)
+            val idxAdded = it.getColumnIndexOrThrow(MediaStore.MediaColumns.GENERATION_ADDED)
+            val idxModified = it.getColumnIndexOrThrow(MediaStore.MediaColumns.GENERATION_MODIFIED)
             var rowIndex = 0
             while (it.moveToNext()) {
                 checkGalleryScanCancellation(rowIndex++, checkActive)
                 val id = requireMediaStoreItemId(it.getLong(idxId))
                 val volume = requireMountedMediaVolume(
-                    if (it.isNull(idxVolume)) "" else it.getString(idxVolume), volumes)
-                target += GalleryMediaDeltaKey(volume, video, id)
+                    if (it.isNull(idxVolume)) "" else it.getString(idxVolume), since.keys)
+                val saved = since[volume] ?: throw GalleryDeltaUnavailable()
+                val isChanged = it.getLong(idxAdded) > saved || it.getLong(idxModified) > saved
+                if (isChanged && ++changed > maxChanged) throw GalleryDeltaUnavailable()
+                target += GalleryColdPresence(GalleryMediaDeltaKey(volume, video, id), isChanged)
             }
         }
+        return changed
     }
 
     private fun mediaProviderVersions(): Map<String, String?> =

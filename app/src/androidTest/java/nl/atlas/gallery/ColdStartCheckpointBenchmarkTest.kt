@@ -149,12 +149,12 @@ class ColdStartCheckpointBenchmarkTest {
             "${ms(beforeP50)} ms", afterP50 < beforeP50)
     }
 
+    /** Same list as the full scan: identities, revisions and order (#602, review of #977). */
     private fun assertSameCatalogue(label: String, full: List<MediaRecord>, delta: List<MediaRecord>) {
-        val fullByKey = full.associateBy { GalleryMediaDeltaKey.of(it) }
-        val deltaByKey = delta.associateBy { GalleryMediaDeltaKey.of(it) }
-        assertEquals("$label: same identities", fullByKey.keys, deltaByKey.keys)
-        fullByKey.forEach { (key, record) ->
-            assertEquals("$label: same record for $key", record, deltaByKey[key])
+        assertEquals("$label: same identities in the same order",
+            full.map { GalleryMediaDeltaKey.of(it) }, delta.map { GalleryMediaDeltaKey.of(it) })
+        full.indices.forEach { i ->
+            assertEquals("$label: same record at $i", full[i], delta[i])
         }
     }
 

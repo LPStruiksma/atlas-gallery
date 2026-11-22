@@ -92,3 +92,46 @@ internal fun coldDeltaDeletions(
     val key = GalleryMediaDeltaKey.of(record)
     if (key in present) null else GalleryMediaDeltaChange(key, null)
 }
+
+/**
+ * #602: one row of the cold delta's presence pass, in the full scan's own
+ * order (`DATE_ADDED DESC` per collection). [changed] is true when the row's
+ * GENERATION_ADDED or GENERATION_MODIFIED is above the saved checkpoint.
+ */
+internal data class GalleryColdPresence(val key: GalleryMediaDeltaKey, val changed: Boolean)
+
+/**
+ * #602: the catalogue a full scan would list, in its order (images, then
+ * videos, each as the provider sorted them), built from the presence pass,
+ * the re-read [changed] rows and the cached [previous] rows. Rows the
+ * presence pass did not see but [changed] holds (added during the read) go
+ * first in their collection, as the newest. Null when a present row has no
+ * record at all, or a changed one was not re-read: the caller then runs the
+ * full scan. Returns [previous] itself when nothing differs.
+ */
+internal fun assembleColdDelta(
+    previous: List<MediaRecord>,
+    images: List<GalleryColdPresence>,
+    videos: List<GalleryColdPresence>,
+    changed: Map<GalleryMediaDeltaKey, MediaRecord>
+): List<MediaRecord>? {
+    val cached = HashMap<GalleryMediaDeltaKey, MediaRecord>(previous.size * 2)
+    for (record in previous) cached[GalleryMediaDeltaKey.of(record)] = record
+    val seen = HashSet<GalleryMediaDeltaKey>(images.size + videos.size)
+    images.forEach { seen += it.key }
+    videos.forEach { seen += it.key }
+    val result = ArrayList<MediaRecord>(images.size + videos.size + changed.size)
+    for ((video, presence) in listOf(false to images, true to videos)) {
+        for ((key, record) in changed) {
+            if (key.video == video && key !in seen) result += record
+        }
+        for (row in presence) {
+            val record = if (row.changed) changed[row.key]
+                else changed[row.key] ?: cached[row.key]
+            result += record ?: return null
+        }
+    }
+    if (result.size == previous.size &&
+        result.indices.all { result[it] === previous[it] }) return previous
+    return result
+}
