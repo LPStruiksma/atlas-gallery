@@ -1133,6 +1133,7 @@ internal fun rememberPhotoDna(
                 LastCrashRecorder.recordHandled(context, outcome.error)
             }
         }
+        PerformanceSession.sampleHeap()
     }
     return state
 }

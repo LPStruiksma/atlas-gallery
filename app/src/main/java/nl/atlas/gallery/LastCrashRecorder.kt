@@ -184,12 +184,9 @@ internal object LastCrashRecorder {
     fun read(context: Context): String? {
         val crash = CrashReportStore(file(context)).read()
         val exits = formatProcessExits(recentExits(context))
-        return when {
-            crash == null && exits.isEmpty() -> null
-            crash == null -> exits
-            exits.isEmpty() -> crash
-            else -> crash.trimEnd('\n') + "\n\n" + exits
-        }
+        val memory = NativeMemoryMetrics.displaySample()
+        return listOfNotNull(crash, exits.takeIf { it.isNotEmpty() }, memory)
+            .takeIf { it.isNotEmpty() }?.joinToString("\n\n") { it.trimEnd('\n') }
     }
 
     /** Android's own record of this app's ended processes (API 30+); empty when unavailable. */

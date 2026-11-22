@@ -16,7 +16,8 @@ class PerformanceAggregates(private val capacity: Int = 256) {
     )
     private val keys = setOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
         "grid_frame_over_budget",
-        "face_photos_min", "visual_photos_min", "heap_fraction") +
+        "face_photos_min", "visual_photos_min", "heap_fraction",
+        "native_heap_mib", "process_pss_mib") +
         (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
 
@@ -156,5 +157,6 @@ internal object PerformanceSession {
             // fraction itself remains a separate dimensionless metric.
             recordActionElapsedNs(8, startNs)
         }
+        NativeMemoryMetrics.request()
     }
 }

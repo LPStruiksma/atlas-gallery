@@ -51,6 +51,18 @@ class PerformanceAggregatesTest {
         assertEquals(22, samples.metricNames().size)
     }
 
+    @Test fun nativeMemoryKeysAreAllowlistedBoundedAndUseNearestRankPercentiles() {
+        val samples = PerformanceAggregates(capacity = 3)
+        listOf(10.0, 40.0, 20.0, 30.0).forEach { assertTrue(samples.record("native_heap_mib", it)) }
+        assertTrue(samples.record("process_pss_mib", 64.0))
+        assertFalse(samples.record("memory_private_label", 1.0))
+        val native = samples.snapshot("native_heap_mib")
+        assertEquals(3, native.count)
+        assertEquals(30.0, native.p50!!, 0.0)
+        assertEquals(40.0, native.p95!!, 0.0)
+        assertEquals(40.0, native.max!!, 0.0)
+    }
+
     @Test fun frameBudgetRatioUsesOnlyBoundedValidatedSamples() {
         val samples = PerformanceAggregates(capacity = 4)
         assertEquals(null, samples.positiveFraction("grid_frame_over_budget"))

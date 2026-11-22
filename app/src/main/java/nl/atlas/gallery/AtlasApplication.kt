@@ -19,6 +19,7 @@ import nl.atlas.gallery.featureidentity.install.IdentityModelInstaller
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        NativeMemoryMetrics.install(this)
         // #435: load the preference files the first Photos grid reads, off Main.
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }
