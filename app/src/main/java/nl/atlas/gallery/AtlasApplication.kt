@@ -23,6 +23,8 @@ class AtlasApplication : Application() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }
         }
+        // USAGE-0 (#173): opt-in, on-device, off until Lukas turns it on; no network.
+        UsageRecorder.install(this)
         // Persist one privacy-redacted trace before Android's original crash handler runs.
         LastCrashRecorder.install(this)
         // Finish interrupted AI-copy cleanup after process death. No gallery

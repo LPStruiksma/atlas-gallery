@@ -1,0 +1,10 @@
+# Issue #173 · USAGE-0 Settings → Advanced usage rows (brief rev: issue comment 7060301615).
+# Galaxy S24+ 1080x2340. Synthetic callbacks only; nothing real is recorded.
+usage-0-off-empty-light
+usage-0-on-data-light
+usage-0-off-retained-dark
+usage-0-font200-dark
+usage-0-font200-light
+usage-0-export-failed-light
+usage-0-cleared-light
+usage-0-share-sheet
