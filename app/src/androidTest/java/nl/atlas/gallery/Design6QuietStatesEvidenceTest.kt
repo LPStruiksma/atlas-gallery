@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import nl.atlas.gallery.testkit.awaitWindowSettled
@@ -302,6 +303,7 @@ class Design6QuietStatesEvidenceTest {
         compose.setContent {
             val density = LocalDensity.current
             val densityScale = density.density
+            val layoutDirection = LocalLayoutDirection.current
             val view = LocalView.current
             val safeDrawing = WindowInsets.safeDrawing
             val statusBars = WindowInsets.statusBars
@@ -338,9 +340,9 @@ class Design6QuietStatesEvidenceTest {
                                         navigationBarsPx = navigationPx?.toString() ?: "unavailable",
                                         systemBarsPx = systemPx?.toString() ?: "unavailable",
                                         displayCutoutPx = cutoutPx?.toString() ?: "unavailable",
-                                        safeDrawingDp = "${safeDrawing.getLeft(density) / densityScale},${safeDrawing.getTop(density) / densityScale},${safeDrawing.getRight(density) / densityScale},${safeDrawing.getBottom(density) / densityScale}",
-                                        composeStatusBarsDp = "${statusBars.getLeft(density) / densityScale},${statusBars.getTop(density) / densityScale},${statusBars.getRight(density) / densityScale},${statusBars.getBottom(density) / densityScale}",
-                                        composeNavigationBarsDp = "${navigationBars.getLeft(density) / densityScale},${navigationBars.getTop(density) / densityScale},${navigationBars.getRight(density) / densityScale},${navigationBars.getBottom(density) / densityScale}",
+                                        safeDrawingDp = "${safeDrawing.getLeft(density, layoutDirection) / densityScale},${safeDrawing.getTop(density) / densityScale},${safeDrawing.getRight(density, layoutDirection) / densityScale},${safeDrawing.getBottom(density) / densityScale}",
+                                        composeStatusBarsDp = "${statusBars.getLeft(density, layoutDirection) / densityScale},${statusBars.getTop(density) / densityScale},${statusBars.getRight(density, layoutDirection) / densityScale},${statusBars.getBottom(density) / densityScale}",
+                                        composeNavigationBarsDp = "${navigationBars.getLeft(density, layoutDirection) / densityScale},${navigationBars.getTop(density) / densityScale},${navigationBars.getRight(density, layoutDirection) / densityScale},${navigationBars.getBottom(density) / densityScale}",
                                         contentBoundsDp = "${bounds.left / densityScale},${bounds.top / densityScale},${bounds.right / densityScale},${bounds.bottom / densityScale}"
                                     )
                                 },
