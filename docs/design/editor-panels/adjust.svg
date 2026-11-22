@@ -180,7 +180,7 @@
  <path d="M16 358 Q88 272 174 345 T344 321 V468 H16Z" fill="#598D7C"/>
  <path d="M16 405 Q100 352 204 407 T344 390 V468 H16Z" fill="#365D65"/>
  <circle cx="289" cy="151" r="30" fill="#F4E4B2"/><text x="24" y="117" font-size="9" fill="#0E1030" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">SYNTHETIC PHOTO · WORKING PREVIEW</text>
- <rect x="0" y="478" width="360" height="302" rx="20" fill="#FFFFFF" stroke="#C3C8DD"/><text x="20" y="492" font-size="9" fill="#5A5F7A" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Adjust · auto</text>
+ <rect x="0" y="478" width="360" height="302" rx="20" fill="#FFFFFF" stroke="#C3C8DD"/>
  <text x="22" y="500" font-size="17" fill="#0E1030" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">Auto · suggested adjustment</text><text x="22" y="521" font-size="11" fill="#5A5F7A" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Suggestion is staged only after Accept</text>
   <rect x="20" y="536" width="320" height="94" rx="14" fill="#F2F3F8" stroke="#C3C8DD"/><text x="34" y="562" font-size="13" fill="#0E1030" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">Balanced light and colour</text><text x="22" y="648" font-size="10" fill="#5A5F7A" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Preview suggestion · no automatic commit</text>
   <rect x="30" y="580" width="135" height="48" rx="24" fill="#2639C9" stroke="none"/><text x="97" y="610" font-size="11" fill="#FFFFFF" font-weight="700" text-anchor="middle" font-family="Funnel Sans,sans-serif">Accept</text>
@@ -198,7 +198,7 @@
  <path d="M16 358 Q88 272 174 345 T344 321 V468 H16Z" fill="#355F68"/>
  <path d="M16 405 Q100 352 204 407 T344 390 V468 H16Z" fill="#243F4B"/>
  <circle cx="289" cy="151" r="30" fill="#F4E4B2"/><text x="24" y="117" font-size="9" fill="#0E1030" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">SYNTHETIC PHOTO · WORKING PREVIEW</text>
- <rect x="0" y="478" width="360" height="302" rx="20" fill="#000000" stroke="#454A68"/><text x="20" y="492" font-size="9" fill="#9AA0B8" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Adjust · auto</text>
+ <rect x="0" y="478" width="360" height="302" rx="20" fill="#000000" stroke="#454A68"/>
  <text x="22" y="500" font-size="17" fill="#F2F3F8" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">Auto · suggested adjustment</text><text x="22" y="521" font-size="11" fill="#9AA0B8" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Suggestion is staged only after Accept</text>
   <rect x="20" y="536" width="320" height="94" rx="14" fill="#14152A" stroke="#454A68"/><text x="34" y="562" font-size="13" fill="#F2F3F8" font-weight="700" text-anchor="start" font-family="Funnel Sans,sans-serif">Balanced light and colour</text><text x="22" y="648" font-size="10" fill="#9AA0B8" font-weight="400" text-anchor="start" font-family="Funnel Sans,sans-serif">Preview suggestion · no automatic commit</text>
   <rect x="30" y="580" width="135" height="48" rx="24" fill="#3448E0" stroke="none"/><text x="97" y="610" font-size="11" fill="#FFFFFF" font-weight="700" text-anchor="middle" font-family="Funnel Sans,sans-serif">Accept</text>
