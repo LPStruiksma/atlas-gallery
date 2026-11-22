@@ -549,6 +549,12 @@ run_perf_a1_cached_frame() (
       if [[ "$warm" =~ ^mode=warm[[:space:]]pid=([0-9]+)[[:space:]]elapsed_ms=([0-9]+[.][0-9]+)[[:space:]]cached=[01][[:space:]]draw=grid[[:space:]]frame=completed$ ]]; then
         warm_ms="${BASH_REMATCH[2]}"
       else
+        # Preserve the strict warm-frame gate, but retain bounded numeric
+        # evidence from the same PID so Review/Strategy can distinguish an
+        # absent eligible draw, missing callbacks, vsync mismatch or invalid
+        # completion. These diagnostics never count as a warm sample.
+        echo "ATLAS_PERF_A1 sample mode=warm pid=$pid outcome=no_completed_grid_frame emulator=$model api=$api head=$head"
+        printf '%s\\n' "$capture" | grep -E "^event=(frame_diag|cached_draw|vsync_match) pid=$pid( |$)" | tail -6 || true
         echo "::error::PERF-A1A warm return had no completed grid frame"; exit 1;
       fi
       echo "ATLAS_PERF_A1 sample mode=warm pid=$pid ms=$warm_ms n=1 frame=completed emulator=$model api=$api head=$head"
