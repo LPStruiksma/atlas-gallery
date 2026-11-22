@@ -32,7 +32,6 @@ import nl.atlas.gallery.featureintents.ExternalIntentReader
 import nl.atlas.gallery.featureintents.ExternalViewerHost
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
@@ -140,6 +139,8 @@ import nl.atlas.gallery.featuredesign.LocalAtlasTabBackdrop
 import nl.atlas.gallery.featuredesign.rememberAtlasTabBackdropState
 import nl.atlas.gallery.featuredesign.atlasCaptureTabBackdrop
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
+import nl.atlas.gallery.featuredesign.LocalAtlasScaffoldBottomPadding
+import nl.atlas.gallery.featuredesign.atlasImePadding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -3823,8 +3824,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         val drawUnderBar = access && !statusOpen && !settingsOpen && personFilter == null &&
             (tab == 0 || (tab == 1 && !storiesOpen && !photoDnaOpen))
         val layoutDirection = LocalLayoutDirection.current
+        // #448: what the Column below pads at the bottom. Keyboard-aware screens
+        // subtract it from the IME inset (atlasImePadding) instead of stacking.
+        val appliedBottom = if (drawUnderBar) 0.dp else insets.calculateBottomPadding()
         CompositionLocalProvider(LocalAtlasBottomChrome provides
-            (if (drawUnderBar) insets.calculateBottomPadding() else 0.dp)) {
+            (if (drawUnderBar) insets.calculateBottomPadding() else 0.dp),
+            LocalAtlasScaffoldBottomPadding provides appliedBottom) {
         // No GPU capture or blur allocation in the Android 10/11 fallback.
         val contentModifier = if (Build.VERSION.SDK_INT >= 31) {
             Modifier.fillMaxSize().atlasCaptureTabBackdrop(tabBackdrop)
@@ -3835,7 +3840,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             start = insets.calculateStartPadding(layoutDirection),
             top = insets.calculateTopPadding(),
             end = insets.calculateEndPadding(layoutDirection),
-            bottom = if (drawUnderBar) 0.dp else insets.calculateBottomPadding())) {
+            bottom = appliedBottom)) {
             // #492: one slim Samsung-style bar. Photos' sort, view toggles and
             // Declutter moved from two extra rows into its icon + overflow menu;
             // the toggles keep their exact former handlers and test tags.
@@ -4581,7 +4586,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 LocalSearchControls(
                             // #654: no title bar above Search (#644), so the field
                             // keeps a little air under the status bar.
-                            modifier = Modifier.padding(top = 12.dp).imePadding(),
+                            modifier = Modifier.padding(top = 12.dp).atlasImePadding(),
                             filters = searchFacets,
                             people = people,
                             history = ephemeralSearchHistory,
