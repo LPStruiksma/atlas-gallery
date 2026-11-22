@@ -47,7 +47,6 @@ on:
       - 'scripts/ci_enable_kvm.sh'
       - 'scripts/ci_install_emulator_image.sh'
 permissions:
-  actions: read
   contents: read
 concurrency:
   group: atlas-android-${{ github.workflow }}-${{ github.ref }}
@@ -186,10 +185,18 @@ jobs:
         env:
           ATLAS_EMULATOR_API: ${{ inputs.api_level || '35' }}
         run: bash scripts/ci_install_emulator_image.sh
+      - name: Download this run's immutable app APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ATLAS-native-debug-APK
+          path: rc5-apks/app
+      - name: Download this run's immutable AndroidTest APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ATLAS-ui-test-APK
+          path: rc5-apks/androidTest
       - name: Emulator Compose interactions + private People upgrade preservation
         uses: reactivecircus/android-emulator-runner@v2
-        env:
-          GH_TOKEN: ${{ github.token }}
         with:
           # PR checks default to API35; manual dispatch supports a separate
           # API34 acceptance run without doubling every PR's emulator minutes.
