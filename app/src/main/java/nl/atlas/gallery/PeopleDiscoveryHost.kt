@@ -2266,6 +2266,13 @@ internal class PeopleDiscoveryHost(
         liveReview?.takeIf {
             it.state.permissionEpoch == epoch && it.storeGeneration == generation
         }?.let { if (live) servedReview = it; return it }
+        // OOM fix (264k faces): drop the stale snapshot before reading its
+        // replacement, so a reload after a publication never holds two full
+        // copies. The served one stays only while a restage may still need it.
+        liveReview?.let { stale ->
+            liveReview = null
+            if (live && servedReview === stale && !restageReadGap(epoch)) servedReview = null
+        }
         val stored = store.peopleReview(epoch)
             ?: return if (live || held) heldReview(epoch) else null
         LiveReview(PeopleClusterReviewState(epoch, "$epoch|${stored.generation}",
@@ -2689,7 +2696,8 @@ internal class PeopleDiscoveryHost(
         }
 
         override fun personName(epoch: String, person: PersonKey): String? =
-            if (scope(epoch) == null) null else currentReview(epoch)?.state?.names?.get(person)
+            // A name only: never load the whole People snapshot for it (OOM fix).
+            if (scope(epoch) == null) null else store.personName(epoch, person)
 
         override fun queryCapture(epoch: String): QueryFaceCapture? {
             val s = scope(epoch) ?: return null

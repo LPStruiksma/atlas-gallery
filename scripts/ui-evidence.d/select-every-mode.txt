@@ -1,0 +1,10 @@
+# Long-press and drag selection in every Photos layout and zoom level (SelectionModeJourneyTest).
+selection-modes-timeline-3
+selection-modes-timeline-4
+selection-modes-timeline-7
+selection-modes-timeline-12
+selection-modes-timeline-28
+selection-modes-original
+selection-modes-plain-3
+selection-modes-plain-4
+selection-modes-plain-7

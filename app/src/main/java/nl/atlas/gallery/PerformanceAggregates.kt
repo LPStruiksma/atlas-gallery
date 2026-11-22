@@ -3,12 +3,23 @@ package nl.atlas.gallery
 import kotlin.math.ceil
 
 /**
- * Numeric-only, process-local performance samples. No IDs, paths, URIs, names,
- * file access, persistent storage or network reporting. A fixed allowlist also
- * prevents arbitrary caller-provided metric labels from storing private data.
+ * Numeric-only performance samples. No IDs, paths, URIs, names, file access or
+ * network reporting. Samples may be kept per app version through [PerformanceStore]
+ * (plain numbers only, so comparisons across versions survive an app restart). A
+ * fixed allowlist also prevents arbitrary caller-provided metric labels from
+ * storing private data.
  */
-class PerformanceAggregates(private val capacity: Int = 256) {
+class PerformanceAggregates(
+    private val capacity: Int = 256,
+    private val store: PerformanceStore? = null
+) {
     init { require(capacity in 1..4096) }
+
+    /** Numeric-only persistence for one app version. Values are doubles; no labels. */
+    interface PerformanceStore {
+        fun load(): Map<String, List<Double>>
+        fun save(metric: String, values: List<Double>)
+    }
 
     data class Summary(
         val count: Int, val p50: Double?, val p90: Double?, val p95: Double?,
@@ -19,13 +30,56 @@ class PerformanceAggregates(private val capacity: Int = 256) {
         "face_photos_min", "visual_photos_min", "heap_fraction") +
         (1..22).map { "action_a${it}_ms" }
     private val samples = HashMap<String, ArrayDeque<Double>>()
+    private val unsaved = HashMap<String, Int>()
+    // Nothing is written until restore() has merged the saved history, so an early save
+    // cannot replace the previous run's samples before they are read back.
+    private var restored = false
+
+    /**
+     * Puts samples saved by earlier runs in front of anything recorded since start, keeping
+     * the newest `capacity`. Call off the main thread: the store reads SharedPreferences.
+     */
+    @Synchronized fun restore(saved: Map<String, List<Double>>) {
+        saved.forEach { (metric, values) ->
+            if (metric !in keys) return@forEach
+            val older = values.filter { it.isFinite() && it >= 0.0 }
+            val merged = ArrayDeque(older + samples[metric].orEmpty())
+            while (merged.size > capacity) merged.removeFirst()
+            if (merged.isNotEmpty()) samples[metric] = merged
+        }
+        restored = true
+    }
 
     @Synchronized fun record(metric: String, value: Double): Boolean {
         if (metric !in keys || !value.isFinite() || value < 0.0) return false
         val ring = samples.getOrPut(metric) { ArrayDeque() }
         ring.addLast(value)
         if (ring.size > capacity) ring.removeFirst()
+        val pending = (unsaved[metric] ?: 0) + 1
+        if (restored && store != null && pending >= SAVE_EVERY) {
+            store?.save(metric, ring.toList())
+            unsaved[metric] = 0
+        } else {
+            unsaved[metric] = pending
+        }
         return true
+    }
+
+    /** Writes any samples not yet saved, so a normal shutdown loses nothing. */
+    @Synchronized fun flush() {
+        val store = store ?: return
+        if (!restored) return
+        samples.forEach { (metric, ring) ->
+            if ((unsaved[metric] ?: 0) > 0) {
+                store.save(metric, ring.toList())
+                unsaved[metric] = 0
+            }
+        }
+    }
+
+    companion object {
+        /** Up to this many samples per metric may be lost if the process dies without a flush. */
+        const val SAVE_EVERY = 16
     }
 
     @Synchronized fun snapshot(metric: String): Summary {
@@ -68,7 +122,36 @@ class ColdStartClock(
 
 /** One-process capture only; UI reads a snapshot on demand. */
 internal object PerformanceSession {
-    val aggregate = PerformanceAggregates()
+    var aggregate = PerformanceAggregates()
+        private set
+
+    private var store: PerformancePrefsStore? = null
+
+    /**
+     * Keeps samples for the installed app version across restarts (#PERF-KEEP). Creates the
+     * store only; no SharedPreferences read happens here, so it is safe on the main thread.
+     */
+    fun install(context: android.content.Context) {
+        @Suppress("DEPRECATION")
+        val version = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+        }.getOrNull() ?: return
+        val installed = PerformancePrefsStore(context, version)
+        store = installed
+        aggregate = PerformanceAggregates(store = installed)
+    }
+
+    /**
+     * Reads the saved samples and prunes old versions (keeps the newest ten). Call from a
+     * background thread: reading SharedPreferences on the main thread trips the disk-read policy in debug builds.
+     */
+    fun restoreSaved() {
+        val installed = store ?: return
+        installed.pruneOldVersions(keepVersions = 10)
+        aggregate.restore(installed.load())
+    }
+
+    fun flush() = aggregate.flush()
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private var peakHeapFraction = 0.0
