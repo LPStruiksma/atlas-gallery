@@ -1509,6 +1509,41 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var swapPersonSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
     var swapPersonSession by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerReturnStartNs by remember { mutableLongStateOf(0L) }
+    // USAGE-0 (#173): which screen ID is showing. Dwell seconds per ID only; the tracker
+    // stops while the app is in the background. Nothing here is recorded unless the opt-in is on.
+    val usageScreen = when {
+        settingsOpen -> UsageScreen.D17
+        viewerUri != null -> UsageScreen.D2
+        storiesOpen -> UsageScreen.D15
+        photoDnaOpen -> UsageScreen.D18
+        personFilter != null -> UsageScreen.D8
+        else -> when (tab) {
+            1 -> UsageScreen.D5
+            2 -> UsageScreen.D6
+            3 -> UsageScreen.D7
+            else -> UsageScreen.D1
+        }
+    }
+    val usageLifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(usageScreen) {
+        if (usageScreen == UsageScreen.D17) UsageRecorder.count(UsageAction.A22)
+        UsageRecorder.dwell.enter(usageScreen, android.os.SystemClock.elapsedRealtime())
+    }
+    DisposableEffect(usageLifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            val now = android.os.SystemClock.elapsedRealtime()
+            when (event) {
+                Lifecycle.Event.ON_START -> UsageRecorder.dwell.resume(now)
+                Lifecycle.Event.ON_STOP -> {
+                    UsageRecorder.dwell.pause(now)
+                    UsageRecorder.log()?.flush()
+                }
+                else -> Unit
+            }
+        }
+        usageLifecycle.lifecycle.addObserver(observer)
+        onDispose { usageLifecycle.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(tab, peopleTabStartNs, searchTabStartNs, settingsOpen, viewerUri) {
         if (!settingsOpen && viewerUri == null) {
             val started = when (tab) {
@@ -1989,8 +2024,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 override fun doFrame(frameTimeNanos: Long) {
                     if (previousFrameNs != 0L && frameTimeNanos > previousFrameNs) {
                         val frameMs = (frameTimeNanos - previousFrameNs) / 1_000_000.0
-                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs)
-                        if (personFilter != null) PerformanceSession.recordActionMs(10, frameMs)
+                        // Usage counts only the grid actually scrolled (#119: A2 Pictures, A10 person).
+                        val usageAction = usageScrollAction(tab, personFilter != null, album != null)
+                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs,
+                            usageA2 = usageAction == UsageAction.A2)
+                        if (personFilter != null) {
+                            PerformanceSession.recordActionMs(10, frameMs, usage = false)
+                            UsageRecorder.scrollFrame(10, frameMs, frameMs > scrollFrameBudgetMs)
+                        }
                     }
                     previousFrameNs = frameTimeNanos
                     choreographer.postFrameCallback(this)
@@ -2016,7 +2057,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         originalProportions, timelineEnabled, personFilter, albumRoute,
         pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending,
         scopedPending) {
-        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+        val invalidScope = tab != 0 || (!originalProportions && !timelineEnabled) ||
             personFilter != null || !grants.hasAny ||
             !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
         if (invalidScope) {
@@ -2260,7 +2301,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mountedItemCount = timelineGridState.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch
                 ) == slot
-            ) timelineGridState.scrollToItem(slot)
+            ) {
+                // Keep the exact pre-open offset; only seek when the photo the
+                // user ended on is offscreen.
+                if (!timelineGridState.isItemOnScreen(slot)) timelineGridState.scrollToItem(slot)
+            }
         } else {
             val destination = when (route) {
                 2 -> personGridState
@@ -2280,7 +2325,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mediaIndex = index,
                     mountedItemCount = destination.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch)
-            ) destination.scrollToItem(index)
+            ) {
+                if (!destination.isItemOnScreen(index)) destination.scrollToItem(index)
+            }
         }
         if (pendingViewerReturn === request) pendingViewerReturn = null
     }
@@ -3012,6 +3059,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 folder = folderForReview,
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
+                scopeKey = declutterScopeKey("album", folderForReview, sort = "size"),
+                keepStore = remember {
+                    SharedPreferencesDeclutterKeepStore(
+                        context.getSharedPreferences("atlas_declutter_keeps",
+                            android.content.Context.MODE_PRIVATE))
+                },
                 onExit = ::closeDeclutter,
                 onSearchWholeLibrary = {
                     // Leave the transient review route without submitting Trash.
@@ -3434,7 +3487,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
                 tab == 0 && personFilter == null && !statusOpen &&
-                    !originalProportions && timelineEnabled
+                    (originalProportions || timelineEnabled)
             }
             // #556: Samsung swaps the tab bar for the selection actions.
             if (photosSelection != null) {
@@ -3493,6 +3546,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 onSelect = { destination ->
                     // Start only an anonymous monotonic tab-entry timer.
                     val entryNs = android.os.SystemClock.elapsedRealtimeNanos()
+                    UsageRecorder.count(UsageAction.A15)
                     if (destination == AtlasDestination.PEOPLE) peopleTabStartNs = entryNs
                     if (destination == AtlasDestination.SEARCH) searchTabStartNs = entryNs
                     // A primary-tab tap always opens that tab's unfiltered entry point.
@@ -3523,10 +3577,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // #652: on the Photos timeline/grid, album detail and the Albums grid,
         // content draws under the floating tab pill; the grids add the bar's
         // height as bottom content padding so their last row stays reachable.
-        // Every other screen (and selection mode's opaque bar) stays above it.
-        val navPillShown = !(batchSelection != null && tab == 0 && personFilter == null &&
-            !statusOpen && !originalProportions && timelineEnabled)
-        val drawUnderBar = navPillShown && access && !statusOpen && !settingsOpen && personFilter == null &&
+        // Every other screen stays above it. Photos selection draws under its
+        // opaque action bar too: the grid's height must not change when the
+        // bars swap, or the 150k-row layout re-plans, the grid blanks and the
+        // long-press drag under the finger is cancelled after one photo.
+        val drawUnderBar = access && !statusOpen && !settingsOpen && personFilter == null &&
             (tab == 0 || (tab == 1 && !storiesOpen && !photoDnaOpen))
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
@@ -3697,7 +3752,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
                 !headerScrollsWithGrid && !searchOwnsTop) {
-                galleryHeader()
+                val ratioSelection = batchSelection?.takeIf {
+                    photosControls && originalProportions && !settingsOpen
+                }
+                // Original rows: the selection top bar takes the header's place.
+                if (ratioSelection != null) {
+                    SamsungSelectionTopBar(
+                        count = ratioSelection.count,
+                        allSelected = visible.isNotEmpty() && ratioSelection.count >= visible.size,
+                        enabled = !batchOperating,
+                        onToggleAll = {
+                            val now = batchSelection
+                            if (now != null && !batchOperating &&
+                                now.isCurrentFor(visible, publishedGallery.epoch,
+                                    galleryAccessCurrent())) {
+                                batchSelection = now.replaced(toggleAll(
+                                    visible.size, now.uris
+                                ) { visible.getOrNull(it)?.uri })
+                            }
+                        }
+                    )
+                } else galleryHeader()
             }
             if (notification != null) {
                 Text(notification!!, Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
@@ -3734,6 +3809,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     }
                     settingsOpen -> {
                         val visualStatus = discovery.status?.visual
+                        var usageVersion by remember { mutableIntStateOf(0) }
+                        // Reading readyVersion makes Settings recompose when the log finishes loading.
+                        val usageReady = UsageRecorder.readyVersion
+                        val usageLog = remember(usageReady) { UsageRecorder.log() }
+                        val usageEnabledNow = remember(usageVersion, usageLog) { usageLog?.isEnabled() == true }
+                        val usageHasDataNow = remember(usageVersion, usageLog) { usageLog?.hasData() == true }
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
                             onLibraryInsights = { insightsOpen = true },
@@ -3778,6 +3859,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             searchHistoryOn = searchHistoryState.value.enabled,
                             onSearchHistoryOn = { searchHistory.setEnabled(it) },
                             onClearSearchHistory = { searchHistory.clearAll() },
+                            usageEnabled = usageLog?.let { usageEnabledNow },
+                            usageHasData = usageHasDataNow,
+                            onUsageEnabled = { usageLog?.setEnabled(it); usageVersion++ },
+                            onExportUsage = {
+                                usageLog?.let { UsageExportFile.share(context, it) }
+                                    ?: UsageExportFile.Result.NOTHING_RECORDED
+                            },
+                            onClearUsage = { usageLog?.clear(); usageVersion++ },
                             onReadDiagnostics = {
                                 captureAtlasDiagnostics(context, media, grants,
                                     discovery.status, discoveryHost, searchGrant)
@@ -3901,6 +3990,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             pendingRatioAnchor = null
                                             pendingRatioReturn = null
+                                            // A selection never survives a layout switch.
+                                            batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingViewerReturn = request.focal?.let {
                                                 PendingViewerReturn(visible, it.mediaKey, 0,
                                                     publishedGallery.epoch)
@@ -3910,6 +4002,32 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                     ?: GridDensity.LARGE
                                             timelineEnabled = ratioReturnToTimeline
                                             originalProportions = false
+                                        }
+                                    },
+                                    selectedMediaUris = batchSelection?.takeIf {
+                                        it.isCurrentFor(visible, publishedGallery.epoch,
+                                            galleryAccessCurrent())
+                                    }?.uris,
+                                    onSelectionChange = { uris ->
+                                        val selection = batchSelection
+                                        if (!batchOperating && galleryAccessCurrent()) {
+                                            if (selection == null) {
+                                                selectionAlbumRoute = albumRoute
+                                                batchSelection = GalleryBatchSelection.of(
+                                                    visible, publishedGallery.epoch, uris)
+                                            } else if (selection.isCurrentFor(visible,
+                                                    publishedGallery.epoch, true)) {
+                                                batchSelection = selection.replaced(uris)
+                                            }
+                                        }
+                                    },
+                                    onMediaToggle = { media ->
+                                        val selection = batchSelection
+                                        if (selection != null && !batchOperating &&
+                                            selection.isCurrentFor(visible,
+                                                publishedGallery.epoch, galleryAccessCurrent())) {
+                                            // Samsung: unchecking the last item keeps selection open.
+                                            batchSelection = selection.toggledKeepingMode(media)
                                         }
                                     },
                                     onLayoutReady = { ready ->
