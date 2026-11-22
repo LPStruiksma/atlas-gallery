@@ -136,7 +136,7 @@ jobs:
           if [[ -f scripts/ci-opt-in/rc5-920-arms && -f scripts/ci-opt-in/stress-classes ]]; then
             echo 'matrix={"include":[{"shard":0,"arm":"OFF"},{"shard":1,"arm":"OFF"},{"shard":0,"arm":"NO-IME-POLL"},{"shard":1,"arm":"NO-IME-POLL"},{"shard":0,"arm":"FULL"},{"shard":1,"arm":"FULL"}]}' >> "$GITHUB_OUTPUT"
           else
-            echo 'matrix={"include":[{"shard":0,"arm":"STANDARD"},{"shard":1,"arm":"STANDARD"}]}' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[{"shard":0,"arm":""},{"shard":1,"arm":""}]}' >> "$GITHUB_OUTPUT"
           fi
   emulator-ui-shard:
     # AutoDev Actions-minutes rule: draft PR heads and heads without next:review get build + JVM
@@ -148,7 +148,7 @@ jobs:
     # six isolated arm×shard jobs instead, all using this run's build artifacts.
     # Shard 0 also runs the stateful upgrade phases. The aggregate check joins both.
     if: ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
-    name: emulator-ui shard ${{ matrix.shard }} arm ${{ matrix.arm }}
+    name: emulator-ui shard ${{ matrix.shard }}${{ matrix.arm && format(' arm {0}', matrix.arm) || '' }}
     needs: [build, plan-emulator-matrix]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -228,7 +228,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}-${{ matrix.arm }}
+          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}${{ matrix.arm && format('-{0}', matrix.arm) || '' }}
           path: |
             ui-evidence/*
             app/build/outputs/androidTest-results/**
