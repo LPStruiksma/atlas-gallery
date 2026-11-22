@@ -105,6 +105,8 @@ fun UnknownFacesReviewScreen(
     /** Must read current committed review snapshot at button/transaction time. */
     liveClusterReviewAtAction: (() -> PeopleClusterReviewState?)? = null,
     onClusterReviewCommand: ((PeopleClusterReviewCommand) -> Unit)? = null,
+    /** Matching grant/review-generation cover hints; never change decision targets. */
+    coverByPerson: Map<PersonKey, NativeFaceObservationId> = emptyMap(),
     /** A grant-aware crop supplied by the host; no raw URI requests here. */
     clusterFacePreview: @Composable (NativeFaceObservationId) -> Unit = {
         Icon(Icons.Filled.PhotoLibrary, "Face preview unavailable")
@@ -235,7 +237,7 @@ fun UnknownFacesReviewScreen(
                             onAction = ::sendPeopleDecision,
                             resolveDestination = ::resolveDestination,
                             destinationTagPrefix = "atlas-group-${index + 1}-destination",
-                            preview = clusterFacePreview,
+                            preview = clusterFacePreview, coverByPerson = coverByPerson,
                             stickyHeaderPx = { stickyHeaderPx.intValue }
                         )
                     }
@@ -266,7 +268,7 @@ fun UnknownFacesReviewScreen(
                             onAction = ::sendPeopleDecision,
                             resolveDestination = ::resolveDestination,
                             destinationTagPrefix = "atlas-album-${index + 1}-destination",
-                            preview = clusterFacePreview
+                            preview = clusterFacePreview, coverByPerson = coverByPerson
                         )
                     }
                 }
@@ -475,6 +477,7 @@ private fun UnknownIdentityGroupCard(
     resolveDestination: (List<NativePersonAlbum>, Int?, PersonKey?) -> PersonKey?,
     destinationTagPrefix: String,
     preview: @Composable (NativeFaceObservationId) -> Unit,
+    coverByPerson: Map<PersonKey, NativeFaceObservationId>,
     stickyHeaderPx: () -> Int = { 0 }
 ) {
     var name by remember(selectionScope, group) { mutableStateOf("") }
@@ -570,7 +573,9 @@ private fun UnknownIdentityGroupCard(
             duplicates.take(5).forEach { match ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    match.value.observations.firstOrNull()?.let { face ->
+                    (coverByPerson[match.value.person]
+                        ?.takeIf { it in match.value.observations }
+                        ?: match.value.observations.firstOrNull())?.let { face ->
                         Box(Modifier.size(48.dp)) { preview(face) }
                     }
                     Column(Modifier.weight(1f)) {
@@ -609,7 +614,10 @@ private fun UnknownIdentityGroupCard(
             suggestions.forEach { album ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(48.dp)) { preview(album.observations.first()) }
+                    val face = coverByPerson[album.person]
+                        ?.takeIf { it in album.observations }
+                        ?: album.observations.first()
+                    Box(Modifier.size(48.dp)) { preview(face) }
                     Text(album.name, Modifier.weight(1f))
                     TextButton(enabled = enabled,
                         onClick = { confirmPosition = albums.indexOf(album) }) {
@@ -635,7 +643,8 @@ private fun UnknownIdentityGroupCard(
                 onSelect = { selectedPosition = it },
                 enabled = enabled,
                 tagPrefix = destinationTagPrefix,
-                preview = preview
+                preview = preview,
+                coverByPerson = coverByPerson
             )
             OutlinedButton(
                 enabled = enabled && selectedPosition != null,
@@ -726,7 +735,9 @@ private fun UnknownIdentityGroupCard(
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(64.dp)) { preview(group.members.first()) }
                         Text("+")
-                        destination.observations.firstOrNull()?.let {
+                        (coverByPerson[destination.person]
+                            ?.takeIf { it in destination.observations }
+                            ?: destination.observations.firstOrNull())?.let {
                             Box(Modifier.size(64.dp)) { preview(it) }
                         }
                     }
@@ -761,7 +772,8 @@ private fun ReviewedIdentityCard(
     onAction: (PeopleReviewAction) -> Unit,
     resolveDestination: (List<NativePersonAlbum>, Int?, PersonKey?) -> PersonKey?,
     destinationTagPrefix: String,
-    preview: @Composable (NativeFaceObservationId) -> Unit
+    preview: @Composable (NativeFaceObservationId) -> Unit,
+    coverByPerson: Map<PersonKey, NativeFaceObservationId>
 ) {
     val destinations = allAlbums.filter { it.person != album.person }
     var selectedPosition by remember(selectionScope, album, allAlbums) {
@@ -782,7 +794,8 @@ private fun ReviewedIdentityCard(
                 onSelect = { selectedPosition = it },
                 enabled = enabled,
                 tagPrefix = destinationTagPrefix,
-                preview = preview
+                preview = preview,
+                coverByPerson = coverByPerson
             )
             OutlinedButton(
                 enabled = enabled && selectedPosition != null,

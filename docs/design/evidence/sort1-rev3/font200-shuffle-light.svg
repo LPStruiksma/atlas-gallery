@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="font200-shuffle" data-theme="light" data-synthetic="true" data-density-illustrative="3" data-font-scale="2" data-scroll-offset-dp="240">
+<title id="title">Stories — synthetic light design proposal</title>
+<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#FFFFFF"/>
+<text x="16" y="112" fill="#2639C9" font-size="76" font-family="Funnel Display, sans-serif" font-weight="700" letter-spacing="-0.03em" data-role="screen-title" data-spec="38/44sp; 76/88sp at 200%" data-base-sp="38">Stories</text>
+<text x="16" y="161" fill="#5A5F7A" font-size="26" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="header-subtitle" data-base-sp="13">Text at 200%</text>
+<rect x="0" y="287" width="360" height="470" rx="0" fill="#FFFFFF" opacity=".77"/>
+<rect x="0" y="287" width="360" height="470" rx="24" fill="#FFFFFF"/>
+<rect x="157" y="297" width="46" height="4" rx="2" fill="#D8DAE6"/>
+<rect x="228" y="197" width="116" height="72" rx="15" fill="#F2F3F8" data-target="sort"/>
+<text x="252" y="245" fill="#2639C9" font-size="28" font-family="Funnel Sans, sans-serif" font-weight="600" data-role="sort-entry-label" data-base-sp="14">Sort</text>
+<text x="24" y="340" fill="#0E1030" font-size="40" font-family="Funnel Sans, sans-serif" font-weight="600" data-role="sheet-title" data-base-sp="20">Sort by</text>
+<text x="24" y="374" fill="#5A5F7A" font-size="24" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="scroll-hint" data-base-sp="12">Scrolled</text>
+<rect x="15" y="422" width="330" height="72" rx="5" fill="#F2F3F8" data-target="key" data-selected="true" data-key="Random"/><text x="32" y="470" fill="#0E1030" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="option-label" data-base-sp="15">Random</text><circle cx="319" cy="458" r="9" stroke="#2639C9" stroke-width="2" fill="none"/><circle cx="319" cy="458" r="5" fill="#2639C9"/>
+<rect x="15" y="645" width="330" height="72" rx="9" fill="#F2F3F8" data-target="shuffle"/>
+<text x="28" y="692" fill="#0E1030" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="shuffle-label" data-base-sp="15">Shuffle again</text>
+<rect x="349" y="353" width="4" height="383" rx="2" fill="#D8DAE6"/>
+<rect x="349" y="618" width="4" height="103" rx="2" fill="#2639C9"/>
+<rect x="0" y="757" width="360" height="23" rx="0" fill="#FFFFFF"/>
+<rect x="126" y="768" width="108" height="4" rx="2" fill="#0E1030"/>
+</svg>

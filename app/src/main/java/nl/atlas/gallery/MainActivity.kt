@@ -99,6 +99,14 @@ import nl.atlas.gallery.featureidentity.ui.SwapPersonEntry
 import nl.atlas.gallery.featureidentity.ui.SwapPersonEntryPorts
 import nl.atlas.gallery.featureidentity.ui.SwapPersonMediaCheck
 import nl.atlas.gallery.featurealbums.AlbumBucketKey
+import nl.atlas.gallery.featureinsights.InsightsRow
+import nl.atlas.gallery.featureinsights.InsightsScope
+import nl.atlas.gallery.featureinsights.InsightsUiState
+import nl.atlas.gallery.featureinsights.LibraryInsights
+import nl.atlas.gallery.featureinsights.LibraryInsightsScreen
+import nl.atlas.gallery.featureinsights.computeLibraryInsights
+import nl.atlas.gallery.featureinsights.insightsScopeTitle
+import nl.atlas.gallery.featureinsights.matches as insightsMatches
 import nl.atlas.gallery.featurealbums.AlbumCoverPageSession
 import nl.atlas.gallery.featurealbums.AlbumCoverPageCursor
 import nl.atlas.gallery.featurealbums.AlbumCoverChoiceProjection
@@ -158,6 +166,8 @@ import nl.atlas.gallery.featuregrid.GalleryZoomStop
 import nl.atlas.gallery.featuregrid.isCurrentFor
 import nl.atlas.gallery.featureorganization.SamsungSelectionBottomBar
 import nl.atlas.gallery.featureorganization.AlbumTransferMode
+import nl.atlas.gallery.featureorganization.BatchTransferGate
+import nl.atlas.gallery.featureorganization.gateBatchTransfer
 import nl.atlas.gallery.featureorganization.AlbumTransferPlan
 import nl.atlas.gallery.featureorganization.AlbumTransferResult
 import nl.atlas.gallery.featureorganization.AlbumTransferTarget
@@ -376,6 +386,210 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
     (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
         android.content.res.Configuration.UI_MODE_NIGHT_YES
 
+/**
+ * PERF-A1A debug-only witness. A drawWithContent after drawContent marks a
+ * nonempty, grant-correct Photos grid in the Choreographer frame; Window
+ * FrameMetrics confirms that *same vsync* completed on the renderer. Neither
+ * composition, withFrameNanos nor an Activity launch is treated as a frame.
+ * FrameMetrics vsync and System.nanoTime share a monotonic domain; map its
+ * completion into elapsedRealtime at callback time for the process origin.
+ * No media identifiers or filenames are observed or logged.
+ */
+internal class PerfA1FrameProbe(private val window: android.view.Window) {
+    private var mode = "cold"
+    private var reported = false
+    private var stopped = false
+    private var closed = false
+    // Each candidate is the exact Choreographer frame which drew the eligible
+    // Photos subtree. No guessed nearest-vsync match is accepted.
+    private val witnessedFrames = java.util.LinkedHashMap<Long, Boolean>()
+    private val choreographer = android.view.Choreographer.getInstance()
+    private val diagnosticHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var currentFrameVsyncNs = -1L
+    private var diagnosticGeneration = 0
+    private var diagnosticsScheduled = false
+    private var eligibleDraws = 0
+    private var cachedDraws = 0
+    private var choreographerCallbacks = 0
+    private var metricsCallbacks = 0
+    private var exactMatches = 0
+    private var evictions = 0
+    private var droppedMetrics = 0L
+    private var maxLedger = 0
+    private var invalidCompletions = 0
+    private var nearestMismatchAbsNs = Long.MAX_VALUE
+    private var nearestMismatchSignedNs = 0L
+    private var originElapsedNs =
+        android.os.Process.getStartElapsedRealtime() * 1_000_000L
+    private var refreshReported = false
+    private var cachedDrawLogged = false
+    private var cachedMatchLogged = false
+
+    // At most four numeric snapshots for a PID that has an eligible draw but
+    // no completed-frame proof. Retain evidence even when FrameMetrics arrives
+    // late; never print an image name, URI or path, or emit per-frame spam.
+    private fun scheduleDiagnostics() {
+        if (diagnosticsScheduled) return
+        diagnosticsScheduled = true
+        val generation = diagnosticGeneration
+        for (delayMs in listOf(1_500L, 6_000L, 20_000L, 65_000L)) {
+            diagnosticHandler.postDelayed({
+                if (generation == diagnosticGeneration && !closed && !stopped && !reported) {
+                    val deltaSeen = nearestMismatchAbsNs != Long.MAX_VALUE
+                    Log.i("ATLAS_PERF_A1",
+                        "event=frame_diag pid=${android.os.Process.myPid()} mode=$mode " +
+                        "eligible_draws=$eligibleDraws cached_draws=$cachedDraws " +
+                        "choreo_cb=$choreographerCallbacks metric_cb=$metricsCallbacks " +
+                        "ledger=${witnessedFrames.size} max_ledger=$maxLedger evicted=$evictions " +
+                        "exact=$exactMatches metric_dropped=$droppedMetrics " +
+                        "delta_seen=${if (deltaSeen) 1 else 0} " +
+                        "nearest_delta_ns=${if (deltaSeen) nearestMismatchSignedNs else 0L} " +
+                        "invalid_completion=$invalidCompletions")
+                }
+            }, delayMs)
+        }
+    }
+
+    private val frameCallback = object : android.view.Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (closed || stopped || reported) return
+            choreographerCallbacks++
+            currentFrameVsyncNs = frameTimeNanos
+            choreographer.postFrameCallback(this)
+        }
+    }
+    private val listener = android.view.Window.OnFrameMetricsAvailableListener { _, frame, dropped ->
+        if (!closed && !stopped && !reported) {
+            metricsCallbacks++
+            if (dropped > 0) droppedMetrics += dropped.toLong()
+            val actualVsyncNs = frame.getMetric(android.view.FrameMetrics.VSYNC_TIMESTAMP)
+            val cached = witnessedFrames.remove(actualVsyncNs)
+            if (cached != null) {
+                exactMatches++
+                if (cached && !cachedMatchLogged) {
+                    cachedMatchLogged = true
+                    Log.i("ATLAS_PERF_A1",
+                        "event=vsync_match pid=${android.os.Process.myPid()}")
+                }
+            } else {
+                // Diagnostic only. A close timestamp is NEVER accepted as a
+                // completed grid frame. Compare against all bounded outstanding
+                // draws to distinguish clock mismatch from absent callbacks.
+                for (drawVsyncNs in witnessedFrames.keys) {
+                    val signed = drawVsyncNs - actualVsyncNs
+                    val absolute = if (signed == Long.MIN_VALUE) Long.MAX_VALUE
+                        else kotlin.math.abs(signed)
+                    if (absolute < nearestMismatchAbsNs) {
+                        nearestMismatchAbsNs = absolute
+                        nearestMismatchSignedNs = signed
+                    }
+                }
+            }
+            if (cached != null) {
+                val totalNs = frame.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
+                val intendedNs = frame.getMetric(
+                    android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP)
+                val completedNs = intendedNs + totalNs
+                val nowNs = System.nanoTime()
+                val nowElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
+                val elapsedNs = nowElapsedNs - (nowNs - completedNs) - originElapsedNs
+                if (totalNs > 0L && intendedNs > 0L &&
+                    elapsedNs > 0L && elapsedNs < 15_000_000_000L &&
+                    (mode == "warm" || cached)) {
+                    reported = true
+                    witnessedFrames.clear()
+                    choreographer.removeFrameCallback(frameCallback)
+                    diagnosticHandler.removeCallbacksAndMessages(null)
+                    Log.i("ATLAS_PERF_A1",
+                        "mode=$mode pid=${android.os.Process.myPid()} " +
+                        "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
+                        "cached=${if (cached) 1 else 0} draw=grid frame=completed")
+                } else {
+                    invalidCompletions++
+                }
+            }
+        }
+    }
+    init {
+        choreographer.postFrameCallback(frameCallback)
+        window.addOnFrameMetricsAvailableListener(
+            listener, android.os.Handler(android.os.Looper.getMainLooper()))
+    }
+
+    val isWarm: Boolean get() = mode == "warm"
+    fun noteDraw(cached: Boolean) {
+        if (reported || stopped || closed || (mode == "cold" && !cached)) return
+        eligibleDraws++
+        if (cached) cachedDraws++
+        val vsync = currentFrameVsyncNs
+        if (vsync > 0L && !witnessedFrames.containsKey(vsync)) {
+            if (cached && !cachedDrawLogged) {
+                cachedDrawLogged = true
+                Log.i("ATLAS_PERF_A1",
+                    "event=cached_draw pid=${android.os.Process.myPid()}")
+            }
+            scheduleDiagnostics()
+            // Only evict when needed. Diagnostics record whether a delayed
+            // FrameMetrics callback lost its witness from this bounded ledger.
+            if (witnessedFrames.size >= 120) {
+                val oldest = witnessedFrames.keys.iterator()
+                if (oldest.hasNext()) {
+                    oldest.next()
+                    oldest.remove()
+                    evictions++
+                }
+            }
+            witnessedFrames[vsync] = cached
+            if (witnessedFrames.size > maxLedger) maxLedger = witnessedFrames.size
+        }
+    }
+    fun refreshed() {
+        if (!refreshReported) {
+            refreshReported = true
+            Log.i("ATLAS_PERF_A1", "event=refreshed pid=${android.os.Process.myPid()} grant=1")
+        }
+    }
+    fun onStopped() {
+        stopped = true
+        diagnosticGeneration++
+        diagnosticHandler.removeCallbacksAndMessages(null)
+        diagnosticsScheduled = false
+        witnessedFrames.clear()
+        choreographer.removeFrameCallback(frameCallback)
+    }
+    fun onStarted() {
+        if (!stopped) return
+        stopped = false
+        mode = "warm"
+        originElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
+        witnessedFrames.clear()
+        currentFrameVsyncNs = -1L
+        reported = false
+        cachedDrawLogged = false
+        cachedMatchLogged = false
+        eligibleDraws = 0
+        cachedDraws = 0
+        choreographerCallbacks = 0
+        metricsCallbacks = 0
+        exactMatches = 0
+        evictions = 0
+        droppedMetrics = 0L
+        maxLedger = 0
+        invalidCompletions = 0
+        nearestMismatchAbsNs = Long.MAX_VALUE
+        nearestMismatchSignedNs = 0L
+        diagnosticsScheduled = false
+        choreographer.postFrameCallback(frameCallback)
+    }
+    fun close() {
+        closed = true
+        diagnosticGeneration++
+        diagnosticHandler.removeCallbacksAndMessages(null)
+        witnessedFrames.clear()
+        choreographer.removeFrameCallback(frameCallback)
+        window.removeOnFrameMetricsAvailableListener(listener)
+    }
+}
 class MainActivity : ComponentActivity() {
     // BENCH-2 (#573): what the starting (or newest) intent asks for. Re-read from
     // getIntent() on every recreation; the caller's URI is never saved anywhere.
@@ -392,10 +606,36 @@ class MainActivity : ComponentActivity() {
      */
     private var pickSession by mutableIntStateOf(0)
 
+    internal var perfA1Probe: PerfA1FrameProbe? = null
+
+    override fun onStart() {
+        super.onStart()
+        perfA1Probe?.onStarted()
+    }
+
+    override fun onStop() {
+        perfA1Probe?.onStopped()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        perfA1Probe?.close()
+        perfA1Probe = null
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
         if (!acceptExternalIntent(intent)) return
+        // Opt-in marker is created only by the synthetic hosted benchmark.
+        // Release builds and normal debug sessions never install a listener.
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
+            (android.os.Build.HARDWARE in setOf("ranchu", "goldfish") ||
+                android.os.Build.FINGERPRINT.contains("emulator")) &&
+            File(noBackupFilesDir, "atlas-perf-a1-enabled").isFile) {
+            perfA1Probe = PerfA1FrameProbe(window)
+        }
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
         try {
@@ -574,6 +814,27 @@ internal fun rememberAsyncSortedCatalog(
 
 /** Logcat tag for #568 Copy/Move: stages and exception class names, never paths. */
 internal const val TRANSFER_LOG = "ATLAS_TRANSFER"
+
+/** #783: one decision of the batch-selection rebase after a catalogue republication. */
+internal data class SelectionRebase(
+    val epoch: Long,
+    val before: Int,
+    val after: Int,
+    /** True while the republished list is still an unsettled async placeholder. */
+    val deferred: Boolean
+)
+
+/**
+ * #783 test seam: how a catalogue republication reaches the batch selection.
+ * Production never sets [observer]. Instrumented tests use it to wait for one
+ * exact republication (a MediaStore change they made, or [GalleryViewModel.refresh])
+ * at a chosen moment, e.g. while the Move picker is open, and to prove that no
+ * rebase dropped selected items onto a placeholder list. Main thread only;
+ * it carries counts and epochs, never media identity.
+ */
+internal object SelectionRepublicationSeam {
+    @Volatile var observer: ((SelectionRebase) -> Unit)? = null
+}
 
 /**
  * #568: Photos without hidden albums. Nothing hidden is the same list at
@@ -833,10 +1094,24 @@ private fun rememberNativePersonUris(
 }
 
 /** Exact, testable route matching; never substitute a filename or folder display name. */
-internal fun matchesAlbumRoute(record: MediaRecord, route: AlbumRoute): Boolean =
-    record.volumeName == route.volumeName &&
+internal fun matchesAlbumRoute(record: MediaRecord, route: AlbumRoute): Boolean {
+    // INSIGHT-1 (#587): a Library insights type/year row reuses this route with a
+    // scope in the path. One definition of the scope counts and filters.
+    if (route.relativePath.startsWith(INSIGHTS_ROUTE_PREFIX)) {
+        val scope = InsightsScope.decode(route.relativePath.removePrefix(INSIGHTS_ROUTE_PREFIX))
+            ?: return false
+        return scope.insightsMatches(record, java.time.ZoneId.systemDefault())
+    }
+    return record.volumeName == route.volumeName &&
         record.relativePath == route.relativePath &&
         route.mediaFilter.accepts(record)
+}
+
+/** Not a MediaStore path (NUL cannot occur in one), so it never equals a real folder. */
+internal const val INSIGHTS_ROUTE_PREFIX = "\u0000insights:"
+internal const val INSIGHTS_ROUTE_VOLUME = "\u0000insights"
+
+private class InsightsHolder(val source: List<MediaRecord>, val insights: LibraryInsights)
 
 /** Explicit scope prevents a same-named folder on another volume from leaking into Albums. */
 private class RoutedAlbumSnapshot(
@@ -1020,6 +1295,7 @@ private fun rememberAsyncAlbumCoverPage(
 @Composable
 private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     val context = LocalContext.current
+    val perfA1Probe = (context as? MainActivity)?.perfA1Probe
     // The source list and successful grant epoch MUST be collected together.
     // Collecting two StateFlows separately can expose an obsolete album for
     // a frame after the grant-completion signal arrives ahead of its list.
@@ -1056,6 +1332,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // screen while a background scan refreshes it; only full access loss
     // empties it. Android enforces what can actually be read.
     val media = publishedGallery.displayItems(grants)
+    if (perfA1Probe != null) {
+        LaunchedEffect(publishedGallery.epoch, publishedGallery.fromCache, grants) {
+            if (!publishedGallery.fromCache && media.isNotEmpty() &&
+                publishedGallery.showable(grants)) {
+                perfA1Probe.refreshed()
+            }
+        }
+    }
     // #555: ATLAS keeps its own micro thumbnails only under full media access
     // (they are deleted otherwise), and fills them newest-first in the
     // background for the current authorized catalogue, never a cached one.
@@ -1099,7 +1383,15 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var statusOpen by rememberSaveable { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = statusOpen) { statusOpen = false }
-    BackHandler(enabled = settingsOpen && !statusOpen) { settingsOpen = false }
+    // INSIGHT-1 (#587): Library insights opens over Settings; Back returns to Settings.
+    var insightsOpen by rememberSaveable { mutableStateOf(false) }
+    // A row's grid was opened from Insights: Back returns there, scroll position kept.
+    var insightsReturn by rememberSaveable { mutableStateOf(false) }
+    var insightsSortBefore by rememberSaveable { mutableStateOf<String?>(null) }
+    val insightsListState = rememberLazyListState()
+    BackHandler(enabled = insightsOpen && !statusOpen) { insightsOpen = false }
+    BackHandler(enabled = settingsOpen && !statusOpen && !insightsOpen) { settingsOpen = false }
+    LaunchedEffect(settingsOpen) { if (!settingsOpen) insightsOpen = false }
     var albumReturnToAlbums by rememberSaveable { mutableStateOf(false) }
     // E2a (#439): Stories open over the Albums tab; no new primary destination.
     var storiesOpen by rememberSaveable { mutableStateOf(false) }
@@ -1457,6 +1749,41 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var swapPersonSourceUri by rememberSaveable { mutableStateOf<String?>(null) }
     var swapPersonSession by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerReturnStartNs by remember { mutableLongStateOf(0L) }
+    // USAGE-0 (#173): which screen ID is showing. Dwell seconds per ID only; the tracker
+    // stops while the app is in the background. Nothing here is recorded unless the opt-in is on.
+    val usageScreen = when {
+        settingsOpen -> UsageScreen.D17
+        viewerUri != null -> UsageScreen.D2
+        storiesOpen -> UsageScreen.D15
+        photoDnaOpen -> UsageScreen.D18
+        personFilter != null -> UsageScreen.D8
+        else -> when (tab) {
+            1 -> UsageScreen.D5
+            2 -> UsageScreen.D6
+            3 -> UsageScreen.D7
+            else -> UsageScreen.D1
+        }
+    }
+    val usageLifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(usageScreen) {
+        if (usageScreen == UsageScreen.D17) UsageRecorder.count(UsageAction.A22)
+        UsageRecorder.dwell.enter(usageScreen, android.os.SystemClock.elapsedRealtime())
+    }
+    DisposableEffect(usageLifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            val now = android.os.SystemClock.elapsedRealtime()
+            when (event) {
+                Lifecycle.Event.ON_START -> UsageRecorder.dwell.resume(now)
+                Lifecycle.Event.ON_STOP -> {
+                    UsageRecorder.dwell.pause(now)
+                    UsageRecorder.log()?.flush()
+                }
+                else -> Unit
+            }
+        }
+        usageLifecycle.lifecycle.addObserver(observer)
+        onDispose { usageLifecycle.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(tab, peopleTabStartNs, searchTabStartNs, settingsOpen, viewerUri) {
         if (!settingsOpen && viewerUri == null) {
             val started = when (tab) {
@@ -1757,6 +2084,34 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
     }
 
+    // INSIGHT-1 (#587): one off-main-thread pass over the catalogue already in memory,
+    // only while Insights (or a grid it opened) needs it. The last good result stays
+    // on screen while a newer snapshot is read; a failure keeps it as "last known".
+    var insightsResult by remember { mutableStateOf<InsightsHolder?>(null, referentialEqualityPolicy()) }
+    var insightsFailed by remember { mutableStateOf(false) }
+    var insightsRetry by remember { mutableIntStateOf(0) }
+    LaunchedEffect(CatalogSourceKey(media), insightsOpen, insightsReturn, insightsRetry) {
+        if (!insightsOpen && !insightsReturn) {
+            insightsResult = null
+            insightsFailed = false
+            return@LaunchedEffect
+        }
+        if (insightsResult?.source === media) return@LaunchedEffect
+        insightsFailed = false
+        val worker = currentCoroutineContext()
+        try {
+            val computed = withContext(Dispatchers.Default) {
+                computeLibraryInsights(media, java.time.ZoneId.systemDefault()) { worker.ensureActive() }
+            }
+            worker.ensureActive()
+            insightsResult = InsightsHolder(media, computed)
+        } catch (cancelled: java.util.concurrent.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            insightsFailed = true
+        }
+    }
+
     val catalogSort = rememberAsyncSortedCatalog(media, sort, randomSeed)
     val matchingSort = currentSortedCatalogOrNull(catalogSort, media, sort, randomSeed)
     val sortPending = media.isNotEmpty() && matchingSort == null
@@ -1909,8 +2264,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 override fun doFrame(frameTimeNanos: Long) {
                     if (previousFrameNs != 0L && frameTimeNanos > previousFrameNs) {
                         val frameMs = (frameTimeNanos - previousFrameNs) / 1_000_000.0
-                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs)
-                        if (personFilter != null) PerformanceSession.recordActionMs(10, frameMs)
+                        // Usage counts only the grid actually scrolled (#119: A2 Pictures, A10 person).
+                        val usageAction = usageScrollAction(tab, personFilter != null, album != null)
+                        PerformanceSession.recordGridFrame(frameMs, scrollFrameBudgetMs,
+                            usageA2 = usageAction == UsageAction.A2)
+                        if (personFilter != null) {
+                            PerformanceSession.recordActionMs(10, frameMs, usage = false)
+                            UsageRecorder.scrollFrame(10, frameMs, frameMs > scrollFrameBudgetMs)
+                        }
                     }
                     previousFrameNs = frameTimeNanos
                     choreographer.postFrameCallback(this)
@@ -1934,8 +2295,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // still in the newly published list stay selected, the rest drop out.
     LaunchedEffect(CatalogSourceKey(visible), publishedGallery.epoch, tab,
         originalProportions, timelineEnabled, personFilter, albumRoute,
-        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending) {
-        val invalidScope = tab != 0 || originalProportions || !timelineEnabled ||
+        pendingSelectionRestore, grants, busy, sortPending, albumSelectionPending,
+        scopedPending) {
+        val invalidScope = tab != 0 || (!originalProportions && !timelineEnabled) ||
             personFilter != null || !grants.hasAny ||
             !publishedGallery.showable(grants) || publishedGallery.epoch < 0L
         if (invalidScope) {
@@ -1950,13 +2312,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 pendingSelectionRestore = null
             } else if (selection.source !== visible ||
                 selection.epoch != publishedGallery.epoch) {
+                // #783: right after a republication the async sort, hidden-album
+                // filter or scoped search shows an EMPTY placeholder for a frame
+                // or more. Rebasing onto it kept no URI, so a reload while the
+                // Move picker was up left "Select items" (0) and the target tap
+                // did nothing. Keep the selection on its own list until the new
+                // scope has settled; this effect runs again when it has.
+                if (sortPending || albumSelectionPending || scopedPending) {
+                    SelectionRepublicationSeam.observer?.invoke(SelectionRebase(
+                        publishedGallery.epoch, selection.count, selection.count, deferred = true))
+                    return@LaunchedEffect
+                }
                 val rebased = withContext(Dispatchers.Default) {
                     val worker = currentCoroutineContext()
                     selection.rebasedOnto(visible, publishedGallery.epoch) {
                         worker.ensureActive()
                     }
                 }
-                if (batchSelection === selection) batchSelection = rebased
+                if (batchSelection === selection) {
+                    batchSelection = rebased
+                    SelectionRepublicationSeam.observer?.invoke(SelectionRebase(
+                        publishedGallery.epoch, selection.count, rebased.count, deferred = false))
+                }
             }
         } else {
             val saved = pendingSelectionRestore ?: return@LaunchedEffect
@@ -2164,7 +2541,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mountedItemCount = timelineGridState.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch
                 ) == slot
-            ) timelineGridState.scrollToItem(slot)
+            ) {
+                // Keep the exact pre-open offset; only seek when the photo the
+                // user ended on is offscreen.
+                if (!timelineGridState.isItemOnScreen(slot)) timelineGridState.scrollToItem(slot)
+            }
         } else {
             val destination = when (route) {
                 2 -> personGridState
@@ -2184,7 +2565,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     mediaIndex = index,
                     mountedItemCount = destination.layoutInfo.totalItemsCount,
                     currentAccessEpoch = publishedGallery.epoch)
-            ) destination.scrollToItem(index)
+            ) {
+                if (!destination.isItemOnScreen(index)) destination.scrollToItem(index)
+            }
         }
         if (pendingViewerReturn === request) pendingViewerReturn = null
     }
@@ -2611,22 +2994,34 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
     }
     fun transferBatch(mode: AlbumTransferMode, target: AlbumTransferTarget) {
-        val selection = batchSelection ?: return
-        if (Build.VERSION.SDK_INT < 30 || batchOperating || selection.count == 0) return
+        // #783: the target tap must never be a silent no-op. A catalogue reload
+        // while the picker was up can leave no selection (or one rebased to
+        // zero items); say so with the existing snackbar and do nothing else.
+        val selection = batchSelection
+        when (gateBatchTransfer(selection, batchOperating, galleryAccessCurrent(),
+            Build.VERSION.SDK_INT >= 30)) {
+            BatchTransferGate.IGNORE -> return
+            BatchTransferGate.SELECTION_CHANGED -> {
+                selectionResults.show("Selection changed · select again")
+                return
+            }
+            BatchTransferGate.ACCESS_CHANGED -> {
+                selectionResults.show("Photo access changed · select again")
+                return
+            }
+            BatchTransferGate.TOO_MANY -> {
+                selectionResults.show((if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
+                    " up to $MAX_BATCH_SHARE_ITEMS items at a time")
+                return
+            }
+            BatchTransferGate.PROCEED -> Unit
+        }
+        if (selection == null) return
         // The picker is a separate screen: a library reload while it was open
         // (e.g. after a previous copy) re-publishes the list and rebases the
-        // selection a moment later. Resolve against the selection's own list
-        // instead of silently doing nothing; every URI is still checked by
-        // MediaStore (byte count for a copy, Android's consent for a move).
-        if (!galleryAccessCurrent()) {
-            selectionResults.show("Photo access changed · select again")
-            return
-        }
-        if (selection.count > MAX_BATCH_SHARE_ITEMS) {
-            selectionResults.show((if (mode == AlbumTransferMode.COPY) "Copy" else "Move") +
-                " up to $MAX_BATCH_SHARE_ITEMS items at a time")
-            return
-        }
+        // selection a moment later. Resolve against the selection's own list;
+        // every URI is still checked by MediaStore (byte count for a copy,
+        // Android's consent for a move).
         val source = selection.source
         batchOperating = true
         Log.i(TRANSFER_LOG, "start ${mode.name} items=${selection.count}")
@@ -2703,6 +3098,51 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     LaunchedEffect(batchSelection == null) {
         if (batchSelection == null) albumPicker = null
     }
+    // Leaving an album route: back to Insights when a row opened it, else Albums.
+    fun closeAlbumRoute() {
+        val toInsights = insightsReturn
+        album = null
+        albumVolume = null
+        if (albumReturnToAlbums) tab = 1
+        albumReturnToAlbums = false
+        if (toInsights) {
+            settingsOpen = true
+            insightsOpen = true
+        }
+    }
+    // A row opens the existing grid scoped to exactly what the row counted, largest first.
+    fun openInsightsRow(row: InsightsRow) {
+        if (insightsSortBefore == null) insightsSortBefore = "${sort.key.name}|${sort.direction.name}"
+        sort = MediaSort(MediaSortKey.SIZE, SortDirection.DESCENDING)
+        when (val scope = row.scope) {
+            is InsightsScope.Folder -> {
+                album = scope.relativePath
+                albumVolume = scope.volumeName
+            }
+            else -> {
+                album = INSIGHTS_ROUTE_PREFIX + scope.encode()
+                albumVolume = INSIGHTS_ROUTE_VOLUME
+            }
+        }
+        albumSelectedFilter = AlbumMediaFilter.ALL
+        albumReturnToAlbums = false
+        insightsReturn = true
+        settingsOpen = false
+        tab = 0
+    }
+    // The size order a row asks for is for that grid only: restore on any exit.
+    LaunchedEffect(album) {
+        if (album == null) {
+            insightsReturn = false
+            insightsSortBefore?.let { saved ->
+                val parts = saved.split('|')
+                val key = MediaSortKey.entries.firstOrNull { it.name == parts.getOrNull(0) }
+                val direction = SortDirection.entries.firstOrNull { it.name == parts.getOrNull(1) }
+                if (key != null && direction != null) sort = MediaSort(key, direction)
+                insightsSortBefore = null
+            }
+        }
+    }
     // This later, general BackHandler takes precedence over the earlier
     // Settings handler. Close the visible Settings (or Diagnostics) route
     // before modifying any of the originating tab's background state.
@@ -2711,6 +3151,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         personFilter != null || album != null || tab != 0) {
         when {
             statusOpen -> statusOpen = false
+            insightsOpen -> insightsOpen = false
             settingsOpen -> settingsOpen = false
             coverSession != null -> coverSession = null
             declutterFolder != null -> closeDeclutter()
@@ -2720,6 +3161,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 pendingSelectionRestore = null
             }
             personFilter != null -> personFilter = null
+            tab == 0 && album != null && insightsReturn -> closeAlbumRoute()
             tab == 0 && album != null -> {
                 album = null
                 albumVolume = null
@@ -2857,6 +3299,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 folder = folderForReview,
                 deck = itemsForReview,
                 verifying = trashPreflightPending,
+                scopeKey = declutterScopeKey("album", folderForReview, sort = "size"),
+                keepStore = remember {
+                    SharedPreferencesDeclutterKeepStore(
+                        context.getSharedPreferences("atlas_declutter_keeps",
+                            android.content.Context.MODE_PRIVATE))
+                },
                 onExit = ::closeDeclutter,
                 onSearchWholeLibrary = {
                     // Leave the transient review route without submitting Trash.
@@ -3279,7 +3727,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             if (!settingsOpen && !statusOpen) {
             val photosSelection = batchSelection?.takeIf {
                 tab == 0 && personFilter == null && !statusOpen &&
-                    !originalProportions && timelineEnabled
+                    (originalProportions || timelineEnabled)
             }
             // #556: Samsung swaps the tab bar for the selection actions.
             if (photosSelection != null) {
@@ -3338,6 +3786,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 onSelect = { destination ->
                     // Start only an anonymous monotonic tab-entry timer.
                     val entryNs = android.os.SystemClock.elapsedRealtimeNanos()
+                    UsageRecorder.count(UsageAction.A15)
                     if (destination == AtlasDestination.PEOPLE) peopleTabStartNs = entryNs
                     if (destination == AtlasDestination.SEARCH) searchTabStartNs = entryNs
                     // A primary-tab tap always opens that tab's unfiltered entry point.
@@ -3368,10 +3817,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         // #652: on the Photos timeline/grid, album detail and the Albums grid,
         // content draws under the floating tab pill; the grids add the bar's
         // height as bottom content padding so their last row stays reachable.
-        // Every other screen (and selection mode's opaque bar) stays above it.
-        val navPillShown = !(batchSelection != null && tab == 0 && personFilter == null &&
-            !statusOpen && !originalProportions && timelineEnabled)
-        val drawUnderBar = navPillShown && access && !statusOpen && !settingsOpen && personFilter == null &&
+        // Every other screen stays above it. Photos selection draws under its
+        // opaque action bar too: the grid's height must not change when the
+        // bars swap, or the 150k-row layout re-plans, the grid blanks and the
+        // long-press drag under the finger is cancelled after one photo.
+        val drawUnderBar = access && !statusOpen && !settingsOpen && personFilter == null &&
             (tab == 0 || (tab == 1 && !storiesOpen && !photoDnaOpen))
         val layoutDirection = LocalLayoutDirection.current
         // #448: what the Column below pads at the bottom. Keyboard-aware screens
@@ -3458,8 +3908,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 AtlasGalleryHeader(
                     title = when {
                         statusOpen -> "Library status"
+                        insightsOpen -> "Library insights"
                         settingsOpen -> "Settings"
                         personFilter != null -> people.firstOrNull { it.id == personFilter }?.name ?: "Person"
+                        tab == 0 && album != null && album!!.startsWith(INSIGHTS_ROUTE_PREFIX) ->
+                            insightsScopeTitle(album!!.removePrefix(INSIGHTS_ROUTE_PREFIX))
                         tab == 0 && album != null -> album!!.trimEnd('/').substringAfterLast('/')
                         tab == 2 -> "People"
                         tab == 3 -> "Search"
@@ -3475,18 +3928,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     } else null,
                     onBack = when {
                         statusOpen -> ({ statusOpen = false })
+                        insightsOpen -> ({ insightsOpen = false })
                         settingsOpen -> ({ settingsOpen = false })
-                        photosControls && album != null -> ({
-                            album = null
-                            albumVolume = null
-                            if (albumReturnToAlbums) tab = 1
-                            albumReturnToAlbums = false
-                        })
+                        photosControls && album != null -> ({ closeAlbumRoute() })
                         else -> null
                     },
                     backDescription = when {
                         statusOpen -> "Back to Settings"
+                        insightsOpen -> "Back to Settings"
                         settingsOpen -> "Close Settings"
+                        insightsReturn -> "Library insights"
                         else -> "All albums"
                     },
                     onOpenLibraryStatus = if (statusOpen || settingsOpen) null else ({ settingsOpen = true }),
@@ -3545,7 +3996,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             val searchOwnsTop = tab == 3 && personFilter == null && !statusOpen && !settingsOpen
             if (((tab != 1 && tab != 2) || personFilter != null || statusOpen || settingsOpen) &&
                 !headerScrollsWithGrid && !searchOwnsTop) {
-                galleryHeader()
+                val ratioSelection = batchSelection?.takeIf {
+                    photosControls && originalProportions && !settingsOpen
+                }
+                // Original rows: the selection top bar takes the header's place.
+                if (ratioSelection != null) {
+                    SamsungSelectionTopBar(
+                        count = ratioSelection.count,
+                        allSelected = visible.isNotEmpty() && ratioSelection.count >= visible.size,
+                        enabled = !batchOperating,
+                        onToggleAll = {
+                            val now = batchSelection
+                            if (now != null && !batchOperating &&
+                                now.isCurrentFor(visible, publishedGallery.epoch,
+                                    galleryAccessCurrent())) {
+                                batchSelection = now.replaced(toggleAll(
+                                    visible.size, now.uris
+                                ) { visible.getOrNull(it)?.uri })
+                            }
+                        }
+                    )
+                } else galleryHeader()
             }
             if (notification != null) {
                 Text(notification!!, Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
@@ -3564,10 +4035,33 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         // Advanced > Diagnostics: same read-only library facts.
                         ActivityScreen(media.size, people.size, busy, error, vm::refresh)
                     }
+                    insightsOpen -> {
+                        val holder = insightsResult
+                        LibraryInsightsScreen(
+                            state = when {
+                                insightsFailed -> InsightsUiState.Failed(holder?.insights)
+                                holder == null -> InsightsUiState.Checking
+                                else -> InsightsUiState.Ready(holder.insights,
+                                    updating = holder.source !== media || busy)
+                            },
+                            listState = insightsListState,
+                            onRetry = { insightsRetry++ },
+                            onOpenRow = { row ->
+                                openInsightsRow(row)
+                            }
+                        )
+                    }
                     settingsOpen -> {
                         val visualStatus = discovery.status?.visual
+                        var usageVersion by remember { mutableIntStateOf(0) }
+                        // Reading readyVersion makes Settings recompose when the log finishes loading.
+                        val usageReady = UsageRecorder.readyVersion
+                        val usageLog = remember(usageReady) { UsageRecorder.log() }
+                        val usageEnabledNow = remember(usageVersion, usageLog) { usageLog?.isEnabled() == true }
+                        val usageHasDataNow = remember(usageVersion, usageLog) { usageLog?.hasData() == true }
                         val provenance = discovery.status?.provenance
                         AtlasSettingsScreen(
+                            onLibraryInsights = { insightsOpen = true },
                             scanPhase = discovery.status?.ui?.phase,
                             scanStatusNote = discovery.status?.ui?.statusNote,
                             onScanNow = discovery.onScanNow.takeIf { access },
@@ -3609,6 +4103,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             searchHistoryOn = searchHistoryState.value.enabled,
                             onSearchHistoryOn = { searchHistory.setEnabled(it) },
                             onClearSearchHistory = { searchHistory.clearAll() },
+                            usageEnabled = usageLog?.let { usageEnabledNow },
+                            usageHasData = usageHasDataNow,
+                            onUsageEnabled = { usageLog?.setEnabled(it); usageVersion++ },
+                            onExportUsage = {
+                                usageLog?.let { UsageExportFile.share(context, it) }
+                                    ?: UsageExportFile.Result.NOTHING_RECORDED
+                            },
+                            onClearUsage = { usageLog?.clear(); usageVersion++ },
                             onReadDiagnostics = {
                                 captureAtlasDiagnostics(context, media, grants,
                                     discovery.status, discoveryHost, searchGrant)
@@ -3709,6 +4211,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 PerformanceSession.firstGridFrame()
                             }
                         }
+                        // Observe the *drawn* Photos subtree, not its Compose
+                        // publication. FrameMetrics must later match this vsync.
+                        val perfA1PhotosContent: @Composable () -> Unit = {
                         val photosSelecting = batchSelection != null && !originalProportions &&
                             timelineEnabled
                         if (originalProportions) {
@@ -3732,6 +4237,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                 visible.size) { visible.getOrNull(it)?.uri }) {
                                             pendingRatioAnchor = null
                                             pendingRatioReturn = null
+                                            // A selection never survives a layout switch.
+                                            batchSelection = null
+                                            pendingSelectionRestore = null
                                             pendingViewerReturn = request.focal?.let {
                                                 PendingViewerReturn(visible, it.mediaKey, 0,
                                                     publishedGallery.epoch)
@@ -3741,6 +4249,32 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                                     ?: GridDensity.LARGE
                                             timelineEnabled = ratioReturnToTimeline
                                             originalProportions = false
+                                        }
+                                    },
+                                    selectedMediaUris = batchSelection?.takeIf {
+                                        it.isCurrentFor(visible, publishedGallery.epoch,
+                                            galleryAccessCurrent())
+                                    }?.uris,
+                                    onSelectionChange = { uris ->
+                                        val selection = batchSelection
+                                        if (!batchOperating && galleryAccessCurrent()) {
+                                            if (selection == null) {
+                                                selectionAlbumRoute = albumRoute
+                                                batchSelection = GalleryBatchSelection.of(
+                                                    visible, publishedGallery.epoch, uris)
+                                            } else if (selection.isCurrentFor(visible,
+                                                    publishedGallery.epoch, true)) {
+                                                batchSelection = selection.replaced(uris)
+                                            }
+                                        }
+                                    },
+                                    onMediaToggle = { media ->
+                                        val selection = batchSelection
+                                        if (selection != null && !batchOperating &&
+                                            selection.isCurrentFor(visible,
+                                                publishedGallery.epoch, galleryAccessCurrent())) {
+                                            // Samsung: unchecking the last item keeps selection open.
+                                            batchSelection = selection.toggledKeepingMode(media)
                                         }
                                     },
                                     onLayoutReady = { ready ->
@@ -3877,6 +4411,20 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     entryDensity = timelineEntryDensity
                                 )
                             }
+                        }
+                        } // Photos subtree
+                        if (perfA1Probe != null) {
+                            Box(Modifier.fillMaxSize().drawWithContent {
+                                drawContent()
+                                if (albumRoute == null && visible.isNotEmpty() &&
+                                    publishedGallery.epoch >= 0L &&
+                                    publishedGallery.showable(grants) &&
+                                    (publishedGallery.fromCache || perfA1Probe.isWarm)) {
+                                    perfA1Probe.noteDraw(publishedGallery.fromCache)
+                                }
+                            }) { perfA1PhotosContent() }
+                        } else {
+                            perfA1PhotosContent() // no extra layout in normal/release builds
                         }
                     }
                     tab == 1 && hideAlbumsOpen -> {
