@@ -61,36 +61,24 @@ class ColdStartCheckpointBenchmarkTest {
     @Test fun coldDeltaBeatsTheFullRescanAndMatchesItOnTheSameFixture() {
         val repo = GalleryRepository(context)
         // Warm-up and the "cached catalogue" a cold start would have on screen.
-        // The provider may still touch the fresh rows (scanner, thumbnails):
-        // rescan (each read takes real time) until two reads in a row see the
-        // same generations, or give up after 15 s and measure what is there.
-        var cached = repo.loadWithCheckpoint()
-        val settleBy = SystemClock.uptimeMillis() + 15_000L
-        while (SystemClock.uptimeMillis() < settleBy) {
-            val again = repo.loadWithCheckpoint(previous = cached.items)
-            val settled = again.checkpoint == cached.checkpoint
-            cached = again
-            if (settled) break
-        }
+        val cached = settledScan(repo, emptyList())
         assertTrue("fixture not visible: ${cached.items.size} rows",
             cached.items.size >= FIXTURE_COUNT)
         assertTrue("checkpoint not usable on API35: ${cached.checkpoint}",
             coldDeltaCheckpointUsable(cached.checkpoint))
         repeat(2) {
-            repo.loadWithCheckpoint(previous = cached.items)
-            repo.loadSinceCheckpoint(cached.items, cached.checkpoint)
+            retryingSnapshot { repo.loadWithCheckpoint(previous = cached.items) }
+            retryingSnapshot { repo.loadSinceCheckpoint(cached.items, cached.checkpoint) }
         }
 
         // Unchanged library: alternate arms so drift hits both equally.
         val before = ArrayList<Long>()
         val after = ArrayList<Long>()
         repeat(RUNS) {
-            var t = SystemClock.elapsedRealtimeNanos()
-            val full = repo.loadWithCheckpoint(previous = cached.items)
-            before += (SystemClock.elapsedRealtimeNanos() - t) / 1_000L
-            t = SystemClock.elapsedRealtimeNanos()
-            val delta = repo.loadSinceCheckpoint(cached.items, cached.checkpoint)
-            after += (SystemClock.elapsedRealtimeNanos() - t) / 1_000L
+            val (full, fullUs) = timed { repo.loadWithCheckpoint(previous = cached.items) }
+            before += fullUs
+            val (delta, deltaUs) = timed { repo.loadSinceCheckpoint(cached.items, cached.checkpoint) }
+            after += deltaUs
             assertSameCatalogue("unchanged library", full.items, delta.items)
         }
         val beforeP50 = p50(before)
@@ -105,17 +93,17 @@ class ColdStartCheckpointBenchmarkTest {
         val extras = ArrayList<Uri>()
         try {
             repeat(30) { extras += insertImage("IMG_602_EXTRA_A_$it.png") }
-            val base = repo.loadWithCheckpoint()
+            val base = settledScan(repo, cached.items)
             val gone = extras.take(10)
             gone.forEach { assertEquals(1, context.contentResolver.delete(it, null, null)) }
             extras.removeAll(gone.toSet())
             repeat(20) { extras += insertImage("IMG_602_EXTRA_B_$it.png") }
-            var t = SystemClock.elapsedRealtimeNanos()
-            val full = repo.loadWithCheckpoint(previous = base.items)
-            val changedFullUs = (SystemClock.elapsedRealtimeNanos() - t) / 1_000L
-            t = SystemClock.elapsedRealtimeNanos()
-            val delta = repo.loadSinceCheckpoint(base.items, base.checkpoint)
-            val changedDeltaUs = (SystemClock.elapsedRealtimeNanos() - t) / 1_000L
+            // Let the provider finish with the new rows before either arm reads.
+            settledScan(repo, base.items)
+            val (full, changedFullUs) = timed { repo.loadWithCheckpoint(previous = base.items) }
+            val (delta, changedDeltaUs) = timed {
+                repo.loadSinceCheckpoint(base.items, base.checkpoint)
+            }
             assertSameCatalogue("10 deleted + 20 added", full.items, delta.items)
             assertEquals(base.items.size + 10, delta.items.size)
             Log.i(TAG, "event=cold_scan_changed rows=${delta.items.size} deleted=10 added=20 " +
@@ -196,6 +184,39 @@ class ColdStartCheckpointBenchmarkTest {
         }
     }
 
+    /**
+     * The provider keeps touching fresh rows for a while (scanner, thumbnail
+     * work), and a scan that sees generations move refuses itself
+     * ([GalleryProviderSnapshotChanged]), as it should. Rescan (each read
+     * takes real time) until two reads in a row see the same generations, or
+     * for at most 15 s.
+     */
+    private fun settledScan(repo: GalleryRepository, previous: List<MediaRecord>): GalleryMediaScan {
+        var scan = retryingSnapshot { repo.loadWithCheckpoint(previous = previous) }
+        val settleBy = SystemClock.uptimeMillis() + 15_000L
+        while (SystemClock.uptimeMillis() < settleBy) {
+            val again = retryingSnapshot { repo.loadWithCheckpoint(previous = scan.items) }
+            val settled = again.checkpoint == scan.checkpoint
+            scan = again
+            if (settled) break
+        }
+        return scan
+    }
+
+    /** Runs [block] again when the provider moved during it; never times a refused read. */
+    private fun <T> retryingSnapshot(block: () -> T): T {
+        repeat(MAX_SNAPSHOT_RETRIES) {
+            try { return block() } catch (_: GalleryProviderSnapshotChanged) { }
+        }
+        return block()
+    }
+
+    private fun <T> timed(block: () -> T): Pair<T, Long> = retryingSnapshot {
+        val start = SystemClock.elapsedRealtimeNanos()
+        val result = block()
+        result to (SystemClock.elapsedRealtimeNanos() - start) / 1_000L
+    }
+
     private fun p50(samples: List<Long>): Long = samples.sorted()[(samples.size - 1) / 2]
     private fun ms(us: Long): String = "%.1f".format(us / 1000.0)
 
@@ -203,5 +224,6 @@ class ColdStartCheckpointBenchmarkTest {
         const val TAG = "ATLAS_PERF602"
         const val FIXTURE_COUNT = 2_000
         const val RUNS = 7
+        const val MAX_SNAPSHOT_RETRIES = 20
     }
 }
