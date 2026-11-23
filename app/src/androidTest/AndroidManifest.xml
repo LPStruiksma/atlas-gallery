@@ -7,6 +7,26 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity
+            android:name="nl.atlas.gallery.testkit.UsageShareTargetActivity"
+            android:exported="true"
+            android:label="Test recipient">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="nl.atlas.gallery.testkit.UsageShareTargetActivityB"
+            android:exported="true"
+            android:label="Test recipient two">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+        </activity>
         <service
             android:name="nl.atlas.gallery.testkit.AtlasTestKeyboard"
             android:exported="true"
