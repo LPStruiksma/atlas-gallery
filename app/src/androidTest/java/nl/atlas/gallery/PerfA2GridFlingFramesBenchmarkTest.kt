@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.Window
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -20,6 +21,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import coil3.SingletonImageLoader
 import nl.atlas.gallery.featuremedia.MicroThumbnails
+import nl.atlas.gallery.testkit.awaitWindowSettled
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -153,6 +155,12 @@ class PerfA2GridFlingFramesBenchmarkTest {
             }
         }
         compose.waitForIdle()
+        // S24DisplayRule changes the display before launch, but WindowManager applies
+        // that change independently of Compose idleness.  A semantics-ready grid can
+        // therefore exist briefly in an unfocused/unsettled window, where UiAutomation
+        // accepts a DOWN that never reaches the Activity.  Prove stable focus/geometry
+        // on consecutive real frames before the first (still measured) throw.
+        compose.awaitWindowSettled()
         var before = readGrid(vm, columns)
         // First pass is memory-cleared, NOT guaranteed disk- or provider-cold.
         SingletonImageLoader.get(context).memoryCache?.clear()
@@ -242,10 +250,31 @@ class PerfA2GridFlingFramesBenchmarkTest {
         assertTrue("Missing real frame-interval evidence", intervals.isNotEmpty())
     }
 
+    private data class DeliveredEvent(
+        val action: Int,
+        val downTime: Long,
+        val eventTime: Long,
+        val x: Float,
+        val y: Float,
+        val consumed: Boolean
+    )
+
     private fun injectFling(x: Float, startY: Float, endY: Float) {
         // Schedule a real-uptime input sequence rather than advancing the
         // Compose test clock. Await the last injected event, not a timer.
         val automation = instrumentation.uiAutomation
+        val delivered = Collections.synchronizedList(ArrayList<DeliveredEvent>())
+        val originalCallback = compose.activity.window.callback
+        instrumentation.runOnMainSync {
+            compose.activity.window.callback = object : Window.Callback by originalCallback {
+                override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                    val consumed = originalCallback.dispatchTouchEvent(event)
+                    delivered.add(DeliveredEvent(event.actionMasked, event.downTime,
+                        event.eventTime, event.x, event.y, consumed))
+                    return consumed
+                }
+            }
+        }
         val downAt = SystemClock.uptimeMillis()
         val scheduled = Executors.newSingleThreadScheduledExecutor()
         val finished = CountDownLatch(1)
@@ -285,7 +314,21 @@ class PerfA2GridFlingFramesBenchmarkTest {
             failure.get()?.let { throw it }
         } finally {
             scheduled.shutdownNow()
+            instrumentation.runOnMainSync {
+                compose.activity.window.callback = originalCallback
+            }
         }
+        val received = synchronized(delivered) { delivered.toList() }
+        val actions = received.map { it.action }
+        Log.i("ATLAS_SCALE", "PERF-A2A pointer delivery=" + received)
+        assertEquals("Window did not receive the complete injected pointer stream: " + received,
+            listOf(MotionEvent.ACTION_DOWN) + List(12) { MotionEvent.ACTION_MOVE } +
+                MotionEvent.ACTION_UP, actions)
+        assertTrue("Activity did not consume the injected pointer stream: " + received,
+            received.all { it.consumed })
+        assertTrue("Delivered pointer coordinates differ from the injected fling: " + received,
+            received.first().x == x && received.first().y == startY &&
+                received.last().x == x && received.last().y == endY)
     }
 
     /** Re-arming Choreographer.FrameCallback; records every frameTimeNanos. */
