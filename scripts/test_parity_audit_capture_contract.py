@@ -39,8 +39,8 @@ class ParityCaptureContractTest(unittest.TestCase):
 
     def test_all_required_capture_rows_have_real_instrumented_producers(self):
         rows = matrix.read_contract()
-        self.assertEqual(34, sum(bool(r["source_png"]) for r in rows))
-        self.assertEqual(6, sum(not r["source_png"] for r in rows))
+        self.assertEqual(40, sum(bool(r["source_png"]) for r in rows))
+        self.assertEqual(0, sum(not r["source_png"] for r in rows))
         remaining = ROOT / "app/src/androidTest/java/nl/atlas/gallery/ParityRemainingSurfaceJourneyTest.kt"
         remaining_source = remaining.read_text(encoding="utf-8")
         for name in (
@@ -50,6 +50,18 @@ class ParityCaptureContractTest(unittest.TestCase):
             self.assertIn('saveUiEvidence("' + name + '")', remaining_source)
         self.assertIn('"3 columns"', remaining_source)
         self.assertIn('"atlas-ratio-gallery"', remaining_source)
+        people = (ROOT / "app/src/androidTest/java/nl/atlas/gallery/"
+                  "ParityPeopleThemePairsTest.kt").read_text(encoding="utf-8")
+        for prefix in (
+            "parity-24-people-named",
+            "parity-24-viewer-details-people",
+            "parity-24-search-person",
+        ):
+            self.assertIn('capturePair("' + prefix + '"', people)
+        self.assertIn('saveUiEvidence("$prefix-${mode(isDark)}.png")', people)
+        self.assertIn("PeopleReviewAction.NameCluster", people)
+        self.assertIn('"atlas-details-people"', people)
+        self.assertIn('"atlas-search-person-chip"', people)
         source = (ROOT / "app/src/androidTest/java/nl/atlas/gallery/"
                   "SystemThemeJourneyTest.kt").read_text(encoding="utf-8")
         for name in (
