@@ -503,7 +503,8 @@ def create_server(host, port, token, backend=None):
 
 def main():
     parser = argparse.ArgumentParser(description="ATLAS self-hosted edit protocol v1")
-    parser.add_argument("--backend", choices=["fake", "qwen", "flux", "comfy"],
+    parser.add_argument("--backend",
+                        choices=["fake", "qwen", "flux", "comfy", "flux2-head"],
                         default=os.environ.get("ATLAS_BACKEND", "fake"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)

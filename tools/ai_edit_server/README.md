@@ -1,6 +1,6 @@
 # ATLAS self-hosted image editor (AIE-8a)
 
-Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
+Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). A separately gated `flux2-head` name is a non-executing admission scaffold, documented in [HEAD_DEPLOYMENT.md](HEAD_DEPLOYMENT.md); it is not a usable model backend. No model weights, cloud resources, real photos or paid endpoints are needed for CI.
 
 ## Run the fake locally (no Python dependencies)
 

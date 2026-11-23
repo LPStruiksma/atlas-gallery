@@ -129,6 +129,25 @@ class FakeBackend(Backend):
         return request.image
 
 
+class Flux2HeadBackend(Backend):
+    """Non-executing FLUX.2 head integration boundary.
+
+    This backend exists so configuration and protocol admission can be reviewed
+    without turning a model download or inference path on.  In particular, it
+    must not grow a ``full_head`` execution path implicitly.
+    """
+    provider_id = "atlas-flux2-head-scaffold"
+    display_name = "FLUX.2 head scaffold (non-executing)"
+    model_id = "flux2-head-scaffold"
+    max_input_pixels = 4_194_304
+    max_output_pixels = 4_194_304
+
+    def generate(self, request, cancelled):
+        raise BackendError(
+            "FLUX.2 head is an admission scaffold only; inference is unavailable"
+        )
+
+
 class DiffusersBackend(Backend):
     """Direct single-image Qwen-Image-Edit or FLUX.1 Kontext [dev] inference.
 
@@ -439,6 +458,20 @@ def select_backend(name=None):
         return FakeBackend()
     if backend in ("qwen", "flux"):
         return DiffusersBackend(backend)
+    if backend == "flux2-head":
+        # Exact, case-sensitive opt-in: permissive truthy parsing can turn a
+        # deployment on after an innocent configuration typo.
+        if os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true":
+            raise ValueError(
+                "FLUX.2 head is disabled; set ATLAS_FLUX2_HEAD_ENABLED=true "
+                "only for scaffold admission"
+            )
+        mode = os.environ.get("ATLAS_FLUX2_HEAD_MODE", "scaffold")
+        if mode != "scaffold":
+            raise ValueError(
+                "FLUX.2 head mode must be scaffold; full_head is forbidden"
+            )
+        return Flux2HeadBackend()
     if backend == "comfy":
         return ComfyBackend(
             os.environ.get("ATLAS_COMFY_URL", "http://127.0.0.1:8188"),
@@ -446,4 +479,6 @@ def select_backend(name=None):
             model_id=os.environ.get("ATLAS_COMFY_MODEL_ID", "configured-workflow"),
             token=os.environ.get("ATLAS_COMFY_TOKEN"),
         )
-    raise ValueError("Unsupported backend: use fake, qwen, flux or comfy")
+    raise ValueError(
+        "Unsupported backend: use fake, qwen, flux, comfy or flux2-head"
+    )
