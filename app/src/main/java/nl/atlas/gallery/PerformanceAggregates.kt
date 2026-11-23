@@ -19,6 +19,8 @@ class PerformanceAggregates(
     interface PerformanceStore {
         fun load(): Map<String, List<Double>>
         fun save(metric: String, values: List<Double>)
+        /** Lifecycle boundary: synchronous durability before the OS can kill the process. */
+        fun saveDurably(metric: String, values: List<Double>) = save(metric, values)
     }
 
     data class Summary(
@@ -65,13 +67,13 @@ class PerformanceAggregates(
         return true
     }
 
-    /** Writes any samples not yet saved, so a normal shutdown loses nothing. */
+    /** Commits pending samples at pause; periodic writes remain asynchronous. */
     @Synchronized fun flush() {
         val store = store ?: return
         if (!restored) return
         samples.forEach { (metric, ring) ->
             if ((unsaved[metric] ?: 0) > 0) {
-                store.save(metric, ring.toList())
+                store.saveDurably(metric, ring.toList())
                 unsaved[metric] = 0
             }
         }
