@@ -75,8 +75,13 @@ class ParityCaptureContractTest(unittest.TestCase):
             ("viewer-details-people", "PhotoPeopleDetailsTest.kt", "parity-24-viewer-details-people-light.png"),
             ("search-person", "PersonNameSearchEvidenceTest.kt", "parity-24-search-person-light.png"),
         ):
-            self.assertIn('saveUiEvidence("' + token + '")',
-                          (ROOT / "app/src/androidTest/java/nl/atlas/gallery" / path).read_text())
+            producer = (ROOT / "app/src/androidTest/java/nl/atlas/gallery" / path).read_text()
+            # PhotoPeopleDetailsTest captures through its evidence() helper, which
+            # settles three frames and then calls saveUiEvidence(filename).
+            if 'evidence("' + token + '")' in producer:
+                self.assertIn("saveUiEvidence(filename)", producer)
+            else:
+                self.assertIn('saveUiEvidence("' + token + '")', producer)
 
     def test_matrix_is_verified_and_uploaded_through_existing_ci_artifact(self):
         shell = (ROOT / "scripts/ci_ui_evidence.sh").read_text(encoding="utf-8")
