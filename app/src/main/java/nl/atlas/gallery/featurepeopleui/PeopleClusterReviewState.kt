@@ -200,6 +200,12 @@ sealed interface PeopleReviewAction {
      */
     data class MarkMixedGroups(val groups: Set<FaceClusterId>) : PeopleReviewAction
 
+    /**
+     * HUB-1C: an atomic mixed mark for either or both visible sides of a question.
+     * Unlike MarkMixedGroups, this also accepts a named confirmed person.
+     */
+    data class MarkMixedSides(val sides: Set<PersonPageTarget>) : PeopleReviewAction
+
     /** Hide a named person from People, or show them again (#551). */
     data class SetPersonHidden(val person: PersonKey, val hidden: Boolean) : PeopleReviewAction
 
@@ -389,6 +395,23 @@ fun reviewPeopleCluster(
                 if (cluster.members.size !in MixedGroup.MIN_MEMBERS..MixedGroup.MAX_MEMBERS)
                     return null
                 mixed.add(MixedGroup.of(cluster.members))
+            }
+            if (mixed.size > ClusterReviewFacts.MAX_FACTS) return null
+        }
+        is PeopleReviewAction.MarkMixedSides -> {
+            if (action.sides.size !in 1..2) return null
+            for (side in action.sides) {
+                val members = when (side) {
+                    is PersonPageTarget.Unnamed ->
+                        state.unknown(side.cluster)?.members ?: return null
+                    is PersonPageTarget.Named -> {
+                        if (side.person !in names || side.person in hidden) return null
+                        confirmed.filterValues { it == side.person }.keys.toList()
+                    }
+                }
+                if (members.size !in MixedGroup.MIN_MEMBERS..MixedGroup.MAX_MEMBERS)
+                    return null
+                mixed.add(MixedGroup.of(members))
             }
             if (mixed.size > ClusterReviewFacts.MAX_FACTS) return null
         }

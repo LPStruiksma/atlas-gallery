@@ -54,7 +54,7 @@ fun reviewTally(state: PeopleClusterReviewState, action: PeopleReviewAction): Re
             ReviewTally(ReviewTap.UNDONE, 0, undoes = it.tally?.copy(undoes = null))
         }
         // HUB-1B (#211): a "not one person" mark moves and judges no face yet.
-        is PeopleReviewAction.MarkMixedGroups,
+        is PeopleReviewAction.MarkMixedGroups, is PeopleReviewAction.MarkMixedSides,
         is PeopleReviewAction.RenamePerson, is PeopleReviewAction.SetPersonHidden -> null
     }
 }
