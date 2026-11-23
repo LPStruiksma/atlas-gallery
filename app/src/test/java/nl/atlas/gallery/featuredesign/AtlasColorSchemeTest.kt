@@ -68,6 +68,28 @@ class AtlasColorSchemeTest {
         return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
     }
 
+    /** #1011: every role Material draws text in must reach 4.5:1 on the backgrounds it sits on. */
+    @Test fun textRolesMeetBodyContrastOnGroundSurfaceAndDialogs() {
+        listOf("dark" to darkGalleryColors, "light" to lightGalleryColors).forEach { (theme, s) ->
+            val backgrounds = mapOf("background" to s.background, "surface" to s.surface,
+                "surfaceContainerHigh" to s.surfaceContainerHigh)
+            val textRoles = mapOf("primary" to s.primary, "secondary" to s.secondary,
+                "tertiary" to s.tertiary, "onBackground" to s.onBackground,
+                "onSurface" to s.onSurface, "onSurfaceVariant" to s.onSurfaceVariant)
+            textRoles.forEach { (role, text) ->
+                backgrounds.forEach { (bg, colour) ->
+                    val c = contrast(text, colour)
+                    assertTrue("$theme $role on $bg: $c", c >= 4.5)
+                }
+            }
+            listOf(Triple("onPrimary", s.onPrimary, s.primary),
+                Triple("onPrimaryContainer", s.onPrimaryContainer, s.primaryContainer),
+                Triple("onSecondary", s.onSecondary, s.secondary)).forEach { (role, fg, bg) ->
+                assertTrue("$theme $role: ${contrast(fg, bg)}", contrast(fg, bg) >= 4.5)
+            }
+        }
+    }
+
     @Test fun lapisPaletteMatchesApprovedQuietFrameV3() {
         val light = AtlasTokens.Colors.Light
         val dark = AtlasTokens.Colors.Dark

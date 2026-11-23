@@ -120,8 +120,12 @@ object AtlasSpace {
  * "Add name" dialog came out light lavender. Ours stay in the Quiet Frame neutral/blue family.
  */
 internal val darkGalleryColors = darkColorScheme(
-    primary = AtlasTokens.Colors.Dark.BrandFill,
-    onPrimary = AtlasTokens.Colors.Dark.OnBrand,
+    // #1011 review: TextButton, links and other text actions draw in `primary`.
+    // Dark BrandFill is only 3.15:1 on the black ground, so dark `primary` is
+    // BrandText (>= 4.5:1) and filled buttons draw Ground on it. Brand fill stays
+    // in primaryContainer and surfaceTint.
+    primary = AtlasTokens.Colors.Dark.BrandText,
+    onPrimary = AtlasTokens.Colors.Dark.Ground,
     primaryContainer = AtlasTokens.Colors.Dark.BrandFill,
     onPrimaryContainer = AtlasTokens.Colors.Dark.OnBrand,
     inversePrimary = AtlasTokens.Colors.Light.BrandFill,
