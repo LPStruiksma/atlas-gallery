@@ -25,3 +25,31 @@ The timeline index was the largest derived holder. Its builder took a `TimelineM
 ## Next holders
 
 `MediaRecord` itself (172 B/item, of which the file name string is about 60 B) is the largest remaining holder. It is a candidate for a separate PR, for example storing file names in one shared char buffer. The emulator peak-heap number against the 60% target needs a 250k emulator scenario, which does not exist yet.
+
+
+## People projection (PERF-6b, #601)
+
+The gallery's `MediaRecord` list remains the authoritative permission-scoped
+snapshot. People now receives a `MediaRecordFaceView` whose face rows and URI
+strings are created only while consumed, not held for the lifetime of the face
+scope. `newestFirst` reuses the view if already sorted; otherwise a stable
+primitive `IntArray` of source offsets replaces the sorted copy of face objects.
+The face directory uses the same view plus its hashed `LongArray` index.
+Other callers still get a frozen admitted-row snapshot so mutating an ordinary
+input list cannot change an authorized source after publication.
+
+`peopleProjectionAt250kRetainsOnlyIndicesAndPreservesDigest` reports JVM
+retained-heap deltas for the view and directory, compares `faceInventoryDigest`
+with the pre-change materialized projection, checks newest-first reuse and
+full-key/revision lookup, and asserts **at most 16 bytes per gallery row of
+structural retained People indices** (8 B per admitted row plus up to 4 B
+for sorting, or up to 4 B for source offsets above the 20-bit direct limit).
+GC-dependent heap deltas are printed, not asserted. These are JVM measurements.
+
+The device-level evidence is `PeopleProjectionHeapAndroidTest`, which runs in
+the emulator suite. It holds the 250k synthetic gallery list, the People view
+and the face directory, then logs one
+`ATLAS_SCALE: PERF-6b-people-projection` line with PERF-0 `heap_fraction`
+(Java heap used / maximum), the same ratio for the old materialized
+projection, and People bytes per item before and after. It asserts digest
+parity and `heap_fraction < 0.60` (the PERF-6 target, #127).
