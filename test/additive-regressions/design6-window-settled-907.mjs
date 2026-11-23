@@ -36,3 +36,12 @@ test('Design6 inset comparison waits for stable display frames, not elapsed quie
   assert.ok(!source.includes('450L'));
   assert.ok(!source.includes('settledBounds'));
 });
+
+// #968: require a measured, inset-normalized host-edge invariant in both themes.
+test('Design6 media arrival compares normalized host edges within 1 dp', () => {
+  assert.ok(source.includes('normalizedHostBoundsDp'));
+  assert.ok(source.includes('normalizedBefore'));
+  assert.ok(source.includes('normalizedAfter'));
+  assert.ok(source.includes('kotlin.math.abs((normalizedAfter.top - normalizedBefore.top)'));
+  assert.ok(source.includes('kotlin.math.abs((normalizedAfter.bottom - normalizedBefore.bottom)'));
+});
