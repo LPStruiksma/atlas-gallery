@@ -127,15 +127,14 @@ Each line runs as its own instrumentation run, on both shards (two independent e
 
 ## Quarantined tests
 
-The blocking emulator instrumentation suite excludes exactly these two flaky
-test methods:
+The blocking emulator instrumentation suite excludes exactly this flaky
+test method:
 
-- `nl.atlas.gallery.LapisColdStartSplashLightEvidenceTest#coldStartShowsStaticLapisSplash` ([#967](https://github.com/LPStruiksma/atlas-gallery/issues/967))
 - `nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives` ([#968](https://github.com/LPStruiksma/atlas-gallery/issues/968))
 
-Their method-level selectors live in the `quarantined_emulator_tests` function
+Its method-level selector lives in the `quarantined_emulator_tests` function
 in `scripts/ci_android_upgrade_emulator.sh`, which is the single quarantine
-list. Each method still runs separately on every emulator shard after the
+list. The method still runs separately on every emulator shard after the
 blocking suite. CI prints its instrumentation transcript, focused logcat, and
 an explicit `QUARANTINE … PASS/FAIL (non-blocking)` result. A quarantined
 failure is a warning and does not fail the shard. Every other connected test
@@ -143,6 +142,8 @@ remains blocking, as do the upgrade, recovery, and later real-process checks.
 Remove a selector as soon as its tracked issue is fixed and stress evidence
 confirms the repair; do not add a test without its own tracking issue and
 review.
+
+The former #967 `LapisColdStartSplashLightEvidenceTest#coldStartShowsStaticLapisSplash` selector was removed after PR #995 moved the splash proof out of instrumentation into the CI script. It must not be invoked as a nonexistent quarantined method.
 
 ## When an emulator test fails
 
