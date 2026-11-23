@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940.0 560.0" width="1880.0" height="1120.0" font-family="Funnel Sans, Inter, Arial, sans-serif"><title>VIDEO-V2 seeker landscape-narrow-computed dark held</title>
+<rect width="940.0" height="560.0" fill="#1B1C24"/>
+<text x="8" y="14" font-size="9" fill="#FFF" font-weight="600">PROPOSED · VIDEO-V2 seeker · landscape-narrow-computed · dark theme · held</text>
+<text x="8" y="27" font-size="7" fill="#9AA0B8">Target concept, not a capture. Insets/cutout: COMPUTED: landscape-3button insets on 640x360 dp. Base layer: #142 proposed target. Synthetic media.</text>
+<g transform="translate(0,36)">
+<rect width="640.0" height="360.0" fill="#000"/>
+<clipPath id="media"><rect x="265.05" y="80.18" width="106.35" height="59.82" rx="0"/></clipPath>
+<g clip-path="url(#media)">
+<rect x="265.05" y="80.18" width="106.35" height="59.82" fill="#0E1830"/>
+<path d="M265.05 113.68 L286.32 99.32 L309.71 112.48 L333.11 95.73 L371.39 110.09 V140.0 H265.05 Z" fill="#243457"/>
+<rect x="265.05" y="116.07" width="106.35" height="23.93" fill="#11263F"/>
+<circle cx="309.71" cy="92.14" r="4.79" fill="#FFD35A"/>
+<path d="M325.66 123.25 l0 -8.37 l8.51 8.37 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="267.05" y="124.04" width="70.76" height="13.96" fill="#000" opacity=".6"/>
+<text x="269.05" y="136.0" font-size="11.96" fill="#FFF" font-family="monospace">t=12.000s</text>
+</g>
+<rect width="640.0" height="24.18" fill="#2D6CDF" opacity=".25"/>
+<rect x="592.0" width="48" height="360.0" fill="#2D6CDF" opacity=".25"/>
+<rect x="0.0" y="159.56" width="44.44" height="40.88" fill="#FF3B30" opacity=".55"/>
+<rect x="44.44" y="24.18" width="547.56" height="335.82" fill="none" stroke="#2EC4B6" stroke-dasharray="4 3" stroke-width=".8"/>
+<circle cx="76.44" cy="52.18" r="20" fill="#14152A" opacity=".8"/>
+<rect x="444.0" y="32.18" width="136.0" height="40.0" rx="20" fill="#14152A" opacity=".8"/>
+<rect x="152.92" y="170.0" width="378.6" height="4" rx="2" fill="#FFF" opacity=".35"/>
+<rect x="152.92" y="170.0" width="151.44" height="4" rx="2" fill="#8C9BFF"/>
+<circle cx="304.36" cy="172.0" r="8" fill="#FFF"/>
+<circle cx="76.44" cy="172.0" r="20" fill="#14152A" opacity=".8"/>
+<path d="M71.44 164.0 l12 8 l-12 8 Z" fill="#FFF"/>
+<text x="104.44" y="176.0" font-size="14.0" fill="#F2F3F8">0:12</text>
+<text x="580.0" y="176.0" font-size="14.0" fill="#9AA0B8" text-anchor="end">0:30</text>
+<clipPath id="bheldband"><rect x="44.44" y="206.0" width="547.56" height="80.0"/></clipPath>
+<g clip-path="url(#bheldband)">
+<clipPath id="bheldn-11"><rect x="94.22" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn-11)">
+<rect x="94.22" y="224.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M94.22 255.36 L103.02 241.92 L112.7 254.24 L122.38 238.56 L138.22 252.0 V280.0 H94.22 Z" fill="#6D86B5"/>
+<rect x="94.22" y="257.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="109.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M122.38 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldn11"><rect x="586.22" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn11)">
+<rect x="586.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M586.22 255.36 L595.02 241.92 L604.7 254.24 L614.38 238.56 L630.22 252.0 V280.0 H586.22 Z" fill="#243457"/>
+<rect x="586.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="601.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M614.38 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldn-12"><rect x="46.22" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn-12)">
+<rect x="46.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M46.22 255.36 L55.02 241.92 L64.7 254.24 L74.38 238.56 L90.22 252.0 V280.0 H46.22 Z" fill="#243457"/>
+<rect x="46.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="61.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M74.38 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldn12"><rect x="634.22" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn12)">
+<rect x="634.22" y="224.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M634.22 255.36 L643.02 241.92 L652.7 254.24 L662.38 238.56 L678.22 252.0 V280.0 H634.22 Z" fill="#6D86B5"/>
+<rect x="634.22" y="257.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="649.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M662.38 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldn-13"><rect x="-1.78" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn-13)">
+<rect x="-1.78" y="224.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M-1.78 255.36 L7.02 241.92 L16.7 254.24 L26.38 238.56 L42.22 252.0 V280.0 H-1.78 Z" fill="#6D86B5"/>
+<rect x="-1.78" y="257.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="13.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M26.38 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldn-14"><rect x="-49.78" y="224.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldn-14)">
+<rect x="-49.78" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M-49.78 255.36 L-40.98 241.92 L-31.3 254.24 L-21.62 238.56 L-5.78 252.0 V280.0 H-49.78 Z" fill="#243457"/>
+<rect x="-49.78" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="-34.82" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M-21.62 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="bheldspan"><rect x="142.22" y="224.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#bheldspan)">
+<rect x="142.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M142.22 255.36 L151.02 241.92 L160.7 254.24 L170.38 238.56 L186.22 252.0 V280.0 H142.22 Z" fill="#243457"/>
+<rect x="142.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="146.62" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M179.62 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="144.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="146.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="186.22" y1="224.0" x2="186.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="186.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M186.22 255.36 L195.02 241.92 L204.7 254.24 L214.38 238.56 L230.22 252.0 V280.0 H186.22 Z" fill="#243457"/>
+<rect x="186.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="194.13" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M220.55 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="188.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="190.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<line x1="230.22" y1="224.0" x2="230.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="230.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M230.22 255.36 L239.02 241.92 L248.7 254.24 L258.38 238.56 L274.22 252.0 V280.0 H230.22 Z" fill="#243457"/>
+<rect x="230.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="241.64" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M261.48 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="232.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="234.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<line x1="274.22" y1="224.0" x2="274.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="274.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M274.22 255.36 L283.02 241.92 L292.7 254.24 L302.38 238.56 L318.22 252.0 V280.0 H274.22 Z" fill="#243457"/>
+<rect x="274.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="289.14" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M302.41 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="276.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="278.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
+<line x1="318.22" y1="224.0" x2="318.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="318.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M318.22 255.36 L327.02 241.92 L336.7 254.24 L346.38 238.56 L362.22 252.0 V280.0 H318.22 Z" fill="#243457"/>
+<rect x="318.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="336.65" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M343.34 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="320.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="322.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
+<line x1="362.22" y1="224.0" x2="362.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="362.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M362.22 255.36 L371.02 241.92 L380.7 254.24 L390.38 238.56 L406.22 252.0 V280.0 H362.22 Z" fill="#243457"/>
+<rect x="362.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="384.16" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M384.27 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="364.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="366.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<line x1="406.22" y1="224.0" x2="406.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="406.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M406.22 255.36 L415.02 241.92 L424.7 254.24 L434.38 238.56 L450.22 252.0 V280.0 H406.22 Z" fill="#243457"/>
+<rect x="406.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="431.67" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M425.2 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="408.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="410.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<line x1="450.22" y1="224.0" x2="450.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="450.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M450.22 255.36 L459.02 241.92 L468.7 254.24 L478.38 238.56 L494.22 252.0 V280.0 H450.22 Z" fill="#243457"/>
+<rect x="450.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="479.18" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M466.13 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="452.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="454.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<line x1="494.22" y1="224.0" x2="494.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="494.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M494.22 255.36 L503.02 241.92 L512.7 254.24 L522.38 238.56 L538.22 252.0 V280.0 H494.22 Z" fill="#243457"/>
+<rect x="494.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="526.69" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M507.06 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="496.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="498.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<line x1="538.22" y1="224.0" x2="538.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="538.22" y="224.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M538.22 255.36 L547.02 241.92 L556.7 254.24 L566.38 238.56 L582.22 252.0 V280.0 H538.22 Z" fill="#243457"/>
+<rect x="538.22" y="257.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="574.19" cy="235.2" r="3.52" fill="#FFD35A"/>
+<path d="M547.99 264.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="540.22" y="267.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="542.22" y="276.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
+<line x1="582.22" y1="224.0" x2="582.22" y2="280.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+</g>
+<rect x="139.22" y="221.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="141.22" y="223.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+</g>
+<circle cx="318.22" cy="216.0" r="5.0" fill="#000"/>
+<circle cx="318.22" cy="216.0" r="4.0" fill="#8C9BFF"/>
+<rect x="206.22" y="292.0" width="224.0" height="56.0" rx="24" fill="#3448E0"/>
+<circle cx="234.22" cy="320.0" r="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<circle cx="290.22" cy="320.0" r="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<circle cx="346.22" cy="320.0" r="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<circle cx="402.22" cy="320.0" r="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<rect x="44.44" y="208.0" width="547.56" height="76.0" fill="none" stroke="#FF2D55" stroke-width=".8" stroke-dasharray="3 2"/>
+<rect x="52.44" y="148.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="144.92" y="148.0" width="394.6" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="210.22" y="296.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="266.22" y="296.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="322.22" y="296.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="378.22" y="296.0" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<rect x="52.44" y="28.18" width="48.0" height="48.0" fill="none" stroke="#FF2D55" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"/>
+<line x1="318.22" y1="202.0" x2="318.22" y2="208.0" stroke="#FFB020" stroke-width=".6"/>
+</g>
+<g transform="translate(652.0,48)">
+<text x="0" y="0" font-size="7.6" fill="#FFF" font-weight="600">Seeker (expanded video)</text>
+<text x="0" y="11" font-size="7.6" fill="#F2F3F8" font-weight="400">duration 0:30 · N = 10 frames  [OBSERVED formula VIEW:V16]</text>
+<text x="0" y="22" font-size="7.6" fill="#F2F3F8" font-weight="400">frame tile 44.0×56.0 dp, contiguous, span 440.0 dp  [PROPOSED]</text>
+<text x="0" y="33" font-size="7.6" fill="#F2F3F8" font-weight="400">frame times t_i = i·(d−100 ms)/N  [OBSERVED VIEW:V16]</text>
+<text x="0" y="44" font-size="7.6" fill="#F2F3F8" font-weight="400">playhead x = 318.22 dp (safe centre), time 0:12  [PROPOSED]</text>
+<text x="0" y="55" font-size="7.6" fill="#F2F3F8" font-weight="400">resolution 24.24 ms per px of drag  [COMPUTED]</text>
+<text x="0" y="66" font-size="7.6" fill="#F2F3F8" font-weight="400"></text>
+<text x="0" y="77" font-size="7.6" fill="#FFF" font-weight="600">Marks (Quiet Frame v3)</text>
+<text x="0" y="88" font-size="7.6" fill="#F2F3F8" font-weight="400">2 dp white ring + 1 dp black keyline round the whole video</text>
+<text x="0" y="99" font-size="7.6" fill="#F2F3F8" font-weight="400">8 dp #8C9BFF sphere fixed at the playhead, 4 dp above tiles</text>
+<text x="0" y="110" font-size="7.6" fill="#F2F3F8" font-weight="400">no label, no centre line, no extra chrome (removal list)</text>
+<text x="0" y="121" font-size="7.6" fill="#F2F3F8" font-weight="400"></text>
+<text x="0" y="132" font-size="7.6" fill="#FFF" font-weight="600">Touch (48 dp rule)</text>
+<text x="0" y="143" font-size="7.6" fill="#F2F3F8" font-weight="400">one drag target = whole band 547.56×76.0 dp</text>
+<text x="0" y="154" font-size="7.6" fill="#F2F3F8" font-weight="400">≥48: True · inside safeDrawing: True</text>
+<text x="0" y="165" font-size="7.6" fill="#F2F3F8" font-weight="400">over cutout: False · collisions: none</text>
+<text x="0" y="176" font-size="7.6" fill="#F2F3F8" font-weight="400">video row → band 12.0 dp · band → slab 8.0 dp</text>
+<text x="0" y="187" font-size="7.6" fill="#F2F3F8" font-weight="400">gesture exclusion = band (76.0 dp tall ≤ 200 cap)</text>
+<text x="0" y="198" font-size="7.6" fill="#F2F3F8" font-weight="400">neighbour items outside the span keep 48×76 tap cells</text>
+<text x="0" y="209" font-size="7.6" fill="#F2F3F8" font-weight="400"></text>
+<text x="0" y="220" font-size="7.6" fill="#FFF" font-weight="600">safeDrawing assumption (MEASURED, three-button nav)</text>
+<text x="0" y="231" font-size="7.6" fill="#F2F3F8" font-weight="400">L/T/R/B = 44.44 / 24.18 / 48 / 0 dp, rotation 1</text>
+<text x="0" y="242" font-size="7.6" fill="#FFB020" font-weight="400">gesture-nav insets: UNKNOWN (see #142 GESTURE_NAV.md)</text>
+<text x="0" y="253" font-size="7.6" fill="#F2F3F8" font-weight="400"></text>
+<text x="0" y="264" font-size="7.6" fill="#FFF" font-weight="600">State</text>
+<text x="0" y="275" font-size="7.6" fill="#F2F3F8" font-weight="400">180 ms hold on the centred video expanded it in place;</text>
+<text x="0" y="286" font-size="7.6" fill="#F2F3F8" font-weight="400">playhead starts at the current position; playback paused.</text>
+<text x="0" y="297" font-size="7.6" fill="#F2F3F8" font-weight="400">Neighbours slide outward; theme does not change the viewer.</text>
+<rect x="0" y="307" width="9" height="7" fill="#2EC4B6" opacity=".8"/><text x="13" y="314" font-size="7.2" fill="#9AA0B8">measured safeDrawing</text>
+<rect x="0" y="318" width="9" height="7" fill="#2D6CDF" opacity=".8"/><text x="13" y="325" font-size="7.2" fill="#9AA0B8">measured system bars</text>
+<rect x="0" y="329" width="9" height="7" fill="#FF3B30" opacity=".8"/><text x="13" y="336" font-size="7.2" fill="#9AA0B8">measured cutout</text>
+<rect x="0" y="340" width="9" height="7" fill="#FF2D55" opacity=".8"/><text x="13" y="347" font-size="7.2" fill="#9AA0B8">proposed semantic hit</text>
+<rect x="0" y="351" width="9" height="7" fill="#FFB020" opacity=".8"/><text x="13" y="358" font-size="7.2" fill="#9AA0B8">playhead / preview</text>
+</g></svg>

@@ -193,6 +193,11 @@ internal fun Modifier.galleryPinchLadder(
     newTracker: (touchSlopPx: Float) -> GalleryPinchTracker,
     /** Every sample of a started pinch: live zoom and focus, for a visual transition. */
     onZoom: ((zoom: Float, focus: Offset) -> Unit)? = null,
+    /**
+     * FLOW-1: every sample of a started pinch with the ladder progress (stops,
+     * negative toward larger tiles) and the focus, for the two-layer pinch.
+     */
+    onProgress: ((progress: Float, focus: Offset) -> Unit)? = null,
     /** A started pinch ended without changing stop (also after a cancel). */
     onCancelled: ((zoom: Float) -> Unit)? = null,
     onSettled: (destination: GalleryZoomStop, focus: Offset) -> Unit
@@ -210,6 +215,7 @@ internal fun Modifier.galleryPinchLadder(
                 sample.centroidX, sample.centroidY)
             if (consume) event.changes.forEach { it.consume() }
             if (consume && onZoom != null) onZoom(tracker.zoom, Offset(tracker.focusX, tracker.focusY))
+            if (consume && onProgress != null) onProgress(tracker.progress, Offset(tracker.focusX, tracker.focusY))
         } while (event.changes.any { it.pressed })
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             if (tracker.started) onCancelled?.invoke(tracker.zoom)

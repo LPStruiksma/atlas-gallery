@@ -7,7 +7,7 @@
 | [brand-l4-navigation.png](brand-l4-navigation.png) | L4 slab and held sphere | 20 |
 | [brand-l4-f1-viewer-48dp.png](brand-l4-f1-viewer-48dp.png) | F1 viewer at full 1080 × 2340 with the 48 dp target bounds dashed (BRAND-L4-E3, [#889](https://github.com/LPStruiksma/atlas-gallery/issues/889)) | 1 |
 | [brand-l4-fast-scroll.gif](brand-l4-fast-scroll.gif) | L4 synthetic fast-scroll recording (11 frames, 1.4 s) | 11 |
-| [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 13 |
+| [brand-l5-collections.png](brand-l5-collections.png) | L5 Collections rows | 17 |
 | [brand-l6-atlas.png](brand-l6-atlas.png) | L6 atlas overlay; normative 2 × 6 month targets, 200 % labels and C4 error recovery (#817) | 21 |
 | [brand-l7-search.png](brand-l7-search.png) | L7 search under the thumb | 18 |
 | [brand-l8-justified.png](brand-l8-justified.png) | L8 six-stop day and overview densities; pinch storyboard, month/year signature and precision selection, repaired in [#836](https://github.com/LPStruiksma/atlas-gallery/issues/836) and corrected in [#855](https://github.com/LPStruiksma/atlas-gallery/issues/855) and [#864](https://github.com/LPStruiksma/atlas-gallery/issues/864) | 67 |
@@ -33,7 +33,7 @@ The annotation layer is magenta `#E0007A`, outside the palette: dashed box = eff
 2. **L4 F1 filmstrip hit regions (fixed in [#889](https://github.com/LPStruiksma/atlas-gallery/issues/889)):** seven 40 dp tiles now sit 8 dp apart (48 dp pitch), so the seven 48 dp effective targets touch but no longer overlap by 4 dp. See [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 2b. **L4 slab at 200 % font (resolved in [#816](https://github.com/LPStruiksma/atlas-gallery/issues/816)):** Pictures, Collections and the search sphere stay in ONE centred slab (about 360 of 384 dp wide), with three separate targets of at least 48 dp. The detached-sphere proposal is removed. Evidence and checks: [L4-GEOMETRY-AUDIT.md](L4-GEOMETRY-AUDIT.md).
 3. **L7 auto-focus and the Whole library handoff (corrected in [#824](https://github.com/LPStruiksma/atlas-gallery/issues/824)):** the bar opens with the keyboard (Quiet Frame v3), which differs from FIND-5's non-focused *opening*. Focus-on-open does not change the *scope handoff*: choosing Whole library closes the scoped bar, releases focus and the keyboard, clears the local query and opens the existing Search tab with a blank query, exactly as `MainActivity` does on main. The sheet no longer shows a query-retaining, in-place library mode. The two-step Back and the This screen / Whole library chips are kept. Panel B5 is now the arrival frame; B6, B13 and B14 show `This screen`; the "Search state transitions" table lists query ownership, scope, focus, Back and what is kept or discarded for person, album and Declutter. Whether person and album routes warn about an active selection is left to the L7 implementation (#660): keep it or confirm, never discard silently. Synthetic evidence only; the S24+ runtime checks stay a separate pre-merge obligation.
-4. **L5 two-tap reach:** recent people and albums get their own rows; any of 500 people is Collections, then search (2 taps plus typing) or 3 taps via People and pets.
+4. **L5 named routes ([#819](https://github.com/LPStruiksma/atlas-gallery/issues/819)):** only recent named people, albums and places are two-tap direct rows (C1-C7). An off-screen person among 500 is Collections, scoped search, result: 3 taps plus typing (D2, a proposal); via People and pets it is 3 taps if visible. No global-search shortcut is claimed.
 
 ## L6 synthetic pull-motion proof (#817)
 
@@ -53,6 +53,32 @@ python3 -m unittest discover -s tools/design/tests   # layout invariants; uses a
 ```
 
 Once BRAND-L2 lands, the generator finds the fonts in `app/src/main/res/font/` without `--font-dir`. Two renders with the same fonts and Pillow version produce byte-identical PNGs. Details: [tools/design/README.md](../../../../tools/design/README.md).
+
+## COLLECT-1 utility collections (#776)
+
+[COLLECT-1 #776](https://github.com/LPStruiksma/atlas-gallery/issues/776) extends the [#576 rev-2 design brief](https://github.com/LPStruiksma/atlas-gallery/issues/576#issuecomment-7055670165) without changing app code. The text-only change supplies the deterministic generator for `collect-1-utilities.png`; the Dev driver must render the omitted binary with Funnel fonts, record its SHA-256 and exact dimensions in the manifest, and commit it before this becomes review evidence.
+
+The board preserves the merged L5 row and L7 search contracts and covers, in order:
+
+* **A — Collections media-type rows:** between Favourites and later system rows, the fixed order is Videos, Screenshots, Recently added, Selfies, Panoramas, Slow motion, Large files. Videos/Screenshots are their existing L5 destinations, never duplicated. Only confirmed non-empty categories render; an all-empty grouping disappears. Real-ratio strips contain only available synthetic items, including genuine 1–3-item short strips. Light 100% and dark 200% panels illustrate different scroll positions. Panel A4 renders the all-empty case (Media types section and heading absent); A5 renders 2- and 1-item strips with no filler.
+* **B — category destination:** Screenshots opens its normal square grid; sort and a typed query remain scoped to that category.
+* **C — search:** the search sphere expands immediately above the slab with **This screen** selected and **Whole library** available. The assumed 324 dp IME opens; first Back hides it and keeps the query, second Back closes search.
+* **D — pending, error and empty:** the held sphere accompanies plain progress; error offers one 48 dp retry; no text matches prompts a clear-search action, while confirmed-zero categories are omitted from Collections.
+* **E — stress and accessibility:** long labels at 200%, a schematic 250,128-item lazy grid (layout intent, not measured performance), assumed system insets, merged row semantics, visual-order TalkBack traversal and 48 dp targets.
+
+Two hero frames are annotated native **1080 × 2340 px** S24+ frames: light at 100% and dark at 200%. Every A–E panel is built from the same full-size frame before the board scales it to 50%. The 29 dp status inset, 16 dp gesture inset and 324 dp keyboard are explicitly **assumptions**, not device measurements. All pictures are generated gradients and shapes; no image file, MediaStore item, network resource or private board is read.
+
+The dated decision table compares Apple Photos Media Types, Apple Photos Utilities, Google Photos Recently Added, and Android Material 3 SearchBar as **observed convention → Atlas proposal/deviation**. It does not credit or infer behaviour from private design material.
+
+### Regenerate and validate COLLECT-1
+
+```bash
+python3 tools/design/collect_1_utilities.py --font-dir <dir with funnel_display.ttf and funnel_sans.ttf>
+python3 tools/design/collect_1_utilities.py --check
+python3 -m unittest tools.design.tests.test_collect_1_utilities
+```
+
+`--check` renders without writing the PNG and validates the 1080 × 2340 device frames, fixed A–E panel/category order, board bounds and the generator's no-private-asset rule. The fallback font is allowed only for this programmatic check; the review PNG must use Funnel Display and Funnel Sans. The generator uses Quiet Frame v3 tokens and shares the existing Lapis drawing kit, so L5/L7 behaviour stays unchanged.
 
 ## L8 six stops, pinch anchor and precision selection (#836, #855, #864)
 

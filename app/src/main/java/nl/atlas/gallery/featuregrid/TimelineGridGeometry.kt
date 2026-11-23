@@ -33,6 +33,12 @@ class TimelineGridGeometry(
         return slotIndex - rows[slotToRow[slotIndex]].firstSlotIndex
     }
 
+    /** The visual row holding [slotIndex] (a header row or a photo row). */
+    fun rowForSlot(slotIndex: Int): TimelineVisualRow = rows[slotToRow[slotIndex]]
+
+    /** The photo row holding [mediaIndex]'s tile. */
+    fun rowOfMedia(mediaIndex: Int): TimelineVisualRow = rowForSlot(timeline.entryForMedia(mediaIndex))
+
     /** Target the actual media slot's row, even if preceding headers change row counts. */
     fun targetMedia(mediaIndex: Int, fractionInsidePhotoY: Float, focusYPx: Float): TimelineScrollTarget {
         require(fractionInsidePhotoY.isFinite() && focusYPx.isFinite())

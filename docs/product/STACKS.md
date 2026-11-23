@@ -45,7 +45,7 @@ Each stack sits where its first member was in the caller's order; the other memb
 3. Then the sharpest frame (compared in 0.01 steps), then the best face quality, then the largest file, then the smallest id, so the result is deterministic.
 4. A missing sharpness or face-quality observation ranks below any measured value; it never wins by default.
 
-This is the same idea as best-shot covers ([#163](https://github.com/LPStruiksma/atlas-gallery/issues/163)). Sharpness is an optional input: ATLAS has a per-face Laplacian in `FaceQuality`, but no whole-frame sharpness yet; until a unit adds one, covers fall through to face quality and file size.
+This is the same idea as best-shot covers ([#163](https://github.com/LPStruiksma/atlas-gallery/issues/163)). Sharpness is an optional input: ATLAS has a per-face Laplacian in `FaceQuality`. QUALITY-0 adds an isolated, nullable whole-frame observation, but it is not wired into this rule; covers still fall through to face quality and file size. Any future QUALITY-1 integration must preserve edit/RAW preference, abstain on missing or hard-negative evidence, and never use sharpness alone to classify a distinct image as disposable.
 
 ## Aggregate estimate for the owner's library
 
