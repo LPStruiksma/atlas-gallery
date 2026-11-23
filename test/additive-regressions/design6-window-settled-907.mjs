@@ -42,6 +42,11 @@ test('Design6 media arrival compares normalized host edges within 1 dp', () => {
   assert.ok(source.includes('normalizedHostBoundsDp'));
   assert.ok(source.includes('normalizedBefore'));
   assert.ok(source.includes('normalizedAfter'));
+  assert.ok(source.includes('platformTopDp'));
+  assert.ok(source.includes('platformBottomDp'));
+  assert.ok(source.includes('composeTopDp'));
+  assert.ok(source.includes('composeBottomDp'));
+  assert.ok(source.includes('raw=${beforeEvidence.rawHostBoundsDp}'));
   assert.ok(source.includes('kotlin.math.abs((normalizedAfter.top - normalizedBefore.top)'));
   assert.ok(source.includes('kotlin.math.abs((normalizedAfter.bottom - normalizedBefore.bottom)'));
 });
