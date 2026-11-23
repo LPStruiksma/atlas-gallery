@@ -1,0 +1,1053 @@
+{
+ "source": "generate.py (VIDEO-V2P #979)",
+ "observed": {
+  "hold_ms": 180,
+  "frame_count": "max(3, 7*log10(d_s)) [rounding not observed; floor proposed]",
+  "frame_offsets": "i*(d-100)/n",
+  "playing_lead_ms": 200,
+  "double_tap_ms": 10000,
+  "source": "private parity research VIEW:V15-V18 (static analysis of Samsung Gallery 15.9.00.45; not runtime)"
+ },
+ "proposed": {
+  "frame_tile_dp": [
+   44.0,
+   56.0
+  ],
+  "frame_gap_dp": 0.0,
+  "min_duration_ms": 300,
+  "sharp_preview_ms": 60,
+  "settle_ms": 180,
+  "tick_min_gap_ms": 16
+ },
+ "boards": [
+  {
+   "file": "svg/portrait-3button--light--held.svg",
+   "viewport": "portrait-3button",
+   "theme": "light",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/portrait-3button--light--dragging.svg",
+   "viewport": "portrait-3button",
+   "theme": "light",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/portrait-3button--dark--held.svg",
+   "viewport": "portrait-3button",
+   "theme": "dark",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/portrait-3button--dark--dragging.svg",
+   "viewport": "portrait-3button",
+   "theme": "dark",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/portrait-3button--dark--unavailable.svg",
+   "viewport": "portrait-3button",
+   "theme": "dark",
+   "state": "unavailable",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/portrait-3button--dark--long-font200.svg",
+   "viewport": "portrait-3button",
+   "theme": "dark",
+   "state": "long-font200",
+   "seeker": {
+    "frame_count": 25,
+    "span_dp": 1100.0,
+    "ms_per_px": 1624.24,
+    "playhead_x": 192.0,
+    "drag_hit": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 188.0,
+     "top": 636.0,
+     "right": 196.0,
+     "bottom": 644.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 0.0,
+     "top": 632.0,
+     "right": 384.0,
+     "bottom": 708.0,
+     "width": 384.0,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     384.0,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--light--held.svg",
+   "viewport": "landscape-3button",
+   "theme": "light",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--light--dragging.svg",
+   "viewport": "landscape-3button",
+   "theme": "light",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--dark--held.svg",
+   "viewport": "landscape-3button",
+   "theme": "dark",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--dark--dragging.svg",
+   "viewport": "landscape-3button",
+   "theme": "dark",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--dark--unavailable.svg",
+   "viewport": "landscape-3button",
+   "theme": "dark",
+   "state": "unavailable",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-3button--dark--long-font200.svg",
+   "viewport": "landscape-3button",
+   "theme": "dark",
+   "state": "long-font200",
+   "seeker": {
+    "frame_count": 25,
+    "span_dp": 1100.0,
+    "ms_per_px": 1624.24,
+    "playhead_x": 414.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 410.22,
+     "top": 236.0,
+     "right": 418.22,
+     "bottom": 244.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 232.0,
+     "right": 784.0,
+     "bottom": 308.0,
+     "width": 739.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     739.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--light--held.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "light",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--light--dragging.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "light",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--dark--held.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "dark",
+   "state": "held",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--dark--dragging.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "dark",
+   "state": "dragging",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--dark--unavailable.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "dark",
+   "state": "unavailable",
+   "seeker": {
+    "frame_count": 10,
+    "span_dp": 440.0,
+    "ms_per_px": 24.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  },
+  {
+   "file": "svg/landscape-narrow-computed--dark--long-font200.svg",
+   "viewport": "landscape-narrow-computed",
+   "theme": "dark",
+   "state": "long-font200",
+   "seeker": {
+    "frame_count": 25,
+    "span_dp": 1100.0,
+    "ms_per_px": 1624.24,
+    "playhead_x": 318.22,
+    "drag_hit": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    },
+    "sphere": {
+     "left": 314.22,
+     "top": 212.0,
+     "right": 322.22,
+     "bottom": 220.0,
+     "width": 8.0,
+     "height": 8.0
+    },
+    "exclusion_rect": {
+     "left": 44.44,
+     "top": 208.0,
+     "right": 592.0,
+     "bottom": 284.0,
+     "width": 547.56,
+     "height": 76.0
+    }
+   },
+   "checks": {
+    "drag_hit_dp": [
+     547.56,
+     76.0
+    ],
+    "drag_hit_at_least_48": true,
+    "drag_hit_inside_safeDrawing": true,
+    "drag_hit_over_cutout": false,
+    "collisions_with_other_hits": [],
+    "gap_video_row_to_band_dp": 12.0,
+    "gap_band_to_slab_dp": 8.0,
+    "exclusion_height_dp": 76.0,
+    "exclusion_within_200dp_cap": true,
+    "playhead_inside_safe": true,
+    "visible_neighbour_cells_min_dp": 48.0
+   }
+  }
+ ],
+ "quantization": [
+  {
+   "duration": "300 ms",
+   "duration_ms": 300,
+   "N": 3,
+   "span_dp": 132.0,
+   "span_px": 371.25,
+   "ms_per_px": 0.81,
+   "ms_per_dp": 2.27,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "decoder frames",
+   "tile_interval_ms": 66.67
+  },
+  {
+   "duration": "0:01",
+   "duration_ms": 1000,
+   "N": 3,
+   "span_dp": 132.0,
+   "span_px": 371.25,
+   "ms_per_px": 2.69,
+   "ms_per_dp": 7.58,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "decoder frames",
+   "tile_interval_ms": 300.0
+  },
+  {
+   "duration": "0:04",
+   "duration_ms": 4000,
+   "N": 4,
+   "span_dp": 176.0,
+   "span_px": 495.0,
+   "ms_per_px": 8.08,
+   "ms_per_dp": 22.73,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "decoder frames",
+   "tile_interval_ms": 975.0
+  },
+  {
+   "duration": "0:30",
+   "duration_ms": 30000,
+   "N": 10,
+   "span_dp": 440.0,
+   "span_px": 1237.5,
+   "ms_per_px": 24.24,
+   "ms_per_dp": 68.18,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "both",
+   "tile_interval_ms": 2990.0
+  },
+  {
+   "duration": "2:00",
+   "duration_ms": 120000,
+   "N": 14,
+   "span_dp": 616.0,
+   "span_px": 1732.5,
+   "ms_per_px": 69.26,
+   "ms_per_dp": 194.81,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "strip pixels",
+   "tile_interval_ms": 8564.29
+  },
+  {
+   "duration": "10:00",
+   "duration_ms": 600000,
+   "N": 19,
+   "span_dp": 836.0,
+   "span_px": 2351.25,
+   "ms_per_px": 255.18,
+   "ms_per_dp": 717.7,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "strip pixels",
+   "tile_interval_ms": 31573.68
+  },
+  {
+   "duration": "1:23:45",
+   "duration_ms": 5025000,
+   "N": 25,
+   "span_dp": 1100.0,
+   "span_px": 3093.75,
+   "ms_per_px": 1624.24,
+   "ms_per_dp": 4568.18,
+   "frame_interval_30fps_ms": 33.33,
+   "frame_interval_60fps_ms": 16.67,
+   "drag_limited_by": "strip pixels",
+   "tile_interval_ms": 200996.0
+  }
+ ]
+}
