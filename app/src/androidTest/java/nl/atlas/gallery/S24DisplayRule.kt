@@ -8,12 +8,13 @@ import org.junit.runners.model.Statement
 /**
  * Renders at the owner's Galaxy S24+ size (1080×2340, density 450) for the
  * test, then restores the emulator's own display. Shared by evidence tests.
+ * [landscape] turns the phone sideways (2340×1080).
  */
-internal class S24DisplayRule : TestRule {
+internal class S24DisplayRule(private val landscape: Boolean = false) : TestRule {
     override fun apply(base: Statement, description: Description): Statement =
         object : Statement() {
             override fun evaluate() {
-                shell("wm size 1080x2340")
+                shell("wm size ${if (landscape) "2340x1080" else "1080x2340"}")
                 shell("wm density 450")
                 try {
                     base.evaluate()
