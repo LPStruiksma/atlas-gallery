@@ -304,7 +304,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
           "$stress_out" | cut -c1-600 | head -60 || true
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
-      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
+      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PERF602:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
         ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
       echo "::endgroup::"
     done
@@ -331,6 +331,10 @@ echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
 # Keep the bounded query even on a failed test so review can read the p50.
 timeout 30 adb logcat -d -s ATLAS_PERF10:I || echo "ATLAS_PERF10 logcat unavailable (device gone or timed out)"
+echo "::endgroup::"
+echo "::group::ATLAS_PERF602 cold-start checkpoint vs full rescan, 2,000 synthetic images (#602)"
+# ColdStartCheckpointBenchmarkTest: synthetic-only timings; printed even on failure.
+timeout 30 adb logcat -d -s ATLAS_PERF602:I || echo "ATLAS_PERF602 logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
 echo "::group::ATLAS_EDIT2 editor renderer agreement and EMULATOR timings (#632)"
 # EditorRendererGpuTest/EditorRendererBudgetTest: diff maxima and BUDGETS.md records
