@@ -125,6 +125,24 @@ One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a t
 
 Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
 
+## Reading a red shard
+
+Each shard runs three things in order, and each leaves its own lines in the job log.
+
+1. **Keyboard health check**, before any test. `KeyboardHealthTest` focuses a field with the emulator's own keyboard (no `KeyboardRule`), waits for it to open (`awaitKeyboardShown`) and closes it. On a pass the log says `PASS: keyboard health check: …` with the keyboard height. On a fail the shard stops before the suite with one line, `::error::IME unavailable on this emulator: <reason> | <describeDevice()>`, instead of every typing test going red on its own. No suite test ran, but the check is itself a test, so it is an ordinary red and never earns the one re-run kept for infrastructure failures before any test runs (ATLAS Strategy ruling on #548, 2026-11-21): repair the head or route to Strategy.
+2. **The suite**, with `AtlasRunListener` registered by the script (runner argument `listener=nl.atlas.gallery.testkit.AtlasRunListener`, no Gradle change). At the start of the run it records the baseline: keyboard hidden, display size and density, animator scale, night mode and the app on top. Before each test it compares the device with it. Anything still different after 1.5 s is one line and is put back (a keyboard counts when `dumpsys input_method` says `mInputShown=true`; the app on top and a system dialog come from the `mCurrentFocus` line of `dumpsys window displays`). That check reads no accessibility windows: in the #870 A/B an earlier version that turned on UiAutomation's interactive windows and read the window list before every test came with teardown failures the same tests never showed without it. Interactive windows are switched on only to answer a dialog the check found, and back off after. The run's last `ATLAS_BASELINE checked <n> test(s) in <ms> ms` line gives the cost per test:
+
+   ```
+   ATLAS_BASELINE drift keyboard shown, top app nl.atlas.gallery (baseline com.google.android.apps.nexuslauncher) left by nl.atlas.gallery.SomeTest#someMethod
+   ```
+
+   A system "isn't responding" dialog (Quickstep on the CI emulator) is answered with Wait first and logged as `drift system 'isn't responding' dialog`. Then the keyboard goes (Back), then Back for a non-ATLAS app on top, then animator scale, night mode and display size and density are restored. `restore incomplete: …` names what could not be put back (a rotation, for one). At the end, `summary <class> left drift <n> time(s)` lists the classes that broke rule 7. Fix the test named after `left by`, not the one that failed next.
+3. **Failure state.** Every failing test gets one `ATLAS_DIAG <Class#method> <describeDevice()>` line: keyboard, display, animator scale, night mode, focused window and top activity at the moment of failure, without a diagnostic branch.
+
+After the suite the script prints the `ATLAS_BASELINE` and `ATLAS_DIAG` lines in one group, next to `ATLAS_PERF10`. So for a red shard: read the failing test's own message, then its `ATLAS_DIAG` line, then any drift line just before it.
+
+`AtlasRunListenerSelfTest` proves the listener on a device. It is skipped unless the runner argument `atlas_listener_selftest=true` is set, which only the opt-in stress run passes: list `1 nl.atlas.gallery.testkit.AtlasRunListenerSelfTest` in `scripts/ci-opt-in/stress-classes` on a throwaway branch. Its first test ends with the keyboard up and a `wm size` override, its second must start with the keyboard hidden and the display back at the baseline after one drift line naming the first, and its third fails on purpose to print an `ATLAS_DIAG` line (so that stress run is red by design). A keyboard left up by a test's own Activity is usually gone before the next test anyway: the runner's ActivityFinisher closes every Activity after each test. A keyboard drift line therefore points at a window outside the test, such as a system dialog or a crashed or leftover app.
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.
