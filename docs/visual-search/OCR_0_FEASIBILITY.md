@@ -100,3 +100,31 @@ For [#175](https://github.com/LPStruiksma/atlas-gallery/issues/175), expose OCR 
 5. **OCR-3 / OCR-4 (separate design-gated units):** Search facet integration, then viewer select/copy with word-box overlays and accessibility review.
 
 Handwriting remains a stretch result and cannot rescue poor printed-text performance. Each follow-up may terminate independently without admitting app code in this feasibility unit.
+
+## OCR-0B execution result (2026-11-21): REJECT / NOT MEASURED
+
+The exact-head OCR-0B attempt could not acquire its benchmark-only Python dependencies: the pip
+proxy returned `Tunnel connection failed: 403 Forbidden`, followed by `Could not find a version
+that satisfies the requirement onnx==1.20.1 (from versions: none)`. Consequently all four separate
+PP-OCR/docTR detector/recognizer int8 artifacts (hashes, bytes, graph loading and inference
+validation), cold/warm decode/detector/recognizer/total CPU median/p95 and RSS are **NOT MEASURED**.
+Scorer runtime was not substituted for inference timing. The live-main agent instructions were also
+unavailable from this host (`curl: (22) The requested URL returned error: 403`); the repo-local plan
+was followed and the failure is preserved in the OCR-0B run manifest.
+
+The dependency failure also prevented regenerating OCR-0A pixels, so the development-only Sobel
+threshold and independent locked-test EN/NL recall, false skips, no-text pass/skip, bytes and latency
+are **NOT MEASURED**. The checked-in experiment selects the largest 64x64 grayscale Sobel threshold
+meeting 99% recall using development positives only and emits the required test slices when the
+pinned environment is available. It never equates an empty OCR prediction with a prefilter skip.
+
+A charging-only 150,000-photo range is **NOT MEASURED** because measured stage costs, admission
+fraction and RSS do not exist. When available, the script calculates 0.5x/1x/2x host-to-S24+ stage
+scaling and a separate 25% I/O/thermal allowance; these are explicit assumptions, not phone,
+energy or no-throttling measurements. Peak RAM is measured runtime RSS delta plus a decoded-image
+buffer bound.
+
+**Verdict: REJECT for compute feasibility in this environment, conditional on rerunning the exact
+commands where pinned dependencies, models and generated corpus are available.** Packaging remains
+an unconditional **NO-GO**: every detector, recognizer and dictionary right is **NOT CLEARED**. No
+weights, dictionaries, binaries, generated pixels, owner photos, app or Gradle changes are included.

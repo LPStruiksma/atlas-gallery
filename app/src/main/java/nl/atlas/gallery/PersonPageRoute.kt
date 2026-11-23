@@ -36,6 +36,7 @@ import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
 import nl.atlas.gallery.featurepeopleui.SamePersonQuestion
 import nl.atlas.gallery.featurepeopleui.mergeAction
 import nl.atlas.gallery.featurepeopleui.mergeCandidates
+import nl.atlas.gallery.featurepeopleui.needsSplittingLists
 import nl.atlas.gallery.featurepeopleui.nameSuggestions
 import nl.atlas.gallery.featurepeopleui.peopleAlbumsForGrant
 import nl.atlas.gallery.featurepeopleui.personNaming
@@ -528,30 +529,47 @@ internal fun HiddenPeopleRoute(
     people: PeopleHomeSummary?,
     onBack: () -> Unit,
     onOpen: (NativePersonAlbumRequest) -> Unit,
-    onSearchWholeLibrary: (() -> Unit)? = null
+    onSearchWholeLibrary: (() -> Unit)? = null,
+    onOpenNeedsSplitting: (() -> Unit)? = null
 ) {
     val version by host.changes.collectAsState()
     val state = rememberReviewState(host, version, people)
-    val hidden = remember(state) {
-        state?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
+    val authorized = state?.takeIf { host.scopeCurrent(it.permissionEpoch) }
+    val hidden = remember(authorized) {
+        authorized?.let { peopleAlbumsForGrant(it, it.permissionEpoch, it.sourceGeneration,
             hiddenOnly = true) }.orEmpty()
     }
-    val hiddenCovers by produceState<Map<PersonKey, String>>(emptyMap(), version, state) {
-        // Reset on a scope change; never reuse a portrait chosen under an old grant.
+    // This count stays in the authorized Hidden view; it is never put in People.
+    val hiddenSplitCount = remember(authorized) { needsSplittingLists(authorized).hidden.size }
+    val hiddenCovers by produceState<Map<PersonKey, String>>(emptyMap(), version, authorized) {
+        // Reset on a scope change; never reuse a portrait from an old grant.
         value = emptyMap()
         value = withContext(Dispatchers.IO) {
-            host.currentHiddenPersonCovers(state?.permissionEpoch)
+            host.currentHiddenPersonCovers(authorized?.permissionEpoch)
         }
     }
     HiddenPeopleScreen(
         people = hidden,
         portrait = { album ->
-            PersonFaceImage(host, state?.permissionEpoch,
+            PersonFaceImage(host, authorized?.permissionEpoch,
                 hiddenPortraitFace(album.observations, hiddenCovers[album.person]))
         },
         onBack = onBack,
         onSearchWholeLibrary = onSearchWholeLibrary,
-        onOpen = { onOpen(NativePersonAlbumRequest(it.person, it.name)) }
+        needsSplittingCount = hiddenSplitCount,
+        onOpenNeedsSplitting = onOpenNeedsSplitting?.takeIf { authorized != null }?.let { open ->
+            {
+                val live = authorized?.permissionEpoch?.let(host::liveReview)
+                if (live != null && host.scopeCurrent(live.permissionEpoch)) open()
+            }
+        },
+        onOpen = { person ->
+            val live = authorized?.permissionEpoch?.let(host::liveReview)
+            if (live != null && host.scopeCurrent(live.permissionEpoch) &&
+                person.person in live.hidden) {
+                onOpen(NativePersonAlbumRequest(person.person, person.name))
+            }
+        }
     )
 }
 

@@ -236,7 +236,7 @@ class LocalFaceSwapEngine(private val context: Context, private val config: Loca
 
                 // 4. Mask with its guard, scaled by the planned blend strength.
                 val decision = FaceBlendMask.decide(spec.template, spec.cropSize,
-                    segmenter?.faceSkin(targetCrop, spec.cropSize))
+                    runCatching { segmenter?.faceSkin(targetCrop, spec.cropSize) }.getOrNull())
                 val strength = request.variation.blendStrength.toFloat()
                 val alpha = FloatArray(decision.alpha.size) { decision.alpha[it] * strength }
 
