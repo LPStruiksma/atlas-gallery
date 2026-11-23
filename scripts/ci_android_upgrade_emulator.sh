@@ -34,7 +34,6 @@ gradle() {
 # quarantine is an explicit, reviewable change rather than a broad class filter.
 quarantined_emulator_tests() {
   cat <<'EOF'
-nl.atlas.gallery.LapisColdStartSplashLightEvidenceTest#coldStartShowsStaticLapisSplash #967
 nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives #968
 EOF
 }
