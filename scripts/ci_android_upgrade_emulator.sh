@@ -404,9 +404,164 @@ strictmode_baseline_417() {
   adb shell run-as "$pkg" rm -f "$marker" || true
   adb shell am force-stop "$pkg"
 }
+
+# BRAND-L3 / U2 #986: the platform starting window exists outside the app process, so its
+# cold-start proof must also run outside instrumentation. In-process force-stop terminates the
+# target package that hosts the instrumentation. Keep this independent from test quarantine.
+lapis_cold_start_splash_986() {
+  local pkg=nl.atlas.gallery remote=/data/local/tmp/atlas-ui-evidence
+  local original density theme night launch frame start_out start_pid selected note
+  local launch_failed=0 splash_failed=0
+
+  adb install -r "$NEW" >/dev/null
+  adb shell mkdir -p "$remote"
+  original="$(adb shell cmd uimode night | tr -d '\r' | sed -n 's/^Night mode: //p')"
+  density="$(adb shell wm density | tr -d '\r' | sed -n 's/.*Physical density: *//p' | tail -1)"
+  [[ "$density" =~ ^[0-9]+$ ]] || { echo "::error::U2 splash could not read display density"; return 1; }
+
+  # Preserve #925's lifecycle boundary: start no task until Launcher owns a stable focus and no
+  # system ANR window is present. This keeps Quickstep transitions out of consecutive launches.
+  await_launcher_idle_925() {
+    local previous= focus= stable=0 deadline=$((SECONDS + 15))
+    adb shell input keyevent KEYCODE_HOME
+    while (( SECONDS < deadline )); do
+      # `dumpsys window windows` carries no focus lines on API 35; plain `dumpsys window` does
+      # (same source as SystemWindows.kt).
+      focus="$(adb shell dumpsys window | tr -d '\r' | sed 's/^[[:space:]]*//' |
+        grep -E '^(mCurrentFocus|mFocusedApp)=' | sort -u | head -2 || true)"
+      if grep -Eqi "isn't responding|Application Not Responding|Application Error" <<<"$focus"; then
+        echo "::error::U2 splash found a system ANR: $focus"; return 1
+      fi
+      if grep -Eq 'com[.]android[.](launcher3|quickstep)' <<<"$focus" && [[ "$focus" == "$previous" ]]; then
+        stable=$((stable + 1))
+        (( stable >= 2 )) && return 0
+      else
+        stable=0
+      fi
+      previous="$focus"
+      sleep 0.5
+    done
+    echo "::error::U2 splash Launcher did not become idle: $focus"
+    return 1
+  }
+
+  # Same evidence as the former Kotlin assertion: >=70% Lapis away from the centre, a white
+  # centre mark, and at least 40 sampled near-white pixels in the 48dp navigation band.
+  is_static_lapis_splash() {
+    python3 - "$1" "$density" <<'PY'
+import struct, sys, zlib
+path, density = sys.argv[1], int(sys.argv[2]) / 160
+raw = open(path, "rb").read()
+if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+    raise SystemExit(2)
+pos, header, data = 8, None, bytearray()
+while pos < len(raw):
+    size = struct.unpack(">I", raw[pos:pos + 4])[0]
+    kind, body = raw[pos + 4:pos + 8], raw[pos + 8:pos + 8 + size]
+    pos += 12 + size
+    if kind == b"IHDR": header = body
+    elif kind == b"IDAT": data.extend(body)
+    elif kind == b"IEND": break
+w, h, depth, colour, _, _, interlace = struct.unpack(">IIBBBBB", header)
+if depth != 8 or colour not in (2, 6) or interlace:
+    raise SystemExit(2)
+channels = 3 if colour == 2 else 4
+packed, stride = zlib.decompress(data), w * channels
+rows, offset, prior = [], 0, bytearray(stride)
+for _ in range(h):
+    mode, scan = packed[offset], bytearray(packed[offset + 1:offset + 1 + stride])
+    offset += stride + 1
+    for i in range(stride):
+        left = scan[i - channels] if i >= channels else 0
+        up = prior[i]
+        ul = prior[i - channels] if i >= channels else 0
+        if mode == 1: scan[i] = (scan[i] + left) & 255
+        elif mode == 2: scan[i] = (scan[i] + up) & 255
+        elif mode == 3: scan[i] = (scan[i] + ((left + up) >> 1)) & 255
+        elif mode == 4:
+            p = left + up - ul; pa, pb, pc = abs(p-left), abs(p-up), abs(p-ul)
+            scan[i] = (scan[i] + (left if pa <= pb and pa <= pc else up if pb <= pc else ul)) & 255
+        elif mode != 0: raise SystemExit(2)
+    rows.append(scan); prior = scan
+def rgb(x, y):
+    i = x * channels
+    return tuple(rows[y][i:i + 3])
+def near(a, b): return all(abs(x-y) <= 12 for x, y in zip(a, b))
+margin, lapis, samples = h // 8, 0, 0
+for y in range(margin, h - margin, 60):
+    for x in range(0, w, 60):
+        samples += 1; lapis += near(rgb(x, y), (38, 57, 201))
+cx, cy, radius, white = w // 2, h // 2, w // 6, 0
+for y in range(cy - radius, cy + radius, 6):
+    for x in range(cx - radius, cx + radius, 6):
+        white += near(rgb(x, y), (255, 255, 255))
+glyphs, band = 0, int(48 * density)
+for y in range(h - band, h, 2):
+    for x in range(0, w, 2): glyphs += min(rgb(x, y)) >= 190
+print(f"lapis={lapis}/{samples} white={white} nav_glyphs={glyphs}")
+# Blocking: the splash is present (Lapis field + white mark). Nav-bar glyph contrast is reported
+# separately and is non-blocking until #997 is fixed (decision on #995, 2026-11-22).
+raise SystemExit(0 if lapis * 10 >= samples * 7 and white > 20 else 1)
+PY
+  }
+
+  echo "::group::U2 static Lapis cold-start splash (external emulator shell)"
+  for theme in light dark; do
+    night=no; [[ "$theme" == dark ]] && night=yes
+    adb shell cmd uimode night "$night" >/dev/null
+    await_launcher_idle_925 || splash_failed=1
+    for launch in 1 2 3; do
+      adb shell am force-stop "$pkg"
+      start_out="/tmp/atlas-lapis-$theme-$launch-start.txt"
+      adb shell am start -W -n "$pkg/.MainActivity" >"$start_out" 2>&1 &
+      start_pid=$!
+      mkdir -p "/tmp/atlas-lapis-$theme-$launch"
+      # Capture immediately and concurrently with am start -W while the platform owns the window.
+      for frame in $(seq 1 16); do
+        adb exec-out screencap -p > "/tmp/atlas-lapis-$theme-$launch/$frame.png"
+      done
+      launch_failed=0
+      wait "$start_pid" || launch_failed=1
+      if [[ "$launch_failed" == 0 ]] && ! grep -Fq 'Status: ok' "$start_out"; then launch_failed=1; fi
+      selected=
+      frame_notes=
+      if [[ "$launch_failed" == 0 ]]; then
+        for frame in $(seq 1 16); do
+          frame="/tmp/atlas-lapis-$theme-$launch/$frame.png"
+          if note="$(is_static_lapis_splash "$frame")"; then selected="$frame"; break; fi
+          frame_notes+=" ${frame##*/}:[${note:-unreadable}]"
+        done
+      fi
+      if [[ -n "$selected" ]]; then
+        echo "PASS: U2 splash $theme launch $launch/3 ($note)"
+        nav_glyphs="${note##*nav_glyphs=}"
+        if [[ "$nav_glyphs" =~ ^[0-9]+$ ]] && (( nav_glyphs >= 40 )); then
+          echo "U2 NAV-CONTRAST $theme launch $launch/3: PASS (nav_glyphs=$nav_glyphs, non-blocking, #997)"
+        else
+          echo "::warning::U2 NAV-CONTRAST $theme launch $launch/3: FAIL (nav_glyphs=${nav_glyphs:-?} < 40 near-white pixels in the nav band; non-blocking, #997)"
+        fi
+        adb push "$selected" "$remote/IMG_20010101_000000_lapis656-splash-$theme.png" >/dev/null
+      else
+        echo "FAIL: U2 splash $theme launch $launch/3 (no qualifying frame; am-start status=$launch_failed)"
+        echo "U2 splash $theme launch $launch frames (capture order):$frame_notes"
+        cat "$start_out"
+        splash_failed=1
+      fi
+      adb shell am force-stop "$pkg"
+      await_launcher_idle_925 || splash_failed=1
+    done
+  done
+  if [[ "$original" == yes || "$original" == no || "$original" == auto ]]; then
+    adb shell cmd uimode night "$original" >/dev/null
+  fi
+  echo "::endgroup::"
+  return "$splash_failed"
+}
+
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
   strictmode_baseline_417
+  lapis_cold_start_splash_986
 fi
 if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
 # PERF-A1A #546: run only on shard 0, after the full connected suite.
