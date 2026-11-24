@@ -52,6 +52,9 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
 
     @Test fun photoTravelsFromMeasuredTileAndReturnsToSameCell() {
         val tileTag = firstTile()
+        val a3Before = actionSamples(3)
+        val a4Before = actionSamples(4)
+        val a7Before = actionSamples(7)
         compose.mainClock.autoAdvance = false
         try {
             compose.onNodeWithTag(tileTag, useUnmergedTree = true).performClick()
@@ -84,6 +87,9 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
             compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithTag(tileTag, useUnmergedTree = true).assertExists()
+        compose.waitUntil(10_000L) {
+            actionSamples(3) > a3Before && actionSamples(7) > a7Before
+        }
 
         // Reopen, move to a different settled photo, and Back. The original
         // thumbnail must not be reused for a different MediaStore URI.
@@ -98,6 +104,7 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         compose.waitUntil(10_000L) {
             compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
         }
+        compose.waitUntil(10_000L) { actionSamples(4) > a4Before }
         compose.waitForIdle()
         saveUiEvidence("shared-23-far-scrub-$mode.png")
     }
@@ -126,6 +133,14 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private fun counter() = compose.onNodeWithTag("atlas-photo-counter")
         .fetchSemanticsNode().config[SemanticsProperties.Text]
         .joinToString("") { it.text }
+
+    private fun actionSamples(action: Int): Int {
+        var count = -1
+        compose.runOnIdle {
+            count = PerformanceSession.aggregate.snapshot("action_a${action}_ms").count
+        }
+        return count
+    }
 }
 
 /**
