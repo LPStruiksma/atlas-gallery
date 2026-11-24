@@ -20,6 +20,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryNavigation
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.navigationSelection
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +33,12 @@ import org.junit.runner.RunWith
 class NavigationFontScaleEvidenceTest {
     private val compose = createComposeRule()
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+
+    @Test fun peopleRouteKeepsCollectionsSelectedWhilePrimaryRoutesRemainDirect() {
+        assertEquals(AtlasDestination.ALBUMS, navigationSelection(AtlasDestination.PEOPLE))
+        listOf(AtlasDestination.PHOTOS, AtlasDestination.ALBUMS, AtlasDestination.SEARCH)
+            .forEach { assertEquals(it, navigationSelection(it)) }
+    }
 
     @Test fun allFourLabelsRemainInsidePillAt100130And200PercentInBothThemesAndEverySelectedTab() {
         var fontScale by mutableFloatStateOf(1f)

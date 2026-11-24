@@ -4546,6 +4546,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 persistAlbumSort(AlbumSort.CUSTOM)
                             },
                             onOpenStories = { storiesOpen = true },
+                            onOpenPeople = { tab = 2 },
                             onOpenPhotoDna = { photoDnaOpen = true },
                             onOpenHideAlbums = { hideAlbumsOpen = true },
                             onSearchWholeLibrary = { tab = 3 },
