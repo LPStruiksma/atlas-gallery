@@ -29,6 +29,39 @@ gradle() {
     "$@"
 }
 
+# BRAND-L2 #655: test the real installed old/new APKs with identical
+# instrumentation and synthetic fixtures. Captures are genuine S24+ renders.
+capture_brand_l2() {
+  local revision="$1" mode="$2" scale="$3" capture class_name before_scale font_scale
+  [[ "$revision" == "before" || "$revision" == "after" ]] || return 2
+  [[ "$mode" == "light" || "$mode" == "dark" ]] || return 2
+  [[ "$scale" == "100" || "$scale" == "200" ]] || return 2
+  before_scale="$(adb shell settings get system font_scale | tr -d '\r')"
+  font_scale=1.0
+  [[ "$scale" == "200" ]] && font_scale=2.0
+  adb shell settings put system font_scale "$font_scale"
+  adb shell am force-stop nl.atlas.gallery || true
+  class_name="nl.atlas.gallery.SystemLightThemeJourneyTest"
+  [[ "$mode" == "dark" ]] && class_name="nl.atlas.gallery.SystemDarkThemeJourneyTest"
+  capture="/tmp/atlas-brand-l2-$revision-$mode-$scale.txt"
+  adb shell am instrument -w -r -e atlasBrandRevision "$revision" \
+    -e atlasBrandScale "$scale" \
+    -e class "$class_name#brandL2PairedEvidence" "$RUNNER" > "$capture" 2>&1 || true
+  cat "$capture"
+  if [[ "$before_scale" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    adb shell settings put system font_scale "$before_scale"
+  else
+    adb shell settings delete system font_scale
+  fi
+  adb shell am force-stop nl.atlas.gallery || true
+  if ! grep -Fq 'OK (1 test)' "$capture"; then
+    echo "::error::BRAND-L2 $revision $mode $scale controlled capture failed"
+    timeout 30 adb logcat -d -b crash -t 300 || true
+    return 1
+  fi
+  echo "PASS: BRAND-L2 $revision $mode $scale S24+ real synthetic capture"
+}
+
 # #143: the same synthetic test APK runs on the installed baseline and the
 # candidate at 1080x2340. Save a render for each system theme; the baseline
 # intentionally does not assert candidate-only grid geometry.
@@ -115,6 +148,9 @@ run_phase() {
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   capture_albums_grid "before" "light"
   capture_albums_grid "before" "dark"
+  for mode in light dark; do
+    for scale in 100 200; do capture_brand_l2 before "$mode" "$scale"; done
+  done
 fi
 run_phase seed seedBeforeUpgrade
 adb install -r "$NEW"
@@ -1113,6 +1149,9 @@ if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   adb install -r "$TEST"
   capture_albums_grid "after" "light"
   capture_albums_grid "after" "dark"
+  for mode in light dark; do
+    for scale in 100 200; do capture_brand_l2 after "$mode" "$scale"; done
+  done
 fi
 
 # UI evidence (#588, #586): discovery and checks live in scripts/ci_ui_evidence.sh;
