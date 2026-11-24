@@ -8,7 +8,7 @@ import org.junit.Test
 class PerformanceReportTest {
     @Test fun emptyAggregatesSayNoDataYetNeverZero() {
         val rows = PerformanceReport.overview(PerformanceAggregates())
-        assertEquals(listOf("Cold start to cached photos", "Viewer preview", "Grid frame time",
+        assertEquals(listOf("Cold start to cached photos", "Grid frame time",
             "Face scanning", "Visual indexing", "Java heap / maximum"), rows.map { it.label })
         rows.forEach {
             assertEquals(PerformanceReport.NO_DATA, it.value)
@@ -18,10 +18,12 @@ class PerformanceReportTest {
 
     @Test fun instrumentedActionsSayNoDataYetAndUnhookedSayNotMeasured() {
         val rows = PerformanceReport.actions(PerformanceAggregates())
-        assertEquals(22, rows.size)
-        rows.take(11).forEach { assertEquals(PerformanceReport.NO_DATA, it.value) }
-        rows.drop(11).forEach { assertEquals(PerformanceReport.NOT_MEASURED, it.value) }
-        assertEquals("atlas-perf-action_a1_ms", rows.first().tag)
+        assertEquals(22, PerformanceReport.actionLabels.size)
+        assertEquals(18, rows.size)
+        assertEquals((1..22).filterNot { it in setOf(1, 2, 5, 8) }.map { "atlas-perf-action_a${it}_ms" }, rows.map { it.tag })
+        rows.take(7).forEach { assertEquals(PerformanceReport.NO_DATA, it.value) }
+        rows.drop(7).forEach { assertEquals(PerformanceReport.NOT_MEASURED, it.value) }
+        assertEquals("atlas-perf-action_a3_ms", rows.first().tag)
         assertEquals("atlas-perf-action_a22_ms", rows.last().tag)
     }
 
@@ -37,7 +39,7 @@ class PerformanceReportTest {
     @Test fun populatedValuesShowUnitsPercentilesAndSampleCounts() {
         val p = PerformanceAggregates()
         listOf(412.0, 380.0, 690.0).forEach { p.record("cold_start_ms", it) }
-        p.record("viewer_ms", 8.25)
+        p.record("action_a3_ms", 8.25)
         listOf(9.0, 18.0, 30.0, 12.0).forEach { p.record("grid_frame_ms", it) }
         listOf(0.0, 1.0, 0.0, 0.0).forEach { p.record("grid_frame_over_budget", it) }
         p.record("face_photos_min", 45.4)
@@ -46,7 +48,7 @@ class PerformanceReportTest {
         assertEquals("p50 412 ms · p90 690 ms · p95 690 ms · 3 samples",
             rows.getValue("atlas-perf-cold_start_ms").value)
         assertEquals("p50 8.3 ms · p90 8.3 ms · p95 8.3 ms · 1 sample",
-            rows.getValue("atlas-perf-viewer_ms").value)
+            PerformanceReport.actions(p).first().value)
         assertEquals("p50 12 ms · p90 30 ms · p95 30 ms · 4 samples · 25.0% over frame budget",
             rows.getValue("atlas-perf-grid_frame_ms").value)
         assertEquals("p50 45 photos/min · p90 45 photos/min · p95 45 photos/min · 1 sample",
