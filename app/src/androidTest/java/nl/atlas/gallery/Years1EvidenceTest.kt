@@ -79,7 +79,7 @@ class Years1EvidenceTest {
         val colors = intArrayOf(0xFF3F51B5.toInt(), 0xFF00897B.toInt(), 0xFFEF6C00.toInt(),
             0xFF6A1B9A.toInt(), 0xFF2E7D32.toInt(), 0xFFC62828.toInt())
         uris = colors.mapIndexed { i, color ->
-            val bmp = Bitmap.createBitmap(900, 1200, Bitmap.Config.ARGB_8888)
+            val bmp = Bitmap.createBitmap(if (i == 2) 1200 else 900, if (i == 2) 900 else 1200, Bitmap.Config.ARGB_8888)
             Canvas(bmp).apply {
                 drawColor(color)
                 val p = Paint().apply { this.color = AColor.WHITE; textSize = 160f; isAntiAlias = true }
@@ -122,7 +122,8 @@ class Years1EvidenceTest {
 
     private fun records() = uris.mapIndexed { i, u ->
         MediaRecord(i + 1L, u, "IMG_YEARS1_FIXTURE_$i.png", "DCIM/Fictional/", 1_000L,
-            1_500_000_000L + i, false)
+            1_500_000_000L + i, false, widthPixels = if (i == 2) 1200 else 900,
+            heightPixels = if (i == 2) 900 else 1200)
     }
 
     @Composable
@@ -156,6 +157,12 @@ class Years1EvidenceTest {
         rule.setContent { PersonPage(dark, 1f) }
         rule.waitForIdle()
         rule.onNodeWithTag("atlas-person-years").assertExists()
+        val portrait = rule.onNodeWithTag("atlas-person-years-preview-0", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val landscape = rule.onNodeWithTag("atlas-person-years-preview-1", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Portrait preview retains its orientation", portrait.height > portrait.width)
+        assertTrue("Landscape preview retains its orientation", landscape.width > landscape.height)
         rule.awaitScreenStill("the person page thumbnails")
         saveUiEvidence("years1-person-page-row-dark.png")
         rule.runOnIdle { dark = false }

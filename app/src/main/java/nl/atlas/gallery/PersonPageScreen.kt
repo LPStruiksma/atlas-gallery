@@ -77,6 +77,7 @@ import nl.atlas.gallery.featuregrid.GalleryZoomStop
 import nl.atlas.gallery.featuregrid.GridDensity
 import nl.atlas.gallery.featuregrid.TimelineSort
 import nl.atlas.gallery.featurepeopleui.NativePersonAlbum
+import nl.atlas.gallery.featuremedia.displayAspectRatioOrNull
 import nl.atlas.gallery.featuresearch.AtlasSearch
 import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.AtlasSearchScope
@@ -205,7 +206,7 @@ internal fun PersonPageScreen(
                     onName = if (selecting) null else ({ onDialog(PersonPageDialog.EditName) }),
                     compact = compactSelectionHeader)
                 if (!selecting && onYears != null && ui.yearsPreview.isNotEmpty()) {
-                    YearsRow(ui.yearsPreview, onYears)
+                    YearsRow(ui.yearsPreview, ui.items.orEmpty(), onYears)
                 }
                 if (!selecting) samePerson?.invoke()
             }
@@ -317,7 +318,13 @@ private fun SelectionBar(count: Int, onClose: () -> Unit) {
  * photos (kept in their own proportions on a quiet ground) and the plain label.
  */
 @Composable
-private fun YearsRow(preview: List<String>, onOpen: () -> Unit) {
+private fun YearsRow(preview: List<String>, items: List<MediaRecord>, onOpen: () -> Unit) {
+    // At most three catalogue lookups; no decoding or new media queries for geometry.
+    val ratios = remember(preview, items) {
+        preview.take(3).map { uri ->
+            items.firstOrNull { it.uri == uri }?.displayAspectRatioOrNull() ?: 1f
+        }
+    }
     Row(
         Modifier.fillMaxWidth().heightIn(min = 64.dp)
             .clickable(role = Role.Button, onClick = onOpen)
@@ -328,12 +335,19 @@ private fun YearsRow(preview: List<String>, onOpen: () -> Unit) {
     ) {
         Text("Through the years", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-        preview.take(3).forEach { uri ->
+        preview.take(3).forEachIndexed { index, uri ->
+            val ratio = ratios[index]
+            // Bound both axes so three photos cannot crowd out the CTA.
+            // Fit also avoids cropping when provider dimensions are unavailable.
             AsyncImage(
                 model = android.net.Uri.parse(uri), contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(
+                    width = 48.dp * minOf(1f, ratio),
+                    height = 48.dp * minOf(1f, 1f / ratio)
+                ).clip(RoundedCornerShape(6.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .testTag("atlas-person-years-preview-$index")
             )
         }
     }
