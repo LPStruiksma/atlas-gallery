@@ -16,7 +16,8 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -67,13 +68,13 @@ class GalleryInventoryHeapStressTest {
         assertTrue("Runtime.maxMemory must be positive", limit > 0L)
         System.gc()
         val baseline = usedBytes()
-        val sampling = AtomicBoolean(true)
+        val stopSampling = CountDownLatch(1)
         val highWater = AtomicLong(baseline)
         val sampler = Thread({
-            while (sampling.get()) {
+            while (stopSampling.count != 0L) {
                 highWater.accumulateAndGet(usedBytes(), ::maxOf)
                 try {
-                    Thread.sleep(2)
+                    if (stopSampling.await(2, TimeUnit.MILLISECONDS)) break
                 } catch (_: InterruptedException) {
                     break
                 }
@@ -120,7 +121,7 @@ class GalleryInventoryHeapStressTest {
             assertEquals("media:" + sorted[n / 2].uri,
                 medium.slots[medium.entryForMedia(n / 2)].stableKey)
         } finally {
-            sampling.set(false)
+            stopSampling.countDown()
             sampler.join(5_000)
         }
 
