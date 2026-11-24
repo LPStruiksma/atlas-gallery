@@ -61,6 +61,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
+import nl.atlas.gallery.featureface.MediaRecordFaceView
 import nl.atlas.gallery.featureface.FaceAuthorizedMediaDirectory
 import nl.atlas.gallery.featureface.FaceBatchResult
 import nl.atlas.gallery.featureface.FaceBatchStop
@@ -503,7 +504,8 @@ internal fun publicationStatusPhase(
  * MediaStore id). Stable, so equal rows keep the gallery's order.
  */
 internal fun newestFirst(inventory: List<FaceVisibleMedia>): List<FaceVisibleMedia> =
-    inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
+    if (inventory is MediaRecordFaceView) inventory.newestFirstView()
+    else inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
         .thenByDescending { it.id })
 
 /** Batches that ended on a budget or one failed photo are followed by another. */
@@ -904,6 +906,19 @@ internal class PeopleDiscoveryHost(
     /** True while [epoch] is the live, granted scope of an opted-in run. */
     fun scopeCurrent(epoch: String): Boolean =
         liveEpoch == epoch && synchronized(lock) { optedIn } && photoGrantCurrent()
+
+    /**
+     * HUB-1C: a Skip key must outlive a random face-publication epoch.
+     * Full-library grants have a stable, permission-derived token across
+     * publications and relaunches. Selected-photos grants have no equally
+     * trustworthy stable token: keep their Skip suppression epoch-local
+     * rather than risk carrying it into a changed, narrower selection.
+     * Never return a scope for a stale or unauthorized publication.
+     */
+    fun stableSamePersonSkipScope(epoch: String): String? {
+        if (!scopeCurrent(epoch) || synchronized(lock) { scope?.epoch != epoch }) return null
+        return photoGrantToken()?.let { "full-photo-grant:$it" } ?: epoch
+    }
 
     /**
      * #61: manual scanning is a transient foreground grant, never WorkManager
@@ -2753,7 +2768,7 @@ internal class PeopleDiscoveryBinding(
 /**
  * Status follows [PeopleDiscoveryHost.changes] and [galleryGrant]; a new
  * gallery publication is handed to the host off main. [inventory] is the same
- * permission-gated list the gallery shows; it is projected only on IO.
+ * permission-gated list the gallery shows; face rows are projected lazily on IO.
  */
 @Composable
 internal fun rememberPeopleDiscovery(
@@ -2761,7 +2776,7 @@ internal fun rememberPeopleDiscovery(
     galleryGrant: String?,
     inventory: List<MediaRecord>
 ): PeopleDiscoveryBinding = rememberPeopleDiscoveryOf(host, galleryGrant, inventory) { list ->
-    list.map { it.toFaceVisibleMedia(editorRevision = 0L) }
+    MediaRecordFaceView(list)
 }
 
 @Composable

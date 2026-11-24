@@ -61,10 +61,15 @@ object HyperSwapNetwork {
      * encoder, both from [store]. A model that is not installed yields null, which the
      * engine reports as `ENGINE_NOT_INSTALLED` and the studio turns into its setup sheet.
      */
-    fun engineConfig(store: IdentityModelStore, intraOpThreads: Int = 4): LocalEngineConfig = LocalEngineConfig(
+    fun engineConfig(
+        store: IdentityModelStore,
+        intraOpThreads: Int = 4,
+        segmenterFactory: () -> FaceSegmenter? = { null }
+    ): LocalEngineConfig = LocalEngineConfig(
         spec = SPEC,
         swapModel = { store.installedFile(IdentityModelManifest.HYPERSWAP_1A_256) },
         encoder = { store.installedFile(IdentityModelManifest.INSIGHTFACE_W600K_R50)?.let { ArcFaceEmbedder(it) } },
+        segmenter = segmenterFactory,
         intraOpThreads = intraOpThreads
     )
 }

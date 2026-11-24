@@ -233,6 +233,19 @@ class MediaMetadataTest {
         assertNull(photo.presentationCacheKeyOrNull(0, 18L))
     }
 
+    @Test fun keyPrefixIsTheKeyWithoutItsSize() {
+        val photo = synthetic()
+        val prefix = photo.presentationCacheKeyPrefixOrNull(18L)!!
+        for (pixels in intArrayOf(1, 400, 800, 8192))
+            assertEquals(photo.presentationCacheKeyOrNull(pixels, 18L), prefix + pixels)
+        assertEquals(photo.presentationCacheKeyOrNull(400, 18L, 2L),
+            photo.presentationCacheKeyPrefixOrNull(18L, 2L) + 400)
+        assertTrue(prefix.endsWith("|18|0|"))
+        assertNull(photo.copy(providerVersion = null).presentationCacheKeyPrefixOrNull(18L))
+        assertNull(photo.copy(generationModified = 0L).presentationCacheKeyPrefixOrNull(18L))
+        assertNull(photo.presentationCacheKeyPrefixOrNull(-1L))
+    }
+
     @Test fun inventoryRequiresSameProviderVersionsAndGenerationsAcrossScan() {
         val beforeVersions = mapOf("external_primary" to "v1", "ABCD-1234" to "sd-v1")
         val beforeGeneration: Map<String, Long?> =

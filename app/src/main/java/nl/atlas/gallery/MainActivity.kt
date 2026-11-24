@@ -235,6 +235,9 @@ import nl.atlas.gallery.featuresearch.SearchSuggestionSource
 import nl.atlas.gallery.featuresearch.planLocalSearchSuggestions
 import nl.atlas.gallery.featuresearch.SearchPerson
 import nl.atlas.gallery.featurepeopleui.PeopleHomeSummary
+import nl.atlas.gallery.featurepeopleui.PersonPageTarget
+import nl.atlas.gallery.featurepeopleui.needsSplittingLists
+import nl.atlas.gallery.featurepeopleui.SamePersonSkipPreferences
 import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featurepeopleui.peopleHomeAlbumsForGrant
 import nl.atlas.gallery.featurepeopleui.ReviewReferenceKey
@@ -1649,6 +1652,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     BackHandler(enabled = tab == 2 && peopleReviewOpen) { peopleReviewOpen = false }
     // #584: People ⋮ → Hidden (Samsung). A person opened from it returns here.
     var hiddenPeopleOpen by rememberSaveable { mutableStateOf(false) }
+    var needsSplittingOpen by rememberSaveable { mutableStateOf(false) }
+    var hiddenNeedsSplittingOpen by rememberSaveable { mutableStateOf(false) }
     // #643: People maintenance tools live in Settings.
     var visualIndexOpen by remember { mutableStateOf(false) }
     var provenanceDetailsOpen by remember { mutableStateOf(false) }
@@ -3569,6 +3574,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     peopleReviewOpen = false
                     hiddenPeopleOpen = false
+                    needsSplittingOpen = false
+                    hiddenNeedsSplittingOpen = false
                     nativePersonAlbum = NativePersonAlbumRequest(person.person, person.name)
                 }
             },
@@ -3667,6 +3674,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 personFilter = null
                 nativePersonAlbum = null
                 hiddenPeopleOpen = false
+                needsSplittingOpen = false
+                hiddenNeedsSplittingOpen = false
             },
             onClose = {
                 val origin = faceOrigin
@@ -3805,6 +3814,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     personFilter = null
                     nativePersonAlbum = null
                     hiddenPeopleOpen = false
+                    needsSplittingOpen = false
+                    hiddenNeedsSplittingOpen = false
                     album = null
                     albumVolume = null
                     albumReturnToAlbums = false
@@ -4716,6 +4727,42 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 // #551: a merge or first name follows the surviving person.
                                 onRetarget = { nativePersonAlbum = it }
                             )
+                        } else if (needsSplittingOpen || hiddenNeedsSplittingOpen) {
+                            val hiddenOnly = hiddenNeedsSplittingOpen
+                            BackHandler {
+                                needsSplittingOpen = false
+                                hiddenNeedsSplittingOpen = false
+                            }
+                            NeedsSplittingRoute(
+                                host = discoveryHost,
+                                people = discovery.status?.people,
+                                hiddenOnly = hiddenOnly,
+                                onBack = {
+                                    needsSplittingOpen = false
+                                    hiddenNeedsSplittingOpen = false
+                                },
+                                onOpen = { target ->
+                                    val epoch = discovery.status?.people?.permissionEpoch
+                                    val live = discoveryHost.liveReview(epoch)
+                                    val latest = needsSplittingLists(live)
+                                    val authorized = if (hiddenOnly) latest.hidden else latest.visible
+                                    if (live != null && discoveryHost.scopeCurrent(live.permissionEpoch) &&
+                                        authorized.any { it.target == target }) {
+                                        when (target) {
+                                            is PersonPageTarget.Named -> live.names[target.person]?.let {
+                                                nativePersonAlbum = NativePersonAlbumRequest(target, it)
+                                            }
+                                            is PersonPageTarget.Unnamed ->
+                                                nativePersonAlbum = NativePersonAlbumRequest(
+                                                    target, "Unnamed group")
+                                        }
+                                    }
+                                    // #212 v3: keep the filtered list underneath the
+                                    // group page, so Back returns to it and it
+                                    // revalidates its rows and count from the live
+                                    // review snapshot.
+                                }
+                            )
                         } else if (hiddenPeopleOpen) {
                             BackHandler { hiddenPeopleOpen = false }
                             HiddenPeopleRoute(
@@ -4723,7 +4770,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 people = discovery.status?.people,
                                 onBack = { hiddenPeopleOpen = false },
                                 onOpen = { nativePersonAlbum = it },
-                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 }
+                                onSearchWholeLibrary = { hiddenPeopleOpen = false; tab = 3 },
+                                onOpenNeedsSplitting = { hiddenNeedsSplittingOpen = true }
                             )
                         } else if (people.isNotEmpty() && permittedCovers == null) {
                             Text("Matching your reviewed People to accessible photos…",
@@ -4737,6 +4785,14 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                             // People actions only; the visual index, People numbers,
                             // photo details and the V4 import sit in Settings.
                             var samePersonQueueOpen by remember { mutableStateOf(false) }
+                            val splitVersion by discoveryHost.changes.collectAsState()
+                            val splitState = rememberReviewState(
+                                discoveryHost, splitVersion, discovery.status?.people)
+                            val visibleSplits = remember(splitState) {
+                                needsSplittingLists(splitState?.takeIf {
+                                    discoveryHost.scopeCurrent(it.permissionEpoch)
+                                }).visible.size
+                            }
                             val peopleMenu = listOf(
                                 // #584: Samsung's People ⋮ → Hidden; Show this person
                                 // on a hidden person's page brings it back.
@@ -4744,7 +4800,23 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     onClick = { hiddenPeopleOpen = true }),
                                 // #580: every open "Same person?" question in a row.
                                 AtlasHeaderMenuItem("Same person?", "atlas-people-same-open",
-                                    onClick = { samePersonQueueOpen = true }))
+                                    onClick = { samePersonQueueOpen = true }),
+                                AtlasHeaderMenuItem("Needs splitting ($visibleSplits)",
+                                    "atlas-people-needs-splitting-open",
+                                    onClick = { needsSplittingOpen = true }),
+                                AtlasHeaderMenuItem("Show skipped", "atlas-people-show-skipped",
+                                    onClick = {
+                                        val live = discoveryHost.liveReview(
+                                            discovery.status?.people?.permissionEpoch)
+                                        val skipScope = live?.let {
+                                            discoveryHost.stableSamePersonSkipScope(it.permissionEpoch)
+                                        }
+                                        if (skipScope != null) {
+                                            SamePersonSkipPreferences.forApp(context)
+                                                .clear(skipScope)
+                                            samePersonQueueOpen = true
+                                        }
+                                    }))
                             if (samePersonQueueOpen) SamePersonQueueRoute(
                                 discoveryHost, discovery.status?.people) {
                                 samePersonQueueOpen = false
@@ -5055,8 +5127,16 @@ private fun GridTilePreview(
             SingletonImageLoader.get(context).memoryCache?.get(MemoryCache.Key(key)) != null
         } == true
     }
-    val microKey = remember(media, publicationEpoch, sharpCached) {
-        if (sharpCached || !MicroThumbnails.active) null
+    // FLOW-1 (#711): while this level's own size decodes, show a copy the
+    // other pinch level already decoded, so a level change never blinks grey.
+    val fallbackPixels = nl.atlas.gallery.featuregrid.LocalGridTileFallbackPixels.current
+    val fallback = remember(media, publicationEpoch, sharpCached, fallbackPixels) {
+        if (sharpCached || fallbackPixels == null) null
+        else nl.atlas.gallery.featuregrid.cachedGridTileBitmap(context, media, publicationEpoch,
+            fallbackPixels.filter { it != pixels }.toIntArray())
+    }
+    val microKey = remember(media, publicationEpoch, sharpCached, fallback) {
+        if (sharpCached || fallback != null || !MicroThumbnails.active) null
         else microThumbnailMemoryKey(media, publicationEpoch)
     }
     var micro by remember(microKey) { mutableStateOf(microKey?.let { MicroThumbnails.cached(it) }) }
@@ -5080,7 +5160,7 @@ private fun GridTilePreview(
         SideEffect { probe.record(media.uri, isMicroLayer = true, hasImage = micro != null) }
     }
     Box(modifier) {
-        val shown = micro
+        val shown = fallback ?: micro
         if (shown != null) {
             val image = remember(shown) { shown.asImageBitmap() }
             Image(image, contentDescription = null, contentScale = scale,

@@ -79,3 +79,15 @@ test('real-Activity evidence exercises an eligible suggestion and duplicate-name
     }
   }
 });
+
+test('opening evidence fails closed and interactive controls have measured target sizes', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
+  const opening = journey.slice(journey.indexOf('private fun captureOpening'), journey.indexOf('private fun focusNameField'));
+  assert.match(opening, /compose\.waitUntil\(15_000L\)/);
+  assert.doesNotMatch(opening, /runCatching/);
+  assert.match(opening, /saveUiEvidence\("unknown-ime-448-b-opening-\$theme\.png"\) \{/);
+  assert.match(opening, /afterCapture in intermediate/);
+  assert.match(journey, /private fun assertMinimumTarget/);
+  assert.match(journey, /48 \* compose\.activity\.resources\.displayMetrics\.density/);
+  assert.match(journey, /assertMinimumTarget\(createMatcher\)/);
+});

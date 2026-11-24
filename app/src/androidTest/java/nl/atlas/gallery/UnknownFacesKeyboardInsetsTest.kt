@@ -250,6 +250,8 @@ class UnknownFacesKeyboardInsetsTest {
             assertClearOfHeaderAndKeyboard(hasText("Looks like someone you know?"))
             assertClearOfHeaderAndKeyboard(hasText("Add") and hasClickAction())
             assertClearOfHeaderAndKeyboard(hasText("Not $SUGGESTED_NAME") and hasClickAction())
+            assertMinimumTarget(hasText("Add") and hasClickAction())
+            assertMinimumTarget(hasText("Not $SUGGESTED_NAME") and hasClickAction())
             saveUiEvidence("unknown-ime-448-g-open-suggestion-$theme.png")
 
             compose.onNodeWithTag("atlas-group-name").performTextInput(SUGGESTED_NAME)
@@ -261,6 +263,7 @@ class UnknownFacesKeyboardInsetsTest {
             assertKeyboardContract("$theme h-open-duplicate", portrait = true, createMatcher = createAnother)
             assertClearOfHeaderAndKeyboard(hasText("Add") and hasClickAction())
             assertClearOfHeaderAndKeyboard(createAnother)
+            assertMinimumTarget(hasText("Add") and hasClickAction())
             saveUiEvidence("unknown-ime-448-h-open-duplicate-$theme.png")
 
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -283,6 +286,14 @@ class UnknownFacesKeyboardInsetsTest {
         assertTrue("${matcher.description} overlaps sticky header: $rect vs $header",
             rect.top >= header.bottom - 1f)
         Log.i(LOG_TAG, "${matcher.description} bounds=$rect header=$header")
+    }
+
+    private fun assertMinimumTarget(matcher: SemanticsMatcher) {
+        val node = compose.onNode(matcher).fetchSemanticsNode()
+        val minPx = 48 * compose.activity.resources.displayMetrics.density
+        assertTrue("${matcher.description}: target ${node.size} is smaller than 48dp ($minPx px)",
+            node.size.width >= minPx - 1f && node.size.height >= minPx - 1f)
+        Log.i(LOG_TAG, "${matcher.description} target=${node.size}, minimum=$minPx px")
     }
 
     /** Seed only this test's generated media, via normal lease and review APIs. */
@@ -351,6 +362,8 @@ class UnknownFacesKeyboardInsetsTest {
         val clearance = ((if (portrait) 16 else 12) * density).toInt()
         compose.assertAboveKeyboard(hasTestTag("atlas-group-name"))
         compose.assertAboveKeyboard(createMatcher, clearance)
+        assertMinimumTarget(hasTestTag("atlas-group-name"))
+        assertMinimumTarget(createMatcher)
         val header = headerBounds()
         val field = unclipped("atlas-group-name")
         assertTrue("$label: the name field ($field) must not sit under the sticky header ($header)",
@@ -374,17 +387,24 @@ class UnknownFacesKeyboardInsetsTest {
         try {
             val full = 918
             focusNameField()
-            var seen = 0
-            // Best effort: if no mid-way frame is sampled the capture is the
-            // nearest one, and the log line says which inset it started at.
-            runCatching {
-                compose.waitUntil(15_000L) {
-                    seen = compose.keyboardInsetPx()
-                    seen in (full / 4)..(full * 3 / 4)
-                }
+            val intermediate = (full / 4)..(full * 3 / 4)
+            // Fail closed: never accept a fully opened or closed frame. Recheck
+            // immediately before every evidence attempt and bracket the capture.
+            compose.waitUntil(15_000L) {
+                compose.keyboardInsetPx() in intermediate
             }
-            Log.i(LOG_TAG, "$theme b-opening inset=$seen of $full px at capture start")
-            saveUiEvidence("unknown-ime-448-b-opening-$theme.png")
+            saveUiEvidence("unknown-ime-448-b-opening-$theme.png") {
+                val beforeCapture = compose.keyboardInsetPx()
+                check(beforeCapture in intermediate) {
+                    "$theme opening frame missed: inset=$beforeCapture of $full"
+                }
+                Log.i(LOG_TAG, "$theme b-opening before capture=$beforeCapture of $full")
+            }
+            val afterCapture = compose.keyboardInsetPx()
+            check(afterCapture in intermediate) {
+                "$theme opening capture not bracketed by intermediate insets: $afterCapture of $full"
+            }
+            Log.i(LOG_TAG, "$theme b-opening after capture=$afterCapture of $full")
         } finally {
             device.animatorScale(1f)
         }
