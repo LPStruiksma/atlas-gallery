@@ -579,8 +579,14 @@ private fun GalleryViewerSnapshot(
         dragAnimationJob?.cancel()
         dragAnimationJob = dragScope.launch {
             dragAnimation.snapTo(dragOffset.floatValue)
-            dragAnimation.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy)) {
-                dragOffset.floatValue = value
+            if (AtlasMotion.animationsDisabled(context)) {
+                dragAnimation.snapTo(0f)
+                dragOffset.floatValue = 0f
+            } else {
+                dragAnimation.animateTo(0f, tween(
+                    durationMillis = AtlasMotion.SHARED_ELEMENT_MS,
+                    easing = AtlasMotion.SineInOut70
+                )) { dragOffset.floatValue = value }
             }
         }
     }

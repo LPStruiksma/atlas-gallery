@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -31,6 +30,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import nl.atlas.gallery.featuredesign.AtlasMotion
 
 /**
  * #23: a measured, one-shot photo entry. The value holds only a window rectangle
@@ -85,7 +85,6 @@ internal fun sharedPhotoRect(from: Rect, to: Rect, progress: Float): Rect {
         between(from.right, to.right), between(from.bottom, to.bottom))
 }
 
-private const val SHARED_PHOTO_MS = 210
 
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
@@ -112,10 +111,10 @@ internal fun SharedPhotoMotionLayer(
     LaunchedEffect(origin, exiting, animated) {
         if (exiting) {
             if (animated) progress.animateTo(0f,
-                tween(SHARED_PHOTO_MS, easing = FastOutSlowInEasing))
+                tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
             currentOnExit.value()
         } else if (animated) {
-            progress.animateTo(1f, tween(SHARED_PHOTO_MS, easing = FastOutSlowInEasing))
+            progress.animateTo(1f, tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
         }
     }
 

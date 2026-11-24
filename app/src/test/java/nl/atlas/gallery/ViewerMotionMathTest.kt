@@ -251,6 +251,17 @@ class ViewerMotionMathTest {
         assertEquals(pose.translationY, next.translationY, .01f)
     }
 
+    @Test fun flow3ReturnMotionUsesAtlas200msSineContract() {
+        assertEquals(200, AtlasMotion.SHARED_ELEMENT_MS)
+        val samples = (0..200 step 10).map {
+            AtlasMotion.SineInOut70.transform(it / 200f)
+        }
+        assertEquals(0f, samples.first(), .001f)
+        assertEquals(1f, samples.last(), .001f)
+        assertTrue(samples.zipWithNext().all { (a, b) -> a <= b + 1e-4f })
+        assertTrue("return motion must have visible easing", samples[5] < .5f)
+    }
+
     @Test fun doubleTapZoomAnimatesFor160msWithSineInOut() {
         assertEquals(160, AtlasMotion.DOUBLE_TAP_ZOOM_MS)
         assertEquals(0f, eased(0), .001f)

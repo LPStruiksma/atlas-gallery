@@ -32,7 +32,7 @@ All nine cells start at **?**, intentionally; that is an honest baseline, not ni
 |---|---|---:|---|---|---|---|---|---|---|---|---|---|
 | D1 | Pictures grid, zoom levels, dates, floating fast-scroll | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `pictures-default`, `pictures-pinch-compact`, `pictures-header-away`; FLOW-1 (#711) adds paired light/dark pinch frames at 25/50/75 %, mid-settle and settled (`flow1-*`, timeline and plain grid), a 1 px anchor handover assertion and per-kind pinch frame time, which M can now be scored from; **missing** paired original-ratio and fast-scroll bubble |
 | D2 | Viewer bars, show/hide, insets, video controls | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `viewer-photo`, `viewer-filmstrip`; **missing** paired video-controls and hidden-chrome states |
-| D3 | Grid ↔ viewer enter/return transition | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | **Missing** paired transition frames/recording (still frames alone cannot score M) |
+| D3 | Grid ↔ viewer enter/return transition | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | FLOW-3 first slice: shared-photo entry/unchanged-origin return and reversible drag cancellation now use the 200 ms `AtlasMotion.SineInOut70` contract, including animator-scale-zero cuts; **still missing** Android paired midpoint/reduced-motion captures and current-item measured-tile return after paging (fade fallback remains). |
 | D4 | Bottom bar and tab switching | 4 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `pictures-default`, `albums-overview`; **missing** explicit paired in-flight tab-switch state |
 | D5 | Albums list, album detail | 4 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `albums-overview`, `albums-detail` |
 | D6 | People tab | 3 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `people-overview`, `people-hidden` |
