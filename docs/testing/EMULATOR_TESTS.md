@@ -45,6 +45,8 @@ compose.tap(hasTestTag("atlas-photos-sort-date"))
 
 **9. Capture only a node that is whole on screen.** `captureToImage()` copies only the visible part of a node; `node.captureWhole()` scrolls it in and refuses a node that is still cut.
 
+Exception for **failure-only forensics**: `node.captureTimeoutViewport()` (testkit) intentionally records the current clipped viewport *without scrolling*. Use it only after an assertion timeout when the cut-off or moving state itself is evidence, never for passing assertions or acceptance screenshots. Compare it with the node's geometry in the same failure log.
+
 ## Which helper do I use
 
 | I want to | Use | Not |
@@ -99,6 +101,17 @@ So tests bring their own. The androidTest APK carries two input methods (nothing
 In a Dialog or Popup the kit sends keyboard requests to the focused window. A Dialog sits above the keyboard, so its own IME inset stays 0 while the keyboard is up; the kit then counts the keyboard as up when that window asks for it and the input method's window is on screen, and waits until the Dialog has stopped moving. Each keyboard wait logs, under `ATLAS_TESTKIT`, every Compose window with its focus and IME inset and which one it picked.
 
 Kit code that the system starts must be plain Java on `android.*` only. The system runs an input method in the test package's own process, where the app's classes, AndroidX and the Kotlin library do not exist.
+
+## When the full emulator run starts
+
+The full suite (~48 min) is not part of every push or every label. The flow, from goal #986 (U5, #990):
+
+1. A push to a PR runs the build and the JVM tests only. `next:review` and `ready_for_review` start no emulator run.
+2. Review reads the code on the build-green head. Findings go back to Dev with no emulator run spent.
+3. When the code verdict is "CLEAN pending CI", Review adds the label `emulator:run` (Dev may add it on request). `review-emulator-trigger.yml` then dispatches `build-apk.yml` once on the PR branch with `run_ui_tests=true`, and removes the label. It refuses a draft and a head that moved after the label was added; both leave no run and need the label again.
+4. A new head needs `emulator:run` again. Adding it twice on one head starts one run at a time: the second dispatch cancels the first.
+5. Review's receipt names the exact head and the green `emulator-ui` run on it. A red run goes back to Dev (known flakes per `docs/agents/known-flakes.md` in AutoDev); without a green `emulator-ui` run on the exact head there is no CLEAN receipt, so no merge. The merge join itself still treats a skipped check as passing, so this rule lives in the Review receipt.
+6. UI pull requests still need their rendered evidence from that run. To check only the evidence classes while reviewing, use the stress lane below on a throwaway branch (about 8 minutes). It never replaces the full run on the PR head.
 
 ## Stress a test
 

@@ -15,17 +15,33 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import nl.atlas.gallery.featureaiedit.save.AiEditSaver
+import nl.atlas.gallery.featureidentity.install.IdentityModelInstaller
 
 class AtlasApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // PERF-1: bound the synchronous startup lane; off-thread tasks stay asynchronous.
         Trace.beginSection("atlas.startup.critical")
         try {
+            // Keep performance samples for this app version across restarts (numbers only).
+            PerformanceSession.install(this)
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                runCatching { PerformanceSession.restoreSaved() }
+            }
+            registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+                override fun onActivityPaused(activity: android.app.Activity) = PerformanceSession.flush()
+                override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) = Unit
+                override fun onActivityStarted(activity: android.app.Activity) = Unit
+                override fun onActivityResumed(activity: android.app.Activity) = Unit
+                override fun onActivityStopped(activity: android.app.Activity) = Unit
+                override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) = Unit
+                override fun onActivityDestroyed(activity: android.app.Activity) = Unit
+            })
             // #435: load the preference files the first Photos grid reads, off Main.
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 runCatching { StartupPreferenceWarmup.warm(this@AtlasApplication) }
             }
+            // USAGE-0 (#173): opt-in, on-device, off until Lukas turns it on; no network.
+            UsageRecorder.install(this)
             // Persist one privacy-redacted trace before Android's original crash handler runs.
             LastCrashRecorder.install(this)
             // Finish interrupted AI-copy cleanup after process death. No gallery
@@ -33,6 +49,11 @@ class AtlasApplication : Application() {
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 runCatching { AiEditSaver(this@AtlasApplication).recoverOnStartup() }
                     .onFailure { android.util.Log.w("ATLAS_AI_SAVE", "Pending edit recovery deferred") }
+            }
+            // #619: a Cancel tapped on the "Swap person" download notification runs no app code; the
+            // installer frees the unfinished download when it sees the cancelled work. No download starts here.
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                runCatching { IdentityModelInstaller.watch(this@AtlasApplication) }
             }
             // #555: ATLAS's micro-thumbnail store; only used under full media access.
             MicroThumbnails.install(this)

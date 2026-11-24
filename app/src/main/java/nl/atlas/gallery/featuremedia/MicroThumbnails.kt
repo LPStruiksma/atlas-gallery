@@ -9,8 +9,12 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.os.CancellationSignal
 import android.os.OperationCanceledException
+import android.os.StatFs
 import android.util.Size as AndroidSize
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -20,9 +24,6 @@ import nl.atlas.gallery.clearViewerMetadataCache
 import nl.atlas.gallery.presentationCacheKeyOrNull
 import java.io.ByteArrayOutputStream
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.max
@@ -67,19 +68,15 @@ internal object MicroThumbnails {
     fun install(context: Context) {
         if (store != null) return
         resolver = context.applicationContext.contentResolver
-        // Publish the same disk-backed cache before the first grid. Disk capacity
-        // accounting can wait on IO; 64 MiB is a conservative temporary budget,
-        // and existing micro thumbnails stay readable while it is refined.
+        // Existing grant-correct reads are available immediately. Do not use the
+        // provisional fallback to admit writes or evict entries before refinement.
         val microStore = MicroThumbnailStore(
             File(context.noBackupFilesDir, "atlas-micro-v1"),
-            microThumbnailDiskBudgetBytes(0L)
+            microThumbnailDiskBudgetBytes(0L), budgetPending = true
         )
         store = microStore
-        val filesPath = context.filesDir.absolutePath
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            val total = runCatching {
-                android.os.StatFs(filesPath).totalBytes
-            }.getOrDefault(0L)
+            val total = runCatching { StatFs(context.filesDir.absolutePath).totalBytes }.getOrDefault(0L)
             microStore.updateBudget(microThumbnailDiskBudgetBytes(total))
         }
     }
@@ -215,7 +212,7 @@ internal fun makeAndStore(
     } catch (e: Exception) {
         null
     } ?: return null
-    if (!store.full()) {
+    if (store.budgetReady && !store.full()) {
         val bytes = ByteArrayOutputStream(4096).use { out ->
             if (bitmap.compress(Bitmap.CompressFormat.JPEG, MICRO_JPEG_QUALITY, out)) out.toByteArray() else null
         }

@@ -12,6 +12,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animate
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.runtime.derivedStateOf
@@ -127,8 +128,40 @@ internal fun zoomHandoffShiftPx(focusX: Float, fractionX: Float, newLeftPx: Floa
     newCellPx: Float, visualScale: Float): Float =
     visualScale * (focusX - newLeftPx - fractionX.coerceIn(0f, 1f) * newCellPx)
 
-/** The photo under the fingers at commit, for the sideways handoff. */
-private class ZoomHandoff(val mediaIndex: Int, val fractionX: Float)
+/**
+ * FLOW-1 (#711): one two-layer pinch, from its first sample until it has
+ * settled. Screen coordinates are the grid composable's own.
+ */
+private class CrossPinch(
+    /** The level (density ordinal) the live grid shows; the pinch is measured from it. */
+    val baseLevel: Int,
+    val anchorIndex: Int,
+    val anchorKey: String,
+    val fractionX: Float,
+    val fractionY: Float,
+    /** Finger focus when the pinch started; the anchor point stays here. */
+    val focus: Offset,
+    /** The anchor photo's rectangle in the live grid at rest. */
+    val baseAnchor: Rect,
+    val startPaddingPx: Int,
+    val topPaddingPx: Int
+) {
+    /** Release animation running: further samples are ignored. Main thread only. */
+    var settling: Boolean = false
+    /** Where the new level opens when the fingers moved the photo; null = the unmoved target. */
+    var commitTarget: TimelineScrollTarget? = null
+}
+
+/** Another level of a [CrossPinch], laid out as it would be scrolled with the anchor under the focus. */
+private class CrossGhost(
+    val plan: TimelinePlan,
+    val target: TimelineScrollTarget,
+    val cells: List<CrossCell>,
+    val anchor: Rect
+)
+
+private const val CROSS_MAX_LEVEL = 4 // GridDensity.YEAR.ordinal
+private const val CROSS_IDLE_PREFETCH_DELAY_MS = 600L
 
 private data class IncrementalScrollFocus(
     val mediaKey: String,
@@ -279,17 +312,24 @@ fun AtlasTimelineGallery(
         mutableStateOf<GridCatalogIdentity?>(null)
     }
     var pending by remember { mutableStateOf<PendingTimelineFocus?>(null) }
-    // #507 continuous zoom: while a pinch runs and while it settles, the grid
-    // is drawn scaled around the fingers. zoomScale is relative to the tile
-    // size the pinch started from (zoomStartCellPx); the layer divides by the
-    // displayed tile size, so swapping to the next level never pops.
-    var zoomScale by remember { mutableFloatStateOf(1f) }
-    var zoomStartCellPx by remember { mutableIntStateOf(0) }
-    var zoomFocus by remember { mutableStateOf(Offset.Zero) }
-    var zoomSettleTo by remember { mutableStateOf<GridDensity?>(null) }
-    val zoomJob = remember { arrayOfNulls<Job>(1) }
-    var zoomShiftX by remember { mutableFloatStateOf(0f) }
-    val zoomHandoff = remember { arrayOfNulls<ZoomHandoff>(1) }
+    // FLOW-1 (#711) two-layer pinch (Samsung GRID:G2-G7). While a pinch runs
+    // and settles, the live grid and the neighbouring level(s) are drawn
+    // together, crossfading around the photo under the fingers. The position
+    // is per-frame state read only in draw-phase graphicsLayer blocks and in
+    // a derived level pair, so a gesture frame never recomposes the grid.
+    var cross by remember { mutableStateOf<CrossPinch?>(null) }
+    val crossPosition = remember { mutableFloatStateOf(0f) }
+    // How far the fingers' centre has moved since the pinch began: the photo
+    // under them follows it. Read only while drawing (no recomposition).
+    val crossShift = remember { mutableStateOf(Offset.Zero) }
+    val crossJob = remember { arrayOfNulls<Job>(1) }
+    // Bumped when a neighbouring level's plan lands in the cache.
+    var plansVersion by remember { mutableIntStateOf(0) }
+    // A commit whose level had no plan yet: keep showing the old level meanwhile.
+    var densityHandoff by remember { mutableStateOf(false) }
+    // Exact scroll for the level a pinch just committed, applied before its first measure.
+    var commitScroll by remember { mutableStateOf<Pair<GridDensity, TimelineScrollTarget>?>(null) }
+    val reduceMotion = remember(context) { nl.atlas.gallery.featuredesign.AtlasMotion.animationsDisabled(context) }
     // Plain State holders: the fast-scroll layer reads them per frame in its
     // own small scope, so a drag never recomposes the whole gallery (§0).
     val draggingState = remember { mutableStateOf<Float?>(null) }
@@ -330,7 +370,10 @@ fun AtlasTimelineGallery(
      * Density change from TalkBack (Samsung has no visible "View as" row; the
      * sighted route is pinch). Anchors on the centre photo like before.
      */
+    var crossChoose: ((GridDensity) -> Boolean)? = null
     fun chooseDensity(next: GridDensity) {
+        // FLOW-1: the same animated, anchored commit as a pinch, on the centre photo.
+        if (next != density && crossChoose?.invoke(next) == true) return
         // The grid is measured by its own BoxWithConstraints below; choose a
         // stable visible focal cell, not an index derived from header counts.
         if (next != density) {
@@ -387,21 +430,17 @@ fun AtlasTimelineGallery(
             // viewport, sort, locale and time zone. Remember invalidates the
             // entire bounded cache on a new catalogue/grant or layout geometry.
             val recentPlans = remember(sourceKey, sort, mediaSort, bounds, headerHeightPx, locale, zone) {
-                RecentGridDensityPlans<TimelinePlan>(capacity = 2)
+                // FLOW-1: the shown level plus the two a pinch can enter.
+                RecentGridDensityPlans<TimelinePlan>(capacity = 3)
             }
-            LaunchedEffect(sourceKey, sort, mediaSort, density, bounds, headerHeightPx, locale, zone) {
-                draggingFraction = null
-                val cached = recentPlans.get(density)
-                if (cached != null) {
-                    latestPlan = cached
-                    return@LaunchedEffect
-                }
-                latestPlan = null // no stale plan while 150k rows are replanned
+            // One level's complete plan. Neighbouring levels (FLOW-1) are planned
+            // the same way, without the incremental re-anchor target.
+            suspend fun buildPlan(level: GridDensity, focus: IncrementalScrollFocus?): TimelinePlan {
                 val parent = coroutineContext
-                val computed = withContext(Dispatchers.Default) {
+                return withContext(Dispatchers.Default) {
                     // PERF-6 (#127): no TimelineMedia projection and no URI
                     // string per row. Slots read keys from `items` on demand.
-                    val anchorKey = incrementalFocus?.mediaKey
+                    val anchorKey = focus?.mediaKey
                     val anchorHash = anchorKey?.hashCode() ?: 0
                     var incrementalAnchorIndex = -1
                     if (anchorKey != null) for (i in items.indices) {
@@ -418,24 +457,35 @@ fun AtlasTimelineGallery(
                                 media.modifiedAtSeconds <= Long.MAX_VALUE / 1000L
                             ) media.modifiedAtSeconds * 1000L else media.takenAtMillis
                         },
-                        { items[it].uri }, sort, density, zone, locale,
-                        mergeSparseDaysBelow = if (mergeSparseDays) density.columns else 0) {
+                        { items[it].uri }, sort, level, zone, locale,
+                        mergeSparseDaysBelow = if (mergeSparseDays) level.columns else 0) {
                         parent.ensureActive()
                     }
-                    val geometry = planTimelineVisualRows(index, density.columns, bounds,
+                    val geometry = planTimelineVisualRows(index, level.columns, bounds,
                         headerHeightPx) { parent.ensureActive() }
                     val scrollTarget = if (incrementalAnchorIndex >= 0)
                         geometry.targetMedia(incrementalAnchorIndex,
-                            incrementalFocus!!.fractionY, incrementalFocus.focusYPx)
+                            focus!!.fractionY, focus.focusYPx)
                     else null
-                    TimelinePlan(items, sourceKey, sort, density, bounds, geometry, scrollTarget)
+                    TimelinePlan(items, sourceKey, sort, level, bounds, geometry, scrollTarget)
                 }
+            }
+            LaunchedEffect(sourceKey, sort, mediaSort, density, bounds, headerHeightPx, locale, zone) {
+                draggingFraction = null
+                val cached = recentPlans.get(density)
+                if (cached != null) {
+                    latestPlan = cached
+                    return@LaunchedEffect
+                }
+                latestPlan = null // no stale plan while 150k rows are replanned
+                val computed = buildPlan(density, incrementalFocus)
                 recentPlans.putCompleted(density, computed)
                 latestPlan = computed
             }
-            fun matchingPlan(plan: TimelinePlan): Boolean =
+            fun matchingPlanFor(plan: TimelinePlan, level: GridDensity): Boolean =
                 plan.source === items && plan.publication == sourceKey &&
-                plan.density == density && plan.sort == sort && plan.bounds == bounds
+                plan.density == level && plan.sort == sort && plan.bounds == bounds
+            fun matchingPlan(plan: TimelinePlan): Boolean = matchingPlanFor(plan, density)
             // A repeat density can show its cached layout on the very first
             // composition, instead of flashing "Arranging timeline…" while an
             // effect waits for its first frame.
@@ -448,49 +498,51 @@ fun AtlasTimelineGallery(
                 // During a density handoff, keep only the preceding mounted
                 // plan. An unrelated state recomposition must not resurrect
                 // an old density once its gesture has settled.
-                zoomSettleTo != null &&
+                densityHandoff &&
                     it.source === items && it.publication == sourceKey && it.sort == sort &&
                     it.bounds == bounds && it.density != density
             }
+            if (densityHandoff && ready?.density == density) SideEffect { densityHandoff = false }
             // #507: arriving from original rows, start at their drawn photo size.
             val entryZoom = rememberZoomEntry(false, catalogueEpoch, ready != null)
-            // Settle the zoom once the destination level is on screen: animate
-            // to its own tile size (visual scale 1), anchored on the focus.
-            LaunchedEffect(ready?.density, zoomSettleTo, bounds) {
-                val target = zoomSettleTo ?: return@LaunchedEffect
-                if (ready?.density != target || zoomStartCellPx <= 0) return@LaunchedEffect
-                zoomSettleTo = null
-                val cell = bounds.cellSidePx(target.columns)
-                val end = cell.toFloat() / zoomStartCellPx
-                val from = zoomScale
-                // The photo under the fingers changes column with the count:
-                // start the new level shifted so it stays put, then slide it
-                // home while the scale settles.
-                val handoff = zoomHandoff[0]
-                zoomHandoff[0] = null
-                val column = handoff?.let { h ->
-                    runCatching { ready.geometry.columnOfMedia(h.mediaIndex) }.getOrNull()
-                }
-                val shiftFrom = if (handoff == null || column == null) 0f else zoomHandoffShiftPx(
-                    zoomFocus.x, handoff.fractionX,
-                    (bounds.horizontalInsetPx + column * (cell + bounds.gapPx)).toFloat(),
-                    cell.toFloat(), from * zoomStartCellPx / cell)
-                zoomShiftX = shiftFrom
-                zoomJob[0]?.cancel()
-                zoomJob[0] = frameScope.launch {
-                    animate(0f, 1f, animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow)) { p, _ ->
-                        zoomScale = from + (end - from) * p
-                        zoomShiftX = shiftFrom * (1f - p)
-                    }
-                    // Settled: back to an unscaled grid. A new pinch cancels the
-                    // job first and rebases the zoom itself.
-                    zoomStartCellPx = 0
-                    zoomScale = 1f
-                    zoomShiftX = 0f
+            // FLOW-1: the levels the pinch is between. Changes only when the
+            // gesture crosses a level, never per frame.
+            val crossLevels by remember {
+                derivedStateOf {
+                    if (cross == null) null else crossFrame(crossPosition.floatValue, CROSS_MAX_LEVEL)
+                        .let { it.lower to it.upper }
                 }
             }
+            // FLOW-1: plan the levels a pinch can reach before the fingers move:
+            // one either side of the shown level while idle, and the pair a
+            // running pinch is between. Completed plans only (bounded cache).
+            val idleLevel = ready?.density?.takeIf { ready.density == density }
+            LaunchedEffect(sourceKey, sort, mediaSort, bounds, headerHeightPx, locale, zone,
+                idleLevel, crossLevels) {
+                val base = idleLevel ?: return@LaunchedEffect
+                val pair = crossLevels
+                val wanted = (if (pair != null) listOf(pair.first, pair.second)
+                    else listOf(base.ordinal - 1, base.ordinal + 1))
+                    .filter { it in 0..CROSS_MAX_LEVEL && it != base.ordinal }.distinct()
+                for (ordinal in wanted) {
+                    val level = GridDensity.entries[ordinal]
+                    if (recentPlans.peek(level) != null) continue
+                    // While idle, let the shown level settle (first frames, start-up
+                    // work) before planning; a running pinch needs its pair now.
+                    if (pair == null) kotlinx.coroutines.delay(CROSS_IDLE_PREFETCH_DELAY_MS)
+                    val plan = buildPlan(level, null)
+                    // Never evict the shown level or a neighbour this loop already found.
+                    val protect = (listOf(base.ordinal) + wanted).mapTo(HashSet()) { GridDensity.entries[it] }
+                    recentPlans.putCompleted(level, plan, protect)
+                    plansVersion++
+                }
+            }
+            // Test hook (FLOW-1 evidence): both neighbouring levels are planned, so a
+            // pinch from here draws the entered level from a real plan.
+            val neighboursPlanned = ready != null && plansVersion >= 0 &&
+                listOf(ready.density.ordinal - 1, ready.density.ordinal + 1)
+                    .filter { it in 0..CROSS_MAX_LEVEL }
+                    .all { recentPlans.peek(GridDensity.entries[it]) != null }
             // Toolbar and slider must use what the grid actually displays, not
             // a prior-density latestPlan while a completed cache hit is shown.
             // SideEffect only publishes after a successful composition.
@@ -593,6 +645,179 @@ fun AtlasTimelineGallery(
                     }
                     pending = null
                 }
+                // FLOW-1 (#711): geometry shared by the live grid and its pinch layers.
+                val startPadPx = gapPx
+                val contentWidthPx = widthPx - 2 * startPadPx
+                fun levelPixels(level: Int): Int {
+                    val side = bounds.cellSidePx(GridDensity.entries[level.coerceIn(0, CROSS_MAX_LEVEL)].columns)
+                    return gridPreviewRequestPixels(side, side)
+                }
+                // A tile of this level whose own size is still decoding shows the
+                // copy a neighbouring level already decoded: no grey blink at a
+                // pinch commit, and none when scrolling back after one.
+                val tileFallback = remember(bounds, ready.density) {
+                    listOf(ready.density.ordinal - 1, ready.density.ordinal + 1)
+                        .filter { it in 0..CROSS_MAX_LEVEL }.map(::levelPixels)
+                        .filter { it != previewPixels }.distinct().toIntArray()
+                }
+                fun ghostFor(c: CrossPinch, level: Int, focusY: Float = c.focus.y): CrossGhost? {
+                    val d = GridDensity.entries.getOrNull(level) ?: return null
+                    val plan = recentPlans.peek(d)?.takeIf { matchingPlanFor(it, d) } ?: return null
+                    if (c.anchorIndex !in items.indices) return null
+                    val g = plan.geometry
+                    val target = runCatching {
+                        g.targetMedia(c.anchorIndex, c.fractionY, focusY - c.topPaddingPx)
+                    }.getOrNull() ?: return null
+                    val scrollTop = g.scrollTopFor(target)
+                    val columns = composeGridColumnSlots(contentWidthPx, gapPx, d.columns)
+                    val cells = crossVisibleCells(g, columns, scrollTop, c.startPaddingPx,
+                        c.topPaddingPx, contentWidthPx, heightPx)
+                    val anchor = crossAnchorRect(g, columns, c.anchorIndex, scrollTop,
+                        c.startPaddingPx, c.topPaddingPx)
+                    return CrossGhost(plan, target, cells, anchor)
+                }
+                val crossNow = cross
+                val pair = crossLevels
+                val ghosts: Map<Int, CrossGhost> = remember(crossNow, pair, plansVersion, ready) {
+                    PinchCrossTiming.measure("geometry") { if (crossNow == null || pair == null) emptyMap() else buildMap {
+                        for (level in listOf(pair.first, pair.second).distinct()) {
+                            if (level == crossNow.baseLevel) continue
+                            ghostFor(crossNow, level)?.let { put(level, it) }
+                        }
+                    } }
+                }
+                fun restRect(c: CrossPinch, level: Int): Rect =
+                    if (level == c.baseLevel) c.baseAnchor
+                    else ghosts[level]?.anchor ?: estimatedAnchorRect(c.focus, c.fractionX, c.fractionY,
+                        bounds.cellSidePx(GridDensity.entries[level.coerceIn(0, CROSS_MAX_LEVEL)].columns).toFloat())
+                fun drawable(c: CrossPinch, level: Int) = level == c.baseLevel || ghosts.containsKey(level)
+                // Opacity and draw order of [level] at position [v]; null = not drawn.
+                // A level with no plan yet is skipped and its partner shows fully,
+                // so the screen never shows an empty band.
+                fun lookAt(c: CrossPinch, level: Int, v: Float): CrossLayerLook? {
+                    val frame = crossFrame(v, CROSS_MAX_LEVEL)
+                    val lowerOk = drawable(c, frame.lower)
+                    val upperOk = drawable(c, frame.upper)
+                    return when {
+                        lowerOk && upperOk -> crossLayerLook(level, frame) {
+                            nl.atlas.gallery.featuredesign.AtlasMotion.SineInOut80.transform(it)
+                        }
+                        lowerOk || upperOk ->
+                            if (level == (if (lowerOk) frame.lower else frame.upper)) CrossLayerLook(1f, false) else null
+                        else -> if (level == c.baseLevel) CrossLayerLook(1f, false) else null
+                    }
+                }
+                fun poseAt(c: CrossPinch, level: Int, v: Float): LayerPose {
+                    val anchorNow = crossAnchorAt(crossFrame(v, CROSS_MAX_LEVEL), { restRect(c, it) }, c.focus)
+                        .translate(crossShift.value)
+                    return poseOnto(restRect(c, level), anchorNow)
+                }
+                val liveOnTop by remember(crossNow, ghosts) {
+                    derivedStateOf {
+                        val c = crossNow
+                        c != null && lookAt(c, c.baseLevel, crossPosition.floatValue)?.onTop == true
+                    }
+                }
+                // The photo under the fingers, from what the live grid shows now.
+                fun beginCross(focus: Offset): CrossPinch? {
+                    val info = gridState.layoutInfo
+                    if (ready.density != density ||
+                        info.totalItemsCount != ready.geometry.timeline.slots.size) return null
+                    val topPad = info.beforeContentPadding
+                    val cells = info.visibleItemsInfo.mapNotNull { cell ->
+                        val slot = ready.geometry.timeline.slots.getOrNull(cell.index)
+                            as? TimelineSlot.Media ?: return@mapNotNull null
+                        val media = items.getOrNull(slot.mediaIndex) ?: return@mapNotNull null
+                        // Item offsets exclude the content padding; pointers do not.
+                        GridVisibleCell(media.uri, slot.mediaIndex, cell.offset.x + startPadPx,
+                            cell.offset.y + topPad, cell.size.width, cell.size.height)
+                    }
+                    val anchor = focalGridAnchor(cells, focus.x, focus.y) ?: return null
+                    val cell = cells.first { it.itemIndex == anchor.itemIndex }
+                    return CrossPinch(ready.density.ordinal, anchor.itemIndex, anchor.mediaKey,
+                        anchor.fractionX, anchor.fractionY, focus,
+                        Rect(cell.x.toFloat(), cell.y.toFloat(), (cell.x + cell.width).toFloat(),
+                            (cell.y + cell.height).toFloat()), startPadPx, topPad)
+                }
+                fun finishCross(c: CrossPinch, target: Int) {
+                    if (target != c.baseLevel) {
+                        val level = GridDensity.entries[target]
+                        val ghost = ghostFor(c, target)
+                        if (ghost != null) {
+                            // The new grid opens exactly where its pinch layer was drawn,
+                            // including where the fingers moved it.
+                            commitScroll = level to (c.commitTarget ?: ghost.target)
+                        } else {
+                            pending = PendingTimelineFocus(sourceKey, c.anchorKey, c.anchorIndex,
+                                c.fractionY, c.focus.y - c.topPaddingPx)
+                            densityHandoff = true
+                        }
+                        density = level
+                    }
+                    cross = null
+                }
+                fun settleCross(target: Int) {
+                    val c = cross ?: return
+                    c.settling = true
+                    val from = crossPosition.floatValue
+                    val to = target.toFloat()
+                    // The photo stays where the fingers left it, as far as the new
+                    // level's rows allow: columns are fixed (x settles back) and
+                    // the library's ends clamp the scroll.
+                    val shiftFrom = crossShift.value
+                    var shiftTo = Offset.Zero
+                    c.commitTarget = null
+                    if (target != c.baseLevel && shiftFrom != Offset.Zero) {
+                        val at = ghostFor(c, target)
+                        val moved = ghostFor(c, target, c.focus.y + shiftFrom.y)
+                        if (at != null && moved != null) {
+                            shiftTo = Offset(0f, moved.anchor.top - at.anchor.top)
+                            c.commitTarget = moved.target
+                        }
+                    }
+                    val ms = if (reduceMotion) 0 else crossSettleMillis(from, to,
+                        nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MS,
+                        nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MIN_MS).let {
+                        if (it == 0 && shiftFrom != shiftTo)
+                            nl.atlas.gallery.featuredesign.AtlasMotion.PINCH_SETTLE_MIN_MS else it
+                    }
+                    crossJob[0]?.cancel()
+                    crossJob[0] = frameScope.launch {
+                        if (ms > 0) animate(0f, 1f, animationSpec = androidx.compose.animation.core.tween(ms,
+                            easing = nl.atlas.gallery.featuredesign.AtlasMotion.SineInOut80)) { t, _ ->
+                            crossPosition.floatValue = from + (to - from) * t
+                            crossShift.value = androidx.compose.ui.geometry.lerp(shiftFrom, shiftTo, t)
+                        }
+                        crossPosition.floatValue = to
+                        crossShift.value = shiftTo
+                        if (cross === c) { finishCross(c, target); crossShift.value = Offset.Zero }
+                    }
+                }
+                // TalkBack "Larger tiles" / "Smaller tiles": the same anchored,
+                // animated commit as a pinch, on the photo in the middle.
+                crossChoose = choose@{ next ->
+                    if (cross != null) return@choose false
+                    val info = gridState.layoutInfo
+                    val c = beginCross(Offset(info.viewportSize.width / 2f,
+                        info.viewportSize.height / 2f)) ?: return@choose false
+                    crossPosition.floatValue = c.baseLevel.toFloat()
+                    crossShift.value = Offset.Zero
+                    cross = c
+                    settleCross(next.ordinal)
+                    true
+                }
+                // A committed level opens at its pinch layer's exact scroll before
+                // its first measure, so the handover is pixel-identical.
+                val commit = commitScroll
+                if (commit != null && ready.density == commit.first) {
+                    SideEffect {
+                        if (commitScroll === commit) {
+                            gridState.requestScrollToItem(commit.second.firstSlotIndex,
+                                commit.second.firstSlotScrollOffsetPx)
+                            commitScroll = null
+                        }
+                    }
+                }
                 // #555: warm the rows the grid is about to show.
                 GridThumbnailPrefetch(gridState, ready.density.columns, previewPixels,
                     layoutKey = ready, scrubbing = scrubbing) { slot ->
@@ -601,6 +826,8 @@ fun AtlasTimelineGallery(
                 }
                 // Current layout and grant scope the positional saved-state keys.
                 // Header/media URIs must never reach LazyGrid saveable keys.
+                CompositionLocalProvider(LocalGridTileFallbackPixels provides tileFallback) {
+                Box(Modifier.fillMaxSize().clipToBounds()) {
                 key(sourceKey, sort, ready) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(ready.density.columns),
@@ -610,55 +837,51 @@ fun AtlasTimelineGallery(
                         bottom = LocalAtlasBottomChrome.current),
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier.fillMaxSize().testTag("atlas-timeline-grid")
+                    modifier = Modifier.zIndex(if (liveOnTop) 1f else 0f)
+                        .fillMaxSize().testTag("atlas-timeline-grid")
                         // #494: Initial-pass parent detector; tiles can't swallow it.
                         .galleryPinchLadder(ready, density, newTracker = { slop ->
                             GalleryPinchTracker(GalleryZoomStop.forDensity(density), slop,
                                 allowOriginal = originalCurrent != null)
-                        }, onZoom = { zoom, focusPoint ->
-                            if (zoomStartCellPx <= 0 || zoomJob[0]?.isActive == true) {
-                                zoomJob[0]?.cancel()
-                                zoomStartCellPx = bounds.cellSidePx(ready.density.columns)
-                                zoomShiftX = 0f
+                        }, onProgress = { progress, focusPoint ->
+                            if (cross == null && crossJob[0]?.isActive != true) {
+                                cross = beginCross(focusPoint)?.also {
+                                    crossPosition.floatValue = it.baseLevel.toFloat()
+                                    crossShift.value = Offset.Zero
+                                }
                             }
-                            zoomSettleTo = null
-                            zoomFocus = focusPoint
-                            zoomScale = zoom
+                            val c = cross
+                            if (c != null && !c.settling) {
+                                crossShift.value = focusPoint - c.focus
+                                val before = kotlin.math.floor(crossPosition.floatValue)
+                                val v = c.baseLevel + progress
+                                crossPosition.floatValue = v
+                                // Parity spec Haptics: a light tick on each level change.
+                                if (kotlin.math.floor(v) != before)
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            }
                         }, onCancelled = {
-                            // Same level: spring back to its own tile size.
-                            zoomSettleTo = ready.density
+                            // Same level: settle back onto it.
+                            cross?.let { settleCross(it.baseLevel) }
                         }) { next, focusPoint ->
                             if (next == GalleryZoomStop.ORIGINAL) {
                                 // Original rows start drawn at the size the fingers left.
-                                if (zoomStartCellPx > 0) ZoomEntryHandoff.offer(true, catalogueEpoch,
-                                    zoomScale * zoomStartCellPx, focusPoint)
-                                zoomJob[0]?.cancel()
-                                zoomSettleTo = null
-                                zoomStartCellPx = 0
-                                zoomScale = 1f
-                                zoomShiftX = 0f
+                                val c = cross
+                                if (c != null) {
+                                    val drawn = crossAnchorAt(crossFrame(crossPosition.floatValue,
+                                        CROSS_MAX_LEVEL), { restRect(c, it) }, c.focus).width
+                                    ZoomEntryHandoff.offer(true, catalogueEpoch, drawn, focusPoint)
+                                }
+                                crossJob[0]?.cancel()
+                                cross = null
+                                crossShift.value = Offset.Zero
                                 // The existing ratio destination owns its own lazy state
                                 // and metadata. No 150k source rescan on the UI thread.
                                 requestOriginal(focusPoint.x, focusPoint.y, ready)
                             } else {
-                                val cells = gridState.layoutInfo.visibleItemsInfo.mapNotNull { cell ->
-                                    val slot = ready.geometry.timeline.slots.getOrNull(cell.index)
-                                        as? TimelineSlot.Media ?: return@mapNotNull null
-                                    val media = items.getOrNull(slot.mediaIndex) ?: return@mapNotNull null
-                                    GridVisibleCell(media.uri, slot.mediaIndex, cell.offset.x,
-                                        cell.offset.y, cell.size.width, cell.size.height)
-                                }
-                                val anchor = focalGridAnchor(cells, focusPoint.x, focusPoint.y)
-                                pending = anchor?.let {
-                                    PendingTimelineFocus(sourceKey, it.mediaKey, it.itemIndex,
-                                        it.fractionY, focusPoint.y)
-                                }
-                                // The focus is the layer's fixed point, so layout and
-                                // drawn fractions agree there.
-                                zoomHandoff[0] = anchor?.let { ZoomHandoff(it.itemIndex, it.fractionX) }
-                                val nextDensity = checkNotNull(next.squareDensityOrNull())
-                                zoomSettleTo = nextDensity
-                                density = nextDensity
+                                val target = checkNotNull(next.squareDensityOrNull())
+                                // No photo to anchor on (empty grid): just change level.
+                                if (cross != null) settleCross(target.ordinal) else density = target
                             }
                         }
                         // #556 Samsung long-press drag selection with edge auto-scroll.
@@ -693,6 +916,7 @@ fun AtlasTimelineGallery(
                         // (Lukas removed the visible button, #494).
                         .semantics {
                             stateDescription = "${ready.density.columns} columns"
+                            crossNeighboursPlanned = neighboursPlanned
                             customActions = buildList {
                                 if (originalCurrent != null) add(
                                     CustomAccessibilityAction(ORIGINAL_PROPORTIONS_ACTION) {
@@ -715,22 +939,18 @@ fun AtlasTimelineGallery(
                         // pointer modifiers, so pinch input is never scaled. Draw-phase
                         // reads only: no recomposition, layout or decode per frame.
                         .zoomEntryLayer(entryZoom) { bounds.cellSidePx(ready.density.columns).toFloat() }
-                        // Only while a zoom runs: a fling never draws through
-                        // an extra layer (zoomStartCellPx changes at start and
-                        // end of a zoom, not per frame).
-                        .then(if (zoomStartCellPx <= 0) Modifier else Modifier.graphicsLayer {
-                            val start = zoomStartCellPx
-                            val visual = if (start <= 0) 1f else zoomScale * start /
-                                bounds.cellSidePx(ready.density.columns)
-                            scaleX = visual
-                            scaleY = visual
-                            translationX = zoomShiftX
-                            if (size.width > 0f && size.height > 0f) {
-                                transformOrigin = TransformOrigin(
-                                    (zoomFocus.x / size.width).coerceIn(0f, 1f),
-                                    (zoomFocus.y / size.height).coerceIn(0f, 1f))
-                            }
-                        })
+                        // FLOW-1: only while a pinch runs or settles (a fling never
+                        // draws through an extra layer). Draw-phase reads only.
+                        .then(if (crossNow == null) Modifier else Modifier.graphicsLayer { PinchCrossTiming.measure("pose") {
+                            val v = crossPosition.floatValue
+                            val pose = poseAt(crossNow, crossNow.baseLevel, v)
+                            alpha = lookAt(crossNow, crossNow.baseLevel, v)?.alpha ?: 0f
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = pose.scale
+                            scaleY = pose.scale
+                            translationX = pose.translationX
+                            translationY = pose.translationY
+                        } })
                 ) {
                     itemsIndexed(ready.geometry.timeline.slots,
                         key = { index, _ -> gridLazySaveablePositionKey(index) },
@@ -812,6 +1032,37 @@ fun AtlasTimelineGallery(
                     }
                 }
                 } // Current authorized timeline's remembered-item scope.
+                // FLOW-1: the level(s) the pinch is flowing into, as still layers.
+                if (crossNow != null) for ((level, ghost) in ghosts) key(level) {
+                    val onTop by remember(crossNow, ghosts) {
+                        derivedStateOf { lookAt(crossNow, level, crossPosition.floatValue)?.onTop == true }
+                    }
+                    val candidates = remember(level, crossNow.baseLevel, bounds) {
+                        listOf(levelPixels(level), levelPixels(crossNow.baseLevel)).distinct().toIntArray()
+                    }
+                    val ghostSlots = ghost.plan.geometry.timeline.slots
+                    val mediaAt = remember(ghostSlots, items) { { slot: Int ->
+                        (ghostSlots.getOrNull(slot) as? TimelineSlot.Media)?.let { items.getOrNull(it.mediaIndex) }
+                    } }
+                    val headerAt = remember(ghostSlots) { { slot: Int ->
+                        ghostSlots.getOrNull(slot) as? TimelineSlot.Header
+                    } }
+                    PinchCrossLayer(ghost.cells, mediaAt, headerAt, candidates,
+                        selectedMediaUris, selectedMediaUris != null && onMediaToggle != null,
+                        mediaUriAt = { items.getOrNull(it)?.uri },
+                        modifier = Modifier.zIndex(if (onTop) 1f else 0f).fillMaxSize().graphicsLayer { PinchCrossTiming.measure("pose") {
+                            val v = crossPosition.floatValue
+                            val pose = poseAt(crossNow, level, v)
+                            alpha = lookAt(crossNow, level, v)?.alpha ?: 0f
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = pose.scale
+                            scaleY = pose.scale
+                            translationX = pose.translationX
+                            translationY = pose.translationY
+                        } })
+                }
+                } // FLOW-1 layer box
+                } // Tile fallback provider
             }
         }
         if (header != null) {

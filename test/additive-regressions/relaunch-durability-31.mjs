@@ -30,9 +30,12 @@ assert.match(settings, /if \(scanLoading\) "Restoring…" else/);
 // Not cacheDir: Android is allowed to purge cacheDir under storage pressure,
 // which makes every gallery relaunch regenerate all micro thumbnails.
 assert.match(micro, /MicroThumbnailStore\(\s*File\(context\.noBackupFilesDir, "atlas-micro-v1"\)/);
-assert.match(micro, /store = microStore/);
-assert.match(micro, /CoroutineScope\(SupervisorJob\(\) \+ Dispatchers\.IO\)\.launch/);
+assert.match(micro, /budgetPending = true/);
+assert.match(micro, /store = microStore[\s\S]*?CoroutineScope\(SupervisorJob\(\) \+ Dispatchers\.IO\)\.launch[\s\S]*?StatFs\(context\.filesDir\.absolutePath\)/);
 assert.match(micro, /microStore\.updateBudget\(microThumbnailDiskBudgetBytes\(total\)\)/);
+assert.match(micro, /if \(store\.budgetReady && !store\.full\(\)\)/);
+const warmer = read('app/src/main/java/nl/atlas/gallery/featuremedia/MicroThumbnailWarmer.kt');
+assert.equal((warmer.match(/store\.awaitBudget\(\)/g) || []).length, 2);
 assert.match(micro, /if \(!now && \(wasAllowed \|\| first\)\)/);
 // connectedDebugAndroidTest can uninstall/reinstall both test and target APKs;
 // the separate-process phase must reinstall them before granting photo access.

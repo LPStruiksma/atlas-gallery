@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +57,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.selected
+import nl.atlas.gallery.featureorganization.DragSelectRange
+import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -86,8 +93,19 @@ fun AtlasRatioGallery(
     /** The host publication epoch, including grant changes on a reused list. */
     catalogueEpoch: Long = 0L,
     /** Pinch inward from original rows to the adjacent large square grid stop. */
-    onCompactGridRequested: ((GalleryZoomRequest) -> Unit)? = null
+    onCompactGridRequested: ((GalleryZoomRequest) -> Unit)? = null,
+    /** Live batch selection (null outside selection mode), as on the square grid. */
+    selectedMediaUris: Set<String>? = null,
+    /** Long-press (and drag) selection; null turns selection off. */
+    onSelectionChange: ((Set<String>) -> Unit)? = null,
+    /** A tap while selecting toggles the tile instead of opening it. */
+    onMediaToggle: ((MediaRecord) -> Unit)? = null
 ) {
+    val selectionCurrent by rememberUpdatedState(selectedMediaUris)
+    val selectionChangeCurrent by rememberUpdatedState(onSelectionChange)
+    val toggleCurrent by rememberUpdatedState(onMediaToggle)
+    val haptics = LocalHapticFeedback.current
+    val dragHolder = remember { arrayOfNulls<DragSelectRange>(1) }
     val currentOpen by rememberUpdatedState(onOpen)
     val currentAspect by rememberUpdatedState(aspectRatioOf)
     val currentLayoutReady by rememberUpdatedState(onLayoutReady)
@@ -107,7 +125,10 @@ fun AtlasRatioGallery(
         // RatioLayoutOptions with physically impossible space for a photo.
         if (!canPlanRatioViewport(widthPx, heightPx, 0, gapPx))
             return@BoxWithConstraints
-        val options = remember(widthPx, heightPx, density.density) {
+        // Height only clamps a restored scroll target. A height-only change
+        // (the selection bars swapping in) must not re-plan 150k rows: that
+        // blanked the list and cancelled the long-press drag under the finger.
+        val options = remember(widthPx, density.density) {
             samsungRatioLayoutOptions(widthPx, heightPx, density.density)
         }
         // Spacing in the composition comes from the same physical-pixel plan.
@@ -219,6 +240,31 @@ fun AtlasRatioGallery(
             key(catalogEpoch, options, ready) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().then(zoomOutModifier)
+                    // Samsung long-press drag selection, as on the square grid.
+                    .dragSelectGesture(
+                        enabled = onSelectionChange != null,
+                        key = ready,
+                        frameScope = pinchScope,
+                        hitSlot = { x, y -> state.ratioHitMedia(ready, x, y) },
+                        visibleTop = { 0f },
+                        scrollBy = { state.scrollBy(it) },
+                        isMediaSlot = { it in items.indices },
+                        onStart = start@{ mediaIndex ->
+                            val sink = selectionChangeCurrent ?: return@start false
+                            val range = DragSelectRange.start(mediaIndex,
+                                selectionCurrent.orEmpty()) { items.getOrNull(it)?.uri }
+                                ?: return@start false
+                            dragHolder[0] = range
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            sink(range.selection)
+                            true
+                        },
+                        onExtend = { mediaIndex ->
+                            val range = dragHolder[0]
+                            if (range != null) selectionChangeCurrent?.invoke(range.extendTo(mediaIndex))
+                        },
+                        onEnd = { dragHolder[0] = null }
+                    )
                     .testTag("atlas-ratio-gallery")
                     .zoomEntryLayer(entryZoom) { options.targetRowHeightPx.toFloat() }
                     // Draw-phase reads only; pointer input above stays unscaled.
@@ -245,6 +291,8 @@ fun AtlasRatioGallery(
                     ) {
                         for (inRow in 0 until row.mediaCount) {
                             val media = items[row.firstMediaIndex + inRow]
+                            val selecting = selectedMediaUris != null && onMediaToggle != null
+                            val isSelected = selecting && media.uri in selectedMediaUris.orEmpty()
                             val cellWidth = with(density) { row.cellWidthsPx[inRow].toDp() }
                             val cellHeight = with(density) { row.heightPx.toDp() }
                             Box(
@@ -252,7 +300,24 @@ fun AtlasRatioGallery(
                                 // photo fills its cell edge to edge (Samsung look).
                                 Modifier.width(cellWidth).height(cellHeight)
                                     .clipToBounds()
-                                    .clickable(onClickLabel = "Open ${media.name}") { currentOpen(media) }
+                                    // The pointer long press belongs to the list's drag
+                                    // detector; TalkBack gets the same start as an action.
+                                    .then(if (onSelectionChange != null && !selecting) Modifier.semantics {
+                                        onLongClick("Select ${media.name}") {
+                                            selectionChangeCurrent?.invoke(
+                                                selectionCurrent.orEmpty() + media.uri)
+                                            true
+                                        }
+                                    } else Modifier)
+                                    .clickable(onClickLabel = if (selecting) "Select ${media.name}"
+                                        else "Open ${media.name}") {
+                                        // Live state at click time: never open mid-selection.
+                                        val toggle = toggleCurrent
+                                        if (selectionCurrent != null && toggle != null) toggle(media)
+                                        else currentOpen(media)
+                                    }
+                                    .then(if (selecting) Modifier.semantics { selected = isSelected }
+                                        else Modifier)
                                     .testTag("atlas-ratio-media-${media.id}-${if (media.isVideo) "video" else "photo"}")
                             ) {
                                 // Physical tile bounds, rather than a fixed 900 px decode,
@@ -271,6 +336,9 @@ fun AtlasRatioGallery(
                                         learnedRatioOrNull(w, h)?.let { learned[media.uri] = it }
                                     }, gridTile = true)
                                 if (media.isVideo) Text("▶", Modifier.align(Alignment.BottomEnd).padding(6.dp))
+                                // Samsung: every tile shows its circle while selecting.
+                                if (selecting) SelectionCheckCircle(isSelected,
+                                    Modifier.align(Alignment.TopStart).padding(5.dp))
                             }
                         }
                     }

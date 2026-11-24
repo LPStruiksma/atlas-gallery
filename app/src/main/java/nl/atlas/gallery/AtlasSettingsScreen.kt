@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
@@ -30,11 +31,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import nl.atlas.gallery.featuredesign.LocalAtlasDark
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import nl.atlas.gallery.featurepeopleui.FaceDiscoveryPhase
 import nl.atlas.gallery.featureaiedit.settings.AiEditSettingsDialog
@@ -77,7 +88,17 @@ internal fun AtlasSettingsScreen(
     searchHistoryOn: Boolean? = null,
     onSearchHistoryOn: (Boolean) -> Unit = {},
     onClearSearchHistory: () -> Unit = {},
-    performance: PerformanceAggregates = PerformanceSession.aggregate
+    /** INSIGHT-1 (#587): opens Library insights; null hides the row. */
+    onLibraryInsights: (() -> Unit)? = null,
+    performance: PerformanceAggregates = PerformanceSession.aggregate,
+    /** USAGE-0 (#173): null hides the three usage rows (previews and old call sites). */
+    usageEnabled: Boolean? = null,
+    usageHasData: Boolean = false,
+    onUsageEnabled: (Boolean) -> Unit = {},
+    onExportUsage: () -> UsageExportFile.Result = { UsageExportFile.Result.NOTHING_RECORDED },
+    onClearUsage: () -> Unit = {},
+    /** #675: release notes bundled by the signed release job; null in debug builds. */
+    changelog: AtlasChangelog? = LocalContext.current.let { c -> remember(c) { AtlasChangelog.load(c) } }
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
@@ -116,6 +137,12 @@ internal fun AtlasSettingsScreen(
     val scanValue = scanStatusNote ?: if (scanLoading) "Restoring…" else faceScanSettingsValue(
         scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
 
+    val usageSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val usageScope = androidx.compose.runtime.rememberCoroutineScope()
+    fun usageMessage(text: String) {
+        usageScope.launch { usageSnackbar.currentSnackbarData?.dismiss(); usageSnackbar.showSnackbar(text) }
+    }
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .testTag("atlas-settings-screen")
@@ -235,7 +262,50 @@ internal fun AtlasSettingsScreen(
                         }
                     }
                 }
+                if (usageEnabled != null) {
+                    // USAGE-0 (#173): off by default. Daily counts and timings, closed IDs only.
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                            .toggleable(value = usageEnabled, role = Role.Switch,
+                                onValueChange = onUsageEnabled)
+                            .testTag("atlas-settings-usage-record"),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                            Text("Record usage for tuning", style = MaterialTheme.typography.bodyLarge)
+                            Text("Daily counts, timings and scan speed. No photos, names or places.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(checked = usageEnabled, onCheckedChange = null)
+                    }
+                    SettingsActionRow("Export usage", "atlas-settings-usage-export",
+                        onClick = if (usageHasData) ({
+                            when (onExportUsage()) {
+                                UsageExportFile.Result.WRITE_FAILED ->
+                                    usageMessage("Couldn\u2019t prepare usage file. Try again.")
+                                UsageExportFile.Result.SHARE_FAILED ->
+                                    usageMessage("Couldn\u2019t open sharing. Try again.")
+                                UsageExportFile.Result.NOTHING_RECORDED ->
+                                    usageMessage("Nothing recorded yet")
+                                UsageExportFile.Result.SHEET_OPENED -> Unit
+                            }
+                        }) else null,
+                        value = if (usageHasData) null else "Nothing recorded yet",
+                        enabled = usageHasData)
+                    SettingsActionRow("Clear usage", "atlas-settings-usage-clear",
+                        onClick = if (usageHasData) ({
+                            onClearUsage()
+                            usageMessage("Usage cleared")
+                        }) else null, enabled = usageHasData)
+                }
             }
+        }
+        // #587: below Advanced too, so existing rows keep their place on screen.
+        if (onLibraryInsights != null) SettingsGroup("Library", "atlas-settings-library") {
+            SettingsActionRow("Library insights", "atlas-settings-library-insights",
+                onLibraryInsights, "Size by folder, type and year")
         }
         // #427 review: below Advanced, so the existing groups keep their place on screen.
         if (searchHistoryOn != null) SettingsGroup("Search", "atlas-settings-search") {
@@ -261,6 +331,38 @@ internal fun AtlasSettingsScreen(
         }
         SettingsGroup("About", "atlas-settings-about") {
             SettingsActionRow("Version", "atlas-settings-version", value = versionName)
+            var whatsNewOpen by rememberSaveable { mutableStateOf(false) }
+            SettingsActionRow("What's new", "atlas-settings-whats-new",
+                onClick = { whatsNewOpen = true }, value = whatsNewRowValue(changelog))
+            if (whatsNewOpen) AtlasWhatsNewDialog(changelog, versionName) { whatsNewOpen = false }
+        }
+    }
+    androidx.compose.material3.SnackbarHost(usageSnackbar,
+        Modifier.align(androidx.compose.ui.Alignment.BottomCenter).testTag("atlas-settings-snackbar"))
+    }
+}
+
+@Composable
+private fun AtlasWhatsNewDialog(changelog: AtlasChangelog?, installedVersion: String,
+                                onClose: () -> Unit) {
+    // Same full-screen sub-screen shape as AI Edit settings (#430).
+    val dark = LocalAtlasDark.current
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false, dismissOnClickOutside = false)
+    ) {
+        val view = LocalView.current
+        LaunchedEffect(view, dark) {
+            val window = (view.parent as? DialogWindowProvider)?.window ?: return@LaunchedEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground) {
+            AtlasWhatsNewScreen(changelog, installedVersion, onBack = onClose)
         }
     }
 }
@@ -291,23 +393,82 @@ private fun SettingsActionRow(
     label: String,
     tag: String,
     onClick: (() -> Unit)? = null,
-    value: String? = null
+    value: String? = null,
+    enabled: Boolean = true
 ) {
-    Row(
+    SettingsRowLayout(
         Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .then(if (enabled) Modifier else Modifier.alpha(0.5f))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(tag),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        if (value != null) {
-            Spacer(Modifier.width(12.dp))
-            Text(value, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        label = { Text(label, Modifier.testTag("$tag-label"), style = MaterialTheme.typography.bodyLarge) },
+        value = value?.let { text ->
+            {
+                Text(text, Modifier.testTag("$tag-value"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    )
+}
+
+/**
+ * Settings row: label left, value right on one line when both fit at full width;
+ * otherwise the value moves under the label. The label is never squeezed, so a long
+ * status (e.g. "Waiting for charging · use Scan now while unplugged") cannot push the
+ * title into a one-letter column.
+ */
+@Composable
+internal fun SettingsRowLayout(
+    modifier: Modifier,
+    label: @Composable () -> Unit,
+    value: (@Composable () -> Unit)?
+) {
+    val gap = 12.dp
+    val stackedGap = 2.dp
+    val vertical = 8.dp
+    Layout(
+        content = { label(); value?.invoke() },
+        modifier = modifier
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val pad = vertical.roundToPx()
+        val labelM = measurables[0]
+        val valueM = measurables.getOrNull(1)
+        val gapPx = gap.roundToPx()
+        val loose = Constraints(maxWidth = width)
+        val stack = valueM != null && settingsRowStacks(
+            labelM.maxIntrinsicWidth(Constraints.Infinity), gapPx,
+            valueM.maxIntrinsicWidth(Constraints.Infinity), width)
+        val labelP = labelM.measure(loose)
+        if (valueM == null) {
+            val h = maxOf(constraints.minHeight, labelP.height + 2 * pad)
+            return@Layout layout(width, h) { labelP.place(0, (h - labelP.height) / 2) }
+        }
+        if (stack) {
+            val valueP = valueM.measure(loose)
+            val inner = labelP.height + stackedGap.roundToPx() + valueP.height
+            val h = maxOf(constraints.minHeight, inner + 2 * pad)
+            val top = (h - inner) / 2
+            layout(width, h) {
+                labelP.place(0, top)
+                valueP.place(0, top + labelP.height + stackedGap.roundToPx())
+            }
+        } else {
+            val valueP = valueM.measure(Constraints(maxWidth = maxOf(0, width - labelP.width - gapPx)))
+            val h = maxOf(constraints.minHeight, maxOf(labelP.height, valueP.height) + 2 * pad)
+            layout(width, h) {
+                labelP.place(0, (h - labelP.height) / 2)
+                valueP.place(width - valueP.width, (h - valueP.height) / 2)
+            }
         }
     }
 }
+
+/** True when label and value do not fit side by side at their natural one-line widths. */
+internal fun settingsRowStacks(labelWidth: Int, gap: Int, valueWidth: Int, available: Int): Boolean =
+    labelWidth + gap + valueWidth > available
 
 @Composable
 private fun SettingsMetricRow(row: PerformanceReport.Row) {

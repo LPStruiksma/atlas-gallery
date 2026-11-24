@@ -1,0 +1,29 @@
+# HUB-1C (#212): actual synthetic S24+ Compose captures, not wireframes.
+# Every saveUiEvidence() name in Hub1CSyntheticUiEvidenceTest is declared here.
+hub1c-same-person-light
+hub1c-same-person-dark
+hub1c-one-side-light
+hub1c-one-side-dark
+hub1c-both-sides-light
+hub1c-both-sides-dark
+hub1c-marked-undo-light
+hub1c-marked-undo-dark
+hub1c-after-undo-light
+hub1c-after-undo-dark
+hub1c-skipped-light
+hub1c-skipped-dark
+hub1c-show-skipped-light
+hub1c-show-skipped-dark
+hub1c-needs-splitting-visible
+hub1c-needs-splitting-hidden
+hub1c-needs-splitting-revoked
+hub1c-needs-splitting-loading
+# Hub1CNeedsSplittingJourneyTest: the real MainActivity over a synthetic library.
+hub1c-journey-people-menu
+hub1c-journey-visible-list
+hub1c-journey-back-to-visible-list
+hub1c-journey-hidden-filter
+hub1c-journey-hidden-list
+hub1c-journey-back-to-hidden-list
+hub1c-hidden-scoped-filter
+hub1c-large-text-130

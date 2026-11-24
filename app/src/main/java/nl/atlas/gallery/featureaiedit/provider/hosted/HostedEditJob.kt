@@ -3,6 +3,8 @@ package nl.atlas.gallery.featureaiedit.provider.hosted
 import nl.atlas.gallery.featureaiedit.network.EditHttpResult
 import nl.atlas.gallery.featureaiedit.network.EditRequestCancellation
 import nl.atlas.gallery.featureaiedit.network.FailureCode
+import nl.atlas.gallery.featureaiedit.network.FailurePhase
+import nl.atlas.gallery.featureaiedit.provider.Delivery
 import nl.atlas.gallery.featureaiedit.provider.EditJob
 import nl.atlas.gallery.featureaiedit.provider.EditOutcome
 import nl.atlas.gallery.featureaiedit.provider.FailureKind
@@ -111,8 +113,24 @@ class HostedEditJob(
  * Maps a transport failure to the provider contract with a fixed, code-only message. The `else`
  * branch keeps adapters compiling and conservative when the transport adds codes: unknown codes
  * are never treated as retryable.
+ *
+ * Delivery (#431 addendum A3): [afterAccepted] is true for any call made after the service already
+ * accepted the paid request (status, result, download), which is always [Delivery.UNCERTAIN].
+ * Otherwise a failure the transport proves happened before the body is [Delivery.NOT_SENT], a
+ * definite 4xx answer (not 408) is [Delivery.ANSWERED], and everything else is uncertain.
  */
-fun hostedFailure(result: EditHttpResult.Failed, retryableOverride: Boolean? = null): EditOutcome.Failed {
+fun hostedDelivery(result: EditHttpResult.Failed, afterAccepted: Boolean): Delivery = when {
+    afterAccepted -> Delivery.UNCERTAIN
+    result.phase == FailurePhase.BEFORE_BODY -> Delivery.NOT_SENT
+    result.status != null && result.status in 400..499 && result.status != 408 -> Delivery.ANSWERED
+    else -> Delivery.UNCERTAIN
+}
+
+fun hostedFailure(
+    result: EditHttpResult.Failed,
+    retryableOverride: Boolean? = null,
+    afterAccepted: Boolean = false
+): EditOutcome.Failed {
     val (kind, retryable) = when (result.code) {
         FailureCode.AUTH -> FailureKind.AUTH to false
         FailureCode.BILLING -> FailureKind.BILLING to false
@@ -124,5 +142,6 @@ fun hostedFailure(result: EditHttpResult.Failed, retryableOverride: Boolean? = n
         FailureCode.RESPONSE_TOO_LARGE -> FailureKind.SERVER to false
         else -> FailureKind.UNKNOWN to false
     }
-    return EditOutcome.Failed(kind, retryableOverride ?: retryable, "HTTP_" + result.code.name)
+    return EditOutcome.Failed(kind, retryableOverride ?: retryable, "HTTP_" + result.code.name,
+        hostedDelivery(result, afterAccepted))
 }

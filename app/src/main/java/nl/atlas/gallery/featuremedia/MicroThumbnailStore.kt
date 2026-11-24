@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featuremedia
 
+import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 import java.io.FileNotFoundException
 import java.security.MessageDigest
@@ -24,14 +25,25 @@ import java.util.concurrent.atomic.AtomicLong
  * inventory, and the whole folder is deleted when full access ends
  * ([MicroThumbnails.applyGrant]).
  */
-internal class MicroThumbnailStore(val root: File, budgetBytes: Long) {
+internal class MicroThumbnailStore(
+    val root: File, budgetBytes: Long, budgetPending: Boolean = false
+) {
     @Volatile var budgetBytes: Long = budgetBytes
         private set
+    private val budgetRefined = CompletableDeferred<Unit>().apply {
+        if (!budgetPending) complete(Unit)
+    }
+    val budgetReady: Boolean get() = budgetRefined.isCompleted
+
+    /** Warmer waits off the critical lane; no eviction at a provisional limit. */
+    suspend fun awaitBudget() { budgetRefined.await() }
 
     fun updateBudget(newBudgetBytes: Long) {
         require(newBudgetBytes > 0L)
         budgetBytes = newBudgetBytes
+        budgetRefined.complete(Unit)
     }
+
     private val used = AtomicLong(-1L)
 
     /** Folder size in bytes, or -1 until [scan] has run. */

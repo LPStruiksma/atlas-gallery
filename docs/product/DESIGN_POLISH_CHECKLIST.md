@@ -30,7 +30,7 @@ All nine cells start at **?**, intentionally; that is an honest baseline, not ni
 
 | ID | Screen / action | F | T | S | R | C | I | G | M | E | H | Declared paired evidence / remaining action-state proof |
 |---|---|---:|---|---|---|---|---|---|---|---|---|---|
-| D1 | Pictures grid, zoom levels, dates, floating fast-scroll | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `pictures-default`, `pictures-pinch-compact`, `pictures-header-away`; **missing** paired large-zoom/original-ratio and fast-scroll bubble |
+| D1 | Pictures grid, zoom levels, dates, floating fast-scroll | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `pictures-default`, `pictures-pinch-compact`, `pictures-header-away`; FLOW-1 (#711) adds paired light/dark pinch frames at 25/50/75 %, mid-settle and settled (`flow1-*`, timeline and plain grid), a 1 px anchor handover assertion and per-kind pinch frame time, which M can now be scored from; **missing** paired original-ratio and fast-scroll bubble |
 | D2 | Viewer bars, show/hide, insets, video controls | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `viewer-photo`, `viewer-filmstrip`; **missing** paired video-controls and hidden-chrome states |
 | D3 | Grid ↔ viewer enter/return transition | 5 | ? | ? | ? | ? | ? | ? | ? | ? | ? | **Missing** paired transition frames/recording (still frames alone cannot score M) |
 | D4 | Bottom bar and tab switching | 4 | ? | ? | ? | ? | ? | ? | ? | ? | ? | `pictures-default`, `albums-overview`; **missing** explicit paired in-flight tab-switch state |
@@ -64,7 +64,7 @@ These units address **missing verification** first. Each is a proposed scoped un
 
 | Candidate unit title | Row / screen | Checklist cells requiring proof | F | Verified gap score |
 |---|---|---|---:|---|
-| Capture paired grid zoom/fast-scroll states | D1 Pictures | S, M, H | 5 | unknown |
+| Capture paired fast-scroll and original-ratio states (grid zoom frames: #711) | D1 Pictures | S, M, H | 5 | unknown |
 | Capture paired viewer hidden chrome/video controls | D2 Viewer | I, G, M | 5 | unknown |
 | Record grid↔viewer frame-timing on synthetic photos | D3 Transition | M, I | 5 | unknown |
 | Capture tab-switch motion and active icons | D4 Bottom navigation | G, M, H | 4 | unknown |

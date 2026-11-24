@@ -3,9 +3,10 @@
     python3 -m tools.identity_bench              # fetch, run the fixed benchmark, sheets, report
     python3 -m tools.identity_bench self-test    # unit tests, synthetic tensors, no downloads
     python3 -m tools.identity_bench one --target T04 --identity 0213ccb4776a --candidate inswapper_128
-    python3 -m tools.identity_bench screen       # all nine swap networks on the development split
+    python3 -m tools.identity_bench screen       # all licence-admitted networks on the development split
     python3 -m tools.identity_bench explore --candidates inswapper_128+boost2,ghost_1_256+boost2
     python3 -m tools.identity_bench cost         # load time, stage time and peak memory, one process each
+    python3 -m tools.identity_bench fetch        # fetch permitted weights and fixtures
     python3 -m tools.identity_bench select       # re-derive the fixture manifest from the archives
 
 Outputs go to --out (default: the cache, never the repository).
@@ -27,11 +28,12 @@ from . import fixtures, metrics, pipeline, sheets
 from .pipeline import Config
 
 VERSION = "identity-bench/1"
-ALL_SWAPPERS = tuple(n for n in pipeline.SWAPPERS if n not in pipeline.LOCAL_MODELS)   # exports run by name
-# One network per model family.  The first four are the screening winners
-# (docs/identity-studio/BENCH.md); SimSwap screened last and is kept because the
-# licence register ranks it as the only one open to private non-commercial use.
-FINALISTS = ("inswapper_128", "alphaface_256", "ghost_1_256", "hyperswap_1a_256", "simswap_256")
+ALL_SWAPPERS = tuple(n for n in pipeline.SWAPPERS
+                     if n not in pipeline.LOCAL_MODELS and n in pipeline.BENCH_ALLOWED)  # exported models run by name
+# One admitted network per model family.  AlphaFace results remain historical
+# (docs/identity-studio/BENCH.md), but it cannot be selected by default until
+# source-backed author permission changes the bench admission register.
+FINALISTS = ("inswapper_128", "ghost_1_256", "hyperswap_1a_256", "simswap_256")
 ABLATION_BASE = "inswapper_128"
 CONTROL_NONE = Config("control-none", mask="box", colour=False)
 STABILITY_PAIRS, STABILITY_REPEATS, JITTER = 12, 4, 0.01
@@ -511,7 +513,8 @@ def main(argv=None) -> int:
     parser.add_argument("--target", default="T04")
     parser.add_argument("--identity", default=None)
     parser.add_argument("--candidate", default="inswapper_128", help="a candidate label, e.g. ghost_1_256+mask-mp")
-    parser.add_argument("--candidates", default=None, help="comma-separated labels for explore and cost")
+    parser.add_argument("--candidates", default=None,
+                        help="comma-separated candidate labels for explore/cost, or model names for fetch")
     args = parser.parse_args(argv)
     out = args.out or os.path.join(pipeline.cache_dir(), "runs", args.command)
 
@@ -523,29 +526,42 @@ def main(argv=None) -> int:
         print(fixtures.manifest_source(fixtures.select()))
         return 0
     if args.command == "fetch":
+        # Default bulk-fetch excludes denied historical weights. Explicit model
+        # requests are checked as a whole before touching fixtures or cache.
+        names = (args.candidates.split(",") if args.candidates else
+                 [name for name in pipeline.MODELS if name in pipeline.BENCH_ALLOWED])
+        for name in names:
+            pipeline.require_bench_model(name)
+            if name not in pipeline.MODELS:
+                raise ValueError(f"{name}: no downloadable bench weight in pipeline.MODELS")
         for file_id in fixtures.FILES:
             fixtures.fetch(file_id)
-        for name in pipeline.MODELS:
+        for name in names:
             pipeline.model_path(name)
-        print(f"{len(fixtures.FILES)} fixture files and {len(pipeline.MODELS)} models verified")
+        print(f"{len(fixtures.FILES)} fixture files and {len(names)} models verified")
         return 0
     if args.command == "cost-one":
         print(json.dumps(cost_one(args.label)))
         return 0
     if args.command == "cost":
-        cost(out, args.candidates.split(",") if args.candidates else
-             list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
+        labels = (args.candidates.split(",") if args.candidates else
+                  list(FINALISTS) + [n + "+gfpgan" for n in FINALISTS])
+        # No earlier candidate may download weights before a later one is refused.
+        for label in labels:
+            parse_label(label)
+        cost(out, labels)
         return 0
     if args.command == "report":
         with open(os.path.join(out if args.out else os.path.join(pipeline.cache_dir(), "runs", "run"), "results.json")) as f:
             print(report(json.load(f)))
         return 0
     if args.command == "one":
+        # Bench(out) loads the research judge; reject bad candidates first.
+        config = parse_label(args.candidate)
         bench = Bench(out)
         target = next(t for t in fixtures.TARGETS + fixtures.DEV_TARGETS if t.id == args.target)
         identity = args.identity or fixtures.IDENTITIES[0]
         gallery = bench.gallery(list(fixtures.IDENTITIES) + list(fixtures.RENDERED), fixtures.DISTRACTORS)
-        config = parse_label(args.candidate)
         row = bench.measure(target, identity, config, gallery, keep_image=True)
         if "_image" in row:
             print("output:", bench.save(row, target, config))

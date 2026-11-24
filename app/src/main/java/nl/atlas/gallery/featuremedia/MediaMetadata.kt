@@ -157,7 +157,21 @@ fun MediaRecord.displayAspectRatioOrNull(): Float? {
 fun MediaRecord.presentationCacheKeyOrNull(
     requestedPixels: Int, catalogueEpoch: Long, editorRevision: Long = 0L
 ): String? {
-    if (requestedPixels !in 1..8192 || catalogueEpoch < 0L || editorRevision < 0L) return null
+    if (requestedPixels !in 1..8192) return null
+    val prefix = presentationCacheKeyPrefixOrNull(catalogueEpoch, editorRevision) ?: return null
+    return prefix + requestedPixels
+}
+
+/**
+ * Everything in [presentationCacheKeyOrNull] except the trailing requested
+ * size, so a caller trying several sizes for one item (the FLOW-1 pinch
+ * layer) builds the long item part once. Null exactly when every
+ * [presentationCacheKeyOrNull] for this item and epoch is null.
+ */
+internal fun MediaRecord.presentationCacheKeyPrefixOrNull(
+    catalogueEpoch: Long, editorRevision: Long = 0L
+): String? {
+    if (catalogueEpoch < 0L || editorRevision < 0L) return null
     val version = providerVersion?.takeIf { it.isNotBlank() } ?: return null
     if (generationModified <= 0L) return null
     return buildString(160) {
@@ -172,7 +186,7 @@ fun MediaRecord.presentationCacheKeyOrNull(
         append(widthPixels).append('|').append(heightPixels).append('|')
         append(orientationDegrees).append('|')
         append(modifiedAtSeconds).append('|').append(catalogueEpoch).append('|')
-        append(editorRevision).append('|').append(requestedPixels)
+        append(editorRevision).append('|')
     }
 }
 
@@ -223,6 +237,37 @@ internal fun sameMediaProviderScanSnapshot(
         (generationsAtStart.isEmpty() ||
             (generationsAtStart.keys == versionsAtStart.keys &&
                 generationsAtStart.values.all { it != null && it >= 0L }))
+
+/**
+ * #676: the scan ran under one provider version on the same mounted volumes
+ * and only the generations moved forward (a screenshot, a download or an edit
+ * landed while it read). The rows are then not one coherent snapshot, but
+ * every row that changed after [generationsAtStart] is found again by the
+ * generation delta from that point, so the caller may publish the scan if,
+ * and only if, it runs that delta next. A version change, a volume change,
+ * a generation going backwards, or API 29 (no generations) still fails.
+ */
+internal fun mediaProviderOnlyAdvancedDuringScan(
+    versionsAtStart: Map<String, String?>,
+    versionsAtEnd: Map<String, String?>,
+    generationsAtStart: Map<String, Long?>,
+    generationsAtEnd: Map<String, Long?>
+): Boolean =
+    generationsAtStart.isNotEmpty() &&
+        // The start must itself be a valid snapshot point to resume from.
+        sameMediaProviderScanSnapshot(versionsAtStart, versionsAtStart,
+            generationsAtStart, generationsAtStart) &&
+        versionsAtStart == versionsAtEnd &&
+        generationsAtStart.keys == generationsAtEnd.keys &&
+        generationsAtStart != generationsAtEnd &&
+        generationsAtEnd.all { (volume, end) ->
+            val start = generationsAtStart[volume]
+            end != null && start != null && end >= start
+        }
+
+/** #676: only a full image+video grant can follow a scan with the generation delta. */
+internal fun galleryDeltaEligible(grant: GalleryMediaGrant): Boolean =
+    grant.images && grant.videos
 
 /**
  * Old decoded data may be reused only when the exact per-item generation

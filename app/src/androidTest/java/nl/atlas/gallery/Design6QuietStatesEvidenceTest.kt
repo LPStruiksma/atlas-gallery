@@ -1,5 +1,8 @@
 package nl.atlas.gallery
 
+import android.os.SystemClock
+import android.util.Log
+import android.view.WindowInsets as PlatformWindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +15,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import nl.atlas.gallery.testkit.awaitWindowSettled
+import nl.atlas.gallery.testkit.sampleOnFrames
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -48,6 +61,43 @@ import org.junit.runner.RunWith
  * state. These are not MainActivity permission or MediaStore integration tests.
  * Each screenshot uses the owner's 1080x2340 display rule. No personal data.
  */
+private data class Design6InsetEvidence(
+    val layoutAtUptimeMs: Long,
+    val windowBoundsPx: String,
+    val statusBarsPx: String,
+    val navigationBarsPx: String,
+    val systemBarsPx: String,
+    val displayCutoutPx: String,
+    val safeDrawingDp: String,
+    val composeStatusBarsDp: String,
+    val composeNavigationBarsDp: String,
+    val contentBoundsDp: String
+)
+
+private fun ComposeTestRule.captureInsetEvidence(
+    stage: String,
+    read: () -> Design6InsetEvidence?
+) {
+    awaitWindowSettled()
+    waitForIdle()
+    // Sample the correlated Compose layout evidence on two additional display
+    // frames. The shared wait above establishes a bounded, outcome-based
+    // two-frame match for system-window size, keyboard, bars and cutout insets.
+    val samples = sampleOnFrames(frames = 2) {
+        SystemClock.uptimeMillis() to read()
+    }
+    val evidence = samples.map { (frameAt, value) ->
+        checkNotNull(value) { "Design6 inset evidence missing at $stage frame $frameAt" }
+    }
+    check(evidence.distinct().size == 1) {
+        "Design6 inset/content evidence changed across frames at $stage: $evidence"
+    }
+    samples.forEachIndexed { index, (frameAt, value) ->
+        Log.i("ATLAS_DESIGN6_907",
+            "stage=$stage frame=$index frameAtUptimeMs=$frameAt layout=$value")
+    }
+}
+
 @RunWith(AndroidJUnit4::class)
 class Design6QuietStatesEvidenceTest {
     private val compose = createComposeRule()
@@ -248,8 +298,16 @@ class Design6QuietStatesEvidenceTest {
     @Test fun photosQuietLineHoldsTheContentAreaWhenMediaArrives() {
         var dark by mutableStateOf(false)
         var items by mutableStateOf<List<MediaRecord>>(emptyList())
+        var insetEvidence by mutableStateOf<Design6InsetEvidence?>(null)
         val invented = inventedMedia(24, 913_600_000L)
         compose.setContent {
+            val density = LocalDensity.current
+            val densityScale = density.density
+            val layoutDirection = LocalLayoutDirection.current
+            val view = LocalView.current
+            val safeDrawing = WindowInsets.safeDrawing
+            val statusBars = WindowInsets.statusBars
+            val navigationBars = WindowInsets.navigationBars
             Design6SystemBars(dark)
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -260,24 +318,53 @@ class Design6QuietStatesEvidenceTest {
                             sort = TimelineSort.NEWEST,
                             gridState = rememberLazyGridState(),
                             onOpen = {},
-                            modifier = Modifier.fillMaxSize().testTag("photos-136-area"),
+                            modifier = Modifier.fillMaxSize().testTag("photos-136-area")
+                                .onGloballyPositioned { coordinates ->
+                                    val root = view.rootView
+                                    val windowLocation = IntArray(2)
+                                    root.getLocationOnScreen(windowLocation)
+                                    val platformInsets = view.rootWindowInsets
+                                    val statusPx = platformInsets?.getInsets(
+                                        PlatformWindowInsets.Type.statusBars())
+                                    val navigationPx = platformInsets?.getInsets(
+                                        PlatformWindowInsets.Type.navigationBars())
+                                    val systemPx = platformInsets?.getInsets(
+                                        PlatformWindowInsets.Type.systemBars())
+                                    val cutoutPx = platformInsets?.getInsets(
+                                        PlatformWindowInsets.Type.displayCutout())
+                                    val bounds = coordinates.boundsInRoot()
+                                    insetEvidence = Design6InsetEvidence(
+                                        layoutAtUptimeMs = SystemClock.uptimeMillis(),
+                                        windowBoundsPx = "${windowLocation[0]},${windowLocation[1]} ${root.width}x${root.height}",
+                                        statusBarsPx = statusPx?.toString() ?: "unavailable",
+                                        navigationBarsPx = navigationPx?.toString() ?: "unavailable",
+                                        systemBarsPx = systemPx?.toString() ?: "unavailable",
+                                        displayCutoutPx = cutoutPx?.toString() ?: "unavailable",
+                                        safeDrawingDp = "${safeDrawing.getLeft(density, layoutDirection) / densityScale},${safeDrawing.getTop(density) / densityScale},${safeDrawing.getRight(density, layoutDirection) / densityScale},${safeDrawing.getBottom(density) / densityScale}",
+                                        composeStatusBarsDp = "${statusBars.getLeft(density, layoutDirection) / densityScale},${statusBars.getTop(density) / densityScale},${statusBars.getRight(density, layoutDirection) / densityScale},${statusBars.getBottom(density) / densityScale}",
+                                        composeNavigationBarsDp = "${navigationBars.getLeft(density, layoutDirection) / densityScale},${navigationBars.getTop(density) / densityScale},${navigationBars.getRight(density, layoutDirection) / densityScale},${navigationBars.getBottom(density) / densityScale}",
+                                        contentBoundsDp = "${bounds.left / densityScale},${bounds.top / densityScale},${bounds.right / densityScale},${bounds.bottom / densityScale}"
+                                    )
+                                },
                             viewKey = "photos-136-jump")
                     }
                 }
             }
         }
-        val tolerance = 1f // dp
+        val tolerance = 1f // dp; keep the acceptance invariant strict.
         for (theme in listOf(false, true)) {
             val mode = if (theme) "dark" else "light"
-            compose.runOnIdle { dark = theme; items = emptyList() }
+            // Reset to the quiet line in the current theme before measuring the
+            // state immediately preceding the next theme change.
+            compose.runOnIdle { items = emptyList() }
             compose.waitForIdle()
-            // A theme switch re-applies the system bars; Android may deliver
-            // the resulting safeDrawing inset a few frames later (CI saw the
-            // bottom move 3.2 dp after idle). Measure the box once it settles,
-            // so the check below compares media arriving, not inset delivery.
-            val area = settledBounds("photos-136-area")
+            compose.captureInsetEvidence("before-theme-$mode") { insetEvidence }
+
+            compose.runOnIdle { dark = theme }
+            compose.captureInsetEvidence("after-theme-before-media-$mode") { insetEvidence }
+            val area = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
             val line = compose.onNodeWithTag("atlas-timeline-empty").getBoundsInRoot()
-            // The quiet line sits at the centre of the content area, not the screen.
+            // The quiet line sits at the centre of the measured content area.
             assertEquals(((area.top + area.bottom) / 2).value,
                 ((line.top + line.bottom) / 2).value, 1f)
             assertEquals(((area.left + area.right) / 2).value,
@@ -291,27 +378,14 @@ class Design6QuietStatesEvidenceTest {
             }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
-            val loaded = settledBounds("photos-136-area")
+            compose.captureInsetEvidence("after-media-$mode") { insetEvidence }
+            val loaded = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
             // Content arrives in the same box: nothing above or around it moved.
             assertTrue("content area moved: $area -> $loaded",
                 kotlin.math.abs((loaded.top - area.top).value) <= tolerance &&
                     kotlin.math.abs((loaded.bottom - area.bottom).value) <= tolerance)
             saveUiEvidence("photos-136-jump-after-$mode.png")
         }
-    }
-
-    /** Bounds of [tag] once they have read the same for 450 ms (at most 5 s). */
-    private fun settledBounds(tag: String): androidx.compose.ui.unit.DpRect {
-        var last = compose.onNodeWithTag(tag).getBoundsInRoot()
-        var since = android.os.SystemClock.uptimeMillis()
-        compose.waitUntil(5_000L) {
-            val now = compose.onNodeWithTag(tag).getBoundsInRoot()
-            val clock = android.os.SystemClock.uptimeMillis()
-            if (now != last) { last = now; since = clock }
-            clock - since >= 450L
-        }
-        compose.waitForIdle()
-        return compose.onNodeWithTag(tag).getBoundsInRoot()
     }
 
     /**
@@ -341,11 +415,17 @@ class Design6QuietStatesEvidenceTest {
         for (theme in listOf(false, true)) {
             val mode = if (theme) "dark" else "light"
             compose.runOnIdle { dark = theme }
-            compose.waitUntil(30_000L) {
-                compose.onAllNodesWithTag("atlas-timeline-grid")
-                    .fetchSemanticsNodes().isNotEmpty()
+            // #693: the same blank-ground race as Month/Year (run 44707919448):
+            // a replan after this wait shows nothing until Compose syncs, so
+            // every look waits for the grid again.
+            val gridShown = {
+                compose.waitUntil(30_000L) {
+                    compose.onAllNodesWithTag("atlas-timeline-grid")
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                compose.waitForIdle()
             }
-            compose.waitForIdle()
+            gridShown()
             compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
             compose.onNodeWithTag("atlas-quiet-title").assertDoesNotExist()
             for (banner in listOf("selected", "access", "Allow", "Manage", "more photos")) {
@@ -353,7 +433,7 @@ class Design6QuietStatesEvidenceTest {
                     compose.onAllNodesWithText(banner, substring = true, ignoreCase = true)
                         .fetchSemanticsNodes().isEmpty())
             }
-            saveUiEvidence("photos-136-partial-access-$mode.png")
+            saveUiEvidence("photos-136-partial-access-$mode.png", gridShown)
         }
     }
 

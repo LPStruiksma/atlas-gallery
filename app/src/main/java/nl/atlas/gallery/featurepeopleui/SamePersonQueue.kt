@@ -1,7 +1,10 @@
 package nl.atlas.gallery.featurepeopleui
 
 import nl.atlas.gallery.featureface.NativeFaceObservationId
+import java.security.MessageDigest
 import nl.atlas.gallery.featurepeople.cluster.FaceClusterId
+import nl.atlas.gallery.featurepeople.cluster.MixedGroup
+import nl.atlas.gallery.featurepeople.cluster.MixedGroupMarks
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
 import nl.atlas.gallery.featurepeople.cluster.UnknownFaceCluster
 import nl.atlas.gallery.featurepeople.identity.PersonHypothesis
@@ -31,6 +34,34 @@ data class SamePersonQueueItem(
     } + "|" + other.anchor.localHex
 }
 
+/**
+ * HUB-1C: opaque Skip identity for this exact authorized scope and both actual
+ * sets of faces. A same-sized membership edit on EITHER side invalidates it.
+ * No raw person, anchor or observation identifier is written to preferences.
+ */
+fun samePersonSkipFingerprint(
+    state: PeopleClusterReviewState, item: SamePersonQueueItem,
+    scope: String = state.permissionEpoch
+): String? {
+    val unknown = state.clusters.unknownClusters.associateBy { it.id }
+    val subject = when (val side = item.subject) {
+        is PersonPageTarget.Unnamed -> unknown[side.cluster]?.members
+        is PersonPageTarget.Named -> {
+            if (side.person !in state.names || side.person in state.hidden) return null
+            state.clusters.reviews.confirmed.filterValues { it == side.person }.keys.toList()
+        }
+    } ?: return null
+    val other = unknown[item.other]?.members ?: return null
+    if (subject.size != item.subjectFaces || other.size != item.otherFaces) return null
+    fun members(ids: Collection<NativeFaceObservationId>) =
+        ids.map { it.localHex }.sorted().joinToString(",")
+    val bytes = ("same-person-skip-v1|" + scope + "|" + item.key +
+        "|subject:" + members(subject) + "|other:" + members(other))
+        .toByteArray(Charsets.UTF_8)
+    return MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { "%02x".format(it) }
+}
+
 /** [items] in asking order and how many questions are [open] in all (skipped ones included). */
 data class SamePersonQueue(val items: List<SamePersonQueueItem>, val open: Int)
 
@@ -41,6 +72,10 @@ data class SamePersonQueue(val items: List<SamePersonQueueItem>, val open: Int)
  * nothing. Order: the answer that would move the most faces first, then the
  * engine's own strength, so the largest loose pieces go first. [skipped]
  * questions ([SamePersonQueueItem.key]) are left out of [SamePersonQueue.items].
+ * HUB-1B (#211): a question one of whose sides is marked "not one person"
+ * ([MixedGroupMarks.marked]) is no question at all: it is left out of both
+ * the items and the [SamePersonQueue.open] count, and every other question
+ * stays as it was.
  *
  * Reads every unnamed group's vectors; call it off the main thread. The
  * screen reads the same list through [SamePersonQueueCursor], which stops
@@ -90,6 +125,8 @@ class SamePersonQueueCursor(
 
     private val clusters = state.clusters
     private val groups = clusters.unknownClusters
+    /** HUB-1B (#211): groups marked "not one person" are asked about by no question. */
+    private val mixed: Set<FaceClusterId> = MixedGroupMarks.marked(clusters)
     private var ready = false
     private var pairs: SamePersonHypotheses.PairIndex? = null
     private var people: SamePersonHypotheses.PeopleIndex? = null
@@ -143,11 +180,16 @@ class SamePersonQueueCursor(
         while (at < groups.size && groups[at].members.size == size) {
             checkpoint()
             val group = groups[at]
+            if (group.id in mixed) { at++; continue }
             people?.let { index ->
                 named.clear()
                 index.forGroup(group, named)
                 for (q in named) {
                     val own = confirmed[q.person] ?: continue
+                    // A confirmed named person can also be mixed; never ask
+                    // about that side until its actual membership changes.
+                    if (own.size in MixedGroup.MIN_MEMBERS..MixedGroup.MAX_MEMBERS &&
+                        MixedGroup.of(own) in clusters.reviews.mixedGroups) continue
                     bucket += Scored(SamePersonQueueItem(PersonPageTarget.Named(q.person),
                         state.names[q.person], own.size, sample(own),
                         group.id, size, sample(group.members)), q.strength, q, null)
@@ -158,6 +200,7 @@ class SamePersonQueueCursor(
                     unnamed.clear()
                     index.pairsWithSecond(at, unnamed)
                     for (q in unnamed) {
+                        if (q.first in mixed) continue
                         val first = byId[q.first] ?: continue
                         bucket += Scored(SamePersonQueueItem(PersonPageTarget.Unnamed(q.first),
                             null, first.members.size, sample(first.members),
@@ -196,6 +239,31 @@ class SamePersonQueueCursor(
                 ?: entry.named?.let { keepNamed == null || it in keepNamed } ?: true
         }
     }
+}
+
+/**
+ * HUB-1B (#211): "Not one person" for the [subject] side, the [other] side
+ * or both sides of [item], as one review action. Null when no unnamed side
+ * is chosen: a named person is never marked mixed.
+ */
+fun samePersonQueueMixed(
+    item: SamePersonQueueItem, subject: Boolean, other: Boolean
+): PeopleReviewAction.MarkMixedGroups? {
+    val groups = LinkedHashSet<FaceClusterId>()
+    val subjectSide = item.subject
+    if (subject && subjectSide is PersonPageTarget.Unnamed) groups += subjectSide.cluster
+    if (other) groups += item.other
+    return if (groups.isEmpty()) null else PeopleReviewAction.MarkMixedGroups(groups)
+}
+
+/** HUB-1C: either or both named/unnamed sides, in one all-or-nothing intent. */
+fun samePersonQueueMixedSides(
+    item: SamePersonQueueItem, subject: Boolean, other: Boolean
+): PeopleReviewAction.MarkMixedSides? {
+    val sides = LinkedHashSet<PersonPageTarget>()
+    if (subject) sides += item.subject
+    if (other) sides += PersonPageTarget.Unnamed(item.other)
+    return if (sides.isEmpty()) null else PeopleReviewAction.MarkMixedSides(sides)
 }
 
 /** The owner's answer to [item]: the same action its person page would send. */

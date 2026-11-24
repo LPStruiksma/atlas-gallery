@@ -1,5 +1,6 @@
 package nl.atlas.gallery.featuremedia
 
+import kotlinx.coroutines.async
 import nl.atlas.gallery.MediaRecord
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -58,6 +59,28 @@ class MicroThumbnailTest {
         store.clear()
         assertEquals(0L, store.bytesUsed)
         assertFalse(store.contains("a"))
+    }
+
+    @Test fun provisionalBudgetNeverEvictsExistingCopiesBeforeRefinement() = kotlinx.coroutines.runBlocking {
+        val root = tmp.newFolder("pending")
+        val items = library(3)
+        val existing = MicroThumbnailStore(root, budgetBytes = 100)
+        items.take(2).forEach { existing.write(microThumbnailDiskKey(it)!!, ByteArray(10)) }
+        val store = MicroThumbnailStore(root, budgetBytes = 10, budgetPending = true)
+        assertFalse(store.budgetReady)
+        assertTrue(store.contains(microThumbnailDiskKey(items[0])!!))
+        val pending = async(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            fillMicroStore(store, items, active = { true }, yieldWhile = { false }) { _, key ->
+                store.write(key, ByteArray(10))
+            }
+        }
+        assertFalse(pending.isCompleted)
+        items.take(2).forEach { assertTrue(store.contains(microThumbnailDiskKey(it)!!)) }
+        store.updateBudget(100)
+        assertEquals(1, pending.await().generated)
+        assertTrue(store.budgetReady)
+        items.forEach { assertTrue(store.contains(microThumbnailDiskKey(it)!!)) }
+        assertEquals(30L, store.bytesUsed)
     }
 
     @Test fun retainOnlyDeletesCopiesOfPhotosThatAreGone() {

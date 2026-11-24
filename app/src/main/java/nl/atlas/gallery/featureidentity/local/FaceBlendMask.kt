@@ -28,8 +28,9 @@ object FaceBlendMask {
      * T27, while a working face mask covers about 29 to 37 % ("Edit share of crop"), close
      * to the landmark oval below (about 36 % of an ArcFace crop). Failures therefore sit at
      * 0.06 to 0.19 of the predicted area and working masks near 0.8 to 1.0; half the
-     * predicted area separates them with margin on both sides. Re-measure when the
-     * segmenter ships on the phone (LOCAL_ENGINE.md).
+     * predicted area separates them with margin on both sides. IDS-18 re-measured it with
+     * the bundled ONNX on the HyperSwap crop: failures 0.017 to 0.492, working 1.076 to 2.004
+     * (assets/models/mediapipe_multiclass/SOURCE.md); the margin under T25 is thin.
      */
     const val MIN_COVERAGE = 0.5
 
