@@ -12,3 +12,8 @@ unknown-ime-448-e-landscape-light
 unknown-ime-448-e-landscape-dark
 unknown-ime-448-f-font130-light
 unknown-ime-448-f-font130-dark
+
+unknown-ime-448-g-open-suggestion-light
+unknown-ime-448-g-open-suggestion-dark
+unknown-ime-448-h-open-duplicate-light
+unknown-ime-448-h-open-duplicate-dark

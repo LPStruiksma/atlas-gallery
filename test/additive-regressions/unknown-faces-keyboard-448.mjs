@@ -61,3 +61,21 @@ test('real-Activity keyboard evidence is declared and measured', () => {
     }
   }
 });
+
+test('real-Activity evidence exercises an eligible suggestion and duplicate-name actions', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
+  assert.match(journey, /fun eligibleSuggestionAndDuplicateNameStayAboveKeyboard\(/);
+  assert.match(journey, /store\.completeEmbeddings\(/);
+  assert.match(journey, /PeopleReviewAction\.NameCluster\(/);
+  assert.match(journey, /group\.suggestion\?\.person == person/);
+  assert.match(journey, /hasText\("Looks like someone you know\?"\)/);
+  assert.match(journey, /hasText\("Create another \$SUGGESTED_NAME"\)/);
+  assert.match(journey, /Back dismisses keyboard, not group/);
+  const declared = read('scripts/ui-evidence.d/448-unknown-faces-keyboard.txt')
+    .split('\n').filter((line) => line && !line.startsWith('#'));
+  for (const state of ['g-open-suggestion', 'h-open-duplicate']) {
+    for (const theme of ['light', 'dark']) {
+      assert.ok(declared.includes(`unknown-ime-448-${state}-${theme}`), `${state} ${theme}`);
+    }
+  }
+});

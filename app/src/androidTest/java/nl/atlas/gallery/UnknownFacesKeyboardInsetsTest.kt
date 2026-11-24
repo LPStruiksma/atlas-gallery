@@ -14,6 +14,10 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -38,6 +42,7 @@ import kotlinx.coroutines.runBlocking
 import nl.atlas.gallery.featureface.AndroidBitmapFaceFrame
 import nl.atlas.gallery.featureface.FaceBatchStop
 import nl.atlas.gallery.featureface.FaceFrameReader
+import nl.atlas.gallery.featureface.FaceMediaSourceKey
 import nl.atlas.gallery.featureface.FaceSourceSkipped
 import nl.atlas.gallery.featureface.embed.FaceEmbeddingPipeline
 import nl.atlas.gallery.featureface.onnx.OnnxFaceDetector
@@ -45,7 +50,12 @@ import nl.atlas.gallery.featureface.onnx.OnnxFaceEmbedder
 import nl.atlas.gallery.featureface.onnx.SyntheticFace
 import nl.atlas.gallery.featureface.work.PeopleScanWorkRuntime
 import nl.atlas.gallery.featureface.work.runPeopleScanBatch
+import nl.atlas.gallery.featureface.onnx.SFaceModel
+import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepeopleui.PeopleClusterReviewCommand
+import nl.atlas.gallery.featurepeopleui.PeopleReviewAction
 import nl.atlas.gallery.featurepersistence.FaceIndexStore
+import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.testkit.ConfigurationRule
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.awaitThat
@@ -103,6 +113,7 @@ class UnknownFacesKeyboardInsetsTest {
         override fun save(value: PeopleOptIn?) { this.value = value }
     }
     private lateinit var store: FaceIndexStore
+    private lateinit var host: PeopleDiscoveryHost
 
     private val setup = object : TestRule {
         override fun apply(base: Statement, description: Description) = object : Statement() {
@@ -112,7 +123,7 @@ class UnknownFacesKeyboardInsetsTest {
                 clearGalleryInventoryCacheForTest(target)
                 PeopleScanWorkRuntime.clear()
                 try {
-                    insertFaces()
+                    insertFaces(if (description.methodName == "eligibleSuggestionAndDuplicateNameStayAboveKeyboard") PHOTOS + 1 else PHOTOS)
                     installHost()
                     base.evaluate()
                 } finally {
@@ -208,12 +219,126 @@ class UnknownFacesKeyboardInsetsTest {
     }
 
     /**
+     * Same real Activity, one confirmed invented identity and six unknown
+     * faces. Name the singleton BEFORE publishing the other faces: splitting
+     * a group would add a cannot-link veto and hide the suggestion.
+     * One confirmed example stays below the automatic-match minimum.
+     */
+    @Test fun eligibleSuggestionAndDuplicateNameStayAboveKeyboard() {
+        openPeople()
+        startDiscovery()
+        compose.awaitThat("fixture scan session", 60_000L) { liveScanEpoch() != null }
+        val epoch = requireNotNull(liveScanEpoch())
+        val person = seedSuggestedPerson(epoch)
+        check(drainScan() == epoch) { "fixture epoch changed" }
+        val state = requireNotNull(host.reviewState(epoch))
+        val group = state.clusters.unknownClusters.single()
+        check(group.members.size == PHOTOS && group.suggestion?.person == person) {
+            "fixture must expose six unknown faces and an eligible named suggestion"
+        }
+        check(state.names[person] == SUGGESTED_NAME)
+
+        for (dark in listOf(false, true)) {
+            val theme = if (dark) "dark" else "light"
+            if (dark) reconfigure { device.night(true) }
+            openReview()
+            focusNameField()
+            compose.awaitKeyboardShown()
+            steady()
+            compose.onNodeWithTag("atlas-group-name").assertIsFocused()
+            assertKeyboardContract("$theme g-open-suggestion", portrait = true)
+            assertClearOfHeaderAndKeyboard(hasText("Looks like someone you know?"))
+            assertClearOfHeaderAndKeyboard(hasText("Add") and hasClickAction())
+            assertClearOfHeaderAndKeyboard(hasText("Not $SUGGESTED_NAME") and hasClickAction())
+            saveUiEvidence("unknown-ime-448-g-open-suggestion-$theme.png")
+
+            compose.onNodeWithTag("atlas-group-name").performTextInput(SUGGESTED_NAME)
+            val createAnother = hasText("Create another $SUGGESTED_NAME") and hasClickAction()
+            compose.awaitThat("duplicate name actions") { compose.exists(createAnother) }
+            compose.awaitKeyboardShown()
+            steady()
+            compose.onNodeWithTag("atlas-group-name").assertIsFocused()
+            assertKeyboardContract("$theme h-open-duplicate", portrait = true, createMatcher = createAnother)
+            assertClearOfHeaderAndKeyboard(hasText("Add") and hasClickAction())
+            assertClearOfHeaderAndKeyboard(createAnother)
+            saveUiEvidence("unknown-ime-448-h-open-duplicate-$theme.png")
+
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            compose.awaitThat("Back dismisses keyboard, not group") {
+                compose.keyboardInsetPx() == 0 &&
+                    compose.exists(hasTestTag("atlas-unknown-face-review-screen"))
+            }
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            compose.awaitThat("second Back closes group") {
+                !compose.exists(hasTestTag("atlas-unknown-face-review-screen"))
+            }
+        }
+    }
+
+    private fun assertClearOfHeaderAndKeyboard(matcher: SemanticsMatcher) {
+        compose.assertAboveKeyboard(matcher)
+        val node = compose.onNode(matcher).fetchSemanticsNode()
+        val rect = Rect(node.positionInWindow, node.size.toSize())
+        val header = headerBounds()
+        assertTrue("${matcher.description} overlaps sticky header: $rect vs $header",
+            rect.top >= header.bottom - 1f)
+        Log.i(LOG_TAG, "${matcher.description} bounds=$rect header=$header")
+    }
+
+    /** Seed only this test's generated media, via normal lease and review APIs. */
+    private fun seedSuggestedPerson(epoch: String): PersonKey {
+        val keys = inserted.map { uri ->
+            val volume = target.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.VOLUME_NAME),
+                null, null, null)!!.use { cursor ->
+                check(cursor.moveToFirst())
+                cursor.getString(0)
+            }
+            val id = ContentUris.parseId(uri)
+            val canonical = ContentUris.withAppendedId(
+                MediaStore.Images.Media.getContentUri(volume), id).toString()
+            // Only the canonical key is used; the lease already holds the
+            // actual revision published by MainActivity's catalogue.
+            FaceMediaSourceKey.fromVisiblePhoto(canonical, volume, false, id,
+                null, 0L, 0L, 0L, 0L, 480, 480, 0).canonicalMediaKey
+        }.toSet()
+        check(keys.size == PHOTOS + 1)
+        val vector = FloatArray(SFaceModel.DIMENSION) { if (it == 0) 1f else 0f }
+        val box = IndexedFaceBox(0.1f, 0.1f, 0.9f, 0.9f)
+        val person = PersonKey("synthetic-ime-448")
+        var count = 0
+        while (true) {
+            val lease = store.claim(epoch) ?: break
+            if (lease.media.key !in keys) {
+                // This fixture's private index never reads any other media.
+                check(store.skip(lease, "NOT_A_FIXTURE"))
+                continue
+            }
+            check(store.completeEmbeddings(lease, listOf(box), listOf(vector), SFaceModel.EMBEDDER_VERSION))
+            count++
+            if (count == 1) {
+                check(store.materializeClusters(epoch))
+                val state = requireNotNull(host.reviewState(epoch))
+                val singleton = state.clusters.unknownClusters.single()
+                check(singleton.members.size == 1)
+                check(host.review(PeopleClusterReviewCommand(state,
+                    PeopleReviewAction.NameCluster(singleton.id, person, SUGGESTED_NAME))))
+            }
+        }
+        check(count == keys.size) { "Expected ${keys.size} fixture leases, got $count" }
+        check(store.materializeClusters(epoch))
+        return person
+    }
+
+    /**
      * The #448 contract with the keyboard up: list bottom = keyboard top ±2 px,
      * the field and Create fully above the keyboard (Create by ≥16 dp, 12 dp
      * in landscape where the compact header takes the rest), and in portrait
      * "Who is this?" and at least four header faces on screen as well.
      */
-    private fun assertKeyboardContract(label: String, portrait: Boolean) {
+    private fun assertKeyboardContract(
+        label: String, portrait: Boolean,
+        createMatcher: SemanticsMatcher = hasTestTag("atlas-group-create-person")
+    ) {
         val keyboard = compose.keyboardInsetPx()
         assertTrue("$label: the keyboard is up", keyboard > 0)
         val windowHeight = compose.runOnUiThread { compose.activity.window.decorView.rootView.height }
@@ -225,7 +350,7 @@ class UnknownFacesKeyboardInsetsTest {
         val density = compose.activity.resources.displayMetrics.density
         val clearance = ((if (portrait) 16 else 12) * density).toInt()
         compose.assertAboveKeyboard(hasTestTag("atlas-group-name"))
-        compose.assertAboveKeyboard(hasTestTag("atlas-group-create-person"), clearance)
+        compose.assertAboveKeyboard(createMatcher, clearance)
         val header = headerBounds()
         val field = unclipped("atlas-group-name")
         assertTrue("$label: the name field ($field) must not sit under the sticky header ($header)",
@@ -351,9 +476,9 @@ class UnknownFacesKeyboardInsetsTest {
         return identity
     }
 
-    private fun insertFaces() {
+    private fun insertFaces(count: Int) {
         val now = System.currentTimeMillis()
-        for (i in 1..PHOTOS) {
+        for (i in 1..count) {
             val spec = SyntheticFace.Spec(480, 480, 0.4f + 0.02f * i, 0.5f, 0.8f + 0.01f * i)
             val taken = now - i * 86_400_000L
             val uri = requireNotNull(target.contentResolver.insert(
@@ -393,7 +518,7 @@ class UnknownFacesKeyboardInsetsTest {
                 file.path, factory, SQLiteDatabase.CREATE_IF_NECESSARY, errorHandler)
         }
         store = FaceIndexStore(context).also { stores += it }
-        val host = PeopleDiscoveryHost(
+        host = PeopleDiscoveryHost(
             store = store,
             photoGrantCurrent = { true },
             inferenceFactory = {
@@ -512,6 +637,7 @@ class UnknownFacesKeyboardInsetsTest {
     private companion object {
         const val PHOTOS = 6
         const val TYPED_NAME = "Synthetic Morgan"
+        const val SUGGESTED_NAME = "Synthetic Morgan Avery"
         const val FOLDER = "ATLAS-Unknown-IME-448"
         const val LOG_TAG = "ATLAS_IME_448"
     }
