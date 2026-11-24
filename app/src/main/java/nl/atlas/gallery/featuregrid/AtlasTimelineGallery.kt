@@ -250,6 +250,7 @@ fun AtlasTimelineGallery(
                     is androidx.compose.foundation.interaction.DragInteraction.Start -> FirstFlingDiagnostic.record("grid drag START")
                     is androidx.compose.foundation.interaction.DragInteraction.Stop -> FirstFlingDiagnostic.record("grid drag STOP")
                     is androidx.compose.foundation.interaction.DragInteraction.Cancel -> FirstFlingDiagnostic.record("grid drag CANCEL")
+                    else -> Unit
                 }
             }
         }

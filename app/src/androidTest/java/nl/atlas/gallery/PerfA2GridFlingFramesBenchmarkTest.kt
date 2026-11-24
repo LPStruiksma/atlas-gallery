@@ -121,7 +121,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
     @Test fun fourColumnFling() = measure(4)
     @Test fun sevenColumnFling() = measure(7)
 
-    private data class GridState(val scroll: Float, val tiles: Int)
+    private data class GridState(val scroll: Float, val tiles: Int, val maxScroll: Float)
 
     /** The grid stays rendered, moves, and displays IDs from a granted publication. */
     private fun readGrid(vm: GalleryViewModel, columns: Int): GridState {
@@ -145,7 +145,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
             val tag = it.config.getOrNull(SemanticsProperties.TestTag).orEmpty()
             tag.removePrefix("atlas-timeline-media-").toLongOrNull() in ids
         })
-        return GridState(range.value(), visible.size)
+        return GridState(range.value(), visible.size, range.maxValue())
     }
 
     private fun measure(columns: Int) {
@@ -186,7 +186,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
         // one down. Compose synchronization happens only BETWEEN captures.
         for ((index, down) in listOf(true, true, false, false, true).withIndex()) {
             FirstFlingDiagnostic.begin()
-            var scrollEvidence = "before=${before.scroll}, after=unobserved"
+            var scrollEvidence = "before=${before.scroll}, maxBefore=${before.maxScroll}, after=unobserved"
             val window = compose.activity.window
             var original: Window.Callback? = null
             try {
@@ -221,7 +221,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
                 }
                 compose.waitForIdle()
                 val after = readGrid(vm, columns)
-                scrollEvidence = "before=${before.scroll}, after=${after.scroll}, delta=${after.scroll-before.scroll}"
+                scrollEvidence = "before=${before.scroll}, after=${after.scroll}, delta=${after.scroll-before.scroll}, maxBefore=${before.maxScroll}, maxAfter=${after.maxScroll}"
                 assertTrue("Gesture did not scroll on throw " + (index + 1) +
                     ": before=" + before.scroll + ", after=" + after.scroll,
                     abs(after.scroll - before.scroll) > 1f)
@@ -260,8 +260,8 @@ class PerfA2GridFlingFramesBenchmarkTest {
                     println("ATLAS_SCALE $label")
                     // Separate lines avoid Android logcat's per-line truncation.
                     samples.forEach { sample ->
-                        Log.i("ATLAS_SCALE", "PERF-A2-DIAGNOSTIC $sample")
-                        println("ATLAS_SCALE PERF-A2-DIAGNOSTIC $sample")
+                        Log.i("ATLAS_SCALE", "PERF-A2-DIAGNOSTIC columns=$columns throw=${index+1} $sample")
+                        println("ATLAS_SCALE PERF-A2-DIAGNOSTIC columns=$columns throw=${index+1} $sample")
                     }
                 }
             }
