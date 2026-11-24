@@ -8,13 +8,13 @@ import java.util.Locale
  * the wording. Internal keys (A1–A22, snake_case) never reach the UI.
  */
 internal object PerformanceReport {
-    const val NO_DATA = "No data yet"
-    const val NOT_MEASURED = "Not measured"
+    const val NO_DATA = "No data yet. Do this action once."
+    const val NOT_MEASURED = "Not built yet"
 
-    /** [hasData] false: "No data yet", or "Not measured" for actions with no source hook (A12–A22). */
+    /** [hasData] false: "No data yet. Do this action once.", or "Not built yet" for actions with no source hook (A12–A22). */
     data class Row(val tag: String, val label: String, val value: String, val hasData: Boolean)
 
-    /** Highest action number with a live source hook; later rows are "Not measured". */
+    /** Highest action number with a live source hook; later rows are "Not built yet". */
     const val INSTRUMENTED_ACTIONS = 11
 
     val actionLabels = listOf(
@@ -27,7 +27,7 @@ internal object PerformanceReport {
         "Details and favourite", "Duplicate and trash review", "Sort and Settings"
     )
 
-    /** The six headline rows shown first, in the brief's order. */
+    /** The five headline rows shown first, in the brief's order. */
     fun overview(p: PerformanceAggregates): List<Row> {
         val grid = p.snapshot("grid_frame_ms")
         val overBudget = p.positiveFraction("grid_frame_over_budget")
@@ -44,7 +44,6 @@ internal object PerformanceReport {
                 " · " + samples(heap.count)
         return listOf(
             metric(p, "cold_start_ms", "Cold start to cached photos", ::ms),
-            metric(p, "viewer_ms", "Viewer preview", ::ms),
             Row("atlas-perf-grid_frame_ms", "Grid frame time", gridValue, grid.count > 0),
             metric(p, "face_photos_min", "Face scanning", ::perMinute),
             metric(p, "visual_photos_min", "Visual indexing", ::perMinute),
@@ -53,8 +52,9 @@ internal object PerformanceReport {
     }
 
     /** Per-action details, below the overview. */
-    fun actions(p: PerformanceAggregates): List<Row> = actionLabels.mapIndexed { index, label ->
+    fun actions(p: PerformanceAggregates): List<Row> = actionLabels.mapIndexedNotNull { index, label ->
         val number = index + 1
+        if (number in setOf(1, 2, 5, 8)) return@mapIndexedNotNull null
         val key = "action_a${number}_ms"
         val tag = "atlas-perf-$key"
         if (number > INSTRUMENTED_ACTIONS) Row(tag, label, NOT_MEASURED, false)
