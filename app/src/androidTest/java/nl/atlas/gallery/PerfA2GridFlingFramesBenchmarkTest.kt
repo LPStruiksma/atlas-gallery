@@ -75,7 +75,8 @@ class PerfA2GridFlingFramesBenchmarkTest {
         object : Statement() {
             override fun evaluate() {
                 val columns = when (description.methodName) {
-                    "fourColumnFling" -> 4
+                    "fourColumnFling", "fourColumnDiagnosticSample2",
+                    "fourColumnDiagnosticSample3", "fourColumnDiagnosticSample4" -> 4
                     "sevenColumnFling" -> 7
                     else -> error("Unknown PERF-A2A method " + description.methodName)
                 }
@@ -118,8 +119,14 @@ class PerfA2GridFlingFramesBenchmarkTest {
             ?.startsWith("atlas-timeline-media-") == true
     }
 
-    @Test fun fourColumnFling() = measure(4)
-    @Test fun sevenColumnFling() = measure(7)
+    @Test fun fourColumnFling() = measure(4, "fourColumnFling")
+    @Test fun sevenColumnFling() = measure(7, "sevenColumnFling")
+
+    // Separate JUnit rule lifecycles: fresh activity, density and fixtures.
+    // Temporary diagnostic samples, not retries or acceptance benchmarks.
+    @Test fun fourColumnDiagnosticSample2() = measure(4, "fourColumnDiagnosticSample2")
+    @Test fun fourColumnDiagnosticSample3() = measure(4, "fourColumnDiagnosticSample3")
+    @Test fun fourColumnDiagnosticSample4() = measure(4, "fourColumnDiagnosticSample4")
 
     private data class GridState(val scroll: Float, val tiles: Int, val maxScroll: Float)
 
@@ -148,7 +155,38 @@ class PerfA2GridFlingFramesBenchmarkTest {
         return GridState(range.value(), visible.size, range.maxValue())
     }
 
-    private fun measure(columns: Int) {
+    private fun measure(columns: Int, sampleId: String) {
+        val window = compose.activity.window
+        var original: Window.Callback? = null
+        val label = "PERF-A2-DIAGNOSTIC sample=$sampleId columns=$columns"
+        Log.i("ATLAS_SCALE", "$label start")
+        println("ATLAS_SCALE $label start")
+        try {
+            // Install once before the original settling sequence, not per throw.
+            instrumentation.runOnMainSync {
+                val callback = window.callback
+                original = callback
+                window.callback = object : Window.Callback by callback {
+                    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+                        // Single-pointer synthetic sequence: raw-local offset maps
+                        // batched history into the same screen space as injection.
+                        val dx = event.rawX - event.x
+                        val dy = event.rawY - event.y
+                        for (h in 0 until event.historySize) {
+                            FirstFlingDiagnostic.record("window history down=${event.downTime} t=${event.getHistoricalEventTime(h)} screen=${event.getHistoricalX(h)+dx},${event.getHistoricalY(h)+dy}")
+                        }
+                        FirstFlingDiagnostic.record("window action=${event.actionMasked} down=${event.downTime} t=${event.eventTime} screen=${event.rawX},${event.rawY}")
+                        return callback.dispatchTouchEvent(event)
+                    }
+                }
+            }
+            measureWithWindowProbe(columns, sampleId)
+        } finally {
+            instrumentation.runOnMainSync { original?.let { window.callback = it } }
+        }
+    }
+
+    private fun measureWithWindowProbe(columns: Int, sampleId: String) {
         val vm = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         compose.waitUntil(90_000L) {
             val pub = vm.publishedInventory.value
@@ -180,33 +218,14 @@ class PerfA2GridFlingFramesBenchmarkTest {
         val top = origin[1] + bounds.top + bounds.height * .30f
         val bottom = origin[1] + bounds.top + bounds.height * .76f
         val rounds = JSONArray()
-                val intervals = ArrayList<Long>()
+        val intervals = ArrayList<Long>()
 
         // Five fixed-speed, real-uptime touchscreen throws: two down, two up,
         // one down. Compose synchronization happens only BETWEEN captures.
         for ((index, down) in listOf(true, true, false, false, true).withIndex()) {
             FirstFlingDiagnostic.begin()
             var scrollEvidence = "before=${before.scroll}, maxBefore=${before.maxScroll}, after=unobserved"
-            val window = compose.activity.window
-            var original: Window.Callback? = null
             try {
-                instrumentation.runOnMainSync {
-                    val callback = window.callback
-                    original = callback
-                    window.callback = object : Window.Callback by callback {
-                        override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-                            // Single-pointer synthetic sequence: raw-local offset maps
-                            // batched history into the same screen space as injection.
-                            val dx = event.rawX - event.x
-                            val dy = event.rawY - event.y
-                            for (h in 0 until event.historySize) {
-                                FirstFlingDiagnostic.record("window history down=${event.downTime} t=${event.getHistoricalEventTime(h)} screen=${event.getHistoricalX(h)+dx},${event.getHistoricalY(h)+dy}")
-                            }
-                            FirstFlingDiagnostic.record("window action=${event.actionMasked} down=${event.downTime} t=${event.eventTime} screen=${event.rawX},${event.rawY}")
-                            return callback.dispatchTouchEvent(event)
-                        }
-                    }
-                }
                 val sampler = ChoreographerFrames(instrumentation)
                 var postGestureFrames = false
                 val captured = try {
@@ -251,18 +270,14 @@ class PerfA2GridFlingFramesBenchmarkTest {
                     .put("stats", stats(sample.intervals, budgetNs)))
                 before = after
             } finally {
-                try {
-                    instrumentation.runOnMainSync { original?.let { window.callback = it } }
-                } finally {
-                    val samples = FirstFlingDiagnostic.end()
-                    val label = "PERF-A2-DIAGNOSTIC columns=$columns throw=${index+1} $scrollEvidence"
-                    Log.i("ATLAS_SCALE", label)
-                    println("ATLAS_SCALE $label")
-                    // Separate lines avoid Android logcat's per-line truncation.
-                    samples.forEach { sample ->
-                        Log.i("ATLAS_SCALE", "PERF-A2-DIAGNOSTIC columns=$columns throw=${index+1} $sample")
-                        println("ATLAS_SCALE PERF-A2-DIAGNOSTIC columns=$columns throw=${index+1} $sample")
-                    }
+                val samples = FirstFlingDiagnostic.end()
+                val prefix = "PERF-A2-DIAGNOSTIC sample=$sampleId columns=$columns throw=${index+1}"
+                Log.i("ATLAS_SCALE", "$prefix $scrollEvidence")
+                println("ATLAS_SCALE $prefix $scrollEvidence")
+                // Separate lines avoid Android logcat's per-line truncation.
+                samples.forEach { sample ->
+                    Log.i("ATLAS_SCALE", "$prefix $sample")
+                    println("ATLAS_SCALE $prefix $sample")
                 }
             }
         }
@@ -286,8 +301,11 @@ class PerfA2GridFlingFramesBenchmarkTest {
             .put("rounds", rounds)
             .put("pooled", stats(intervals, budgetNs))
         val json = report.toString()
-        Log.i("ATLAS_SCALE", "PERF-A2A " + json)
-        println("ATLAS_SCALE PERF-A2A " + json)
+        // Keep the original benchmark stream separate from diagnostic samples.
+        val reportLabel = if (sampleId == "fourColumnFling" || sampleId == "sevenColumnFling")
+            "PERF-A2A" else "PERF-A2-DIAGNOSTIC sample=$sampleId report"
+        Log.i("ATLAS_SCALE", "$reportLabel $json")
+        println("ATLAS_SCALE $reportLabel $json")
         assertEquals(5, rounds.length())
         assertTrue("Missing real frame-interval evidence", intervals.isNotEmpty())
     }
