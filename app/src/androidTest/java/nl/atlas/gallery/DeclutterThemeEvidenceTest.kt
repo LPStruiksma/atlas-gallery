@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
+import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.featuredesign.darkGalleryColors
 import nl.atlas.gallery.featuredesign.lightGalleryColors
 import org.junit.Assert.assertTrue
@@ -65,7 +66,7 @@ class DeclutterThemeEvidenceTest {
             rule.onNodeWithText("Largest first", substring = true).assertDoesNotExist()
             rule.onNodeWithTag("atlas-declutter-photo-progressive").assertExists()
             verifySurface(lightGalleryColors.surfaceContainerLowest)
-            verifyHeaderInk(lightGalleryColors.onBackground)
+            verifyHeaderColors(AtlasTokens.Colors.Light.BrandText, lightGalleryColors.onBackground)
             capture("declutter-678-deck-light.png")
 
             rule.onNodeWithTag("atlas-declutter-discard").performClick()
@@ -73,16 +74,16 @@ class DeclutterThemeEvidenceTest {
             rule.onNodeWithText("Review staged files").assertExists()
             rule.onNodeWithTag("atlas-declutter-thumbnail").assertExists()
             verifySurface(lightGalleryColors.surfaceContainerLowest)
-            verifyHeaderInk(lightGalleryColors.onBackground)
+            verifyHeaderColors(AtlasTokens.Colors.Light.BrandText, lightGalleryColors.onBackground)
             capture("declutter-678-review-light.png")
 
             rule.runOnIdle { dark = true }
             verifySurface(darkGalleryColors.surfaceContainerLowest)
-            verifyHeaderInk(darkGalleryColors.onBackground)
+            verifyHeaderColors(AtlasTokens.Colors.Dark.BrandText, darkGalleryColors.onBackground)
             capture("declutter-678-review-dark.png")
             rule.onNodeWithText("Return to swiping").performClick()
             verifySurface(darkGalleryColors.surfaceContainerLowest)
-            verifyHeaderInk(darkGalleryColors.onBackground)
+            verifyHeaderColors(AtlasTokens.Colors.Dark.BrandText, darkGalleryColors.onBackground)
             capture("declutter-678-deck-dark.png")
         } finally {
             resolver.delete(uri, null, null)
@@ -96,9 +97,9 @@ class DeclutterThemeEvidenceTest {
         saveUiEvidence(name)
     }
 
-    /** #678: header glyphs must inherit readable ink from the active route theme. */
-    private fun verifyHeaderInk(expected: Color) {
-        for (tag in listOf("atlas-header-title", "atlas-header-back")) {
+    /** #678/#655: the Funnel Display title uses Lapis brand text; the back icon keeps theme ink. */
+    private fun verifyHeaderColors(title: Color, back: Color) {
+        for ((tag, expected) in listOf("atlas-header-title" to title, "atlas-header-back" to back)) {
             val pixels = rule.onNodeWithTag(tag).captureToImage().toPixelMap()
             var matches = 0
             for (y in 0 until pixels.height) {
@@ -111,7 +112,7 @@ class DeclutterThemeEvidenceTest {
                     }
                 }
             }
-            assertTrue("$tag needs readable themed ink $expected; only $matches pixels match",
+            assertTrue("$tag needs readable themed role $expected; only $matches pixels match",
                 matches > 10)
         }
     }

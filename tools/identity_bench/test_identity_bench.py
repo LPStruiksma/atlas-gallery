@@ -7,6 +7,7 @@ import os
 import re
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 import numpy as np
@@ -26,6 +27,103 @@ else:  # run as a file path: python3 -m unittest tools/identity_bench/test_ident
     from tools.identity_bench import __main__ as cli
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+class LicenceAdmission(unittest.TestCase):
+    def test_every_known_model_has_an_explicit_bench_admission_decision(self):
+        known = set(pipeline.MODELS) | set(pipeline.LOCAL_MODELS) | set(pipeline.SHIPPED_MODELS)
+        self.assertEqual(known, pipeline.BENCH_ALLOWED | pipeline.BENCH_BLOCKED)
+        self.assertFalse(pipeline.BENCH_ALLOWED & pipeline.BENCH_BLOCKED)
+
+    def test_alphaface_is_refused_before_cache_or_download(self):
+        with mock.patch.object(pipeline, "cache_dir", side_effect=AssertionError("cache accessed")), \
+             mock.patch.object(pipeline, "_download", side_effect=AssertionError("network accessed")):
+            with self.assertRaisesRegex(PermissionError, r"LICENCES\.md.*author permission"):
+                pipeline.Config("alphaface_256")
+            with self.assertRaisesRegex(PermissionError, r"LICENCES\.md.*author permission"):
+                pipeline.model_path("alphaface_256")
+
+    def test_cli_refuses_denied_candidate_before_loading_or_fetching(self):
+        with mock.patch.object(cli, "Bench", side_effect=AssertionError("loaded bench")), \
+             mock.patch.object(fixtures, "fetch", side_effect=AssertionError("fetched fixture")), \
+             mock.patch.object(cli, "cost", side_effect=AssertionError("cost started")), \
+             mock.patch.object(cli, "run", side_effect=AssertionError("run started")):
+            for args in (["one", "--candidate", "alphaface_256"],
+                         ["fetch", "--candidates", "inswapper_128,alphaface_256"],
+                         ["cost", "--candidates", "inswapper_128,alphaface_256"],
+                         ["explore", "--candidates", "inswapper_128,alphaface_256"]):
+                with self.subTest(args=args):
+                    with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+                        cli.main(args + ["--out", "/tmp/identity-bench-denied"])
+
+    def test_default_commands_only_use_admitted_models(self):
+        self.assertNotIn("alphaface_256", cli.FINALISTS)
+        self.assertNotIn("alphaface_256", cli.ALL_SWAPPERS)
+        self.assertEqual(
+            set(cli.ALL_SWAPPERS),
+            {name for name in pipeline.SWAPPERS
+             if name not in pipeline.LOCAL_MODELS and name in pipeline.BENCH_ALLOWED})
+        for candidate in cli.final_candidates():
+            pipeline.candidate_dependencies(candidate)
+        for name in cli.ALL_SWAPPERS:
+            pipeline.candidate_dependencies(pipeline.Config(name))
+
+        # Check the real selection paths, but never load models or fixtures.
+        with mock.patch.object(cli, "run", return_value={}) as run_stub, \
+             mock.patch.object(cli, "report", return_value="synthetic"):
+            for command in ("run", "screen"):
+                with self.subTest(command=command):
+                    self.assertEqual(cli.main([command, "--out", "unused"]), 0)
+                    selected = run_stub.call_args.args[1]
+                    self.assertTrue(selected)
+                    self.assertTrue(all(c.swapper == "control-none" or
+                                        c.swapper in pipeline.BENCH_ALLOWED for c in selected))
+                    run_stub.reset_mock()
+
+        with mock.patch.object(cli, "cost") as cost_stub:
+            self.assertEqual(cli.main(["cost", "--out", "unused"]), 0)
+            labels = cost_stub.call_args.args[1]
+            self.assertTrue(labels)
+            for label in labels:
+                pipeline.candidate_dependencies(cli.parse_label(label))
+
+        with mock.patch.object(fixtures, "fetch") as fixture_fetch, \
+             mock.patch.object(pipeline, "model_path") as model_path:
+            self.assertEqual(cli.main(["fetch", "--out", "unused"]), 0)
+            requested = [call.args[0] for call in model_path.call_args_list]
+            self.assertEqual(requested, [name for name in pipeline.MODELS
+                                         if name in pipeline.BENCH_ALLOWED])
+            self.assertNotIn("alphaface_256", requested)
+            self.assertEqual(fixture_fetch.call_count, len(fixtures.FILES))
+
+    def test_unknown_models_fail_closed(self):
+        with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+            pipeline.require_bench_model("new_unreviewed_model")
+        with self.assertRaisesRegex(PermissionError, r"LICENCES\.md"):
+            pipeline.model_path("new_unreviewed_model", fetch=False)
+
+    def test_permitted_research_paths_include_converters_and_separate_judge(self):
+        for model in ("inswapper_128", "hyperswap_1a_256", "arcface_w600k_r50",
+                      "crossface_simswap", "crossface_ghost", "glintr100",
+                      "ghost_backbone_fp32", "gfpgan_1.4"):
+            pipeline.require_bench_model(model)
+        ghost = pipeline.candidate_dependencies(pipeline.Config("ghost_1_256"))
+        simswap = pipeline.candidate_dependencies(pipeline.Config("simswap_256"))
+        exported = pipeline.candidate_dependencies(pipeline.Config("ghost1_generator_fp32"))
+        self.assertIn("crossface_ghost", ghost)
+        self.assertIn("crossface_simswap", simswap)
+        self.assertIn("ghost_backbone_fp32", exported)
+        self.assertIn("glintr100", ghost)
+        self.assertNotIn("crossface_ghost", exported)
+
+    def test_candidate_mask_and_restoration_dependencies_are_checked(self):
+        deps = pipeline.candidate_dependencies(
+            pipeline.Config("inswapper_128", mask="mp", restore=True))
+        self.assertIn("selfie_multiclass_256", deps)
+        self.assertIn("gfpgan_1.4", deps)
+        self.assertNotIn("bisenet_resnet_34", deps)
+        with self.assertRaises(ValueError):
+            pipeline.Config("ghost_1_256", mask="unregistered")
 
 
 def photo(seed=1, h=240, w=320):
@@ -149,7 +247,7 @@ class PasteBack(unittest.TestCase):
         self.assertTrue(np.array_equal(boosted.crop_after, 255 - boosted.crop_before))
         outside = boosted.mask == 0
         self.assertTrue(np.array_equal(boosted.image[outside], source[outside]))
-        self.assertEqual(pipeline.Config("x", boost=2, restore=True).label, "x+boost2+gfpgan")
+        self.assertEqual(pipeline.Config("fake", boost=2, restore=True).label, "fake+boost2+gfpgan")
 
     def test_no_swap_control_changes_almost_nothing(self):
         source = photo()
@@ -165,9 +263,9 @@ class PasteBack(unittest.TestCase):
             self.assertGreater(tools.meter.rows[stage]["peak_rss_mb"], 0)
 
     def test_candidate_labels(self):
-        self.assertEqual(pipeline.Config("x").label, "x")
-        self.assertEqual(pipeline.Config("x", restore=True).label, "x+gfpgan")
-        self.assertEqual(pipeline.Config("x", mask="box", colour=False).label, "x+mask-box+no-colour")
+        self.assertEqual(pipeline.Config("fake").label, "fake")
+        self.assertEqual(pipeline.Config("fake", restore=True).label, "fake+gfpgan")
+        self.assertEqual(pipeline.Config("fake", mask="box", colour=False).label, "fake+mask-box+no-colour")
 
 
 class Identity(unittest.TestCase):
@@ -454,7 +552,7 @@ class Report(unittest.TestCase):
         self.assertTrue(verdict_good.rstrip().endswith("pass |"))
 
     def test_labels_round_trip(self):
-        for config in cli.final_candidates() + [pipeline.Config("inswapper_128", boost=2, mask="mp", restore=True)]:
+        for config in [pipeline.Config(name) for name in cli.FINALISTS if name != "alphaface_256"] + [pipeline.Config("inswapper_128", boost=2, mask="mp", restore=True)]:
             self.assertEqual(cli.parse_label(config.label), config)
         with self.assertRaises(ValueError):
             cli.parse_label("inswapper_128+turbo")

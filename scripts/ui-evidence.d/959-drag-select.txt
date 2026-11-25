@@ -1,0 +1,5 @@
+# #959 drag-select keeps going after the selection bars swap; original-proportion selection (SelectionModeJourneyTest).
+selection-959-drag-held
+selection-959-drag-range
+selection-959-original-single
+selection-959-original-drag-range

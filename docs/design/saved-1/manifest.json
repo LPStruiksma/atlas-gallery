@@ -1,0 +1,3126 @@
+{
+  "unit": "https://github.com/LPStruiksma/atlas-gallery/issues/779",
+  "artifact": "saved-1-search-albums.png",
+  "generator": "tools/design/saved1_board.py",
+  "check": "python3 tools/design/saved1_board.py --check ; python3 -m unittest discover -s tools/design/tests",
+  "synthetic_only": true,
+  "claims": [
+    "synthetic generated gradients only",
+    "design evidence only",
+    "not a runtime or device capture"
+  ],
+  "board_px": [
+    3480,
+    10976
+  ],
+  "phone_frame_px": [
+    1080,
+    2340
+  ],
+  "canvas_dp": [
+    384,
+    832
+  ],
+  "px_per_dp": 2.8125,
+  "geometry_assumptions": {
+    "status_bar_dp": 29,
+    "gesture_region_dp": 16,
+    "ime_dp": 324,
+    "disposition": "proposal; verify on device"
+  },
+  "hero_frames": [
+    {
+      "code": "A",
+      "theme": "light",
+      "type_scale_percent": 100
+    },
+    {
+      "code": "B1",
+      "theme": "dark",
+      "type_scale_percent": 200
+    }
+  ],
+  "panel_ids": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+  ],
+  "frames": [
+    {
+      "code": "A",
+      "title": "Search with chips (light, 100%)",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "100%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            242,
+            1192,
+            534,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            545,
+            1192,
+            837,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Close search",
+          "box_px": [
+            894,
+            991,
+            1030,
+            1127
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Search field",
+          "box_px": [
+            39,
+            986,
+            889,
+            1132
+          ],
+          "size_dp": [
+            302,
+            52
+          ]
+        },
+        {
+          "label": "This screen",
+          "box_px": [
+            44,
+            829,
+            325,
+            964
+          ],
+          "size_dp": [
+            100,
+            48
+          ]
+        },
+        {
+          "label": "Whole library",
+          "box_px": [
+            347,
+            829,
+            661,
+            964
+          ],
+          "size_dp": [
+            112,
+            48
+          ]
+        },
+        {
+          "label": "Mountains",
+          "box_px": [
+            44,
+            486,
+            372,
+            621
+          ],
+          "size_dp": [
+            117,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            394,
+            486,
+            620,
+            621
+          ],
+          "size_dp": [
+            80,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            44,
+            632,
+            490,
+            767
+          ],
+          "size_dp": [
+            159,
+            48
+          ]
+        },
+        {
+          "label": "Overflow",
+          "box_px": [
+            906,
+            486,
+            1042,
+            622
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Save as album",
+          "box_px": [
+            327,
+            149,
+            1047,
+            284
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Clear all",
+          "box_px": [
+            327,
+            284,
+            1047,
+            419
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B1",
+      "title": "Save sheet · duplicate (dark, 200%)",
+      "theme": "dark",
+      "type_scale_percent": 200,
+      "scale_on_board": "100%",
+      "targets": [
+        {
+          "label": "Album name field",
+          "box_px": [
+            45,
+            632,
+            1035,
+            824
+          ],
+          "size_dp": [
+            352,
+            68
+          ]
+        },
+        {
+          "label": "Save (off)",
+          "box_px": [
+            777,
+            1178,
+            1035,
+            1346
+          ],
+          "size_dp": [
+            92,
+            60
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            424,
+            1178,
+            755,
+            1346
+          ],
+          "size_dp": [
+            118,
+            60
+          ]
+        }
+      ]
+    },
+    {
+      "code": "A light",
+      "title": "Search chips",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            242,
+            1192,
+            534,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            545,
+            1192,
+            837,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Close search",
+          "box_px": [
+            894,
+            991,
+            1030,
+            1127
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Search field",
+          "box_px": [
+            39,
+            986,
+            889,
+            1132
+          ],
+          "size_dp": [
+            302,
+            52
+          ]
+        },
+        {
+          "label": "This screen",
+          "box_px": [
+            44,
+            829,
+            325,
+            964
+          ],
+          "size_dp": [
+            100,
+            48
+          ]
+        },
+        {
+          "label": "Whole library",
+          "box_px": [
+            347,
+            829,
+            661,
+            964
+          ],
+          "size_dp": [
+            112,
+            48
+          ]
+        },
+        {
+          "label": "Mountains",
+          "box_px": [
+            44,
+            486,
+            372,
+            621
+          ],
+          "size_dp": [
+            117,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            394,
+            486,
+            620,
+            621
+          ],
+          "size_dp": [
+            80,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            44,
+            632,
+            490,
+            767
+          ],
+          "size_dp": [
+            159,
+            48
+          ]
+        },
+        {
+          "label": "Overflow",
+          "box_px": [
+            906,
+            486,
+            1042,
+            622
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Save as album",
+          "box_px": [
+            327,
+            149,
+            1047,
+            284
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Clear all",
+          "box_px": [
+            327,
+            284,
+            1047,
+            419
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "A dark",
+      "title": "Search chips",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            242,
+            1192,
+            534,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            545,
+            1192,
+            837,
+            1327
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Close search",
+          "box_px": [
+            894,
+            991,
+            1030,
+            1127
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Search field",
+          "box_px": [
+            39,
+            986,
+            889,
+            1132
+          ],
+          "size_dp": [
+            302,
+            52
+          ]
+        },
+        {
+          "label": "This screen",
+          "box_px": [
+            44,
+            829,
+            325,
+            964
+          ],
+          "size_dp": [
+            100,
+            48
+          ]
+        },
+        {
+          "label": "Whole library",
+          "box_px": [
+            347,
+            829,
+            661,
+            964
+          ],
+          "size_dp": [
+            112,
+            48
+          ]
+        },
+        {
+          "label": "Mountains",
+          "box_px": [
+            44,
+            486,
+            372,
+            621
+          ],
+          "size_dp": [
+            117,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            394,
+            486,
+            620,
+            621
+          ],
+          "size_dp": [
+            80,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            44,
+            632,
+            490,
+            767
+          ],
+          "size_dp": [
+            159,
+            48
+          ]
+        },
+        {
+          "label": "Overflow",
+          "box_px": [
+            906,
+            486,
+            1042,
+            622
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Save as album",
+          "box_px": [
+            327,
+            149,
+            1047,
+            284
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Clear all",
+          "box_px": [
+            327,
+            284,
+            1047,
+            419
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B1 light",
+      "title": "Save: duplicate",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            462,
+            311,
+            597
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            462,
+            497,
+            597
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            462,
+            903,
+            597
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Album name field",
+          "box_px": [
+            45,
+            890,
+            1035,
+            1048
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Save (off)",
+          "box_px": [
+            833,
+            1194,
+            1035,
+            1329
+          ],
+          "size_dp": [
+            72,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            601,
+            1194,
+            811,
+            1329
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B1 dark",
+      "title": "Save: duplicate",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            462,
+            311,
+            597
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            462,
+            497,
+            597
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            462,
+            903,
+            597
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Album name field",
+          "box_px": [
+            45,
+            890,
+            1035,
+            1048
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Save (off)",
+          "box_px": [
+            833,
+            1194,
+            1035,
+            1329
+          ],
+          "size_dp": [
+            72,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            601,
+            1194,
+            811,
+            1329
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B2 light",
+      "title": "Save: failed",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            462,
+            311,
+            597
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            462,
+            497,
+            597
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            462,
+            903,
+            597
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Album name field",
+          "box_px": [
+            45,
+            890,
+            1035,
+            1048
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Retry save",
+          "box_px": [
+            760,
+            1194,
+            1035,
+            1329
+          ],
+          "size_dp": [
+            98,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            528,
+            1194,
+            738,
+            1329
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "B2 dark",
+      "title": "Save: failed",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            462,
+            311,
+            597
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            462,
+            497,
+            597
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            462,
+            903,
+            597
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Album name field",
+          "box_px": [
+            45,
+            890,
+            1035,
+            1048
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Retry save",
+          "box_px": [
+            760,
+            1194,
+            1035,
+            1329
+          ],
+          "size_dp": [
+            98,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            528,
+            1194,
+            738,
+            1329
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C1 light",
+      "title": "Albums, Saved searches",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Family trips",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Alps hikes",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Mountains 2026",
+          "box_px": [
+            0,
+            1155,
+            1080,
+            1537
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C1 dark",
+      "title": "Albums, Saved searches",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Family trips",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Alps hikes",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Mountains 2026",
+          "box_px": [
+            0,
+            1155,
+            1080,
+            1537
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C2 light",
+      "title": "Saved searches, Unsorted",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "2025 without screenshots",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Night walks",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            1053,
+            1080,
+            1435
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "C2 dark",
+      "title": "Saved searches, Unsorted",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "2025 without screenshots",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Night walks",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            1053,
+            1080,
+            1435
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D1 light",
+      "title": "Saved album",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            329,
+            311,
+            464
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            329,
+            497,
+            464
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            329,
+            903,
+            464
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Sort: Newest",
+          "box_px": [
+            45,
+            475,
+            353,
+            610
+          ],
+          "size_dp": [
+            110,
+            48
+          ]
+        },
+        {
+          "label": "Overflow",
+          "box_px": [
+            899,
+            110,
+            1035,
+            246
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Edit query",
+          "box_px": [
+            327,
+            279,
+            1047,
+            414
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Rename",
+          "box_px": [
+            327,
+            414,
+            1047,
+            549
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Remove saved album",
+          "box_px": [
+            327,
+            549,
+            1047,
+            684
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D1 dark",
+      "title": "Saved album",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains",
+          "box_px": [
+            45,
+            329,
+            311,
+            464
+          ],
+          "size_dp": [
+            95,
+            48
+          ]
+        },
+        {
+          "label": "2026",
+          "box_px": [
+            333,
+            329,
+            497,
+            464
+          ],
+          "size_dp": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "Not: Screenshots",
+          "box_px": [
+            519,
+            329,
+            903,
+            464
+          ],
+          "size_dp": [
+            137,
+            48
+          ]
+        },
+        {
+          "label": "Sort: Newest",
+          "box_px": [
+            45,
+            475,
+            353,
+            610
+          ],
+          "size_dp": [
+            110,
+            48
+          ]
+        },
+        {
+          "label": "Overflow",
+          "box_px": [
+            899,
+            110,
+            1035,
+            246
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Edit query",
+          "box_px": [
+            327,
+            279,
+            1047,
+            414
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Rename",
+          "box_px": [
+            327,
+            414,
+            1047,
+            549
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Remove saved album",
+          "box_px": [
+            327,
+            549,
+            1047,
+            684
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D2 light",
+      "title": "Remove album",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Remove",
+          "box_px": [
+            767,
+            1353,
+            1001,
+            1488
+          ],
+          "size_dp": [
+            83,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            535,
+            1353,
+            745,
+            1488
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D2 dark",
+      "title": "Remove album",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Remove",
+          "box_px": [
+            767,
+            1353,
+            1001,
+            1488
+          ],
+          "size_dp": [
+            83,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            535,
+            1353,
+            745,
+            1488
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E1 light",
+      "title": "Include/Exclude",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            242,
+            2103,
+            534,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            545,
+            2103,
+            837,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Close search",
+          "box_px": [
+            894,
+            1902,
+            1030,
+            2038
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Search field",
+          "box_px": [
+            39,
+            1897,
+            889,
+            2043
+          ],
+          "size_dp": [
+            302,
+            52
+          ]
+        },
+        {
+          "label": "This screen",
+          "box_px": [
+            44,
+            1740,
+            325,
+            1875
+          ],
+          "size_dp": [
+            100,
+            48
+          ]
+        },
+        {
+          "label": "Whole library",
+          "box_px": [
+            347,
+            1740,
+            661,
+            1875
+          ],
+          "size_dp": [
+            112,
+            48
+          ]
+        },
+        {
+          "label": "Place: Alps",
+          "box_px": [
+            44,
+            1397,
+            378,
+            1532
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Place: Tirol",
+          "box_px": [
+            400,
+            1397,
+            736,
+            1532
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Year: 2026",
+          "box_px": [
+            44,
+            1543,
+            368,
+            1678
+          ],
+          "size_dp": [
+            115,
+            48
+          ]
+        },
+        {
+          "label": "Type: Screenshots",
+          "box_px": [
+            327,
+            790,
+            1047,
+            925
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Include",
+          "box_px": [
+            327,
+            925,
+            1047,
+            1060
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Exclude",
+          "box_px": [
+            327,
+            1060,
+            1047,
+            1195
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Remove",
+          "box_px": [
+            327,
+            1195,
+            1047,
+            1330
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E1 dark",
+      "title": "Include/Exclude",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            242,
+            2103,
+            534,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            545,
+            2103,
+            837,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Close search",
+          "box_px": [
+            894,
+            1902,
+            1030,
+            2038
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Search field",
+          "box_px": [
+            39,
+            1897,
+            889,
+            2043
+          ],
+          "size_dp": [
+            302,
+            52
+          ]
+        },
+        {
+          "label": "This screen",
+          "box_px": [
+            44,
+            1740,
+            325,
+            1875
+          ],
+          "size_dp": [
+            100,
+            48
+          ]
+        },
+        {
+          "label": "Whole library",
+          "box_px": [
+            347,
+            1740,
+            661,
+            1875
+          ],
+          "size_dp": [
+            112,
+            48
+          ]
+        },
+        {
+          "label": "Place: Alps",
+          "box_px": [
+            44,
+            1397,
+            378,
+            1532
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Place: Tirol",
+          "box_px": [
+            400,
+            1397,
+            736,
+            1532
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Year: 2026",
+          "box_px": [
+            44,
+            1543,
+            368,
+            1678
+          ],
+          "size_dp": [
+            115,
+            48
+          ]
+        },
+        {
+          "label": "Type: Screenshots",
+          "box_px": [
+            327,
+            790,
+            1047,
+            925
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Include",
+          "box_px": [
+            327,
+            925,
+            1047,
+            1060
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Exclude",
+          "box_px": [
+            327,
+            1060,
+            1047,
+            1195
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        },
+        {
+          "label": "Remove",
+          "box_px": [
+            327,
+            1195,
+            1047,
+            1330
+          ],
+          "size_dp": [
+            256,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E2 light",
+      "title": "Zero matches",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Place: Alps",
+          "box_px": [
+            45,
+            267,
+            379,
+            402
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Not: Alps",
+          "box_px": [
+            401,
+            267,
+            704,
+            402
+          ],
+          "size_dp": [
+            108,
+            48
+          ]
+        },
+        {
+          "label": "Clear exclusion",
+          "box_px": [
+            45,
+            690,
+            404,
+            825
+          ],
+          "size_dp": [
+            128,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E2 dark",
+      "title": "Zero matches",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Place: Alps",
+          "box_px": [
+            45,
+            267,
+            379,
+            402
+          ],
+          "size_dp": [
+            119,
+            48
+          ]
+        },
+        {
+          "label": "Not: Alps",
+          "box_px": [
+            401,
+            267,
+            704,
+            402
+          ],
+          "size_dp": [
+            108,
+            48
+          ]
+        },
+        {
+          "label": "Clear exclusion",
+          "box_px": [
+            45,
+            690,
+            404,
+            825
+          ],
+          "size_dp": [
+            128,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "F1 light",
+      "title": "Add to album",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "select 1",
+          "box_px": [
+            260,
+            312,
+            395,
+            447
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "select 2",
+          "box_px": [
+            531,
+            584,
+            666,
+            719
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Family trips",
+          "box_px": [
+            45,
+            1666,
+            1035,
+            1824
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Alps hikes",
+          "box_px": [
+            45,
+            1841,
+            1035,
+            1999
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Add",
+          "box_px": [
+            833,
+            2105,
+            1035,
+            2240
+          ],
+          "size_dp": [
+            72,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            601,
+            2105,
+            811,
+            2240
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "F1 dark",
+      "title": "Add to album",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "select 1",
+          "box_px": [
+            260,
+            312,
+            395,
+            447
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "select 2",
+          "box_px": [
+            531,
+            584,
+            666,
+            719
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Family trips",
+          "box_px": [
+            45,
+            1666,
+            1035,
+            1824
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Alps hikes",
+          "box_px": [
+            45,
+            1841,
+            1035,
+            1999
+          ],
+          "size_dp": [
+            352,
+            56
+          ]
+        },
+        {
+          "label": "Add",
+          "box_px": [
+            833,
+            2105,
+            1035,
+            2240
+          ],
+          "size_dp": [
+            72,
+            48
+          ]
+        },
+        {
+          "label": "Cancel",
+          "box_px": [
+            601,
+            2105,
+            811,
+            2240
+          ],
+          "size_dp": [
+            75,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "F2 light",
+      "title": "After add",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Undo",
+          "box_px": [
+            862,
+            1896,
+            1046,
+            2054
+          ],
+          "size_dp": [
+            65,
+            56
+          ]
+        }
+      ]
+    },
+    {
+      "code": "F2 dark",
+      "title": "After add",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "Undo",
+          "box_px": [
+            862,
+            1896,
+            1046,
+            2054
+          ],
+          "size_dp": [
+            65,
+            56
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G1 light",
+      "title": "Indexing",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G1 dark",
+      "title": "Indexing",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G2 light",
+      "title": "Retry",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Retry",
+          "box_px": [
+            45,
+            594,
+            231,
+            729
+          ],
+          "size_dp": [
+            66,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G2 dark",
+      "title": "Retry",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Retry",
+          "box_px": [
+            45,
+            594,
+            231,
+            729
+          ],
+          "size_dp": [
+            66,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G3 light",
+      "title": "200% · 10k+",
+      "theme": "light",
+      "type_scale_percent": 200,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Alps weekends with Noor and Bram",
+          "box_px": [
+            0,
+            337,
+            1080,
+            1091
+          ],
+          "size_dp": [
+            384,
+            268
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            1113,
+            1080,
+            1731
+          ],
+          "size_dp": [
+            384,
+            220
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            57,
+            2082,
+            404,
+            2238
+          ],
+          "size_dp": [
+            123,
+            55
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            415,
+            2082,
+            865,
+            2238
+          ],
+          "size_dp": [
+            160,
+            55
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            886,
+            2092,
+            1022,
+            2228
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G3 dark",
+      "title": "200% · 10k+",
+      "theme": "dark",
+      "type_scale_percent": 200,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Alps weekends with Noor and Bram",
+          "box_px": [
+            0,
+            337,
+            1080,
+            1091
+          ],
+          "size_dp": [
+            384,
+            268
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            1113,
+            1080,
+            1731
+          ],
+          "size_dp": [
+            384,
+            220
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            57,
+            2082,
+            404,
+            2238
+          ],
+          "size_dp": [
+            123,
+            55
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            415,
+            2082,
+            865,
+            2238
+          ],
+          "size_dp": [
+            160,
+            55
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            886,
+            2092,
+            1022,
+            2228
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G4 light",
+      "title": "RTL · TalkBack",
+      "theme": "light",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains 2026",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    },
+    {
+      "code": "G4 dark",
+      "title": "RTL · TalkBack",
+      "theme": "dark",
+      "type_scale_percent": 100,
+      "scale_on_board": "50%",
+      "targets": [
+        {
+          "label": "Mountains 2026",
+          "box_px": [
+            0,
+            245,
+            1080,
+            627
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Unsorted",
+          "box_px": [
+            0,
+            649,
+            1080,
+            1031
+          ],
+          "size_dp": [
+            384,
+            136
+          ]
+        },
+        {
+          "label": "Collections",
+          "box_px": [
+            164,
+            2103,
+            456,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Pictures",
+          "box_px": [
+            467,
+            2103,
+            759,
+            2238
+          ],
+          "size_dp": [
+            104,
+            48
+          ]
+        },
+        {
+          "label": "Search",
+          "box_px": [
+            780,
+            2103,
+            916,
+            2239
+          ],
+          "size_dp": [
+            48,
+            48
+          ]
+        }
+      ]
+    }
+  ],
+  "fonts": {
+    "status": "Funnel Display + Funnel Sans (OFL), variable weight",
+    "source": "app/src/main/res/font/ (BRAND-L2, PR 720) or the directory passed in --font-dir",
+    "sha256": {
+      "funnel_display.ttf": "b4151c9c4b7b07eb74320096b4ff4156cca8821f5adfab34af9fd9a2d6c1179d",
+      "funnel_sans.ttf": "652c9834434bc01835c4e75a73d3c7e42ff2e4beb261cc851cb911e889af6a77"
+    }
+  },
+  "pillow": "12.3.0",
+  "python": "3.13.18",
+  "determinism": "no time, randomness (seeded), locale or network inputs; PNG = 256-colour palette",
+  "sha256": "8bf7b27f49a41d34ebf80f26c652297dc4f1308d846905cf886f7c12ab886f9b",
+  "byte_size": 1433928,
+  "references_checked": "2026-11-21",
+  "reference_decisions": [
+    {
+      "source": "Aves dynamic album request (issue 1370)",
+      "evidence": "Community issue about dynamic albums from filters.",
+      "proposal": "Persist structured live-query facets. Nothing is asserted about Aves visuals."
+    },
+    {
+      "source": "Aves filtered album discussion (1864)",
+      "evidence": "Discussion about creating a filtered collection as an album.",
+      "proposal": "Save from the existing search overflow above the bottom slab, not a copied toolbar."
+    },
+    {
+      "source": "Immich no-album search (issue 21001)",
+      "evidence": "Community request for “Not in any album”.",
+      "proposal": "Persistent virtual Unsorted row with an exact rule: in no user-managed album."
+    },
+    {
+      "source": "Material 3 SearchBar",
+      "evidence": "Documented expandable search and suggestion pattern.",
+      "proposal": "Search stays directly above the slab (Quiet Frame v3), not at the top."
+    },
+    {
+      "source": "Merged L5 and L7 boards",
+      "evidence": "Synthetic layout grammar for photo-led Collections and expandable search.",
+      "proposal": "Reused: real-shape strips, held sphere, two-place slab, one lapis identity."
+    }
+  ]
+}

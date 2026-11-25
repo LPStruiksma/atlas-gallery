@@ -157,7 +157,21 @@ fun MediaRecord.displayAspectRatioOrNull(): Float? {
 fun MediaRecord.presentationCacheKeyOrNull(
     requestedPixels: Int, catalogueEpoch: Long, editorRevision: Long = 0L
 ): String? {
-    if (requestedPixels !in 1..8192 || catalogueEpoch < 0L || editorRevision < 0L) return null
+    if (requestedPixels !in 1..8192) return null
+    val prefix = presentationCacheKeyPrefixOrNull(catalogueEpoch, editorRevision) ?: return null
+    return prefix + requestedPixels
+}
+
+/**
+ * Everything in [presentationCacheKeyOrNull] except the trailing requested
+ * size, so a caller trying several sizes for one item (the FLOW-1 pinch
+ * layer) builds the long item part once. Null exactly when every
+ * [presentationCacheKeyOrNull] for this item and epoch is null.
+ */
+internal fun MediaRecord.presentationCacheKeyPrefixOrNull(
+    catalogueEpoch: Long, editorRevision: Long = 0L
+): String? {
+    if (catalogueEpoch < 0L || editorRevision < 0L) return null
     val version = providerVersion?.takeIf { it.isNotBlank() } ?: return null
     if (generationModified <= 0L) return null
     return buildString(160) {
@@ -172,7 +186,7 @@ fun MediaRecord.presentationCacheKeyOrNull(
         append(widthPixels).append('|').append(heightPixels).append('|')
         append(orientationDegrees).append('|')
         append(modifiedAtSeconds).append('|').append(catalogueEpoch).append('|')
-        append(editorRevision).append('|').append(requestedPixels)
+        append(editorRevision).append('|')
     }
 }
 

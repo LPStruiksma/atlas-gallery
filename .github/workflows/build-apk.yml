@@ -28,11 +28,11 @@ on:
       - 'scripts/ci_enable_kvm.sh'
       - 'scripts/ci_install_emulator_image.sh'
   pull_request:
-    # Actions-minutes rule (autodev CI audit 2026-11-12): the API35 emulator shards run on a
-    # non-draft PR only when it carries `next:review`, i.e. once per candidate head handed to
-    # Review. Adding the label later dispatches this workflow on the PR branch head
-    # (review-emulator-trigger.yml). Pushes while next:dev get build + JVM tests only.
-    # ready_for_review: marking a labelled draft ready starts the emulators on that exact head.
+    # Actions-minutes rule (goal #986 U5): a PR event gets build + JVM tests only. The API35
+    # emulator shards run only on workflow_dispatch with run_ui_tests, which
+    # review-emulator-trigger.yml sends once when the label `emulator:run` is added to a PR
+    # (Review does that after its code pass, "CLEAN pending CI"). Not on push, not on
+    # ready_for_review, not on next:review.
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'app/**'
@@ -66,6 +66,8 @@ jobs:
         run: |
           python3 scripts/verify_contract.py
           python3 -m unittest discover -s scripts -p 'test_verify_contract.py'
+      - name: Atlas LUT generator tests
+        run: python3 -m unittest discover -s tools/atlas_luts -p 'test_*.py' -v
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -120,19 +122,20 @@ jobs:
           if-no-files-found: error
           retention-days: 2
   emulator-ui-shard:
-    # AutoDev Actions-minutes rule: draft PR heads and heads without next:review get build + JVM
-    # tests only; the API35 emulator job runs on a non-draft PR labelled next:review and on
-    # opted-in manual runs (which is how review-emulator-trigger.yml starts it).
+    # AutoDev Actions-minutes rule: PR heads get build + JVM tests only; the API35 emulator job
+    # runs on opted-in dispatch runs (which is how review-emulator-trigger.yml starts it from
+    # the `emulator:run` label).
     # Job names stay static: a run cancelled before it starts must not leave checks under an
     # unevaluated expression name, which would block the merge join for that head.
     # #588: the instrumented suite outgrew one 40-minute job, so it runs as two
     # shards (each with its own cap). Shard 0 also runs the upgrade phases. The
     # emulator-ui job below is the single check that joins and reviews read.
-    if: ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui_tests }}
     name: emulator-ui shard ${{ matrix.shard }}
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # Shard 0 (341 tests plus the upgrade phases) ran 37-40+ min and was cancelled at 40 with 0 failures; 50 leaves headroom.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -210,8 +213,8 @@ jobs:
   emulator-ui:
     # One check for joins and reviews: green only when every shard is green and
     # the shards together saved the whole UI-evidence set. Skipped with the
-    # shards (drafts, heads without next:review, pushes); never runs when cancelled.
-    if: ${{ !cancelled() && ((github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests)) }}
+    # shards (PR events, pushes); never runs when cancelled.
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
     needs: emulator-ui-shard
     runs-on: ubuntu-24.04
     timeout-minutes: 10

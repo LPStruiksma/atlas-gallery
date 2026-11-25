@@ -61,6 +61,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
+import nl.atlas.gallery.featureface.MediaRecordFaceView
 import nl.atlas.gallery.featureface.FaceAuthorizedMediaDirectory
 import nl.atlas.gallery.featureface.FaceBatchResult
 import nl.atlas.gallery.featureface.FaceBatchStop
@@ -74,6 +75,7 @@ import nl.atlas.gallery.featureface.NativeFaceObservationId
 import nl.atlas.gallery.featureface.durableFaceKeyOrNull
 import nl.atlas.gallery.featureface.FaceScanConditions
 import nl.atlas.gallery.featureface.ManualFaceScanGuard
+import nl.atlas.gallery.featureface.currentManualWait
 import nl.atlas.gallery.featureface.FaceScanEngine
 import nl.atlas.gallery.featureface.FaceScanPhase
 import nl.atlas.gallery.featureface.FaceUnknownInboxBridge
@@ -107,6 +109,7 @@ import nl.atlas.gallery.featurevisual.VisualEmbedOutcome
 import nl.atlas.gallery.featurevisual.VisualKeyframe
 import nl.atlas.gallery.featurevisual.VisualScanResult
 import nl.atlas.gallery.featurevisual.VisualScanStage
+import nl.atlas.gallery.featurevisual.tags.store.VisualTagHook
 import nl.atlas.gallery.featurevisual.VisualScanStop
 import nl.atlas.gallery.featurevisual.VisualStepPlan
 import nl.atlas.gallery.featurevisual.VisualVideoBudget
@@ -501,7 +504,8 @@ internal fun publicationStatusPhase(
  * MediaStore id). Stable, so equal rows keep the gallery's order.
  */
 internal fun newestFirst(inventory: List<FaceVisibleMedia>): List<FaceVisibleMedia> =
-    inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
+    if (inventory is MediaRecordFaceView) inventory.newestFirstView()
+    else inventory.sortedWith(compareByDescending<FaceVisibleMedia> { it.takenAtMillis }
         .thenByDescending { it.id })
 
 /** Batches that ended on a budget or one failed photo are followed by another. */
@@ -530,7 +534,7 @@ internal fun nextVisualBatchAfter(result: VisualScanResult?, stillQueued: Boolea
         null -> NextBatch.NONE
         VisualScanStop.COMPLETED -> NextBatch.NOW
         VisualScanStop.BUDGET_OR_GUARD ->
-            if (result.indexed + result.skipped > 0) NextBatch.NOW else NextBatch.LATER
+            if (result.indexed + result.skipped + result.tagged > 0) NextBatch.NOW else NextBatch.LATER
         VisualScanStop.HELD -> NextBatch.LATER
         VisualScanStop.NOTHING_CLAIMED -> if (stillQueued) NextBatch.LATER else NextBatch.NONE
     }
@@ -588,6 +592,8 @@ internal class PeopleDiscoveryHost(
         ((FaceAuthorizedMediaDirectory<FaceVisibleMedia>) -> (VisualMedia) ->
             VisualVideoFrames<Bitmap>)? = null,
     private val visualVideoBudget: VisualVideoBudget = VisualVideoBudget(),
+    /** TAGS-1 (#732): automatic tags from the stored vectors; null leaves tagging off. */
+    private val visualTags: VisualTagHook? = null,
     private val visualModelVersion: String = SiglipModel.MODEL_VERSION,
     private val visualDimension: Int = SiglipModel.DIMENSION,
     /** Deletes the joined model copy in no-backup storage; true when gone. */
@@ -678,6 +684,7 @@ internal class PeopleDiscoveryHost(
             power = { devicePower(context) },
             faceCropDecoder = MediaStoreFaceCropDecoder(context.contentResolver),
             visualStore = VisualIndexStore(context),
+            visualTags = VisualTagHook.forApp(context),
             visualEmbedderFactory = { SiglipImageEmbedder.open(context) },
             visualDecoderFor = { directory ->
                 { media ->
@@ -899,6 +906,19 @@ internal class PeopleDiscoveryHost(
     /** True while [epoch] is the live, granted scope of an opted-in run. */
     fun scopeCurrent(epoch: String): Boolean =
         liveEpoch == epoch && synchronized(lock) { optedIn } && photoGrantCurrent()
+
+    /**
+     * HUB-1C: a Skip key must outlive a random face-publication epoch.
+     * Full-library grants have a stable, permission-derived token across
+     * publications and relaunches. Selected-photos grants have no equally
+     * trustworthy stable token: keep their Skip suppression epoch-local
+     * rather than risk carrying it into a changed, narrower selection.
+     * Never return a scope for a stale or unauthorized publication.
+     */
+    fun stableSamePersonSkipScope(epoch: String): String? {
+        if (!scopeCurrent(epoch) || synchronized(lock) { scope?.epoch != epoch }) return null
+        return photoGrantToken()?.let { "full-photo-grant:$it" } ?: epoch
+    }
 
     /**
      * #61: manual scanning is a transient foreground grant, never WorkManager
@@ -1129,6 +1149,7 @@ internal class PeopleDiscoveryHost(
     private fun deleteVisualData(store: VisualIndexStore) {
         closeEmbedder()
         val rows = try { store.deleteIndex(); true } catch (_: SQLException) { false }
+        visualTags?.deleteAll()
         val model = try { deleteVisualModelCopy() } catch (_: RuntimeException) { false }
         synchronized(lock) { visualDataKept = !(rows && model) }
     }
@@ -1752,7 +1773,12 @@ internal class PeopleDiscoveryHost(
                             ?.takeIf { it.detectorVersion == pipeline.detectorVersion &&
                                 it.embedderVersion == pipeline.embedderVersion } },
                         store = { source, scores ->
-                            store.backfillQualityIfNull(owned.epoch, source, scores) },
+                            store.backfillQualityIfNull(owned.epoch, source, scores).also { written ->
+                                // The review revision does not change for quality-only writes.
+                                // Evict the home projection before the next Compose refresh.
+                                if (written > 0) synchronized(reviewLock) { liveHome = null }
+                            }
+                        },
                         reader = scanReader,
                         scoreOnly = pipeline::scoreWithoutEmbeddings,
                         canContinue = guard
@@ -1771,7 +1797,9 @@ internal class PeopleDiscoveryHost(
             get() {
                 if (visualStore == null || !synchronized(lock) { visualOptedIn }) return null
                 if (visualScope?.faceEpoch != owned.epoch || visualScope?.staging == true) return null
-                return PeopleVisualScanStep { canContinue -> runVisualStep(canContinue) }
+                return PeopleVisualScanStep { canContinue ->
+                    withTagSweep(runVisualStep(canContinue), canContinue)
+                }
             }
 
         /**
@@ -1797,7 +1825,8 @@ internal class PeopleDiscoveryHost(
             val embedder = embedderForRun() ?: return null
             val decode = visualDecoderFor(owned.directory)
             val sample = visualVideoFramesFor?.invoke(owned.directory)
-            val stage = VisualScanStage(store, embedder.modelVersion, embedder.dimension,
+            val stage = VisualScanStage(visualTags?.wrap(store) ?: store,
+                embedder.modelVersion, embedder.dimension,
                 { media ->
                     if (media !in videos) {
                         VisualScanStage.decodeAndEmbedWith(media, decode, embedder::embed,
@@ -1826,6 +1855,29 @@ internal class PeopleDiscoveryHost(
                 visual.cursor.set(selected.last().first)
             }
             return result
+        }
+
+        /**
+         * TAGS-1 (#732): when the visual step found nothing to claim, one
+         * bounded tag sweep step over the stored vectors of the same epoch
+         * (backfill and reconcile; no image decode). While the sweep has more
+         * to do the step reports [VisualScanResult.tagged], so the worker
+         * comes back under its usual guards (charging, thermal, grant).
+         */
+        private fun withTagSweep(
+            result: VisualScanResult?, canContinue: () -> Boolean
+        ): VisualScanResult? {
+            val tags = visualTags ?: return result
+            if (result?.stop != VisualScanStop.NOTHING_CLAIMED) return result
+            val store = visualStore ?: return result
+            val visual = visualScope?.takeIf { it.faceEpoch == owned.epoch && !it.staging }
+                ?: return result
+            val sweep = tags.sweepStep(visual.epoch, visualModelVersion,
+                { after, limit -> store.loadActiveVectors(visual.epoch, visualModelVersion, after, limit) },
+                canContinue) ?: return result
+            if (!sweep.moreWork) return result
+            return result.copy(held = true, stop = VisualScanStop.BUDGET_OR_GUARD,
+                tagged = sweep.examined)
         }
 
         /**
@@ -2049,12 +2101,20 @@ internal class PeopleDiscoveryHost(
             ManualFaceScanGuard(p.batteryPercent, p.thermalStatus,
                 foregroundVisible).holdReason()
         } else null
+        // A wait remembered from an earlier Scan now is re-checked against live
+        // sensors, so a cleared hold (e.g. the phone cooled) stops showing.
+        val remembered = lastManualWait
+        val rememberedWait = if (manualForegroundActive || remembered == null) null else {
+            val p = power()
+            currentManualWait(remembered, ManualFaceScanGuard(p.batteryPercent,
+                p.thermalStatus, foregroundVisible)).also { if (it == null) lastManualWait = null }
+        }
         val pending = progress.pending + progress.running > 0
         val note = if (!pending || snap.paused) null else when {
             manualWait != null -> manualWait
             manualForegroundActive -> null
-            !power().charging -> lastManualWait ?: "Waiting for charging · use Scan now while unplugged"
-            else -> lastManualWait
+            !power().charging -> rememberedWait ?: "Waiting for charging · use Scan now while unplugged"
+            else -> rememberedWait
         }
         val active = manualForegroundActive || scanBatchEpoch == scoped.epoch
         val phase = startedScanPhase(snap.paused, progress.pending, progress.running,
@@ -2219,6 +2279,13 @@ internal class PeopleDiscoveryHost(
         liveReview?.takeIf {
             it.state.permissionEpoch == epoch && it.storeGeneration == generation
         }?.let { if (live) servedReview = it; return it }
+        // OOM fix (264k faces): drop the stale snapshot before reading its
+        // replacement, so a reload after a publication never holds two full
+        // copies. The served one stays only while a restage may still need it.
+        liveReview?.let { stale ->
+            liveReview = null
+            if (live && servedReview === stale && !restageReadGap(epoch)) servedReview = null
+        }
         val stored = store.peopleReview(epoch)
             ?: return if (live || held) heldReview(epoch) else null
         LiveReview(PeopleClusterReviewState(epoch, "$epoch|${stored.generation}",
@@ -2316,6 +2383,29 @@ internal class PeopleDiscoveryHost(
         val epoch = displayEpoch(galleryGrant) ?: return null
         return synchronized(reviewLock) {
             if (!scopeCurrent(epoch)) null else store.personCoverOverride(epoch, person)
+        }
+    }
+
+    /**
+     * COVER-2: read a named person's effective best shot, even when hidden
+     * from the People-home projection. Both the live Android grant and store
+     * epoch must still match; never cache a face UID beyond that scope.
+     * Blocking; IO only.
+     */
+    fun currentPersonDisplayCover(galleryGrant: String?, person: PersonKey): String? {
+        val epoch = displayEpoch(galleryGrant) ?: return null
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) null
+            else store.personDisplayCover(epoch, person)
+        }
+    }
+
+    /** One authorized batch of effective portraits for the Hidden list. IO only. */
+    fun currentHiddenPersonCovers(epoch: String?): Map<PersonKey, String> {
+        if (epoch == null) return emptyMap()
+        return synchronized(reviewLock) {
+            if (!scopeCurrent(epoch) || !photoGrantCurrent()) emptyMap()
+            else store.hiddenPersonCovers(epoch)
         }
     }
 
@@ -2619,7 +2709,8 @@ internal class PeopleDiscoveryHost(
         }
 
         override fun personName(epoch: String, person: PersonKey): String? =
-            if (scope(epoch) == null) null else currentReview(epoch)?.state?.names?.get(person)
+            // A name only: never load the whole People snapshot for it (OOM fix).
+            if (scope(epoch) == null) null else store.personName(epoch, person)
 
         override fun queryCapture(epoch: String): QueryFaceCapture? {
             val s = scope(epoch) ?: return null
@@ -2677,7 +2768,7 @@ internal class PeopleDiscoveryBinding(
 /**
  * Status follows [PeopleDiscoveryHost.changes] and [galleryGrant]; a new
  * gallery publication is handed to the host off main. [inventory] is the same
- * permission-gated list the gallery shows; it is projected only on IO.
+ * permission-gated list the gallery shows; face rows are projected lazily on IO.
  */
 @Composable
 internal fun rememberPeopleDiscovery(
@@ -2685,7 +2776,7 @@ internal fun rememberPeopleDiscovery(
     galleryGrant: String?,
     inventory: List<MediaRecord>
 ): PeopleDiscoveryBinding = rememberPeopleDiscoveryOf(host, galleryGrant, inventory) { list ->
-    list.map { it.toFaceVisibleMedia(editorRevision = 0L) }
+    MediaRecordFaceView(list)
 }
 
 @Composable
@@ -2907,6 +2998,14 @@ internal fun PeopleReviewRoute(
     val current = page?.takeIf {
         loadedVersion == version && it.queue.permissionEpoch == liveEpoch
     }
+    // Display hints are only valid for this exact published review generation.
+    // Never use a stale home cover after a grant or membership change.
+    val coverHints = host.liveHomePeople(liveEpoch)
+        ?.takeIf { it.sourceGeneration == current?.clusters?.sourceGeneration }
+        ?.people?.mapNotNull { (person, data) ->
+            runCatching { NativeFaceObservationId(data.coverFaceUid) }.getOrNull()
+                ?.let { person to it }
+        }?.toMap().orEmpty()
     UnknownFacesReviewScreen(
         queue = current?.queue,
         currentPermissionEpoch = liveEpoch,
@@ -2934,6 +3033,7 @@ internal fun PeopleReviewRoute(
         onClose = onClose,
         onNextPage = current?.nextCursor?.let { next -> { after = next } },
         clusterReview = current?.clusters,
+        coverByPerson = coverHints,
         liveClusterReviewAtAction = { host.liveReview(liveEpoch) },
         onClusterReviewCommand = { command ->
             scope.launch {

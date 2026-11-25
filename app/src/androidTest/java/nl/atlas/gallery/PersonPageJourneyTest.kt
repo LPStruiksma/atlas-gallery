@@ -565,6 +565,15 @@ class PersonPageJourneyTest {
         assertEquals("Synthetic Ada", store.peopleReview(epoch)!!.names[ada])
         compose.awaitScreenStill("person-named")
         saveUiEvidence("person-named.png")
+        // #655: same named synthetic person, actual Activity, both palettes.
+        saveUiEvidence("parity-24-people-named-dark.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window, dark = false) }
+        dark = false
+        compose.awaitScreenStill("parity-24-people-named-light")
+        saveUiEvidence("parity-24-people-named-light.png")
+        compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
+        dark = true
+        compose.waitForIdle()
 
         // FIND-0: native Person page exposes the shared scoped search and
         // retains its current face-grant result set. Invented fixture names only.
