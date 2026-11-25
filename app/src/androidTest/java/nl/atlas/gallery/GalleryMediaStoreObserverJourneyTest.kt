@@ -36,6 +36,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.util.concurrent.TimeUnit
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicReferenceArray
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
@@ -80,17 +82,36 @@ class GalleryMediaStoreObserverJourneyTest {
         val vm = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         val disposable = mutableListOf<Uri>()
         // Observe the provider's real URI/flag shape, not a mocked callback.
-        // Store ONLY the flag bits and whether a URI identifies an exact row.
+        // Preserve the original callback counts. The diagnostic additionally retains
+        // bounded, in-memory row hints only within the five measured insert windows.
         val notifications = Collections.synchronizedList(mutableListOf<Pair<Int, Boolean>>())
+        val activePhase = AtomicReference<InsertPhase?>(null)
         val trace = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
+                val phase = activePhase.get()
+                val at = if (phase != null) SystemClock.elapsedRealtimeNanos() else 0L
                 notifications += 0 to false
+                phase?.record(at, null, 0)
             }
             override fun onChange(selfChange: Boolean, uri: Uri?) {
-                notifications += 0 to (uri != null && galleryItemHintOrNull(uri) != null)
+                val phase = activePhase.get()
+                val at = if (phase != null) SystemClock.elapsedRealtimeNanos() else 0L
+                val hint = uri?.let(::galleryItemHintOrNull)
+                notifications += 0 to (hint != null)
+                phase?.record(at, hint, 0)
             }
             override fun onChange(selfChange: Boolean, uris: Collection<Uri>, flags: Int) {
+                val phase = activePhase.get()
+                val at = if (phase != null) SystemClock.elapsedRealtimeNanos() else 0L
                 notifications += flags to uris.any { galleryItemHintOrNull(it) != null }
+                if (phase != null) {
+                    // Per-URI observations, NOT additional callback counts. Include
+                    // empty/unknown notifications; never retain URI strings.
+                    if (uris.isEmpty()) phase.record(at, null, flags)
+                    else for (uri in uris) {
+                        if (!phase.record(at, galleryItemHintOrNull(uri), flags)) break
+                    }
+                }
             }
         }
         resolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, trace)
@@ -121,25 +142,61 @@ class GalleryMediaStoreObserverJourneyTest {
             // Five independent insert-to-RENDERED samples; no JVM fake or
             // publication-only stopwatch masquerades as an on-screen result.
             val samples = ArrayList<Long>()
-            repeat(5) { index ->
-                val (uri, writtenAt) = insertFictionalImage(resolver, index)
-                disposable += uri
-                val id = ContentUris.parseId(uri)
-                // MediaProvider may send a collection-wide callback instead of an
-                // exact row change. The ViewModel then correctly falls back to
-                // a full scan, whose publication has incremental=false. A tile
-                // already on screen must not be ignored until another delta
-                // happens (CI shard 0: runs 44419277477 and 44433328673).
-                // Avoid reading Compose semantics until the provider has
-                // actually published this item.
-                compose.awaitThat("insert $index is in inventory and rendered",
-                    timeoutMs = 12_000L) {
-                    val pub = vm.publishedInventory.value
-                    pub.items.any { it.id == id && !it.isVideo } &&
-                        compose.exists(hasTestTag("atlas-timeline-media-$id"))
+            val phases = List(5) { InsertPhase(it + 1) }
+            try {
+                repeat(5) { index ->
+                    val phase = phases[index]
+                    phase.startedAt = SystemClock.elapsedRealtimeNanos()
+                    activePhase.set(phase)
+                    try {
+                        val (uri, writtenAt) = insertFictionalImage(resolver, index)
+                        disposable += uri
+                        val id = ContentUris.parseId(uri)
+                        phase.imageId = id
+                        phase.writtenAt = writtenAt
+                        // MediaProvider may send a collection-wide callback instead of an
+                        // exact row change. The ViewModel then correctly falls back to
+                        // a full scan, whose publication has incremental=false. A tile
+                        // already on screen must not be ignored until another delta
+                        // happens (CI shard 0: runs 44419277477 and 44433328673).
+                        // Avoid reading Compose semantics until the provider has
+                        // actually published this item.
+                        compose.awaitThat("insert $index is in inventory and rendered",
+                            timeoutMs = 12_000L) {
+                            val pub = vm.publishedInventory.value
+                            if (pub.items.any { it.id == id && !it.isVideo }) {
+                                if (phase.inventoryPositiveAt == null) {
+                                    phase.inventoryPositiveAt = SystemClock.elapsedRealtimeNanos()
+                                }
+                                val lookupStart = SystemClock.elapsedRealtimeNanos()
+                                val first = phase.firstLookupStart == null
+                                if (first) phase.firstLookupStart = lookupStart
+                                val exists = compose.exists(hasTestTag("atlas-timeline-media-$id"))
+                                val lookupEnd = SystemClock.elapsedRealtimeNanos()
+                                if (first) {
+                                    phase.firstLookupEnd = lookupEnd
+                                    phase.firstLookupResult = exists
+                                }
+                                if (exists && phase.positiveLookupStart == null) {
+                                    phase.positiveLookupStart = lookupStart
+                                    phase.positiveLookupEnd = lookupEnd
+                                }
+                                exists
+                            } else false
+                        }
+                        // Same stopwatch endpoints and integer conversion as before.
+                        val returnedAt = SystemClock.elapsedRealtimeNanos()
+                        samples += TimeUnit.NANOSECONDS.toMillis(returnedAt - writtenAt)
+                        phase.returnedAt = returnedAt
+                    } finally {
+                        activePhase.set(null)
+                        phase.stoppedAt = phase.returnedAt ?: SystemClock.elapsedRealtimeNanos()
+                    }
                 }
-                samples += TimeUnit.NANOSECONDS.toMillis(
-                    SystemClock.elapsedRealtimeNanos() - writtenAt)
+            } finally {
+                // Never log on the measured path or mask an original test failure.
+                // Include incomplete/not-started samples if an earlier wait failed.
+                phases.forEach { phase -> runCatching { phase.log() } }
             }
             val medianMs = samples.sorted()[samples.size / 2]
             val observerTrace = synchronized(notifications) { notifications.toList() }
@@ -232,6 +289,96 @@ class GalleryMediaStoreObserverJourneyTest {
             disposable.forEach { uri ->
                 runCatching { resolver.delete(uri, null, null) }
             }
+        }
+    }
+
+    // Diagnostic only (#1043). The test observer executes on main; it is not
+    // the product observer. The test thread never waits for it. One fixed buffer
+    // per sample records callback entry timestamps (one entry per URI hint).
+    private data class CallbackObservation(
+        val at: Long,
+        val imageId: Long?,
+        val exact: Boolean,
+        val flags: Int,
+    )
+
+    private class InsertPhase(private val ordinal: Int) {
+        var startedAt: Long? = null
+        var writtenAt: Long? = null
+        var imageId: Long? = null
+        var inventoryPositiveAt: Long? = null
+        var firstLookupStart: Long? = null
+        var firstLookupEnd: Long? = null
+        var firstLookupResult: Boolean? = null
+        var positiveLookupStart: Long? = null
+        var positiveLookupEnd: Long? = null
+        var returnedAt: Long? = null
+        var stoppedAt: Long? = null
+
+        private val entries = AtomicReferenceArray<CallbackObservation>(64)
+        // Single producer (the existing main-handler observer). Publish a
+        // reservation before the entry so a racing snapshot reports a missing
+        // slot, rather than claiming that no observation was lost.
+        @Volatile private var reserved = 0
+        @Volatile private var overflow = false
+
+        fun record(at: Long, hint: GalleryItemHint?, flags: Int): Boolean {
+            val slot = reserved
+            if (slot >= entries.length()) {
+                overflow = true
+                return false
+            }
+            reserved = slot + 1
+            entries.set(slot, CallbackObservation(at, hint?.takeUnless { it.video }?.id,
+                hint != null, flags))
+            return true
+        }
+
+        fun log() {
+            // All offsets are signed monotonic nanoseconds relative to the
+            // original writtenAt; on a failed insert use start as a fallback.
+            // No raw IDs, URI, file name, or absolute timestamps leave memory.
+            val write = writtenAt
+            val origin = write ?: startedAt
+            fun offset(at: Long?): String =
+                if (at == null || origin == null) "NA" else (at - origin).toString()
+
+            val count = reserved
+            val snapshot = (0 until count).map { entries.get(it) }
+            val window = snapshot.filterNotNull().filter { entry ->
+                startedAt?.let { entry.at >= it } == true &&
+                    stoppedAt?.let { entry.at <= it } == true
+            }
+            val matching = window.filter { it.exact && imageId != null && it.imageId == imageId }
+            val unknown = window.filter { !it.exact }
+            fun observations(rows: List<CallbackObservation>, preWrite: Boolean): String {
+                if (write == null) return "NA"
+                return rows.filter { (it.at < write) == preWrite }
+                    .joinToString(",", "[", "]") { "${offset(it.at)}:${it.flags}" }
+            }
+            fun unclassified(rows: List<CallbackObservation>): String =
+                if (write != null) "NA" else rows.joinToString(",", "[", "]") {
+                    "${offset(it.at)}:${it.flags}"
+                }
+
+            Log.i("ATLAS_PERF10_PHASE",
+                "sample=$ordinal origin=${if (write != null) "written" else if (origin != null) "start" else "missing"} " +
+                    "insert_start_ns=${offset(startedAt)} written_ns=${offset(write)} " +
+                    "inventory_positive_ns=${offset(inventoryPositiveAt)} " +
+                    "first_lookup_start_ns=${offset(firstLookupStart)} first_lookup_end_ns=${offset(firstLookupEnd)} " +
+                    "first_lookup_result=${firstLookupResult ?: "NA"} " +
+                    "positive_lookup_start_ns=${offset(positiveLookupStart)} positive_lookup_end_ns=${offset(positiveLookupEnd)} " +
+                    "await_return_ns=${offset(returnedAt)} stop_ns=${offset(stoppedAt)} " +
+                    "sample_ms=${if (write != null && returnedAt != null) TimeUnit.NANOSECONDS.toMillis(returnedAt!! - write) else "NA"} " +
+                    "callback_exact_pre_ns_flags=${observations(matching, true)} " +
+                    "callback_exact_post_ns_flags=${observations(matching, false)} " +
+                    "callback_unknown_pre_ns_flags=${observations(unknown, true)} " +
+                    "callback_unknown_post_ns_flags=${observations(unknown, false)} " +
+                    "callback_exact_unclassified_ns_flags=${unclassified(matching)} " +
+                    "callback_unknown_unclassified_ns_flags=${unclassified(unknown)} " +
+                    "callback_other_exact_entries=${window.count { it.exact } - matching.size} " +
+                    "callback_reserved=$count callback_missing_slots=${snapshot.count { it == null }} " +
+                    "callback_outside_window=${snapshot.count { it != null } - window.size} callback_overflow=$overflow")
         }
     }
 
