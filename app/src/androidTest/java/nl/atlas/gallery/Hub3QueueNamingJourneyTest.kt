@@ -389,8 +389,23 @@ class Hub3QueueNamingJourneyTest {
         compose.awaitScreenStill("hub3-queue-named-light")
         saveUiEvidence("hub3-queue-named-light.png")
         compose.tap(hasTestTag("atlas-same-queue-subject-name"))
-        typeName("Synthetic Renamed", replace = true)
-        saveAndWait("Synthetic Renamed")
+        // Saving an unchanged name is refused by the real naming reducer.
+        enabled("atlas-person-name-save")
+        val generationBeforeRefusal = host.liveReview(epoch)!!.sourceGeneration
+        compose.tap(hasTestTag("atlas-person-name-save"))
+        compose.waitForNode(hasText("Couldn’t save name. Try again."), WAIT_MS)
+        assertEquals(generationBeforeRefusal, host.liveReview(epoch)!!.sourceGeneration)
+        assertEquals(listOf(longName), host.liveReview(epoch)!!.names.values.toList())
+        compose.awaitScreenStill("hub3-host-refused")
+        saveUiEvidence("hub3-host-refused.png")
+        compose.onNodeWithTag("atlas-person-name-field").performTextClearance()
+        compose.typeText(hasTestTag("atlas-person-name-field"), "Synthetic Renamed", KeyboardAfter.Shown)
+        compose.tap(hasText("Retry"))
+        compose.awaitThat("retry committed renamed group", WAIT_MS) {
+            host.liveReview(epoch)?.names?.values?.contains("Synthetic Renamed") == true &&
+                !compose.exists(hasTestTag("atlas-person-name-dialog"), useUnmergedTree = true)
+        }
+        readyQueue()
         assertEquals(listOf("Synthetic Renamed"), host.liveReview(epoch)!!.names.values.toList())
 
         compose.tap(hasTestTag("atlas-same-queue-other-name"))

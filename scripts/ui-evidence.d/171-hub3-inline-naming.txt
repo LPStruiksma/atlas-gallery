@@ -12,3 +12,4 @@ hub3-more-enlarged
 hub3-loading-enlarged
 hub3-busy-enlarged
 hub3-error-enlarged
+hub3-host-refused
