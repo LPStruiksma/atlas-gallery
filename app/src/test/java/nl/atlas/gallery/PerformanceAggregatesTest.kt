@@ -128,6 +128,29 @@ class PerformanceAggregatesTest {
         assertEquals(PerformanceAggregates.SAVE_EVERY + 1, store.saved["viewer_ms"]!!.size)
     }
 
+    @Test fun pauseFlushPersistsFewerThanSixteenSamplesAcrossRecreation() {
+        val persisted = HashMap<String, List<Double>>()
+        var durableWrites = 0
+        val store = object : PerformanceAggregates.PerformanceStore {
+            override fun load(): Map<String, List<Double>> = persisted.toMap()
+            override fun save(metric: String, values: List<Double>) { persisted[metric] = values }
+            override fun saveDurably(metric: String, values: List<Double>) {
+                durableWrites++
+                persisted[metric] = values
+            }
+        }
+        val first = PerformanceAggregates(store = store)
+        first.restore(store.load())
+        repeat(3) { first.record("grid_frame_ms", 8.0 + it) }
+        assertEquals(0, durableWrites)
+        first.flush() // Activity.onPause
+        assertEquals(1, durableWrites)
+        val recreated = PerformanceAggregates(store = store)
+        recreated.restore(store.load()) // new process, same version
+        assertEquals(3, recreated.snapshot("grid_frame_ms").count)
+        assertEquals(10.0, recreated.snapshot("grid_frame_ms").max!!, 0.0)
+    }
+
     @Test fun fullRingSavesOnlyEverySaveEveryRecords() {
         var saves = 0
         val counting = object : PerformanceAggregates.PerformanceStore {
