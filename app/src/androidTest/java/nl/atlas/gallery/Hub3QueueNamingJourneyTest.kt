@@ -15,6 +15,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,11 +33,15 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -47,6 +52,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performImeAction
@@ -95,6 +101,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.performTextClearance
 import nl.atlas.gallery.featurepeople.cluster.FaceMetric
@@ -421,6 +428,106 @@ class Hub3QueueNamingJourneyTest {
         undo()
         assertEquals(before, host.liveReview(epoch)!!.clusters.reviews.confirmed.size)
         assertEquals(listOf("Synthetic Renamed"), host.liveReview(epoch)!!.names.values.toList())
+        compose.hideKeyboard()
+        // Actual host revocation must hide the old portrait and typed editor.
+        readyQueue()
+        compose.tap(hasTestTag("atlas-same-queue-other-name"))
+        typeName("Synthetic revoked")
+        host.revoke()
+        compose.waitForNode(hasText("Group changed"), WAIT_MS)
+        assertTrue("revoked portrait removed",
+            !compose.exists(hasTestTag("atlas-same-queue-name-source"), useUnmergedTree = true))
+        assertTrue("revoked input removed",
+            !compose.exists(hasTestTag("atlas-person-name-field"), useUnmergedTree = true))
+        compose.hideKeyboard()
+        compose.awaitScreenStill("hub3-revoked")
+        saveUiEvidence("hub3-revoked.png")
+        compose.tap(hasText("Return"))
+    }
+
+    /** Component contract with invented metadata, independent of detector throughput.
+     * The other journey verifies real host-backed commits and revocation.
+     */
+    @Test fun enlargedSearchKeepsEditorAndExpandedListAcrossCancel() {
+        val people = (1..68).map { i ->
+            nl.atlas.gallery.featurepeopleui.NativePersonAlbum(
+                nl.atlas.gallery.featurepeople.cluster.PersonKey("synthetic-$i"),
+                "Synthetic Person " + i.toString().padStart(2, '0'),
+                emptyList(), emptyList())
+        }
+        var query by mutableStateOf("")
+        var expanded by mutableStateOf(false)
+        var candidate by mutableStateOf<nl.atlas.gallery.featurepeopleui.NativePersonAlbum?>(null)
+        var busy by mutableStateOf(false)
+        var loading by mutableStateOf(false)
+        var failure by mutableStateOf<String?>(null)
+        var retries = 0
+        var writes = 0
+        compose.setContent {
+            if (composing) AtlasGalleryTheme(dark = false) {
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(density.density, 1.3f)) {
+                    val picked = candidate
+                    if (picked == null) {
+                        PersonNameDialog(initial = query,
+                            suggestions = { typed -> people.filter {
+                                typed.isNotBlank() && it.name.contains(typed, ignoreCase = true)
+                            } },
+                            suggestionPortrait = { PersonPortraitFallback() },
+                            onDismiss = {}, onSave = { writes++ },
+                            sourcePreview = { compact ->
+                                androidx.compose.foundation.layout.Box(
+                                    Modifier.size(if (compact) 64.dp else 72.dp)
+                                        .testTag("atlas-same-queue-name-source")) {
+                                    PersonPortraitFallback()
+                                }
+                            },
+                            expandedMatches = expanded,
+                            onExpandedChange = { expanded = it },
+                            onQueryChange = { query = it },
+                            onPick = { candidate = it },
+                            busy = busy, loading = loading, error = failure,
+                            onRetry = { retries++; failure = null })
+                    } else PersonMergeConfirm(null, picked,
+                        onDismiss = { candidate = null }, onMerge = { writes++ })
+                }
+            }
+        }
+        typeName("Synthetic")
+        compose.tap(hasTestTag("atlas-person-name-more"))
+        compose.onNodeWithTag("atlas-person-name-results", useUnmergedTree = true)
+            .performScrollToIndex(67)
+        compose.onNodeWithText("Synthetic Person 68").assertIsDisplayed()
+        compose.awaitScreenStill("hub3-more-enlarged")
+        saveUiEvidence("hub3-more-enlarged.png")
+        compose.tap(hasText("Synthetic Person 68"))
+        compose.tap(hasText("Cancel"))
+        enabled("atlas-person-name-save")
+        assertEquals("Synthetic", query)
+        assertTrue("expanded remains selected", expanded)
+        assertEquals(0, writes)
+        compose.onNodeWithTag("atlas-person-name-results", useUnmergedTree = true)
+            .performScrollToIndex(67)
+        compose.onNodeWithText("Synthetic Person 68").assertIsDisplayed()
+
+        compose.runOnIdle { loading = true }
+        compose.onNodeWithTag("atlas-person-name-save").assertIsNotEnabled()
+        compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
+        compose.awaitScreenStill("hub3-loading-enlarged")
+        saveUiEvidence("hub3-loading-enlarged.png")
+        compose.runOnIdle { loading = false; busy = true }
+        compose.onNodeWithTag("atlas-person-name-save").assertIsNotEnabled()
+        compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
+        compose.awaitScreenStill("hub3-busy-enlarged")
+        saveUiEvidence("hub3-busy-enlarged.png")
+        compose.runOnIdle { busy = false; failure = "Couldn’t save name. Try again." }
+        compose.onNodeWithTag("atlas-person-name-save").assertIsNotEnabled()
+        compose.awaitScreenStill("hub3-error-enlarged")
+        saveUiEvidence("hub3-error-enlarged.png")
+        compose.tap(hasText("Retry"))
+        enabled("atlas-person-name-save")
+        assertEquals(1, retries)
+        assertEquals(0, writes)
         compose.hideKeyboard()
     }
 

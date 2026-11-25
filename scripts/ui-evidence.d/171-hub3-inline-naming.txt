@@ -6,3 +6,9 @@ hub3-queue-named-light
 hub3-confirm-light
 hub3-confirm-dark
 hub3-merged-dark
+
+hub3-revoked
+hub3-more-enlarged
+hub3-loading-enlarged
+hub3-busy-enlarged
+hub3-error-enlarged
