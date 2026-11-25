@@ -185,6 +185,10 @@ internal fun SamePersonQueueRoute(
         found = next.items
         listDone = next.done
     }
+    LaunchedEffect(refreshFrom, cursor, ReviewReferenceKey(state)) {
+        if (refreshFrom != null && cursor?.state === state &&
+            cursor?.state?.sourceGeneration != refreshFrom) refreshFrom = null
+    }
     // Read the rest of the list in the background, publishing as it grows.
     LaunchedEffect(cursor) {
         val reading = cursor ?: return@LaunchedEffect
@@ -217,7 +221,7 @@ internal fun SamePersonQueueRoute(
         if (listDone) counted = (found.size - answers.drop(cursorSeq).size) to answers.size
     }
     val pendingMarked = lastMixedQuestion != null && found.any { it.key == lastMixedQuestion }
-    val open = if (skipSnapshot == null) 0 else counted?.let { (n, at) ->
+    val open = if (skipSnapshot == null || refreshing) 0 else counted?.let { (n, at) ->
         maxOf(0, n - (answers.size - at) - if (pendingMarked) 1 else 0)
     } ?: 0
     val canUndoMixed = skipSnapshot != null && lastMixedGeneration != null &&
@@ -265,6 +269,7 @@ internal fun SamePersonQueueRoute(
                     preferredPair = request.pairAfter(result.action).takeIf { pair ->
                         pair.size == 2 && pair.any { it is PersonPageTarget.Unnamed }
                     }
+                    counted = null
                     refreshFrom = request.generation
                     closeName()
                 }
@@ -299,8 +304,12 @@ internal fun SamePersonQueueRoute(
             onNameOther = { openName(false) },
             nameError = queueNameError,
             canUndoMixed = canUndoMixed && nameRequest == null && !nameBusy,
-            onToggleSubject = { if (!mixedBusy && !undoBusy) markSubject = !markSubject },
-            onToggleOther = { if (!mixedBusy && !undoBusy) markOther = !markOther },
+            onToggleSubject = {
+                if (!mixedBusy && !undoBusy && nameRequest == null && !nameBusy) markSubject = !markSubject
+            },
+            onToggleOther = {
+                if (!mixedBusy && !undoBusy && nameRequest == null && !nameBusy) markOther = !markOther
+            },
             onMarkMixed = {
                 val asked = item
                 val liveEpoch = epoch
@@ -308,7 +317,7 @@ internal fun SamePersonQueueRoute(
                 if (asked != null && liveEpoch != null && skipScope != null &&
                     fingerprint != null &&
                     (markSubject || markOther) && !mixedBusy && !undoBusy &&
-                    resolved == answers.size) {
+                    nameRequest == null && !nameBusy && resolved == answers.size) {
                     mixedBusy = true
                     SamePersonQueueCommits.mark(host, liveEpoch, asked, markSubject, markOther,
                         skipScope, fingerprint) { generation ->
@@ -325,11 +334,13 @@ internal fun SamePersonQueueRoute(
             onUndoMixed = {
                 val generation = lastMixedGeneration
                 val liveEpoch = epoch
-                if (generation != null && liveEpoch != null && canUndoMixed) {
+                if (generation != null && liveEpoch != null && canUndoMixed &&
+                    nameRequest == null && !nameBusy) {
                     undoBusy = true
                     SamePersonQueueCommits.undoMixed(host, liveEpoch, generation) { success ->
                         undoBusy = false
                         if (success && undoNamePair != null) {
+                            counted = null
                             refreshFrom = generation
                             preferredPair = undoNamePair
                         }
@@ -381,6 +392,21 @@ internal fun SamePersonQueueRoute(
                 confirmButton = { TextButton(onClick = { closeName() }) { Text("Return") } })
         } else if (candidate == null) {
             key(request) {
+                var sourceReady by remember { mutableStateOf(false) }
+                var sourceFailed by remember { mutableStateOf(false) }
+                var sourceAttempt by remember { mutableIntStateOf(0) }
+                LaunchedEffect(request, current, sourceAttempt) {
+                    sourceReady = false
+                    sourceFailed = false
+                    if (current) {
+                        sourceReady = withContext(Dispatchers.IO) {
+                            request.samples.firstOrNull()?.let {
+                                host.faceCrop(request.epoch, it.localHex) != null
+                            } == true
+                        } && host.scopeCurrent(request.epoch)
+                        sourceFailed = !sourceReady
+                    }
+                }
                 PersonNameDialog(initial = nameDraft,
                     suggestions = { typed ->
                         if (current) request.suggestions(state, skipScope, typed) else emptyList()
@@ -392,20 +418,30 @@ internal fun SamePersonQueueRoute(
                     onDismiss = { closeName() },
                     onSave = { saveName(it) },
                     sourcePreview = {
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                            request.samples.forEach { sample ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()) {
+                            Row(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                                request.samples.forEach { sample ->
                                 Box(Modifier.size(72.dp).clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                     .testTag("atlas-same-queue-name-source"),
                                     contentAlignment = Alignment.Center) {
                                     if (current) PersonFaceImage(host, request.epoch, sample)
                                 }
+                                }
                             }
+                            if (current) Text(request.facts.name ?: "Unnamed group",
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium)
                         }
                     },
-                    busy = nameBusy, valid = current, error = nameError,
-                    onRetry = { saveName(nameDraft) })
+                    busy = nameBusy, valid = current, editing = request.facts.name != null,
+                    loading = !sourceReady && !sourceFailed,
+                    error = nameError ?: if (sourceFailed) "Face unavailable. Try again." else null,
+                    onRetry = { typed ->
+                        if (sourceFailed) sourceAttempt++ else saveName(typed)
+                    })
             }
         } else if (current) {
             var portraitsReady by remember(request, candidate) { mutableStateOf(false) }
@@ -415,7 +451,9 @@ internal fun SamePersonQueueRoute(
                 portraitsReady = false
                 portraitFailed = false
                 val ready = withContext(Dispatchers.IO) {
-                    request.samples.any { host.faceCrop(request.epoch, it.localHex) != null } &&
+                    request.samples.firstOrNull()?.let {
+                        host.faceCrop(request.epoch, it.localHex) != null
+                    } == true &&
                         candidate.observations.firstOrNull()?.let {
                             host.faceCrop(request.epoch, it.localHex) != null
                         } == true
@@ -435,7 +473,7 @@ internal fun SamePersonQueueRoute(
                             .forEachIndexed { index, (sample, label) ->
                                 Column(Modifier.weight(1f),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Box(Modifier.size(96.dp).clip(CircleShape)
+                                    Box(Modifier.size(112.dp).clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                         .testTag("atlas-same-queue-merge-face-$index"),
                                         contentAlignment = Alignment.Center) {
