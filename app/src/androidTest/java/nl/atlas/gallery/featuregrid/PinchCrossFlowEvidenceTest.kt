@@ -273,9 +273,18 @@ class PinchCrossFlowEvidenceTest {
             .toString()
         println("${BenchmarkReport.TAG} 711-timeline-handover json $report")
         Log.i(BenchmarkReport.TAG, "711-timeline-handover json $report")
-        lastOverlay?.recycle(); firstGrid?.recycle()
-        assertTrue("handover frames captured: $report", diff != null)
-        assertTrue("handover frame pair close (mean channel diff < 40): $report", diff!!.first < 40.0)
+        try {
+            assertTrue("handover frames captured: $report", diff != null)
+            assertTrue("handover frame pair close (mean channel diff < 40): $report", diff!!.first < 40.0)
+        } catch (failure: AssertionError) {
+            // Preserve exactly the already sampled frames; no new screenshot or wait.
+            nl.atlas.gallery.retain954Failure("pinch-$theme", listOf(
+                "overlay" to lastOverlay, "grid" to firstGrid
+            ), "$report viewport=$g")
+            throw failure
+        } finally {
+            lastOverlay?.recycle(); firstGrid?.recycle()
+        }
         assertAnchoredAndStill(tag, focusRoot, "commit 4->7")
 
         if (!dark) return@withAnimatorScale

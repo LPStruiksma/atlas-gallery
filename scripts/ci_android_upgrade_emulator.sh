@@ -22,6 +22,7 @@ RUNNER=nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 CENTRAL_MIRROR_INIT="$PWD/scripts/ci/central-mirror.init.gradle"
 [[ -f "$CENTRAL_MIRROR_INIT" ]] || { echo "::error::Missing $CENTRAL_MIRROR_INIT"; exit 1; }
 gradle() {
+  if declare -F atlas954_phase >/dev/null; then atlas954_phase "gradle $*" ; fi
   command gradle \
     --init-script "$CENTRAL_MIRROR_INIT" \
     -Dorg.gradle.internal.network.retry.max.attempts=6 \
@@ -106,6 +107,9 @@ if [[ "$SHARD_COUNT" -gt 1 && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "1" ]]; then
   echo "::error::The signer-mismatch lane must run unsharded"; exit 1
 fi
 
+# #954: diagnostic-only collector, ordinary isolated hosted shards only.
+source scripts/ci/launcher_anr_diagnostic_954.sh
+atlas954_start || echo "::warning::#954 collector unavailable"
 # Two independently built APKs on the SAME runner use its debug signing key.
 # Passing this is NOT evidence that the key matches a Galaxy S24+ installation.
 if [[ "$SHARD_INDEX" == "0" ]]; then
@@ -118,6 +122,7 @@ adb install -r "$TEST"
 run_phase() {
   local phase="$1"
   local method="$2"
+  atlas954_phase "upgrade $phase"
   local capture="/tmp/atlas-upgrade-${phase}.txt"
   # Instrumentation can report process crash yet return shell status zero.
   adb logcat -c || true
@@ -354,6 +359,7 @@ fi
 # retain the same environment or it will attempt to install signer A again.
 # D2-5p scale lines (FaceIndexStoreScaleAndroidTest) go to logcat; keep a
 # buffer large enough for the whole suite and print them even on failure.
+atlas954_phase "ordinary connected suite before logcat clear"
 adb logcat -G 16M || true
 adb logcat -c || true
 connected_status=0
@@ -363,6 +369,7 @@ if [[ "$SHARD_COUNT" -gt 1 ]]; then
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi
 gradle :app:connectedDebugAndroidTest "${shard_args[@]}" --no-daemon --stacktrace || connected_status=$?
+atlas954_phase "connected suite returned $connected_status"
 echo "::group::ATLAS_PERF10 synthetic MediaStore observer acceptance"
 # Synthetic-only metrics/flag categories from GalleryMediaStoreObserverJourneyTest.
 # Keep the bounded query even on a failed test so review can read the p50.
@@ -600,6 +607,7 @@ PY
 
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
   ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  atlas954_phase "post-suite strictmode and splash"
   strictmode_baseline_417
   lapis_cold_start_splash_986
 fi

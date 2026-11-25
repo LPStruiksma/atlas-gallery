@@ -338,12 +338,26 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
             quietFor(5_000L)
             frame = awaitStableIcon(8_000L)
         }
-        val shot = requireNotNull(frame) {
-            "ATLAS icon not seen in the emulator launcher after $tries tries ($lastScan); ${describeFocus()}"
+        val shot = try {
+            requireNotNull(frame) {
+                "ATLAS icon not seen in the emulator launcher after $tries tries ($lastScan); ${describeFocus()}"
+            }
+        } catch (failure: IllegalArgumentException) {
+            retain954Failure("launcher-${if (dark) "dark" else "light"}",
+                listOf("candidate" to lastCandidate954), "tries=$tries $lastScan")
+            throw failure
+        } finally {
+            lastCandidate954?.recycle()
+            lastCandidate954 = null
         }
         uiEvidenceProblem(shot)?.let { problem ->
-            shot.recycle()
-            error("Launcher frame $problem")
+            try {
+                error("Launcher frame $problem")
+            } catch (failure: IllegalStateException) {
+                retain954Failure("launcher-${if (dark) "dark" else "light"}",
+                    listOf("candidate" to shot), "tries=$tries $lastScan problem=$problem")
+                throw failure
+            } finally { shot.recycle() }
         }
         saveBitmapEvidence("lapis656-real-launcher-${if (dark) "dark" else "light"}", shot)
         nl.atlas.gallery.testkit.testShell("input keyevent KEYCODE_HOME")
@@ -354,6 +368,7 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
     }
 
     private var lastScan = "no scan"
+    private var lastCandidate954: Bitmap? = null
 
     /** A frame with the icon at the same place as in the frame before it, or null. */
     private fun awaitStableIcon(timeoutMs: Long): Bitmap? {
@@ -366,7 +381,8 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
                 android.util.Log.i("ATLAS_LAPIS", "launcher icon at $box (dark=$dark)")
                 return frame
             }
-            frame.recycle()
+            lastCandidate954?.recycle()
+            lastCandidate954 = frame
             previous = box
             quietFor(1_000L)
         }
@@ -448,4 +464,35 @@ private fun saveBitmapEvidence(name: String, bitmap: Bitmap) {
         bitmap.recycle()
     }
     writeUiEvidenceFile(uiEvidenceDisplayName("$name.png"), png)
+}
+
+/** #954 temporary evidence, only when the isolated hosted runner arms it.
+ * Non-camera-style names stay outside the ordinary screenshot parity set.
+ * Nothing here takes another frame or changes the original failure.
+ */
+internal fun retain954Failure(prefix: String, frames: List<Pair<String, Bitmap?>>, details: String) {
+    val armed = runCatching {
+        nl.atlas.gallery.testkit.testShell(
+            "if test -f /data/local/tmp/atlas-954-hosted; then echo armed; fi"
+        ) == "armed"
+    }.getOrDefault(false)
+    if (!armed) return
+    val tag = "ATLAS_954"
+    for ((name, bitmap) in frames) {
+        runCatching {
+            if (bitmap == null) {
+                android.util.Log.w(tag, "$prefix $name frame unavailable")
+            } else {
+                val png = ByteArrayOutputStream()
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, png))
+                check(png.size() <= 16 * 1024 * 1024) { "diagnostic PNG exceeds cap" }
+                writeUiEvidenceFile("diag954-$prefix-$name.png", png.toByteArray())
+            }
+        }.onFailure { android.util.Log.w(tag, "$prefix $name retention failed", it) }
+    }
+    runCatching {
+        val focus = runCatching { describeFocus() }.getOrElse { "unavailable: ${it.javaClass.simpleName}" }
+        val text = "post-failure focus (not sample-time): $focus\n$details\n"
+        writeUiEvidenceFile("diag954-$prefix.txt", text.take(16384).toByteArray(Charsets.UTF_8))
+    }.onFailure { android.util.Log.w(tag, "$prefix metadata retention failed", it) }
 }
