@@ -859,6 +859,8 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
       return 1
     fi
   }
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_IMAGES
+  adb shell pm grant nl.atlas.gallery android.permission.READ_MEDIA_VIDEO
   run_perf_persistence_phase seed seedBeforeForceStop
   adb shell am force-stop nl.atlas.gallery
   run_perf_persistence_phase verify verifyAfterForceStop
