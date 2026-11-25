@@ -46,9 +46,14 @@ internal data class QueueNameRequest(
 
     fun confirmedAction(state: PeopleClusterReviewState?, currentScope: String?,
                         typed: String, into: NativePersonAlbum): PeopleReviewAction? {
-        val offer = naming(state, currentScope, typed) as? PersonNaming.OfferMerge
-            ?: return null
-        if (offer.into != into) return null
+        if (!current(state, currentScope) || !into.name.equals(typed.trim(), ignoreCase = true))
+            return null
+        // An explicitly picked candidate is identity-bound, including if a
+        // legacy library happens to contain two identical display names.
+        val visible = mergeCandidates(state, target).firstOrNull {
+            it.person == into.person && it.person !in requireNotNull(state).hidden
+        } ?: return null
+        if (visible != into) return null
         return mergeAction(target, into.person)
     }
 
