@@ -171,6 +171,30 @@ class SamePersonQueueTest {
         assertEquals(samePersonQueue(named), samePersonQueue(restored))
     }
 
+    @Test fun namingAndUndoPreserveAnIndependentMixedMarkAndSkipFingerprint() {
+        val original = state()
+        val questions = samePersonQueue(original).items
+        val first = questions.first()
+        val other = questions.last()
+        val skip = requireNotNull(samePersonSkipFingerprint(original, other, "scope"))
+        val request = requireNotNull(captureQueueName(original, first, true, "scope"))
+        val named = requireNotNull(reviewPeopleCluster(original,
+            (request.naming(original, "scope", "Synthetic name") as PersonNaming.Apply).action))
+        val unchanged = samePersonQueue(named).items.single { it.key == other.key }
+        assertEquals(skip, samePersonSkipFingerprint(named, unchanged, "scope"))
+
+        val mixed = requireNotNull(reviewPeopleCluster(original,
+            requireNotNull(samePersonQueueMixedSides(other, subject = true, other = false))))
+        val remaining = samePersonQueue(mixed).items.first { it.key == first.key }
+        val afterMixed = requireNotNull(captureQueueName(mixed, remaining, true, "scope"))
+        val renamed = requireNotNull(reviewPeopleCluster(mixed,
+            (afterMixed.naming(mixed, "scope", "Synthetic name") as PersonNaming.Apply).action))
+        assertEquals(mixed.clusters.reviews.mixedGroups, renamed.clusters.reviews.mixedGroups)
+        val undone = requireNotNull(reviewPeopleCluster(renamed, PeopleReviewAction.Undo))
+        assertEquals(mixed.clusters.reviews.mixedGroups, undone.clusters.reviews.mixedGroups)
+        assertEquals(mixed.names, undone.names)
+    }
+
     @Test fun staleScopeGenerationMembershipAndHiddenNamesNeverYieldAnAction() {
         val original = state()
         val question = samePersonQueue(original).items.first()

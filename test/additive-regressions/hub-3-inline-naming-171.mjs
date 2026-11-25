@@ -23,3 +23,7 @@ assert.match(queue, /saveName\(candidate.name, candidate\)/)
 assert.doesNotMatch(queue, /nameDraft = picked.name/)
 assert.match(shared, /maxHeight < 400.dp/)
 assert.match(shared, /QueueNamingProgress/)
+
+assert.match(shared, /import androidx\.compose\.material3\.CircularProgressIndicator/)
+assert.match(queue, /loading = !portraitsReady && !portraitFailed/)
+assert.match(queue, /atlas-same-queue-name-sources/)

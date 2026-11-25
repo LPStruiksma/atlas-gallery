@@ -13,3 +13,8 @@ hub3-loading-enlarged
 hub3-busy-enlarged
 hub3-error-enlarged
 hub3-host-refused
+hub3-host-enlarged-light
+hub3-host-enlarged-dark
+hub3-persistence-refused
+hub3-generation-stale
+hub3-confirm-loading-component

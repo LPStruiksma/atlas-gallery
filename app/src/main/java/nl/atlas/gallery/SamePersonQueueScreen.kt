@@ -434,7 +434,7 @@ internal fun SamePersonQueueRoute(
                     sourcePreview = { compact ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()) {
-                            Row(Modifier.fillMaxWidth(),
+                            Row(Modifier.fillMaxWidth().testTag("atlas-same-queue-name-sources"),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                                 request.samples.take(if (compact) 1 else 2).forEach { sample ->
                                     Box(Modifier.size(if (compact) 64.dp else 72.dp).clip(CircleShape)
@@ -498,6 +498,7 @@ internal fun SamePersonQueueRoute(
                             }
                     }
                 }, enabled = portraitsReady || portraitFailed, busy = nameBusy,
+                loading = !portraitsReady && !portraitFailed,
                 error = nameError ?: if (portraitFailed) "Face unavailable. Try again." else null,
                 onRetry = {
                     if (portraitFailed) portraitAttempt++ else saveName(candidate.name, candidate)

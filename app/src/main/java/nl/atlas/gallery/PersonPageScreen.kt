@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -642,7 +643,8 @@ internal fun PersonMergeConfirm(
     enabled: Boolean = true,
     busy: Boolean = false,
     error: String? = null,
-    onRetry: (() -> Unit)? = null
+    onRetry: (() -> Unit)? = null,
+    loading: Boolean = false
 ) {
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
@@ -650,8 +652,9 @@ internal fun PersonMergeConfirm(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 portraits?.invoke()
-                if (busy) QueueNamingProgress()
-                Text(error ?: if (currentName == null) "These photos will be added to ${into.name}."
+                if (busy || loading) QueueNamingProgress()
+                Text(error ?: if (busy) "Saving name…" else if (loading) "Loading faces…"
+                    else if (currentName == null) "These photos will be added to ${into.name}."
                     else "$currentName and ${into.name} will become one person.")
             }
         },
@@ -662,7 +665,7 @@ internal fun PersonMergeConfirm(
                 }
             } else {
                 Button(onClick = if (error != null && onRetry != null) onRetry else onMerge,
-                    enabled = enabled && !busy && (error == null || onRetry != null),
+                    enabled = enabled && !busy && !loading && (error == null || onRetry != null),
                     modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-person-merge-confirm")) {
                     Text(if (error != null && onRetry != null) "Retry" else "Merge")
                 }

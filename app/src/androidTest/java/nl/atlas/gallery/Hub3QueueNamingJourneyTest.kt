@@ -103,6 +103,7 @@ import androidx.compose.ui.test.performTextClearance
 import nl.atlas.gallery.featurepeople.cluster.FaceMetric
 import nl.atlas.gallery.featurepersistence.FaceEmbeddingVectorCodec
 import nl.atlas.gallery.testkit.keyboardInsetPx
+import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.hideKeyboard
 import org.junit.rules.TestRule
 import org.junit.runner.Description
@@ -333,19 +334,27 @@ class Hub3QueueNamingJourneyTest {
         }
         assertTrue("field above footer", field.bottom <= footer.top)
         assertTrue("footer has visible bounds", footer.height > 0f)
+        compose.assertAboveKeyboard(hasTestTag("atlas-same-queue-name-sources"))
+        compose.assertAboveKeyboard(hasTestTag("atlas-person-name-field"))
+        compose.assertAboveKeyboard(hasTestTag("atlas-person-name-footer"))
     }
 
     @Test fun nameRenameConfirmCancelMergeAndUndoOnBothSides() {
         val host = askingHost()
         val epoch = checkNotNull(host.displayEpoch("gallery-1"))
         var dark by mutableStateOf(true)
+        var enlarged by mutableStateOf(false)
         compose.activityRule.scenario.onActivity { applyAtlasSystemBars(it.window) }
         compose.setContent {
             if (composing) AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = DeepBg,
                     contentColor = MaterialTheme.colorScheme.onBackground) {
                     val discovery = rememberPeopleDiscoveryOf(host, "gallery-1", inventory) { it }
-                    SamePersonQueueRoute(host, discovery.status?.people) {}
+                    val density = LocalDensity.current
+                    CompositionLocalProvider(LocalDensity provides
+                        Density(density.density, if (enlarged) 1.3f else density.fontScale)) {
+                        SamePersonQueueRoute(host, discovery.status?.people) {}
+                    }
                 }
             }
         }
@@ -440,6 +449,24 @@ class Hub3QueueNamingJourneyTest {
         assertEquals(before, host.liveReview(epoch)!!.clusters.reviews.confirmed.size)
         assertEquals(listOf("Synthetic Renamed"), host.liveReview(epoch)!!.names.values.toList())
         compose.hideKeyboard()
+        // Measure the actual host editor against the fixed IME in both themes
+        // and at enlarged font, not just a component with simulated results.
+        compose.runOnIdle { enlarged = true; dark = false }
+        readyQueue()
+        compose.tap(hasTestTag("atlas-same-queue-other-name"))
+        typeName("Synthetic enlarged light")
+        compose.awaitScreenStill("hub3-host-enlarged-light")
+        saveUiEvidence("hub3-host-enlarged-light.png")
+        compose.tap(hasText("Cancel"))
+        readyQueue()
+        compose.runOnIdle { dark = true }
+        compose.tap(hasTestTag("atlas-same-queue-other-name"))
+        typeName("Synthetic enlarged dark")
+        compose.awaitScreenStill("hub3-host-enlarged-dark")
+        saveUiEvidence("hub3-host-enlarged-dark.png")
+        compose.tap(hasText("Cancel"))
+        readyQueue()
+        compose.runOnIdle { enlarged = false }
         // Actual host revocation must hide the old portrait and typed editor.
         readyQueue()
         compose.tap(hasTestTag("atlas-same-queue-other-name"))
@@ -454,6 +481,69 @@ class Hub3QueueNamingJourneyTest {
         compose.awaitScreenStill("hub3-revoked")
         saveUiEvidence("hub3-revoked.png")
         compose.tap(hasText("Return"))
+    }
+
+    @Test fun persistenceRefusalRollsBackAndChangedGenerationClosesEditor() {
+        val host = askingHost()
+        val epoch = checkNotNull(host.displayEpoch("gallery-1"))
+        compose.setContent {
+            if (composing) AtlasGalleryTheme(dark = true) {
+                Surface(Modifier.fillMaxSize()) {
+                    val discovery = rememberPeopleDiscoveryOf(host, "gallery-1", inventory) { it }
+                    SamePersonQueueRoute(host, discovery.status?.people) {}
+                }
+            }
+        }
+        enabled("atlas-same-queue-subject-name")
+        val before = checkNotNull(host.liveReview(epoch))
+        val storedBefore = checkNotNull(store.peopleReview(epoch))
+        compose.tap(hasTestTag("atlas-same-queue-subject-name"))
+        typeName("Synthetic refusal")
+        // Only the test-owned SQLite fixture has this trigger. Abort inside the
+        // actual persistence transaction, after the confirmed-face delta.
+        store.writableDatabase.execSQL(
+            "CREATE TRIGGER hub3_refuse_name BEFORE INSERT ON people_names " +
+                "BEGIN SELECT RAISE(ABORT, 'synthetic name refusal'); END")
+        try {
+            compose.tap(hasTestTag("atlas-person-name-save"))
+            compose.waitForNode(hasText("Couldn’t save name. Try again."), WAIT_MS)
+            val refused = checkNotNull(store.peopleReview(epoch))
+            assertEquals(storedBefore.generation, refused.generation)
+            assertEquals(storedBefore.names, refused.names)
+            assertEquals(storedBefore.clusters.reviews.confirmed, refused.clusters.reviews.confirmed)
+            compose.awaitScreenStill("hub3-persistence-refused")
+            saveUiEvidence("hub3-persistence-refused.png")
+        } finally {
+            store.writableDatabase.execSQL("DROP TRIGGER IF EXISTS hub3_refuse_name")
+        }
+        compose.tap(hasText("Retry"))
+        compose.awaitThat("persisted retry", WAIT_MS) {
+            host.liveReview(epoch)?.names?.values?.contains("Synthetic refusal") == true &&
+                !compose.exists(hasTestTag("atlas-person-name-dialog"), useUnmergedTree = true)
+        }
+        enabled("atlas-same-queue-other-name")
+        compose.tap(hasTestTag("atlas-same-queue-other-name"))
+        typeName("Synthetic stale draft")
+        val current = checkNotNull(host.liveReview(epoch))
+        // Independent real host writer changes the generation while the
+        // editor is open. The captured request must not mutate that new pair.
+        val question = nl.atlas.gallery.featurepeopleui.samePersonQueue(current).items.single()
+        val action = nl.atlas.gallery.featurepeopleui.samePersonQueueAnswer(question, same = false)
+        assertTrue(host.review(PeopleClusterReviewCommand(current, action)))
+        val after = checkNotNull(host.liveReview(epoch))
+        assertTrue(after.sourceGeneration != before.sourceGeneration)
+        compose.waitForNode(hasText("Group changed"), WAIT_MS)
+        assertTrue(!compose.exists(hasTestTag("atlas-person-name-save"), useUnmergedTree = true))
+        assertTrue(!compose.exists(hasTestTag("atlas-same-queue-name-source"), useUnmergedTree = true))
+        compose.hideKeyboard()
+        compose.awaitScreenStill("hub3-generation-stale")
+        saveUiEvidence("hub3-generation-stale.png")
+        compose.tap(hasText("Return"))
+        compose.waitForNode(hasText("No open questions."), WAIT_MS)
+        val final = checkNotNull(store.peopleReview(epoch))
+        assertEquals(after.names, final.names)
+        assertEquals(after.clusters.reviews.confirmed, final.clusters.reviews.confirmed)
+        assertTrue("stale draft never persisted", "Synthetic stale draft" !in final.names.values)
     }
 
     /** Component contract with invented metadata, independent of detector throughput.
@@ -489,8 +579,11 @@ class Hub3QueueNamingJourneyTest {
                             sourcePreview = { compact ->
                                 androidx.compose.foundation.layout.Box(
                                     Modifier.size(if (compact) 64.dp else 72.dp)
-                                        .testTag("atlas-same-queue-name-source")) {
-                                    PersonPortraitFallback()
+                                        .testTag("atlas-same-queue-name-sources")) {
+                                    androidx.compose.foundation.layout.Box(
+                                        Modifier.fillMaxSize().testTag("atlas-same-queue-name-source")) {
+                                        PersonPortraitFallback()
+                                    }
                                 }
                             },
                             expandedMatches = expanded,
@@ -500,7 +593,8 @@ class Hub3QueueNamingJourneyTest {
                             busy = busy, loading = loading, error = failure,
                             onRetry = { retries++; failure = null })
                     } else PersonMergeConfirm(null, picked,
-                        onDismiss = { candidate = null }, onMerge = { writes++ })
+                        onDismiss = { candidate = null }, onMerge = { writes++ },
+                        portraits = { PersonPortraitFallback() }, loading = loading)
                 }
             }
         }
@@ -512,6 +606,13 @@ class Hub3QueueNamingJourneyTest {
         compose.awaitScreenStill("hub3-more-enlarged")
         saveUiEvidence("hub3-more-enlarged.png")
         compose.tap(hasText("Synthetic Person 68"))
+        // Loading the candidate is a separate confirmation state, not a write.
+        compose.runOnIdle { loading = true }
+        compose.onNodeWithTag("atlas-person-merge-confirm").assertIsNotEnabled()
+        compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
+        compose.awaitScreenStill("hub3-confirm-loading-component")
+        saveUiEvidence("hub3-confirm-loading-component.png")
+        compose.runOnIdle { loading = false }
         compose.tap(hasText("Cancel"))
         enabled("atlas-person-name-save")
         assertEquals("Synthetic", query)
