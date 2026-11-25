@@ -1,5 +1,5 @@
 # BRAND-L3 #656: Lapis launcher icon and splash (LapisLauncherSplashEvidenceTest.kt).
-# Real platform splash captures while MainActivity starts (API 31+ windowSplashScreen*).
+# Real platform splash captures from the post-suite external shell phase (API 31+ windowSplashScreen*).
 lapis656-splash-light
 lapis656-splash-dark
 # The shipped adaptive icon drawn by Android at 48 dp on a synthetic busy launcher.

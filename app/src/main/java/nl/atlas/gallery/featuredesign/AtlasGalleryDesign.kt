@@ -83,7 +83,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import nl.atlas.gallery.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,72 +120,121 @@ object AtlasSpace {
  * "Add name" dialog came out light lavender. Ours stay in the Quiet Frame neutral/blue family.
  */
 internal val darkGalleryColors = darkColorScheme(
-    primary = AtlasColor.Tidal,
-    onPrimary = AtlasColor.Ink,
-    primaryContainer = AtlasTokens.Colors.Dark.PrimaryContainer,
-    onPrimaryContainer = AtlasTokens.Colors.Dark.OnPrimaryContainer,
-    inversePrimary = AtlasColor.DeepTidal,
-    secondary = AtlasColor.WarmGray,
-    onSecondary = AtlasColor.Ink,
-    secondaryContainer = AtlasTokens.Colors.Dark.SecondaryContainer,
-    onSecondaryContainer = AtlasTokens.Colors.Dark.OnSecondaryContainer,
-    tertiary = AtlasColor.WarmGray,
-    onTertiary = AtlasColor.Ink,
-    tertiaryContainer = AtlasTokens.Colors.Dark.SecondaryContainer,
-    onTertiaryContainer = AtlasTokens.Colors.Dark.OnSecondaryContainer,
-    background = AtlasTokens.Colors.Dark.SurfaceLowest,
-    onBackground = AtlasTokens.Colors.Dark.Foreground,
-    surface = AtlasColor.InkRaised,
-    onSurface = AtlasTokens.Colors.Dark.Foreground,
-    surfaceVariant = AtlasTokens.Colors.Dark.SurfaceVariant,
-    onSurfaceVariant = AtlasTokens.Colors.Dark.OnSurfaceVariant,
-    surfaceTint = AtlasColor.InkRaised,
-    inverseSurface = AtlasTokens.Colors.Dark.InverseSurface,
-    inverseOnSurface = AtlasColor.Ink,
-    outline = AtlasTokens.Colors.Dark.Outline,
-    outlineVariant = AtlasTokens.Colors.Dark.OutlineVariant,
-    surfaceBright = AtlasTokens.Colors.Dark.SurfaceBright,
-    surfaceDim = AtlasTokens.Colors.Dark.SurfaceLowest,
-    surfaceContainerLowest = AtlasTokens.Colors.Dark.SurfaceLowest,
-    surfaceContainerLow = AtlasTokens.Colors.Dark.SurfaceLow,
-    surfaceContainer = AtlasTokens.Colors.InkRaised,
-    surfaceContainerHigh = AtlasTokens.Colors.Dark.SurfaceHigh,
-    surfaceContainerHighest = AtlasTokens.Colors.Dark.SurfaceVariant
+    // #1011 review: TextButton, links and other text actions draw in `primary`.
+    // Dark BrandFill is only 3.15:1 on the black ground, so dark `primary` is
+    // BrandText (>= 4.5:1) and filled buttons draw Ground on it. Brand fill stays
+    // in primaryContainer and surfaceTint.
+    primary = AtlasTokens.Colors.Dark.BrandText,
+    onPrimary = AtlasTokens.Colors.Dark.Ground,
+    primaryContainer = AtlasTokens.Colors.Dark.BrandFill,
+    onPrimaryContainer = AtlasTokens.Colors.Dark.OnBrand,
+    inversePrimary = AtlasTokens.Colors.Light.BrandFill,
+    secondary = AtlasTokens.Colors.Dark.InkSecondary,
+    onSecondary = AtlasTokens.Colors.Dark.Ground,
+    secondaryContainer = AtlasTokens.Colors.Dark.Surface,
+    onSecondaryContainer = AtlasTokens.Colors.Dark.Ink,
+    tertiary = AtlasTokens.Colors.Dark.BrandText,
+    onTertiary = AtlasTokens.Colors.Dark.Ground,
+    tertiaryContainer = AtlasTokens.Colors.Dark.Surface,
+    onTertiaryContainer = AtlasTokens.Colors.Dark.Ink,
+    background = AtlasTokens.Colors.Dark.Ground,
+    onBackground = AtlasTokens.Colors.Dark.Ink,
+    surface = AtlasTokens.Colors.Dark.Surface,
+    onSurface = AtlasTokens.Colors.Dark.Ink,
+    surfaceVariant = AtlasTokens.Colors.Dark.Surface,
+    onSurfaceVariant = AtlasTokens.Colors.Dark.InkSecondary,
+    surfaceTint = AtlasTokens.Colors.Dark.BrandFill,
+    inverseSurface = AtlasTokens.Colors.Light.Surface,
+    inverseOnSurface = AtlasTokens.Colors.Light.Ink,
+    outline = AtlasTokens.Colors.Dark.InkSecondary,
+    outlineVariant = AtlasTokens.Colors.Dark.Surface,
+    surfaceBright = AtlasTokens.Colors.Dark.Surface,
+    surfaceDim = AtlasTokens.Colors.Dark.Ground,
+    surfaceContainerLowest = AtlasTokens.Colors.Dark.Ground,
+    surfaceContainerLow = AtlasTokens.Colors.Dark.Surface,
+    surfaceContainer = AtlasTokens.Colors.Dark.Surface,
+    surfaceContainerHigh = AtlasTokens.Colors.Dark.Surface,
+    surfaceContainerHighest = AtlasTokens.Colors.Dark.Surface
 )
 
 internal val lightGalleryColors = lightColorScheme(
-    primary = AtlasColor.DeepTidal,
-    onPrimary = Color.White,
-    primaryContainer = AtlasTokens.Colors.Light.PrimaryContainer,
-    onPrimaryContainer = AtlasTokens.Colors.Light.OnPrimaryContainer,
-    inversePrimary = AtlasColor.Tidal,
-    secondary = AtlasColor.DeepTidal,
-    onSecondary = Color.White,
-    secondaryContainer = AtlasTokens.Colors.Light.SecondaryContainer,
-    onSecondaryContainer = AtlasColor.Ink,
-    tertiary = AtlasColor.QuietGray,
-    onTertiary = Color.White,
-    tertiaryContainer = AtlasTokens.Colors.Light.SecondaryContainer,
-    onTertiaryContainer = AtlasColor.Ink,
-    background = AtlasColor.Mist,
-    onBackground = AtlasColor.Ink,
-    surface = AtlasColor.Paper,
-    onSurface = AtlasColor.Ink,
-    surfaceVariant = AtlasTokens.Colors.Light.SurfaceVariant,
-    onSurfaceVariant = AtlasColor.QuietGray,
-    surfaceTint = AtlasColor.Paper,
-    inverseSurface = AtlasTokens.Colors.Light.InverseSurface,
-    inverseOnSurface = AtlasTokens.Colors.Light.InverseForeground,
-    outline = AtlasTokens.Colors.Light.Outline,
-    outlineVariant = AtlasTokens.Colors.Light.OutlineVariant,
-    surfaceBright = AtlasColor.Paper,
-    surfaceDim = AtlasTokens.Colors.Light.SurfaceDim,
-    surfaceContainerLowest = AtlasColor.Mist,
-    surfaceContainerLow = AtlasTokens.Colors.Light.SurfaceLow,
-    surfaceContainer = AtlasTokens.Colors.Light.SurfaceContainer,
-    surfaceContainerHigh = AtlasTokens.Colors.Light.SurfaceHigh,
-    surfaceContainerHighest = AtlasTokens.Colors.Light.SurfaceVariant
+    primary = AtlasTokens.Colors.Light.BrandFill,
+    onPrimary = AtlasTokens.Colors.Light.OnBrand,
+    primaryContainer = AtlasTokens.Colors.Light.BrandFill,
+    onPrimaryContainer = AtlasTokens.Colors.Light.OnBrand,
+    inversePrimary = AtlasTokens.Colors.Dark.BrandText,
+    secondary = AtlasTokens.Colors.Light.BrandFill,
+    onSecondary = AtlasTokens.Colors.Light.OnBrand,
+    secondaryContainer = AtlasTokens.Colors.Light.Surface,
+    onSecondaryContainer = AtlasTokens.Colors.Light.Ink,
+    tertiary = AtlasTokens.Colors.Light.InkSecondary,
+    onTertiary = AtlasTokens.Colors.Light.OnBrand,
+    tertiaryContainer = AtlasTokens.Colors.Light.Surface,
+    onTertiaryContainer = AtlasTokens.Colors.Light.Ink,
+    background = AtlasTokens.Colors.Light.Ground,
+    onBackground = AtlasTokens.Colors.Light.Ink,
+    surface = AtlasTokens.Colors.Light.Surface,
+    onSurface = AtlasTokens.Colors.Light.Ink,
+    surfaceVariant = AtlasTokens.Colors.Light.Surface,
+    onSurfaceVariant = AtlasTokens.Colors.Light.InkSecondary,
+    surfaceTint = AtlasTokens.Colors.Light.BrandFill,
+    inverseSurface = AtlasTokens.Colors.Dark.Surface,
+    inverseOnSurface = AtlasTokens.Colors.Dark.Ink,
+    outline = AtlasTokens.Colors.Light.InkSecondary,
+    outlineVariant = AtlasTokens.Colors.Light.Surface,
+    surfaceBright = AtlasTokens.Colors.Light.Ground,
+    surfaceDim = AtlasTokens.Colors.Light.Surface,
+    surfaceContainerLowest = AtlasTokens.Colors.Light.Ground,
+    surfaceContainerLow = AtlasTokens.Colors.Light.Surface,
+    surfaceContainer = AtlasTokens.Colors.Light.Surface,
+    surfaceContainerHigh = AtlasTokens.Colors.Light.Surface,
+    surfaceContainerHighest = AtlasTokens.Colors.Light.Surface
 )
+
+// The two bundled variable TTF files provide the requested 700/800 and 400/500/600
+// optical weights. Android's font resolver selects their wght axis per FontWeight.
+private val funnelDisplay = FontFamily(
+    Font(R.font.funnel_display, weight = FontWeight.Bold),
+    Font(R.font.funnel_display, weight = FontWeight.ExtraBold)
+)
+private val funnelSans = FontFamily(
+    Font(R.font.funnel_sans, weight = FontWeight.Normal),
+    Font(R.font.funnel_sans, weight = FontWeight.Medium),
+    Font(R.font.funnel_sans, weight = FontWeight.SemiBold)
+)
+
+private fun lapisTypography(dark: Boolean): Typography {
+    val base = Typography()
+    val brand = if (dark) AtlasTokens.Colors.Dark.BrandText else AtlasTokens.Colors.Light.BrandText
+    return Typography(
+        displayLarge = base.displayLarge.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.ExtraBold,
+            letterSpacing = AtlasTokens.Type.DisplayTracking, color = brand),
+        displayMedium = base.displayMedium.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.Bold),
+        displaySmall = base.displaySmall.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.Bold),
+        headlineLarge = base.headlineLarge.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.Bold,
+            fontSize = 38.sp, lineHeight = 44.sp, letterSpacing = AtlasTokens.Type.DisplayTracking, color = brand),
+        headlineMedium = base.headlineMedium.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.Bold),
+        headlineSmall = base.headlineSmall.copy(fontFamily = funnelDisplay, fontWeight = FontWeight.Bold),
+        titleLarge = base.titleLarge.copy(fontFamily = funnelSans, fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp, lineHeight = 24.sp),
+        titleMedium = base.titleMedium.copy(fontFamily = funnelSans, fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp, lineHeight = 24.sp),
+        titleSmall = base.titleSmall.copy(fontFamily = funnelSans, fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp, lineHeight = 22.sp),
+        bodyLarge = base.bodyLarge.copy(fontFamily = funnelSans, fontWeight = FontWeight.Normal,
+            fontSize = 15.sp, lineHeight = 22.sp),
+        bodyMedium = base.bodyMedium.copy(fontFamily = funnelSans, fontWeight = FontWeight.Normal,
+            fontSize = 15.sp, lineHeight = 22.sp),
+        bodySmall = base.bodySmall.copy(fontFamily = funnelSans, fontWeight = FontWeight.Normal,
+            fontSize = 14.sp, lineHeight = 20.sp),
+        labelLarge = base.labelLarge.copy(fontFamily = funnelSans, fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp, lineHeight = 20.sp),
+        labelMedium = base.labelMedium.copy(fontFamily = funnelSans, fontWeight = FontWeight.Normal,
+            fontSize = 14.sp, lineHeight = 20.sp),
+        labelSmall = base.labelSmall.copy(fontFamily = funnelSans, fontWeight = FontWeight.Normal,
+            fontSize = 14.sp, lineHeight = 20.sp)
+    )
+}
 
 /**
  * #662: true under a dark ATLAS theme. MainActivity follows the phone's
@@ -203,17 +255,7 @@ fun AtlasGalleryTheme(
   CompositionLocalProvider(LocalAtlasDark provides dark) {
     MaterialTheme(
         colorScheme = if (dark) darkGalleryColors else lightGalleryColors,
-        typography = Typography(
-            headlineLarge = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.Light, letterSpacing = AtlasTokens.Type.DisplayTracking),
-            headlineMedium = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.SemiBold),
-            titleLarge = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.SemiBold),
-            titleMedium = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Medium),
-            bodyMedium = MaterialTheme.typography.bodyMedium.copy(lineHeight = AtlasTokens.Type.BodyLineHeight)
-        ),
+        typography = lapisTypography(dark),
         content = content
     )
   }
@@ -441,7 +483,7 @@ private fun AtlasTabItem(
     // An em line height already follows the capped size; only sp needs the cap.
     val labelLineHeight = if (inheritedLineHeight.isSp)
         inheritedLineHeight * navigationLabelCap(fontScale) else inheritedLineHeight
-    // 11sp labels still meet text contrast over a white tile behind the dark pill.
+    // 14sp labels still meet text contrast over a white tile behind the dark pill.
     val tint = if (selected) ink else ink.copy(alpha = 0.78f)
     Column(
         modifier
@@ -567,11 +609,16 @@ fun AtlasGalleryHeader(
             }
             Spacer(Modifier.width(4.dp))
         }
-        Column(Modifier.weight(1f)) {
+        // BRAND-L2: Funnel Display's 38/44 title plus the 14/20 subtitle can
+        // measure about 68dp on Android. Share 5dp of line-box leading to
+        // preserve both approved type roles and the #492 64dp compact header,
+        // without shrinking the neighbouring 48dp action targets.
+        Column(Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy((-5).dp)) {
             Text(
                 title,
                 modifier = Modifier.semantics { heading() }.testTag("atlas-header-title"),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -1,5 +1,41 @@
 {
   "boards": {
+    "collect-1": {
+      "file": "collect-1-utilities.png",
+      "size": [
+        3480,
+        8783
+      ],
+      "sha256": "5f0c9fdd52e5e0600a6e621f6c6dc8526a68eaa7bb009c338dad6f3cd4fa2ae8",
+      "binary_status": "rendered with Funnel Display + Funnel Sans (font_sha256 below); Pillow 12.3.0",
+      "device_frames": 18,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "B1",
+        "B2",
+        "B3",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "D3",
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "generator": "tools/design/collect_1_utilities.py",
+      "synthetic_only": true
+    },
     "l4": {
       "file": "brand-l4-navigation.png",
       "size": [
@@ -39,10 +75,10 @@
       "file": "brand-l5-collections.png",
       "size": [
         3480,
-        9269
+        9855
       ],
-      "sha256": "5f4256040fcfa805a480c011f8d0b4d295453dbba4943aae1634eefc2035e0ec",
-      "device_frames": 13,
+      "sha256": "d983460011e32d35f6dfd4447709a345765b6427704cc43ce3aa9c23ec8e6cf4",
+      "device_frames": 17,
       "device_frame_px": [
         1080,
         2340
@@ -55,6 +91,10 @@
         "C1",
         "C2",
         "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
         "D1",
         "D2",
         "D3",

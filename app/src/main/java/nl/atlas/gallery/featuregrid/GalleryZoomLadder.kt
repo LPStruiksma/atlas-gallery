@@ -1,7 +1,6 @@
 package nl.atlas.gallery.featuregrid
 
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.sign
 
@@ -60,23 +59,46 @@ class GalleryZoomGesture(
     var progress: Float = 0f
         private set
 
+    /** Sign of the last non-zero step: +1 toward smaller tiles, −1 toward larger. */
+    private var lastDirection: Int = 0
+
     fun addZoomFactor(factor: Float) {
         if (!factor.isFinite() || factor <= 0f) return
         val maxStep = if (factor < 0.5f || factor > 2f) 0.2f else 0.5f
         val step = (-ln(factor.toDouble()) / ln(1.5)).toFloat().coerceIn(-maxStep, maxStep)
         val minimum = if (allowOriginal) 0 else GalleryZoomStop.LARGE.ordinal
         val maximum = if (allowOverview) GalleryZoomStop.entries.lastIndex else GalleryZoomStop.SMALL.ordinal
+        val before = progress
         progress = (progress + step).coerceIn(
             (minimum - initial.ordinal).toFloat(),
             (maximum - initial.ordinal).toFloat()
         )
+        if (progress != before) lastDirection = (progress - before).sign.toInt()
     }
 
+    /**
+     * Samsung's release rule (parity research GRID:G3): the stop being entered
+     * is committed once the gesture is more than [COMMIT_FRACTION] of the way
+     * into it (one capped 0.2 sample alone never switches), unless the fingers were last moving back, in which case it
+     * needs [COMMIT_FRACTION_BACK]. Otherwise the gesture returns to the last
+     * stop it fully reached.
+     */
     fun settle(): GalleryZoomStop {
-        val steps = floor(abs(progress) + 0.75f).toInt() * progress.sign.toInt()
+        val direction = progress.sign.toInt()
+        val whole = abs(progress).toInt()
+        val fraction = abs(progress) - whole
+        val pinchingBack = direction != 0 && lastDirection == -direction
+        val commit = fraction > COMMIT_FRACTION &&
+            !(pinchingBack && fraction < COMMIT_FRACTION_BACK)
+        val steps = (whole + if (commit) 1 else 0) * direction
         val minimum = if (allowOriginal) 0 else GalleryZoomStop.LARGE.ordinal
         val maximum = if (allowOverview) GalleryZoomStop.entries.lastIndex else GalleryZoomStop.SMALL.ordinal
         return GalleryZoomStop.entries[(initial.ordinal + steps).coerceIn(minimum, maximum)]
+    }
+
+    companion object {
+        const val COMMIT_FRACTION = 0.2f
+        const val COMMIT_FRACTION_BACK = 0.8f
     }
 }
 

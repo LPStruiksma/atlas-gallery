@@ -8,8 +8,10 @@ import java.util.concurrent.CancellationException
  * Memory-bounded read-only resolver from a hashed native face key to an
  * actually permission-visible MediaStore content URI.
  *
- * Holds one pointer-list snapshot and ONE LongArray index (8 bytes/source
- * item), rather than a 150k-entry HashMap<String, String>. It stores a 44-bit
+ * Holds a frozen pointer snapshot for ordinary mutable sources. For the
+ * immutable MediaRecordFaceView it shares the gallery list with ONE LongArray
+ * index (8 bytes/admitted item), plus an IntArray only if the source has more
+ * than 20-bit addressable rows. It stores a 44-bit
  * SHA-256 *search prefix* plus 20-bit offset into the admitted rows. Collisions are NOT
  * authority: every candidate is compared against the full 256-bit canonical
  * key AND exact source revision before returning any URI.
@@ -33,6 +35,7 @@ class FaceAuthorizedMediaDirectory<T> private constructor(
     private val sources: List<T>,
     private val projection: (T) -> FaceVisibleMedia,
     private val packedIndex: LongArray,
+    private val sourceOffsets: IntArray?,
     private val activeEpoch: () -> String?,
     private val providerSnapshotCurrent: () -> Boolean,
     /**
@@ -66,37 +69,47 @@ class FaceAuthorizedMediaDirectory<T> private constructor(
                 }
             }
             validate()
-            // Copy only object pointers of ADMITTED rows; never copy bitmaps,
-            // original photos or another large set of raw URI strings into an
-            // additional map. Admission throws for a photo with incomplete
-            // provenance and defers one past its cap, exactly as the publisher does.
+            // PERF-6b: a MediaRecordFaceView is an immutable snapshot. Index
+            // directly into it instead of freezing all the temporary projected
+            // FaceVisibleMedia objects (and their freshly rebuilt URI Strings).
+            // All other callers keep the original copied-pointer semantics,
+            // including protection against a later mutation of their input.
+            val sharedGallery = sourceRows is MediaRecordFaceView
+            val frozen = if (sharedGallery) null else ArrayList<T>()
+            val capacity = minOf(sourceRows.size,
+                maxPhotoRows + FaceCatalogLimits.MAX_VIDEOS)
+            val keys = LongArray(capacity)
+            // Direct 20-bit offsets suffice for <= 1,048,576 source rows.
+            // An exceptionally large gallery needs a compact admitted->source
+            // offset table, not another full-library object list.
+            val sourceOffsets = if (sharedGallery && sourceRows.size > MAX_OFFSET + 1)
+                IntArray(capacity) else null
             val admission = FaceCatalogAdmission(maxPhotoRows = maxPhotoRows)
-            val frozen = ArrayList<T>()
-            val keys = ArrayList<Long>()
+            var admittedCount = 0
             for ((i, item) in sourceRows.withIndex()) {
                 if ((i and 127) == 0) validate()
                 val media = admission.admit(projection(item)) ?: continue
-                if (frozen.size > MAX_OFFSET) {
+                val offset = if (sharedGallery) {
+                    if (sourceOffsets == null) i
+                    else {
+                        sourceOffsets[admittedCount] = i
+                        admittedCount
+                    }
+                } else frozen!!.size
+                if (offset > MAX_OFFSET) {
                     throw IllegalArgumentException("Media resolver exceeds native index cap")
                 }
-                keys.add((fingerprint(media.canonicalMediaKey) shl OFFSET_BITS) or
-                    frozen.size.toLong())
-                frozen.add(item)
+                keys[admittedCount++] =
+                    (fingerprint(media.canonicalMediaKey) shl OFFSET_BITS) or offset.toLong()
+                frozen?.add(item)
             }
             validate()
-            val packed = keys.toLongArray()
+            val packed = if (admittedCount == keys.size) keys else keys.copyOf(admittedCount)
             Arrays.sort(packed)
-            // #538: MediaStore can hand the same item over twice in one
-            // inventory (same specific-volume URI, so the same canonical key).
-            // Two rows with the same canonical key AND the same revision are
-            // one source, exactly as FaceIndexStore.stageBatch already treats
-            // them: keep the first (newest-first order), drop the repeat.
-            // The same key with a DIFFERENT revision contradicts itself and
-            // still refuses the build. A 44-bit prefix collision between
-            // *different* full hashes is tolerated and verified at every
-            // lookup. Every member of a prefix run is compared, not only
-            // neighbours, so A, B, A' (B colliding with A) is still caught.
-            val kept = LongArray(packed.size)
+            // #538: duplicate canonical keys resolve through the first row.
+            // A conflicting source revision refuses the index. Full key
+            // comparisons also distinguish unrelated 44-bit prefix collisions.
+            // Compact in place; do not allocate a second full-sized LongArray.
             var keptCount = 0
             var repeated = 0
             var runStart = 0
@@ -105,15 +118,17 @@ class FaceAuthorizedMediaDirectory<T> private constructor(
                 var runEnd = runStart + 1
                 while (runEnd < packed.size && packed[runEnd] ushr OFFSET_BITS == prefix) runEnd++
                 if (runEnd - runStart == 1) {
-                    kept[keptCount++] = packed[runStart]
+                    packed[keptCount++] = packed[runStart]
                 } else {
                     val seen = ArrayList<FaceMediaKey>(runEnd - runStart)
                     for (i in runStart until runEnd) {
-                        val key = projection(frozen[(packed[i] and OFFSET_MASK).toInt()])
-                            .toDurableFaceKey()
+                        val offset = (packed[i] and OFFSET_MASK).toInt()
+                        val sourceIndex = sourceOffsets?.get(offset) ?: offset
+                        val row = (frozen ?: sourceRows)[sourceIndex]
+                        val key = projection(row).toDurableFaceKey()
                         val same = seen.firstOrNull { it.canonicalMediaKey == key.canonicalMediaKey }
                         when {
-                            same == null -> { seen.add(key); kept[keptCount++] = packed[i] }
+                            same == null -> { seen.add(key); packed[keptCount++] = packed[i] }
                             same.sourceRevision == key.sourceRevision -> repeated++
                             else -> throw IllegalArgumentException(
                                 "Contradictory duplicate canonical media identity")
@@ -122,10 +137,11 @@ class FaceAuthorizedMediaDirectory<T> private constructor(
                 }
                 runStart = runEnd
             }
-            val sorted = if (keptCount == packed.size) packed else kept.copyOf(keptCount)
+            val sorted = if (keptCount == packed.size) packed else packed.copyOf(keptCount)
             validate()
             return FaceAuthorizedMediaDirectory(
-                permissionEpoch, frozen, projection, sorted, activeEpoch,
+                permissionEpoch, frozen ?: sourceRows, projection, sorted,
+                sourceOffsets?.copyOf(admittedCount), activeEpoch,
                 providerSnapshotCurrent, repeated
             )
         }
@@ -187,8 +203,8 @@ class FaceAuthorizedMediaDirectory<T> private constructor(
             while (pos > 0 && packedIndex[pos - 1] ushr OFFSET_BITS == prefix) pos--
         }
         while (pos < packedIndex.size && packedIndex[pos] ushr OFFSET_BITS == prefix) {
-            val index = (packedIndex[pos] and OFFSET_MASK).toInt()
-            val source = projection(sources[index])
+            val offset = (packedIndex[pos] and OFFSET_MASK).toInt()
+            val source = projection(sources[sourceOffsets?.get(offset) ?: offset])
             val actual = try { source.toDurableFaceKey() }
             catch (_: IllegalArgumentException) {
                 throw SecurityException("Media source revision unavailable")

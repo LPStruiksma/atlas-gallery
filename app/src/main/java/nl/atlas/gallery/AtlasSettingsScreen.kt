@@ -31,7 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
@@ -89,6 +91,12 @@ internal fun AtlasSettingsScreen(
     /** INSIGHT-1 (#587): opens Library insights; null hides the row. */
     onLibraryInsights: (() -> Unit)? = null,
     performance: PerformanceAggregates = PerformanceSession.aggregate,
+    /** USAGE-0 (#173): null hides the three usage rows (previews and old call sites). */
+    usageEnabled: Boolean? = null,
+    usageHasData: Boolean = false,
+    onUsageEnabled: (Boolean) -> Unit = {},
+    onExportUsage: () -> UsageExportFile.Result = { UsageExportFile.Result.NOTHING_RECORDED },
+    onClearUsage: () -> Unit = {},
     /** #675: release notes bundled by the signed release job; null in debug builds. */
     changelog: AtlasChangelog? = LocalContext.current.let { c -> remember(c) { AtlasChangelog.load(c) } }
 ) {
@@ -129,6 +137,12 @@ internal fun AtlasSettingsScreen(
     val scanValue = scanStatusNote ?: if (scanLoading) "Restoring…" else faceScanSettingsValue(
         scanPhase, false, scanHasSavedOptIn, scanPhotoAccess)
 
+    val usageSnackbar = remember { androidx.compose.material3.SnackbarHostState() }
+    val usageScope = androidx.compose.runtime.rememberCoroutineScope()
+    fun usageMessage(text: String) {
+        usageScope.launch { usageSnackbar.currentSnackbarData?.dismiss(); usageSnackbar.showSnackbar(text) }
+    }
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .testTag("atlas-settings-screen")
@@ -248,6 +262,44 @@ internal fun AtlasSettingsScreen(
                         }
                     }
                 }
+                if (usageEnabled != null) {
+                    // USAGE-0 (#173): off by default. Daily counts and timings, closed IDs only.
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                            .toggleable(value = usageEnabled, role = Role.Switch,
+                                onValueChange = onUsageEnabled)
+                            .testTag("atlas-settings-usage-record"),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                            Text("Record usage for tuning", style = MaterialTheme.typography.bodyLarge)
+                            Text("Daily counts, timings and scan speed. No photos, names or places.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(checked = usageEnabled, onCheckedChange = null)
+                    }
+                    SettingsActionRow("Export usage", "atlas-settings-usage-export",
+                        onClick = if (usageHasData) ({
+                            when (onExportUsage()) {
+                                UsageExportFile.Result.WRITE_FAILED ->
+                                    usageMessage("Couldn\u2019t prepare usage file. Try again.")
+                                UsageExportFile.Result.SHARE_FAILED ->
+                                    usageMessage("Couldn\u2019t open sharing. Try again.")
+                                UsageExportFile.Result.NOTHING_RECORDED ->
+                                    usageMessage("Nothing recorded yet")
+                                UsageExportFile.Result.SHEET_OPENED -> Unit
+                            }
+                        }) else null,
+                        value = if (usageHasData) null else "Nothing recorded yet",
+                        enabled = usageHasData)
+                    SettingsActionRow("Clear usage", "atlas-settings-usage-clear",
+                        onClick = if (usageHasData) ({
+                            onClearUsage()
+                            usageMessage("Usage cleared")
+                        }) else null, enabled = usageHasData)
+                }
             }
         }
         // #587: below Advanced too, so existing rows keep their place on screen.
@@ -284,6 +336,9 @@ internal fun AtlasSettingsScreen(
                 onClick = { whatsNewOpen = true }, value = whatsNewRowValue(changelog))
             if (whatsNewOpen) AtlasWhatsNewDialog(changelog, versionName) { whatsNewOpen = false }
         }
+    }
+    androidx.compose.material3.SnackbarHost(usageSnackbar,
+        Modifier.align(androidx.compose.ui.Alignment.BottomCenter).testTag("atlas-settings-snackbar"))
     }
 }
 
@@ -338,10 +393,12 @@ private fun SettingsActionRow(
     label: String,
     tag: String,
     onClick: (() -> Unit)? = null,
-    value: String? = null
+    value: String? = null,
+    enabled: Boolean = true
 ) {
     SettingsRowLayout(
         Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .then(if (enabled) Modifier else Modifier.alpha(0.5f))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(tag),
         label = { Text(label, Modifier.testTag("$tag-label"), style = MaterialTheme.typography.bodyLarge) },
