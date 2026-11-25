@@ -51,10 +51,14 @@ import nl.atlas.gallery.featureaiedit.settings.ProviderRuntime
 import nl.atlas.gallery.featureaiedit.settings.ProviderSettingsStore
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featuredesign.AtlasSystemBarIcons
+import nl.atlas.gallery.testkit.KeyboardAfter
 import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -82,8 +86,12 @@ class AiEditSettingsEvidenceTest {
         val queued = ArrayDeque<KeyCheckOutcome>()
         @Volatile var gate: CountDownLatch? = null
         val calls = AtomicInteger()
+        val falNoCheckCalls = AtomicInteger()
         override fun check(profile: ProviderProfile, secret: String?, rule: KeyCheckRule?): KeyCheckOutcome {
-            if (rule == null) return KeyCheckOutcome.NO_CHECK
+            if (rule == null) {
+                if (profile.kind == ProviderKind.FAL) falNoCheckCalls.incrementAndGet()
+                return KeyCheckOutcome.NO_CHECK
+            }
             calls.incrementAndGet()
             gate?.await(30, TimeUnit.SECONDS)
             return synchronized(queued) { queued.removeFirstOrNull() } ?: KeyCheckOutcome.WORKS
@@ -198,9 +206,25 @@ class AiEditSettingsEvidenceTest {
                     .put("kind", "SOME_LATER_KIND")).toString()).commit()
             compose.onNodeWithTag("aie-add-service").performScrollTo().performClick()
             compose.onNodeWithTag("aie-preset-FAL").performClick()
-            compose.onNodeWithTag("aie-key-field").performTextInput("synthetic-fal-key")
-            compose.onNodeWithTag("aie-save").performClick()
-            waitFor("aie-services")
+            // The fixed IME still opens on real time. Do not tap a moving/clipped Save
+            // while the dialog resizes; require the named keyboard state and whole bounds.
+            compose.typeText(hasTestTag("aie-key-field"), "synthetic-fal-key", KeyboardAfter.Shown)
+            compose.assertAboveKeyboard(hasTestTag("aie-save"))
+            try {
+                compose.tap(hasTestTag("aie-save")) {
+                    compose.exists(hasTestTag("aie-services"), useUnmergedTree = true)
+                }
+            } catch (failure: AssertionError) {
+                // Only synthetic milestones, not field or vault contents. A call without
+                // storage distinguishes delivery from a later persistence/navigation failure.
+                val falStored = store.profiles().any { it.kind == ProviderKind.FAL }
+                throw AssertionError("fal Save: fake no-check calls=${fake.falNoCheckCalls.get()}, " +
+                    "profile stored=$falStored; ${failure.message}", failure)
+            }
+            assertEquals(1, fake.falNoCheckCalls.get())
+            val falProfile = store.profiles().single { it.kind == ProviderKind.FAL }
+            assertEquals("synthetic-fal-key", vault.get(falProfile.id))
+            assertEquals(gemini.id, store.defaultProviderId())
             waitFor("aie-unavailable-later-1")
             compose.onNodeWithText("Saved. Checked on your first edit.").assertExists()
             compose.onNodeWithText("Key works").assertExists()
