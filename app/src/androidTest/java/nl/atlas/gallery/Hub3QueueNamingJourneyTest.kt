@@ -13,6 +13,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.foundation.layout.size
@@ -516,11 +517,30 @@ class Hub3QueueNamingJourneyTest {
         } finally {
             store.writableDatabase.execSQL("DROP TRIGGER IF EXISTS hub3_refuse_name")
         }
-        compose.tap(hasText("Retry"))
+        // Hold the test database write lock so the real host's retry remains
+        // in flight long enough to exercise the disabled controls.
+        val db = store.writableDatabase
+        db.beginTransaction()
+        try {
+            compose.tap(hasText("Retry"))
+            compose.waitForNode(hasText("Saving name…"), WAIT_MS)
+            val save = compose.onNodeWithTag("atlas-person-name-save")
+            save.assertIsNotEnabled()
+            compose.onNodeWithText("Cancel").assertIsNotEnabled()
+            save.performTouchInput { click() }
+            compose.onNodeWithTag("atlas-person-name-save").assertIsNotEnabled()
+            compose.awaitScreenStill("hub3-host-busy")
+            saveUiEvidence("hub3-host-busy.png")
+        } finally {
+            db.endTransaction()
+        }
         compose.awaitThat("persisted retry", WAIT_MS) {
             host.liveReview(epoch)?.names?.values?.contains("Synthetic refusal") == true &&
                 !compose.exists(hasTestTag("atlas-person-name-dialog"), useUnmergedTree = true)
         }
+        val committed = checkNotNull(host.liveReview(epoch))
+        assertEquals("one acknowledged write after retry", 1, committed.undoHistory.size)
+        assertEquals(listOf("Synthetic refusal"), committed.names.values.toList())
         enabled("atlas-same-queue-other-name")
         compose.tap(hasTestTag("atlas-same-queue-other-name"))
         typeName("Synthetic stale draft")
@@ -594,7 +614,15 @@ class Hub3QueueNamingJourneyTest {
                             onRetry = { retries++; failure = null })
                     } else PersonMergeConfirm(null, picked,
                         onDismiss = { candidate = null }, onMerge = { writes++ },
-                        portraits = { PersonPortraitFallback() }, loading = loading)
+                        portraits = {
+                            androidx.compose.foundation.layout.Row {
+                                repeat(2) {
+                                    androidx.compose.foundation.layout.Box(Modifier.size(112.dp)) {
+                                        PersonPortraitFallback()
+                                    }
+                                }
+                            }
+                        }, loading = loading)
                 }
             }
         }

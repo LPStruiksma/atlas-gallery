@@ -18,3 +18,4 @@ hub3-host-enlarged-dark
 hub3-persistence-refused
 hub3-generation-stale
 hub3-confirm-loading-component
+hub3-host-busy
