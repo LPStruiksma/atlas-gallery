@@ -20,7 +20,6 @@
 <rect x="15" y="520" width="330" height="52" rx="5" fill="#FFFFFF" data-target="key" data-selected="false" data-key="File name"/><text x="32" y="550.5" fill="#0E1030" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="400">File name</text><circle cx="319" cy="546" r="9" stroke="#5A5F7A" stroke-width="2" fill="none"/>
 <rect x="15" y="572" width="330" height="52" rx="5" fill="#FFFFFF" data-target="key" data-selected="false" data-key="Size"/><text x="32" y="602.5" fill="#0E1030" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="400">Size</text><circle cx="319" cy="598" r="9" stroke="#5A5F7A" stroke-width="2" fill="none"/>
 <rect x="15" y="624" width="330" height="52" rx="5" fill="#FFFFFF" data-target="key" data-selected="false" data-key="Random"/><text x="32" y="654.5" fill="#0E1030" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="400">Random</text><circle cx="319" cy="650" r="9" stroke="#5A5F7A" stroke-width="2" fill="none"/>
-<text x="24" y="708" fill="#5A5F7A" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">Relevance has no direction</text>
 <rect x="0" y="757" width="360" height="23" rx="0" fill="#FFFFFF"/>
 <rect x="126" y="768" width="108" height="4" rx="2" fill="#0E1030"/>
 </svg>

@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-const modes=[["album-date","Album","Family album · 164 photos","date","Date created","Descending",""],["folder-name","Folder","Camera · 2,413 photos","date","File name","Ascending",""],["person-size","Person","People and pets · 301 photos","date","Size","Descending",""],["search-relevance","Search","Results for canal · 234 media","results","Relevance","","canal"],["similar-relevance","Find similar","Similar photos · 18 matches","results","Relevance","","source photo"],["stories-random","Stories","Stories overview · 17 items","random","Random","",""],["trash-size","Trash","Declutter · 84 items","date","Size","Ascending",""],["search-empty","Search","No matching media","results","Relevance","","canal"],["state-matrix","Collections","Fallback states","matrix","","",""],["ime-transition","Search","Query retained","ime","","","canal"],["font200-direction","Album","200% text · scrolled to direction","large-dir","Size","Descending",""],["font200-shuffle","Stories","200% text · scrolled to shuffle","large-random","Random","",""]];
+const modes=[["album-date","Album","164 photos in this album","date","Date created","Descending",""],["folder-name","Folder","2,413 photos in this folder","date","File name","Ascending",""],["person-size","Person","301 photos of people and pets","date","Size","Descending",""],["search-relevance","Search","234 matching media for canal","results","Relevance","","canal"],["similar-relevance","Find similar","18 similar photos","results","Relevance","","source photo"],["stories-random","Stories","17 stories","random","Random","",""],["trash-size","Trash","84 items in Trash","date","Size","Ascending",""],["search-empty","Search","No matching media","results","Relevance","","canal"],["state-matrix","Collections","Fallback states","matrix","","",""],["ime-transition","Search","Query retained","ime","","","canal"],["font200-direction","Album","200% text scrolled to direction","large-dir","Size","Descending",""],["font200-shuffle","Stories","200% text scrolled to shuffle","large-random","Random","",""]];
 const colors={"light":{"bg":"#FFFFFF","sheet":"#FFFFFF","mist":"#F2F3F8","ink":"#0E1030","sub":"#5A5F7A","fill":"#2639C9","title":"#2639C9","line":"#D8DAE6","tile":"#C5CAE1"},"dark":{"bg":"#000000","sheet":"#000000","mist":"#14152A","ink":"#F2F3F8","sub":"#9AA0B8","fill":"#3448E0","title":"#8C9BFF","line":"#343955","tile":"#333C6C"}};
 const standard=["Date created","Date modified","File name","Size","Random"];
 function xml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
@@ -22,7 +22,6 @@ if(["date","results","random"].includes(kind)){
  (kind==="results"?["Relevance",...standard]:standard).forEach((k,i)=>s.push(opt(p,start+i*52,52,k,"key",selected===k,15,{"data-key":k})));
  if(kind==="date"){s.push(R(24,583,312,1,p.line),T(24,609,"Direction",17,p.ink,{weight:600}));["Ascending","Descending"].forEach((d,i)=>s.push(opt(p,616+i*52,52,d,"direction",direction===d,15,{"data-direction":d})))}
  if(kind==="random")s.push(R(15,655,330,52,p.mist,{rx:7,"data-target":"shuffle"}),T(32,688,"Shuffle again",15,p.ink,{weight:600}));
- if(kind==="results")s.push(T(24,708,"Relevance has no direction",13,p.sub));
 }else if(kind==="matrix"){
  s.push(T(16,142,"Pictured loading, retry, grants and huge library",12,p.sub));
  for(const [state,x,y,label] of [["loading",15,159,"Loading"],["error",185,159,"Error and retry"],["revoked",15,446,"Access revoked"],["progressive",185,446,"250k media"]]){
@@ -34,9 +33,9 @@ if(["date","results","random"].includes(kind)){
   s.push("</g>");
  }
 }else if(kind==="ime"){
- [["keyboard","Keyboard visible"],["dismissed","IME dismissed"],["sheet","Sort opened"]].forEach(([state,label],i)=>{let y=142+205*i;s.push(`<g data-transition="${state}">`,R(16,y,328,187,p.mist,{rx:15}),T(28,y+23,(i+1)+" · "+label,15,p.ink,{weight:600}),R(28,y+35,304,43,p.bg,{rx:9}),T(43,y+63,"canal",16,p.ink));
+ [["keyboard","Keyboard visible"],["dismissed","IME dismissed"],["sheet","Sort opened"]].forEach(([state,label],i)=>{let y=142+205*i;s.push(`<g data-transition="${state}">`,R(16,y,328,187,p.mist,{rx:15}),T(28,y+23,"Step "+(i+1)+": "+label,15,p.ink,{weight:600}),R(28,y+35,304,43,p.bg,{rx:9}),T(43,y+63,"canal",16,p.ink));
  if(state==="keyboard"){s.push(R(28,y+87,304,90,p.line,{rx:8}));for(let k=0;k<21;k++)s.push(R(35+(k%7)*42,y+96+Math.floor(k/7)*27,36,20,p.bg,{rx:4}))}
- if(state==="dismissed"){s.push(T(30,y+113,"234 matching media · query retained",13,p.ink));for(let k=0;k<3;k++)s.push(R(30+k*101,y+126,98,43,p.tile,{rx:5}))}
+ if(state==="dismissed"){s.push(T(30,y+113,"234 matching media",13,p.ink));for(let k=0;k<3;k++)s.push(R(30+k*101,y+126,98,43,p.tile,{rx:5}))}
  if(state==="sheet")s.push(R(28,y+87,304,87,p.bg,{rx:12}),T(40,y+108,"Sort by",14,p.ink,{weight:600}),R(39,y+116,282,48,p.mist,{rx:6}),T(51,y+145,"Relevance selected",14,p.ink));
  s.push("</g>")});s.push(T(16,767,"Full six-key list shown in search-relevance",11,p.sub));
 }else if(large){
