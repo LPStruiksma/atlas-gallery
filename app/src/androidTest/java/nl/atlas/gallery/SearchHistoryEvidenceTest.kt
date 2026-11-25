@@ -28,7 +28,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -60,6 +62,14 @@ import nl.atlas.gallery.featuresearch.SearchHistoryScope
 import nl.atlas.gallery.featuresearch.SearchHistorySnackbarHost
 import nl.atlas.gallery.featuresearch.SearchHistoryStore
 import nl.atlas.gallery.featuresearch.SearchPerson
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.assertAboveKeyboard
+import nl.atlas.gallery.testkit.awaitKeyboardShown
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.hideKeyboard
+import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -76,7 +86,11 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SearchHistoryEvidenceTest {
     private val compose = createComposeRule()
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule()).around(compose)
+    @get:Rule val chain: RuleChain = RuleChain
+        .outerRule(KeyboardRule(methodKeyboards = mapOf(
+            "globalRecentsRemoveUndoAndLargeFont" to TestKeyboard.Fixed
+        )))
+        .around(S24DisplayRule()).around(compose)
 
     private val people = listOf(SearchPerson("p1", "Susanne de Vries"), SearchPerson("p2", "Daan"))
 
@@ -148,9 +162,11 @@ class SearchHistoryEvidenceTest {
         listOf(false, true).forEach { dark ->
             val theme = if (dark) "dark" else "light"
             compose.runOnIdle { darkTheme = dark; fontScale = 1f; reset++ }
-            waitFor("atlas-search-recent")
             compose.runOnIdle { clearInputFocus?.invoke() }
-            compose.waitForIdle()
+            compose.hideKeyboard()
+            compose.awaitThat("$theme: seven global recents before removal") {
+                compose.onAllNodesWithTag("atlas-search-recent").fetchSemanticsNodes().size == 7
+            }
             // 7 visible: the entry for an unnamed person stays hidden.
             compose.onAllNodesWithTag("atlas-search-recent").assertCountEquals(7)
             compose.onAllNodesWithText("Susanne de Vries 2019").assertCountEquals(1)
@@ -158,26 +174,34 @@ class SearchHistoryEvidenceTest {
             saveUiEvidence("find-3a-global-recents-$theme.png")
 
             // Keyboard open, remove "snow": the Undo snackbar sits above the IME.
-            compose.onNodeWithTag("atlas-search-field").performClick()
-            compose.waitForIdle()
-            val snowRemove = compose.onAllNodes(hasTestTag("atlas-search-recent-remove"),
-                useUnmergedTree = true).fetchSemanticsNodes()
-                .indexOfFirst { node -> node.config.toString().contains("snow") }
-            assertTrue("snow ✕ not found", snowRemove >= 0)
-            compose.onAllNodes(hasTestTag("atlas-search-recent-remove"), useUnmergedTree = true)[snowRemove]
-                .performClick()
-            waitForText("Removed")
+            compose.tap(hasTestTag("atlas-search-field"))
+            compose.awaitKeyboardShown()
+            val snowRemove = hasTestTag("atlas-search-recent-remove") and
+                hasContentDescription("Remove “snow” from recent searches")
+            val undo = hasText("Undo")
+            compose.tap(snowRemove, useUnmergedTree = true) {
+                store.state.value.entries(SearchHistoryScope.GLOBAL).none { it.text == "snow" } &&
+                    compose.exists(hasText("Removed")) && compose.exists(undo)
+            }
             compose.onAllNodesWithText("snow").assertCountEquals(0)
+            // #1036: the old Undo wait failed while the IME was shown. Check the actual
+            // target and its effect; a recurrence reports geometry and device state.
+            compose.assertAboveKeyboard(undo)
             saveUiEvidence("find-3a-global-removed-ime-$theme.png")
-            compose.onNodeWithText("Undo").performClick()
-            waitForText("snow")
+            compose.tap(undo) {
+                store.state.value.entries(SearchHistoryScope.GLOBAL).any { it.text == "snow" } &&
+                    compose.exists(hasText("snow"))
+            }
             // Undo puts it back in its old place (behind the hidden entry at 0).
             assertEquals(5, store.state.value.entries(SearchHistoryScope.GLOBAL)
                 .indexOfFirst { it.text == "snow" })
 
             // 200% font: pills wrap and stay whole.
             compose.runOnIdle { clearInputFocus?.invoke(); fontScale = 2f; reset++ }
-            waitFor("atlas-search-recent")
+            compose.hideKeyboard()
+            compose.awaitThat("$theme: seven global recents at 200% font") {
+                compose.onAllNodesWithTag("atlas-search-recent").fetchSemanticsNodes().size == 7
+            }
             compose.waitForIdle()
             val rootRight = compose.onRoot().fetchSemanticsNode().boundsInRoot.right
             compose.onAllNodesWithTag("atlas-search-recent").fetchSemanticsNodes().forEach {

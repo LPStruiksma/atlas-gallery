@@ -6,7 +6,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import nl.atlas.gallery.featuredesign.scrolledFromTop
 import nl.atlas.gallery.featuredesign.LocalAtlasHeaderCollapsed
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.Job
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -241,20 +240,6 @@ fun AtlasTimelineGallery(
     mediaSort: nl.atlas.gallery.MediaSort? = null
 ) {
     val context = LocalContext.current
-    val firstFlingDiagnostic = FirstFlingDiagnostic.enabled &&
-        (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-    if (firstFlingDiagnostic) {
-        LaunchedEffect(gridState) {
-            gridState.interactionSource.interactions.collect { interaction ->
-                when (interaction) {
-                    is androidx.compose.foundation.interaction.DragInteraction.Start -> FirstFlingDiagnostic.record("grid drag START")
-                    is androidx.compose.foundation.interaction.DragInteraction.Stop -> FirstFlingDiagnostic.record("grid drag STOP")
-                    is androidx.compose.foundation.interaction.DragInteraction.Cancel -> FirstFlingDiagnostic.record("grid drag CANCEL")
-                    else -> Unit
-                }
-            }
-        }
-    }
     // #435: application context reuses the file StartupPreferenceWarmup loaded off Main.
     val prefs = remember(context) {
         context.applicationContext.getSharedPreferences(TIMELINE_PREFS, Context.MODE_PRIVATE)
@@ -854,7 +839,6 @@ fun AtlasTimelineGallery(
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                     modifier = Modifier.zIndex(if (liveOnTop) 1f else 0f)
                         .fillMaxSize().testTag("atlas-timeline-grid")
-                        .then(if (firstFlingDiagnostic) FirstFlingDiagnostic.pointerModifier else Modifier)
                         // #494: Initial-pass parent detector; tiles can't swallow it.
                         .galleryPinchLadder(ready, density, newTracker = { slop ->
                             GalleryPinchTracker(GalleryZoomStop.forDensity(density), slop,

@@ -7,8 +7,6 @@ import android.util.Log
 import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.Window
-import nl.atlas.gallery.featuregrid.FirstFlingDiagnostic
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -22,6 +20,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import coil3.SingletonImageLoader
 import nl.atlas.gallery.featuremedia.MicroThumbnails
+import nl.atlas.gallery.testkit.describeDevice
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -75,8 +74,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
         object : Statement() {
             override fun evaluate() {
                 val columns = when (description.methodName) {
-                    "fourColumnFling", "fourColumnDiagnosticSample2",
-                    "fourColumnDiagnosticSample3", "fourColumnDiagnosticSample4" -> 4
+                    "fourColumnFling" -> 4
                     "sevenColumnFling" -> 7
                     else -> error("Unknown PERF-A2A method " + description.methodName)
                 }
@@ -100,35 +98,19 @@ class PerfA2GridFlingFramesBenchmarkTest {
         sizes = List(FIXTURE_COUNT) { 96 to 72 },
         folderOf = { FIXTURE_FOLDER }
     )
-    // Enable only for these synthetic emulator tests, before Activity composition.
-    private val diagnosticRule = TestRule { base, _ ->
-        object : Statement() {
-            override fun evaluate() {
-                FirstFlingDiagnostic.enabled = true
-                try { base.evaluate() } finally { FirstFlingDiagnostic.enabled = false }
-            }
-        }
-    }
     private val compose = createAndroidComposeRule<MainActivity>()
     @get:Rule val chain: TestRule = RuleChain.outerRule(emulatorOnly)
-        .around(S24DisplayRule()).around(densityRule).around(fixtures)
-        .around(diagnosticRule).around(compose)
+        .around(S24DisplayRule()).around(densityRule).around(fixtures).around(compose)
 
     private val tile = SemanticsMatcher("Pictures media tile") {
         it.config.getOrNull(SemanticsProperties.TestTag)
             ?.startsWith("atlas-timeline-media-") == true
     }
 
-    @Test fun fourColumnFling() = measure(4, "fourColumnFling")
-    @Test fun sevenColumnFling() = measure(7, "sevenColumnFling")
+    @Test fun fourColumnFling() = measure(4)
+    @Test fun sevenColumnFling() = measure(7)
 
-    // Separate JUnit rule lifecycles: fresh activity, density and fixtures.
-    // Temporary diagnostic samples, not retries or acceptance benchmarks.
-    @Test fun fourColumnDiagnosticSample2() = measure(4, "fourColumnDiagnosticSample2")
-    @Test fun fourColumnDiagnosticSample3() = measure(4, "fourColumnDiagnosticSample3")
-    @Test fun fourColumnDiagnosticSample4() = measure(4, "fourColumnDiagnosticSample4")
-
-    private data class GridState(val scroll: Float, val tiles: Int, val maxScroll: Float)
+    private data class GridState(val scroll: Float, val tiles: Int)
 
     /** The grid stays rendered, moves, and displays IDs from a granted publication. */
     private fun readGrid(vm: GalleryViewModel, columns: Int): GridState {
@@ -152,41 +134,10 @@ class PerfA2GridFlingFramesBenchmarkTest {
             val tag = it.config.getOrNull(SemanticsProperties.TestTag).orEmpty()
             tag.removePrefix("atlas-timeline-media-").toLongOrNull() in ids
         })
-        return GridState(range.value(), visible.size, range.maxValue())
+        return GridState(range.value(), visible.size)
     }
 
-    private fun measure(columns: Int, sampleId: String) {
-        val window = compose.activity.window
-        var original: Window.Callback? = null
-        val label = "PERF-A2-DIAGNOSTIC sample=$sampleId columns=$columns"
-        Log.i("ATLAS_SCALE", "$label start")
-        println("ATLAS_SCALE $label start")
-        try {
-            // Install once before the original settling sequence, not per throw.
-            instrumentation.runOnMainSync {
-                val callback = window.callback
-                original = callback
-                window.callback = object : Window.Callback by callback {
-                    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-                        // Single-pointer synthetic sequence: raw-local offset maps
-                        // batched history into the same screen space as injection.
-                        val dx = event.rawX - event.x
-                        val dy = event.rawY - event.y
-                        for (h in 0 until event.historySize) {
-                            FirstFlingDiagnostic.record("window history down=${event.downTime} t=${event.getHistoricalEventTime(h)} screen=${event.getHistoricalX(h)+dx},${event.getHistoricalY(h)+dy}")
-                        }
-                        FirstFlingDiagnostic.record("window action=${event.actionMasked} down=${event.downTime} t=${event.eventTime} screen=${event.rawX},${event.rawY}")
-                        return callback.dispatchTouchEvent(event)
-                    }
-                }
-            }
-            measureWithWindowProbe(columns, sampleId)
-        } finally {
-            instrumentation.runOnMainSync { original?.let { window.callback = it } }
-        }
-    }
-
-    private fun measureWithWindowProbe(columns: Int, sampleId: String) {
+    private fun measure(columns: Int) {
         val vm = ViewModelProvider(compose.activity)[GalleryViewModel::class.java]
         compose.waitUntil(90_000L) {
             val pub = vm.publishedInventory.value
@@ -218,68 +169,68 @@ class PerfA2GridFlingFramesBenchmarkTest {
         val top = origin[1] + bounds.top + bounds.height * .30f
         val bottom = origin[1] + bounds.top + bounds.height * .76f
         val rounds = JSONArray()
-        val intervals = ArrayList<Long>()
+                val intervals = ArrayList<Long>()
 
         // Five fixed-speed, real-uptime touchscreen throws: two down, two up,
         // one down. Compose synchronization happens only BETWEEN captures.
         for ((index, down) in listOf(true, true, false, false, true).withIndex()) {
-            FirstFlingDiagnostic.begin()
-            var scrollEvidence = "before=${before.scroll}, maxBefore=${before.maxScroll}, after=unobserved"
-            try {
-                val sampler = ChoreographerFrames(instrumentation)
-                var postGestureFrames = false
-                val captured = try {
-                    sampler.start()
-                    injectFling(x, if (down) bottom else top, if (down) top else bottom)
-                    // Keep capturing until 12 real post-release Choreographer frames,
-                    // or report that the emulator stopped drawing before then.
-                    postGestureFrames = sampler.awaitPostGestureFrames(12, 950L)
-                    sampler.stop()
-                } finally {
-                    sampler.close()
-                }
-                compose.waitForIdle()
-                val after = readGrid(vm, columns)
-                scrollEvidence = "before=${before.scroll}, after=${after.scroll}, delta=${after.scroll-before.scroll}, maxBefore=${before.maxScroll}, maxAfter=${after.maxScroll}"
-                assertTrue("Gesture did not scroll on throw " + (index + 1) +
-                    ": before=" + before.scroll + ", after=" + after.scroll,
-                    abs(after.scroll - before.scroll) > 1f)
-                val sample = summarize(captured)
-                assertTrue("Insufficient Choreographer frames on throw " + (index + 1) +
-                    ": frames=" + sample.frames + ", intervals=" + sample.intervals.size +
-                    ", nonPositive=" + sample.nonPositive +
-                    ", timestamps=" + captured.take(4) +
-                    ", postRelease12=" + postGestureFrames,
-                    sample.frames >= 4)
-                assertTrue("No positive frame interval on throw " + (index + 1) +
-                    ": frames=" + sample.frames + ", nonPositive=" + sample.nonPositive,
-                    sample.intervals.isNotEmpty())
-                intervals.addAll(sample.intervals)
-                rounds.put(JSONObject()
-                    .put("throw", index + 1)
-                    .put("direction", if (down) "down_grid" else "up_grid")
-                    .put("thumbnail_state", if (index == 0)
-                        "memory_cleared_disk_unknown" else "repeat_no_cache_clear")
-                    .put("tiles_before", before.tiles)
-                    .put("tiles_after", after.tiles)
-                    .put("scroll_delta_px", rounded(after.scroll - before.scroll))
-                    .put("frames", sample.frames)
-                    .put("frame_callbacks", captured.size)
-                    .put("nonpositive_vsync_intervals", sample.nonPositive)
-                    .put("post_release_12_frames_observed", postGestureFrames)
-                    .put("stats", stats(sample.intervals, budgetNs)))
-                before = after
+            val sampler = ChoreographerFrames(instrumentation)
+            var postGestureFrames = false
+            val captured = try {
+                sampler.start()
+                injectFling(x, if (down) bottom else top, if (down) top else bottom)
+                // Keep capturing until 12 real post-release Choreographer frames,
+                // or report that the emulator stopped drawing before then.
+                postGestureFrames = sampler.awaitPostGestureFrames(12, 950L)
+                sampler.stop()
             } finally {
-                val samples = FirstFlingDiagnostic.end()
-                val prefix = "PERF-A2-DIAGNOSTIC sample=$sampleId columns=$columns throw=${index+1}"
-                Log.i("ATLAS_SCALE", "$prefix $scrollEvidence")
-                println("ATLAS_SCALE $prefix $scrollEvidence")
-                // Separate lines avoid Android logcat's per-line truncation.
-                samples.forEach { sample ->
-                    Log.i("ATLAS_SCALE", "$prefix $sample")
-                    println("ATLAS_SCALE $prefix $sample")
-                }
+                sampler.close()
             }
+            compose.waitForIdle()
+            val after = readGrid(vm, columns)
+            val scrolled = abs(after.scroll - before.scroll) > 1f
+            val scrollFailure = "Gesture did not scroll on throw " + (index + 1) +
+                ": before=" + before.scroll + ", after=" + after.scroll
+            // Snapshot only on failure, before the activity rule tears down.
+            // This cannot establish which window received the original DOWN.
+            if (!scrolled) {
+                val device = runCatching { describeDevice() }
+                    .getOrElse { "device state unavailable (" + it.javaClass.simpleName + ")" }
+                    .take(6000)
+                assertTrue(scrollFailure +
+                    " | columns=" + columns +
+                    ", screenX=" + x +
+                    ", startY=" + (if (down) bottom else top) +
+                    ", endY=" + (if (down) top else bottom) +
+                    ", frameCallbacks=" + captured.size +
+                    ", postRelease12=" + postGestureFrames +
+                    " | post-failure snapshot: " + device, scrolled)
+            }
+            val sample = summarize(captured)
+            assertTrue("Insufficient Choreographer frames on throw " + (index + 1) +
+                ": frames=" + sample.frames + ", intervals=" + sample.intervals.size +
+                ", nonPositive=" + sample.nonPositive +
+                ", timestamps=" + captured.take(4) +
+                ", postRelease12=" + postGestureFrames,
+                sample.frames >= 4)
+            assertTrue("No positive frame interval on throw " + (index + 1) +
+                ": frames=" + sample.frames + ", nonPositive=" + sample.nonPositive,
+                sample.intervals.isNotEmpty())
+            intervals.addAll(sample.intervals)
+            rounds.put(JSONObject()
+                .put("throw", index + 1)
+                .put("direction", if (down) "down_grid" else "up_grid")
+                .put("thumbnail_state", if (index == 0)
+                    "memory_cleared_disk_unknown" else "repeat_no_cache_clear")
+                .put("tiles_before", before.tiles)
+                .put("tiles_after", after.tiles)
+                .put("scroll_delta_px", rounded(after.scroll - before.scroll))
+                .put("frames", sample.frames)
+                .put("frame_callbacks", captured.size)
+                .put("nonpositive_vsync_intervals", sample.nonPositive)
+                .put("post_release_12_frames_observed", postGestureFrames)
+                .put("stats", stats(sample.intervals, budgetNs)))
+            before = after
         }
 
         val display = context.resources.displayMetrics
@@ -301,11 +252,8 @@ class PerfA2GridFlingFramesBenchmarkTest {
             .put("rounds", rounds)
             .put("pooled", stats(intervals, budgetNs))
         val json = report.toString()
-        // Keep the original benchmark stream separate from diagnostic samples.
-        val reportLabel = if (sampleId == "fourColumnFling" || sampleId == "sevenColumnFling")
-            "PERF-A2A" else "PERF-A2-DIAGNOSTIC sample=$sampleId report"
-        Log.i("ATLAS_SCALE", "$reportLabel $json")
-        println("ATLAS_SCALE $reportLabel $json")
+        Log.i("ATLAS_SCALE", "PERF-A2A " + json)
+        println("ATLAS_SCALE PERF-A2A " + json)
         assertEquals(5, rounds.length())
         assertTrue("Missing real frame-interval evidence", intervals.isNotEmpty())
     }
@@ -337,9 +285,7 @@ class PerfA2GridFlingFramesBenchmarkTest {
                                 downAt, SystemClock.uptimeMillis(), action, x, y, 0)
                             try {
                                 event.source = InputDevice.SOURCE_TOUCHSCREEN
-                                val accepted = automation.injectInputEvent(event, true)
-                                FirstFlingDiagnostic.record("inject step=$step action=$action down=$downAt t=${event.eventTime} screen=$x,$y accepted=$accepted")
-                                check(accepted) {
+                                check(automation.injectInputEvent(event, true)) {
                                     "Real touchscreen injection failed at step " + step
                                 }
                             } finally { event.recycle() }
