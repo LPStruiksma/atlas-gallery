@@ -46,6 +46,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performImeAction
@@ -315,10 +316,20 @@ class Hub3QueueNamingJourneyTest {
         assertTrue("keyboard inset is real", compose.keyboardInsetPx() > 0)
         compose.onNodeWithTag("atlas-person-name-field").assertIsDisplayed()
         compose.onNodeWithTag("atlas-person-name-save").assertIsDisplayed()
-        compose.onAllNodesWithTag("atlas-same-queue-name-source", useUnmergedTree = true)
-            .fetchSemanticsNodes().forEach { node ->
-                assertTrue("source portrait has visible bounds", node.boundsInRoot.height > 0f)
-            }
+        val sources = compose.onAllNodesWithTag("atlas-same-queue-name-source", useUnmergedTree = true)
+            .fetchSemanticsNodes()
+        assertTrue("at least one source portrait", sources.isNotEmpty())
+        val field = compose.onNodeWithTag("atlas-person-name-field", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val footer = compose.onNodeWithTag("atlas-person-name-footer", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        sources.forEach { node ->
+            assertTrue("source portrait not clipped", node.boundsInRoot.height >=
+                node.boundsInRoot.width - 1f && node.boundsInRoot.height > 0f)
+            assertTrue("source above field", node.boundsInRoot.bottom <= field.top)
+        }
+        assertTrue("field above footer", field.bottom <= footer.top)
+        assertTrue("footer has visible bounds", footer.height > 0f)
     }
 
     @Test fun nameRenameConfirmCancelMergeAndUndoOnBothSides() {
@@ -380,9 +391,8 @@ class Hub3QueueNamingJourneyTest {
         assertEquals(listOf("Synthetic Renamed"), host.liveReview(epoch)!!.names.values.toList())
 
         compose.tap(hasTestTag("atlas-same-queue-other-name"))
-        typeName("Synthetic Renamed")
-        compose.hideKeyboard(showExpected = true)
-        compose.tap(hasTestTag("atlas-person-name-save"))
+        typeName("Synthetic Ren")
+        compose.tap(hasTestTag("atlas-person-name-suggestion"))
         enabled("atlas-person-merge-confirm")
         compose.onNodeWithTag("atlas-same-queue-merge-face-0", useUnmergedTree = true)
             .assertIsDisplayed()
@@ -394,9 +404,10 @@ class Hub3QueueNamingJourneyTest {
         compose.tap(hasText("Cancel"))
         compose.waitForNode(hasTestTag("atlas-person-name-field"), WAIT_MS, useUnmergedTree = true)
         assertEquals("cancel did not merge", before, host.liveReview(epoch)!!.clusters.reviews.confirmed.size)
+        compose.onNodeWithTag("atlas-person-name-field", useUnmergedTree = true)
+            .assert(androidx.compose.ui.test.hasText("Synthetic Ren"))
         enabled("atlas-person-name-save")
-        compose.hideKeyboard(showExpected = true)
-        compose.tap(hasTestTag("atlas-person-name-save"))
+        compose.tap(hasTestTag("atlas-person-name-suggestion"))
         enabled("atlas-person-merge-confirm")
         compose.runOnIdle { dark = true }
         compose.awaitScreenStill("hub3-confirm-dark")

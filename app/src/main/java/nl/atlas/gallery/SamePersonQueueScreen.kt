@@ -118,6 +118,7 @@ internal fun SamePersonQueueRoute(
     var undoBusy by remember { mutableStateOf(false) }
     var nameRequest by remember { mutableStateOf<QueueNameRequest?>(null) }
     var nameDraft by remember { mutableStateOf("") }
+    var nameExpanded by remember { mutableStateOf(false) }
     var nameCandidate by remember { mutableStateOf<NativePersonAlbum?>(null) }
     var nameBusy by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -249,13 +250,14 @@ internal fun SamePersonQueueRoute(
         queueNameError = null
         nameRequest = captured
         nameDraft = captured.facts.name.orEmpty()
+        nameExpanded = false
         nameCandidate = null
         nameError = null
     }
     fun saveName(typed: String, into: NativePersonAlbum? = null) {
         val request = nameRequest ?: return
         if (nameBusy) return
-        nameDraft = typed
+        if (into == null) nameDraft = typed
         nameError = null
         nameBusy = true
         SamePersonQueueCommits.name(host, request, typed, into) { result ->
@@ -422,18 +424,20 @@ internal fun SamePersonQueueRoute(
                     onPick = { picked ->
                         if (!nameBusy && current && picked in
                             request.suggestions(state, skipScope, picked.name)) {
-                            nameDraft = picked.name
                             nameCandidate = picked
                             nameError = null
                         }
                     },
-                    sourcePreview = {
+                    expandedMatches = nameExpanded,
+                    onExpandedChange = { nameExpanded = it },
+                    onQueryChange = { nameDraft = it },
+                    sourcePreview = { compact ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()) {
                             Row(Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                                request.samples.forEach { sample ->
-                                    Box(Modifier.size(72.dp).clip(CircleShape)
+                                request.samples.take(if (compact) 1 else 2).forEach { sample ->
+                                    Box(Modifier.size(if (compact) 64.dp else 72.dp).clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                     .testTag("atlas-same-queue-name-source"),
                                     contentAlignment = Alignment.Center) {
@@ -473,7 +477,7 @@ internal fun SamePersonQueueRoute(
             }
             PersonMergeConfirm(request.facts.name, candidate,
                 onDismiss = { if (!nameBusy) { nameCandidate = null; nameError = null } },
-                onMerge = { saveName(nameDraft, candidate) },
+                onMerge = { saveName(candidate.name, candidate) },
                 portraits = {
                     Row(Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -496,7 +500,7 @@ internal fun SamePersonQueueRoute(
                 }, enabled = portraitsReady || portraitFailed, busy = nameBusy,
                 error = nameError ?: if (portraitFailed) "Face unavailable. Try again." else null,
                 onRetry = {
-                    if (portraitFailed) portraitAttempt++ else saveName(nameDraft, candidate)
+                    if (portraitFailed) portraitAttempt++ else saveName(candidate.name, candidate)
                 })
         } else {
             // A write is in flight; don't expose captured labels or pixels.
