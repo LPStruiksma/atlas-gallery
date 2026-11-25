@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.math.log10
 import kotlin.math.sin
 import nl.atlas.gallery.featureaiedit.provider.EditImage
@@ -65,6 +66,39 @@ class LocalEraseInstrumentedTest {
 
     private fun peakRssKb(): Long = File("/proc/self/status").readLines()
         .firstOrNull { it.startsWith("VmHWM:") }?.split(Regex("\\s+"))?.getOrNull(1)?.toLongOrNull() ?: -1
+
+    // Bounded, synchronous diagnostics for the 50 MP synthetic test only. Do not log
+    // paths, pixels or raw proc lines. The separate tag is not an ATLAS_SCALE result.
+    private fun erasePhase(startMs: Long, phase: String, bandY: Int? = null) {
+        val elapsedMs = SystemClock.elapsedRealtime() - startMs
+        var rss: Long? = null
+        var swap: Long? = null
+        var hwm: Long? = null
+        try {
+            File("/proc/self/status").bufferedReader().use { reader ->
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    when {
+                        line.startsWith("VmRSS:") -> rss = statusKb(line)
+                        line.startsWith("VmSwap:") -> swap = statusKb(line)
+                        line.startsWith("VmHWM:") -> hwm = statusKb(line)
+                    }
+                    if (rss != null && swap != null && hwm != null) break
+                }
+            }
+        } catch (_: IOException) {
+            // A missing sample must not mask an acceptance failure.
+        } catch (_: SecurityException) {
+            // Some environments may deny proc access.
+        }
+        Log.i("ATLAS_ERASE_PHASE", "test=aie22_erase_50mp phase=$phase " +
+            "pid=${android.os.Process.myPid()} elapsed_ms=$elapsedMs " +
+            "rss_kb=${rss ?: "unknown"} swap_kb=${swap ?: "unknown"} hwm_kb=${hwm ?: "unknown"}" +
+            (bandY?.let { " band_y=$it" } ?: ""))
+    }
+
+    private fun statusKb(line: String): Long? =
+        line.substringAfter(':').trimStart().takeWhile { it.isDigit() }.toLongOrNull()
 
     private fun decodeExact(file: File): Bitmap = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply {
         inPreferredConfig = Bitmap.Config.ARGB_8888; inPremultiplied = false; inScaled = false
@@ -151,49 +185,93 @@ class LocalEraseInstrumentedTest {
 
     @Test
     fun fiftyMegapixelSourceCompletesWithoutCrashing() {
+        val started = SystemClock.elapsedRealtime()
+        fun phase(name: String, bandY: Int? = null) = erasePhase(started, name, bandY)
+        phase("entry")
         val w = 8192; val h = 6144 // 50.3 MP
         val sourceFile = File(work, "big.jpg")
         val maskFile = File(work, "big-mask.png")
+        phase("source_allocate_before")
         Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { bmp ->
+            phase("source_allocate_after")
             Canvas(bmp).drawPaint(Paint().apply {
                 shader = LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), Color.rgb(30, 90, 160), Color.rgb(220, 180, 60), Shader.TileMode.CLAMP)
             })
             Canvas(bmp).drawCircle(6000f, 4000f, 300f, Paint().apply { color = Color.MAGENTA })
+            phase("source_encode_before")
             FileOutputStream(sourceFile).use { assertTrue(bmp.compress(Bitmap.CompressFormat.JPEG, 90, it)) }
+            phase("source_encode_after")
+            phase("source_recycle_before")
             bmp.recycle()
+            phase("source_recycle_after")
         }
+        phase("mask_allocate_before")
         Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { bmp ->
+            phase("mask_allocate_after")
             bmp.eraseColor(Color.BLACK)
             Canvas(bmp).drawCircle(6000f, 4000f, 340f, Paint().apply { color = Color.WHITE; isAntiAlias = false })
+            phase("mask_encode_before")
             writePng(bmp, maskFile)
+            phase("mask_encode_after")
+            phase("mask_recycle_before")
             bmp.recycle()
+            phase("mask_recycle_after")
         }
-        val provider = localEraseProvider(context, File(work, "out"))
+        phase("provider_construct_before")
+        // Same production wiring as localEraseProvider; only the existing factory injection
+        // is instrumented. Delegation preserves termination and session close.
+        val provider = LocalEraseProvider(
+            inpainterFactory = {
+                phase("model_open_before")
+                val real = OnnxLamaInpainter.open(context.applicationContext)
+                phase("model_open_after")
+                object : LamaInpainter by real {
+                    override fun inpaint(image: FloatArray, mask: FloatArray, cancel: CancelSignal): FloatArray {
+                        phase("inference_before")
+                        return real.inpaint(image, mask, cancel).also { phase("inference_after") }
+                    }
+                }
+            },
+            io = AndroidEraseImageIo(File(work, "out")),
+        )
+        phase("provider_construct_after")
+        phase("submit_before")
         val t = SystemClock.elapsedRealtime()
-        val outcome = provider.submit(ImageEditRequest(
+        val job = provider.submit(ImageEditRequest(
             source = EditImage(sourceFile.absolutePath, w, h, ImageFormat.JPEG),
             instruction = "",
             mask = EditImage(maskFile.absolutePath, w, h, ImageFormat.PNG),
             output = OutputSpec(w, h, ImageFormat.PNG),
-        )).await(maxPolls = 1200)
+        ))
+        phase("submit_after")
+        phase("await_before")
+        val outcome = job.await(maxPolls = 1200)
         val totalMs = SystemClock.elapsedRealtime() - t
+        phase("await_after")
         assertTrue("50 MP erase failed: $outcome", outcome is EditOutcome.Success)
         outcome as EditOutcome.Success
         val out = File(outcome.images.single().handle)
 
         // Compare against the decoded source in bands; the output is decoded once.
+        phase("output_decode_before")
         val result = decodeExact(out)
+        phase("output_decode_after")
         assertEquals(w, result.width); assertEquals(h, result.height)
+        phase("verification_decoders_before")
         @Suppress("DEPRECATION")
         val sourceDecoder = BitmapRegionDecoder.newInstance(sourceFile.path, false)
         @Suppress("DEPRECATION")
         val maskDecoder = BitmapRegionDecoder.newInstance(maskFile.path, false)
+        phase("verification_decoders_after")
         val opts = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888; inPremultiplied = false }
         var outsideDiff = 0L; var changedInside = 0L
         val band = 512
+        phase("verification_buffers_before")
         val a = IntArray(w * band); val b = IntArray(w * band); val m = IntArray(w * band)
+        phase("verification_buffers_after")
         var y = 0
         while (y < h) {
+            phase("verification_band_before", y)
             val rows = minOf(band, h - y)
             val r = Rect(0, y, w, y + rows)
             sourceDecoder.decodeRegion(r, opts).also { it.getPixels(a, 0, w, 0, 0, w, rows); it.recycle() }
@@ -202,12 +280,16 @@ class LocalEraseInstrumentedTest {
             for (i in 0 until w * rows) {
                 if (EraseMaskRule.isErase(m[i])) { if (a[i] != b[i]) changedInside++ } else if (a[i] != b[i]) outsideDiff++
             }
+            phase("verification_band_after", y)
             y += rows
         }
+        phase("verification_recycle_before")
         sourceDecoder.recycle(); maskDecoder.recycle(); result.recycle()
+        phase("verification_recycle_after")
         Log.i("ATLAS_SCALE", "{\"test\":\"aie22_erase_50mp\",\"inference_ms\":${outcome.metadata["inference_ms"]}," +
             "\"model_scale\":${outcome.metadata["model_scale"]},\"total_ms\":$totalMs,\"peak_rss_kb\":${peakRssKb()}}")
         assertEquals("pixels outside the mask changed", 0L, outsideDiff)
         assertTrue("the masked disc was filled", changedInside > 300_000)
+        phase("complete")
     }
 }
