@@ -134,9 +134,10 @@ class PerformanceAggregatesTest {
         val store = object : PerformanceAggregates.PerformanceStore {
             override fun load(): Map<String, List<Double>> = persisted.toMap()
             override fun save(metric: String, values: List<Double>) { persisted[metric] = values }
-            override fun saveDurably(metric: String, values: List<Double>) {
+            override fun saveDurably(metric: String, values: List<Double>): Boolean {
                 durableWrites++
                 persisted[metric] = values
+                return true
             }
         }
         val first = PerformanceAggregates(store = store)
@@ -149,6 +150,56 @@ class PerformanceAggregatesTest {
         recreated.restore(store.load()) // new process, same version
         assertEquals(3, recreated.snapshot("grid_frame_ms").count)
         assertEquals(10.0, recreated.snapshot("grid_frame_ms").max!!, 0.0)
+    }
+
+    @Test fun failedPauseWriteRetriesWithoutLosingSamplesOrBlockingOtherMetrics() {
+        val persisted = HashMap<String, List<Double>>()
+        val attempts = HashMap<String, Int>()
+        var fail = true
+        val store = object : PerformanceAggregates.PerformanceStore {
+            override fun load(): Map<String, List<Double>> = persisted.toMap()
+            // Simulate apply() being accepted in memory without a confirmed disk write.
+            override fun save(metric: String, values: List<Double>) = Unit
+            override fun saveDurably(metric: String, values: List<Double>): Boolean {
+                attempts[metric] = (attempts[metric] ?: 0) + 1
+                if (fail && metric == "grid_frame_ms") return false
+                if (fail && metric == "viewer_ms") throw IllegalStateException("synthetic write failure")
+                persisted[metric] = values
+                return true
+            }
+        }
+        val samples = PerformanceAggregates(store = store)
+        samples.restore(store.load())
+        repeat(3) {
+            samples.record("grid_frame_ms", 20.0 + it)
+            samples.record("viewer_ms", 30.0 + it)
+            samples.record("cold_start_ms", 40.0 + it)
+        }
+        samples.flush() // Same synchronous call made by the activity-pause callback.
+        assertEquals(listOf(40.0, 41.0, 42.0), persisted["cold_start_ms"])
+        assertFalse(persisted.containsKey("grid_frame_ms"))
+        assertFalse(persisted.containsKey("viewer_ms"))
+        assertEquals(3, samples.snapshot("grid_frame_ms").count)
+        assertEquals(3, samples.snapshot("viewer_ms").count)
+
+        // A second pause must retry even without another recorded sample.
+        // Grid also crosses the periodic apply threshold, which must not erase its retry.
+        repeat(PerformanceAggregates.SAVE_EVERY - 3) {
+            samples.record("grid_frame_ms", 23.0 + it)
+        }
+        fail = false
+        samples.flush()
+        assertEquals((20..35).map { it.toDouble() }, persisted["grid_frame_ms"])
+        assertEquals(listOf(30.0, 31.0, 32.0), persisted["viewer_ms"])
+        assertEquals(mapOf("grid_frame_ms" to 2, "viewer_ms" to 2, "cold_start_ms" to 1), attempts)
+        samples.flush()
+        assertEquals(mapOf("grid_frame_ms" to 2, "viewer_ms" to 2, "cold_start_ms" to 1), attempts)
+
+        val recreated = PerformanceAggregates(store = store)
+        recreated.restore(store.load())
+        assertEquals(16, recreated.snapshot("grid_frame_ms").count)
+        assertEquals(35.0, recreated.snapshot("grid_frame_ms").max!!, 0.0)
+        assertEquals(3, recreated.snapshot("viewer_ms").count)
     }
 
     @Test fun fullRingSavesOnlyEverySaveEveryRecords() {

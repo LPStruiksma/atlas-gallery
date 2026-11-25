@@ -22,12 +22,11 @@ internal class PerformancePrefsStore(context: Context, private val versionCode: 
         prefs.edit().putString(prefix + metric, values.joinToString(",")).apply()
     }
 
-    override fun saveDurably(metric: String, values: List<Double>) {
+    override fun saveDurably(metric: String, values: List<Double>): Boolean {
         // apply() can still be in flight when Android swipe-kills the process.
-        // A lifecycle flush must finish the disk write before returning.
-        check(prefs.edit().putString(prefix + metric, values.joinToString(",")).commit()) {
-            "Performance sample commit failed"
-        }
+        // A lifecycle flush must finish the disk write before returning; false
+        // leaves this metric pending for a later pause rather than crashing.
+        return prefs.edit().putString(prefix + metric, values.joinToString(",")).commit()
     }
 
     /** Removes every version except the newest [keepVersions] (including the current one). */
