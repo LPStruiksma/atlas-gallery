@@ -30,14 +30,17 @@ atlas954_start() {
 }
 
 atlas954_finish() {
-  local rc="$1" name destination status
+  local rc="$1" name destination status attempt
   trap - EXIT
   set +e
   atlas954_phase "runner exit $rc"
   if [[ -n "${atlas954_pid:-}" ]]; then
-    if kill -0 "$atlas954_pid" 2>/dev/null; then
-      kill -TERM -- "-$atlas954_pid" 2>/dev/null
-    fi
+    kill -TERM -- "-$atlas954_pid" 2>/dev/null || kill -TERM "$atlas954_pid" 2>/dev/null
+    for attempt in {1..20}; do
+      if ! kill -0 -- "-$atlas954_pid" 2>/dev/null && ! kill -0 "$atlas954_pid" 2>/dev/null; then break; fi
+      sleep .1
+    done
+    kill -KILL -- "-$atlas954_pid" 2>/dev/null || kill -KILL "$atlas954_pid" 2>/dev/null
     wait "$atlas954_pid"
     status=$?
     printf 'collector wait status=%s (143 expected on teardown)\n' "$status" >> "$atlas954_stage/collector-status.txt"
@@ -45,7 +48,7 @@ atlas954_finish() {
   if [[ -f "$atlas954_stage/trigger.txt" && ! -f "$atlas954_stage/snapshot-complete" ]]; then
     echo 'snapshot incomplete at teardown' >> "$atlas954_stage/collector-status.txt"
   elif [[ ! -f "$atlas954_stage/trigger.txt" ]]; then
-    echo 'no matching launcher ANR observed by collector; not proof of absence' >> "$atlas954_stage/collector-status.txt"
+    echo 'no attributed launcher ANR observed; generic dialog records, if present, remain unattributed; not proof of absence' >> "$atlas954_stage/collector-status.txt"
   fi
   # Fixed allowlist, independent of normal evidence parity and Gradle cleanup.
   for name in pinch-light-overlay.png pinch-light-grid.png pinch-light.txt \
@@ -75,24 +78,87 @@ atlas954_snapshot() {
   local serial="$1" stage="$2" label rc
   shift 2
   label="$1"; shift
-  timeout --foreground 6 adb -s "$serial" shell "$@" 2>&1 | head -c 262145 > "$stage/$label.txt"
-  rc=${PIPESTATUS[0]}
+  if timeout --foreground 6 adb -s "$serial" shell "$@" 2>&1 | head -c 262145 > "$stage/$label.txt"; then
+    rc=${PIPESTATUS[0]}
+  else
+    rc=${PIPESTATUS[0]}
+  fi
   printf '%s %s status=%s bytes=%s (124=timeout; 262145=truncated; inspect output for denial)\n' \
     "$(date -u +%FT%T.%3NZ)" "$label" "$rc" "$(wc -c < "$stage/$label.txt")" >> "$stage/snapshot-status.txt"
 }
+
+# API 35 exposes focus in plain dumpsys window, not dumpsys window windows.
+# Extract focus independently of the raw prefix cap, in the same command.
+atlas954_window() {
+  local serial="$1" stage="$2" rc awk_rc
+  local -a statuses
+  : > "$stage/window.txt"
+  : > "$stage/window-focus.txt"
+  if timeout --foreground 6 adb -s "$serial" shell dumpsys window 2>&1 |
+    LC_ALL=C awk -v raw="$stage/window.txt" -v focus="$stage/window-focus.txt" '
+      {
+        if (bytes < 262145) {
+          s=$0 "\n"; n=262145-bytes
+          if (length(s)>n) s=substr(s,1,n)
+          printf "%s",s >> raw; bytes+=length(s)
+        }
+        if ($0 ~ /^[[:space:]]*(mCurrentFocus|mFocusedApp)=/) {
+          if (count<64) print substr($0,1,1024) >> focus
+          count++
+        }
+      }
+      END { if (count>64) print "focus line cap reached" >> focus }
+    '; then
+    statuses=("${PIPESTATUS[@]}")
+  else
+    statuses=("${PIPESTATUS[@]}")
+  fi
+  rc=${statuses[0]}; awk_rc=${statuses[1]}
+  local field
+  for field in mCurrentFocus mFocusedApp; do
+    if ! grep -Eq "^[[:space:]]*${field}=" "$stage/window-focus.txt"; then
+      printf '%s unavailable (no field captured; command status=%s, parser status=%s)\n' "$field" "$rc" "$awk_rc" >> "$stage/window-focus.txt"
+    fi
+  done
+  printf '%s window status=%s parser=%s bytes=%s (124=timeout; 262145=raw prefix capped; null is explicit no focus; missing is unavailable)\n' \
+    "$(date -u +%FT%T.%3NZ)" "$rc" "$awk_rc" "$(wc -c < "$stage/window.txt")" >> "$stage/snapshot-status.txt"
+}
+
 atlas954_capture() {
   local serial="$1" stage="$2"
-  atlas954_snapshot "$serial" "$stage" lastanr dumpsys activity lastanr
-  atlas954_snapshot "$serial" "$stage" launcher-pid pidof com.google.android.apps.nexuslauncher com.android.launcher3
-  atlas954_snapshot "$serial" "$stage" window dumpsys window windows
+  atlas954_window "$serial" "$stage"
   atlas954_snapshot "$serial" "$stage" input dumpsys input
+  atlas954_snapshot "$serial" "$stage" lastanr dumpsys activity lastanr
+  atlas954_snapshot "$serial" "$stage" launcher-pid pidof com.google.android.apps.nexuslauncher com.android.launcher3 com.android.quickstep
   atlas954_snapshot "$serial" "$stage" surface-list dumpsys SurfaceFlinger --list
   atlas954_snapshot "$serial" "$stage" trace-availability ls -l /data/anr
   echo 'Trace: lastanr may include reason/stack; directory listing only, no arbitrary trace file read.' >> "$stage/snapshot-status.txt"
   touch "$stage/snapshot-complete"
 }
+
+# Classify real event structure, not co-occurrence of launcher and ANR words.
+# A generic ATLAS_WINDOWS dialog names the system root, not the affected app.
+atlas954_classify() {
+  local line="${1,,}" pkg='(com\.android\.launcher3|com\.google\.android\.apps\.nexuslauncher|com\.android\.quickstep)(:[a-z0-9_.-]+)?'
+  local event="am_anr[[:space:]]*:[[:space:]]*\[[[:space:]]*[0-9]+,[[:space:]]*[0-9]+,[[:space:]]*${pkg}[[:space:]]*,"
+  local wm="application not responding:[[:space:]]*${pkg}([^a-z0-9_.:-]|$)"
+  local am="anr in[[:space:]]+${pkg}([^a-z0-9_.:-]|$)"
+  if [[ "$line" =~ [[:space:]][iwevd][[:space:]]+$event ]]; then
+    kind=launcher-event
+  elif [[ "$line" =~ [[:space:]][iwevd][[:space:]]+activitymanager[[:space:]]*: && "$line" =~ ^.*activitymanager[[:space:]]*:[[:space:]]*$am ]]; then
+    kind=launcher-event
+  elif [[ "$line" =~ [[:space:]][iwevd][[:space:]]+(windowmanager|inputmanager|inputdispatcher|atlas_windows)[[:space:]]*: ]] &&
+       [[ "$line" =~ $wm || "$line" =~ (^|[^a-z0-9_])quickstep[[:space:]]+isn.t[[:space:]]+responding([^a-z0-9_]|$) ]]; then
+    kind=launcher-dialog-window
+  elif [[ "$line" =~ [[:space:]][iwevd][[:space:]]+atlas_windows[[:space:]]*:[[:space:]]*system[[:space:]]+anr[[:space:]]+dialog[[:space:]]+on[[:space:]]+screen ]]; then
+    kind=unattributed-dialog
+  else
+    kind=
+  fi
+}
+
 atlas954_collect() {
-  local serial="$1" stage="$2" line count=0 fired=0
+  local serial="$1" stage="$2" line count=0 fired=0 unattributed=0 kind
   # logcat starts with available buffer history, then follows live events.
   # Filter on-device by tag; cap stored lines and continue observing triggers.
   timeout --foreground 90m adb -s "$serial" logcat -b main -b system -b events -v threadtime \
@@ -106,10 +172,24 @@ atlas954_collect() {
         echo 'timeline cap reached; trigger detection continues' >> "$stage/timeline.txt"
         count=$((count + 1))
       fi
-      if (( ! fired )) && [[ "$line" =~ (am_anr|ANR|Anr|anr) && "$line" =~ (launcher3|nexuslauncher|Quickstep) ]]; then
-        fired=1
-        printf '%s first observed matching line: %s\n' "$(date -u +%FT%T.%3NZ)" "${line:0:1024}" > "$stage/trigger.txt"
-        atlas954_capture "$serial" "$stage" &
+      if (( ! fired )); then
+        atlas954_classify "$line"
+        case "$kind" in
+          unattributed-dialog)
+            # Keep the earliest generic dialog separately, even after timeline
+            # truncation. Correlate its device timestamp with subsequent explicit
+            # window/event and snapshot evidence; never consume the launcher trigger.
+            if (( unattributed < 32 )); then
+              printf '%s unattributed system dialog: %s\n' "$(date -u +%FT%T.%3NZ)" "${line:0:1024}" >> "$stage/unattributed-dialogs.txt"
+              unattributed=$((unattributed + 1))
+            fi
+            ;;
+          launcher-event|launcher-dialog-window)
+            fired=1
+            printf '%s first observed %s: %s\n' "$(date -u +%FT%T.%3NZ)" "$kind" "${line:0:1024}" > "$stage/trigger.txt"
+            atlas954_capture "$serial" "$stage" &
+            ;;
+        esac
       fi
     done
   local rc=${PIPESTATUS[0]}
