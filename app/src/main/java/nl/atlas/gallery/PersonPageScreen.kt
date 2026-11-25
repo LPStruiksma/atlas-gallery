@@ -411,6 +411,7 @@ internal fun PersonNameDialog(
     valid: Boolean = true,
     editing: Boolean = initial.isNotEmpty(),
     loading: Boolean = false,
+    onPick: ((NativePersonAlbum) -> Unit)? = null,
     onRetry: ((String) -> Unit)? = null
 ) {
     var text by remember { mutableStateOf(initial) }
@@ -475,7 +476,7 @@ internal fun PersonNameDialog(
                                         .clickable {
                                             text = person.name
                                             keyboard?.hide()
-                                            onSave(person.name)
+                                            if (onPick == null) onSave(person.name) else onPick(person)
                                         }.testTag("atlas-person-name-suggestion"),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
