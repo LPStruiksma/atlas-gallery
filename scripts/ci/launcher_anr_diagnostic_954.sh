@@ -75,9 +75,9 @@ atlas954_snapshot() {
   local serial="$1" stage="$2" label rc
   shift 2
   label="$1"; shift
-  timeout 6 adb -s "$serial" shell "$@" 2>&1 | head -c 262145 > "$stage/$label.txt"
+  timeout --foreground 6 adb -s "$serial" shell "$@" 2>&1 | head -c 262145 > "$stage/$label.txt"
   rc=${PIPESTATUS[0]}
-  printf '%s %s status=%s bytes=%s (124=timeout; inspect output for denial)\n' \
+  printf '%s %s status=%s bytes=%s (124=timeout; 262145=truncated; inspect output for denial)\n' \
     "$(date -u +%FT%T.%3NZ)" "$label" "$rc" "$(wc -c < "$stage/$label.txt")" >> "$stage/snapshot-status.txt"
 }
 atlas954_capture() {
@@ -95,7 +95,7 @@ atlas954_collect() {
   local serial="$1" stage="$2" line count=0 fired=0
   # logcat starts with available buffer history, then follows live events.
   # Filter on-device by tag; cap stored lines and continue observing triggers.
-  timeout 90m adb -s "$serial" logcat -b main -b system -b events -v threadtime \
+  timeout --foreground 90m adb -s "$serial" logcat -b main -b system -b events -v threadtime \
     am_anr:I ActivityManager:I WindowManager:I InputDispatcher:I InputManager:I \
     TestRunner:I ATLAS_WINDOWS:V ATLAS_954:V ImeTracker:I '*:S' |
     while IFS= read -r line; do

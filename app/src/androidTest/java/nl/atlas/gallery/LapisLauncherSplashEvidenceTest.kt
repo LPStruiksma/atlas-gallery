@@ -370,6 +370,11 @@ abstract class LapisRealLauncherEvidence(private val dark: Boolean) {
     private var lastScan = "no scan"
     private var lastCandidate954: Bitmap? = null
 
+    @org.junit.After fun releaseDiagnosticCandidate954() {
+        lastCandidate954?.recycle()
+        lastCandidate954 = null
+    }
+
     /** A frame with the icon at the same place as in the frame before it, or null. */
     private fun awaitStableIcon(timeoutMs: Long): Bitmap? {
         val deadline = SystemClock.uptimeMillis() + timeoutMs

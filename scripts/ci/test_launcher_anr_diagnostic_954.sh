@@ -16,7 +16,7 @@ adb() {
 }
 export -f adb
 # timeout executes an external command, so wrap for this synthetic fixture.
-timeout() { shift; "$@"; }
+timeout() { [[ "$1" != --foreground ]] || shift; shift; "$@"; }
 atlas954_collect emulator-5554 "$stage"
 for _ in {1..100}; do
   [[ -f "$stage/snapshot-complete" ]] && break

@@ -22,7 +22,7 @@ RUNNER=nl.atlas.gallery.test/androidx.test.runner.AndroidJUnitRunner
 CENTRAL_MIRROR_INIT="$PWD/scripts/ci/central-mirror.init.gradle"
 [[ -f "$CENTRAL_MIRROR_INIT" ]] || { echo "::error::Missing $CENTRAL_MIRROR_INIT"; exit 1; }
 gradle() {
-  if declare -F atlas954_phase >/dev/null; then atlas954_phase "gradle $*" ; fi
+  if declare -F atlas954_phase >/dev/null; then atlas954_phase "Gradle invocation" ; fi
   command gradle \
     --init-script "$CENTRAL_MIRROR_INIT" \
     -Dorg.gradle.internal.network.retry.max.attempts=6 \
