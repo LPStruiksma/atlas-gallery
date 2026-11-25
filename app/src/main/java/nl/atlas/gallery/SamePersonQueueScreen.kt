@@ -217,8 +217,8 @@ internal fun SamePersonQueueRoute(
     }
     // The last finished count, less the answers since: shown while a new list is read.
     var counted by remember { mutableStateOf<Pair<Int, Int>?>(null) }
-    LaunchedEffect(listDone, cursor) {
-        if (listDone) counted = (found.size - answers.drop(cursorSeq).size) to answers.size
+    LaunchedEffect(listDone, cursor, refreshFrom) {
+        if (listDone && !refreshing) counted = (found.size - answers.drop(cursorSeq).size) to answers.size
     }
     val pendingMarked = lastMixedQuestion != null && found.any { it.key == lastMixedQuestion }
     val open = if (skipSnapshot == null || refreshing) 0 else counted?.let { (n, at) ->
@@ -344,6 +344,8 @@ internal fun SamePersonQueueRoute(
                             refreshFrom = generation
                             preferredPair = undoNamePair
                         }
+                        if (!success && undoNamePair != null)
+                            queueNameError = "Couldn’t undo. Refresh and try again."
                         undoNamePair = null
                         // Even a refused Undo must not leave a queue question hidden.
                         lastMixedGeneration = null
@@ -417,18 +419,26 @@ internal fun SamePersonQueueRoute(
                     },
                     onDismiss = { closeName() },
                     onSave = { saveName(it) },
+                    onPick = { picked ->
+                        if (!nameBusy && current && picked in
+                            request.suggestions(state, skipScope, picked.name)) {
+                            nameDraft = picked.name
+                            nameCandidate = picked
+                            nameError = null
+                        }
+                    },
                     sourcePreview = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()) {
                             Row(Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                                 request.samples.forEach { sample ->
-                                Box(Modifier.size(72.dp).clip(CircleShape)
+                                    Box(Modifier.size(72.dp).clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                     .testTag("atlas-same-queue-name-source"),
                                     contentAlignment = Alignment.Center) {
                                     if (current) PersonFaceImage(host, request.epoch, sample)
-                                }
+                                    }
                                 }
                             }
                             if (current) Text(request.facts.name ?: "Unnamed group",
@@ -523,7 +533,7 @@ internal class SamePersonQueueAnswer(
  */
 internal sealed interface QueueNameResult {
     data class Offer(val person: NativePersonAlbum) : QueueNameResult
-    data class Saved(val generation: String, val action: PeopleReviewAction) : QueueNameResult
+    data class Saved(val generation: String?, val action: PeopleReviewAction) : QueueNameResult
     data object Refused : QueueNameResult
     data object Stale : QueueNameResult
 }
@@ -559,9 +569,14 @@ internal object SamePersonQueueCommits {
                     if (into == null && naming is PersonNaming.OfferMerge)
                         QueueNameResult.Offer(naming.into)
                     else if (action != null && host.review(PeopleClusterReviewCommand(live, action))) {
-                        val generation = host.liveReview(request.epoch)?.sourceGeneration
-                        if (generation == null) QueueNameResult.Stale
-                        else QueueNameResult.Saved(generation, action)
+                        // Do not attach Undo to a different writer's later
+                        // generation. The just-appended checkpoint must be ours.
+                        val post = host.liveReview(request.epoch)
+                        val checkpoint = post?.undoHistory?.lastOrNull()
+                        val own = post != null && post.undoHistory.size == live.undoHistory.size + 1 &&
+                            checkpoint?.clusters === live.clusters &&
+                            checkpoint.names == live.names && checkpoint.hidden == live.hidden
+                        QueueNameResult.Saved(post?.sourceGeneration?.takeIf { own }, action)
                     } else QueueNameResult.Refused
                 }
             } catch (_: RuntimeException) { QueueNameResult.Refused }
