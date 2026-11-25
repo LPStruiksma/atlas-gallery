@@ -24,6 +24,8 @@ import org.junit.runner.RunWith
  * the required atlasPerfA1Phase argument. The host owns real force-stops and
  * launches. No test method tries to force-stop its instrumentation process.
  * Every fixture is invented, bounded, and lives on an isolated CI emulator.
+ * Task #1051: investigate unmatched cached draws; retain exact completed-frame
+ * attribution, distinct cold PIDs and fail-closed sample admission.
  */
 @RunWith(AndroidJUnit4::class)
 class PerfA1CachedFirstFrameBenchmarkTest {
