@@ -4,6 +4,8 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.WindowInsets as PlatformWindowInsets
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
@@ -74,28 +76,29 @@ private data class Design6InsetEvidence(
     val composeNavigationBarsDp: String,
     val contentBoundsDp: String,
     val rawHostBoundsDp: Rect,
+    val verticalInsets: Design6VerticalInsets,
+    val platformMinusAppliedDp: String,
     val normalizedHostBoundsDp: Rect
 )
 
-private fun normalizedHostBoundsDp(
-    rawHostBoundsDp: Rect,
-    platformTopDp: Float,
-    platformBottomDp: Float,
-    composeTopDp: Float,
-    composeBottomDp: Float
-): Rect {
-    // Use the larger measured edge at each side: safeDrawing may include a
-    // cutout that systemBars does not, while the platform value independently
-    // verifies the Compose padding against the actual host window.
-    val measuredTopDp = maxOf(platformTopDp, composeTopDp)
-    val measuredBottomDp = maxOf(platformBottomDp, composeBottomDp)
-    return Rect(
+private data class Design6VerticalInsets(
+    val platformTopDp: Float?,
+    val platformBottomDp: Float?,
+    val composeTopDp: Float,
+    val composeBottomDp: Float
+)
+
+private fun normalizedHostBoundsDp(rawHostBoundsDp: Rect, insets: Design6VerticalInsets): Rect =
+    Rect(
         left = rawHostBoundsDp.left,
-        top = rawHostBoundsDp.top - measuredTopDp,
+        top = rawHostBoundsDp.top - insets.composeTopDp,
         right = rawHostBoundsDp.right,
-        bottom = rawHostBoundsDp.bottom + measuredBottomDp
+        bottom = rawHostBoundsDp.bottom + insets.composeBottomDp
     )
-}
+
+private fun hostEdgesWithinTolerance(before: Rect, after: Rect, tolerance: Float): Boolean =
+    kotlin.math.abs(after.top - before.top) <= tolerance &&
+        kotlin.math.abs(after.bottom - before.bottom) <= tolerance
 
 private fun ComposeTestRule.captureInsetEvidence(
     stage: String,
@@ -319,10 +322,38 @@ class Design6QuietStatesEvidenceTest {
         }
     }
 
+    @Test fun normalizedHostEdgesRejectMovementDespitePlatformDisagreement() {
+        val tolerance = 1f
+        val before = Rect(0f, 24f, 360f, 787.2f)
+        val after = Rect(0f, 26f, 360f, 784f)
+        val beforeInsets = Design6VerticalInsets(24f, 12.8f, 24f, 12.8f)
+        val afterInsets = Design6VerticalInsets(26f, 16f, 26f, 16f)
+        val normalizedBefore = normalizedHostBoundsDp(before, beforeInsets)
+        assertTrue("inset-only motion must pass",
+            hostEdgesWithinTolerance(normalizedBefore, normalizedHostBoundsDp(after, afterInsets), tolerance))
+        val topDisagrees = afterInsets.copy(composeTopDp = beforeInsets.composeTopDp)
+        val bottomDisagrees = afterInsets.copy(composeBottomDp = beforeInsets.composeBottomDp)
+        assertTrue("2 dp top motion must fail even if platform moved",
+            !hostEdgesWithinTolerance(normalizedBefore, normalizedHostBoundsDp(after, topDisagrees), tolerance))
+        assertTrue("3.2 dp bottom motion must fail even if platform moved",
+            !hostEdgesWithinTolerance(normalizedBefore, normalizedHostBoundsDp(after, bottomDisagrees), tolerance))
+        assertTrue("exactly 1 dp must pass",
+            hostEdgesWithinTolerance(normalizedBefore,
+                normalizedHostBoundsDp(Rect(0f, 27f, 360f, 783f), afterInsets), tolerance))
+        assertTrue("more than 1 dp must fail even if insets agree",
+            !hostEdgesWithinTolerance(normalizedBefore,
+                normalizedHostBoundsDp(Rect(0f, 27.25f, 360f, 784f), afterInsets), tolerance))
+    }
+
+    @OptIn(ExperimentalLayoutApi::class)
     @Test fun photosQuietLineHoldsTheContentAreaWhenMediaArrives() {
         var dark by mutableStateOf(false)
         var items by mutableStateOf<List<MediaRecord>>(emptyList())
-        var insetEvidence by mutableStateOf<Design6InsetEvidence?>(null)
+        // No consuming ancestor above this harness's safeDrawing wrapper.
+        // Read the insets it actually consumes, rather than assuming platform
+        // insets were applied to the Compose host.
+        var appliedSafeDrawing: WindowInsets = WindowInsets(0, 0, 0, 0)
+        var readInsetEvidence: () -> Design6InsetEvidence? = { null }
         val invented = inventedMedia(24, 913_600_000L)
         compose.setContent {
             val density = LocalDensity.current
@@ -336,7 +367,8 @@ class Design6QuietStatesEvidenceTest {
             AtlasGalleryTheme(dark = dark) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Box(Modifier.fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .onConsumedWindowInsetsChanged { appliedSafeDrawing = it }) {
                         AtlasTimelineGallery(
                             items = items,
                             sort = TimelineSort.NEWEST,
@@ -344,55 +376,60 @@ class Design6QuietStatesEvidenceTest {
                             onOpen = {},
                             modifier = Modifier.fillMaxSize().testTag("photos-136-area")
                                 .onGloballyPositioned { coordinates ->
-                                    val root = view.rootView
-                                    val windowLocation = IntArray(2)
-                                    root.getLocationOnScreen(windowLocation)
-                                    val platformInsets = view.rootWindowInsets
-                                    val statusPx = platformInsets?.getInsets(
-                                        PlatformWindowInsets.Type.statusBars())
-                                    val navigationPx = platformInsets?.getInsets(
-                                        PlatformWindowInsets.Type.navigationBars())
-                                    val systemPx = platformInsets?.getInsets(
-                                        PlatformWindowInsets.Type.systemBars())
-                                    val cutoutPx = platformInsets?.getInsets(
-                                        PlatformWindowInsets.Type.displayCutout())
-                                    val bounds = coordinates.boundsInRoot()
-                                    val rawHostBoundsDp = Rect(
-                                        bounds.left / densityScale,
-                                        bounds.top / densityScale,
-                                        bounds.right / densityScale,
-                                        bounds.bottom / densityScale
-                                    )
-                                    val platformTopDp = maxOf(
-                                        systemPx?.top ?: 0,
-                                        cutoutPx?.top ?: 0
-                                    ) / densityScale
-                                    val platformBottomDp = maxOf(
-                                        systemPx?.bottom ?: 0,
-                                        cutoutPx?.bottom ?: 0
-                                    ) / densityScale
-                                    val composeTopDp = safeDrawing.getTop(density) / densityScale
-                                    val composeBottomDp = safeDrawing.getBottom(density) / densityScale
-                                    insetEvidence = Design6InsetEvidence(
-                                        layoutAtUptimeMs = SystemClock.uptimeMillis(),
-                                        windowBoundsPx = "${windowLocation[0]},${windowLocation[1]} ${root.width}x${root.height}",
-                                        statusBarsPx = statusPx?.toString() ?: "unavailable",
-                                        navigationBarsPx = navigationPx?.toString() ?: "unavailable",
-                                        systemBarsPx = systemPx?.toString() ?: "unavailable",
-                                        displayCutoutPx = cutoutPx?.toString() ?: "unavailable",
-                                        safeDrawingDp = "${safeDrawing.getLeft(density, layoutDirection) / densityScale},${safeDrawing.getTop(density) / densityScale},${safeDrawing.getRight(density, layoutDirection) / densityScale},${safeDrawing.getBottom(density) / densityScale}",
-                                        composeStatusBarsDp = "${statusBars.getLeft(density, layoutDirection) / densityScale},${statusBars.getTop(density) / densityScale},${statusBars.getRight(density, layoutDirection) / densityScale},${statusBars.getBottom(density) / densityScale}",
-                                        composeNavigationBarsDp = "${navigationBars.getLeft(density, layoutDirection) / densityScale},${navigationBars.getTop(density) / densityScale},${navigationBars.getRight(density, layoutDirection) / densityScale},${navigationBars.getBottom(density) / densityScale}",
-                                        contentBoundsDp = "${bounds.left / densityScale},${bounds.top / densityScale},${bounds.right / densityScale},${bounds.bottom / densityScale}",
-                                        rawHostBoundsDp = rawHostBoundsDp,
-                                        normalizedHostBoundsDp = normalizedHostBoundsDp(
-                                            rawHostBoundsDp = rawHostBoundsDp,
-                                            platformTopDp = platformTopDp,
-                                            platformBottomDp = platformBottomDp,
-                                            composeTopDp = composeTopDp,
-                                            composeBottomDp = composeBottomDp
-                                        )
-                                    )
+                                    val layoutAtUptimeMs = SystemClock.uptimeMillis()
+                                    // Sample current insets and bounds together on the UI thread.
+                                    readInsetEvidence = {
+                                        if (!coordinates.isAttached) null else {
+                                            val root = view.rootView
+                                            val windowLocation = IntArray(2)
+                                            root.getLocationOnScreen(windowLocation)
+                                            val platformInsets = view.rootWindowInsets
+                                            val statusPx = platformInsets?.getInsets(
+                                                PlatformWindowInsets.Type.statusBars())
+                                            val navigationPx = platformInsets?.getInsets(
+                                                PlatformWindowInsets.Type.navigationBars())
+                                            val systemPx = platformInsets?.getInsets(
+                                                PlatformWindowInsets.Type.systemBars())
+                                            val cutoutPx = platformInsets?.getInsets(
+                                                PlatformWindowInsets.Type.displayCutout())
+                                            val bounds = coordinates.boundsInRoot()
+                                            val rawHostBoundsDp = Rect(
+                                                bounds.left / densityScale,
+                                                bounds.top / densityScale,
+                                                bounds.right / densityScale,
+                                                bounds.bottom / densityScale
+                                            )
+                                            val platformSafePx = platformInsets?.getInsets(
+                                                PlatformWindowInsets.Type.systemBars() or
+                                                    PlatformWindowInsets.Type.displayCutout() or
+                                                    PlatformWindowInsets.Type.ime())
+                                            val platformTopDp = platformSafePx?.top?.let { it / densityScale }
+                                            val platformBottomDp = platformSafePx?.bottom?.let { it / densityScale }
+                                            val composeTopDp = appliedSafeDrawing.getTop(density) / densityScale
+                                            val composeBottomDp = appliedSafeDrawing.getBottom(density) / densityScale
+                                            val verticalInsets = Design6VerticalInsets(
+                                                platformTopDp, platformBottomDp, composeTopDp, composeBottomDp)
+                                            // A mismatch is diagnostic, never a correction to host movement.
+                                            val platformMinusAppliedDp =
+                                                "top=${platformTopDp?.minus(composeTopDp)},bottom=${platformBottomDp?.minus(composeBottomDp)}"
+                                            Design6InsetEvidence(
+                                                layoutAtUptimeMs = layoutAtUptimeMs,
+                                                windowBoundsPx = "${windowLocation[0]},${windowLocation[1]} ${root.width}x${root.height}",
+                                                statusBarsPx = statusPx?.toString() ?: "unavailable",
+                                                navigationBarsPx = navigationPx?.toString() ?: "unavailable",
+                                                systemBarsPx = systemPx?.toString() ?: "unavailable",
+                                                displayCutoutPx = cutoutPx?.toString() ?: "unavailable",
+                                                safeDrawingDp = "${safeDrawing.getLeft(density, layoutDirection) / densityScale},${safeDrawing.getTop(density) / densityScale},${safeDrawing.getRight(density, layoutDirection) / densityScale},${safeDrawing.getBottom(density) / densityScale}",
+                                                composeStatusBarsDp = "${statusBars.getLeft(density, layoutDirection) / densityScale},${statusBars.getTop(density) / densityScale},${statusBars.getRight(density, layoutDirection) / densityScale},${statusBars.getBottom(density) / densityScale}",
+                                                composeNavigationBarsDp = "${navigationBars.getLeft(density, layoutDirection) / densityScale},${navigationBars.getTop(density) / densityScale},${navigationBars.getRight(density, layoutDirection) / densityScale},${navigationBars.getBottom(density) / densityScale}",
+                                                contentBoundsDp = "${bounds.left / densityScale},${bounds.top / densityScale},${bounds.right / densityScale},${bounds.bottom / densityScale}",
+                                                rawHostBoundsDp = rawHostBoundsDp,
+                                                verticalInsets = verticalInsets,
+                                                platformMinusAppliedDp = platformMinusAppliedDp,
+                                                normalizedHostBoundsDp = normalizedHostBoundsDp(rawHostBoundsDp, verticalInsets)
+                                            )
+                                        }
+                                    }
                                 },
                             viewKey = "photos-136-jump")
                     }
@@ -406,11 +443,11 @@ class Design6QuietStatesEvidenceTest {
             // state immediately preceding the next theme change.
             compose.runOnIdle { items = emptyList() }
             compose.waitForIdle()
-            compose.captureInsetEvidence("before-theme-$mode") { insetEvidence }
+            compose.captureInsetEvidence("before-theme-$mode") { readInsetEvidence() }
 
             compose.runOnIdle { dark = theme }
             val beforeEvidence = compose.captureInsetEvidence("after-theme-before-media-$mode") {
-                insetEvidence
+                readInsetEvidence()
             }
             val normalizedBefore = beforeEvidence.normalizedHostBoundsDp
             val area = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
@@ -429,19 +466,14 @@ class Design6QuietStatesEvidenceTest {
             }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-timeline-empty").assertDoesNotExist()
-            val afterEvidence = compose.captureInsetEvidence("after-media-$mode") { insetEvidence }
+            val afterEvidence = compose.captureInsetEvidence("after-media-$mode") { readInsetEvidence() }
             val normalizedAfter = afterEvidence.normalizedHostBoundsDp
-            val loaded = compose.onNodeWithTag("photos-136-area").getBoundsInRoot()
-            // Content arrives in the same box: nothing above or around it moved.
-            assertTrue("content area moved: $area -> $loaded",
-                kotlin.math.abs((loaded.top - area.top).value) <= tolerance &&
-                    kotlin.math.abs((loaded.bottom - area.bottom).value) <= tolerance)
+            // Raw bounds remain diagnostic; only normalized app-owned motion is gated.
             assertTrue(
                 "normalized host moved ($mode): " +
                     "raw=${beforeEvidence.rawHostBoundsDp} -> ${afterEvidence.rawHostBoundsDp}; " +
                     "normalized=$normalizedBefore -> $normalizedAfter",
-                kotlin.math.abs((normalizedAfter.top - normalizedBefore.top)) <= tolerance &&
-                    kotlin.math.abs((normalizedAfter.bottom - normalizedBefore.bottom)) <= tolerance
+                hostEdgesWithinTolerance(normalizedBefore, normalizedAfter, tolerance)
             )
             saveUiEvidence("photos-136-jump-after-$mode.png")
         }

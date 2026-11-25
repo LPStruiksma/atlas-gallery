@@ -47,6 +47,22 @@ test('Design6 media arrival compares normalized host edges within 1 dp', () => {
   assert.ok(source.includes('composeTopDp'));
   assert.ok(source.includes('composeBottomDp'));
   assert.ok(source.includes('raw=${beforeEvidence.rawHostBoundsDp}'));
-  assert.ok(source.includes('kotlin.math.abs((normalizedAfter.top - normalizedBefore.top)'));
-  assert.ok(source.includes('kotlin.math.abs((normalizedAfter.bottom - normalizedBefore.bottom)'));
+  assert.ok(source.includes('kotlin.math.abs(after.top - before.top) <= tolerance'));
+  assert.ok(source.includes('kotlin.math.abs(after.bottom - before.bottom) <= tolerance'));
+});
+
+test('Design6 uses only consumed Compose padding and has no raw movement gate', () => {
+  assert.ok(source.includes('onConsumedWindowInsetsChanged'));
+  assert.ok(source.includes('appliedSafeDrawing.getTop(density)'));
+  assert.ok(source.includes('appliedSafeDrawing.getBottom(density)'));
+  assert.ok(source.includes('platformMinusAppliedDp'));
+  const normalize = source.slice(source.indexOf('private fun normalizedHostBoundsDp('),
+    source.indexOf('private fun hostEdgesWithinTolerance('));
+  assert.match(normalize, /rawHostBoundsDp\.top - insets\.composeTopDp/);
+  assert.match(normalize, /rawHostBoundsDp\.bottom \+ insets\.composeBottomDp/);
+  assert.doesNotMatch(normalize, /platform|\bmaxOf\s*\(/);
+  assert.doesNotMatch(source, /loaded\.(top|bottom)\s*-\s*area\./);
+  assert.ok(!source.includes('content area moved:'));
+  assert.ok(source.includes('normalizedHostEdgesRejectMovementDespitePlatformDisagreement'));
+  assert.match(source, /hostEdgesWithinTolerance\(normalizedBefore, normalizedAfter, tolerance\)/);
 });
