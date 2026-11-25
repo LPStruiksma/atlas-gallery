@@ -409,7 +409,9 @@ internal fun PersonNameDialog(
     busy: Boolean = false,
     error: String? = null,
     valid: Boolean = true,
-    onRetry: (() -> Unit)? = null
+    editing: Boolean = initial.isNotEmpty(),
+    loading: Boolean = false,
+    onRetry: ((String) -> Unit)? = null
 ) {
     var text by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
@@ -429,7 +431,7 @@ internal fun PersonNameDialog(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                     Column(Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(if (initial.isEmpty()) "Add name" else "Edit name",
+                        Text(if (editing) "Edit name" else "Add name",
                             style = MaterialTheme.typography.titleMedium)
                         sourcePreview()
                         if (valid) {
@@ -440,7 +442,7 @@ internal fun PersonNameDialog(
                                 keyboardOptions = KeyboardOptions(
                                     capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(onDone = {
-                                    if (!busy && error == null && text.isNotBlank()) {
+                                    if (!busy && !loading && error == null && text.isNotBlank()) {
                                         keyboard?.hide()
                                         onSave(text)
                                     }
@@ -450,15 +452,16 @@ internal fun PersonNameDialog(
                         }
                         Text("Name search", style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (busy || !valid || error != null) {
+                        if (busy || loading || !valid || error != null) {
                             Row(Modifier.heightIn(min = 48.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (busy) CircularProgressIndicator(Modifier.size(24.dp))
-                                Text(if (busy) "Saving name…" else error ?: "Group changed.",
+                                if (busy || loading) CircularProgressIndicator(Modifier.size(24.dp))
+                                Text(if (busy) "Saving name…" else if (loading) "Loading face…"
+                                    else error ?: "Group changed.",
                                     modifier = Modifier.weight(1f))
-                                if (!busy && valid && onRetry != null)
-                                    TextButton(onClick = onRetry) { Text("Retry") }
+                                if (!busy && !loading && valid && onRetry != null)
+                                    TextButton(onClick = { onRetry(text) }) { Text("Retry") }
                             }
                         } else if (shown.isEmpty()) {
                             Text(if (text.isBlank()) "Type a name" else "No matching names",
@@ -494,7 +497,7 @@ internal fun PersonNameDialog(
                                 Text(if (valid) "Cancel" else "Return")
                             }
                             Button(onClick = { keyboard?.hide(); onSave(text) },
-                                enabled = valid && !busy && error == null && text.isNotBlank(),
+                                enabled = valid && !busy && !loading && error == null && text.isNotBlank(),
                                 modifier = Modifier.heightIn(min = 48.dp)
                                     .testTag("atlas-person-name-save")) { Text("Save") }
                         }
