@@ -18,11 +18,22 @@ class PerformanceReportTest {
 
     @Test fun instrumentedActionsSayNoDataYetAndUnhookedSayNotMeasured() {
         val rows = PerformanceReport.actions(PerformanceAggregates())
-        assertEquals(22, rows.size)
+        assertEquals(23, rows.size)
         rows.take(11).forEach { assertEquals(PerformanceReport.NO_DATA, it.value) }
-        rows.drop(11).forEach { assertEquals(PerformanceReport.NOT_MEASURED, it.value) }
+        rows.drop(11).dropLast(1).forEach { assertEquals(PerformanceReport.NOT_MEASURED, it.value) }
         assertEquals("atlas-perf-action_a1_ms", rows.first().tag)
-        assertEquals("atlas-perf-action_a22_ms", rows.last().tag)
+        assertEquals("atlas-perf-action_a22_ms", rows[21].tag)
+        assertEquals("atlas-perf-warm_resume_ms", rows.last().tag)
+        assertEquals(PerformanceReport.NO_DATA, rows.last().value)
+    }
+
+    @Test fun warmResumeShowsCountMedianAndP90WithoutDuplicatingCold() {
+        val p = PerformanceAggregates()
+        listOf(20.0, 10.0, 40.0).forEach { p.record("warm_resume_ms", it) }
+        val row = PerformanceReport.actions(p).single { it.tag == "atlas-perf-warm_resume_ms" }
+        assertEquals("p50 20 ms · p90 40 ms · p95 40 ms · 3 samples", row.value)
+        assertTrue(row.hasData)
+        assertFalse(PerformanceReport.overview(p).first().hasData)
     }
 
     @Test fun labelsAreHumanWithoutInternalKeys() {

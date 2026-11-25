@@ -99,7 +99,7 @@ class PerformanceSettingsJourneyTest {
                         bottom <= viewportBottom + 1f)
                 }
                 if (!populated) {
-                    assertEquals(6 + PerformanceReport.INSTRUMENTED_ACTIONS,
+                    assertEquals(7 + PerformanceReport.INSTRUMENTED_ACTIONS,
                         compose.onAllNodesWithText(PerformanceReport.NO_DATA)
                             .fetchSemanticsNodes().size)
                 }
