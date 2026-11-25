@@ -574,7 +574,7 @@ internal object SamePersonQueueCommits {
                         val post = host.liveReview(request.epoch)
                         val checkpoint = post?.undoHistory?.lastOrNull()
                         val own = post != null && post.undoHistory.size == live.undoHistory.size + 1 &&
-                            checkpoint?.clusters === live.clusters &&
+                            checkpoint != null && checkpoint.clusters === live.clusters &&
                             checkpoint.names == live.names && checkpoint.hidden == live.hidden
                         QueueNameResult.Saved(post?.sourceGeneration?.takeIf { own }, action)
                     } else QueueNameResult.Refused
