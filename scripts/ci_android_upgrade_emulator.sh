@@ -340,7 +340,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
           "$stress_out" | cut -c1-600 | head -60 || true
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
-      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PERF602:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
+      timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_SCALE:V ATLAS_PERF602:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
         ATLAS_TOUCH1:V ATLAS_WINDOWS:V AtlasSystemWindows:V AtlasUiWait:E ImeTracker:I || true
       echo "::endgroup::"
     done

@@ -309,11 +309,24 @@ internal class UniformGridLevel(
 internal object PinchCrossTiming {
     @Volatile var sink: ((kind: String, nanos: Long) -> Unit)? = null
 
+    /** Diagnostic (#1047, throwaway branch): wall ns, thread-CPU ns and process GC-count delta per call. */
+    @Volatile var detailSink: ((kind: String, wallNanos: Long, cpuNanos: Long, gcDelta: Long) -> Unit)? = null
+
+    fun gcCount(): Long = android.os.Debug.getRuntimeStat("art.gc.gc-count")?.toLongOrNull() ?: -1L
+
     inline fun <T> measure(kind: String, block: () -> T): T {
         val record = sink ?: return block()
+        val detail = detailSink
+        val gc0 = if (detail != null) gcCount() else 0L
+        val cpu0 = if (detail != null) android.os.Debug.threadCpuTimeNanos() else 0L
         val start = System.nanoTime()
         val result = block()
-        record(kind, System.nanoTime() - start)
+        val wall = System.nanoTime() - start
+        if (detail != null) {
+            val cpu = android.os.Debug.threadCpuTimeNanos() - cpu0
+            detail(kind, wall, cpu, gcCount() - gc0)
+        }
+        record(kind, wall)
         return result
     }
 }

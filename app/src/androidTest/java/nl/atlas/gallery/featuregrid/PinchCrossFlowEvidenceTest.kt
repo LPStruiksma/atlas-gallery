@@ -496,6 +496,14 @@ class PinchCrossFlowEvidenceTest {
         PinchCrossTiming.sink = { kind, nanos ->
             spent.getOrPut(kind) { Collections.synchronizedList(ArrayList()) } += nanos / 1_000_000.0
         }
+        // #1047 diagnostic: every bitmaps call as [wall ms, thread-CPU ms, GC count delta].
+        val bitmapDetail = Collections.synchronizedList(ArrayList<DoubleArray>())
+        PinchCrossTiming.detailSink = { kind, wall, cpu, gc ->
+            if (kind == "bitmaps") bitmapDetail += doubleArrayOf(wall / 1e6, cpu / 1e6, gc.toDouble())
+        }
+        val gcStatKeys = listOf("art.gc.gc-count", "art.gc.gc-time", "art.gc.blocking-gc-count",
+            "art.gc.blocking-gc-time", "art.gc.bytes-allocated", "art.gc.bytes-freed")
+        val gcBefore = gcStatKeys.associateWith { android.os.Debug.getRuntimeStat(it) }
         val ms = try { recordFrames {
             val (_, local) = focusPoint(.6f)
             val pinch = Pinch(local, 260f)
@@ -508,7 +516,13 @@ class PinchCrossFlowEvidenceTest {
             back.to(-1f, 16)
             back.release()
             grid.assert(columns(4))
-        } } finally { PinchCrossTiming.sink = null }
+        } } finally { PinchCrossTiming.sink = null; PinchCrossTiming.detailSink = null }
+        val gcAfter = gcStatKeys.associateWith { android.os.Debug.getRuntimeStat(it) }
+        val gcJson = JSONObject()
+        for (k in gcStatKeys) gcJson.put(k, JSONObject().put("before", gcBefore[k]).put("after", gcAfter[k]))
+        val detailJson = org.json.JSONArray()
+        synchronized(bitmapDetail) { bitmapDetail.forEach { d -> detailJson.put(org.json.JSONArray()
+            .put(BenchmarkReport.round1(d[0])).put(BenchmarkReport.round1(d[1])).put(d[2].toLong())) } }
         val own = synchronized(spent) { spent.mapValues { (_, v) -> synchronized(v) { v.toDoubleArray() } } }
         val ownJson = JSONObject()
         for ((kind, v) in own) ownJson.put(kind, JSONObject().put("n", v.size)
@@ -530,6 +544,8 @@ class PinchCrossFlowEvidenceTest {
             .put("scroll_frames", scrollMs.size)
             .put("scroll_p90_ms", BenchmarkReport.round1(scrollP90))
             .put("pinch_code_ms", ownJson)
+            .put("diag1047_bitmaps_wall_cpu_gc", detailJson)
+            .put("diag1047_gc_stats", gcJson)
             .toString()
         println("${BenchmarkReport.TAG} 711-pinch-150k json $report")
         Log.i(BenchmarkReport.TAG, "711-pinch-150k json $report")
@@ -543,7 +559,7 @@ class PinchCrossFlowEvidenceTest {
         // The pinch code's own per-frame work (pose of each layer) and its
         // per-level work (ghost geometry, cache lookup, draw recording) each
         // fit one 60 Hz frame at p90 even on the emulator.
-        for (kind in listOf("pose", "geometry", "draw")) {
+        for (kind in listOf("pose", "geometry", "draw", "bitmaps")) {
             val v = own[kind]
             assertTrue("pinch code '$kind' recorded: $report", v != null && v.isNotEmpty())
         }
