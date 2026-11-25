@@ -1,5 +1,6 @@
 package nl.atlas.gallery
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -458,51 +462,57 @@ internal fun SamePersonQueueRoute(
                     })
             }
         } else if (current) {
-            var portraitsReady by remember(request, candidate) { mutableStateOf(false) }
             var portraitAttempt by remember(request, candidate) { mutableIntStateOf(0) }
-            var portraitFailed by remember(request, candidate) { mutableStateOf(false) }
-            LaunchedEffect(request, candidate, portraitAttempt) {
-                portraitsReady = false
-                portraitFailed = false
-                val ready = withContext(Dispatchers.IO) {
-                    request.samples.firstOrNull()?.let {
-                        host.faceCrop(request.epoch, it.localHex) != null
-                    } == true &&
-                        candidate.observations.firstOrNull()?.let {
-                            host.faceCrop(request.epoch, it.localHex) != null
-                        } == true
-                }
-                portraitsReady = ready && host.scopeCurrent(request.epoch)
-                portraitFailed = !portraitsReady
-            }
-            PersonMergeConfirm(request.facts.name, candidate,
-                onDismiss = { if (!nameBusy) { nameCandidate = null; nameError = null } },
-                onMerge = { saveName(candidate.name, candidate) },
-                portraits = {
-                    Row(Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(request.samples.firstOrNull() to
-                            (request.facts.name ?: "Unnamed group"),
-                            candidate.observations.firstOrNull() to candidate.name)
-                            .forEachIndexed { index, (sample, label) ->
-                                Column(Modifier.weight(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Box(Modifier.size(112.dp).clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                        .testTag("atlas-same-queue-merge-face-$index"),
-                                        contentAlignment = Alignment.Center) {
-                                        PersonFaceImage(host, request.epoch, sample)
-                                    }
-                                    Text(label, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                }
-                            }
+            // Reset on identity, authorization version or retry. Readiness is
+            // derived from exactly the bitmaps drawn below, not a second decode.
+            key(request, candidate, version, portraitAttempt) {
+                var sourcePortrait by remember { mutableStateOf<ImageBitmap?>(null) }
+                var candidatePortrait by remember { mutableStateOf<ImageBitmap?>(null) }
+                var portraitFailed by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    suspend fun load(face: NativeFaceObservationId?): ImageBitmap? {
+                        val image = withContext(Dispatchers.IO) {
+                            face?.let { host.faceCrop(request.epoch, it.localHex) }?.asImageBitmap()
+                        }
+                        return image?.takeIf { host.scopeCurrent(request.epoch) }
                     }
-                }, enabled = portraitsReady || portraitFailed, busy = nameBusy,
-                loading = !portraitsReady && !portraitFailed,
-                error = nameError ?: if (portraitFailed) "Face unavailable. Try again." else null,
-                onRetry = {
-                    if (portraitFailed) portraitAttempt++ else saveName(candidate.name, candidate)
-                })
+                    sourcePortrait = load(request.samples.firstOrNull())
+                    candidatePortrait = load(candidate.observations.firstOrNull())
+                    portraitFailed = sourcePortrait == null || candidatePortrait == null
+                }
+                val portraitsReady = sourcePortrait != null && candidatePortrait != null
+                PersonMergeConfirm(request.facts.name, candidate,
+                    onDismiss = { if (!nameBusy) { nameCandidate = null; nameError = null } },
+                    onMerge = { if (portraitsReady) saveName(candidate.name, candidate) },
+                    portraits = {
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(sourcePortrait to (request.facts.name ?: "Unnamed group"),
+                                candidatePortrait to candidate.name)
+                                .forEachIndexed { index, (image, label) ->
+                                    Column(Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(Modifier.size(112.dp).clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                            .testTag("atlas-same-queue-merge-face-$index"),
+                                            contentAlignment = Alignment.Center) {
+                                            if (image != null) {
+                                                Image(image, "Face", Modifier.fillMaxSize()
+                                                    .testTag("atlas-same-queue-merge-image-$index"),
+                                                    contentScale = ContentScale.Crop)
+                                            } else PersonPortraitFallback()
+                                        }
+                                        Text(label, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                        }
+                    }, enabled = portraitsReady || portraitFailed, busy = nameBusy,
+                    loading = !portraitsReady && !portraitFailed,
+                    error = nameError ?: if (portraitFailed) "Face unavailable. Try again." else null,
+                    onRetry = {
+                        if (portraitFailed) portraitAttempt++ else if (portraitsReady) saveName(candidate.name, candidate)
+                    })
+            }
         } else {
             // A write is in flight; don't expose captured labels or pixels.
             androidx.compose.material3.AlertDialog(onDismissRequest = {},

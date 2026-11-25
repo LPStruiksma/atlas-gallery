@@ -1,5 +1,10 @@
 package nl.atlas.gallery
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -58,6 +63,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -73,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import nl.atlas.gallery.featuredesign.AtlasMotion
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featuregrid.AtlasRatioGallery
@@ -569,9 +576,20 @@ internal fun PersonNameDialog(
     )
 }
 
-/** Indeterminate held sphere: a truthful static arc (also safe for reduced motion). */
+/** Indeterminate held sphere: climbs its arc while working, without fake counts. */
 @Composable
 private fun QueueNamingProgress() {
+    val context = LocalContext.current
+    val reducedMotion = AtlasMotion.animationsDisabled(context)
+    val phase = if (reducedMotion) 0.15f else {
+        val transition = rememberInfiniteTransition(label = "naming held sphere")
+        val animated by transition.animateFloat(initialValue = 0.08f, targetValue = 0.92f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(900, easing = AtlasMotion.SineInOut70),
+                repeatMode = RepeatMode.Reverse),
+            label = "sphere arc")
+        animated
+    }
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     val brand = MaterialTheme.colorScheme.primary
     Canvas(Modifier.size(32.dp).testTag("atlas-person-name-progress")) {
@@ -581,8 +599,10 @@ private fun QueueNamingProgress() {
             topLeft = Offset(origin.x - radius, origin.y - radius),
             size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
             style = Stroke(2.dp.toPx()))
+        val angle = Math.PI * (1.0 + phase)
         drawCircle(brand, radius = 4.dp.toPx(),
-            center = Offset(origin.x - radius * .89f, origin.y - radius * .46f))
+            center = Offset(origin.x + radius * kotlin.math.cos(angle).toFloat(),
+                origin.y + radius * kotlin.math.sin(angle).toFloat()))
     }
 }
 

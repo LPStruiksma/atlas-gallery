@@ -8,6 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
@@ -761,6 +763,15 @@ class Hub3QueueNamingJourneyTest {
     }
 
     @Test fun hostConfirmationLoadingWithReducedMotion() = withAnimatorScale("0") {
+        hostConfirmationLoading(reduced = true)
+    }
+
+    @Test fun hostConfirmationLoadingWithMotion() = withAnimatorScale("1") {
+        hostConfirmationLoading(reduced = false)
+    }
+
+    private fun hostConfirmationLoading(reduced: Boolean) {
+        val mode = if (reduced) "reduced" else "motion"
         val host = askingHost(twoPairs = true)
         val epoch = checkNotNull(host.displayEpoch("gallery-1"))
         val initial = checkNotNull(host.liveReview(epoch))
@@ -785,20 +796,44 @@ class Hub3QueueNamingJourneyTest {
             typeName("Synthetic separate")
             compose.tap(hasTestTag("atlas-person-name-suggestion"))
             assertTrue("real candidate crop requested", cropEntered.await(20, TimeUnit.SECONDS))
+            compose.waitForNode(hasTestTag("atlas-same-queue-merge-image-0"), WAIT_MS,
+                useUnmergedTree = true)
+            compose.onNodeWithTag("atlas-same-queue-merge-image-0", useUnmergedTree = true).assertIsDisplayed()
+            assertTrue("candidate must still be a fallback",
+                !compose.exists(hasTestTag("atlas-same-queue-merge-image-1"), useUnmergedTree = true))
             compose.onNodeWithTag("atlas-person-merge-confirm").assertIsNotEnabled()
             compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
-            assertEquals(0f, testShell("settings get global animator_duration_scale").trim().toFloat(), 0f)
-            compose.awaitScreenStill("hub3-host-confirm-loading-reduced")
-            saveUiEvidence("hub3-host-confirm-loading-reduced.png")
+            assertEquals(if (reduced) 0f else 1f,
+                testShell("settings get global animator_duration_scale").trim().toFloat(), 0f)
+            val previousAutoAdvance = compose.mainClock.autoAdvance
+            compose.mainClock.autoAdvance = false
+            try {
+                fun pixels(): List<androidx.compose.ui.graphics.Color> {
+                    val map = compose.onNodeWithTag("atlas-person-name-progress")
+                        .captureToImage().toPixelMap()
+                    return (0 until map.height).flatMap { y ->
+                        (0 until map.width).map { x -> map[x, y] }
+                    }
+                }
+                compose.mainClock.advanceTimeBy(160)
+                val before = pixels()
+                saveUiEvidence("hub3-host-confirm-loading-$mode.png")
+                compose.mainClock.advanceTimeBy(480)
+                val after = pixels()
+                assertEquals("only the normal-motion sphere moves", reduced, before == after)
+                if (!reduced) saveUiEvidence("hub3-host-confirm-loading-motion-later.png")
+            } finally {
+                compose.mainClock.autoAdvance = previousAutoAdvance
+            }
             assertEquals(named.names, checkNotNull(store.peopleReview(epoch)).names)
         } finally {
             releaseCrop.countDown()
         }
         enabled("atlas-person-merge-confirm")
-        compose.onNodeWithTag("atlas-same-queue-merge-face-0", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("atlas-same-queue-merge-face-1", useUnmergedTree = true).assertIsDisplayed()
-        compose.awaitScreenStill("hub3-host-confirm-ready-reduced")
-        saveUiEvidence("hub3-host-confirm-ready-reduced.png")
+        compose.onNodeWithTag("atlas-same-queue-merge-image-0", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("atlas-same-queue-merge-image-1", useUnmergedTree = true).assertIsDisplayed()
+        compose.awaitScreenStill("hub3-host-confirm-ready-$mode")
+        saveUiEvidence("hub3-host-confirm-ready-$mode.png")
         compose.tap(hasText("Cancel"))
         enabled("atlas-person-name-save")
         assertEquals(named.clusters.reviews, checkNotNull(store.peopleReview(epoch)).clusters.reviews)

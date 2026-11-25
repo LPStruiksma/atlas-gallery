@@ -24,3 +24,6 @@ hub3-prior-skip-undo
 hub3-commit-stale
 hub3-host-confirm-loading-reduced
 hub3-host-confirm-ready-reduced
+hub3-host-confirm-loading-motion
+hub3-host-confirm-loading-motion-later
+hub3-host-confirm-ready-motion
