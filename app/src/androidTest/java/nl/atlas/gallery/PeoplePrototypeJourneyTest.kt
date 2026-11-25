@@ -281,16 +281,28 @@ class PeoplePrototypeJourneyTest {
         saveUiEvidence("people-39-during-scan.png")
 
         // 4. The person page shows all of the identity's photos.
+        val a10Before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
         compose.tap(hasTestTag("atlas-native-person-album"))
         compose.waitForNode(hasText(NAME, substring = true), WAIT_MS, useUnmergedTree = true)
         compose.awaitThat("person page shows all $PHOTOS photos", WAIT_MS) { fixtureTilesShown() == specs.keys }
+        compose.awaitThat("native People entry records one A10 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a10_ms").count == a10Before + 1
+        }
         compose.awaitScreenStill("prototype-person-page")
+        assertEquals(a10Before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
         saveUiEvidence("prototype-person-page.png")
         compose.tap(hasTestTag("atlas-header-back"))
         compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
 
         // 5. Search by the name finds exactly those photos.
+        val a11Before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
         compose.tap(hasTestTag("atlas-nav-search"))
+        compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.awaitThat("bottom Search entry records one A11 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == a11Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(a11Before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
         compose.typeText(hasTestTag("atlas-search-field"), NAME.take(4))
         compose.waitForNode(hasTestTag("atlas-search-person-suggestion"), WAIT_MS, useUnmergedTree = true)
         compose.tap(firstOf(hasTestTag("atlas-search-person-suggestion")))
