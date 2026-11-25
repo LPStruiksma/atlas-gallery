@@ -106,7 +106,7 @@ import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.performTextClearance
 import nl.atlas.gallery.featurepeople.cluster.FaceMetric
 import nl.atlas.gallery.featurepersistence.FaceEmbeddingVectorCodec
-import nl.atlas.gallery.testkit.keyboardInsetPx
+import nl.atlas.gallery.testkit.awaitKeyboardShown
 import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.hideKeyboard
 import org.junit.rules.TestRule
@@ -371,7 +371,9 @@ class Hub3QueueNamingJourneyTest {
         if (replace) compose.onNodeWithTag("atlas-person-name-field").performTextClearance()
         compose.typeText(hasTestTag("atlas-person-name-field"), value, KeyboardAfter.Shown)
         enabled("atlas-person-name-save")
-        assertTrue("keyboard inset is real", compose.keyboardInsetPx() > 0)
+        // A focused Dialog may have zero local inset while the IME is visible.
+        // Use the kit’s settled keyboard height (including its separate window).
+        assertTrue("keyboard is visible", compose.awaitKeyboardShown() > 0)
         compose.onNodeWithTag("atlas-person-name-field").assertIsDisplayed()
         compose.onNodeWithTag("atlas-person-name-save").assertIsDisplayed()
         val sources = compose.onAllNodesWithTag("atlas-same-queue-name-source", useUnmergedTree = true)
