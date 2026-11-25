@@ -8,7 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.captureToImage
+import nl.atlas.gallery.testkit.captureWhole
+import nl.atlas.gallery.testkit.advanceVirtualTime
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -810,15 +811,15 @@ class Hub3QueueNamingJourneyTest {
             try {
                 fun pixels(): List<androidx.compose.ui.graphics.Color> {
                     val map = compose.onNodeWithTag("atlas-person-name-progress")
-                        .captureToImage().toPixelMap()
+                        .captureWhole().toPixelMap()
                     return (0 until map.height).flatMap { y ->
                         (0 until map.width).map { x -> map[x, y] }
                     }
                 }
-                compose.mainClock.advanceTimeBy(160)
+                compose.advanceVirtualTime(160)
                 val before = pixels()
                 saveUiEvidence("hub3-host-confirm-loading-$mode.png")
-                compose.mainClock.advanceTimeBy(480)
+                compose.advanceVirtualTime(480)
                 val after = pixels()
                 assertEquals("only the normal-motion sphere moves", reduced, before == after)
                 if (!reduced) saveUiEvidence("hub3-host-confirm-loading-motion-later.png")
