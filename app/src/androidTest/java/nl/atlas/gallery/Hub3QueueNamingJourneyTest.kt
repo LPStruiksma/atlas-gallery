@@ -110,6 +110,18 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 import kotlin.random.Random
+import org.junit.rules.TestName
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import nl.atlas.gallery.featurepeopleui.samePersonQueue
+import nl.atlas.gallery.featurepeopleui.samePersonSkipFingerprint
+import nl.atlas.gallery.featurepeopleui.SamePersonSkipPreferences
+import nl.atlas.gallery.featurepeopleui.applyCurrentPeopleReviewCommand
+import nl.atlas.gallery.featurepeopleui.samePersonQueueMixedSides
+import nl.atlas.gallery.featurepeopleui.samePersonQueueAnswer
+import nl.atlas.gallery.featurepeopleui.PersonNaming
+import nl.atlas.gallery.featurepeopleui.personNaming
+import nl.atlas.gallery.testkit.withAnimatorScale
 
 /**
  * #171: actual scoped queue route over an app-private store of invented faces.
@@ -129,6 +141,11 @@ class Hub3QueueNamingJourneyTest {
     @get:Rule val chain: RuleChain = RuleChain.outerRule(fixtureLifetime)
         .around(KeyboardRule(TestKeyboard.Fixed)).around(S24DisplayRule()).around(compose)
 
+    @get:Rule val testName = TestName()
+    @Volatile private var blockedCropUris: Set<String> = emptySet()
+    private val cropEntered = CountDownLatch(1)
+    private val releaseCrop = CountDownLatch(1)
+
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val target = instrumentation.targetContext
     private val dir = File(target.cacheDir, "hub3-queue-" + UUID.randomUUID())
@@ -144,7 +161,11 @@ class Hub3QueueNamingJourneyTest {
         val now = System.currentTimeMillis()
         val media = mutableListOf<FaceVisibleMedia>()
         val rows = mutableListOf<MediaRecord>()
-        for (i in 1..8) {
+        val count = if (testName.methodName in setOf(
+            "mixedSurvivesNamingUndo", "skipSurvivesNamingUndo",
+            "staleStoreGenerationRefusesInFlightNaming", "hostConfirmationLoadingWithReducedMotion"
+        )) 12 else 8
+        for (i in 1..count) {
             val spec = SyntheticFace.Spec(480, 480, 0.4f + 0.02f * i, 0.5f, 0.8f + 0.01f * i)
             val taken = now - i * 86_400_000L
             val uri = requireNotNull(target.contentResolver.insert(
@@ -194,6 +215,7 @@ class Hub3QueueNamingJourneyTest {
     }
 
     private fun finishFixture() {
+        releaseCrop.countDown()
         PeopleScanWorkRuntime.clear()
         try {
             if (::store.isInitialized) store.close()
@@ -238,7 +260,13 @@ class Hub3QueueNamingJourneyTest {
                 override fun later() = Unit
                 override fun cancel() = Unit
             },
-            faceCropDecoder = MediaStoreFaceCropDecoder(target.contentResolver)
+            faceCropDecoder = FaceCropDecoder { uri, box ->
+                if (uri in blockedCropUris) {
+                    cropEntered.countDown()
+                    check(releaseCrop.await(60, TimeUnit.SECONDS)) { "Synthetic crop gate timed out" }
+                }
+                MediaStoreFaceCropDecoder(target.contentResolver).decode(uri, box)
+            }
         )
     }
 
@@ -254,8 +282,16 @@ class Hub3QueueNamingJourneyTest {
      * and unknown-group merging thresholds of the actual shipped policy.
      * The faces are synthetic drawings; their stored vectors are synthetic too.
      */
-    private fun askingVectors(): Pair<ByteArray, ByteArray> {
-        val random = Random(171)
+    private fun correctedScore(a: ByteArray, b: ByteArray): Double {
+        val fa = FaceMetric.SFACE.apply(FaceEmbeddingVectorCodec.decode(a))
+        val fb = FaceMetric.SFACE.apply(FaceEmbeddingVectorCodec.decode(b))
+        return fa.vector.indices.sumOf { i -> fa.vector[i].toDouble() * fb.vector[i] } -
+            (fa.crowd + fb.crowd) / 2.0
+    }
+
+    private fun askingVectors(seed: Int = 171, excluded: List<ByteArray> = emptyList()):
+        Pair<ByteArray, ByteArray> {
+        val random = Random(seed)
         repeat(4000) {
             val rawA = FloatArray(128) { random.nextFloat() * 2f - 1f }
             val rawB = FloatArray(128) { rawA[it] * 0.45f +
@@ -267,13 +303,14 @@ class Hub3QueueNamingJourneyTest {
             val score = fa.vector.indices.sumOf { i ->
                 fa.vector[i].toDouble() * fb.vector[i]
             } - (fa.crowd + fb.crowd) / 2.0
-            if (score in 0.315..0.335 && fa.crowd < 0.2f && fb.crowd < 0.2f)
+            if (score in 0.315..0.335 && fa.crowd < 0.2f && fb.crowd < 0.2f &&
+                excluded.all { correctedScore(a, it) < 0.10 && correctedScore(b, it) < 0.10 })
                 return a to b
         }
         error("No deterministic synthetic pair in the calibrated ask band")
     }
 
-    private fun askingHost(): PeopleDiscoveryHost {
+    private fun askingHost(twoPairs: Boolean = false): PeopleDiscoveryHost {
         val initial = host()
         drain(initial, "gallery-1")
         val epoch = checkNotNull(initial.displayEpoch("gallery-1"))
@@ -282,14 +319,21 @@ class Hub3QueueNamingJourneyTest {
             .sortedBy { it.localHex }
         assertTrue("at least six synthetic faces", members.size >= 6)
         val (a, b) = askingVectors()
-        val groups = listOf(members.take(3), members.drop(3))
+        val vectors = if (twoPairs) {
+            assertTrue("at least twelve synthetic faces for two disjoint pairs", members.size >= 12)
+            val (c, d) = askingVectors(172, listOf(a, b))
+            listOf(a, b, c, d)
+        } else listOf(a, b)
+        val groups = if (twoPairs) listOf(
+            members.take(3), members.drop(3).take(3), members.drop(6).take(3), members.drop(9)
+        ) else listOf(members.take(3), members.drop(3))
         val db = store.writableDatabase
         db.beginTransaction()
         try {
             groups.forEachIndexed { index, group ->
                 for (face in group) {
                     db.execSQL("UPDATE embeddings SET vector=? WHERE face_uid=?",
-                        arrayOf(if (index == 0) a else b, face.localHex))
+                        arrayOf(vectors[index], face.localHex))
                     db.execSQL("UPDATE cluster_members SET anchor_uid=? WHERE face_uid=?",
                         arrayOf(group.first().localHex, face.localHex))
                 }
@@ -302,8 +346,14 @@ class Hub3QueueNamingJourneyTest {
         val restarted = host()
         drain(restarted, "gallery-1")
         val live = checkNotNull(restarted.reviewState(checkNotNull(restarted.displayEpoch("gallery-1"))))
-        assertEquals("two groups, exactly one question", 1,
-            nl.atlas.gallery.featurepeopleui.samePersonQueue(live).open)
+        val queue = samePersonQueue(live)
+        assertEquals("exact ask topology", if (twoPairs) 2 else 1, queue.open)
+        if (twoPairs) {
+            assertEquals("four independent unknown groups", 4, live.clusters.unknownClusters.size)
+            val sides = queue.items.flatMap { listOf(
+                (it.subject as PersonPageTarget.Unnamed).cluster, it.other) }
+            assertEquals("no group shared between the two questions", 4, sides.toSet().size)
+        }
         return restarted
     }
 
@@ -564,6 +614,195 @@ class Hub3QueueNamingJourneyTest {
         assertEquals(after.names, final.names)
         assertEquals(after.clusters.reviews.confirmed, final.clusters.reviews.confirmed)
         assertTrue("stale draft never persisted", "Synthetic stale draft" !in final.names.values)
+    }
+
+
+    private fun showHost(host: PeopleDiscoveryHost) {
+        compose.setContent {
+            if (composing) AtlasGalleryTheme(dark = true) {
+                Surface(Modifier.fillMaxSize()) {
+                    val discovery = rememberPeopleDiscoveryOf(host, "gallery-1", inventory) { it }
+                    SamePersonQueueRoute(host, discovery.status?.people) {}
+                }
+            }
+        }
+    }
+
+    @Test fun mixedSurvivesNamingUndo() = priorDecisionSurvivesNamingUndo(mixed = true)
+    @Test fun skipSurvivesNamingUndo() = priorDecisionSurvivesNamingUndo(mixed = false)
+
+    private fun priorDecisionSurvivesNamingUndo(mixed: Boolean) {
+        val host = askingHost(twoPairs = true)
+        val epoch = checkNotNull(host.displayEpoch("gallery-1"))
+        val scope = checkNotNull(host.stableSamePersonSkipScope(epoch))
+        val prefs = SamePersonSkipPreferences.forApp(target)
+        val oldSkips = prefs.read(scope)
+        try {
+            val initial = checkNotNull(host.liveReview(epoch))
+            val (first, second) = samePersonQueue(initial).items
+            val firstToken = checkNotNull(samePersonSkipFingerprint(initial, first, scope))
+            val secondToken = checkNotNull(samePersonSkipFingerprint(initial, second, scope))
+            assertTrue(firstToken != secondToken)
+            assertTrue(firstToken !in oldSkips && secondToken !in oldSkips)
+            val expectedFaces = initial.clusters.unknownClusters.single {
+                it.id == (second.subject as PersonPageTarget.Unnamed).cluster
+            }.members.toSet()
+            showHost(host)
+            compose.waitForNode(hasText("2 open"), WAIT_MS)
+            enabled("atlas-same-queue-subject-name")
+            if (mixed) {
+                compose.tap(hasTestTag("atlas-same-queue-subject-mixed"))
+                compose.tap(hasTestTag("atlas-same-queue-confirm-mixed"))
+                compose.awaitThat("first pair marked mixed", WAIT_MS) {
+                    val live = host.liveReview(epoch)
+                    live != null && live.sourceGeneration != initial.sourceGeneration &&
+                        samePersonQueue(live).items.map { it.key } == listOf(second.key)
+                }
+                compose.waitForNode(hasText("1 open"), WAIT_MS)
+            } else {
+                compose.tap(hasTestTag("atlas-same-queue-skip"))
+                compose.awaitThat("first fingerprint saved", WAIT_MS) {
+                    prefs.read(scope) == oldSkips + firstToken
+                }
+            }
+            enabled("atlas-same-queue-subject-name")
+            val prior = checkNotNull(store.peopleReview(epoch))
+            val priorLive = checkNotNull(host.liveReview(epoch))
+            val priorSkips = prefs.read(scope)
+            if (mixed) assertTrue(prior.clusters.reviews.mixedGroups.isNotEmpty())
+            else assertEquals(initial.clusters.reviews, prior.clusters.reviews)
+            compose.tap(hasTestTag("atlas-same-queue-subject-name"))
+            typeName("Synthetic other pair")
+            compose.tap(hasTestTag("atlas-person-name-save"))
+            compose.awaitThat("only second pair named", WAIT_MS) {
+                host.liveReview(epoch)?.names?.values?.contains("Synthetic other pair") == true &&
+                    !compose.exists(hasTestTag("atlas-person-name-dialog"), useUnmergedTree = true)
+            }
+            val named = checkNotNull(store.peopleReview(epoch))
+            val namedLive = checkNotNull(host.liveReview(epoch))
+            assertTrue(named.generation != prior.generation)
+            assertEquals(expectedFaces, named.clusters.reviews.confirmed.keys -
+                prior.clusters.reviews.confirmed.keys)
+            assertEquals(prior.clusters.reviews.mixedGroups, named.clusters.reviews.mixedGroups)
+            assertEquals(priorSkips, prefs.read(scope))
+            assertEquals(priorLive.undoHistory.size + 1, namedLive.undoHistory.size)
+            enabled("atlas-same-queue-undo")
+            compose.tap(hasTestTag("atlas-same-queue-undo"))
+            compose.awaitThat("scoped naming undone", WAIT_MS) {
+                val live = host.liveReview(epoch)
+                live != null && live.names == prior.names &&
+                    live.sourceGeneration != namedLive.sourceGeneration
+            }
+            enabled("atlas-same-queue-subject-name")
+            val undone = checkNotNull(store.peopleReview(epoch))
+            val undoneLive = checkNotNull(host.liveReview(epoch))
+            assertTrue(undone.generation != named.generation)
+            assertEquals(prior.names, undone.names)
+            assertEquals(prior.clusters.reviews, undone.clusters.reviews)
+            assertEquals(priorLive.undoHistory.size, undoneLive.undoHistory.size)
+            assertEquals(priorSkips, prefs.read(scope))
+            assertEquals(secondToken, samePersonSkipFingerprint(undoneLive, second, scope))
+            assertEquals(firstToken, samePersonSkipFingerprint(undoneLive, first, scope))
+            compose.hideKeyboard()
+            val evidence = if (mixed) "hub3-prior-mixed-undo" else "hub3-prior-skip-undo"
+            compose.awaitScreenStill(evidence)
+            saveUiEvidence("$evidence.png")
+        } finally {
+            prefs.clear(scope)
+            oldSkips.forEach { prefs.add(scope, it) }
+        }
+    }
+
+    @Test fun staleStoreGenerationRefusesInFlightNaming() {
+        val host = askingHost(twoPairs = true)
+        val epoch = checkNotNull(host.displayEpoch("gallery-1"))
+        val initial = checkNotNull(host.liveReview(epoch))
+        val (_, second) = samePersonQueue(initial).items
+        val persisted = checkNotNull(store.peopleReview(epoch))
+        val external = checkNotNull(applyCurrentPeopleReviewCommand(initial,
+            PeopleClusterReviewCommand(initial, samePersonQueueAnswer(second, same = false))))
+        showHost(host)
+        enabled("atlas-same-queue-subject-name")
+        compose.tap(hasTestTag("atlas-same-queue-subject-name"))
+        typeName("Synthetic stale transaction")
+        val db = store.writableDatabase
+        db.beginTransaction()
+        val externalGeneration: String
+        try {
+            compose.tap(hasTestTag("atlas-person-name-save"))
+            // Hold the actual store boundary before its generation check.
+            compose.awaitThat("naming worker reached persistence", WAIT_MS) {
+                Thread.getAllStackTraces().any { (thread, stack) ->
+                    thread.name == "atlas-same-person" &&
+                        stack.any { it.methodName == "commitPeopleReview" &&
+                            it.className.endsWith("FaceIndexStore") }
+                }
+            }
+            externalGeneration = checkNotNull(store.commitPeopleReview(epoch, persisted.generation,
+                external.clusters, external.names, external.hidden))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        compose.waitForNode(hasText("Group changed"), WAIT_MS)
+        val final = checkNotNull(store.peopleReview(epoch))
+        assertEquals(externalGeneration, final.generation)
+        assertEquals(external.names, final.names)
+        assertEquals(external.clusters.reviews, final.clusters.reviews)
+        assertTrue("stale write never adds a name", "Synthetic stale transaction" !in final.names.values)
+        compose.tap(hasText("Return"))
+        enabled("atlas-same-queue-subject-name")
+        val refreshed = checkNotNull(host.liveReview(epoch))
+        assertTrue("external store generation invalidates old Undo journal", refreshed.undoHistory.isEmpty())
+        assertTrue(!compose.exists(hasTestTag("atlas-same-queue-undo"), useUnmergedTree = true))
+        compose.hideKeyboard()
+        compose.awaitScreenStill("hub3-commit-stale")
+        saveUiEvidence("hub3-commit-stale.png")
+    }
+
+    @Test fun hostConfirmationLoadingWithReducedMotion() = withAnimatorScale("0") {
+        val host = askingHost(twoPairs = true)
+        val epoch = checkNotNull(host.displayEpoch("gallery-1"))
+        val initial = checkNotNull(host.liveReview(epoch))
+        val (first, second) = samePersonQueue(initial).items
+        // Keep a named candidate outside the remaining pair and its prefetch.
+        assertTrue(host.review(PeopleClusterReviewCommand(initial,
+            checkNotNull(samePersonQueueMixedSides(first, subject = false, other = true)))))
+        val marked = checkNotNull(host.liveReview(epoch))
+        val name = "Synthetic separate candidate"
+        val action = (personNaming(marked, first.subject, name) as PersonNaming.Apply).action
+        assertTrue(host.review(PeopleClusterReviewCommand(marked, action)))
+        val named = checkNotNull(host.liveReview(epoch))
+        assertEquals(listOf(second.key), samePersonQueue(named).items.map { it.key })
+        val person = named.names.entries.single { it.value == name }.key
+        blockedCropUris = named.clusters.reviews.confirmed.filterValues { it == person }.keys
+            .map { checkNotNull(host.identityFaceSource(epoch, it.localHex)).first }.toSet()
+        assertTrue(blockedCropUris.isNotEmpty())
+        try {
+            showHost(host)
+            enabled("atlas-same-queue-subject-name")
+            compose.tap(hasTestTag("atlas-same-queue-subject-name"))
+            typeName("Synthetic separate")
+            compose.tap(hasTestTag("atlas-person-name-suggestion"))
+            assertTrue("real candidate crop requested", cropEntered.await(20, TimeUnit.SECONDS))
+            compose.onNodeWithTag("atlas-person-merge-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
+            assertEquals(0f, testShell("settings get global animator_duration_scale").trim().toFloat(), 0f)
+            compose.awaitScreenStill("hub3-host-confirm-loading-reduced")
+            saveUiEvidence("hub3-host-confirm-loading-reduced.png")
+            assertEquals(named.names, checkNotNull(store.peopleReview(epoch)).names)
+        } finally {
+            releaseCrop.countDown()
+        }
+        enabled("atlas-person-merge-confirm")
+        compose.onNodeWithTag("atlas-same-queue-merge-face-0", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("atlas-same-queue-merge-face-1", useUnmergedTree = true).assertIsDisplayed()
+        compose.awaitScreenStill("hub3-host-confirm-ready-reduced")
+        saveUiEvidence("hub3-host-confirm-ready-reduced.png")
+        compose.tap(hasText("Cancel"))
+        enabled("atlas-person-name-save")
+        assertEquals(named.clusters.reviews, checkNotNull(store.peopleReview(epoch)).clusters.reviews)
+        compose.hideKeyboard()
     }
 
     /** Component contract with invented metadata, independent of detector throughput.
