@@ -3,6 +3,7 @@ package nl.atlas.gallery.featuregrid
 import nl.atlas.gallery.waitForNode
 import nl.atlas.gallery.S24DisplayRule
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.toSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -270,7 +271,8 @@ private fun checkVisibleTiles(compose: ComposeTestRule, seen: MutableSet<Int>) {
     }
     val maxRowPx = gallery.layoutInfo.density.run { 240f * density }
     val gapPx = gallery.layoutInfo.density.run { RATIO_GAP_DP * density }
-    val visible = nodes.filter { it.boundsInRoot.isFullyInside(galleryBounds) }
+    // #556: boundsInRoot is clipped by the list; judge the original tile rectangle.
+    val visible = nodes.filter { Rect(it.positionInRoot, it.size.toSize()).isFullyInside(galleryBounds) }
     assertTrue("no fully visible fixture tiles", visible.isNotEmpty())
     for (node in visible) {
         val step = stepOf(node)

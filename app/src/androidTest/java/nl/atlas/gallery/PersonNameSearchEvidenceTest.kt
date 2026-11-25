@@ -88,6 +88,7 @@ class PersonNameSearchEvidenceTest {
 
     @Test fun nameSuggestionChipAndYear() {
         var shown = -1
+        var dark by mutableStateOf(true)
         compose.setContent {
             var filters by remember { mutableStateOf(LocalSearchFacets()) }
             var history by remember {
@@ -99,7 +100,7 @@ class PersonNameSearchEvidenceTest {
                     mediaVolumeOf = { it.volumeName }, nativePersonUris = uris)
             }
             shown = results.size
-            AtlasGalleryTheme(dark = true) {
+            AtlasGalleryTheme(dark = dark) {
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = { AtlasGalleryNavigation(AtlasDestination.SEARCH, onSelect = {}) }
@@ -139,6 +140,13 @@ class PersonNameSearchEvidenceTest {
         waitFor("atlas-search-person-chip")
         compose.runOnIdle { assertEquals(6, shown) }
         saveUiEvidence("search-person-chip.png")
+        // #655: synthetic Search person chip, paired Activity themes.
+        saveUiEvidence("parity-24-search-person-dark.png")
+        dark = false
+        compose.waitForIdle()
+        saveUiEvidence("parity-24-search-person-light.png")
+        dark = true
+        compose.waitForIdle()
 
         compose.typeText(hasTestTag("atlas-search-field"), "2019", KeyboardAfter.Hidden)
         // Even ids whose id % 3 == 1 (2019): 4 and 10.
