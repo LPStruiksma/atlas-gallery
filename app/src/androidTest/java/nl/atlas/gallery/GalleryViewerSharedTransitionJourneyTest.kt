@@ -338,6 +338,50 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         saveUiEvidence("flow3-offscreen-returned-$mode.png")
     }
 
+    @Test fun quickBackDuringEntryDoesNotLeakIntoNextPhoto() {
+        val firstTag = firstTile()
+        val enter = hasTestTag("atlas-shared-photo-enter")
+        val exit = hasTestTag("atlas-shared-photo-exit")
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag(firstTag, useUnmergedTree = true).performClick()
+            compose.mainClock.advanceTimeBy(80L)
+            compose.waitForIdle()
+            assertTrue("Quick Back requires an active entry overlay",
+                compose.onAllNodes(enter).fetchSemanticsNodes().size == 1)
+            saveUiEvidence("flow3-quick-entry-$mode.png")
+            compose.onNodeWithTag("atlas-back").performClick()
+            repeat(20) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+                val entering = compose.onAllNodes(enter).fetchSemanticsNodes().size
+                val exiting = compose.onAllNodes(exit).fetchSemanticsNodes().size
+                assertTrue("Entry and return overlays must not coexist", entering + exiting <= 1)
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.onNodeWithTag("atlas-shared-photo-enter").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+        compose.onNodeWithTag(firstTag, useUnmergedTree = true).assertIsDisplayed()
+        saveUiEvidence("flow3-quick-returned-$mode.png")
+
+        val secondTag = compose.onAllNodes(tile, useUnmergedTree = true).fetchSemanticsNodes()
+            .map { it.config[SemanticsProperties.TestTag] }.first { it != firstTag }
+        compose.onNodeWithTag(secondTag, useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag(secondTag, useUnmergedTree = true).performClick()
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        compose.mainClock.advanceTimeBy(600L)
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-shared-photo-enter").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+        saveUiEvidence("flow3-quick-reopened-$mode.png")
+        compose.onNodeWithTag("atlas-back").performClick()
+        awaitClosed()
+        compose.onNodeWithTag(secondTag, useUnmergedTree = true).assertIsDisplayed()
+    }
+
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {
         val tileTag = firstTile()
         val before = shell23("settings get global animator_duration_scale").trim()

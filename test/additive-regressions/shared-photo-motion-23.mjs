@@ -169,3 +169,12 @@ test("FLOW-3 offscreen journey proves the actual settled tile identity, not just
   assert.match(journey, /onNodeWithTag\(targetTag, useUnmergedTree = true\)\.assertIsDisplayed\(\)/);
   for (const frame of ["flow3-offscreen-before", "flow3-offscreen-back-mid", "flow3-offscreen-returned"]) assert.ok(journey.includes(frame), frame);
 });
+
+test("FLOW-3 quick Back during entry clears the old overlay before a different photo reopens", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun quickBackDuringEntryDoesNotLeakIntoNextPhoto\(/);
+  assert.match(journey, /assertTrue\("Quick Back requires an active entry overlay"/);
+  assert.match(journey, /assertTrue\("Entry and return overlays must not coexist"/);
+  assert.match(journey, /onNodeWithTag\(secondTag, useUnmergedTree = true\)\.performClick\(\)/);
+  for (const frame of ["flow3-quick-entry", "flow3-quick-returned", "flow3-quick-reopened"]) assert.ok(journey.includes(frame), frame);
+});

@@ -7,3 +7,5 @@ Checkpoint C1: `SharedPhotoLightJourneyTest` and `SharedPhotoDarkJourneyTest` no
 Checkpoint C2: the same light/dark journey targets below-fit two-pointer pinch, reversal and measured committed return. No runtime result yet; actual pinch geometry and cancellation/commit behavior must be inspected on the emulator.
 
 Checkpoint C3: the offscreen dated-grid case uses 40 synthetic fixtures only for this test, forces/restores date sort, checks the exact synthetic MediaStore tile identity before opening and after a far-item measured Back. The before/midpoint/returned captures are targets, not actual evidence. Missing-target runtime fade, original-ratio route, quick close, paired parity and timing still owed.
+
+Checkpoint C4: quick Back while the entry overlay is active, sampled overlay exclusivity, closure to the opening tile and reopen/return to a different synthetic tile. Actual paired captures, image identity and pixel continuity remain unverified; this is not a timing benchmark.
