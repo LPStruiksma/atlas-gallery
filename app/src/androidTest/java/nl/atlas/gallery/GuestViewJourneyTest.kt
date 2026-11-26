@@ -662,14 +662,22 @@ class GuestExistingActivityTest {
 
     private fun awaitDestroyed(activity: MainActivity) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000L
-        var destroyed = false
-        while (!destroyed) {
-            instrumentation.runOnMainSync { destroyed = activity.isDestroyed }
-            if (destroyed) break
-            assertTrue("earlier picker destroyed after cancelling (finishing=${activity.isFinishing})",
-                android.os.SystemClock.elapsedRealtime() < deadline)
-            android.os.SystemClock.sleep(50L) // bounded polling of a system lifecycle predicate
+        val monitor = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+        val destroyed = CountDownLatch(1)
+        val callback = androidx.test.runner.lifecycle.ActivityLifecycleCallback { seen, stage ->
+            if (seen === activity && stage == androidx.test.runner.lifecycle.Stage.DESTROYED) destroyed.countDown()
+        }
+        var finishing = false
+        instrumentation.runOnMainSync {
+            monitor.addLifecycleCallback(callback)
+            finishing = activity.isFinishing
+            if (activity.isDestroyed) destroyed.countDown()
+        }
+        try {
+            assertTrue("earlier picker destroyed after cancelling (finishing=$finishing)",
+                destroyed.await(20, TimeUnit.SECONDS))
+        } finally {
+            instrumentation.runOnMainSync { monitor.removeLifecycleCallback(callback) }
         }
         instrumentation.waitForIdleSync()
     }
