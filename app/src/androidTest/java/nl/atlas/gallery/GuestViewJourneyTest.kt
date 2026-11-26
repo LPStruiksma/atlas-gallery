@@ -217,9 +217,7 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         // Exit again → correct device PIN → the owner's gallery returns.
         compose.tap(hasTestTag("atlas-guest-exit"))
         assertTrue("credential screen again: ${describeFocus()}", credentialScreen().opened)
-        shell("input text $PIN")
-        shell("input keyevent 66")
-        compose.awaitCredentialClosed()
+        compose.submitSelectionCredential()
         compose.awaitThat("guest view ended in the store") { store().boot() == GuestBoot.Owner }
         // Ending screen pinning on a device with a screen lock locks the device
         // (the system's "lock device when unpinning" default); unlock it again.
@@ -526,6 +524,51 @@ private fun credentialFocused(): Boolean {
     val focusedApp = lines.filter { it.startsWith("mFocusedApp=") }
     return focus.any { it.contains("BiometricPrompt") } &&
         focusedApp.any { it.contains("ConfirmDeviceCredential") || it.contains("ConfirmLock") }
+}
+
+/** Only handle the unrelated launcher ANR observed on the disposable API-35 test host. */
+private fun launcherAnrFocused(): Boolean = shell("dumpsys window").lineSequence()
+    .map { it.trim() }
+    .any { it.startsWith("mCurrentFocus=") && it.contains("Application Not Responding: com.android.launcher3") }
+
+private fun waitOnLauncherAnr(): Boolean {
+    if (!launcherAnrFocused()) return false
+    val root = interactiveUiAutomation().rootInActiveWindow ?: return false
+    if (root.packageName?.toString() != "android") return false
+    val wait = root.findAccessibilityNodeInfosByText("Wait").firstOrNull {
+        it.text?.toString()?.trim().equals("Wait", ignoreCase = true)
+    } ?: return false
+    val button = generateSequence(wait) { it.parent }.firstOrNull { it.isClickable } ?: return false
+    if (!launcherAnrFocused()) return false
+    val clicked = button.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    if (clicked) Log.i(PROBE, "selected Wait on unrelated launcher ANR")
+    return clicked
+}
+
+private fun credentialImeShown(): Boolean = shell("dumpsys input_method").lineSequence()
+    .any { it.contains("mInputShown=true") }
+
+/** The second confirmation must be ready, not merely resumed, before entering the test PIN. */
+private fun ComposeTestRule.submitSelectionCredential() {
+    var anrHandled = false
+    awaitThat("selection credential PIN field focused and IME shown", 30_000L) {
+        if (launcherAnrFocused()) {
+            if (!anrHandled) anrHandled = waitOnLauncherAnr()
+            false
+        } else {
+            credentialOnTop() && credentialFocused() && credentialImeShown() && credentialFocused()
+        }
+    }
+    shell("input text $PIN")
+    shell("input keyevent 66")
+    // Never retry the PIN or treat a covering ANR as credential success.
+    var exitAnrHandled = false
+    awaitThat("selection credential screen to close", 30_000L) {
+        if (launcherAnrFocused()) {
+            if (!exitAnrHandled) exitAnrHandled = waitOnLauncherAnr()
+            false
+        } else !credentialOnTop()
+    }
 }
 
 private fun lockState(): Int = InstrumentationRegistry.getInstrumentation().targetContext

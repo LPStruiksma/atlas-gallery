@@ -26,3 +26,17 @@ test('fixture has success and exceptional-body cleanup probes', () => {
   assert.match(proof, /isDeviceSecure/);
   assert.match(proof, /isKeyguardLocked/);
 });
+
+test('selection credential submission waits for focus and IME before typing and never retries the PIN', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/GuestViewJourneyTest.kt');
+  const selection = journey.slice(journey.indexOf('// Exit again'), journey.indexOf('// Ending screen pinning'));
+  assert.match(selection, /compose\.submitSelectionCredential\(\)/);
+  assert.match(selection, /store\(\)\.boot\(\) == GuestBoot\.Owner/);
+  const helper = journey.slice(journey.indexOf('private fun ComposeTestRule.submitSelectionCredential()'), journey.indexOf('private fun lockState()'));
+  assert.match(helper, /credentialOnTop\(\) && credentialFocused\(\) && credentialImeShown\(\)/);
+  assert.ok(helper.indexOf('credentialImeShown()') < helper.indexOf('shell("input text'));
+  assert.equal((helper.match(/shell\("input text/g) || []).length, 1);
+  assert.match(helper, /else !credentialOnTop\(\)/);
+  assert.match(journey, /Application Not Responding: com\.android\.launcher3/);
+  assert.match(journey, /findAccessibilityNodeInfosByText\("Wait"\)/);
+});
