@@ -6,6 +6,9 @@ import android.provider.MediaStore
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import nl.atlas.gallery.featuregrid.ORIGINAL_PROPORTIONS_ACTION
+import nl.atlas.gallery.testkit.assertFullyVisible
+import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.tap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -45,7 +48,10 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     // Only the offscreen case needs a large dated catalogue. Restore the two
     // sort preferences after its disposable activity and fixtures are gone.
     private val fixtures = TestRule { base, description ->
-        if (description.methodName == "nonGridStoryReturnFadesWithoutTile") {
+        if (description.methodName == "viewerOpenTimingFromSyntheticGridTile") {
+            SyntheticHeaderFixtures(sizes = listOf(4032 to 3024),
+                folderOf = { "ATLAS-Flow3-Timing" }).apply(base, description)
+        } else if (description.methodName == "nonGridStoryReturnFadesWithoutTile") {
             val today = java.time.LocalDate.now()
             val zone = java.time.ZoneId.systemDefault()
             SyntheticHeaderFixtures(
@@ -496,6 +502,115 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
             compose.onNode(moment).fetchSemanticsNode()
                 .config[SemanticsProperties.ContentDescription] == before)
         saveUiEvidence("flow3-story-restored-$mode.png")
+    }
+
+
+    /**
+     * PERF-3 on the actual grid -> MainActivity viewer path, not the isolated
+     * GalleryViewer arm switch. Synthetic 12 MP PNG, one first open and four
+     * repeats; no cold-cache or physical-device claim. A real touchscreen
+     * event is required here because timing a Compose test-kit tap includes
+     * its layout preflight and virtual-clock manipulation.
+     */
+    @Test fun viewerOpenTimingFromSyntheticGridTile() {
+        val timingTile = SemanticsMatcher("synthetic 12 MP timing tile") { node ->
+            tile.matches(node) && node.config.getOrNull(SemanticsProperties.ContentDescription)
+                .orEmpty().any { it.startsWith("IMG_HEADER_FIXTURE_1.") }
+        }
+        compose.waitForNode(timingTile)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val window = compose.activity.window
+        val frames = java.util.Collections.synchronizedList(mutableListOf<Pair<Long, Long>>())
+        val dropped = java.util.concurrent.atomic.AtomicInteger()
+        val thread = android.os.HandlerThread("flow3-frame-metrics").apply { start() }
+        val listener = android.view.Window.OnFrameMetricsAvailableListener { _, metrics, lost ->
+            dropped.addAndGet(lost)
+            val start = metrics.getMetric(android.view.FrameMetrics.INTENDED_VSYNC_TIMESTAMP)
+            val duration = metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION)
+            if (start > 0L && duration > 0L) frames.add(start to duration)
+        }
+        data class Open(val start: Long, val end: Long, val first: Long, val sharp: Long)
+        val opens = mutableListOf<Open>()
+        val focused = SemanticsMatcher("timing photo with both PERF-3 stamps") { node ->
+            node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+                .any { it.startsWith("Photo viewer: IMG_HEADER_FIXTURE_1.") } &&
+                (node.config.getOrNull(ViewerPhotoFirstFrameAtKey) ?: 0L) > 0L &&
+                (node.config.getOrNull(ViewerPhotoSharpAtKey) ?: 0L) > 0L
+        }
+        try {
+            instrumentation.runOnMainSync {
+                window.addOnFrameMetricsAvailableListener(listener, android.os.Handler(thread.looper))
+            }
+            repeat(5) {
+                val target = compose.onNode(timingTile, useUnmergedTree = true)
+                    .assertFullyVisible()
+                compose.waitForIdle()
+                val bounds = target.fetchSemanticsNode().boundsInWindow
+                val origin = IntArray(2)
+                instrumentation.runOnMainSync { window.decorView.getLocationOnScreen(origin) }
+                val x = bounds.center.x + origin[0]
+                val y = bounds.center.y + origin[1]
+                val start = System.nanoTime()
+                val downAt = android.os.SystemClock.uptimeMillis()
+                for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                    val event = android.view.MotionEvent.obtain(
+                        downAt, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+                    try {
+                        event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                        check(instrumentation.uiAutomation.injectInputEvent(event, true)) {
+                            "FLOW-3 real timing tap rejected"
+                        }
+                    } finally { event.recycle() }
+                }
+                compose.awaitThat("the tapped synthetic photo has first and sharp callbacks", 60_000L) {
+                    compose.onAllNodes(focused, useUnmergedTree = true).fetchSemanticsNodes().size == 1
+                }
+                val config = compose.onNode(focused, useUnmergedTree = true).fetchSemanticsNode().config
+                val first = config[ViewerPhotoFirstFrameAtKey]
+                val sharp = config[ViewerPhotoSharpAtKey]
+                compose.awaitThat("the shared entry overlay has completed") {
+                    compose.onAllNodes(hasTestTag("atlas-shared-photo-enter")).fetchSemanticsNodes().isEmpty()
+                }
+                compose.waitForIdle()
+                val end = System.nanoTime()
+                assertTrue("PERF-3 callback stamps must belong to this open",
+                    first in start..end && sharp in start..end)
+                opens += Open(start, end, first, sharp)
+                compose.tap(hasTestTag("atlas-back")) {
+                    compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
+                }
+                compose.waitForIdle()
+                compose.onNode(timingTile, useUnmergedTree = true).assertIsDisplayed()
+            }
+        } finally {
+            instrumentation.runOnMainSync { window.removeOnFrameMetricsAvailableListener(listener) }
+            thread.quitSafely()
+            thread.join(5000L)
+            check(!thread.isAlive) { "FLOW-3 frame metrics listener did not stop" }
+        }
+        val captured = synchronized(frames) { frames.toList() }
+        fun ms(ns: Long) = ns / 1e6
+        fun p90(values: List<Long>): Double =
+            ms(values.sorted()[kotlin.math.ceil(values.size * .90).toInt() - 1])
+        for ((index, open) in opens.withIndex()) {
+            val durations = captured.filter { (vsync, _) -> vsync in open.start..open.end }
+                .map { it.second }
+            assertTrue("FLOW-3 open " + (index + 1) + " has no real Window frame metrics", durations.isNotEmpty())
+            val report = org.json.JSONObject()
+                .put("theme", mode)
+                .put("trial", index + 1)
+                .put("cache", if (index == 0) "first_open_grid_visible" else "repeat_same_photo")
+                .put("first_callback_ms", ms(open.first - open.start))
+                .put("sharp_2400_callback_ms", ms(open.sharp - open.start))
+                .put("frame_count", durations.size)
+                .put("frame_p90_ms", p90(durations))
+                .put("frame_total_ms", org.json.JSONArray(durations.map { ms(it) }))
+                .put("listener_drops_all_trials", dropped.get())
+                .put("refresh_hz", compose.activity.display?.refreshRate ?: 0f)
+            android.util.Log.i("ATLAS_SCALE", "FLOW3_OPEN_TIMING " + report)
+            println("FLOW3_OPEN_TIMING " + report)
+        }
+        assertTrue("Expected five independent open windows", opens.size == 5)
     }
 
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {

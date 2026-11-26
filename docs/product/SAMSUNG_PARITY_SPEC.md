@@ -114,3 +114,5 @@ FLOW-3 C5 uses the measured click-origin handoff on original-proportion rows and
 FLOW-3 C6 applies the centered crop interpolation to ordinary entry and Back using oriented catalogue dimensions (no extra decode wait), retains the frozen decoded pose for gestures, and fades when fit geometry is unknown. The JVM geometry cases cover landscape, portrait, offset viewport and invalid dimensions. Metadata may differ from actual decoded geometry; paired runtime inspection and timing remain required.
 
 FLOW-3 C7 adds a synthetic real-host Stories journey to the paired light/dark suite. It targets the non-grid no-return-tile fade and verifies the same story moment after Back; capture targets only, not a measured grid timeout or a runtime result.
+
+FLOW-3 C8 registers every paired motion capture in the strict CI manifest and adds a real MainActivity grid-to-viewer timing probe using synthetic 4032×3024 PNG, first and repeated opens, PERF-3 callback stamps and Android Window frame-total p90. Hosted measurements, comparison and visual acceptance remain outstanding.

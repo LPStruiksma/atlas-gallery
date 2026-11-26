@@ -203,3 +203,25 @@ test("FLOW-3 non-grid story return samples fade without a stale tile and restore
   assert.match(journey, /No-target Back must restore the same story moment/);
   for (const frame of ["flow3-story-before", "flow3-story-fade-mid", "flow3-story-restored"]) assert.ok(journey.includes(frame), frame);
 });
+
+test("FLOW-3 registers every paired motion capture in the strict hosted evidence manifest", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  const declared = readFileSync(new URL("../../scripts/ui-evidence.d/23-shared-photo.txt", import.meta.url), "utf8")
+    .split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#"));
+  const expected = [...journey.matchAll(/(?:saveUiEvidence|captureReturnMidpoint)\("([^"]+)-\$mode\.png"\)/g)]
+    .flatMap(match => ["light", "dark"].map(theme => match[1] + "-" + theme));
+  assert.ok(expected.length > 8, "capture inventory must include FLOW-3");
+  assert.deepEqual(declared.sort(), expected.sort());
+});
+
+test("FLOW-3 real host open timing records real Android frames and both PERF-3 callback stamps", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun viewerOpenTimingFromSyntheticGridTile\(/);
+  assert.match(journey, /ViewerPhotoFirstFrameAtKey/);
+  assert.match(journey, /ViewerPhotoSharpAtKey/);
+  assert.match(journey, /FrameMetrics\.TOTAL_DURATION/);
+  assert.match(journey, /FrameMetrics\.INTENDED_VSYNC_TIMESTAMP/);
+  assert.match(journey, /injectInputEvent\(event, true\)/);
+  assert.match(journey, /FLOW3_OPEN_TIMING/);
+  assert.match(journey, /frame_p90_ms/);
+});
