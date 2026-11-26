@@ -570,7 +570,7 @@ private fun UnknownIdentityGroupCard(
         if (duplicates.isNotEmpty()) {
             Text("There's already a person called ${cleanedName}.",
                 style = MaterialTheme.typography.bodySmall)
-            duplicates.take(5).forEach { match ->
+            duplicates.take(5).forEachIndexed { index, match ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     (coverByPerson[match.value.person]
@@ -584,6 +584,7 @@ private fun UnknownIdentityGroupCard(
                             style = MaterialTheme.typography.bodySmall)
                     }
                     OutlinedButton(enabled = enabled,
+                        modifier = Modifier.testTag("atlas-group-duplicate-add-${index + 1}"),
                         onClick = { confirmPosition = match.index }) {
                         Text("Add")
                     }
@@ -606,8 +607,8 @@ private fun UnknownIdentityGroupCard(
                 }
             ) { Text("Create person") }
         }
-        }
 
+        // Include eligible suggestions in the same keyboard-aware bring-into-view region.
         if (!splitting && name.isBlank() && suggestions.isNotEmpty()) {
             Text("Looks like someone you know?",
                 style = MaterialTheme.typography.titleSmall)
@@ -629,6 +630,8 @@ private fun UnknownIdentityGroupCard(
                         }) { Text("Not ${album.name}") }
                 }
             }
+        }
+
         }
 
         TextButton(enabled = enabled, onClick = { searching = !searching },

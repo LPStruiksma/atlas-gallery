@@ -123,7 +123,7 @@ class UnknownFacesKeyboardInsetsTest {
                 clearGalleryInventoryCacheForTest(target)
                 PeopleScanWorkRuntime.clear()
                 try {
-                    insertFaces(if (description.methodName == "eligibleSuggestionAndDuplicateNameStayAboveKeyboard") PHOTOS + 1 else PHOTOS)
+                    insertFaces(if (description.methodName == "eligibleSuggestionAndDuplicateNameStayAboveKeyboard") PHOTOS + 2 else PHOTOS)
                     installHost()
                     base.evaluate()
                 } finally {
@@ -219,8 +219,8 @@ class UnknownFacesKeyboardInsetsTest {
     }
 
     /**
-     * Same real Activity, one confirmed invented identity and six unknown
-     * faces. Name the singleton BEFORE publishing the other faces: splitting
+     * Same real Activity, two confirmed invented identities and six unknown
+     * faces. Name each singleton BEFORE publishing the other faces: splitting
      * a group would add a cannot-link veto and hide the suggestion.
      * One confirmed example stays below the automatic-match minimum.
      */
@@ -237,6 +237,7 @@ class UnknownFacesKeyboardInsetsTest {
             "fixture must expose six unknown faces and an eligible named suggestion"
         }
         check(state.names[person] == SUGGESTED_NAME)
+        check(state.names.values.count { it == SUGGESTED_NAME } == 2) { "fixture must contain two named matches" }
 
         for (dark in listOf(false, true)) {
             val theme = if (dark) "dark" else "light"
@@ -261,9 +262,13 @@ class UnknownFacesKeyboardInsetsTest {
             steady()
             compose.onNodeWithTag("atlas-group-name").assertIsFocused()
             assertKeyboardContract("$theme h-open-duplicate", portrait = true, createMatcher = createAnother)
-            assertClearOfHeaderAndKeyboard(hasText("Add") and hasClickAction())
+            check(compose.onAllNodes(hasText("Add") and hasClickAction()).fetchSemanticsNodes().size == 2)
+            for (index in 1..2) {
+                val add = hasTestTag("atlas-group-duplicate-add-$index") and hasClickAction()
+                assertClearOfHeaderAndKeyboard(add)
+                assertMinimumTarget(add)
+            }
             assertClearOfHeaderAndKeyboard(createAnother)
-            assertMinimumTarget(hasText("Add") and hasClickAction())
             saveUiEvidence("unknown-ime-448-h-open-duplicate-$theme.png")
 
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -312,8 +317,7 @@ class UnknownFacesKeyboardInsetsTest {
             FaceMediaSourceKey.fromVisiblePhoto(canonical, volume, false, id,
                 null, 0L, 0L, 0L, 0L, 480, 480, 0).canonicalMediaKey
         }.toSet()
-        check(keys.size == PHOTOS + 1)
-        val vector = FloatArray(SFaceModel.DIMENSION) { if (it == 0) 1f else 0f }
+        check(keys.size == PHOTOS + 2)
         val box = IndexedFaceBox(0.1f, 0.1f, 0.9f, 0.9f)
         val person = PersonKey("synthetic-ime-448")
         var count = 0
@@ -324,15 +328,18 @@ class UnknownFacesKeyboardInsetsTest {
                 check(store.skip(lease, "NOT_A_FIXTURE"))
                 continue
             }
+            // The second named singleton is orthogonal to the suggested identity.
+            val axis = if (count == 1) 1 else 0
+            val vector = FloatArray(SFaceModel.DIMENSION) { if (it == axis) 1f else 0f }
             check(store.completeEmbeddings(lease, listOf(box), listOf(vector), SFaceModel.EMBEDDER_VERSION))
             count++
-            if (count == 1) {
+            if (count <= 2) {
                 check(store.materializeClusters(epoch))
                 val state = requireNotNull(host.reviewState(epoch))
                 val singleton = state.clusters.unknownClusters.single()
                 check(singleton.members.size == 1)
                 check(host.review(PeopleClusterReviewCommand(state,
-                    PeopleReviewAction.NameCluster(singleton.id, person, SUGGESTED_NAME))))
+                    PeopleReviewAction.NameCluster(singleton.id, if (count == 1) person else PersonKey("synthetic-ime-448-other"), SUGGESTED_NAME))))
             }
         }
         check(count == keys.size) { "Expected ${keys.size} fixture leases, got $count" }
@@ -383,29 +390,78 @@ class UnknownFacesKeyboardInsetsTest {
 
     /** Taps the field; with animations 10x slower, saves a frame while the keyboard is mid-way. */
     private fun captureOpening(theme: String) {
-        device.animatorScale(10f)
-        try {
-            val full = 918
-            focusNameField()
-            val intermediate = (full / 4)..(full * 3 / 4)
-            // Fail closed: never accept a fully opened or closed frame. Recheck
-            // immediately before every evidence attempt and bracket the capture.
-            compose.waitUntil(15_000L) {
-                compose.keyboardInsetPx() in intermediate
-            }
-            saveUiEvidence("unknown-ime-448-b-opening-$theme.png") {
-                val beforeCapture = compose.keyboardInsetPx()
-                check(beforeCapture in intermediate) {
-                    "$theme opening frame missed: inset=$beforeCapture of $full"
+        check(android.os.Build.VERSION.SDK_INT >= 30) { "IME animation requires API 30" }
+        val full = 918
+        val intermediate = (full / 4)..(full * 3 / 4)
+        val ime = android.view.WindowInsets.Type.ime()
+        val current = java.util.concurrent.atomic.AtomicInteger(-1)
+        val peak = java.util.concurrent.atomic.AtomicInteger(0)
+        val ready = java.util.concurrent.CountDownLatch(1)
+        val callback = object : android.view.WindowInsetsAnimation.Callback(
+            android.view.WindowInsetsAnimation.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE
+        ) {
+            override fun onProgress(
+                insets: android.view.WindowInsets,
+                runningAnimations: MutableList<android.view.WindowInsetsAnimation>
+            ): android.view.WindowInsets {
+                if (runningAnimations.any { it.typeMask and ime != 0 }) {
+                    val bottom = insets.getInsets(ime).bottom
+                    current.set(bottom)
+                    peak.set(maxOf(peak.get(), bottom))
+                    if (bottom in intermediate) ready.countDown()
                 }
-                Log.i(LOG_TAG, "$theme b-opening before capture=$beforeCapture of $full")
+                return insets
             }
-            val afterCapture = compose.keyboardInsetPx()
-            check(afterCapture in intermediate) {
-                "$theme opening capture not bracketed by intermediate insets: $afterCapture of $full"
+
+            override fun onEnd(animation: android.view.WindowInsetsAnimation) {
+                if (animation.typeMask and ime != 0) current.set(-1)
+                super.onEnd(animation)
             }
-            Log.i(LOG_TAG, "$theme b-opening after capture=$afterCapture of $full")
+        }
+        device.animatorScale(10f)
+        val decor = compose.activity.window.decorView
+        try {
+            // Prepare the scroll and resolve the focus action while the IME is
+            // still closed. Do not enter Compose's idle barrier after focus.
+            compose.onNodeWithTag("atlas-unknown-face-review-screen")
+                .performScrollToNode(hasTestTag("atlas-group-name"))
+            compose.waitForIdle()
+            check(compose.keyboardInsetPx() == 0) { "$theme opening did not start closed" }
+            val requestFocus = requireNotNull(
+                compose.onNodeWithTag("atlas-group-name").fetchSemanticsNode()
+                    .config[SemanticsActions.RequestFocus].action
+            )
+            check(visibleSystemAnrRoot() == null) { "$theme opening obscured by system ANR" }
+            instrumentation.runOnMainSync {
+                decor.setWindowInsetsAnimationCallback(callback)
+                requestFocus()
+                decor.windowInsetsController?.show(ime)
+            }
+            check(ready.await(15, java.util.concurrent.TimeUnit.SECONDS)) {
+                "$theme intermediate opening inset not delivered; peak=${peak.get()}"
+            }
+            // Only publish an acquisition bracketed by actual animated insets.
+            // No synthetic frame, final-state substitution or animation retry.
+            val before = current.get()
+            check(before in intermediate) { "$theme opening missed: before=$before" }
+            val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+            try {
+                val after = current.get()
+                check(after in intermediate && after >= before) {
+                    "$theme opening missed: before=$before after=$after"
+                }
+                check(visibleSystemAnrRoot() == null) { "$theme opening obscured by system ANR" }
+                check(uiEvidenceProblem(bitmap) == null) { "$theme opening frame invalid" }
+                val png = java.io.ByteArrayOutputStream().also {
+                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+                }.toByteArray()
+                writeUiEvidenceFile(uiEvidenceDisplayName("unknown-ime-448-b-opening-$theme.png"), png)
+                Log.i(LOG_TAG, "$theme b-opening before capture=$before after capture=$after of $full")
+            } finally {
+                bitmap.recycle()
+            }
         } finally {
+            instrumentation.runOnMainSync { decor.setWindowInsetsAnimationCallback(null) }
             device.animatorScale(1f)
         }
         compose.awaitKeyboardShown()
@@ -657,7 +713,7 @@ class UnknownFacesKeyboardInsetsTest {
     private companion object {
         const val PHOTOS = 6
         const val TYPED_NAME = "Synthetic Morgan"
-        const val SUGGESTED_NAME = "Synthetic Morgan Avery"
+        const val SUGGESTED_NAME = "Synthetic Morgan Avery Northbridge"
         const val FOLDER = "ATLAS-Unknown-IME-448"
         const val LOG_TAG = "ATLAS_IME_448"
     }

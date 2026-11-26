@@ -83,11 +83,23 @@ test('real-Activity evidence exercises an eligible suggestion and duplicate-name
 test('opening evidence fails closed and interactive controls have measured target sizes', () => {
   const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
   const opening = journey.slice(journey.indexOf('private fun captureOpening'), journey.indexOf('private fun focusNameField'));
-  assert.match(opening, /compose\.waitUntil\(15_000L\)/);
+  assert.match(opening, /WindowInsetsAnimation\.Callback/);
+  assert.match(opening, /ready\.await\(15, java\.util\.concurrent\.TimeUnit\.SECONDS\)/);
   assert.doesNotMatch(opening, /runCatching/);
-  assert.match(opening, /saveUiEvidence\("unknown-ime-448-b-opening-\$theme\.png"\) \{/);
-  assert.match(opening, /afterCapture in intermediate/);
+  assert.match(opening, /takeScreenshot\(\)/);
+  assert.match(opening, /after in intermediate && after >= before/);
   assert.match(journey, /private fun assertMinimumTarget/);
   assert.match(journey, /48 \* compose\.activity\.resources\.displayMetrics\.density/);
   assert.match(journey, /assertMinimumTarget\(createMatcher\)/);
+});
+
+test('two same-name synthetic albums exercise both duplicate actions', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
+  const screen = read(src + 'featurepeopleui/UnknownFacesReviewScreen.kt');
+  assert.match(journey, /PHOTOS \+ 2/);
+  assert.match(journey, /state\.names\.values\.count \{ it == SUGGESTED_NAME \} == 2/);
+  assert.match(journey, /for \(index in 1\.\.2\)/);
+  assert.match(journey, /assertMinimumTarget\(add\)/);
+  assert.match(screen, /duplicates\.take\(5\)\.forEachIndexed/);
+  assert.match(screen, /Include eligible suggestions in the same keyboard-aware bring-into-view region/);
 });
