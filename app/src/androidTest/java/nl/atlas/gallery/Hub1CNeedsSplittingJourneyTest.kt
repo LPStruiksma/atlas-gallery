@@ -13,6 +13,8 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTextClear
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -274,6 +276,8 @@ class Hub1CNeedsSplittingJourneyTest {
         // start a fresh A10 even while a person destination is already open.
         openPersonAndAssertSample("atlas-needs-splitting-row", NAME, "reopened named split row")
         compose.tap(hasTestTag("atlas-person-name"))
+        compose.waitForNode(hasTestTag("atlas-person-name-field"), WAIT_MS, useUnmergedTree = true)
+        compose.onNodeWithTag("atlas-person-name-field").performTextClear()
         compose.typeText(hasTestTag("atlas-person-name-field"), "Fictional Bea")
         val beforeRetarget = a10Count()
         compose.tap(hasTestTag("atlas-person-name-save"))
