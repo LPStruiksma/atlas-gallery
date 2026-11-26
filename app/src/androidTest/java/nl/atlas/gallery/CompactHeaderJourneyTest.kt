@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.testkit.awaitThat
+import nl.atlas.gallery.testkit.awaitWindowSettled
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
 import org.junit.Assert.assertEquals
@@ -131,6 +132,7 @@ class CompactHeaderJourneyTest {
     }
 
     @Test fun albumWholeLibraryEntriesRecordA11() {
+        awaitInitialPhotosForA11()
         openAlbumsForA11()
         assertWholeLibraryA11("Albums home")
 
@@ -146,6 +148,7 @@ class CompactHeaderJourneyTest {
     }
 
     @Test fun declutterWholeLibraryRecordsA11AfterConfirmation() {
+        awaitInitialPhotosForA11()
         openFixtureAlbumForA11()
         openPopup("atlas-header-more", "atlas-open-declutter")
         compose.tap(hasTestTag("atlas-open-declutter"))
@@ -162,17 +165,36 @@ class CompactHeaderJourneyTest {
         awaitA11(before, "Declutter confirmed Whole library")
     }
 
+    private fun awaitInitialPhotosForA11() {
+        // Unlike the older header journey, the new A11 tests were tapping
+        // immediately after launch. Require the published Photos landing and
+        // a focused, settled window after the S24 display override.
+        waitFor(hasTestTag("atlas-nav-photos"))
+        waitFor(hasText("photos & videos", substring = true))
+        compose.awaitWindowSettled()
+    }
+
     private fun openAlbumsForA11() {
-        compose.tap(hasTestTag("atlas-nav-albums"))
+        val albumsTitle = hasTestTag("atlas-header-title") and hasText("Albums")
+        val albumsGrid = hasTestTag("atlas-album-grid")
+        compose.tap(hasTestTag("atlas-nav-albums"), timeoutMs = 60_000L) {
+            compose.exists(albumsTitle) && compose.exists(albumsGrid)
+        }
         waitFor(hasTestTag("atlas-album-card") and
             hasText("ATLAS-Header-Fixture", substring = true))
+        compose.awaitWindowSettled()
     }
 
     private fun openFixtureAlbumForA11() {
         openAlbumsForA11()
-        compose.tap(hasTestTag("atlas-album-card") and
-            hasText("ATLAS-Header-Fixture", substring = true))
-        waitFor(hasTestTag("atlas-header-title") and hasText("ATLAS-Header-Fixture"))
+        val card = hasTestTag("atlas-album-card") and
+            hasText("ATLAS-Header-Fixture", substring = true)
+        val title = hasTestTag("atlas-header-title") and hasText("ATLAS-Header-Fixture")
+        // A single real pointer tap must leave the Albums grid. If it does not,
+        // the kit reports the pointer coordinates and what was under them.
+        compose.tap(card, timeoutMs = 60_000L) {
+            compose.exists(title) && !compose.exists(hasTestTag("atlas-album-grid"))
+        }
         // Album publication must settle before opening the menu or search.
         waitFor(hasText("6 items"))
     }
