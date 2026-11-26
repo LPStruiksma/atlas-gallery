@@ -68,6 +68,7 @@ class AutocompleteCandidatesTest {
         assertTrue(index.search("2026").isEmpty())
         assertTrue(index.search("im").isEmpty())
         assertEquals(listOf("im_1"), displays(index, "im 1"))
+        assertEquals(listOf("im_1"), displays(index, "im_"))
     }
 
     @Test fun historyScopePrivacyAndSnapshotIsolation() {
@@ -93,7 +94,7 @@ class AutocompleteCandidatesTest {
     @Test fun synthetic250kLookupDiagnostic() {
         val prefixes = List(250_000) { "img_" + it.toString().padStart(6, '0') }
         val index = AutocompleteCandidateIndex(scope, filePrefixes = prefixes)
-        val queries = listOf("img", "img 000", "img 249999", "img 999999", "000", "249", "img missing")
+        val queries = listOf("img", "img 000", "img_249999", "img 999999", "000", "249", "img missing")
         repeat(30) { queries.forEach { index.search(it) } }
         val times = LongArray(210) { i ->
             val start = System.nanoTime()
