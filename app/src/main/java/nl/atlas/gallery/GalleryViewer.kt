@@ -866,6 +866,14 @@ private fun GalleryViewerSnapshot(
                         if (detailsShownMedia != null) settleDetails(false)
                         else chromeVisible = !chromeVisible
                     },
+                    canPinchDismiss = {
+                        access == ViewerAccess.LIBRARY &&
+                            page == pagerState.settledPage && page == pagerState.currentPage &&
+                            !pagerState.isScrollInProgress && !stripState.isScrollInProgress &&
+                            scrubOverlayState.value == null && detailsShownMedia == null &&
+                            detailsProgress.floatValue == 0f
+                    },
+                    onPinchDismiss = { returnToGallery() },
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
                             requestViewerSelection(target)
@@ -1188,6 +1196,31 @@ enum class ViewerAccess(val details: Boolean, val backDescription: String) {
 internal fun viewerCanChangeInMediaStore(uri: String, sdkInt: Int): Boolean =
     sdkInt >= 30 && uri.startsWith("content://media/")
 
+/** A below-fit pose is separate from zoom, whose lower bound remains 1x. */
+internal data class ViewerPinchExitPose(
+    val scale: Float = 1f, val x: Float = 0f, val y: Float = 0f
+)
+
+internal fun viewerMayOwnPinchExit(
+    owned: Boolean, eligible: Boolean, zoom: Float, factor: Float
+): Boolean = eligible && (owned ||
+    (zoom == 1f && factor.isFinite() && factor > 0f && factor < .998f))
+
+internal fun viewerPinchExitFrame(
+    previous: ViewerPinchExitPose, factor: Float, cx: Float, cy: Float,
+    width: Int, height: Int
+): ViewerPinchExitPose {
+    if (!factor.isFinite() || factor <= 0f || !cx.isFinite() || !cy.isFinite() ||
+        width <= 0 || height <= 0) return previous
+    val scale = (previous.scale * factor).coerceIn(.70f, 1f)
+    if (scale == 1f) return ViewerPinchExitPose()
+    return ViewerPinchExitPose(scale, (cx - width / 2f) * (1f - scale),
+        (cy - height / 2f) * (1f - scale))
+}
+
+internal fun viewerPinchExitCommits(pose: ViewerPinchExitPose, eligible: Boolean): Boolean =
+    eligible && pose.scale <= .90f
+
 internal enum class ViewerVerticalSwipe { DETAILS, CLOSE, NONE }
 
 /** Travel needed for a vertical swipe to open details (up) or close (down). */
@@ -1497,6 +1530,7 @@ private fun PhotoPage(
     faceBoxes: List<IndexedFaceBox>,
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
+    canPinchDismiss: () -> Boolean, onPinchDismiss: () -> Unit,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
     openingPage: Boolean = false,
@@ -1509,6 +1543,8 @@ private fun PhotoPage(
     // so they must call the latest callbacks rather than captured ones.
     val latestZoomChanged by rememberUpdatedState(onZoomChanged)
     val latestToggleChrome by rememberUpdatedState(onToggleChrome)
+    val latestCanPinchDismiss by rememberUpdatedState(canPinchDismiss)
+    val latestPinchDismiss by rememberUpdatedState(onPinchDismiss)
     // Pager retains neighboring pages to keep swipes fluid. They must not
     // retain a previous zoom/pan when they stop being the focused photo:
     // otherwise shared pager gestures are enabled while an offscreen page
@@ -1541,6 +1577,32 @@ private fun PhotoPage(
     val zoomPoseProbe = LocalViewerZoomPoseProbe.current
     val doubleTapZoom = remember(media.uri, focused, imageRevision) {
         arrayOfNulls<kotlinx.coroutines.Job>(1)
+    }
+    var pinchPose by remember(media.uri, focused, imageRevision) {
+        mutableStateOf(ViewerPinchExitPose())
+    }
+    val pinchScope = rememberCoroutineScope()
+    val pinchReturn = remember(media.uri, focused, imageRevision) {
+        arrayOfNulls<kotlinx.coroutines.Job>(1)
+    }
+    DisposableEffect(pinchReturn) {
+        onDispose { pinchReturn[0]?.cancel() }
+    }
+    fun restorePinchPose() {
+        pinchReturn[0]?.cancel()
+        val from = pinchPose
+        if (AtlasMotion.animationsDisabled(context)) {
+            pinchPose = ViewerPinchExitPose()
+        } else {
+            pinchReturn[0] = pinchScope.launch {
+                animate(0f, 1f, animationSpec = tween(AtlasMotion.SHARED_ELEMENT_MS,
+                    easing = AtlasMotion.SineInOut70)) { fraction, _ ->
+                    pinchPose = ViewerPinchExitPose(
+                        from.scale + (1f - from.scale) * fraction,
+                        from.x * (1f - fraction), from.y * (1f - fraction))
+                }
+            }
+        }
     }
     LaunchedEffect(zoomedIn) { if (zoomedIn) zoomedOnce = true }
     LaunchedEffect(viewport, decodedSize, tiledSize) {
@@ -1618,6 +1680,9 @@ private fun PhotoPage(
                         val poseAtDown = zoomPose
                         var edgeTravelX = 0f
                         var multiTouch = false
+                        var pinchOwned = false
+                        var normalRelease = false
+                        try {
                         do {
                             val event = awaitPointerEvent()
                             val activePointers = event.changes.count { it.pressed }
@@ -1642,13 +1707,21 @@ private fun PhotoPage(
                                         edgeTravelX += pan.x
                                     }
                                 }
-                                val next = viewerZoomGesture(
-                                    previous, gestureZoom, pan.x, pan.y,
-                                    centroid.x, centroid.y, viewport.width, viewport.height,
-                                    decodedSize.width, decodedSize.height, maxZoom())
-                                if (next != previous) {
-                                    zoomPose = next
-                                    latestZoomChanged(next.scale)
+                                if (activePointers > 1 && viewerMayOwnPinchExit(pinchOwned, latestCanPinchDismiss(),
+                                        previous.scale, gestureZoom)) {
+                                    pinchOwned = true
+                                    pinchReturn[0]?.cancel()
+                                    pinchPose = viewerPinchExitFrame(pinchPose, gestureZoom,
+                                        centroid.x, centroid.y, viewport.width, viewport.height)
+                                } else if (!pinchOwned) {
+                                    val next = viewerZoomGesture(
+                                        previous, gestureZoom, pan.x, pan.y,
+                                        centroid.x, centroid.y, viewport.width, viewport.height,
+                                        decodedSize.width, decodedSize.height, maxZoom())
+                                    if (next != previous) {
+                                        zoomPose = next
+                                        latestZoomChanged(next.scale)
+                                    }
                                 }
                                 // Consume two-pointer translations even when
                                 // no scale/offset changed (e.g. at hard limits).
@@ -1657,8 +1730,22 @@ private fun PhotoPage(
                                     if (it.positionChanged()) it.consume()
                                 }
                             }
+                            if (activePointers == 0) normalRelease = event.changes.all {
+                                !it.previousPressed || it.changedToUpIgnoreConsumed()
+                            }
                         } while (event.changes.any { it.pressed })
-                        if (!multiTouch) {
+                        } finally {
+                            if (pinchOwned && !normalRelease) {
+                                pinchReturn[0]?.cancel()
+                                pinchPose = ViewerPinchExitPose()
+                            }
+                        }
+                        if (pinchOwned && normalRelease) {
+                            if (viewerPinchExitCommits(pinchPose, latestCanPinchDismiss())) {
+                                latestPinchDismiss()
+                            } else restorePinchPose()
+                        }
+                        if (!multiTouch && !pinchOwned) {
                             val target = viewerEdgePageTarget(
                                 pageIndex, itemCount, edgeTravelX, viewport.width)
                             if (target != null) latestEdgeCallback(target)
@@ -1732,9 +1819,10 @@ private fun PhotoPage(
                 }
                 // Innermost: transforms only the drawn photo content.
                 .graphicsLayer {
-                    scaleX = zoomPose.scale; scaleY = zoomPose.scale
-                    translationX = zoomPose.translationX
-                    translationY = zoomPose.translationY
+                    scaleX = zoomPose.scale * pinchPose.scale
+                    scaleY = zoomPose.scale * pinchPose.scale
+                    translationX = zoomPose.translationX + pinchPose.x
+                    translationY = zoomPose.translationY + pinchPose.y
                 }) {
                 var previewFailed by remember(media.uri, imageRevision) { mutableStateOf(false) }
                 ViewerPhotoPreview(media,

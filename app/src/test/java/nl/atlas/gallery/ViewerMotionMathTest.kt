@@ -74,6 +74,27 @@ class ViewerMotionMathTest {
         }
     }
 
+    @Test fun belowFitPinchOwnsOnlyAfterFitAndContinuesThroughReversal() {
+        assertFalse(viewerMayOwnPinchExit(false, true, 1.2f, .8f))
+        assertFalse(viewerMayOwnPinchExit(false, false, 1f, .8f))
+        assertFalse(viewerMayOwnPinchExit(false, true, 1f, 1.1f))
+        assertFalse(viewerMayOwnPinchExit(false, true, 1f, .999f))
+        assertTrue(viewerMayOwnPinchExit(false, true, 1f, .97f))
+        assertTrue(viewerMayOwnPinchExit(true, true, 1f, 1.2f))
+        assertFalse(viewerMayOwnPinchExit(true, false, 1f, .8f))
+        val down = viewerPinchExitFrame(ViewerPinchExitPose(), .85f, 750f, 300f, 1000, 1000)
+        assertEquals(.85f, down.scale, .001f)
+        assertEquals(750f, 500f + 250f * down.scale + down.x, .001f)
+        assertEquals(300f, 500f - 200f * down.scale + down.y, .001f)
+        assertTrue(viewerPinchExitCommits(down, true))
+        assertFalse(viewerPinchExitCommits(down, false))
+        val reverse = viewerPinchExitFrame(down, 1.1f, 750f, 300f, 1000, 1000)
+        assertFalse(viewerPinchExitCommits(reverse, true))
+        assertEquals(ViewerPinchExitPose(),
+            viewerPinchExitFrame(reverse, 2f, 750f, 300f, 1000, 1000))
+        assertEquals(down, viewerPinchExitFrame(down, Float.NaN, 0f, 0f, 1000, 1000))
+    }
+
     @Test fun ordinaryPagerSwipeIsNeverClaimedByPhotoAtRest() {
         assertFalse(viewerMayHandleTransform(0, 1f))
         assertFalse(viewerMayHandleTransform(1, 1f))

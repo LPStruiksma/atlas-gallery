@@ -99,4 +99,4 @@ No blocking "Updating your allowed photos" screen (#505): keep showing the last 
 - [ ] 6 Video
 - [ ] 7 Access and loading (#505)
 
-FLOW-3 checkpoint A (#593): prepare the settled item's authorized grid and seek before the exit, measure its current tile rather than reusing the opening rectangle, and use a bounded no-target fallback. This is implementation evidence only; pinch, crop, paired runtime frames and timing comparison are still required.
+FLOW-3 checkpoint A (#593): prepare the settled item's authorized grid and seek before the exit, measure its current tile rather than reusing the opening rectangle, and use a bounded no-target fallback. Checkpoint B1 adds focused below-fit pinch ownership and reversible focal scaling, with a provisional .90 fit commit threshold. This is implementation evidence only; continuous grid/chrome reveal, drag-to-pinch transfer, crop handoff, paired runtime frames and timing comparison are still required.

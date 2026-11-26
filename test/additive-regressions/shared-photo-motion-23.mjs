@@ -57,3 +57,11 @@ test("disabled system animation scale and stale grants cancel pixels immediately
   assert.match(main, /if \(viewerUri != null && !viewerAllowed\)/);
   assert.match(main, /sharedPhotoOrigin = null/);
 });
+
+test("below-fit pinch uses the focused photo transform loop and settled return", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /viewerMayOwnPinchExit\(pinchOwned, latestCanPinchDismiss\(\)/);
+  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\)\)/);
+  assert.match(viewer, /onPinchDismiss = \{ returnToGallery\(\) \}/);
+  assert.match(viewer, /scaleX = zoomPose\.scale \* pinchPose\.scale/);
+});
