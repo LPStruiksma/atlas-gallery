@@ -30,7 +30,7 @@ assert.match(scoped, /searchWithFacets\(/);
 assert.match(scoped, /fun scopedNameMatches\(/);
 assert.match(main, /AtlasSearch\(/); // Pictures, album, person, Search destination shell
 assert.match(main, /selectedScope = overviewScope/);
-assert.match(main, /onSearchWholeLibrary = \{ tab = 3 \}/);
+assert.match(main, /onSearchWholeLibrary = \{\s*navigationActionTimers\.startSearch\(\)\s*tab = 3\s*\}/);
 assert.match(main, /val scopedActive = overviewQuery\.isNotBlank\(\) &&\s*\(tab == 0 \|\| personFilter != null\)/);
 assert.match(main, /if \(searchActive\) key\(CatalogSourceKey\(visible\)\)/);
 assert.match(albums, /AtlasSearch\(/); // Albums list

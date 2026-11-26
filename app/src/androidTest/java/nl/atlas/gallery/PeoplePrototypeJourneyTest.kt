@@ -21,6 +21,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -291,7 +292,41 @@ class PeoplePrototypeJourneyTest {
         compose.awaitScreenStill("prototype-person-page")
         assertEquals(a10Before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
         saveUiEvidence("prototype-person-page.png")
-        compose.tap(hasTestTag("atlas-header-back"))
+
+        // Enter the actual viewer from the native album, then open its named
+        // person via Details. This exercises AtlasApp's viewerPhotoPeople callback.
+        val fixtureId = fixtureTilesShown().first()
+        val fixtureTile = SemanticsMatcher("synthetic fixture tile") { node ->
+            tileId(node.config.getOrNull(SemanticsProperties.TestTag).orEmpty()) == fixtureId
+        }
+        compose.tap(fixtureTile)
+        compose.waitForNode(hasTestTag("atlas-viewer-details-open"), WAIT_MS, useUnmergedTree = true)
+        compose.tap(hasTestTag("atlas-viewer-details-open"))
+        compose.waitForNode(hasTestTag("atlas-details-person-1"), WAIT_MS, useUnmergedTree = true)
+        compose.onNodeWithTag("atlas-details-people").performScrollTo()
+        val viewerA10Before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
+        compose.tap(hasTestTag("atlas-details-person-1"))
+        compose.awaitThat("viewer person opens the native album", WAIT_MS) {
+            fixtureTilesShown() == specs.keys
+        }
+        compose.awaitThat("viewer person records one A10 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a10_ms").count == viewerA10Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(viewerA10Before + 1, PerformanceSession.aggregate.snapshot("action_a10_ms").count)
+
+        // The native Person page's Whole library escape is a non-tab A11 entry.
+        compose.tap(hasTestTag("atlas-search-expand"))
+        compose.waitForNode(hasTestTag("atlas-search-scope-library"), WAIT_MS, useUnmergedTree = true)
+        val scopeA11Before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.awaitThat("native person library scope records one A11 sample", WAIT_MS) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == scopeA11Before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(scopeA11Before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
+        openPeople()
         compose.waitForNode(hasTestTag("atlas-native-person-album"), WAIT_MS, useUnmergedTree = true)
 
         // 5. Search by the name finds exactly those photos.
