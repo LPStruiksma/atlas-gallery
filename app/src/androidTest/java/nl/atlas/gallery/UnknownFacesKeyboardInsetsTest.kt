@@ -67,6 +67,7 @@ import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.awaitKeyboardShown
 import nl.atlas.gallery.testkit.hideKeyboard
 import nl.atlas.gallery.testkit.keyboardInsetPx
+import nl.atlas.gallery.testkit.rootViews
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -181,6 +182,7 @@ class UnknownFacesKeyboardInsetsTest {
             captureOpening(theme)
 
             // (c) Keyboard open, empty field.
+            observeDisplacement("$theme c-open-empty", "after-keyboard-and-product-settle")
             assertKeyboardContract("$theme c-open-empty", portrait = true)
             saveUiEvidence("unknown-ime-448-c-open-empty-$theme.png")
 
@@ -243,9 +245,10 @@ class UnknownFacesKeyboardInsetsTest {
             val theme = if (dark) "dark" else "light"
             if (dark) reconfigure { device.night(true) }
             openReview()
-            focusNameField()
+            focusNameField("$theme g-open-suggestion")
             compose.awaitKeyboardShown()
             steady()
+            observeDisplacement("$theme g-open-suggestion", "after-keyboard-and-product-settle")
             compose.onNodeWithTag("atlas-group-name").assertIsFocused()
             assertKeyboardContract("$theme g-open-suggestion", portrait = true)
             assertClearOfHeaderAndKeyboard(hasText("Looks like someone you know?"))
@@ -432,6 +435,7 @@ class UnknownFacesKeyboardInsetsTest {
             compose.onNodeWithTag("atlas-unknown-face-review-screen")
                 .performScrollToNode(hasTestTag("atlas-group-name"))
             compose.waitForIdle()
+            observeDisplacement("$theme c-open-empty", "before-focus")
             check(compose.keyboardInsetPx() == 0) { "$theme opening did not start closed" }
             val requestFocus = requireNotNull(
                 compose.onNodeWithTag("atlas-group-name").fetchSemanticsNode()
@@ -442,6 +446,7 @@ class UnknownFacesKeyboardInsetsTest {
                 decor.setWindowInsetsAnimationCallback(callback)
                 requestFocus()
                 decor.windowInsetsController?.show(ime)
+                logNativeDisplacement("$theme c-open-empty", "after-focus")
             }
             check(ready.await(15, java.util.concurrent.TimeUnit.SECONDS)) {
                 "$theme intermediate opening inset not delivered; peak=${peak.get()}"
@@ -470,19 +475,25 @@ class UnknownFacesKeyboardInsetsTest {
             instrumentation.runOnMainSync { decor.setWindowInsetsAnimationCallback(null) }
             device.animatorScale(1f)
         }
+        observeDisplacement("$theme c-open-empty", "after-opening-frame")
         compose.awaitKeyboardShown()
         steady()
     }
 
-    private fun focusNameField() {
+    private fun focusNameField(diagnosticLabel: String? = null) {
         compose.onNodeWithTag("atlas-unknown-face-review-screen")
             .performScrollToNode(hasTestTag("atlas-group-name"))
         compose.waitForIdle()
+        diagnosticLabel?.let { observeDisplacement(it, "before-focus") }
         // Focus by semantics: after the scroll the sticky header can sit over
         // part of the field in landscape, and a pointer tap would land on it.
         // Focus opens the keyboard the same way a tap does.
         compose.onNodeWithTag("atlas-group-name")
             .performSemanticsAction(SemanticsActions.RequestFocus)
+        diagnosticLabel?.let {
+            compose.runOnUiThread { logNativeDisplacement(it, "after-focus") }
+            observeDisplacement(it, "after-focus")
+        }
     }
 
     /**
@@ -540,6 +551,94 @@ class UnknownFacesKeyboardInsetsTest {
         }
         return "$window; listPos=${list.positionInWindow} listSize=${list.size} " +
             "listClipped=${list.boundsInWindow}; roots=$roots; navPill=$nav"
+    }
+
+    // #1057: diagnostic-only, on both passing and failing paths. These are
+    // separate samples, not an atomic frame or a coordinate correction.
+    // Native reads immediately after focus do not enter a Compose idle barrier.
+    private fun nativeViewGeometry(view: android.view.View): String {
+        val window = IntArray(2).also { view.getLocationInWindow(it) }
+        val screen = IntArray(2).also { view.getLocationOnScreen(it) }
+        val visible = android.graphics.Rect()
+        val hasVisible = view.getGlobalVisibleRect(visible)
+        val insets = view.rootWindowInsets
+        return "size=${view.width}x${view.height} window=${window.contentToString()} " +
+            "screen=${screen.contentToString()} globalVisible=$hasVisible:$visible " +
+            "focused=${view.hasWindowFocus()} " +
+            "rawIme=${insets?.getInsets(android.view.WindowInsets.Type.ime())?.bottom} " +
+            "navInset=${insets?.getInsets(android.view.WindowInsets.Type.navigationBars())?.bottom}"
+    }
+
+    private fun logNativeDisplacement(label: String, phase: String) {
+        runCatching {
+            val window = compose.activity.window
+            val decor = window.decorView
+            Log.i(LOG_TAG, "1057 $label $phase native t=${SystemClock.uptimeMillis()} " +
+                "softInputMode=0x${window.attributes.softInputMode.toString(16)} " +
+                "decor=${nativeViewGeometry(decor)} root=${nativeViewGeometry(decor.rootView)}")
+        }.onFailure { Log.w(LOG_TAG, "1057 $label $phase native unavailable: ${it.javaClass.simpleName}") }
+    }
+
+    // Accessibility window bounds are independently reported by the system,
+    // not calculated from the app root height or the app's raw IME inset.
+    // This geometry-only window dump contains no node text or photo data.
+    private fun logPhysicalWindows(label: String, phase: String) {
+        runCatching {
+            val windows = interactiveUiAutomation().windows
+            val imeWindows = windows.filter {
+                it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+            }.map { w -> android.graphics.Rect().also { w.getBoundsInScreen(it) } }
+            val physicalImeTop = imeWindows.filter { !it.isEmpty }.minOfOrNull { it.top }
+            Log.i(LOG_TAG, "1057 $label $phase physical t=${SystemClock.uptimeMillis()} " +
+                "physicalImeTop=${physicalImeTop ?: "unavailable (no nonempty IME window)"} imeWindows=$imeWindows")
+            windows.take(12).forEach { w ->
+                val bounds = android.graphics.Rect().also { w.getBoundsInScreen(it) }
+                Log.i(LOG_TAG, "1057 $label $phase systemWindow id=${w.id} type=${w.type} " +
+                    "layer=${w.layer} focused=${w.isFocused} active=${w.isActive} screen=$bounds")
+            }
+        }.onFailure { Log.w(LOG_TAG, "1057 $label $phase physical unavailable: ${it.javaClass.simpleName}") }
+    }
+
+    private fun observeDisplacement(label: String, phase: String) {
+        // Use the existing test-kit keyboard and settled-window barriers at
+        // the call sites. The final sample follows the kit's product clock
+        // advance; the exact internal bringIntoView invocation is not observed.
+        // Fetching semantics may advance the clock, so these samples cannot
+        // prove causal ordering inside that product coroutine.
+        logPhysicalWindows(label, phase)
+        runCatching {
+            val roots = compose.rootViews()
+            compose.runOnUiThread {
+                logNativeDisplacement(label, phase)
+                roots.forEachIndexed { index, view ->
+                    Log.i(LOG_TAG, "1057 $label $phase composeHost[$index] ${nativeViewGeometry(view)}")
+                }
+            }
+        }.onFailure { Log.w(LOG_TAG, "1057 $label $phase hosts unavailable: ${it.javaClass.simpleName}") }
+        val matchers = listOf(
+            "root" to isRoot(),
+            "list" to hasTestTag("atlas-unknown-face-review-screen"),
+            "field" to hasTestTag("atlas-group-name"),
+            "header" to hasTestTag("atlas-unknown-group-header"),
+            "compactHeader" to hasTestTag("atlas-unknown-group-header-compact"),
+            "create" to hasTestTag("atlas-group-create-person"),
+            "suggestionTitle" to hasText("Looks like someone you know?"),
+            "suggestionAdd" to (hasText("Add") and hasClickAction()),
+            "suggestionReject" to (hasText("Not $SUGGESTED_NAME") and hasClickAction())
+        )
+        for ((name, matcher) in matchers) {
+            runCatching {
+                val nodes = compose.onAllNodes(matcher, useUnmergedTree = true)
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                if (nodes.isEmpty()) Log.i(LOG_TAG, "1057 $label $phase $name absent")
+                nodes.forEachIndexed { index, node ->
+                    val whole = Rect(node.positionInWindow, node.size.toSize())
+                    Log.i(LOG_TAG, "1057 $label $phase $name[$index] t=${SystemClock.uptimeMillis()} " +
+                        "unclippedWindow=$whole visibleWindow=${node.boundsInWindow} " +
+                        "visibleRoot=${node.boundsInRoot} size=${node.size}")
+                }
+            }.onFailure { Log.w(LOG_TAG, "1057 $label $phase $name unavailable: ${it.javaClass.simpleName}") }
+        }
     }
 
     private fun log(label: String) {

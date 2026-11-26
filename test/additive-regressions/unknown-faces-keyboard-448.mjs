@@ -112,3 +112,19 @@ test('keyboard proof measures actual touch bounds and preserves the exact viewpo
   assert.match(journey, /abs\(list\.bottom - keyboardTop\) <= 2f/);
   assert.match(journey, /viewportDiagnostics\(\)/);
 });
+
+test('#1057 compares normal and suggestion IME geometry without replacing acceptance gates', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
+  for (const signal of ['before-focus', 'after-focus', 'after-opening-frame',
+    'after-keyboard-and-product-settle', 'physicalImeTop', 'TYPE_INPUT_METHOD',
+    'getBoundsInScreen', 'getLocationOnScreen', 'getLocationInWindow',
+    'getGlobalVisibleRect', 'softInputMode', 'rawIme', 'navInset',
+    'unclippedWindow', 'visibleWindow', 'atlas-unknown-group-header-compact',
+    'atlas-group-create-person']) assert.ok(journey.includes(signal), signal);
+  assert.match(journey, /captureOpening\(theme\)/);
+  assert.match(journey, /focusNameField\("\$theme g-open-suggestion"\)/);
+  assert.match(journey, /observeDisplacement\("\$theme g-open-suggestion", "after-keyboard-and-product-settle"\)/);
+  assert.match(journey, /observeDisplacement\("\$theme c-open-empty", "after-keyboard-and-product-settle"\)/);
+  assert.match(journey, /abs\(list\.bottom - keyboardTop\) <= 2f/);
+  assert.match(journey, /touch\.width >= minPx - 1f && touch\.height >= minPx - 1f/);
+});
