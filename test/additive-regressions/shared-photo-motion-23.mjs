@@ -195,3 +195,11 @@ test("FLOW-3 entry and ordinary Back use oriented fitted image geometry rather t
   assert.match(motion, /if \(cropFrame != null\) \{/);
   assert.doesNotMatch(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport/);
 });
+
+test("FLOW-3 non-grid story return samples fade without a stale tile and restores the same moment", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun nonGridStoryReturnFadesWithoutTile\(/);
+  assert.match(journey, /takenAtOf = \{ step -> today\.minusYears/);
+  assert.match(journey, /No-target Back must restore the same story moment/);
+  for (const frame of ["flow3-story-before", "flow3-story-fade-mid", "flow3-story-restored"]) assert.ok(journey.includes(frame), frame);
+});

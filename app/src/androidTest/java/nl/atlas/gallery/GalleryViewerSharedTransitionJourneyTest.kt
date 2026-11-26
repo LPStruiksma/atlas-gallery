@@ -12,6 +12,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -44,7 +45,16 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     // Only the offscreen case needs a large dated catalogue. Restore the two
     // sort preferences after its disposable activity and fixtures are gone.
     private val fixtures = TestRule { base, description ->
-        if (description.methodName != "offscreenSettledPhotoReturnsToItsOwnTile") {
+        if (description.methodName == "nonGridStoryReturnFadesWithoutTile") {
+            val today = java.time.LocalDate.now()
+            val zone = java.time.ZoneId.systemDefault()
+            SyntheticHeaderFixtures(
+                sizes = mixedSizes,
+                folderOf = { "ATLAS-Flow3-Story" },
+                takenAtOf = { step -> today.minusYears(step.toLong()).atTime(12, 0)
+                    .atZone(zone).toInstant().toEpochMilli() }
+            ).apply(base, description)
+        } else if (description.methodName != "offscreenSettledPhotoReturnsToItsOwnTile") {
             SyntheticHeaderFixtures(sizes = mixedSizes).apply(base, description)
         } else {
             object : Statement() {
@@ -432,6 +442,60 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-ratio-gallery").assertIsDisplayed()
         compose.onNodeWithTag(tileTag).assertIsDisplayed()
         saveUiEvidence("flow3-ratio-returned-$mode.png")
+    }
+
+    // Stories remains on the Albums tab (no mounted return grid). Exercise
+    // the real host's no-target branch rather than making a fake tile vanish.
+    @Test fun nonGridStoryReturnFadesWithoutTile() {
+        firstTile()
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitForNode(hasTestTag("atlas-albums-stories-entry"))
+        compose.onNodeWithTag("atlas-albums-stories-entry").performClick()
+        compose.waitForNode(hasTestTag("atlas-story-on_this_day"))
+        compose.onNodeWithTag("atlas-story-on_this_day").performClick()
+        compose.waitForNode(hasTestTag("atlas-story-open-gallery"))
+        val pause = hasContentDescription("Pause slideshow")
+        if (compose.onAllNodes(pause).fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNode(pause).performClick()
+        }
+        val moment = SemanticsMatcher("current synthetic story moment") { node ->
+            node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+                .any { it.startsWith("Moment ") }
+        }
+        compose.waitForNode(moment)
+        val before = compose.onNode(moment).fetchSemanticsNode()
+            .config[SemanticsProperties.ContentDescription]
+        saveUiEvidence("flow3-story-before-$mode.png")
+        compose.onNodeWithTag("atlas-story-open-gallery").performClick()
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        compose.mainClock.advanceTimeBy(600L)
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-shared-photo-enter").assertDoesNotExist()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("atlas-back").performClick()
+            repeat(5) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+                compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+            }
+            compose.onNodeWithTag("atlas-viewer").assertExists()
+            saveUiEvidence("flow3-story-fade-mid-$mode.png")
+            repeat(20) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+                compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+            }
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.waitForNode(hasTestTag("atlas-story-player"))
+        compose.waitForNode(moment)
+        assertTrue("No-target Back must restore the same story moment",
+            compose.onNode(moment).fetchSemanticsNode()
+                .config[SemanticsProperties.ContentDescription] == before)
+        saveUiEvidence("flow3-story-restored-$mode.png")
     }
 
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {
