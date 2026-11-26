@@ -269,7 +269,7 @@ class FaceIndexStoreScaleAndroidTest {
      * The fixture uses no real media. Bulk row insertion is setup only; both
      * the seed and timed step use the production publication transaction.
      * Heap values are managed-heap occupancy estimates, not an object-graph
-     * retained-size analysis. The 2 ms sampler is a lower bound on the peak.
+     * retained-size analysis. The nominal 2 ms sampler is a lower bound on the peak.
      * No unstable absolute heap or timing assertions in ordinary CI.
      */
     @Test fun faceReviewPublicationFootprint() {
@@ -282,8 +282,10 @@ class FaceIndexStoreScaleAndroidTest {
         require(pendingCount in setOf(1, 1_000, 16_384))
         val runtime = Runtime.getRuntime()
         fun used(): Long = runtime.totalMemory() - runtime.freeMemory()
+        // GC is a request, not a retained-object census. Use the same bounded
+        // collection sequence for each sample; do not assume a timed wait settles ART.
         fun settled(): Long {
-            repeat(4) { System.gc(); Thread.sleep(50) }
+            repeat(4) { System.gc(); System.runFinalization() }
             return used()
         }
         withStore { store, _ ->
@@ -328,31 +330,33 @@ class FaceIndexStoreScaleAndroidTest {
             assertEquals(seedCount, review.clusters.faceCount)
             val afterReview = settled()
             val peak = AtomicLong(afterReview)
-            val running = java.util.concurrent.atomic.AtomicBoolean(true)
+            val sampler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
             val ready = java.util.concurrent.CountDownLatch(1)
-            val sampler = Thread {
+            val samples = sampler.scheduleWithFixedDelay({
+                peak.accumulateAndGet(used(), ::maxOf)
                 ready.countDown()
-                while (running.get()) {
-                    peak.accumulateAndGet(used(), ::maxOf)
-                    Thread.sleep(2)
-                }
-            }
-            sampler.start()
-            ready.await()
-            val publishStart = SystemClock.elapsedRealtimeNanos()
+            }, 0, 2, java.util.concurrent.TimeUnit.MILLISECONDS)
             val wallMs: Double
             try {
+                check(ready.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Footprint sampler did not start"
+                }
+                val publishStart = SystemClock.elapsedRealtimeNanos()
                 assertTrue(store.publishClustersIfDue(epoch, scanFinished = true))
                 wallMs = (SystemClock.elapsedRealtimeNanos() - publishStart) / 1e6
-            } finally {
                 peak.accumulateAndGet(used(), ::maxOf)
-                running.set(false)
-                sampler.join()
+            } finally {
+                samples.cancel(false)
+                sampler.shutdown()
+                check(sampler.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "Footprint sampler did not stop"
+                }
             }
             val work = requireNotNull(store.lastPublicationWork)
             val afterPublication = settled()
             // Keep the old review reachable through both heap readings.
             assertEquals(seedCount, review.clusters.faceCount)
+            java.lang.ref.Reference.reachabilityFence(review)
             assertFalse(store.clusterPublicationContinues(epoch))
             val next = requireNotNull(store.peopleReview(epoch))
             assertEquals(seedCount + pendingCount, next.clusters.faceCount)
