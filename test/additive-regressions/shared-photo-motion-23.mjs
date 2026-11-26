@@ -28,8 +28,27 @@ test("viewer motion is bounded to matching URI and access epoch", () => {
 test("return still uses the settled Viewer URI, and never shrinks to a different photo", () => {
   assert.match(main, /onExitSettledUri\s*=\s*\{ lastViewedUri ->/);
   assert.match(main, /pendingViewerReturn\s*=\s*PendingViewerReturn\(/);
-  assert.match(main, /origin\.media\.uri == lastSettledViewerUri/);
+  assert.match(main, /lastSettledViewerUri = lastViewedUri/);
+  assert.match(main, /request != null && request\.uri == lastSettledViewerUri/);
+  assert.match(main, /returnPreparation = MeasuredViewerReturn\(request\)/);
+  assert.match(main, /viewerReturnMatchesCurrentRoute\(preparation\.request, visible, returnRoute,/);
+  assert.match(main, /measuredReturnOrigin = target/);
+  assert.match(main, /returnOrigin = measuredReturnOrigin\?\.takeIf\s*\{\s*returnAuthorized && preparation\?\.measured\?\.bounds == it\.bounds/);
+  assert.match(motion, /media\.uri != request\.uri \|\| epoch != request\.accessEpoch/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+  assert.match(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport, progress\.value\)/);
   assert.match(main, /SharedPhotoMotionLayer\(/);
+});
+
+test("square, dated and ratio grids measure only the requested return tile", () => {
+  const ratio = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/featuregrid/AtlasRatioGallery.kt", import.meta.url), "utf8");
+  for (const source of [grid, timeline, ratio]) {
+    assert.match(source, /\.measureViewerReturn\(media, catalogueEpoch\)/);
+  }
+  assert.match(motion, /target\.request\.uri != media\.uri \|\| target\.request\.accessEpoch != epoch \|\| media\.isVideo/);
+  assert.match(motion, /target\.offer\(media, epoch, coordinates\.boundsInWindow\(\)/);
+  assert.match(motion, /onDispose \{ target\.clear\(\) \}/);
+  assert.match(main, /withTimeoutOrNull\(1500L\)/);
 });
 
 test("disabled system animation scale and stale grants cancel pixels immediately", () => {
