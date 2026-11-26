@@ -62,7 +62,7 @@ test("disabled system animation scale and stale grants cancel pixels immediately
 test("below-fit pinch uses the focused photo transform loop and settled return", () => {
   const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
   assert.match(viewer, /viewerMayOwnPinchExit\(pinchOwned, latestCanPinchDismiss\(\)/);
-  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\)\)/);
+  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),/);
   assert.match(viewer, /onPinchDismiss = \{ returnToGallery\(\) \}/);
   assert.match(viewer, /scaleX = zoomPose\.scale \* pinchPose\.scale/);
 });
@@ -96,4 +96,12 @@ test("direct manipulation reveals only a measured settled return and fades chrom
   assert.equal((viewer.match(/graphicsLayer \{ alpha = exitBackdropAlpha\(\) \}/g) || []).length, 2);
   assert.match(viewer, /focusedPinchExitPose = if \(focused\) pinchExitPose else null/);
   assert.match(motion, /else if \(!allowUnderlay \|\| progress\.value < 1f\) drawRect\(Color\.Black\)/);
+});
+
+test("a regrabbed pinch must earn fresh contraction before committing inherited shrink", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /var freshPinchScale = 1f/);
+  assert.match(viewer, /inheritedPinchPose = true/);
+  assert.match(viewer, /freshPinchScale = viewerFreshPinchScale\(freshPinchScale, gestureZoom\)/);
+  assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),\s*inheritedPinchPose, freshPinchScale\)/);
 });

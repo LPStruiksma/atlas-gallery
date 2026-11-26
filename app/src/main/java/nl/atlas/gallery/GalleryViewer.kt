@@ -1300,8 +1300,15 @@ internal fun viewerExitBackdropAlpha(eligible: Boolean, drag: ViewerPinchExitPos
     return (1f - (1f - minOf(drag.scale, pinch.scale)) / .30f).coerceIn(0f, 1f)
 }
 
-internal fun viewerPinchExitCommits(pose: ViewerPinchExitPose, eligible: Boolean): Boolean =
-    eligible && pose.scale <= .90f
+// Regrabbing a returning pose must not turn inherited shrink into a new close.
+// Track net contraction in this gesture; expansion can undo the fresh intent.
+internal fun viewerFreshPinchScale(previous: Float, factor: Float): Float =
+    if (factor.isFinite() && factor > 0f) (previous * factor).coerceIn(.01f, 1f)
+    else previous
+
+internal fun viewerPinchExitCommits(pose: ViewerPinchExitPose, eligible: Boolean,
+    inheritedPose: Boolean = false, freshScale: Float = 1f): Boolean =
+    eligible && pose.scale <= .90f && (!inheritedPose || freshScale <= .98f)
 
 internal enum class ViewerVerticalSwipe { DETAILS, CLOSE, NONE }
 
@@ -1767,6 +1774,8 @@ private fun PhotoPage(
                         var edgeTravelX = 0f
                         var multiTouch = false
                         var pinchOwned = false
+                        var inheritedPinchPose = false
+                        var freshPinchScale = 1f
                         var normalRelease = false
                         try {
                         do {
@@ -1802,15 +1811,18 @@ private fun PhotoPage(
                                         pinchReturn[0]?.cancel()
                                         pinchPose = transferred
                                         pinchOwned = true
+                                        inheritedPinchPose = true
                                     } else if (pinchPose != ViewerPinchExitPose()) {
                                         pinchReturn[0]?.cancel()
                                         pinchOwned = true
+                                        inheritedPinchPose = true
                                     }
                                 }
                                 if (activePointers > 1 && viewerMayOwnPinchExit(pinchOwned, latestCanPinchDismiss(),
                                         previous.scale, gestureZoom)) {
                                     pinchOwned = true
                                     pinchReturn[0]?.cancel()
+                                    freshPinchScale = viewerFreshPinchScale(freshPinchScale, gestureZoom)
                                     pinchPose = viewerPinchExitFrame(pinchPose, gestureZoom,
                                         centroid.x, centroid.y, viewport.width, viewport.height, pan.x, pan.y)
                                 } else if (pinchOwned && activePointers == 1 && latestCanPinchDismiss()) {
@@ -1844,7 +1856,8 @@ private fun PhotoPage(
                             }
                         }
                         if (pinchOwned && normalRelease) {
-                            if (viewerPinchExitCommits(pinchPose, latestCanPinchDismiss())) {
+                            if (viewerPinchExitCommits(pinchPose, latestCanPinchDismiss(),
+                                    inheritedPinchPose, freshPinchScale)) {
                                 latestPinchDismiss()
                             } else restorePinchPose()
                         }

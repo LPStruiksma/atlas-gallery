@@ -420,6 +420,21 @@ class ViewerMotionMathTest {
         assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
     }
 
+    @Test fun inheritedPinchNeedsFreshContractionAndReversalClearsIt() {
+        val inherited = ViewerPinchExitPose(.85f, 12f, 90f)
+        assertTrue(viewerPinchExitCommits(inherited, true))
+        assertFalse(viewerPinchExitCommits(inherited, true, true, 1f))
+        var fresh = viewerFreshPinchScale(1f, .99f)
+        assertFalse(viewerPinchExitCommits(inherited, true, true, fresh))
+        fresh = viewerFreshPinchScale(fresh, .98f)
+        assertTrue(viewerPinchExitCommits(inherited, true, true, fresh))
+        assertFalse(viewerPinchExitCommits(inherited, false, true, fresh))
+        fresh = viewerFreshPinchScale(fresh, 1.1f)
+        assertEquals(1f, fresh, .001f)
+        assertFalse(viewerPinchExitCommits(inherited, true, true, fresh))
+        assertEquals(1f, viewerFreshPinchScale(fresh, Float.NaN), 0f)
+    }
+
     @Test fun dismissalBackdropTracksScaleReversalAndHandoffOnlyForAuthorizedTarget() {
         val rest = ViewerPinchExitPose()
         val drag = viewerDownExitPose(400f, 1000f)
