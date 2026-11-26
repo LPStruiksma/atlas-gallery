@@ -106,7 +106,8 @@ internal fun PeopleDestinationSelector(
     onSelect: (Int?) -> Unit,
     enabled: Boolean,
     tagPrefix: String,
-    preview: @Composable (NativeFaceObservationId) -> Unit
+    preview: @Composable (NativeFaceObservationId) -> Unit,
+    coverByPerson: Map<PersonKey, NativeFaceObservationId> = emptyMap()
 ) {
     var filter by remember(selectionScope, candidates) { mutableStateOf("") }
     var visibleLimit by remember(selectionScope, candidates) { mutableIntStateOf(5) }
@@ -150,7 +151,10 @@ internal fun PeopleDestinationSelector(
                     Text("${album.observations.size} confirmed faces",
                         style = MaterialTheme.typography.bodySmall)
                 }
-                album.observations.firstOrNull()?.let { face ->
+                // A display preference only: keep the original list and its
+                // positional selection/authorization guards unchanged.
+                (coverByPerson[album.person]?.takeIf { it in album.observations }
+                    ?: album.observations.firstOrNull())?.let { face ->
                     androidx.compose.foundation.layout.Box(
                         Modifier.padding(top = 4.dp)
                             .then(Modifier.size(48.dp))

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BRAND-L3 (#656): Lapis from Quiet Frame v3 (#654/#665); launcher ground and splash. -->
+    <color name="atlas_lapis">#FF2639C9</color>
+</resources>

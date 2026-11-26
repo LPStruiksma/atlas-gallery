@@ -1,6 +1,11 @@
 package nl.atlas.gallery.featureeditor.render
 
 import nl.atlas.gallery.featureeditor.engine.AdjustParam
+import nl.atlas.gallery.featureeditor.engine.CropShape
+import nl.atlas.gallery.featureeditor.engine.CurvePoint
+import nl.atlas.gallery.featureeditor.engine.HueAdjustment
+import nl.atlas.gallery.featureeditor.engine.PresetHue
+import nl.atlas.gallery.featureeditor.engine.RenderStage
 import nl.atlas.gallery.featureeditor.engine.EditOperation
 import nl.atlas.gallery.featureeditor.engine.EditRecipe
 import nl.atlas.gallery.featureeditor.engine.NormRect
@@ -70,5 +75,28 @@ class SegmentProgramTest {
         val plan = RenderPlan.build(recipe)
         val program = SegmentProgram.of(plan, rawValues = true)
         assertTrue(program.rawValues && program.adjust.isIdentity && program.lut == null && program.overlays == null)
+    }
+
+    @Test fun v2MetadataStagesDoNotBreakPixelLoweringBeforeGpuSupport() {
+        val recipe = EditRecipe(400, 300, listOf(
+            EditOperation.Adjust("adjust", AdjustParam.EXPOSURE, 0.25),
+            EditOperation.Curves("curves", rgb = listOf(
+                CurvePoint(0.0, 0.0), CurvePoint(0.5, 0.4), CurvePoint(1.0, 1.0),
+            )),
+            EditOperation.ColorMix("mix", presets = listOf(HueAdjustment(PresetHue.RED, hueShift = 0.2))),
+            EditOperation.SpotColor("spot", keep = listOf("#336699")),
+            EditOperation.ShapeCrop("shape", preset = CropShape.CIRCLE),
+            EditOperation.Resize("resize", longEdge = 800),
+        ))
+        val plan = RenderPlan.build(recipe)
+        assertTrue(plan.stages.any { it is RenderStage.Curves })
+        assertTrue(plan.stages.any { it is RenderStage.ColorMix })
+        assertTrue(plan.stages.any { it is RenderStage.SpotColor })
+        assertTrue(plan.stages.any { it is RenderStage.ShapeCrop })
+        assertTrue(plan.stages.any { it is RenderStage.Resize })
+        val program = SegmentProgram.of(plan)
+        assertEquals(800, program.outputWidth)
+        assertEquals(600, program.outputHeight)
+        assertEquals(0.25f, program.adjust[AdjustParam.EXPOSURE], 0f)
     }
 }

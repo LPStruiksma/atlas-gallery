@@ -4,10 +4,10 @@ Unit [#469](https://github.com/LPStruiksma/atlas-gallery/issues/469) (IDS-2), go
 
 ## Short version
 
-- The bench runs five face-swap networks end to end (detect, align, swap, mask, colour match, paste back, optional restoration) on 70 fixed pairs of synthetic faces, and measures identity, damage outside the edit, seams, sharpness, stability and cost.
+- The historical study measured five face-swap networks end to end (detect, align, swap, mask, colour match, paste back, optional restoration) on 70 fixed pairs of synthetic faces, and measures identity, damage outside the edit, seams, sharpness, stability and cost.
 - **No pipeline passed every threshold that was written down before the run.** Four of five pass the identity, rank-1, retention and untouched-pixel thresholds. All fail the seam threshold, which turned out to be badly calibrated (see [A5](#a5-the-seam-threshold-failed-for-everything)). SimSwap also fails rank-1 and retention.
 - **The independent judge and the eye disagree in places.** By the numbers the swaps are "the reference person". Looking at them, the inner face changes but head shape, hairline, age, skin texture and facial hair stay the original person's, and the result is softer than the photo around it. This is a face-region proof of concept. It is not Retake-class and this document makes no such claim.
-- **First engine to port in IDS-9 (#475): GHOST 1 at 256 px**, because it is the only network that passes the identity thresholds and has a permissive licence. It is also the fastest. It is not the best looking: it has the most visible artefacts of the four that pass. The better-looking networks (InSwapper, HyperSwap, AlphaFace) cannot ship under their current terms. Details and conditions in [First engine choice](#first-engine-choice-for-ids-9). **Update:** [#505](https://github.com/LPStruiksma/atlas-gallery/issues/505) found that GHOST's identity backbone is InsightFace's own research-only checkpoint ([GHOST_BACKBONE.md](GHOST_BACKBONE.md), in review). Condition 1 below therefore fails: as published, no network measured here can ship, and the engine choice becomes a licence decision for Lukas.
+- **First engine to port in IDS-9 (#475): GHOST 1 at 256 px**, because it is the only network that passes the identity thresholds and has a permissive licence. It is also the fastest. It is not the best looking: it has the most visible artefacts of the four that pass. InSwapper and HyperSwap cannot ship under their current terms; the AlphaFace [historical: measured without prerequisite author permission; do not re-run] data is retained solely as non-repeatable history, not as a quality endorsement. Details and conditions in [First engine choice](#first-engine-choice-for-ids-9). **Update:** [#505](https://github.com/LPStruiksma/atlas-gallery/issues/505) found that GHOST's identity backbone is InsightFace's own research-only checkpoint ([GHOST_BACKBONE.md](GHOST_BACKBONE.md), in review). Condition 1 below therefore fails: as published, no network measured here can ship, and the engine choice becomes a licence decision for Lukas.
 - The mask matters as much as the network. The only mask that may ship (MediaPipe) silently fails on dark, rendered and profile faces as used here, and needs a guard before IDS-9 relies on it.
 
 ## What was run
@@ -19,7 +19,7 @@ Fixtures: 8 photoreal synthetic identities with 4 reference photos each, 4 rende
 Order of work, which matters for how much to trust the numbers:
 
 1. Thresholds were committed in `metrics.THRESHOLDS` (commit `607f0ac`) before any final-run swap existed.
-2. Nine networks were screened on a separate development split (12 pairs, identities and targets that are not in the benchmark). The best of each family went on: InSwapper 128 (0.753), AlphaFace 256 (0.722), GHOST 1 (0.700; GHOST 2 0.693, GHOST 3 0.691), HyperSwap 1a (0.699; 1c 0.697, 1b 0.676). SimSwap 256 (0.583) was kept although it screened worst, because its licence is the clearest of the non-commercial ones.
+2. Nine networks were screened on a separate development split (12 pairs, identities and targets that are not in the benchmark). The best of each family went on: InSwapper 128 (0.753), AlphaFace [historical: measured without prerequisite author permission; do not re-run] 256 (0.722), GHOST 1 (0.700; GHOST 2 0.693, GHOST 3 0.691), HyperSwap 1a (0.699; 1c 0.697, 1b 0.676). SimSwap 256 (0.583) was kept although it screened worst, because its licence is the clearest of the non-commercial ones.
 3. The final run: 20 pipelines on 70 pairs. A first attempt was stopped part-way and discarded when the licence register (merged meanwhile) ruled out XSeg; XSeg was removed, the MediaPipe mask and SimSwap were added, thresholds were not touched.
 4. Follow-up runs after seeing the results are marked **exploratory** below and decide nothing by themselves.
 
@@ -43,21 +43,21 @@ The judge is `glintr100` (research-only, never shipped). It is a different netwo
 | Pipeline | Judge mean | p10 | min | Over 0.40 | Rank-1 | Retention | Left of original | In-loop encoder | SFace mean | SFace rank-1 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | InSwapper 128 | 0.753 | 0.594 | 0.531 | 1.00 | 1.00 | 0.92 | 0.244 | 0.736 | 0.616 | 0.81 |
-| AlphaFace 256 | 0.722 | 0.592 | 0.474 | 1.00 | 1.00 | 0.88 | 0.244 | 0.713 | 0.654 | 0.91 |
+| AlphaFace [historical: measured without prerequisite author permission; do not re-run] 256 | 0.722 | 0.592 | 0.474 | 1.00 | 1.00 | 0.88 | 0.244 | 0.713 | 0.654 | 0.91 |
 | HyperSwap 1a 256 | 0.699 | 0.539 | 0.437 | 1.00 | 1.00 | 0.85 | 0.273 | 0.687 | 0.569 | 0.69 |
 | GHOST 1 256 | 0.668 | 0.528 | 0.421 | 1.00 | 1.00 | 0.81 | 0.185 | 0.630 | 0.590 | 0.91 |
 | SimSwap 256 | 0.552 | 0.422 | 0.315 | 0.91 | 0.88 | 0.67 | 0.337 | 0.510 | 0.523 | 0.60 |
 | no swap (control) | 0.089 | -0.030 | -0.076 | 0.00 | 0.00 | 0.11 | 0.982 | 0.081 | 0.162 | 0.00 |
 
-Paired differences on the same 58 pairs (95 % bootstrap interval): AlphaFace is 0.031 below InSwapper (0.021 to 0.041), HyperSwap 0.054 below (0.043 to 0.065), GHOST 0.085 below (0.062 to 0.108), SimSwap 0.202 below (0.185 to 0.219). The order of the first four is resolved; whether it is visible is a separate question.
+Paired differences on the same 58 pairs (95 % bootstrap interval): AlphaFace [historical: measured without prerequisite author permission; do not re-run] is 0.031 below InSwapper (0.021 to 0.041), HyperSwap 0.054 below (0.043 to 0.065), GHOST 0.085 below (0.062 to 0.108), SimSwap 0.202 below (0.185 to 0.219). These are preserved historical comparisons, not a current ranking or recommendation; whether differences are visible is a separate question.
 
 **The shipped SFace model is a weak witness.** By SFace, only 60 to 91 % of swaps rank the reference person first, and its usual confusion is "still the original person". SFace sees more of the original than the judge does. The app can use SFace as a sanity check on a result, not as proof that a swap worked.
 
-Rendered identities (12 pairs, references are 112 px renders): InSwapper 0.713, AlphaFace 0.683, GHOST 0.650, HyperSwap 0.632 (rank-1 0.92), SimSwap 0.509 (rank-1 0.67). Same order, a little lower.
+Rendered identities (12 pairs, references are 112 px renders): InSwapper 0.713, AlphaFace [historical: measured without prerequisite author permission; do not re-run] 0.683, GHOST 0.650, HyperSwap 0.632 (rank-1 0.92), SimSwap 0.509 (rank-1 0.67). Same order, a little lower.
 
-By hard case, judge mean for InSwapper / AlphaFace / HyperSwap / GHOST / SimSwap:
+By hard case, judge mean for InSwapper / AlphaFace [historical: measured without prerequisite author permission; do not re-run] / HyperSwap / GHOST / SimSwap:
 
-| Case (pairs) | InSwapper | AlphaFace | HyperSwap | GHOST | SimSwap |
+| Case (pairs) | InSwapper | AlphaFace [historical: measured without prerequisite author permission; do not re-run] | HyperSwap | GHOST | SimSwap |
 |---|---|---|---|---|---|
 | frontal (6) | 0.79 | 0.79 | 0.74 | 0.70 | 0.60 |
 | scene (8) | 0.72 | 0.67 | 0.66 | 0.66 | 0.54 |
@@ -78,7 +78,7 @@ Groups of 2 to 8 pairs show a direction, not a measurement. Glasses, beard and p
 | Pipeline | Changed px outside mask | Seam gradient | Seam step | Sharpness (median, 1 = source) | Landmark shift (eye distances) | Edit share of crop |
 |---|---|---|---|---|---|---|
 | InSwapper 128 | 0 | 0.34 | 2.98 | 0.03 | 0.059 | 0.161 |
-| AlphaFace 256 | 0 | 0.52 | 3.42 | 0.20 | 0.055 | 0.156 |
+| AlphaFace [historical: measured without prerequisite author permission; do not re-run] 256 | 0 | 0.52 | 3.42 | 0.20 | 0.055 | 0.156 |
 | HyperSwap 1a 256 | 0 | 0.36 | 2.29 | 0.12 | 0.057 | 0.155 |
 | GHOST 1 256 | 0 | 0.63 | 4.05 | 0.10 | 0.055 | 0.156 |
 | SimSwap 256 | 0 | 0.46 | 1.87 | 0.12 | 0.057 | 0.153 |
@@ -100,11 +100,11 @@ The threshold stays as written and the verdict stays FAIL. The honest reading is
 |---|---|---|---|---|
 | InSwapper 128 | -0.038 (-0.045 to -0.032) | FAIL | 0.03, 0.18 | about 1 s |
 | HyperSwap 1a | -0.026 (-0.032 to -0.021) | FAIL | 0.12, 0.18 | about 1 s |
-| AlphaFace | -0.021 (-0.029 to -0.014) | FAIL (borderline) | 0.20, 0.15 | about 1 s |
+| AlphaFace [historical: measured without prerequisite author permission; do not re-run] | -0.021 (-0.029 to -0.014) | FAIL (borderline) | 0.20, 0.15 | about 1 s |
 | GHOST 1 | -0.010 (-0.016 to -0.003) | pass | 0.10, 0.15 | about 1 s |
 | SimSwap | -0.003 (-0.010 to 0.003) | pass | 0.12, 0.19 | about 1 s |
 
-Restoration buys sharpness and pays in identity: it pulls the face toward a generic one. It never changed a rank-1 result for InSwapper, AlphaFace or GHOST; HyperSwap lost one. GFPGAN's weights are 340 MB and their licence is unverified in the register, so it is a bench stage only.
+Restoration buys sharpness and pays in identity: it pulls the face toward a generic one. It never changed a rank-1 result for InSwapper, AlphaFace [historical: measured without prerequisite author permission; do not re-run] or GHOST; HyperSwap lost one. GFPGAN's weights are 340 MB and their licence is unverified in the register, so it is a bench stage only.
 
 ### Mask and colour (InSwapper as the base)
 
@@ -126,7 +126,7 @@ Two findings.
 
 Numbers from one model family are not a verdict, so the unit asks for blinded contact sheets. All 70 are in the private project files with a rating form; the key is kept apart. **Nobody has rated them yet.** What follows is the author's own unblinded look at 20 pairs, and counts as one opinion.
 
-- InSwapper, HyperSwap and AlphaFace give the most natural faces. They keep the target's gaze and expression. They also keep the target's skin texture and age, so a 30-year-old reference on a 70-year-old target reads as an older relative of the reference, not as the reference.
+- InSwapper and HyperSwap looked most natural among candidates whose bench use is allowed; the historical AlphaFace [historical: measured without prerequisite author permission; do not re-run] observation is not an endorsement. They keep the target's gaze and expression. They also keep the target's skin texture and age, so a 30-year-old reference on a 70-year-old target reads as an older relative of the reference, not as the reference.
 - GHOST 1 changes the face most, and has the most visible artefacts: blotchy or discoloured skin on several targets, purple lips on one, changed gaze and an opened mouth on the occlusion target, a smear on the cheek in profile.
 - When the target has a beard or moustache and the reference has none, every network leaves a patchy remnant. When the target has glasses, frames survive but the eyes behind them are soft.
 - Head shape, hairline, hair, ears and neck are always the target's. A person who knows the reference would often not accept the result as them.
@@ -134,7 +134,7 @@ Numbers from one model family are not a verdict, so the unit asks for blinded co
 
 ## Stability
 
-Every pipeline is deterministic: 12 of 12 reruns were byte-identical. With the landmarks jittered by 1 % of the eye distance (4 repeats), the judge score moves with a standard deviation of 0.006 to 0.007 for InSwapper, AlphaFace, HyperSwap and SimSwap, and 0.015 for GHOST, whose worst pair ranged over 0.165. GHOST is the most sensitive to alignment.
+Every pipeline is deterministic: 12 of 12 reruns were byte-identical. With the landmarks jittered by 1 % of the eye distance (4 repeats), the judge score moves with a standard deviation of 0.006 to 0.007 for InSwapper, AlphaFace [historical: measured without prerequisite author permission; do not re-run], HyperSwap and SimSwap, and 0.015 for GHOST, whose worst pair ranged over 0.165. GHOST is the most sensitive to alignment.
 
 ## Cost on the host
 
@@ -146,13 +146,13 @@ Fresh process per pipeline, 4 threads, x86 cloud CPU, ONNX Runtime CPU. **These 
 | SimSwap 256 | 0.4 s | 274 ms | 130 ms | 31 ms | | 0.44 s | 1.6 s | 1.1 GB | 510 MB |
 | HyperSwap 1a 256 | 2.4 s | 435 ms | 168 ms | 30 ms | | 0.63 s | 2.1 s | 1.8 GB | 671 MB |
 | InSwapper 128 | 3.2 s | 627 ms | 155 ms | 27 ms | | 0.81 s | 3.0 s | 1.5 GB | 823 MB |
-| AlphaFace 256 | 2.2 s | 2,795 ms | 157 ms | 31 ms | | 2.99 s | 10.8 s | 1.8 GB | 824 MB |
+| AlphaFace [historical: measured without prerequisite author permission; do not re-run] 256 | 2.2 s | 2,795 ms | 157 ms | 31 ms | | 2.99 s | 10.8 s | 1.8 GB | 824 MB |
 | GHOST 1 256 + GFPGAN | 1.5 s + 0.6 s | 191 ms | 135 ms | 28 ms | 1,129 ms | 1.48 s | 5.6 s | 2.8 GB | 1,145 MB |
 | InSwapper 128 + GFPGAN | 2.5 s + 0.6 s | 648 ms | 142 ms | 27 ms | 1,034 ms | 1.85 s | 7.0 s | 2.8 GB | 1,164 MB |
 
 Alignment takes about 1 ms. "Weights it needs" counts the swap network, the identity encoder (174 MB), a converter where used (22 MB), the face parser (94 MB) and the restorer (340 MB). Peak memory is the whole Python process with the detector, encoder and a 1024 px photo loaded; it is an upper bound for the model set, not a phone figure. Detection and the reference embeddings are not in the per-swap time: they run once per photo and once per profile. With the MediaPipe mask (16 MB) in place of the face parser the weight set is 78 MB smaller.
 
-Restoration costs more than any swap network except AlphaFace and adds about 1.2 GB of peak memory. CPU time over wall time is about 3.7, so the four cores are busy throughout; a phone running on fewer big cores will be several times slower. How much slower is for IDS-9 to measure.
+Restoration costs more than any swap network except AlphaFace [historical: measured without prerequisite author permission; do not re-run] and adds about 1.2 GB of peak memory. CPU time over wall time is about 3.7, so the four cores are busy throughout; a phone running on fewer big cores will be several times slower. How much slower is for IDS-9 to measure.
 
 ## Exploratory: more pixels (after the results, decides nothing)
 
@@ -187,7 +187,7 @@ Identity does not move (boost4 minus boost2 for InSwapper: 0.000, interval -0.00
 - **Not real photos.** All faces are synthetic. The photoreal set's "same person" photos were made with ArcFace-guided generators, so reference sets are tighter and friendlier to an ArcFace-family judge than a real People album. Real results will be lower; by how much is unknown.
 - **One judge family.** The judge is independent of the swap networks' encoder but both are ArcFace-style. A human rating is the missing second opinion.
 - **GHOST and SimSwap were not run with their own identity encoders.** The bench used FaceFusion's ONNX conversions, which take the `arcface_w600k_r50` embedding through a small converter network (CrossFace). A shipped GHOST would use its own backbone, and its numbers must be measured again. *Done in [GHOST_EXPORT.md](GHOST_EXPORT.md) (#506): exported from the official release with its own backbone, GHOST 1 scores 0.691 (+0.023), and its int8 variant matches FP32 at 130 MB.*
-- **Licence notes on what was benchmarked.** The register lists the CrossFace converters as unverified and "not needed", and says AlphaFace is bench-only "after asking the author"; nobody was asked. Both were used here for offline measurement only, fetched at run time and never committed. If Review reads the register as forbidding that, the AlphaFace rows and the converter path should be dropped; neither is part of the recommendation.
+- **Licence correction (IDS-13).** CrossFace is bench only for the FaceFusion GHOST/SimSwap ports. AlphaFace [historical: measured without prerequisite author permission; do not re-run] was measured without the register prerequisite (author permission was never obtained); the original numbers remain as historical evidence, but the model must not be re-run, ranked or recommended. The bench now refuses its selection before any downloads.
 - **No full head, no hair, no body.** That is IDS-3 and IDS-12.
 - **Fixture licences are non-commercial.** If ATLAS ever became a commercial product, this choice would have to be re-derived on other fixtures.
 
@@ -197,14 +197,16 @@ Identity does not move (boost4 minus boost2 for InSwapper: 0.000, interval -0.00
 
 Why:
 
-| | InSwapper 128 | AlphaFace 256 | HyperSwap 1a | GHOST 1 256 | SimSwap 256 |
-|---|---|---|---|---|---|
-| Passes A1 to A4 | yes | yes | yes | yes | no (A2, A3) |
-| Judge mean | 0.753 | 0.722 | 0.699 | 0.668 | 0.552 |
-| Looks (author's view) | natural | natural | natural | visible artefacts | natural, weak identity |
-| Host time per swap | 0.85 s | 2.8 s | 0.5 s | 0.37 s | 0.45 s |
-| Weights | 555 MB | 556 MB | 403 MB | 515 MB | 220 MB |
-| May ship (LICENCES.md) | no, research-only | no, no licence on weights | no, research-only | Apache-2.0, backbone origin unconfirmed | private non-commercial only |
+| | InSwapper 128 | HyperSwap 1a | GHOST 1 256 | SimSwap 256 |
+|---|---|---|---|---|
+| Passes A1 to A4 | yes | yes | yes | no (A2, A3) |
+| Judge mean | 0.753 | 0.699 | 0.668 | 0.552 |
+| Looks (author's view) | natural | natural | visible artefacts | natural, weak identity |
+| Host time per swap | 0.85 s | 0.5 s | 0.37 s | 0.45 s |
+| Weights | 555 MB | 403 MB | 515 MB | 220 MB |
+| May ship (LICENCES.md) | no, research-only | no, research-only | Apache-2.0, backbone origin unconfirmed | private non-commercial only |
+
+**Historical datum excluded from engine choices:** AlphaFace [historical: measured without prerequisite author permission; do not re-run] passed A1–A4, mean 0.722, author's view “natural”, 2.8 s per swap, 556 MB and no licence on weights. These values are not an endorsement and must not be re-run.
 
 GHOST 1 is the only row with "yes" in the first line and a path to "yes" in the last. That is the whole case for it. It is the weakest of the four that pass and the least pleasant to look at.
 
@@ -223,9 +225,9 @@ If Lukas obtains a licence for InSwapper or HyperSwap, either replaces GHOST on 
 ## Reproduce
 
 ```bash
-python3 -m unittest tools/identity_bench/test_identity_bench.py     # 45 tests, no downloads
+python3 -m unittest tools/identity_bench/test_identity_bench.py     # synthetic unit tests; do not download weights
 python3 -m tools.identity_bench one --target T04 --identity 0213ccb4776a --candidate ghost_1_256
-python3 -m tools.identity_bench                                     # the full run, about two hours on 4 cores
+python3 -m tools.identity_bench explore --candidates inswapper_128,ghost_1_256,simswap_256  # allowed examples only; new measurements need a separate decision
 ```
 
 Every output image has a `.provenance.json` beside it (source and reference files by hash, engine, weights by hash, mask, colour and restoration settings). Outputs, sheets and weights stay in the cache and the private project files; none are in this repository.

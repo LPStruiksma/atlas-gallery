@@ -22,4 +22,14 @@ class ManualFaceScanGuardTest {
         assertEquals("Battery status unavailable", ManualFaceScanGuard(null, 0, true).holdReason())
         assertEquals("Thermal status unavailable", ManualFaceScanGuard(90, null, true).holdReason())
     }
+
+    @Test fun rememberedCoolingWaitClearsOnceThePhoneIsCool() {
+        val cool = "Waiting for phone to cool"
+        assertEquals(cool, currentManualWait(cool, ManualFaceScanGuard(90, 2, true)))
+        assertNull(currentManualWait(cool, ManualFaceScanGuard(90, 0, true)))
+        assertNull(currentManualWait(cool, ManualFaceScanGuard(90, 1, true)))
+        // The live reason wins over a stale remembered one.
+        assertEquals("Battery below 30%", currentManualWait(cool, ManualFaceScanGuard(20, 0, true)))
+        assertNull(currentManualWait(null, ManualFaceScanGuard(90, 3, true)))
+    }
 }
