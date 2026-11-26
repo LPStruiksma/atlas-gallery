@@ -1,0 +1,14 @@
+# #448 Unknown faces group sheet with the keyboard, real MainActivity at S24+ size
+# (UnknownFacesKeyboardInsetsTest). Synthetic faces only, test keyboard panel.
+unknown-ime-448-a-closed-light
+unknown-ime-448-a-closed-dark
+unknown-ime-448-b-opening-light
+unknown-ime-448-b-opening-dark
+unknown-ime-448-c-open-empty-light
+unknown-ime-448-c-open-empty-dark
+unknown-ime-448-d-open-typed-light
+unknown-ime-448-d-open-typed-dark
+unknown-ime-448-e-landscape-light
+unknown-ime-448-e-landscape-dark
+unknown-ime-448-f-font130-light
+unknown-ime-448-f-font130-dark
