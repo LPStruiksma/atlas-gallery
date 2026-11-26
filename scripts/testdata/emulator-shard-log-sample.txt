@@ -1,0 +1,6 @@
+2026-11-18T12:00:00.0000000Z nl.atlas.gallery.SyntheticTest > a[emulator-5554 - 15] [31mFAILED [0m
+2026-11-18T12:00:00.1000000Z 	java.lang.AssertionError: waited 10 seconds at line 42
+2026-11-18T12:00:00.2000000Z 	at nl.atlas.gallery.SyntheticTest.a(SyntheticTest.kt:42)
+2026-11-18T12:00:01.0000000Z nl.atlas.gallery.testkit.SyntheticOtherTest > b[dark=true][emulator-5554 - 15] FAILED
+2026-11-18T12:00:01.1000000Z 	java.lang.IllegalStateException: missing 3 nodes
+2026-11-18T12:00:02.0000000Z ##[error]Process completed with exit code 1.
