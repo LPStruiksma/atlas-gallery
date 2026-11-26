@@ -513,10 +513,20 @@ private fun credentialOnTop(): Boolean = resumedActivities().let {
     it.contains("ConfirmLock") || it.contains("ConfirmDeviceCredential")
 }
 
-/** The credential screen's own window has focus, so typed keys reach its PIN field. */
-private fun credentialFocused(): Boolean = shell("dumpsys window").lineSequence()
-    .map { it.trim() }.filter { it.startsWith("mCurrentFocus=") }
-    .any { it.contains("ConfirmLock") || it.contains("ConfirmDeviceCredential") }
+/**
+ * The credential screen's PIN entry has focus, so typed keys reach it. Older
+ * images focus the Settings ConfirmLock/ConfirmDeviceCredential window itself;
+ * API 35 draws the PIN inside SystemUI's BiometricPrompt ("Verify it's you")
+ * window while ConfirmDeviceCredentialActivity stays the focused app.
+ */
+private fun credentialFocused(): Boolean {
+    val lines = shell("dumpsys window").lineSequence().map { it.trim() }.toList()
+    val focus = lines.filter { it.startsWith("mCurrentFocus=") }
+    if (focus.any { it.contains("ConfirmLock") || it.contains("ConfirmDeviceCredential") }) return true
+    val focusedApp = lines.filter { it.startsWith("mFocusedApp=") }
+    return focus.any { it.contains("BiometricPrompt") } &&
+        focusedApp.any { it.contains("ConfirmDeviceCredential") || it.contains("ConfirmLock") }
+}
 
 private fun lockState(): Int = InstrumentationRegistry.getInstrumentation().targetContext
     .getSystemService(ActivityManager::class.java).lockTaskModeState
@@ -639,18 +649,37 @@ class GuestExistingActivityTest {
         androidx.test.core.app.ActivityScenario.launchActivityForResult<MainActivity>(
             Intent(context, MainActivity::class.java).setAction(Intent.ACTION_GET_CONTENT).setType("image/*")
         ).use { scenario ->
-            activateGuestInSecondActivity(scenario)
+            val picker = activateGuestInSecondActivity(scenario)
             assertEquals(android.app.Activity.RESULT_CANCELED, scenario.result.resultCode)
             assertEquals(null, scenario.result.resultData)
+            // The picker finishes from onStart, so it sits at STARTED until the
+            // system stops and destroys it. ActivityScenario.close() refuses a
+            // transient stage ("Current state was null unexpectedly. Last stage
+            // = STARTED"); wait for the destroy so close() sees DESTROYED.
+            awaitDestroyed(picker)
         }
     }
 
-    private fun activateGuestInSecondActivity(scenario: androidx.test.core.app.ActivityScenario<MainActivity>) {
+    private fun awaitDestroyed(activity: MainActivity) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000L
+        var destroyed = false
+        while (!destroyed) {
+            instrumentation.runOnMainSync { destroyed = activity.isDestroyed }
+            if (destroyed) break
+            assertTrue("earlier picker destroyed after cancelling (finishing=${activity.isFinishing})",
+                android.os.SystemClock.elapsedRealtime() < deadline)
+            android.os.SystemClock.sleep(50L) // bounded polling of a system lifecycle predicate
+        }
+        instrumentation.waitForIdleSync()
+    }
+
+    private fun activateGuestInSecondActivity(scenario: androidx.test.core.app.ActivityScenario<MainActivity>): MainActivity {
+        lateinit var earlier: MainActivity
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val monitor = instrumentation.addMonitor(MainActivity::class.java.name, null, false)
         var second: MainActivity? = null
         try {
-            lateinit var earlier: MainActivity
             scenario.onActivity {
                 earlier = it
                 assertFalse("first activity starts in owner mode", it.guestActive)
@@ -682,5 +711,6 @@ class GuestExistingActivityTest {
             instrumentation.removeMonitor(monitor)
             second?.let { activity -> instrumentation.runOnMainSync { if (!activity.isFinishing) activity.finish() } }
         }
+        return earlier
     }
 }
