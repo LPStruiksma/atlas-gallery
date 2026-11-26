@@ -153,3 +153,10 @@ test("FLOW-3 journey captures held, reversed and committed drag in both themes",
   assert.match(journey, /class SharedPhotoLightJourneyTest/);
   assert.match(journey, /class SharedPhotoDarkJourneyTest/);
 });
+
+test("FLOW-3 journey targets below-fit pinch reversal and committed return in both themes", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  for (const frame of ["flow3-pinch-held", "flow3-pinch-reversed", "flow3-pinch-commit-mid", "flow3-pinch-returned"]) assert.ok(journey.includes(frame), frame);
+  assert.match(journey, /fun belowFitPinchReversesThenCommitsToMeasuredTile\(/);
+  assert.match(journey, /up\(0\); up\(1\)/);
+});

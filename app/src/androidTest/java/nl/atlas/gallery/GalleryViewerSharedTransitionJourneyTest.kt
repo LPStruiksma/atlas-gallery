@@ -194,6 +194,71 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         saveUiEvidence("flow3-drag-returned-$mode.png")
     }
 
+    @Test fun belowFitPinchReversesThenCommitsToMeasuredTile() {
+        val tileTag = firstTile()
+        compose.onNodeWithTag(tileTag, useUnmergedTree = true).performClick()
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        val decoded = SemanticsMatcher("focused decoded photo") {
+            it.config.getOrNull(ViewerPhotoDecodedKey) == true
+        }
+        compose.waitUntil(30_000L) {
+            compose.onAllNodes(decoded).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.mainClock.advanceTimeBy(600L)
+        compose.waitForIdle()
+        val startCounter = counter()
+        val pager = compose.onNodeWithTag("atlas-main-pager")
+
+        fun moveSpan(from: Float, to: Float) {
+            pager.performTouchInput {
+                for (i in 1..8) {
+                    val span = width * (from + (to - from) * i / 8f)
+                    moveTo(0, center - Offset(span, 0f))
+                    moveTo(1, center + Offset(span, 0f))
+                }
+            }
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+        }
+
+        fun beginPinch() {
+            pager.performTouchInput {
+                down(0, center - Offset(width * .25f, 0f))
+                down(1, center + Offset(width * .25f, 0f))
+            }
+        }
+
+        compose.mainClock.autoAdvance = false
+        try {
+            beginPinch()
+            moveSpan(.25f, .17f)
+            compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+            saveUiEvidence("flow3-pinch-held-$mode.png")
+            moveSpan(.17f, .25f)
+            pager.performTouchInput { up(0); up(1) }
+            compose.mainClock.advanceTimeBy(600L)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.waitForIdle()
+        assertTrue("Reversed pinch must keep the settled photo", counter() == startCounter)
+        compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+        saveUiEvidence("flow3-pinch-reversed-$mode.png")
+
+        compose.mainClock.autoAdvance = false
+        try {
+            beginPinch()
+            moveSpan(.25f, .13f)
+            pager.performTouchInput { up(0); up(1) }
+            captureReturnMidpoint("flow3-pinch-commit-mid-$mode.png")
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.onNodeWithTag(tileTag, useUnmergedTree = true).assertExists()
+        saveUiEvidence("flow3-pinch-returned-$mode.png")
+    }
+
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {
         val tileTag = firstTile()
         val before = shell23("settings get global animator_duration_scale").trim()
