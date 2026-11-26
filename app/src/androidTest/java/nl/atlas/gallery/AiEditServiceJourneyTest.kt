@@ -119,11 +119,17 @@ class AiEditServiceJourneyTest {
 
     /** Answers every confirmation (first use, unknown price) the way the user would. */
     private fun confirmGates() {
+        fun present(tag: String) = compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
         repeat(3) {
-            compose.waitForIdle()
-            val gate = compose.onAllNodes(hasTestTag("atlas-ai-edit-gate-confirm")).fetchSemanticsNodes()
-            if (gate.isEmpty()) return
+            // The next gate opens only after the off-main price check, which waitForIdle does not
+            // track: wait for a gate, or for the request to have started, before deciding.
+            compose.waitUntil(15_000L) {
+                present("atlas-ai-edit-gate-confirm") || present("atlas-ai-edit-cancel") ||
+                    present("atlas-ai-edit-accept") || present("atlas-ai-edit-slab").not()
+            }
+            if (!present("atlas-ai-edit-gate-confirm")) return
             compose.onNodeWithTag("atlas-ai-edit-gate-confirm").performClick()
+            compose.waitForIdle()
         }
     }
 

@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -407,6 +408,8 @@ internal fun AiEditScreenContent(
             // Static text only: a chip changes the editable prompt but never triggers Generate.
             // Hidden while the IME is open to keep the photo and action row unobstructed.
             if (!imeOpen && composingPhase) {
+                // A: Remove object, Clean background, More (all five in the sheet). Recent sits
+                // beside the prompt in the slab, so it is never scrolled out of reach.
                 LazyRow(
                     modifier = Modifier.fillMaxWidth().testTag("atlas-ai-edit-suggestions"),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -420,14 +423,10 @@ internal fun AiEditScreenContent(
                     }
                     item {
                         TextButton(onClick = { suggestionsOpen = true },
-                            modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-more-suggestions")) {
-                            Text("More suggestions", style = Secondary, color = AiEditColors.Ink)
-                        }
-                    }
-                    item {
-                        TextButton(onClick = { recentOpen = true },
-                            modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-recent")) {
-                            Text("Recent", style = Secondary, color = AiEditColors.Ink)
+                            modifier = Modifier.heightIn(min = 48.dp)
+                                .semantics { contentDescription = "More suggestions" }
+                                .testTag("atlas-ai-edit-more-suggestions")) {
+                            Text("More", style = Secondary, color = AiEditColors.Ink)
                         }
                     }
                 }
@@ -501,6 +500,11 @@ internal fun AiEditScreenContent(
                         }
                     }
                     else -> {
+                        if (!imeOpen) IconButton(onClick = { recentOpen = true },
+                            modifier = Modifier.size(48.dp).testTag("atlas-ai-edit-recent")) {
+                            Icon(Icons.Outlined.History, contentDescription = "Recent prompts",
+                                tint = AiEditColors.OnBrandSecondary)
+                        }
                         PromptField(state.prompt, actions.onPromptChanged, Modifier.weight(1f))
                         val mayGenerate = state.prompt.isNotBlank() && state.phase in setOf(
                             AiEditPhase.Idle, AiEditPhase.Composing, AiEditPhase.Cancelled, AiEditPhase.Failed)
