@@ -713,10 +713,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     // Reveal only once the new guest-only composition has applied.
-                    SideEffect { revealGuestTransition() }
+                    SideEffect { if (guestActive && currentGuestSessionId() == sessionId) revealGuestTransition() }
                     return@setContent
                 }
-                SideEffect { revealGuestTransition() }
+                SideEffect { if (!guestActive) revealGuestTransition() }
                 val entry = externalEntry
                 if (entry.opensExternalViewer()) {
                     // Open with / camera review: one item, no catalogue, no scan,
@@ -785,7 +785,7 @@ class MainActivity : ComponentActivity() {
     private fun readGuestBoot(): GuestBoot {
         val disk = guestStore.boot()
         if (disk !is GuestBoot.Owner) return disk
-        return guestActivities.firstOrNull { it.guestActive }?.guestBoot ?: disk
+        return guestActivities.firstOrNull { !it.isFinishing && !it.isDestroyed && it.guestActive }?.guestBoot ?: disk
     }
 
     private fun reconcileGuestGuard(): Boolean {
