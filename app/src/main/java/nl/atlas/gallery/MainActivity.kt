@@ -668,6 +668,13 @@ class MainActivity : ComponentActivity() {
         if (GuestGuard.routesToGuest(guestBoot)) {
             // Secure window before the first draw; the intent is not even parsed.
             applyGuestWindow(true)
+            // A new picker activity must answer its caller without exposing any
+            // gallery content or ending the durable guest session.
+            if (intent?.action == Intent.ACTION_GET_CONTENT || intent?.action == Intent.ACTION_PICK) {
+                setResult(RESULT_CANCELED)
+                finish()
+                return
+            }
         } else if (!acceptExternalIntent(intent)) return
         // Opt-in marker is created only by the synthetic hosted benchmark.
         // Release builds and normal debug sessions never install a listener.

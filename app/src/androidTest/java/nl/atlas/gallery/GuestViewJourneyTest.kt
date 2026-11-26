@@ -152,6 +152,24 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         compose.waitForNode(hasTestTag("atlas-guest-root"))
         assertOwnerChromeGone()
 
+        // All externally declared routes delivered to the existing guest
+        // Activity must leave its frozen set and owner confinement intact.
+        if (dark) {
+            for (action in listOf(Intent.ACTION_VIEW, "android.provider.action.REVIEW",
+                    "android.provider.action.REVIEW_SECURE", Intent.ACTION_GET_CONTENT, Intent.ACTION_PICK)) {
+                compose.activityRule.scenario.onActivity { activity ->
+                    activity.startActivity(Intent(activity, MainActivity::class.java)
+                        .setAction(action).setDataAndType(android.net.Uri.parse(record.items.first().uri), "image/jpeg")
+                        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                }
+                compose.awaitWindowSettled()
+                compose.waitForNode(hasTestTag("atlas-guest-root"))
+                assertOwnerChromeGone()
+                assertTrue("secure guest window after $action", secureFlag())
+                assertEquals(expectedIds, requireNotNull(store().activeRecord()).items.map { it.id })
+            }
+        }
+
         // Recreation (as on rotation) restores the same set at the same page.
         compose.activityRule.scenario.recreate()
         compose.awaitWindowSettled()
@@ -568,6 +586,30 @@ private class UnpinRule : TestRule {
                 if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) shell("am task lock stop")
                 if (credentialOnTop()) shell("am force-stop com.android.settings")
             }
+        }
+    }
+}
+
+/** A separate picker caller gets a cancelled result, not a guest or owner gallery. */
+@RunWith(AndroidJUnit4::class)
+class GuestExternalPickCancellationTest {
+    @get:Rule val guestStore: TestRule = GuestStoreRule()
+
+    @Test fun activeGuestCancelsBothPickerActionsWithoutData() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = GuestAndroid.store(context)
+        val item = nl.atlas.gallery.featureguest.GuestItem(Long.MAX_VALUE,
+            "content://media/external/images/media/${Long.MAX_VALUE}")
+        val started = store.start(listOf(item), "")
+        assertTrue(started is nl.atlas.gallery.featureguest.GuestStartResult.Started)
+        for (action in listOf(Intent.ACTION_GET_CONTENT, Intent.ACTION_PICK)) {
+            val request = Intent(context, MainActivity::class.java).setAction(action).setType("image/*")
+            androidx.test.core.app.ActivityScenario.launchActivityForResult<MainActivity>(request).use { scenario ->
+                assertEquals(android.app.Activity.RESULT_CANCELED, scenario.result.resultCode)
+                assertEquals(null, scenario.result.resultData)
+            }
+            assertEquals(listOf(item), requireNotNull(store.activeRecord()).items)
+            assertTrue(store.boot() is GuestBoot.Guest)
         }
     }
 }
