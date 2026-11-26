@@ -704,8 +704,14 @@ private fun GalleryViewerSnapshot(
                         val detailsBase = detailsProgress.floatValue
                         val tracker = VelocityTracker()
                         tracker.addPosition(down.uptimeMillis, down.position)
+                        // Take over a returning down-drag at its drawn position.
+                        // A tap alone cannot commit it: the fresh intent gate below
+                        // still starts at zero travel, not at the inherited offset.
+                        val dragBase = viewerDownExitRegrabBase(dragOffset.floatValue,
+                            dragAnimationJob?.isActive == true, detailsBase > 0f, latestZoom)
                         dragAnimationJob?.cancel()
-                        dragOffset.floatValue = 0f
+                        dragOffset.floatValue = dragBase
+                        tracking = dragBase > 0f
 
                         var released = false
                         do {
@@ -731,7 +737,7 @@ private fun GalleryViewerSnapshot(
                             tracker.addPosition(change.uptimeMillis, change.position)
                             // V22: only an *early* upward move cancels the exit;
                             // once the photo follows the finger, release decides.
-                            if (!tracking) reversedUp = viewerEarlyUpwardReversal(
+                            if (!tracking || dragBase > 0f) reversedUp = viewerEarlyUpwardReversal(
                                 reversedUp, delta.y, touchSlopPx)
                             val elapsed = change.uptimeMillis - down.uptimeMillis
                             // The V22 ratio applies to the *whole* movement, not an
@@ -759,7 +765,7 @@ private fun GalleryViewerSnapshot(
                                         detailsBase, travelY - detailsStartTravel,
                                         viewerDetailsPanelPx(size.height.toFloat()))
                                 } else {
-                                    dragOffset.floatValue = travelY
+                                    dragOffset.floatValue = viewerDownExitTravel(dragBase, travelY)
                                 }
                                 change.consume()
                             }
@@ -1212,6 +1218,15 @@ internal fun viewerMayOwnPinchExit(
     owned: Boolean, eligible: Boolean, zoom: Float, factor: Float
 ): Boolean = eligible && (owned ||
     (zoom == 1f && factor.isFinite() && factor > 0f && factor < .998f))
+
+/** Only an actively returning, unzoomed exit may be inherited by a fresh touch. */
+internal fun viewerDownExitRegrabBase(
+    offset: Float, returning: Boolean, detailsActive: Boolean, zoom: Float
+): Float = if (returning && !detailsActive && zoom.isFinite() && zoom <= 1.01f &&
+    offset.isFinite()) offset.coerceAtLeast(0f) else 0f
+
+internal fun viewerDownExitTravel(base: Float, travel: Float): Float =
+    (base + travel).coerceAtLeast(0f)
 
 internal fun viewerDownExitPose(offset: Float, height: Float): ViewerPinchExitPose {
     if (!offset.isFinite() || !height.isFinite() || height <= 0f || offset <= 0f)

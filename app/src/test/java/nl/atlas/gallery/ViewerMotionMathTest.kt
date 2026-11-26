@@ -107,6 +107,23 @@ class ViewerMotionMathTest {
         assertEquals(moved, viewerPinchExitFrame(moved, .8f, 780f, 340f, 1000, 1000, Float.NaN))
     }
 
+    @Test fun freshDownDragRegrabsTheReturningPoseWithoutJumping() {
+        val base = viewerDownExitRegrabBase(120f, true, false, 1f)
+        assertEquals(120f, base, .001f)
+        assertEquals(viewerDownExitPose(120f, 1000f),
+            viewerDownExitPose(viewerDownExitTravel(base, 0f), 1000f))
+        assertEquals(80f, viewerDownExitTravel(base, -40f), .001f)
+        assertEquals(0f, viewerDownExitTravel(base, -180f), .001f)
+        assertEquals(160f, viewerDownExitTravel(base, 40f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, false, false, 1f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, true, true, 1f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(120f, true, false, 2f), .001f)
+        assertEquals(0f, viewerDownExitRegrabBase(Float.NaN, true, false, 1f), .001f)
+        // A touch without new downward intent cannot commit a previously cancelled drag.
+        assertFalse(viewerDownDismissCommits(base, 0f, 56f, 1100f, 1f,
+            viewerMayStartDownExit(0f, 0f, 100L, false, 8f)))
+    }
+
     @Test fun dragToPinchStartsAtTheDrawnDragPose() {
         val drag = viewerDownExitPose(260f, 1000f)
         assertEquals(.912f, drag.scale, .001f)

@@ -65,3 +65,11 @@ test("below-fit pinch uses the focused photo transform loop and settled return",
   assert.match(viewer, /onPinchDismiss = \{ returnToGallery\(\) \}/);
   assert.match(viewer, /scaleX = zoomPose\.scale \* pinchPose\.scale/);
 });
+
+test("a fresh touch inherits a cancelling drag but must earn new dismissal intent", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /val dragBase = viewerDownExitRegrabBase\(dragOffset\.floatValue,/);
+  assert.match(viewer, /dragOffset\.floatValue = dragBase\s+tracking = dragBase > 0f/);
+  assert.match(viewer, /dragOffset\.floatValue = viewerDownExitTravel\(dragBase, travelY\)/);
+  assert.match(viewer, /downExitEligible = viewerMayStartDownExit\(\s*travelY, travelX, elapsed, reversedUp, touchSlopPx\)/);
+});
