@@ -110,3 +110,5 @@ FLOW-3 C3 adds a dedicated light/dark dated-catalogue offscreen case: prove the 
 FLOW-3 C4 targets Back during an active entry animation, verifies no coexisting entry/exit semantics, closes to the opening tile, then reopens and returns to a different visible synthetic tile. Paired captures are targets only; actual pixel continuity and quick-close latency remain unmeasured.
 
 FLOW-3 C5 uses the measured click-origin handoff on original-proportion rows and adds light/dark non-square synthetic photo entry, measured Back midpoint and same-ratio-tile return capture targets. No runtime crop or timing result is claimed.
+
+FLOW-3 C6 applies the centered crop interpolation to ordinary entry and Back using oriented catalogue dimensions (no extra decode wait), retains the frozen decoded pose for gestures, and fades when fit geometry is unknown. The JVM geometry cases cover landscape, portrait, offset viewport and invalid dimensions. Metadata may differ from actual decoded geometry; paired runtime inspection and timing remain required.

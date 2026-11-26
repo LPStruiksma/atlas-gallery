@@ -37,7 +37,7 @@ test("return still uses the settled Viewer URI, and never shrinks to a different
   assert.match(main, /returnOrigin = measuredReturnOrigin\?\.takeIf\s*\{\s*returnAuthorized && preparation\?\.measured\?\.bounds == it\.bounds/);
   assert.match(motion, /media\.uri != request\.uri \|\| epoch != request\.accessEpoch/);
   assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
-  assert.match(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport, progress\.value\)/);
+  assert.match(motion, /sharedPhotoReturnCrop\(it, movingOrigin\.bounds, progress\.value\)/);
   assert.match(main, /SharedPhotoMotionLayer\(/);
 });
 
@@ -142,8 +142,8 @@ test("committed return derives its clip from normalized crop and uniform scale",
   assert.match(motion, /fun sharedPhotoReturnCrop\(/);
   assert.match(motion, /val fullScale = cover \+ \(1f - cover\) \* p/);
   assert.match(motion, /val crop = sharedPhotoRect\(tileCrop, Rect\(0f, 0f, 1f, 1f\), p\)/);
-  assert.match(motion, /sharedPhotoReturnCrop\(viewport, movingOrigin.bounds, progress.value\)/);
-  assert.match(motion, /val frame = cropFrame\?\.frame \?: sharedPhotoRect/);
+  assert.match(motion, /sharedPhotoReturnCrop\(it, movingOrigin\.bounds, progress\.value\)/);
+  assert.match(motion, /val frame = cropFrame\.frame/);
   assert.match(motion, /\.clipToBounds\(\)\s+\.alpha\(1f - progress.value\)/);
 });
 
@@ -186,4 +186,12 @@ test("FLOW-3 ratio rows offer measured entry only on open and return to the same
   assert.match(ratio, /if \(selectionCurrent != null && toggle != null\) toggle\(media\)\s*else \{\s*SharedPhotoOrigins\.offer\(media, catalogueEpoch, sourceBounds\[0\]\)\s*currentOpen\(media\)/);
   assert.match(journey, /fun originalRatioPhotoTravelsBackToSameTile\(/);
   for (const frame of ["flow3-ratio-before", "flow3-ratio-enter", "flow3-ratio-back-mid", "flow3-ratio-returned"]) assert.ok(journey.includes(frame), frame);
+});
+
+test("FLOW-3 entry and ordinary Back use oriented fitted image geometry rather than full-window crop", () => {
+  assert.match(motion, /viewerOrientedSize\(movingOrigin\.media, IntSize\.Zero\)/);
+  assert.match(motion, /sharedPhotoFittedFrame\(windowRect, oriented\.width, oriented\.height\)/);
+  assert.match(motion, /val cropFrame = fitted\?\.let \{/);
+  assert.match(motion, /if \(cropFrame != null\) \{/);
+  assert.doesNotMatch(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport/);
 });

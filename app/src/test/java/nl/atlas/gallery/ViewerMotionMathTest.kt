@@ -470,6 +470,24 @@ class ViewerMotionMathTest {
             ViewerPinchExitPose(Float.NaN)))
     }
 
+    @Test fun ordinarySharedMotionFitsInsideOffsetViewportInsteadOfStretchingToIt() {
+        val window = androidx.compose.ui.geometry.Rect(20f, 100f, 1020f, 2100f)
+        val landscape = sharedPhotoFittedFrame(window, 2000, 1000)!!
+        assertEquals(androidx.compose.ui.geometry.Rect(20f, 850f, 1020f, 1350f), landscape)
+        val portrait = sharedPhotoFittedFrame(window, 1000, 4000)!!
+        assertEquals(androidx.compose.ui.geometry.Rect(270f, 100f, 770f, 2100f), portrait)
+        val tile = androidx.compose.ui.geometry.Rect(40f, 150f, 240f, 350f)
+        assertEquals(tile, sharedPhotoReturnCrop(landscape, tile, 0f)!!.frame)
+        assertEquals(landscape, sharedPhotoReturnCrop(landscape, tile, 1f)!!.frame)
+        val mid = sharedPhotoReturnCrop(landscape, tile, .5f)!!
+        assertEquals(mid.frame.width / (landscape.width * mid.crop.width),
+            mid.frame.height / (landscape.height * mid.crop.height), .001f)
+        assertNull(sharedPhotoFittedFrame(window, 0, 1000))
+        assertNull(sharedPhotoFittedFrame(androidx.compose.ui.geometry.Rect.Zero, 1000, 1000))
+        assertNull(sharedPhotoFittedFrame(
+            androidx.compose.ui.geometry.Rect(Float.NaN, 0f, 100f, 100f), 1000, 1000))
+    }
+
     @Test fun committedReturnInterpolatesCenteredCropWithoutStretch() {
         val source = androidx.compose.ui.geometry.Rect(140f, 900f, 940f, 1300f)
         val tile = androidx.compose.ui.geometry.Rect(390f, 880f, 690f, 1180f)

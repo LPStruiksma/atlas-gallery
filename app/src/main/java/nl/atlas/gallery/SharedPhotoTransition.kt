@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
 import nl.atlas.gallery.featuredesign.AtlasMotion
 
@@ -134,6 +135,20 @@ internal fun sharedPhotoGestureFrame(viewportWidth: Int, viewportHeight: Int,
     return Rect(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
 }
 
+/** Fitted oriented image in window coordinates; missing dimensions must not invent a crop. */
+internal fun sharedPhotoFittedFrame(viewport: Rect, imageWidth: Int, imageHeight: Int): Rect? {
+    if (imageWidth <= 0 || imageHeight <= 0 ||
+        !listOf(viewport.left, viewport.top, viewport.right, viewport.bottom,
+            viewport.width, viewport.height).all { it.isFinite() } ||
+        viewport.width <= 0f || viewport.height <= 0f) return null
+    val fit = minOf(viewport.width / imageWidth, viewport.height / imageHeight)
+    val halfWidth = imageWidth * fit / 2f
+    val halfHeight = imageHeight * fit / 2f
+    val center = viewport.center
+    return Rect(center.x - halfWidth, center.y - halfHeight,
+        center.x + halfWidth, center.y + halfHeight)
+}
+
 /** The visible normalized crop and its uniformly scaled screen-space clip. */
 internal data class SharedPhotoCropFrame(val frame: Rect, val crop: Rect)
 
@@ -225,30 +240,37 @@ internal fun SharedPhotoMotionLayer(
         if (moving && movingOrigin != null && windowRect.width > 0f &&
             windowRect.height > 0f && (progress.value < 1f || exiting)
         ) {
-            val viewport = if (exiting && gestureFrame != null) Rect(
+            // Use the frozen decoded gesture pose when available. Ordinary entry
+            // and Back use the existing oriented catalogue dimensions without
+            // waiting for another decode. Unknown geometry keeps the fade only.
+            val oriented = viewerOrientedSize(movingOrigin.media, IntSize.Zero)
+            val fitted = if (exiting && gestureFrame != null) Rect(
                 windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
                 windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
-            else Rect(windowRect.left, windowRect.top, windowRect.right, windowRect.bottom)
-            val cropFrame = if (exiting && gestureFrame != null)
-                sharedPhotoReturnCrop(viewport, movingOrigin.bounds, progress.value) else null
-            val frame = cropFrame?.frame ?: sharedPhotoRect(movingOrigin.bounds, viewport, progress.value)
-            val density = LocalDensity.current
-            Box(Modifier
-                .absoluteOffset {
-                    IntOffset((frame.left - windowRect.left).roundToInt(),
-                        (frame.top - windowRect.top).roundToInt())
+            else sharedPhotoFittedFrame(windowRect, oriented.width, oriented.height)
+            val cropFrame = fitted?.let {
+                sharedPhotoReturnCrop(it, movingOrigin.bounds, progress.value)
+            }
+            if (cropFrame != null) {
+                val frame = cropFrame.frame
+                val density = LocalDensity.current
+                Box(Modifier
+                    .absoluteOffset {
+                        IntOffset((frame.left - windowRect.left).roundToInt(),
+                            (frame.top - windowRect.top).roundToInt())
+                    }
+                    .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
+                    .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
+                        with(density) { frame.height.coerceAtLeast(1f).toDp() })
+                    .clipToBounds()
+                    .alpha(1f - progress.value)
+                    .testTag(if (exiting) "atlas-shared-photo-exit"
+                        else "atlas-shared-photo-enter")) {
+                    // Centered Crop on this derived clip renders the interpolated
+                    // image-coordinate window at uniform scale (modulo pixel rounding).
+                    MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
+                        ContentScale.Crop, 600)
                 }
-                .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
-                .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
-                    with(density) { frame.height.coerceAtLeast(1f).toDp() })
-                .clipToBounds()
-                .alpha(1f - progress.value)
-                .testTag(if (exiting) "atlas-shared-photo-exit"
-                    else "atlas-shared-photo-enter")) {
-                // Centered Crop on this derived clip renders the interpolated
-                // image-coordinate window at uniform scale (modulo pixel rounding).
-                MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
-                    ContentScale.Crop, 600)
             }
         }
     }
