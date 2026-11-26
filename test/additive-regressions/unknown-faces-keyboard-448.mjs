@@ -103,3 +103,12 @@ test('two same-name synthetic albums exercise both duplicate actions', () => {
   assert.match(screen, /duplicates\.take\(5\)\.forEachIndexed/);
   assert.match(screen, /Include eligible suggestions in the same keyboard-aware bring-into-view region/);
 });
+
+// Actual hit bounds, not the painted Material button size, are the 48dp contract.
+test('keyboard proof measures actual touch bounds and preserves the exact viewport gate', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/UnknownFacesKeyboardInsetsTest.kt');
+  assert.match(journey, /val touch = node\.touchBoundsInRoot/);
+  assert.match(journey, /touch\.width >= minPx - 1f && touch\.height >= minPx - 1f/);
+  assert.match(journey, /abs\(list\.bottom - keyboardTop\) <= 2f/);
+  assert.match(journey, /viewportDiagnostics\(\)/);
+});

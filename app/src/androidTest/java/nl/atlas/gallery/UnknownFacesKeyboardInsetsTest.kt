@@ -296,9 +296,12 @@ class UnknownFacesKeyboardInsetsTest {
     private fun assertMinimumTarget(matcher: SemanticsMatcher) {
         val node = compose.onNode(matcher).fetchSemanticsNode()
         val minPx = 48 * compose.activity.resources.displayMetrics.density
-        assertTrue("${matcher.description}: target ${node.size} is smaller than 48dp ($minPx px)",
-            node.size.width >= minPx - 1f && node.size.height >= minPx - 1f)
-        Log.i(LOG_TAG, "${matcher.description} target=${node.size}, minimum=$minPx px")
+        // Material buttons may paint a 40dp shape inside a 48dp hit region.
+        // Measure Compose's actual clickable geometry, not the visual node size.
+        val touch = node.touchBoundsInRoot
+        assertTrue("${matcher.description}: touch target $touch (visual ${node.size}) is smaller than 48dp ($minPx px)",
+            touch.width >= minPx - 1f && touch.height >= minPx - 1f)
+        Log.i(LOG_TAG, "${matcher.description} touch=$touch visual=${node.size}, minimum=$minPx px")
     }
 
     /** Seed only this test's generated media, via normal lease and review APIs. */
@@ -363,8 +366,11 @@ class UnknownFacesKeyboardInsetsTest {
         val keyboardTop = windowHeight - keyboard
         val list = unclipped("atlas-unknown-face-review-screen")
         log(label)
+        val aligned = abs(list.bottom - keyboardTop) <= 2f
+        val diagnostics = if (aligned) "" else runCatching { viewportDiagnostics() }
+            .getOrElse { "diagnostic unavailable: ${it.javaClass.simpleName}" }
         assertTrue("$label: list bottom ${list.bottom} must equal the keyboard top $keyboardTop " +
-            "(±2 px); a gap is the #448 dead band", abs(list.bottom - keyboardTop) <= 2f)
+            "(±2 px); a gap is the #448 dead band; $diagnostics", abs(list.bottom - keyboardTop) <= 2f)
         val density = compose.activity.resources.displayMetrics.density
         val clearance = ((if (portrait) 16 else 12) * density).toInt()
         compose.assertAboveKeyboard(hasTestTag("atlas-group-name"))
@@ -511,6 +517,29 @@ class UnknownFacesKeyboardInsetsTest {
     private fun unclipped(tag: String): Rect {
         val node = compose.onNodeWithTag(tag).fetchSemanticsNode("no $tag")
         return Rect(node.positionInWindow, node.size.toSize())
+    }
+
+    // Only synthetic geometry; no labels or media contents. Distinguish a
+    // window offset/resize from a smaller Compose viewport or clipped list.
+    private fun viewportDiagnostics(): String {
+        val list = compose.onNodeWithTag("atlas-unknown-face-review-screen").fetchSemanticsNode()
+        val roots = compose.onAllNodes(isRoot(), useUnmergedTree = true).fetchSemanticsNodes()
+            .map { "root=${it.boundsInWindow}/${it.size}" }
+        val nav = compose.onAllNodes(hasTestTag("atlas-nav-pill"), useUnmergedTree = true)
+            .fetchSemanticsNodes().map { it.boundsInWindow }
+        val window = compose.runOnUiThread {
+            val decor = compose.activity.window.decorView
+            val inWindow = IntArray(2).also { decor.getLocationInWindow(it) }
+            val onScreen = IntArray(2).also { decor.getLocationOnScreen(it) }
+            val insets = decor.rootWindowInsets
+            val ime = insets?.getInsets(android.view.WindowInsets.Type.ime())?.bottom
+            val navigation = insets?.getInsets(android.view.WindowInsets.Type.navigationBars())?.bottom
+            "decor=${decor.width}x${decor.height} root=${decor.rootView.height} " +
+                "windowPos=${inWindow.contentToString()} screenPos=${onScreen.contentToString()} " +
+                "rawIme=$ime navInset=$navigation"
+        }
+        return "$window; listPos=${list.positionInWindow} listSize=${list.size} " +
+            "listClipped=${list.boundsInWindow}; roots=$roots; navPill=$nav"
     }
 
     private fun log(label: String) {
