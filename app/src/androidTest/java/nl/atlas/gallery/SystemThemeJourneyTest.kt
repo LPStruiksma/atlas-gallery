@@ -70,6 +70,41 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
     private val mode = if (dark) "dark" else "light"
 
     /**
+     * #655: candidate test APK runs the same synthetic journey against the
+     * old installed APK and the new installed APK, in both Android themes at
+     * both font scales. The normal test suite skips this opt-in capture.
+     */
+    @Test fun brandL2PairedEvidence() {
+        val args = InstrumentationRegistry.getArguments()
+        val revision = args.getString("atlasBrandRevision") ?: return
+        val scale = args.getString("atlasBrandScale") ?: return
+        require(revision in setOf("before", "after"))
+        require(scale in setOf("100", "200"))
+        compose.activityRule.scenario.onActivity {
+            val expected = if (scale == "200") 2f else 1f
+            assertTrue("System font scale must be $scale%, got ${it.resources.configuration.fontScale}",
+                abs(it.resources.configuration.fontScale - expected) < 0.05f)
+        }
+        waitFor(hasTestTag("atlas-nav-photos"))
+        settle()
+        saveUiEvidence("brand-l2-$revision-photos-$mode-$scale.png")
+
+        compose.onNodeWithTag("atlas-nav-people").performClick()
+        waitFor(hasTestTag("atlas-people-home"))
+        settle()
+        saveUiEvidence("brand-l2-$revision-people-$mode-$scale.png")
+
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        waitFor(hasTestTag("atlas-nav-albums"))
+        openMenuItem("atlas-header-more", "atlas-albums-menu-photo-dna")
+        waitFor(hasTestTag("photo-dna-exact-group"))
+        compose.onAllNodes(hasTestTag("atlas-photo-dna-thumb")).onFirst().performClick()
+        waitFor(hasTestTag("atlas-photo-counter"))
+        settle()
+        saveUiEvidence("brand-l2-$revision-viewer-$mode-$scale.png")
+    }
+
+    /**
      * DESIGN-12: check the actual Activity window, not a Compose-only theme
      * override. The same journey saves full-device light/dark captures on the
      * Photos and Search tabs, which include Android's system bars.

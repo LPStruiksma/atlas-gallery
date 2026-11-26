@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340" viewBox="0 0 360 780" role="img" aria-labelledby="title desc" data-scene="font200-direction" data-theme="dark" data-synthetic="true" data-density-illustrative="3" data-font-scale="2" data-scroll-offset-dp="240">
+<title id="title">Album — synthetic dark design proposal</title>
+<desc id="desc">Coordinate-audited illustrative dp layout. Not a Samsung, Android, emulator or device screenshot. Fallback typography may differ from Funnel font metrics.</desc>
+<rect x="0" y="0" width="360" height="780" rx="0" fill="#000000"/>
+<text x="16" y="112" fill="#8C9BFF" font-size="76" font-family="Funnel Display, sans-serif" font-weight="700" letter-spacing="-0.03em" data-role="screen-title" data-spec="38/44sp; 76/88sp at 200%" data-base-sp="38">Album</text>
+<text x="16" y="161" fill="#9AA0B8" font-size="26" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="header-subtitle" data-base-sp="13">Text at 200%</text>
+<rect x="0" y="287" width="360" height="470" rx="0" fill="#000000" opacity=".77"/>
+<rect x="0" y="287" width="360" height="470" rx="24" fill="#000000"/>
+<rect x="157" y="297" width="46" height="4" rx="2" fill="#343955"/>
+<rect x="228" y="197" width="116" height="72" rx="15" fill="#14152A" data-target="sort"/>
+<text x="252" y="245" fill="#8C9BFF" font-size="28" font-family="Funnel Sans, sans-serif" font-weight="600" data-role="sort-entry-label" data-base-sp="14">Sort</text>
+<text x="24" y="340" fill="#F2F3F8" font-size="40" font-family="Funnel Sans, sans-serif" font-weight="600" data-role="sheet-title" data-base-sp="20">Sort by</text>
+<text x="24" y="374" fill="#9AA0B8" font-size="24" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="scroll-hint" data-base-sp="12">Scrolled</text>
+<rect x="15" y="390" width="330" height="72" rx="5" fill="#14152A" data-target="key" data-selected="true" data-key="Size"/><text x="32" y="438" fill="#F2F3F8" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="option-label" data-base-sp="15">Size</text><circle cx="319" cy="426" r="9" stroke="#3448E0" stroke-width="2" fill="none"/><circle cx="319" cy="426" r="5" fill="#3448E0"/>
+<rect x="15" y="462" width="330" height="72" rx="5" fill="#000000" data-target="key" data-selected="false" data-key="Random"/><text x="32" y="510" fill="#F2F3F8" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="option-label" data-base-sp="15">Random</text><circle cx="319" cy="498" r="9" stroke="#9AA0B8" stroke-width="2" fill="none"/>
+<text x="24" y="578" fill="#F2F3F8" font-size="34" font-family="Funnel Sans, sans-serif" font-weight="600" data-role="direction-heading" data-base-sp="17">Direction</text>
+<rect x="15" y="592" width="330" height="72" rx="5" fill="#000000" data-target="direction" data-selected="false" data-direction="Ascending"/><text x="32" y="640" fill="#F2F3F8" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="option-label" data-base-sp="15">Ascending</text><circle cx="319" cy="628" r="9" stroke="#9AA0B8" stroke-width="2" fill="none"/>
+<rect x="15" y="664" width="330" height="72" rx="5" fill="#14152A" data-target="direction" data-selected="true" data-direction="Descending"/><text x="32" y="712" fill="#F2F3F8" font-size="30" font-family="Funnel Sans, sans-serif" font-weight="400" data-role="option-label" data-base-sp="15">Descending</text><circle cx="319" cy="700" r="9" stroke="#3448E0" stroke-width="2" fill="none"/><circle cx="319" cy="700" r="5" fill="#3448E0"/>
+<rect x="349" y="353" width="4" height="383" rx="2" fill="#343955"/>
+<rect x="349" y="618" width="4" height="103" rx="2" fill="#3448E0"/>
+<rect x="0" y="757" width="360" height="23" rx="0" fill="#000000"/>
+<rect x="126" y="768" width="108" height="4" rx="2" fill="#F2F3F8"/>
+</svg>

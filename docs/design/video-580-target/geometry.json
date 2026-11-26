@@ -1,0 +1,5728 @@
+{
+ "status": "PROPOSED_DESIGN_EVIDENCE_NOT_RUNTIME_PROOF",
+ "source": {
+  "file": "docs/design/viewer-142-target/target-geometry.json",
+  "sha256": "9d3b8cbbbfbf53fec356c902b3618e68b2a7275e9efd923c6f0f451e755db260",
+  "kind": "#142 PROPOSED target (insets copied from #616 three-button emulator measurements)"
+ },
+ "density_px_per_dp": 2.8125,
+ "gesture_navigation_insets": "UNKNOWN (#627)",
+ "rate_choices_ordered_unranked": [
+  "0.25×",
+  "0.5×",
+  "0.75×",
+  "1×",
+  "1.25×",
+  "1.5×",
+  "2×",
+  "3×",
+  "4×"
+ ],
+ "copy": {
+  "speed_row_label": "Playback speed",
+  "speed_sheet_title": "Playback speed",
+  "save_action": "Save current frame",
+  "save_permission": "Allow photo access to save this frame",
+  "rewind": "−10 s",
+  "forward": "+10 s",
+  "hold": "2×"
+ },
+ "constraints": {
+  "minimum_semantic_hit_dp": 48.0,
+  "minimum_video_to_filmstrip_gap_dp": 8.0,
+  "canvas_clearance_dp": 8.0,
+  "side_fraction": 0.35,
+  "centre_fraction": 0.3,
+  "transient_ms": 600,
+  "pager_settle_ms": 180,
+  "details_fraction": 0.42,
+  "sheet_top_scrim_min_dp": 48.0,
+  "text_em_estimate": 0.58
+ },
+ "viewports": {
+  "portrait": {
+   "source_viewport": "portrait-3button",
+   "source_kind": "measured",
+   "dp": [
+    384.0,
+    832.0
+   ],
+   "px": [
+    1080,
+    2340
+   ],
+   "safe_insets_ltrb": [
+    0,
+    44.44,
+    0,
+    48
+   ],
+   "cutouts": [
+    [
+     170.67,
+     0.0,
+     211.56,
+     44.44
+    ]
+   ],
+   "states": {
+    "playing": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       8.0,
+       48.44,
+       56.0,
+       96.44
+      ],
+      "top-find-person": [
+       232.0,
+       48.44,
+       280.0,
+       96.44
+      ],
+      "top-find-similar": [
+       280.0,
+       48.44,
+       328.0,
+       96.44
+      ],
+      "top-details": [
+       328.0,
+       48.44,
+       376.0,
+       96.44
+      ],
+      "action-favourite": [
+       84.0,
+       720.0,
+       132.0,
+       768.0
+      ],
+      "action-edit": [
+       140.0,
+       720.0,
+       188.0,
+       768.0
+      ],
+      "action-share": [
+       196.0,
+       720.0,
+       244.0,
+       768.0
+      ],
+      "action-delete": [
+       252.0,
+       720.0,
+       300.0,
+       768.0
+      ],
+      "video-play": [
+       8.0,
+       572.0,
+       56.0,
+       620.0
+      ],
+      "video-seek": [
+       124.84,
+       572.0,
+       307.16,
+       620.0
+      ],
+      "filmstrip-band": [
+       0.0,
+       632.0,
+       384.0,
+       708.0
+      ],
+      "filmstrip-tile-0": [
+       168.0,
+       632.0,
+       216.0,
+       708.0
+      ],
+      "filmstrip-tile-1": [
+       216.0,
+       632.0,
+       264.0,
+       708.0
+      ],
+      "filmstrip-tile-2": [
+       264.0,
+       632.0,
+       312.0,
+       708.0
+      ],
+      "filmstrip-tile-3": [
+       312.0,
+       632.0,
+       360.0,
+       708.0
+      ],
+      "filmstrip-tile-4": [
+       120.0,
+       632.0,
+       168.0,
+       708.0
+      ],
+      "filmstrip-tile-5": [
+       72.0,
+       632.0,
+       120.0,
+       708.0
+      ],
+      "filmstrip-tile-6": [
+       24.0,
+       632.0,
+       72.0,
+       708.0
+      ]
+     },
+     "inactive": {}
+    },
+    "paused": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       8.0,
+       48.44,
+       56.0,
+       96.44
+      ],
+      "top-find-person": [
+       232.0,
+       48.44,
+       280.0,
+       96.44
+      ],
+      "top-find-similar": [
+       280.0,
+       48.44,
+       328.0,
+       96.44
+      ],
+      "top-details": [
+       328.0,
+       48.44,
+       376.0,
+       96.44
+      ],
+      "action-favourite": [
+       84.0,
+       720.0,
+       132.0,
+       768.0
+      ],
+      "action-edit": [
+       140.0,
+       720.0,
+       188.0,
+       768.0
+      ],
+      "action-share": [
+       196.0,
+       720.0,
+       244.0,
+       768.0
+      ],
+      "action-delete": [
+       252.0,
+       720.0,
+       300.0,
+       768.0
+      ],
+      "video-play": [
+       8.0,
+       572.0,
+       56.0,
+       620.0
+      ],
+      "video-seek": [
+       124.84,
+       572.0,
+       307.16,
+       620.0
+      ],
+      "filmstrip-band": [
+       0.0,
+       632.0,
+       384.0,
+       708.0
+      ],
+      "filmstrip-tile-0": [
+       168.0,
+       632.0,
+       216.0,
+       708.0
+      ],
+      "filmstrip-tile-1": [
+       216.0,
+       632.0,
+       264.0,
+       708.0
+      ],
+      "filmstrip-tile-2": [
+       264.0,
+       632.0,
+       312.0,
+       708.0
+      ],
+      "filmstrip-tile-3": [
+       312.0,
+       632.0,
+       360.0,
+       708.0
+      ],
+      "filmstrip-tile-4": [
+       120.0,
+       632.0,
+       168.0,
+       708.0
+      ],
+      "filmstrip-tile-5": [
+       72.0,
+       632.0,
+       120.0,
+       708.0
+      ],
+      "filmstrip-tile-6": [
+       24.0,
+       632.0,
+       72.0,
+       708.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-shown": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "shown",
+      "canvas": [
+       8.0,
+       130.44,
+       376.0,
+       564.0
+      ],
+      "zones": {
+       "rewind": [
+        8.0,
+        130.44,
+        136.8,
+        564.0
+       ],
+       "centre-zoom": [
+        136.8,
+        130.44,
+        247.2,
+        564.0
+       ],
+       "forward": [
+        247.2,
+        130.44,
+        376.0,
+        564.0
+       ]
+      },
+      "hold_2x": [
+       8.0,
+       130.44,
+       376.0,
+       564.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         36.4,
+         331.22,
+         108.4,
+         363.22
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         275.6,
+         331.22,
+         347.6,
+         363.22
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         164.0,
+         138.44,
+         220.0,
+         170.44
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {
+      "back": [
+       8.0,
+       48.44,
+       56.0,
+       96.44
+      ],
+      "top-find-person": [
+       232.0,
+       48.44,
+       280.0,
+       96.44
+      ],
+      "top-find-similar": [
+       280.0,
+       48.44,
+       328.0,
+       96.44
+      ],
+      "top-details": [
+       328.0,
+       48.44,
+       376.0,
+       96.44
+      ],
+      "action-favourite": [
+       84.0,
+       720.0,
+       132.0,
+       768.0
+      ],
+      "action-edit": [
+       140.0,
+       720.0,
+       188.0,
+       768.0
+      ],
+      "action-share": [
+       196.0,
+       720.0,
+       244.0,
+       768.0
+      ],
+      "action-delete": [
+       252.0,
+       720.0,
+       300.0,
+       768.0
+      ],
+      "video-play": [
+       8.0,
+       572.0,
+       56.0,
+       620.0
+      ],
+      "video-seek": [
+       124.84,
+       572.0,
+       307.16,
+       620.0
+      ],
+      "filmstrip-band": [
+       0.0,
+       632.0,
+       384.0,
+       708.0
+      ],
+      "filmstrip-tile-0": [
+       168.0,
+       632.0,
+       216.0,
+       708.0
+      ],
+      "filmstrip-tile-1": [
+       216.0,
+       632.0,
+       264.0,
+       708.0
+      ],
+      "filmstrip-tile-2": [
+       264.0,
+       632.0,
+       312.0,
+       708.0
+      ],
+      "filmstrip-tile-3": [
+       312.0,
+       632.0,
+       360.0,
+       708.0
+      ],
+      "filmstrip-tile-4": [
+       120.0,
+       632.0,
+       168.0,
+       708.0
+      ],
+      "filmstrip-tile-5": [
+       72.0,
+       632.0,
+       120.0,
+       708.0
+      ],
+      "filmstrip-tile-6": [
+       24.0,
+       632.0,
+       72.0,
+       708.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-hidden": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "hidden",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "hidden",
+      "canvas": [
+       8.0,
+       52.44,
+       376.0,
+       776.0
+      ],
+      "zones": {
+       "rewind": [
+        8.0,
+        52.44,
+        136.8,
+        776.0
+       ],
+       "centre-zoom": [
+        136.8,
+        52.44,
+        247.2,
+        776.0
+       ],
+       "forward": [
+        247.2,
+        52.44,
+        376.0,
+        776.0
+       ]
+      },
+      "hold_2x": [
+       8.0,
+       52.44,
+       376.0,
+       776.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         36.4,
+         398.22,
+         108.4,
+         430.22
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         275.6,
+         398.22,
+         347.6,
+         430.22
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         164.0,
+         60.44,
+         220.0,
+         92.44
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {},
+     "inactive": {
+      "back": "chrome hidden",
+      "top-find-person": "chrome hidden",
+      "top-find-similar": "chrome hidden",
+      "top-details": "chrome hidden",
+      "action-favourite": "chrome hidden",
+      "action-edit": "chrome hidden",
+      "action-share": "chrome hidden",
+      "action-delete": "chrome hidden",
+      "video-play": "chrome hidden",
+      "video-seek": "chrome hidden",
+      "filmstrip-band": "chrome hidden",
+      "filmstrip-tile-0": "chrome hidden",
+      "filmstrip-tile-1": "chrome hidden",
+      "filmstrip-tile-2": "chrome hidden",
+      "filmstrip-tile-3": "chrome hidden",
+      "filmstrip-tile-4": "chrome hidden",
+      "filmstrip-tile-5": "chrome hidden",
+      "filmstrip-tile-6": "chrome hidden"
+     }
+    },
+    "details": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       482.56,
+       384.0,
+       832.0
+      ],
+      "viewport": [
+       0.0,
+       482.56,
+       384.0,
+       784.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 535.0,
+      "viewport_height": 301.44,
+      "max_scroll": 233.56,
+      "scroll": 0.0,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         12.0,
+         502.56,
+         372.0,
+         522.56
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 14.0,
+        "lh": 20.0,
+        "shown": [
+         12.0,
+         502.56,
+         372.0,
+         522.56
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         12.0,
+         534.56,
+         372.0,
+         591.56
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 12.0,
+        "label_lh": 16.0,
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         12.0,
+         534.56,
+         372.0,
+         591.56
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         12.0,
+         591.56,
+         372.0,
+         639.56
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [],
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "support_sp": 14.0,
+        "support_lh": 20.0,
+        "state": "ready",
+        "semantics": "Save current frame, button",
+        "shown": [
+         12.0,
+         591.56,
+         372.0,
+         639.56
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         12.0,
+         639.56,
+         372.0,
+         981.56
+        ],
+        "lines": [
+         "Existing Details rows unchanged: Name, Path,",
+         "Size, Resolution, Type, Album"
+        ],
+        "sp": 12.0,
+        "lh": 16.0,
+        "shown": [
+         12.0,
+         639.56,
+         372.0,
+         981.56
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 336.0
+     },
+     "active_hits": {
+      "back": [
+       8.0,
+       48.44,
+       56.0,
+       96.44
+      ],
+      "top-find-person": [
+       232.0,
+       48.44,
+       280.0,
+       96.44
+      ],
+      "top-find-similar": [
+       280.0,
+       48.44,
+       328.0,
+       96.44
+      ],
+      "top-details": [
+       328.0,
+       48.44,
+       376.0,
+       96.44
+      ],
+      "playback-speed": [
+       12.0,
+       534.56,
+       372.0,
+       591.56
+      ],
+      "save-current-frame": [
+       12.0,
+       591.56,
+       372.0,
+       639.56
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "video-play": "covered by Details surface",
+      "video-seek": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface"
+     }
+    },
+    "speed-sheet": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      572.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       0.0,
+       284.0,
+       384.0,
+       784.0
+      ],
+      "header": [
+       0.0,
+       284.0,
+       384.0,
+       336.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 18.0,
+      "title_lh": 24.0,
+      "option_sp": 14.0,
+      "option_lh": 20.0,
+      "columns": 1,
+      "option_height": 48.0,
+      "list_viewport": [
+       0.0,
+       336.0,
+       384.0,
+       784.0
+      ],
+      "list_content_height": 448.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         12.0,
+         336.0,
+         372.0,
+         384.0
+        ],
+        "shown": [
+         12.0,
+         336.0,
+         372.0,
+         384.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         12.0,
+         384.0,
+         372.0,
+         432.0
+        ],
+        "shown": [
+         12.0,
+         384.0,
+         372.0,
+         432.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         12.0,
+         432.0,
+         372.0,
+         480.0
+        ],
+        "shown": [
+         12.0,
+         432.0,
+         372.0,
+         480.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         12.0,
+         480.0,
+         372.0,
+         528.0
+        ],
+        "shown": [
+         12.0,
+         480.0,
+         372.0,
+         528.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         12.0,
+         528.0,
+         372.0,
+         576.0
+        ],
+        "shown": [
+         12.0,
+         528.0,
+         372.0,
+         576.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         12.0,
+         576.0,
+         372.0,
+         624.0
+        ],
+        "shown": [
+         12.0,
+         576.0,
+         372.0,
+         624.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         12.0,
+         624.0,
+         372.0,
+         672.0
+        ],
+        "shown": [
+         12.0,
+         624.0,
+         372.0,
+         672.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         12.0,
+         672.0,
+         372.0,
+         720.0
+        ],
+        "shown": [
+         12.0,
+         672.0,
+         372.0,
+         720.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         12.0,
+         720.0,
+         372.0,
+         768.0
+        ],
+        "shown": [
+         12.0,
+         720.0,
+         372.0,
+         768.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       0.0,
+       44.44,
+       384.0,
+       284.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       12.0,
+       336.0,
+       372.0,
+       384.0
+      ],
+      "rate-2": [
+       12.0,
+       384.0,
+       372.0,
+       432.0
+      ],
+      "rate-3": [
+       12.0,
+       432.0,
+       372.0,
+       480.0
+      ],
+      "rate-4": [
+       12.0,
+       480.0,
+       372.0,
+       528.0
+      ],
+      "rate-5": [
+       12.0,
+       528.0,
+       372.0,
+       576.0
+      ],
+      "rate-6": [
+       12.0,
+       576.0,
+       372.0,
+       624.0
+      ],
+      "rate-7": [
+       12.0,
+       624.0,
+       372.0,
+       672.0
+      ],
+      "rate-8": [
+       12.0,
+       672.0,
+       372.0,
+       720.0
+      ],
+      "rate-9": [
+       12.0,
+       720.0,
+       372.0,
+       768.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    },
+    "font200-details-permission": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      528.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       482.56,
+       384.0,
+       832.0
+      ],
+      "viewport": [
+       0.0,
+       482.56,
+       384.0,
+       784.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 900.0,
+      "viewport_height": 301.44,
+      "max_scroll": 598.56,
+      "scroll": 4.56,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         12.0,
+         502.56,
+         372.0,
+         542.56
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 28.0,
+        "lh": 40.0,
+        "shown": [
+         12.0,
+         498.0,
+         372.0,
+         538.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         12.0,
+         554.56,
+         372.0,
+         647.56
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 24.0,
+        "label_lh": 32.0,
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         12.0,
+         550.0,
+         372.0,
+         643.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         12.0,
+         647.56,
+         372.0,
+         788.56
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [
+         "Allow photo access",
+         "to save this frame"
+        ],
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "support_sp": 28.0,
+        "support_lh": 40.0,
+        "state": "permission",
+        "semantics": "Save current frame, button. Allow photo access to save this frame",
+        "shown": [
+         12.0,
+         643.0,
+         372.0,
+         784.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         12.0,
+         788.56,
+         372.0,
+         1346.56
+        ],
+        "lines": [
+         "Existing Details rows",
+         "unchanged: Name, Path,",
+         "Size, Resolution, Type,",
+         "Album"
+        ],
+        "sp": 24.0,
+        "lh": 32.0,
+        "shown": [
+         12.0,
+         784.0,
+         372.0,
+         1342.0
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 336.0
+     },
+     "active_hits": {
+      "back": [
+       8.0,
+       48.44,
+       56.0,
+       96.44
+      ],
+      "top-find-person": [
+       232.0,
+       48.44,
+       280.0,
+       96.44
+      ],
+      "top-find-similar": [
+       280.0,
+       48.44,
+       328.0,
+       96.44
+      ],
+      "top-details": [
+       328.0,
+       48.44,
+       376.0,
+       96.44
+      ],
+      "playback-speed": [
+       12.0,
+       550.0,
+       372.0,
+       643.0
+      ],
+      "save-current-frame": [
+       12.0,
+       643.0,
+       372.0,
+       784.0
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "video-play": "covered by Details surface",
+      "video-seek": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface"
+     }
+    },
+    "font200-speed-sheet": {
+     "safe": [
+      0.0,
+      44.44,
+      384.0,
+      784.0
+     ],
+     "cutouts": [
+      [
+       170.67,
+       0.0,
+       211.56,
+       44.44
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      0.0,
+      528.0,
+      384.0,
+      620.0
+     ],
+     "filmstrip": [
+      0.0,
+      632.0,
+      384.0,
+      708.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       0.0,
+       188.0,
+       384.0,
+       784.0
+      ],
+      "header": [
+       0.0,
+       188.0,
+       384.0,
+       264.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 36.0,
+      "title_lh": 48.0,
+      "option_sp": 28.0,
+      "option_lh": 40.0,
+      "columns": 1,
+      "option_height": 56.0,
+      "list_viewport": [
+       0.0,
+       264.0,
+       384.0,
+       784.0
+      ],
+      "list_content_height": 520.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         12.0,
+         264.0,
+         372.0,
+         320.0
+        ],
+        "shown": [
+         12.0,
+         264.0,
+         372.0,
+         320.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         12.0,
+         320.0,
+         372.0,
+         376.0
+        ],
+        "shown": [
+         12.0,
+         320.0,
+         372.0,
+         376.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         12.0,
+         376.0,
+         372.0,
+         432.0
+        ],
+        "shown": [
+         12.0,
+         376.0,
+         372.0,
+         432.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         12.0,
+         432.0,
+         372.0,
+         488.0
+        ],
+        "shown": [
+         12.0,
+         432.0,
+         372.0,
+         488.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         12.0,
+         488.0,
+         372.0,
+         544.0
+        ],
+        "shown": [
+         12.0,
+         488.0,
+         372.0,
+         544.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         12.0,
+         544.0,
+         372.0,
+         600.0
+        ],
+        "shown": [
+         12.0,
+         544.0,
+         372.0,
+         600.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         12.0,
+         600.0,
+         372.0,
+         656.0
+        ],
+        "shown": [
+         12.0,
+         600.0,
+         372.0,
+         656.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         12.0,
+         656.0,
+         372.0,
+         712.0
+        ],
+        "shown": [
+         12.0,
+         656.0,
+         372.0,
+         712.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         12.0,
+         712.0,
+         372.0,
+         768.0
+        ],
+        "shown": [
+         12.0,
+         712.0,
+         372.0,
+         768.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       0.0,
+       44.44,
+       384.0,
+       188.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       12.0,
+       264.0,
+       372.0,
+       320.0
+      ],
+      "rate-2": [
+       12.0,
+       320.0,
+       372.0,
+       376.0
+      ],
+      "rate-3": [
+       12.0,
+       376.0,
+       372.0,
+       432.0
+      ],
+      "rate-4": [
+       12.0,
+       432.0,
+       372.0,
+       488.0
+      ],
+      "rate-5": [
+       12.0,
+       488.0,
+       372.0,
+       544.0
+      ],
+      "rate-6": [
+       12.0,
+       544.0,
+       372.0,
+       600.0
+      ],
+      "rate-7": [
+       12.0,
+       600.0,
+       372.0,
+       656.0
+      ],
+      "rate-8": [
+       12.0,
+       656.0,
+       372.0,
+       712.0
+      ],
+      "rate-9": [
+       12.0,
+       712.0,
+       372.0,
+       768.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    }
+   }
+  },
+  "landscape": {
+   "source_viewport": "landscape-3button",
+   "source_kind": "measured",
+   "dp": [
+    832.0,
+    384.0
+   ],
+   "px": [
+    2340,
+    1080
+   ],
+   "safe_insets_ltrb": [
+    44.44,
+    24.18,
+    48,
+    0
+   ],
+   "cutouts": [
+    [
+     0.0,
+     172.44,
+     44.44,
+     213.33
+    ]
+   ],
+   "states": {
+    "playing": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       632.0,
+       28.18,
+       680.0,
+       76.18
+      ],
+      "top-find-similar": [
+       680.0,
+       28.18,
+       728.0,
+       76.18
+      ],
+      "top-details": [
+       728.0,
+       28.18,
+       776.0,
+       76.18
+      ],
+      "action-favourite": [
+       306.22,
+       320.0,
+       354.22,
+       368.0
+      ],
+      "action-edit": [
+       362.22,
+       320.0,
+       410.22,
+       368.0
+      ],
+      "action-share": [
+       418.22,
+       320.0,
+       466.22,
+       368.0
+      ],
+      "action-delete": [
+       474.22,
+       320.0,
+       522.22,
+       368.0
+      ],
+      "video-play": [
+       52.44,
+       172.0,
+       100.44,
+       220.0
+      ],
+      "video-seek": [
+       169.28,
+       172.0,
+       707.16,
+       220.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       232.0,
+       784.0,
+       308.0
+      ],
+      "filmstrip-tile-0": [
+       390.22,
+       232.0,
+       438.22,
+       308.0
+      ],
+      "filmstrip-tile-1": [
+       438.22,
+       232.0,
+       486.22,
+       308.0
+      ],
+      "filmstrip-tile-2": [
+       486.22,
+       232.0,
+       534.22,
+       308.0
+      ],
+      "filmstrip-tile-3": [
+       534.22,
+       232.0,
+       582.22,
+       308.0
+      ],
+      "filmstrip-tile-4": [
+       582.22,
+       232.0,
+       630.22,
+       308.0
+      ],
+      "filmstrip-tile-5": [
+       630.22,
+       232.0,
+       678.22,
+       308.0
+      ],
+      "filmstrip-tile-6": [
+       678.22,
+       232.0,
+       726.22,
+       308.0
+      ],
+      "filmstrip-tile-7": [
+       726.22,
+       232.0,
+       774.22,
+       308.0
+      ],
+      "filmstrip-tile-8": [
+       342.22,
+       232.0,
+       390.22,
+       308.0
+      ],
+      "filmstrip-tile-9": [
+       294.22,
+       232.0,
+       342.22,
+       308.0
+      ],
+      "filmstrip-tile-10": [
+       246.22,
+       232.0,
+       294.22,
+       308.0
+      ],
+      "filmstrip-tile-11": [
+       198.22,
+       232.0,
+       246.22,
+       308.0
+      ],
+      "filmstrip-tile-12": [
+       150.22,
+       232.0,
+       198.22,
+       308.0
+      ],
+      "filmstrip-tile-13": [
+       102.22,
+       232.0,
+       150.22,
+       308.0
+      ],
+      "filmstrip-tile-14": [
+       54.22,
+       232.0,
+       102.22,
+       308.0
+      ]
+     },
+     "inactive": {}
+    },
+    "paused": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       632.0,
+       28.18,
+       680.0,
+       76.18
+      ],
+      "top-find-similar": [
+       680.0,
+       28.18,
+       728.0,
+       76.18
+      ],
+      "top-details": [
+       728.0,
+       28.18,
+       776.0,
+       76.18
+      ],
+      "action-favourite": [
+       306.22,
+       320.0,
+       354.22,
+       368.0
+      ],
+      "action-edit": [
+       362.22,
+       320.0,
+       410.22,
+       368.0
+      ],
+      "action-share": [
+       418.22,
+       320.0,
+       466.22,
+       368.0
+      ],
+      "action-delete": [
+       474.22,
+       320.0,
+       522.22,
+       368.0
+      ],
+      "video-play": [
+       52.44,
+       172.0,
+       100.44,
+       220.0
+      ],
+      "video-seek": [
+       169.28,
+       172.0,
+       707.16,
+       220.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       232.0,
+       784.0,
+       308.0
+      ],
+      "filmstrip-tile-0": [
+       390.22,
+       232.0,
+       438.22,
+       308.0
+      ],
+      "filmstrip-tile-1": [
+       438.22,
+       232.0,
+       486.22,
+       308.0
+      ],
+      "filmstrip-tile-2": [
+       486.22,
+       232.0,
+       534.22,
+       308.0
+      ],
+      "filmstrip-tile-3": [
+       534.22,
+       232.0,
+       582.22,
+       308.0
+      ],
+      "filmstrip-tile-4": [
+       582.22,
+       232.0,
+       630.22,
+       308.0
+      ],
+      "filmstrip-tile-5": [
+       630.22,
+       232.0,
+       678.22,
+       308.0
+      ],
+      "filmstrip-tile-6": [
+       678.22,
+       232.0,
+       726.22,
+       308.0
+      ],
+      "filmstrip-tile-7": [
+       726.22,
+       232.0,
+       774.22,
+       308.0
+      ],
+      "filmstrip-tile-8": [
+       342.22,
+       232.0,
+       390.22,
+       308.0
+      ],
+      "filmstrip-tile-9": [
+       294.22,
+       232.0,
+       342.22,
+       308.0
+      ],
+      "filmstrip-tile-10": [
+       246.22,
+       232.0,
+       294.22,
+       308.0
+      ],
+      "filmstrip-tile-11": [
+       198.22,
+       232.0,
+       246.22,
+       308.0
+      ],
+      "filmstrip-tile-12": [
+       150.22,
+       232.0,
+       198.22,
+       308.0
+      ],
+      "filmstrip-tile-13": [
+       102.22,
+       232.0,
+       150.22,
+       308.0
+      ],
+      "filmstrip-tile-14": [
+       54.22,
+       232.0,
+       102.22,
+       308.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-shown": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "shown",
+      "canvas": [
+       52.44,
+       84.18,
+       776.0,
+       164.0
+      ],
+      "zones": {
+       "rewind": [
+        52.44,
+        84.18,
+        305.69,
+        164.0
+       ],
+       "centre-zoom": [
+        305.69,
+        84.18,
+        522.75,
+        164.0
+       ],
+       "forward": [
+        522.75,
+        84.18,
+        776.0,
+        164.0
+       ]
+      },
+      "hold_2x": [
+       52.44,
+       84.18,
+       776.0,
+       164.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         143.06,
+         108.09,
+         215.06,
+         140.09
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         613.38,
+         108.09,
+         685.38,
+         140.09
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         386.22,
+         92.18,
+         442.22,
+         124.18
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       632.0,
+       28.18,
+       680.0,
+       76.18
+      ],
+      "top-find-similar": [
+       680.0,
+       28.18,
+       728.0,
+       76.18
+      ],
+      "top-details": [
+       728.0,
+       28.18,
+       776.0,
+       76.18
+      ],
+      "action-favourite": [
+       306.22,
+       320.0,
+       354.22,
+       368.0
+      ],
+      "action-edit": [
+       362.22,
+       320.0,
+       410.22,
+       368.0
+      ],
+      "action-share": [
+       418.22,
+       320.0,
+       466.22,
+       368.0
+      ],
+      "action-delete": [
+       474.22,
+       320.0,
+       522.22,
+       368.0
+      ],
+      "video-play": [
+       52.44,
+       172.0,
+       100.44,
+       220.0
+      ],
+      "video-seek": [
+       169.28,
+       172.0,
+       707.16,
+       220.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       232.0,
+       784.0,
+       308.0
+      ],
+      "filmstrip-tile-0": [
+       390.22,
+       232.0,
+       438.22,
+       308.0
+      ],
+      "filmstrip-tile-1": [
+       438.22,
+       232.0,
+       486.22,
+       308.0
+      ],
+      "filmstrip-tile-2": [
+       486.22,
+       232.0,
+       534.22,
+       308.0
+      ],
+      "filmstrip-tile-3": [
+       534.22,
+       232.0,
+       582.22,
+       308.0
+      ],
+      "filmstrip-tile-4": [
+       582.22,
+       232.0,
+       630.22,
+       308.0
+      ],
+      "filmstrip-tile-5": [
+       630.22,
+       232.0,
+       678.22,
+       308.0
+      ],
+      "filmstrip-tile-6": [
+       678.22,
+       232.0,
+       726.22,
+       308.0
+      ],
+      "filmstrip-tile-7": [
+       726.22,
+       232.0,
+       774.22,
+       308.0
+      ],
+      "filmstrip-tile-8": [
+       342.22,
+       232.0,
+       390.22,
+       308.0
+      ],
+      "filmstrip-tile-9": [
+       294.22,
+       232.0,
+       342.22,
+       308.0
+      ],
+      "filmstrip-tile-10": [
+       246.22,
+       232.0,
+       294.22,
+       308.0
+      ],
+      "filmstrip-tile-11": [
+       198.22,
+       232.0,
+       246.22,
+       308.0
+      ],
+      "filmstrip-tile-12": [
+       150.22,
+       232.0,
+       198.22,
+       308.0
+      ],
+      "filmstrip-tile-13": [
+       102.22,
+       232.0,
+       150.22,
+       308.0
+      ],
+      "filmstrip-tile-14": [
+       54.22,
+       232.0,
+       102.22,
+       308.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-hidden": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "hidden",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "hidden",
+      "canvas": [
+       52.44,
+       32.18,
+       776.0,
+       376.0
+      ],
+      "zones": {
+       "rewind": [
+        52.44,
+        32.18,
+        305.69,
+        376.0
+       ],
+       "centre-zoom": [
+        305.69,
+        32.18,
+        522.75,
+        376.0
+       ],
+       "forward": [
+        522.75,
+        32.18,
+        776.0,
+        376.0
+       ]
+      },
+      "hold_2x": [
+       52.44,
+       32.18,
+       776.0,
+       376.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         143.06,
+         188.09,
+         215.06,
+         220.09
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         613.38,
+         188.09,
+         685.38,
+         220.09
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         386.22,
+         40.18,
+         442.22,
+         72.18
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {},
+     "inactive": {
+      "back": "chrome hidden",
+      "top-find-person": "chrome hidden",
+      "top-find-similar": "chrome hidden",
+      "top-details": "chrome hidden",
+      "action-favourite": "chrome hidden",
+      "action-edit": "chrome hidden",
+      "action-share": "chrome hidden",
+      "action-delete": "chrome hidden",
+      "video-play": "chrome hidden",
+      "video-seek": "chrome hidden",
+      "filmstrip-band": "chrome hidden",
+      "filmstrip-tile-0": "chrome hidden",
+      "filmstrip-tile-1": "chrome hidden",
+      "filmstrip-tile-2": "chrome hidden",
+      "filmstrip-tile-3": "chrome hidden",
+      "filmstrip-tile-4": "chrome hidden",
+      "filmstrip-tile-5": "chrome hidden",
+      "filmstrip-tile-6": "chrome hidden",
+      "filmstrip-tile-7": "chrome hidden",
+      "filmstrip-tile-8": "chrome hidden",
+      "filmstrip-tile-9": "chrome hidden",
+      "filmstrip-tile-10": "chrome hidden",
+      "filmstrip-tile-11": "chrome hidden",
+      "filmstrip-tile-12": "chrome hidden",
+      "filmstrip-tile-13": "chrome hidden",
+      "filmstrip-tile-14": "chrome hidden"
+     }
+    },
+    "details": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       222.72,
+       832.0,
+       384.0
+      ],
+      "viewport": [
+       44.44,
+       222.72,
+       784.0,
+       384.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 535.0,
+      "viewport_height": 161.28,
+      "max_scroll": 373.72,
+      "scroll": 0.0,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         56.44,
+         242.72,
+         772.0,
+         262.72
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 14.0,
+        "lh": 20.0,
+        "shown": [
+         56.44,
+         242.72,
+         772.0,
+         262.72
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         56.44,
+         274.72,
+         772.0,
+         331.72
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 12.0,
+        "label_lh": 16.0,
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         56.44,
+         274.72,
+         772.0,
+         331.72
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         56.44,
+         331.72,
+         772.0,
+         379.72
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [],
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "support_sp": 14.0,
+        "support_lh": 20.0,
+        "state": "ready",
+        "semantics": "Save current frame, button",
+        "shown": [
+         56.44,
+         331.72,
+         772.0,
+         379.72
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         56.44,
+         379.72,
+         772.0,
+         721.72
+        ],
+        "lines": [
+         "Existing Details rows unchanged: Name, Path, Size, Resolution, Type, Album"
+        ],
+        "sp": 12.0,
+        "lh": 16.0,
+        "shown": [
+         56.44,
+         379.72,
+         772.0,
+         721.72
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 691.56
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       632.0,
+       28.18,
+       680.0,
+       76.18
+      ],
+      "top-find-similar": [
+       680.0,
+       28.18,
+       728.0,
+       76.18
+      ],
+      "top-details": [
+       728.0,
+       28.18,
+       776.0,
+       76.18
+      ],
+      "video-play": [
+       52.44,
+       172.0,
+       100.44,
+       220.0
+      ],
+      "video-seek": [
+       169.28,
+       172.0,
+       707.16,
+       220.0
+      ],
+      "playback-speed": [
+       56.44,
+       274.72,
+       772.0,
+       331.72
+      ],
+      "save-current-frame": [
+       56.44,
+       331.72,
+       772.0,
+       379.72
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface",
+      "filmstrip-tile-7": "covered by Details surface",
+      "filmstrip-tile-8": "covered by Details surface",
+      "filmstrip-tile-9": "covered by Details surface",
+      "filmstrip-tile-10": "covered by Details surface",
+      "filmstrip-tile-11": "covered by Details surface",
+      "filmstrip-tile-12": "covered by Details surface",
+      "filmstrip-tile-13": "covered by Details surface",
+      "filmstrip-tile-14": "covered by Details surface"
+     }
+    },
+    "speed-sheet": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       44.44,
+       172.0,
+       784.0,
+       384.0
+      ],
+      "header": [
+       44.44,
+       172.0,
+       784.0,
+       224.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 18.0,
+      "title_lh": 24.0,
+      "option_sp": 14.0,
+      "option_lh": 20.0,
+      "columns": 3,
+      "option_height": 48.0,
+      "list_viewport": [
+       44.44,
+       224.0,
+       784.0,
+       384.0
+      ],
+      "list_content_height": 160.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         56.44,
+         224.0,
+         289.63,
+         272.0
+        ],
+        "shown": [
+         56.44,
+         224.0,
+         289.63,
+         272.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         297.63,
+         224.0,
+         530.81,
+         272.0
+        ],
+        "shown": [
+         297.63,
+         224.0,
+         530.81,
+         272.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         538.81,
+         224.0,
+         772.0,
+         272.0
+        ],
+        "shown": [
+         538.81,
+         224.0,
+         772.0,
+         272.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         56.44,
+         272.0,
+         289.63,
+         320.0
+        ],
+        "shown": [
+         56.44,
+         272.0,
+         289.63,
+         320.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         297.63,
+         272.0,
+         530.81,
+         320.0
+        ],
+        "shown": [
+         297.63,
+         272.0,
+         530.81,
+         320.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         538.81,
+         272.0,
+         772.0,
+         320.0
+        ],
+        "shown": [
+         538.81,
+         272.0,
+         772.0,
+         320.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         56.44,
+         320.0,
+         289.63,
+         368.0
+        ],
+        "shown": [
+         56.44,
+         320.0,
+         289.63,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         297.63,
+         320.0,
+         530.81,
+         368.0
+        ],
+        "shown": [
+         297.63,
+         320.0,
+         530.81,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         538.81,
+         320.0,
+         772.0,
+         368.0
+        ],
+        "shown": [
+         538.81,
+         320.0,
+         772.0,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       44.44,
+       24.18,
+       784.0,
+       172.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       56.44,
+       224.0,
+       289.63,
+       272.0
+      ],
+      "rate-2": [
+       297.63,
+       224.0,
+       530.81,
+       272.0
+      ],
+      "rate-3": [
+       538.81,
+       224.0,
+       772.0,
+       272.0
+      ],
+      "rate-4": [
+       56.44,
+       272.0,
+       289.63,
+       320.0
+      ],
+      "rate-5": [
+       297.63,
+       272.0,
+       530.81,
+       320.0
+      ],
+      "rate-6": [
+       538.81,
+       272.0,
+       772.0,
+       320.0
+      ],
+      "rate-7": [
+       56.44,
+       320.0,
+       289.63,
+       368.0
+      ],
+      "rate-8": [
+       297.63,
+       320.0,
+       530.81,
+       368.0
+      ],
+      "rate-9": [
+       538.81,
+       320.0,
+       772.0,
+       368.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "filmstrip-tile-7": "modal Playback speed sheet",
+      "filmstrip-tile-8": "modal Playback speed sheet",
+      "filmstrip-tile-9": "modal Playback speed sheet",
+      "filmstrip-tile-10": "modal Playback speed sheet",
+      "filmstrip-tile-11": "modal Playback speed sheet",
+      "filmstrip-tile-12": "modal Playback speed sheet",
+      "filmstrip-tile-13": "modal Playback speed sheet",
+      "filmstrip-tile-14": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    },
+    "font200-details-permission": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       222.72,
+       832.0,
+       384.0
+      ],
+      "viewport": [
+       44.44,
+       222.72,
+       784.0,
+       384.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 860.0,
+      "viewport_height": 161.28,
+      "max_scroll": 698.72,
+      "scroll": 104.72,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         56.44,
+         242.72,
+         772.0,
+         282.72
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 28.0,
+        "lh": 40.0,
+        "shown": [
+         56.44,
+         138.0,
+         772.0,
+         178.0
+        ],
+        "fully_visible": false,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         56.44,
+         294.72,
+         772.0,
+         387.72
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 24.0,
+        "label_lh": 32.0,
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         56.44,
+         190.0,
+         772.0,
+         283.0
+        ],
+        "fully_visible": false,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         56.44,
+         387.72,
+         772.0,
+         488.72
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [
+         "Allow photo access to save this frame"
+        ],
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "support_sp": 28.0,
+        "support_lh": 40.0,
+        "state": "permission",
+        "semantics": "Save current frame, button. Allow photo access to save this frame",
+        "shown": [
+         56.44,
+         283.0,
+         772.0,
+         384.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         56.44,
+         488.72,
+         772.0,
+         1046.72
+        ],
+        "lines": [
+         "Existing Details rows unchanged: Name, Path,",
+         "Size, Resolution, Type, Album"
+        ],
+        "sp": 24.0,
+        "lh": 32.0,
+        "shown": [
+         56.44,
+         384.0,
+         772.0,
+         942.0
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 691.56
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       632.0,
+       28.18,
+       680.0,
+       76.18
+      ],
+      "top-find-similar": [
+       680.0,
+       28.18,
+       728.0,
+       76.18
+      ],
+      "top-details": [
+       728.0,
+       28.18,
+       776.0,
+       76.18
+      ],
+      "video-play": [
+       52.44,
+       172.0,
+       100.44,
+       220.0
+      ],
+      "video-seek": [
+       226.12,
+       172.0,
+       650.32,
+       220.0
+      ],
+      "save-current-frame": [
+       56.44,
+       283.0,
+       772.0,
+       384.0
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface",
+      "filmstrip-tile-7": "covered by Details surface",
+      "filmstrip-tile-8": "covered by Details surface",
+      "filmstrip-tile-9": "covered by Details surface",
+      "filmstrip-tile-10": "covered by Details surface",
+      "filmstrip-tile-11": "covered by Details surface",
+      "filmstrip-tile-12": "covered by Details surface",
+      "filmstrip-tile-13": "covered by Details surface",
+      "filmstrip-tile-14": "covered by Details surface"
+     }
+    },
+    "font200-speed-sheet": {
+     "safe": [
+      44.44,
+      24.18,
+      784.0,
+      384.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       172.44,
+       44.44,
+       213.33
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      172.0,
+      784.0,
+      220.0
+     ],
+     "filmstrip": [
+      44.44,
+      232.0,
+      784.0,
+      308.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       44.44,
+       124.0,
+       784.0,
+       384.0
+      ],
+      "header": [
+       44.44,
+       124.0,
+       784.0,
+       200.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 36.0,
+      "title_lh": 48.0,
+      "option_sp": 28.0,
+      "option_lh": 40.0,
+      "columns": 3,
+      "option_height": 56.0,
+      "list_viewport": [
+       44.44,
+       200.0,
+       784.0,
+       384.0
+      ],
+      "list_content_height": 184.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         56.44,
+         200.0,
+         289.63,
+         256.0
+        ],
+        "shown": [
+         56.44,
+         200.0,
+         289.63,
+         256.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         297.63,
+         200.0,
+         530.81,
+         256.0
+        ],
+        "shown": [
+         297.63,
+         200.0,
+         530.81,
+         256.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         538.81,
+         200.0,
+         772.0,
+         256.0
+        ],
+        "shown": [
+         538.81,
+         200.0,
+         772.0,
+         256.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         56.44,
+         256.0,
+         289.63,
+         312.0
+        ],
+        "shown": [
+         56.44,
+         256.0,
+         289.63,
+         312.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         297.63,
+         256.0,
+         530.81,
+         312.0
+        ],
+        "shown": [
+         297.63,
+         256.0,
+         530.81,
+         312.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         538.81,
+         256.0,
+         772.0,
+         312.0
+        ],
+        "shown": [
+         538.81,
+         256.0,
+         772.0,
+         312.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         56.44,
+         312.0,
+         289.63,
+         368.0
+        ],
+        "shown": [
+         56.44,
+         312.0,
+         289.63,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         297.63,
+         312.0,
+         530.81,
+         368.0
+        ],
+        "shown": [
+         297.63,
+         312.0,
+         530.81,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         538.81,
+         312.0,
+         772.0,
+         368.0
+        ],
+        "shown": [
+         538.81,
+         312.0,
+         772.0,
+         368.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       44.44,
+       24.18,
+       784.0,
+       124.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       56.44,
+       200.0,
+       289.63,
+       256.0
+      ],
+      "rate-2": [
+       297.63,
+       200.0,
+       530.81,
+       256.0
+      ],
+      "rate-3": [
+       538.81,
+       200.0,
+       772.0,
+       256.0
+      ],
+      "rate-4": [
+       56.44,
+       256.0,
+       289.63,
+       312.0
+      ],
+      "rate-5": [
+       297.63,
+       256.0,
+       530.81,
+       312.0
+      ],
+      "rate-6": [
+       538.81,
+       256.0,
+       772.0,
+       312.0
+      ],
+      "rate-7": [
+       56.44,
+       312.0,
+       289.63,
+       368.0
+      ],
+      "rate-8": [
+       297.63,
+       312.0,
+       530.81,
+       368.0
+      ],
+      "rate-9": [
+       538.81,
+       312.0,
+       772.0,
+       368.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "filmstrip-tile-7": "modal Playback speed sheet",
+      "filmstrip-tile-8": "modal Playback speed sheet",
+      "filmstrip-tile-9": "modal Playback speed sheet",
+      "filmstrip-tile-10": "modal Playback speed sheet",
+      "filmstrip-tile-11": "modal Playback speed sheet",
+      "filmstrip-tile-12": "modal Playback speed sheet",
+      "filmstrip-tile-13": "modal Playback speed sheet",
+      "filmstrip-tile-14": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    }
+   }
+  },
+  "narrow": {
+   "source_viewport": "landscape-narrow-computed",
+   "source_kind": "computed",
+   "dp": [
+    640.0,
+    360.0
+   ],
+   "px": [
+    1800,
+    1013
+   ],
+   "safe_insets_ltrb": [
+    44.44,
+    24.18,
+    48,
+    0
+   ],
+   "cutouts": [
+    [
+     0.0,
+     159.56,
+     44.44,
+     200.44
+    ]
+   ],
+   "states": {
+    "playing": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       440.0,
+       28.18,
+       488.0,
+       76.18
+      ],
+      "top-find-similar": [
+       488.0,
+       28.18,
+       536.0,
+       76.18
+      ],
+      "top-details": [
+       536.0,
+       28.18,
+       584.0,
+       76.18
+      ],
+      "action-favourite": [
+       210.22,
+       296.0,
+       258.22,
+       344.0
+      ],
+      "action-edit": [
+       266.22,
+       296.0,
+       314.22,
+       344.0
+      ],
+      "action-share": [
+       322.22,
+       296.0,
+       370.22,
+       344.0
+      ],
+      "action-delete": [
+       378.22,
+       296.0,
+       426.22,
+       344.0
+      ],
+      "video-play": [
+       52.44,
+       148.0,
+       100.44,
+       196.0
+      ],
+      "video-seek": [
+       169.28,
+       148.0,
+       515.16,
+       196.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       208.0,
+       592.0,
+       284.0
+      ],
+      "filmstrip-tile-0": [
+       294.22,
+       208.0,
+       342.22,
+       284.0
+      ],
+      "filmstrip-tile-1": [
+       342.22,
+       208.0,
+       390.22,
+       284.0
+      ],
+      "filmstrip-tile-2": [
+       390.22,
+       208.0,
+       438.22,
+       284.0
+      ],
+      "filmstrip-tile-3": [
+       438.22,
+       208.0,
+       486.22,
+       284.0
+      ],
+      "filmstrip-tile-4": [
+       486.22,
+       208.0,
+       534.22,
+       284.0
+      ],
+      "filmstrip-tile-5": [
+       534.22,
+       208.0,
+       582.22,
+       284.0
+      ],
+      "filmstrip-tile-6": [
+       246.22,
+       208.0,
+       294.22,
+       284.0
+      ],
+      "filmstrip-tile-7": [
+       198.22,
+       208.0,
+       246.22,
+       284.0
+      ],
+      "filmstrip-tile-8": [
+       150.22,
+       208.0,
+       198.22,
+       284.0
+      ],
+      "filmstrip-tile-9": [
+       102.22,
+       208.0,
+       150.22,
+       284.0
+      ],
+      "filmstrip-tile-10": [
+       54.22,
+       208.0,
+       102.22,
+       284.0
+      ]
+     },
+     "inactive": {}
+    },
+    "paused": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       440.0,
+       28.18,
+       488.0,
+       76.18
+      ],
+      "top-find-similar": [
+       488.0,
+       28.18,
+       536.0,
+       76.18
+      ],
+      "top-details": [
+       536.0,
+       28.18,
+       584.0,
+       76.18
+      ],
+      "action-favourite": [
+       210.22,
+       296.0,
+       258.22,
+       344.0
+      ],
+      "action-edit": [
+       266.22,
+       296.0,
+       314.22,
+       344.0
+      ],
+      "action-share": [
+       322.22,
+       296.0,
+       370.22,
+       344.0
+      ],
+      "action-delete": [
+       378.22,
+       296.0,
+       426.22,
+       344.0
+      ],
+      "video-play": [
+       52.44,
+       148.0,
+       100.44,
+       196.0
+      ],
+      "video-seek": [
+       169.28,
+       148.0,
+       515.16,
+       196.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       208.0,
+       592.0,
+       284.0
+      ],
+      "filmstrip-tile-0": [
+       294.22,
+       208.0,
+       342.22,
+       284.0
+      ],
+      "filmstrip-tile-1": [
+       342.22,
+       208.0,
+       390.22,
+       284.0
+      ],
+      "filmstrip-tile-2": [
+       390.22,
+       208.0,
+       438.22,
+       284.0
+      ],
+      "filmstrip-tile-3": [
+       438.22,
+       208.0,
+       486.22,
+       284.0
+      ],
+      "filmstrip-tile-4": [
+       486.22,
+       208.0,
+       534.22,
+       284.0
+      ],
+      "filmstrip-tile-5": [
+       534.22,
+       208.0,
+       582.22,
+       284.0
+      ],
+      "filmstrip-tile-6": [
+       246.22,
+       208.0,
+       294.22,
+       284.0
+      ],
+      "filmstrip-tile-7": [
+       198.22,
+       208.0,
+       246.22,
+       284.0
+      ],
+      "filmstrip-tile-8": [
+       150.22,
+       208.0,
+       198.22,
+       284.0
+      ],
+      "filmstrip-tile-9": [
+       102.22,
+       208.0,
+       150.22,
+       284.0
+      ],
+      "filmstrip-tile-10": [
+       54.22,
+       208.0,
+       102.22,
+       284.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-shown": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "shown",
+      "canvas": [
+       52.44,
+       84.18,
+       584.0,
+       140.0
+      ],
+      "zones": {
+       "rewind": [
+        52.44,
+        84.18,
+        238.49,
+        140.0
+       ],
+       "centre-zoom": [
+        238.49,
+        84.18,
+        397.95,
+        140.0
+       ],
+       "forward": [
+        397.95,
+        84.18,
+        584.0,
+        140.0
+       ]
+      },
+      "hold_2x": [
+       52.44,
+       84.18,
+       584.0,
+       140.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         109.47,
+         96.09,
+         181.47,
+         128.09
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         454.98,
+         96.09,
+         526.98,
+         128.09
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         290.22,
+         92.18,
+         346.22,
+         124.18
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       440.0,
+       28.18,
+       488.0,
+       76.18
+      ],
+      "top-find-similar": [
+       488.0,
+       28.18,
+       536.0,
+       76.18
+      ],
+      "top-details": [
+       536.0,
+       28.18,
+       584.0,
+       76.18
+      ],
+      "action-favourite": [
+       210.22,
+       296.0,
+       258.22,
+       344.0
+      ],
+      "action-edit": [
+       266.22,
+       296.0,
+       314.22,
+       344.0
+      ],
+      "action-share": [
+       322.22,
+       296.0,
+       370.22,
+       344.0
+      ],
+      "action-delete": [
+       378.22,
+       296.0,
+       426.22,
+       344.0
+      ],
+      "video-play": [
+       52.44,
+       148.0,
+       100.44,
+       196.0
+      ],
+      "video-seek": [
+       169.28,
+       148.0,
+       515.16,
+       196.0
+      ],
+      "filmstrip-band": [
+       44.44,
+       208.0,
+       592.0,
+       284.0
+      ],
+      "filmstrip-tile-0": [
+       294.22,
+       208.0,
+       342.22,
+       284.0
+      ],
+      "filmstrip-tile-1": [
+       342.22,
+       208.0,
+       390.22,
+       284.0
+      ],
+      "filmstrip-tile-2": [
+       390.22,
+       208.0,
+       438.22,
+       284.0
+      ],
+      "filmstrip-tile-3": [
+       438.22,
+       208.0,
+       486.22,
+       284.0
+      ],
+      "filmstrip-tile-4": [
+       486.22,
+       208.0,
+       534.22,
+       284.0
+      ],
+      "filmstrip-tile-5": [
+       534.22,
+       208.0,
+       582.22,
+       284.0
+      ],
+      "filmstrip-tile-6": [
+       246.22,
+       208.0,
+       294.22,
+       284.0
+      ],
+      "filmstrip-tile-7": [
+       198.22,
+       208.0,
+       246.22,
+       284.0
+      ],
+      "filmstrip-tile-8": [
+       150.22,
+       208.0,
+       198.22,
+       284.0
+      ],
+      "filmstrip-tile-9": [
+       102.22,
+       208.0,
+       150.22,
+       284.0
+      ],
+      "filmstrip-tile-10": [
+       54.22,
+       208.0,
+       102.22,
+       284.0
+      ]
+     },
+     "inactive": {}
+    },
+    "transient-chrome-hidden": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "hidden",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "transient": {
+      "chrome": "hidden",
+      "canvas": [
+       52.44,
+       32.18,
+       584.0,
+       352.0
+      ],
+      "zones": {
+       "rewind": [
+        52.44,
+        32.18,
+        238.49,
+        352.0
+       ],
+       "centre-zoom": [
+        238.49,
+        32.18,
+        397.95,
+        352.0
+       ],
+       "forward": [
+        397.95,
+        32.18,
+        584.0,
+        352.0
+       ]
+      },
+      "hold_2x": [
+       52.44,
+       32.18,
+       584.0,
+       352.0
+      ],
+      "indicators": [
+       {
+        "text": "−10 s",
+        "zone": "rewind",
+        "rect": [
+         109.47,
+         176.09,
+         181.47,
+         208.09
+        ]
+       },
+       {
+        "text": "+10 s",
+        "zone": "forward",
+        "rect": [
+         454.98,
+         176.09,
+         526.98,
+         208.09
+        ]
+       },
+       {
+        "text": "2×",
+        "zone": "hold-2x",
+        "rect": [
+         290.22,
+         40.18,
+         346.22,
+         72.18
+        ]
+       }
+      ],
+      "fractions": [
+       0.35,
+       0.3,
+       0.35
+      ],
+      "gesture_navigation_insets": "UNKNOWN (#627)"
+     },
+     "active_hits": {},
+     "inactive": {
+      "back": "chrome hidden",
+      "top-find-person": "chrome hidden",
+      "top-find-similar": "chrome hidden",
+      "top-details": "chrome hidden",
+      "action-favourite": "chrome hidden",
+      "action-edit": "chrome hidden",
+      "action-share": "chrome hidden",
+      "action-delete": "chrome hidden",
+      "video-play": "chrome hidden",
+      "video-seek": "chrome hidden",
+      "filmstrip-band": "chrome hidden",
+      "filmstrip-tile-0": "chrome hidden",
+      "filmstrip-tile-1": "chrome hidden",
+      "filmstrip-tile-2": "chrome hidden",
+      "filmstrip-tile-3": "chrome hidden",
+      "filmstrip-tile-4": "chrome hidden",
+      "filmstrip-tile-5": "chrome hidden",
+      "filmstrip-tile-6": "chrome hidden",
+      "filmstrip-tile-7": "chrome hidden",
+      "filmstrip-tile-8": "chrome hidden",
+      "filmstrip-tile-9": "chrome hidden",
+      "filmstrip-tile-10": "chrome hidden"
+     }
+    },
+    "details": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       208.8,
+       640.0,
+       360.0
+      ],
+      "viewport": [
+       44.44,
+       208.8,
+       592.0,
+       360.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 535.0,
+      "viewport_height": 151.2,
+      "max_scroll": 383.8,
+      "scroll": 5.8,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         56.44,
+         228.8,
+         580.0,
+         248.8
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 14.0,
+        "lh": 20.0,
+        "shown": [
+         56.44,
+         223.0,
+         580.0,
+         243.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         56.44,
+         260.8,
+         580.0,
+         317.8
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 12.0,
+        "label_lh": 16.0,
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         56.44,
+         255.0,
+         580.0,
+         312.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         56.44,
+         317.8,
+         580.0,
+         365.8
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [],
+        "value_sp": 14.0,
+        "value_lh": 20.0,
+        "support_sp": 14.0,
+        "support_lh": 20.0,
+        "state": "ready",
+        "semantics": "Save current frame, button",
+        "shown": [
+         56.44,
+         312.0,
+         580.0,
+         360.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         56.44,
+         365.8,
+         580.0,
+         707.8
+        ],
+        "lines": [
+         "Existing Details rows unchanged: Name, Path, Size, Resolution, Type,",
+         "Album"
+        ],
+        "sp": 12.0,
+        "lh": 16.0,
+        "shown": [
+         56.44,
+         360.0,
+         580.0,
+         702.0
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 499.56
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       440.0,
+       28.18,
+       488.0,
+       76.18
+      ],
+      "top-find-similar": [
+       488.0,
+       28.18,
+       536.0,
+       76.18
+      ],
+      "top-details": [
+       536.0,
+       28.18,
+       584.0,
+       76.18
+      ],
+      "video-play": [
+       52.44,
+       148.0,
+       100.44,
+       196.0
+      ],
+      "video-seek": [
+       169.28,
+       148.0,
+       515.16,
+       196.0
+      ],
+      "playback-speed": [
+       56.44,
+       255.0,
+       580.0,
+       312.0
+      ],
+      "save-current-frame": [
+       56.44,
+       312.0,
+       580.0,
+       360.0
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface",
+      "filmstrip-tile-7": "covered by Details surface",
+      "filmstrip-tile-8": "covered by Details surface",
+      "filmstrip-tile-9": "covered by Details surface",
+      "filmstrip-tile-10": "covered by Details surface"
+     }
+    },
+    "speed-sheet": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 1.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       44.44,
+       148.0,
+       592.0,
+       360.0
+      ],
+      "header": [
+       44.44,
+       148.0,
+       592.0,
+       200.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 18.0,
+      "title_lh": 24.0,
+      "option_sp": 14.0,
+      "option_lh": 20.0,
+      "columns": 3,
+      "option_height": 48.0,
+      "list_viewport": [
+       44.44,
+       200.0,
+       592.0,
+       360.0
+      ],
+      "list_content_height": 160.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         56.44,
+         200.0,
+         225.63,
+         248.0
+        ],
+        "shown": [
+         56.44,
+         200.0,
+         225.63,
+         248.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         233.63,
+         200.0,
+         402.81,
+         248.0
+        ],
+        "shown": [
+         233.63,
+         200.0,
+         402.81,
+         248.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         410.81,
+         200.0,
+         580.0,
+         248.0
+        ],
+        "shown": [
+         410.81,
+         200.0,
+         580.0,
+         248.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         56.44,
+         248.0,
+         225.63,
+         296.0
+        ],
+        "shown": [
+         56.44,
+         248.0,
+         225.63,
+         296.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         233.63,
+         248.0,
+         402.81,
+         296.0
+        ],
+        "shown": [
+         233.63,
+         248.0,
+         402.81,
+         296.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         410.81,
+         248.0,
+         580.0,
+         296.0
+        ],
+        "shown": [
+         410.81,
+         248.0,
+         580.0,
+         296.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         56.44,
+         296.0,
+         225.63,
+         344.0
+        ],
+        "shown": [
+         56.44,
+         296.0,
+         225.63,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         233.63,
+         296.0,
+         402.81,
+         344.0
+        ],
+        "shown": [
+         233.63,
+         296.0,
+         402.81,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         410.81,
+         296.0,
+         580.0,
+         344.0
+        ],
+        "shown": [
+         410.81,
+         296.0,
+         580.0,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       44.44,
+       24.18,
+       592.0,
+       148.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       56.44,
+       200.0,
+       225.63,
+       248.0
+      ],
+      "rate-2": [
+       233.63,
+       200.0,
+       402.81,
+       248.0
+      ],
+      "rate-3": [
+       410.81,
+       200.0,
+       580.0,
+       248.0
+      ],
+      "rate-4": [
+       56.44,
+       248.0,
+       225.63,
+       296.0
+      ],
+      "rate-5": [
+       233.63,
+       248.0,
+       402.81,
+       296.0
+      ],
+      "rate-6": [
+       410.81,
+       248.0,
+       580.0,
+       296.0
+      ],
+      "rate-7": [
+       56.44,
+       296.0,
+       225.63,
+       344.0
+      ],
+      "rate-8": [
+       233.63,
+       296.0,
+       402.81,
+       344.0
+      ],
+      "rate-9": [
+       410.81,
+       296.0,
+       580.0,
+       344.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "filmstrip-tile-7": "modal Playback speed sheet",
+      "filmstrip-tile-8": "modal Playback speed sheet",
+      "filmstrip-tile-9": "modal Playback speed sheet",
+      "filmstrip-tile-10": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    },
+    "font200-details-permission": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "details": {
+      "panel": [
+       0.0,
+       208.8,
+       640.0,
+       360.0
+      ],
+      "viewport": [
+       44.44,
+       208.8,
+       592.0,
+       360.0
+      ],
+      "clip_top": 0.0,
+      "content_height": 900.0,
+      "viewport_height": 151.2,
+      "max_scroll": 748.8,
+      "scroll": 154.8,
+      "scrolls": true,
+      "rows": [
+       {
+        "key": "details-header",
+        "kind": "text",
+        "rect": [
+         56.44,
+         228.8,
+         580.0,
+         268.8
+        ],
+        "lines": [
+         "Details"
+        ],
+        "sp": 28.0,
+        "lh": 40.0,
+        "shown": [
+         56.44,
+         74.0,
+         580.0,
+         114.0
+        ],
+        "fully_visible": false,
+        "reachable": true
+       },
+       {
+        "key": "playback-speed",
+        "kind": "button",
+        "rect": [
+         56.44,
+         280.8,
+         580.0,
+         373.8
+        ],
+        "label_lines": [
+         "Playback speed"
+        ],
+        "value_lines": [
+         "1×"
+        ],
+        "label_sp": 24.0,
+        "label_lh": 32.0,
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "semantics": "Playback speed, 1×, button",
+        "shown": [
+         56.44,
+         126.0,
+         580.0,
+         219.0
+        ],
+        "fully_visible": false,
+        "reachable": true
+       },
+       {
+        "key": "save-current-frame",
+        "kind": "button",
+        "rect": [
+         56.44,
+         373.8,
+         580.0,
+         514.8
+        ],
+        "action_lines": [
+         "Save current frame"
+        ],
+        "support_lines": [
+         "Allow photo access to save",
+         "this frame"
+        ],
+        "value_sp": 28.0,
+        "value_lh": 40.0,
+        "support_sp": 28.0,
+        "support_lh": 40.0,
+        "state": "permission",
+        "semantics": "Save current frame, button. Allow photo access to save this frame",
+        "shown": [
+         56.44,
+         219.0,
+         580.0,
+         360.0
+        ],
+        "fully_visible": true,
+        "reachable": true
+       },
+       {
+        "key": "existing-details-rows",
+        "kind": "existing",
+        "rect": [
+         56.44,
+         514.8,
+         580.0,
+         1072.8
+        ],
+        "lines": [
+         "Existing Details rows unchanged:",
+         "Name, Path, Size, Resolution, Type,",
+         "Album"
+        ],
+        "sp": 24.0,
+        "lh": 32.0,
+        "shown": [
+         56.44,
+         360.0,
+         580.0,
+         918.0
+        ],
+        "fully_visible": false,
+        "reachable": false
+       }
+      ],
+      "text_width": 499.56
+     },
+     "active_hits": {
+      "back": [
+       52.44,
+       28.18,
+       100.44,
+       76.18
+      ],
+      "top-find-person": [
+       440.0,
+       28.18,
+       488.0,
+       76.18
+      ],
+      "top-find-similar": [
+       488.0,
+       28.18,
+       536.0,
+       76.18
+      ],
+      "top-details": [
+       536.0,
+       28.18,
+       584.0,
+       76.18
+      ],
+      "video-play": [
+       52.44,
+       148.0,
+       100.44,
+       196.0
+      ],
+      "video-seek": [
+       226.12,
+       148.0,
+       458.32,
+       196.0
+      ],
+      "save-current-frame": [
+       56.44,
+       219.0,
+       580.0,
+       360.0
+      ]
+     },
+     "inactive": {
+      "action-favourite": "covered by Details surface",
+      "action-edit": "covered by Details surface",
+      "action-share": "covered by Details surface",
+      "action-delete": "covered by Details surface",
+      "filmstrip-band": "covered by Details surface",
+      "filmstrip-tile-0": "covered by Details surface",
+      "filmstrip-tile-1": "covered by Details surface",
+      "filmstrip-tile-2": "covered by Details surface",
+      "filmstrip-tile-3": "covered by Details surface",
+      "filmstrip-tile-4": "covered by Details surface",
+      "filmstrip-tile-5": "covered by Details surface",
+      "filmstrip-tile-6": "covered by Details surface",
+      "filmstrip-tile-7": "covered by Details surface",
+      "filmstrip-tile-8": "covered by Details surface",
+      "filmstrip-tile-9": "covered by Details surface",
+      "filmstrip-tile-10": "covered by Details surface"
+     }
+    },
+    "font200-speed-sheet": {
+     "safe": [
+      44.44,
+      24.18,
+      592.0,
+      360.0
+     ],
+     "cutouts": [
+      [
+       0.0,
+       159.56,
+       44.44,
+       200.44
+      ]
+     ],
+     "font_scale": 2.0,
+     "chrome": "shown",
+     "video_row": [
+      44.44,
+      148.0,
+      592.0,
+      196.0
+     ],
+     "filmstrip": [
+      44.44,
+      208.0,
+      592.0,
+      284.0
+     ],
+     "video_gap_to_strip": 12.0,
+     "speed_sheet": {
+      "sheet": [
+       44.44,
+       100.0,
+       592.0,
+       360.0
+      ],
+      "header": [
+       44.44,
+       100.0,
+       592.0,
+       176.0
+      ],
+      "title_lines": [
+       "Playback speed"
+      ],
+      "title_sp": 36.0,
+      "title_lh": 48.0,
+      "option_sp": 28.0,
+      "option_lh": 40.0,
+      "columns": 3,
+      "option_height": 56.0,
+      "list_viewport": [
+       44.44,
+       176.0,
+       592.0,
+       360.0
+      ],
+      "list_content_height": 184.0,
+      "max_scroll": 0.0,
+      "scroll": 0.0,
+      "scrolls": false,
+      "options": [
+       {
+        "rate": "0.25×",
+        "order": 1,
+        "selected": false,
+        "rect": [
+         56.44,
+         176.0,
+         225.63,
+         232.0
+        ],
+        "shown": [
+         56.44,
+         176.0,
+         225.63,
+         232.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.25×"
+        ],
+        "semantics": "0.25×, radio button, not selected"
+       },
+       {
+        "rate": "0.5×",
+        "order": 2,
+        "selected": false,
+        "rect": [
+         233.63,
+         176.0,
+         402.81,
+         232.0
+        ],
+        "shown": [
+         233.63,
+         176.0,
+         402.81,
+         232.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.5×"
+        ],
+        "semantics": "0.5×, radio button, not selected"
+       },
+       {
+        "rate": "0.75×",
+        "order": 3,
+        "selected": false,
+        "rect": [
+         410.81,
+         176.0,
+         580.0,
+         232.0
+        ],
+        "shown": [
+         410.81,
+         176.0,
+         580.0,
+         232.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "0.75×"
+        ],
+        "semantics": "0.75×, radio button, not selected"
+       },
+       {
+        "rate": "1×",
+        "order": 4,
+        "selected": true,
+        "rect": [
+         56.44,
+         232.0,
+         225.63,
+         288.0
+        ],
+        "shown": [
+         56.44,
+         232.0,
+         225.63,
+         288.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1×"
+        ],
+        "semantics": "1×, radio button, selected"
+       },
+       {
+        "rate": "1.25×",
+        "order": 5,
+        "selected": false,
+        "rect": [
+         233.63,
+         232.0,
+         402.81,
+         288.0
+        ],
+        "shown": [
+         233.63,
+         232.0,
+         402.81,
+         288.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.25×"
+        ],
+        "semantics": "1.25×, radio button, not selected"
+       },
+       {
+        "rate": "1.5×",
+        "order": 6,
+        "selected": false,
+        "rect": [
+         410.81,
+         232.0,
+         580.0,
+         288.0
+        ],
+        "shown": [
+         410.81,
+         232.0,
+         580.0,
+         288.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "1.5×"
+        ],
+        "semantics": "1.5×, radio button, not selected"
+       },
+       {
+        "rate": "2×",
+        "order": 7,
+        "selected": false,
+        "rect": [
+         56.44,
+         288.0,
+         225.63,
+         344.0
+        ],
+        "shown": [
+         56.44,
+         288.0,
+         225.63,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "2×"
+        ],
+        "semantics": "2×, radio button, not selected"
+       },
+       {
+        "rate": "3×",
+        "order": 8,
+        "selected": false,
+        "rect": [
+         233.63,
+         288.0,
+         402.81,
+         344.0
+        ],
+        "shown": [
+         233.63,
+         288.0,
+         402.81,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "3×"
+        ],
+        "semantics": "3×, radio button, not selected"
+       },
+       {
+        "rate": "4×",
+        "order": 9,
+        "selected": false,
+        "rect": [
+         410.81,
+         288.0,
+         580.0,
+         344.0
+        ],
+        "shown": [
+         410.81,
+         288.0,
+         580.0,
+         344.0
+        ],
+        "fully_visible": true,
+        "reachable": true,
+        "lines": [
+         "4×"
+        ],
+        "semantics": "4×, radio button, not selected"
+       }
+      ],
+      "dismiss_scrim": [
+       44.44,
+       24.18,
+       592.0,
+       100.0
+      ]
+     },
+     "active_hits": {
+      "rate-1": [
+       56.44,
+       176.0,
+       225.63,
+       232.0
+      ],
+      "rate-2": [
+       233.63,
+       176.0,
+       402.81,
+       232.0
+      ],
+      "rate-3": [
+       410.81,
+       176.0,
+       580.0,
+       232.0
+      ],
+      "rate-4": [
+       56.44,
+       232.0,
+       225.63,
+       288.0
+      ],
+      "rate-5": [
+       233.63,
+       232.0,
+       402.81,
+       288.0
+      ],
+      "rate-6": [
+       410.81,
+       232.0,
+       580.0,
+       288.0
+      ],
+      "rate-7": [
+       56.44,
+       288.0,
+       225.63,
+       344.0
+      ],
+      "rate-8": [
+       233.63,
+       288.0,
+       402.81,
+       344.0
+      ],
+      "rate-9": [
+       410.81,
+       288.0,
+       580.0,
+       344.0
+      ]
+     },
+     "inactive": {
+      "back": "modal Playback speed sheet",
+      "top-find-person": "modal Playback speed sheet",
+      "top-find-similar": "modal Playback speed sheet",
+      "top-details": "modal Playback speed sheet",
+      "action-favourite": "modal Playback speed sheet",
+      "action-edit": "modal Playback speed sheet",
+      "action-share": "modal Playback speed sheet",
+      "action-delete": "modal Playback speed sheet",
+      "video-play": "modal Playback speed sheet",
+      "video-seek": "modal Playback speed sheet",
+      "filmstrip-band": "modal Playback speed sheet",
+      "filmstrip-tile-0": "modal Playback speed sheet",
+      "filmstrip-tile-1": "modal Playback speed sheet",
+      "filmstrip-tile-2": "modal Playback speed sheet",
+      "filmstrip-tile-3": "modal Playback speed sheet",
+      "filmstrip-tile-4": "modal Playback speed sheet",
+      "filmstrip-tile-5": "modal Playback speed sheet",
+      "filmstrip-tile-6": "modal Playback speed sheet",
+      "filmstrip-tile-7": "modal Playback speed sheet",
+      "filmstrip-tile-8": "modal Playback speed sheet",
+      "filmstrip-tile-9": "modal Playback speed sheet",
+      "filmstrip-tile-10": "modal Playback speed sheet",
+      "playback-speed": "modal Playback speed sheet",
+      "save-current-frame": "modal Playback speed sheet"
+     }
+    }
+   }
+  }
+ }
+}

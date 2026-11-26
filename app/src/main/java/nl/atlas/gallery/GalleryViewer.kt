@@ -169,6 +169,7 @@ fun GalleryViewer(
     // BENCH-2 (#573): who handed us these items. EXTERNAL/SECURE hide every
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
+    motionProbe: ViewerFilmstripMotionProbe? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -179,7 +180,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, onGuestView, access, onBack)
+            favouriteOverrides, photoPeople, swapPerson, onGuestView, access, motionProbe, onBack)
     }
 }
 
@@ -201,6 +202,7 @@ private fun GalleryViewerSnapshot(
     swapPerson: ViewerSwapPerson?,
     onGuestView: ((MediaRecord) -> Unit)?,
     access: ViewerAccess,
+    motionProbe: ViewerFilmstripMotionProbe?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -271,10 +273,22 @@ private fun GalleryViewerSnapshot(
     var controlledScrollDepth by remember { mutableIntStateOf(0) }
     var currentZoom by remember { mutableFloatStateOf(1f) }
     val latestZoom by rememberUpdatedState(currentZoom)
-    // One cancelable explicit selection channel for thumbnail taps and the
-    // end of a filmstrip scrub. A new immutable album snapshot resets it.
+    // One cancelable explicit selection channel, with a source flag so a
+    // thumbnail tap eases only the strip; scrub/edge selections stay instant.
+    // A new immutable album snapshot resets it.
     var selectionRequest by remember(CatalogSourceKey(items)) {
         mutableStateOf<ViewerJumpIntent?>(null)
+    }
+    // Keep a generation even when touch-down clears the active request.
+    // Otherwise two same-index taps separated by a fast cancel could become
+    // structurally equal and be conflated by snapshotFlow.
+    var lastIssuedSelection by remember(CatalogSourceKey(items)) {
+        mutableStateOf<ViewerJumpIntent?>(null)
+    }
+    fun requestViewerSelection(index: Int, origin: ViewerJumpOrigin = ViewerJumpOrigin.DIRECT) {
+        val intent = nextViewerJumpIntent(lastIssuedSelection, index, items.size, origin)
+        lastIssuedSelection = intent
+        selectionRequest = intent
     }
     // Track only the last *settled* preview focus, not every intermediate
     // scrub position. Directional prefetch remains useful after a long jump.
@@ -378,16 +392,37 @@ private fun GalleryViewerSnapshot(
     // One cancelable explicit navigation consumer. Null signals are retained
     // to cancel obsolete selection if a newer filmstrip swipe starts, rather
     // than leaving an old tap job running after that gesture.
-    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items)) {
+    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items), stripStridePx) {
         snapshotFlow { selectionRequest }.collectLatest { request ->
             if (request == null || request.index !in items.indices)
                 return@collectLatest
             controlledScrollDepth = acquireViewerScrollLease(controlledScrollDepth)
             try {
+                // The photo/selected semantics land first. Only the strip moves
+                // through frames; never animate through intervening photos.
                 if (pagerState.currentPage != request.index) {
                     timingProbe?.selectionRequested(request.index)
                     pagerState.scrollToPage(request.index)
                 }
+                val from = ViewerStripPosition(
+                    stripState.firstVisibleItemIndex, stripState.firstVisibleItemScrollOffset)
+                if (viewerShouldEaseStripJump(request.origin,
+                        AtlasMotion.animationsDisabled(context), from, request.index)) {
+                    // A second tap cancels collectLatest, then reads the actually
+                    // rendered position. requestScrollToItem is measure-safe and O(1):
+                    // no per-frame pager recomposition or intermediate image decode.
+                    animate(0f, 1f, animationSpec = tween(
+                        durationMillis = AtlasMotion.FILMSTRIP_TAP_MS,
+                        easing = AtlasMotion.FilmstripTapEase
+                    )) { fraction, _ ->
+                        val frame = viewerTapStripFrame(from, request.index,
+                            fraction, items.size, stripStridePx)
+                        stripState.requestScrollToItem(frame.index, frame.scrollOffsetPx)
+                        motionProbe?.stripFrame()
+                    }
+                }
+                // A final exact alignment is harmless after the t=260 ms frame.
+                // Direct scrub/edge requests, and remove-animations, only take this path.
                 stripState.scrollToItem(request.index)
             } finally {
                 controlledScrollDepth = releaseViewerScrollLease(controlledScrollDepth)
@@ -466,8 +501,7 @@ private fun GalleryViewerSnapshot(
                 val index = viewerStripCentreIndex(stripState)
                 if (index != null && index in items.indices) {
                     heldScrubIndex = index
-                    selectionRequest = nextViewerJumpIntent(
-                        selectionRequest, index, items.size)
+                    requestViewerSelection(index)
                 }
             } else {
                 wasUserScrubbing = false
@@ -790,6 +824,15 @@ private fun GalleryViewerSnapshot(
             userScrollEnabled = currentZoom <= 1.01f && !stripState.isScrollInProgress &&
                 !detailsShown,
             modifier = Modifier.fillMaxSize().testTag("atlas-main-pager")
+                // Take ownership as soon as a finger touches the photo; a real
+                // swipe must never compete with an in-flight tap-strip animation.
+                .pointerInput(pagerState) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false,
+                            pass = PointerEventPass.Initial)
+                        selectionRequest = null
+                    }
+                }
                 // #509 (Lukas 2026-11-10 00:02Z): like Samsung, swipe up on an
                 // unzoomed photo opens its details; swipe down closes the
                 // viewer (parity research VIEW:V22, V27). A zoomed photo's own pan
@@ -822,6 +865,7 @@ private fun GalleryViewerSnapshot(
                 PhotoPage(media, page, items.size, focused, focused && !rapidlyChanging,
                     chromeVisible = chromeVisible,
                     observePreviewLoads = timingProbe != null,
+                    motionProbe = motionProbe,
                     faceBoxes = faceHighlights[media.uri].orEmpty(),
                     forceFresh = editorReturn.mustReload(media.uri),
                     refreshRevision = editorReturn.revision,
@@ -834,8 +878,7 @@ private fun GalleryViewerSnapshot(
                     },
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
-                            selectionRequest = nextViewerJumpIntent(
-                                selectionRequest, target, items.size)
+                            requestViewerSelection(target)
                         }
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
@@ -970,6 +1013,16 @@ private fun GalleryViewerSnapshot(
                     horizontalArrangement = Arrangement.spacedBy(STRIP_TILE_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxSize().testTag("atlas-filmstrip")
+                        // Cancel even during the held pre-touch-slop phase.
+                        // The down isn't consumed: LazyRow drag/fling and tile
+                        // click still own their normal gesture handlers.
+                        .pointerInput(stripState) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial)
+                                selectionRequest = null
+                            }
+                        }
                 ) {
                     // Positional keys avoid writing private MediaStore URIs to
                     // LazyRow saveable-state keys. A different catalogue
@@ -994,8 +1047,7 @@ private fun GalleryViewerSnapshot(
                                 stateDescription = if (selected) "Currently displayed" else "Not selected"
                             }
                             .clickable(role = Role.Button) {
-                                selectionRequest = nextViewerJumpIntent(
-                                    selectionRequest, index, items.size)
+                                requestViewerSelection(index, ViewerJumpOrigin.THUMBNAIL)
                             }) {
                             MediaPreview(
                                 // The parent already announces Photo/Video N of M
@@ -1444,6 +1496,7 @@ private fun PhotoPage(
     focused: Boolean, fullResolution: Boolean,
     chromeVisible: Boolean,
     observePreviewLoads: Boolean,
+    motionProbe: ViewerFilmstripMotionProbe?,
     faceBoxes: List<IndexedFaceBox>,
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
@@ -1453,6 +1506,7 @@ private fun PhotoPage(
     onGainmapDecoded: (revision: Long, hasGainmap: Boolean) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    SideEffect { motionProbe?.pageComposed(pageIndex) }
     val latestEdgeCallback by rememberUpdatedState(onEdgePageRequested)
     // Gesture loops below are deliberately NOT restarted by recomposition,
     // so they must call the latest callbacks rather than captured ones.
@@ -1689,6 +1743,7 @@ private fun PhotoPage(
                 ViewerPhotoPreview(media,
                     Modifier.fillMaxSize().clearAndSetSemantics {},
                     onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    motionProbe = motionProbe, pageIndex = pageIndex,
                     onFirstFrame = {
                         previewFailed = false
                         if (firstFrameAt == 0L) firstFrameAt = System.nanoTime()
@@ -1697,6 +1752,7 @@ private fun PhotoPage(
                     forceFresh = forceFresh, refreshRevision = imageRevision)
                 if (shouldRenderLargePhoto(focused, fullResolution, readyForLarge)) {
                     val request = remember(media, epoch, imageRevision) {
+                        motionProbe?.baseRequested(pageIndex)
                         viewerBaseRequestOrNull(context, media, epoch, forceFresh, imageRevision,
                             requireKey = false)!!
                     }
@@ -1752,13 +1808,15 @@ private fun ViewerPhotoPreview(
     media: MediaRecord, modifier: Modifier,
     onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
     onDecodeError: () -> Unit,
-    forceFresh: Boolean, refreshRevision: Long
+    forceFresh: Boolean, refreshRevision: Long,
+    motionProbe: ViewerFilmstripMotionProbe?, pageIndex: Int
 ) {
     val context = LocalContext.current
     val epoch = LocalGalleryPublicationEpoch.current
     // An editor return must show its new pixels, never an older copy.
     val instant = LocalViewerInstantOpen.current && !forceFresh
     val request = remember(media, epoch, forceFresh, refreshRevision, instant) {
+        motionProbe?.previewRequested(pageIndex)
         val preview = mediaPreviewRequest(context, media, ViewerInstantPreview.VIEWER_PREVIEW_PIXELS,
             epoch, forceFresh, refreshRevision)
         val cache = if (instant) SingletonImageLoader.get(context).memoryCache else null
@@ -1783,8 +1841,10 @@ private fun ViewerPhotoPreview(
         contentScale = ContentScale.Fit, modifier = modifier,
         onState = { state ->
             when (state) {
-                is AsyncImagePainter.State.Loading ->
+                is AsyncImagePainter.State.Loading -> {
+                    motionProbe?.previewLoading(pageIndex)
                     if (state.painter != null) currentOnFirstFrame()
+                }
                 is AsyncImagePainter.State.Success -> {
                     currentOnFirstFrame()
                     previewLoaded = true

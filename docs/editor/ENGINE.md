@@ -8,8 +8,8 @@ The engine describes edits. It never touches pixels. EDIT-2 renders a `RenderPla
 
 | Type | Role |
 |---|---|
-| `EditRecipe` | Source size plus the ordered `EditOperation`s. Versioned (`schemaVersion`, currently 1). |
-| `EditOperation` | One user action with a stable `id`. Covers geometry (`Rotate90`, `Flip`, `Straighten`, `Perspective`, `Crop`, `ResetGeometry`), colour (`Adjust`, `ResetAdjustments`), `Filter` (LUT and strength), overlay layers (`OverlayAdd`, `OverlayUpdate`, `OverlayRemove`) and `RasterPatch`. |
+| `EditRecipe` | Source size plus the ordered `EditOperation`s. Versioned (`schemaVersion`, currently 2; v1 decodes through a lossless migration). |
+| `EditOperation` | One user action with a stable `id`. Covers geometry (`Rotate90`, `Flip`, `Straighten`, `Perspective`, `Crop`, `ResetGeometry`), colour (`Adjust`, `ResetAdjustments`), `Filter` (LUT and strength), overlay layers (`OverlayAdd`, `OverlayUpdate`, `OverlayRemove`) and `RasterPatch`, plus v2 `Curves`, `ColorMix`, `SpotColor`, `ShapeCrop`, `Resize`. |
 | `EditHistory` | Immutable undo/redo over a recipe, with `preview`/`commit` for drags and `setComparing` for press-and-hold compare. |
 | `RenderPlan` | The recipe folded into fixed-order, GPU-independent stages at an exact output size. |
 | `RecipeJson` | Deterministic JSON for recipes and histories, with migration hooks. |
@@ -40,9 +40,16 @@ All rectangles and points are normalized to `0..1` (y grows downwards).
 1. `Decode`: the source.
 2. `RasterPatches`: `SOURCE` patches in history order.
 3. `Geometry`: one projective `sourceToOutput` matrix (perspective, then straighten, orientation, crop and output scale) into an exact `width x height`. Renderers inverse-map each output pixel.
-4. `ColourAdjust`: every non-zero control, in `AdjustParam` declaration order. The last value set wins, and `ResetAdjustments` clears them all.
-5. `Lut`: the filter at its strength. A strength of 0 or no LUT leaves the stage out.
-6. `Overlays`: layers in z-order (the order they were added; updates keep their place), placed through the same geometry matrix. They are not colour-adjusted.
+4. `ShapeCrop`: one display-canvas lasso/preset mask with a normalized canvas-to-output matrix; the outside is transparent or the specified solid RGB fill.
+5. `Resize`: metadata for the output target already sized by `Geometry`, not an extra scaling pass.
+6. `ColourAdjust`: every non-zero basic control in `AdjustParam` order.
+7. `Curves`: RGB composite and per-channel monotone knot lists.
+8. `ColorMix`: preset and sampled colour HSL adjustments.
+9. `SpotColor`: kept/removed sampled hues, tolerance, optional brush-erase mask.
+10. `Lut`: the filter at its strength (omitted for zero strength or null LUT).
+11. `Overlays`: layers in z-order, placed through the same geometry matrix; not colour-adjusted.
+
+The fixed order does not depend on operation history order. Each absolute v2 tool uses its latest operation; `ResetAdjustments` clears curves, mix and spot colour as well as basic adjustments. `ResetGeometry` clears the shape mask and requested resize. Neutral stages are omitted. EDIT-2 (or any renderer that predates these stages) must **skip unknown stages**, not reject or silently reinterpret old stages; pixel implementations are deliberately out of scope for EDIT-8.
 
 `maxLongEdge` scales the output down for previews and never scales it up.
 
@@ -52,7 +59,7 @@ A recipe with `OUTPUT` patches is split at the last one:
 
 1. `Base`: every earlier step, rendered as its own full-resolution plan. It may itself contain an earlier split.
 2. `OutputPatch`: the patch is composited over that render at its output-normalized `rect`, as `out = a * patch + (1 - a) * before` when it has a mask.
-3. Stages 2 to 6 for the steps after the patch, with the composite as their source.
+3. Every stage except `Decode` (`RasterPatches` through `Overlays`, in the order above) for the steps after the patch, with the composite as their source.
 
 Earlier crop, colour, filter and overlay steps are therefore applied to the AI result exactly once, before the AI tool saw it, never again after it. A masked partial patch keeps the earlier steps underneath it. Undoing the patch gives back exactly the plan of the earlier steps, which is what AI_TOOLS.md §4 option (a) asks for. The base doesn't change while later steps do, so EDIT-2 can cache its texture. `plan.normalizedSourceToOutput` and `plan.outputToSource` compose every segment, from the original source to the final output. `plan.geometry` is the geometry of the last segment, which is what the crop tool edits.
 
@@ -67,15 +74,27 @@ Earlier crop, colour, filter and overlay steps are therefore applied to the AI r
 
 ## JSON
 
-`RecipeJson.encode` always writes the same bytes for the same recipe: fixed key order, sorted overlay props, no whitespace, integral numbers without a fraction, and no `-0`. A recipe looks like this:
+`RecipeJson.encode` always writes the same bytes for the same recipe: fixed key order, sorted overlay props, no whitespace, integral numbers without a fraction, and no `-0`. A v2 recipe looks like this:
 
 ```json
-{"schema":"atlas.edit-recipe","version":1,"source":{"width":4000,"height":3000},"operations":[{"id":"op-1","type":"rotate90","turns":1}]}
+{"schema":"atlas.edit-recipe","version":2,"source":{"width":4000,"height":3000},"operations":[{"id":"op-1","type":"rotate90","turns":1}]}
 ```
 
 `decode` is strict. It accepts RFC 8259 only and rejects duplicate keys, nesting deeper than 32 levels and documents over 8 MB. Every recipe is validated after decoding. Error messages never echo the input, because captions and text layers are personal.
 
-**Schema changes:** bump `EditRecipe.CURRENT_SCHEMA_VERSION` and add a `RecipeMigration(fromVersion)` to `RecipeJson.MIGRATIONS`. Decoding upgrades older files step by step and refuses newer ones ("Recipe from a newer Atlas"). It never guesses. `encodeHistory`/`decodeHistory` store the recipe and the redo stack so a session can be restored after process death. A drag that was in progress is not stored.
+**Schema changes:** `EditRecipe.CURRENT_SCHEMA_VERSION = 2`. `RecipeJson.MIGRATIONS` contains `RecipeMigration(1)`, which copies every v1 field and operation unchanged and advances only `version: 1` to `2`. Decoding upgrades older files step by step and refuses newer ones ("Recipe from a newer Atlas"). A v1 fixture still produces the identical render plan as before. The encoder always writes v2; it does not rewrite a v1 file byte-identically, but v2 encode/decode round-trips byte-identically. `encodeHistory`/`decodeHistory` preserve recipe and redo stack across process death. A drag in progress is not stored.
+
+### V2 operations and validation
+
+| Operation | Data and bounds | Render target |
+|---|---|---|
+| `Curves` | Four lists (`rgb`, `red`, `green`, `blue`) of 2–32 knots `[x,y]` in 0..1, with x strictly increasing from 0 to 1 and y nondecreasing | `Curves`, after basic light/colour adjustments |
+| `ColorMix` | Up to 8 unique preset hues (red, orange, yellow, green, cyan, blue, purple, magenta), plus at most 3 unique eyedropper `#rrggbb` colours; each has hue/saturation/luminance offsets in -1..1 | `ColorMix` |
+| `SpotColor` | Lists of unique `keep` and `remove` samples (canonical `#rrggbb`), tolerance in 0..1 and optional SHA-256 `brushMaskHash` for erase; the mask needs at least one sample | `SpotColor` (desaturate except kept hues, and suppress removed hues) |
+| `ShapeCrop` | Exactly one lasso polygon (3–256 finite, non-self-intersecting normalized display-canvas points) or named Atlas preset; outside `transparent` or `solid` with `#rrggbb` fill | `ShapeCrop`, with normalized canvas-to-output transform |
+| `Resize` | Exactly one output `longEdge` (1–32768 px) or `percentage` (1–400%). Aspect ratio preserved; `maxLongEdge` preview cap is applied afterward | `Geometry` target dimensions plus a metadata-only `Resize` stage |
+
+Both spot-colour brush hashes and raster/filter/overlay hashes are included in `referencedContentHashes()` for undo/redo retention. V2 modes, bounds and determinism are exercised by pure-JVM synthetic tests. No actual LUT, colour math, masks or resize pixel kernel is shipped by this unit. Samsung control ranges, preset-shape catalogue and pixel output require their later canary/render work; this schema is an Atlas representation, not a claim of S24+ UI parity.
 
 ## Performance
 

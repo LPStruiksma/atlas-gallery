@@ -2,7 +2,7 @@ package nl.atlas.gallery
 
 import android.content.Context
 import nl.atlas.gallery.featureface.FaceVisibleMedia
-import nl.atlas.gallery.featureface.toFaceVisibleMedia
+import nl.atlas.gallery.featureface.MediaRecordFaceView
 import java.io.File
 
 /**
@@ -37,7 +37,7 @@ internal fun cachedFaceInventory(context: Context): List<FaceVisibleMedia>? {
         android.util.Log.i("ATLAS_FACE", "background_inventory refused=grant_changed")
         return null
     }
-    return snapshot.items.map { it.toFaceVisibleMedia(editorRevision = 0L) }
+    return MediaRecordFaceView(snapshot.items)
 }
 
 /** The file [GalleryViewModel] keeps its catalogue in (#505). */

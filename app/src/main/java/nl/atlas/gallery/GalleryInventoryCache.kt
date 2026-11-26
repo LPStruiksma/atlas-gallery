@@ -20,14 +20,25 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 internal object GalleryInventoryCacheCodec {
     private const val MAGIC = 0x41544c43 // "ATLC"
-    private const val VERSION = 2
+    /** #602: v3 adds the MediaStore checkpoint; v2 files still decode without one. */
+    private const val VERSION = 3
+    private const val VERSION_WITHOUT_CHECKPOINT = 2
     // Upper bound well above any phone library; rejects a corrupt count early.
     private const val MAX_ITEMS = 5_000_000
+    private const val MAX_VOLUMES = 64
 
-    data class Snapshot(val grant: GalleryMediaGrant, val items: List<MediaRecord>)
+    data class Snapshot(
+        val grant: GalleryMediaGrant, val items: List<MediaRecord>,
+        /**
+         * #602: the provider versions and generations [items] were published
+         * at, so a cold start can resume with a delta. Null for a v2 file or a
+         * publication without one; the cold start then runs the full scan.
+         */
+        val checkpoint: GalleryMediaCheckpoint? = null
+    )
 
     fun encode(out: OutputStream, grant: GalleryMediaGrant, items: List<MediaRecord>,
-               checkActive: () -> Unit = {}) {
+               checkActive: () -> Unit = {}, checkpoint: GalleryMediaCheckpoint? = null) {
         val data = DataOutputStream(BufferedOutputStream(out, 1 shl 16))
         val table = LinkedHashMap<String, Int>()
         fun intern(value: String): Int = table.getOrPut(value) { table.size }
@@ -47,6 +58,7 @@ internal object GalleryInventoryCacheCodec {
         data.writeInt(VERSION)
         data.writeByte((if (grant.images) 1 else 0) or
             (if (grant.videos) 2 else 0) or (if (grant.selected) 4 else 0))
+        writeCheckpoint(data, checkpoint)
         data.writeInt(table.size)
         for (key in table.keys) data.writeUTF(key)
         data.writeInt(items.size)
@@ -82,9 +94,13 @@ internal object GalleryInventoryCacheCodec {
     /** Returns null for any unknown, truncated or corrupt file. */
     fun decode(input: InputStream, checkActive: () -> Unit = {}): Snapshot? = try {
         val data = DataInputStream(BufferedInputStream(input, 1 shl 16))
-        if (data.readInt() != MAGIC || data.readInt() != VERSION) null else {
+        val magic = data.readInt()
+        val version = data.readInt()
+        if (magic != MAGIC ||
+            (version != VERSION && version != VERSION_WITHOUT_CHECKPOINT)) null else {
             val bits = data.readUnsignedByte()
             val grant = GalleryMediaGrant(bits and 1 != 0, bits and 2 != 0, bits and 4 != 0)
+            val checkpoint = if (version == VERSION) readCheckpoint(data) else null
             val tableSize = data.readInt()
             require(tableSize in 0..MAX_ITEMS * 4)
             val table = Array(tableSize) { data.readUTF() }
@@ -122,12 +138,48 @@ internal object GalleryInventoryCacheCodec {
                     isFavorite = flags and 2 != 0, favoriteKnown = flags and 4 != 0,
                     dateSource = source))
             }
-            if (data.read() != -1) null else Snapshot(grant, items)
+            if (data.read() != -1) null else Snapshot(grant, items, checkpoint)
         }
     } catch (cancelled: java.util.concurrent.CancellationException) {
         throw cancelled
     } catch (_: Exception) {
         null
+    }
+
+    /** -1 = no checkpoint. Then per volume: name, version, generation (-1 = none). */
+    private fun writeCheckpoint(data: DataOutputStream, checkpoint: GalleryMediaCheckpoint?) {
+        val usable = checkpoint?.takeIf {
+            it.versions.isNotEmpty() && it.versions.size <= MAX_VOLUMES &&
+                it.versions.values.all { v -> !v.isNullOrEmpty() } &&
+                (it.generations.isEmpty() || it.generations.keys == it.versions.keys)
+        }
+        if (usable == null) { data.writeInt(-1); return }
+        data.writeInt(usable.versions.size)
+        for ((volume, version) in usable.versions) {
+            data.writeUTF(volume)
+            data.writeUTF(version!!)
+            data.writeLong(usable.generations[volume] ?: -1L)
+        }
+    }
+
+    private fun readCheckpoint(data: DataInputStream): GalleryMediaCheckpoint? {
+        val count = data.readInt()
+        if (count == -1) return null
+        require(count in 1..MAX_VOLUMES)
+        val versions = LinkedHashMap<String, String?>()
+        val generations = LinkedHashMap<String, Long?>()
+        var anyGeneration = false
+        for (i in 0 until count) {
+            val volume = data.readUTF()
+            val version = data.readUTF()
+            val generation = data.readLong()
+            require(volume.isNotEmpty() && version.isNotEmpty() && volume !in versions)
+            versions[volume] = version
+            if (generation >= 0L) { generations[volume] = generation; anyGeneration = true }
+        }
+        // All volumes carry a generation (API 30+) or none does (API 29).
+        require(!anyGeneration || generations.size == versions.size)
+        return GalleryMediaCheckpoint(versions, generations)
     }
 }
 
@@ -172,14 +224,15 @@ internal class GalleryInventoryCacheFile(fileProvider: () -> File) {
             }
         }
 
-    fun write(grant: GalleryMediaGrant, items: List<MediaRecord>, checkActive: () -> Unit = {}) {
+    fun write(grant: GalleryMediaGrant, items: List<MediaRecord>,
+              checkpoint: GalleryMediaCheckpoint? = null, checkActive: () -> Unit = {}) {
         synchronized(fileLock) {
             settleLocked()
             if (revoked.get()) return
             val tmp = File(file.parentFile, file.name + ".tmp")
             try {
                 tmp.outputStream().use {
-                    GalleryInventoryCacheCodec.encode(it, grant, items, checkActive)
+                    GalleryInventoryCacheCodec.encode(it, grant, items, checkActive, checkpoint)
                 }
                 // Revocation can arrive during encode, even when cancellation
                 // hasn't reached the writer. Never publish that late snapshot.

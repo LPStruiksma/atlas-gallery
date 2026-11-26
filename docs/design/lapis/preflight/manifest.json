@@ -1,5 +1,41 @@
 {
   "boards": {
+    "collect-1": {
+      "file": "collect-1-utilities.png",
+      "size": [
+        3480,
+        8783
+      ],
+      "sha256": "5f0c9fdd52e5e0600a6e621f6c6dc8526a68eaa7bb009c338dad6f3cd4fa2ae8",
+      "binary_status": "rendered with Funnel Display + Funnel Sans (font_sha256 below); Pillow 12.3.0",
+      "device_frames": 18,
+      "device_frame_px": [
+        1080,
+        2340
+      ],
+      "panels": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "B1",
+        "B2",
+        "B3",
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "D1",
+        "D2",
+        "D3",
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "generator": "tools/design/collect_1_utilities.py",
+      "synthetic_only": true
+    },
     "l4": {
       "file": "brand-l4-navigation.png",
       "size": [
@@ -39,10 +75,10 @@
       "file": "brand-l5-collections.png",
       "size": [
         3480,
-        9269
+        9855
       ],
-      "sha256": "5f4256040fcfa805a480c011f8d0b4d295453dbba4943aae1634eefc2035e0ec",
-      "device_frames": 13,
+      "sha256": "d983460011e32d35f6dfd4447709a345765b6427704cc43ce3aa9c23ec8e6cf4",
+      "device_frames": 17,
       "device_frame_px": [
         1080,
         2340
@@ -55,6 +91,10 @@
         "C1",
         "C2",
         "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
         "D1",
         "D2",
         "D3",
@@ -67,10 +107,10 @@
       "file": "brand-l6-atlas.png",
       "size": [
         3480,
-        8338
+        9711
       ],
-      "sha256": "59230a865e44df4471630d8a5e7ee0a793b30e5300e29ba0f98dcd2ff3c548f1",
-      "device_frames": 18,
+      "sha256": "4bdc1936420924f74bc40dfd438885d47c6939751904cf001bf6769f1e457b42",
+      "device_frames": 21,
       "device_frame_px": [
         1080,
         2340
@@ -86,6 +126,8 @@
         "B6",
         "B7",
         "B8",
+        "B9",
+        "B10",
         "C1",
         "C2",
         "C3",
@@ -93,16 +135,17 @@
         "C5",
         "C6",
         "D1",
-        "D2"
+        "D2",
+        "D3"
       ]
     },
     "l7": {
       "file": "brand-l7-search.png",
       "size": [
         3480,
-        8381
+        9904
       ],
-      "sha256": "23162bc526e3ebbd67378b6516df39befd1630401525c46e7261b49b39bdc3b4",
+      "sha256": "573289249ead1da922e2977706eaea84c09b3b254fdb85f78b1f2b3a3faa25b7",
       "device_frames": 18,
       "device_frame_px": [
         1080,
