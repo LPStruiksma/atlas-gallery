@@ -137,3 +137,12 @@ test("gesture return freezes the oriented fitted frame and does not repaint the 
   assert.match(motion, /if \(exiting && gestureFrame != null\) Rect\(/);
   assert.match(motion, /else if \(exiting && !allowUnderlay\) drawRect/);
 });
+
+test("committed return derives its clip from normalized crop and uniform scale", () => {
+  assert.match(motion, /fun sharedPhotoReturnCrop\(/);
+  assert.match(motion, /val fullScale = cover \+ \(1f - cover\) \* p/);
+  assert.match(motion, /val crop = sharedPhotoRect\(tileCrop, Rect\(0f, 0f, 1f, 1f\), p\)/);
+  assert.match(motion, /sharedPhotoReturnCrop\(viewport, movingOrigin.bounds, progress.value\)/);
+  assert.match(motion, /val frame = cropFrame\?\.frame \?: sharedPhotoRect/);
+  assert.match(motion, /\.clipToBounds\(\)\s+\.alpha\(1f - progress.value\)/);
+});

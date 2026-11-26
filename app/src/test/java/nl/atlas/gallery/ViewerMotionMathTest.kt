@@ -470,6 +470,35 @@ class ViewerMotionMathTest {
             ViewerPinchExitPose(Float.NaN)))
     }
 
+    @Test fun committedReturnInterpolatesCenteredCropWithoutStretch() {
+        val source = androidx.compose.ui.geometry.Rect(140f, 900f, 940f, 1300f)
+        val tile = androidx.compose.ui.geometry.Rect(390f, 880f, 690f, 1180f)
+        val start = sharedPhotoReturnCrop(source, tile, 1f)!!
+        assertEquals(source, start.frame)
+        assertEquals(1f, start.crop.width, .001f)
+        assertEquals(1f, start.crop.height, .001f)
+        val end = sharedPhotoReturnCrop(source, tile, 0f)!!
+        assertEquals(tile, end.frame)
+        assertEquals(.5f, end.crop.width, .001f)
+        assertEquals(1f, end.crop.height, .001f)
+        val mid = sharedPhotoReturnCrop(source, tile, .5f)!!
+        assertEquals(.75f, mid.crop.width, .001f)
+        assertEquals(525f, mid.frame.width, .001f)
+        assertEquals(350f, mid.frame.height, .001f)
+        assertEquals(mid.frame.width / (800f * mid.crop.width),
+            mid.frame.height / (400f * mid.crop.height), .001f)
+        assertEquals((source.center.x + tile.center.x) / 2f, mid.frame.center.x, .001f)
+        val portrait = androidx.compose.ui.geometry.Rect(0f, 0f, 400f, 800f)
+        val portraitMid = sharedPhotoReturnCrop(portrait, tile, .5f)!!
+        assertEquals(1f, portraitMid.crop.width, .001f)
+        assertEquals(.75f, portraitMid.crop.height, .001f)
+        val ratio = androidx.compose.ui.geometry.Rect(0f, 0f, 300f, 150f)
+        assertEquals(1f, sharedPhotoReturnCrop(source, ratio, .5f)!!.crop.width, .001f)
+        assertEquals(1f, sharedPhotoReturnCrop(source, ratio, .5f)!!.crop.height, .001f)
+        assertNull(sharedPhotoReturnCrop(source, androidx.compose.ui.geometry.Rect.Zero, .5f))
+        assertNull(sharedPhotoReturnCrop(source, tile, Float.NaN))
+    }
+
     @Test fun dismissalBackdropTracksScaleReversalAndHandoffOnlyForAuthorizedTarget() {
         val rest = ViewerPinchExitPose()
         val drag = viewerDownExitPose(400f, 1000f)

@@ -8,7 +8,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -132,6 +134,38 @@ internal fun sharedPhotoGestureFrame(viewportWidth: Int, viewportHeight: Int,
     return Rect(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
 }
 
+/** The visible normalized crop and its uniformly scaled screen-space clip. */
+internal data class SharedPhotoCropFrame(val frame: Rect, val crop: Rect)
+
+/**
+ * Return from a full oriented fitted gesture frame to a centered cover tile.
+ * Progress is viewer=1, tile=0. Interpolate the normalized visible image
+ * window separately from the uniform scale; derive the screen clip from
+ * those two quantities, so a square or ratio tile never stretches the photo.
+ */
+internal fun sharedPhotoReturnCrop(source: Rect, tile: Rect, progress: Float): SharedPhotoCropFrame? {
+    if (!progress.isFinite() || listOf(source, tile).any { r ->
+            !listOf(r.left, r.top, r.right, r.bottom, r.width, r.height).all { it.isFinite() } ||
+                r.width <= 0f || r.height <= 0f
+        }) return null
+    val p = progress.coerceIn(0f, 1f)
+    val cover = maxOf(tile.width / source.width, tile.height / source.height)
+    if (!cover.isFinite() || cover <= 0f) return null
+    val cropWidth = (tile.width / (source.width * cover)).coerceIn(0f, 1f)
+    val cropHeight = (tile.height / (source.height * cover)).coerceIn(0f, 1f)
+    val tileCrop = Rect((1f - cropWidth) / 2f, (1f - cropHeight) / 2f,
+        (1f + cropWidth) / 2f, (1f + cropHeight) / 2f)
+    val crop = sharedPhotoRect(tileCrop, Rect(0f, 0f, 1f, 1f), p)
+    if (p == 0f) return SharedPhotoCropFrame(tile, crop)
+    if (p == 1f) return SharedPhotoCropFrame(source, crop)
+    val fullScale = cover + (1f - cover) * p
+    val halfWidth = source.width * fullScale * crop.width / 2f
+    val halfHeight = source.height * fullScale * crop.height / 2f
+    val center = sharedPhotoRect(tile, source, p).center
+    return SharedPhotoCropFrame(Rect(center.x - halfWidth, center.y - halfHeight,
+        center.x + halfWidth, center.y + halfHeight), crop)
+}
+
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
  * overlay travels from the measured thumbnail to the full viewer, while the
@@ -195,18 +229,24 @@ internal fun SharedPhotoMotionLayer(
                 windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
                 windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
             else Rect(windowRect.left, windowRect.top, windowRect.right, windowRect.bottom)
-            val frame = sharedPhotoRect(movingOrigin.bounds, viewport, progress.value)
+            val cropFrame = if (exiting && gestureFrame != null)
+                sharedPhotoReturnCrop(viewport, movingOrigin.bounds, progress.value) else null
+            val frame = cropFrame?.frame ?: sharedPhotoRect(movingOrigin.bounds, viewport, progress.value)
             val density = LocalDensity.current
             Box(Modifier
-                .offset {
+                .absoluteOffset {
                     IntOffset((frame.left - windowRect.left).roundToInt(),
                         (frame.top - windowRect.top).roundToInt())
                 }
+                .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
                 .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
                     with(density) { frame.height.coerceAtLeast(1f).toDp() })
+                .clipToBounds()
                 .alpha(1f - progress.value)
                 .testTag(if (exiting) "atlas-shared-photo-exit"
                     else "atlas-shared-photo-enter")) {
+                // Centered Crop on this derived clip renders the interpolated
+                // image-coordinate window at uniform scale (modulo pixel rounding).
                 MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
                     ContentScale.Crop, 600)
             }
