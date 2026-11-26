@@ -74,6 +74,16 @@ class RecipeV2Test {
             RenderStage.ColorMix::class, RenderStage.SpotColor::class), a.stages.map { it::class })
         assertEquals(1200, a.outputWidth)
         assertEquals(900, a.outputHeight)
+        // A non-zero basic Adjust must sit after ShapeCrop/Resize and before Curves, matching the
+        // documented order, so a solid-filled shape mask is never colour-adjusted.
+        val withAdjust = first + EditOperation.Adjust("adj", AdjustParam.EXPOSURE, 0.4)
+        val reversed = RenderPlan.build(EditRecipe(4000, 3000, listOf(withAdjust.last()) + withAdjust.dropLast(1)))
+        for (plan in listOf(RenderPlan.build(EditRecipe(4000, 3000, withAdjust)), reversed)) {
+            assertEquals(listOf(RenderStage.Decode::class, RenderStage.Geometry::class,
+                RenderStage.ShapeCrop::class, RenderStage.Resize::class, RenderStage.ColourAdjust::class,
+                RenderStage.Curves::class, RenderStage.ColorMix::class, RenderStage.SpotColor::class),
+                plan.stages.map { it::class })
+        }
         assertEquals(600, RenderPlan.build(EditRecipe(4000, 3000, first), 600).outputWidth)
     }
 

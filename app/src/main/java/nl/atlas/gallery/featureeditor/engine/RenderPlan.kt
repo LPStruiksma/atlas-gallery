@@ -13,16 +13,21 @@ import kotlin.math.roundToInt
  * 1. [RenderStage.Decode] the source;
  * 2. [RenderStage.RasterPatches] source-space patches in history order;
  * 3. [RenderStage.Geometry] one projective warp + crop + scale to the output size;
- * 4. [RenderStage.ColourAdjust] all non-zero controls, in [AdjustParam] order;
- * 5. [RenderStage.ShapeCrop] display-canvas mask, then [RenderStage.Resize] target metadata;
- * 6. [RenderStage.Curves], [RenderStage.ColorMix], [RenderStage.SpotColor] after colour adjust;
+ * 4. [RenderStage.ShapeCrop] display-canvas mask, then [RenderStage.Resize] target metadata;
+ * 5. [RenderStage.ColourAdjust] all non-zero controls, in [AdjustParam] order;
+ * 6. [RenderStage.Curves], [RenderStage.ColorMix], [RenderStage.SpotColor], in that order, after
+ *    colour adjust;
  * 7. [RenderStage.Lut] and [RenderStage.Overlays] finish the image without editing layers.
+ *
+ * Shape and resize therefore come before every colour stage: a solid-filled shape mask is
+ * not colour-adjusted, and colour stages see the masked, resized output. docs/editor/ENGINE.md
+ * lists the same order stage by stage.
  *
  * Output-space patches ([PatchSpace.OUTPUT], what AI Edit and Face Swap return) split the
  * recipe at the last such patch: [RenderStage.Base] renders every earlier step as its own plan,
  * [RenderStage.OutputPatch] composites the patch over that result, and the steps after it run
- * stages 2 to 6 on the composite. Earlier steps are therefore never applied to the AI result a
- * second time, and undoing the patch restores them untouched. The base is static while later
+ * stages 2 to 7 (everything except Decode) on the composite. Earlier steps are therefore never
+ * applied to the AI result a second time, and undoing the patch restores them untouched. The base is static while later
  * steps change, so a renderer can cache it.
  *
  * Identity stages are left out, so an empty recipe is just Decode. [gainmap] gives the

@@ -59,7 +59,7 @@ A recipe with `OUTPUT` patches is split at the last one:
 
 1. `Base`: every earlier step, rendered as its own full-resolution plan. It may itself contain an earlier split.
 2. `OutputPatch`: the patch is composited over that render at its output-normalized `rect`, as `out = a * patch + (1 - a) * before` when it has a mask.
-3. Stages 2 to 6 for the steps after the patch, with the composite as their source.
+3. Every stage except `Decode` (`RasterPatches` through `Overlays`, in the order above) for the steps after the patch, with the composite as their source.
 
 Earlier crop, colour, filter and overlay steps are therefore applied to the AI result exactly once, before the AI tool saw it, never again after it. A masked partial patch keeps the earlier steps underneath it. Undoing the patch gives back exactly the plan of the earlier steps, which is what AI_TOOLS.md §4 option (a) asks for. The base doesn't change while later steps do, so EDIT-2 can cache its texture. `plan.normalizedSourceToOutput` and `plan.outputToSource` compose every segment, from the original source to the final output. `plan.geometry` is the geometry of the last segment, which is what the crop tool edits.
 
