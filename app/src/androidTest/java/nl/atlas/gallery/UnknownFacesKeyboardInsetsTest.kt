@@ -200,25 +200,72 @@ class UnknownFacesKeyboardInsetsTest {
         log(label)
     }
 
-    /** Taps the field; with animations 10x slower, saves a frame while the keyboard is mid-way. */
+    /**
+     * Observe the actual IME animation on the decor before requesting focus.
+     * rootWindowInsets describes the target state, not the animated progress;
+     * Compose's synchronized semantics lookups can also miss the transition.
+     */
     private fun captureOpening(theme: String) {
-        device.animatorScale(10f)
-        try {
-            val full = 918
-            focusNameField()
-            val intermediate = (full / 4)..(full * 3 / 4)
-            compose.awaitThat("$theme intermediate opening inset", 15_000L) {
-                compose.keyboardInsetPx() in intermediate
+        check(android.os.Build.VERSION.SDK_INT >= 30) { "IME animation requires API 30" }
+        val full = 918
+        val intermediate = (full / 4)..(full * 3 / 4)
+        val ime = android.view.WindowInsets.Type.ime()
+        val current = java.util.concurrent.atomic.AtomicInteger(-1)
+        val peak = java.util.concurrent.atomic.AtomicInteger(0)
+        val ready = java.util.concurrent.CountDownLatch(1)
+        val callback = object : android.view.WindowInsetsAnimation.Callback(
+            DISPATCH_MODE_CONTINUE_ON_SUBTREE
+        ) {
+            override fun onProgress(
+                insets: android.view.WindowInsets,
+                runningAnimations: MutableList<android.view.WindowInsetsAnimation>
+            ): android.view.WindowInsets {
+                if (runningAnimations.any { it.typeMask and ime != 0 }) {
+                    val bottom = insets.getInsets(ime).bottom
+                    current.set(bottom)
+                    peak.set(maxOf(peak.get(), bottom))
+                    if (bottom in intermediate) ready.countDown()
+                }
+                return insets
             }
-            // Do not publish a screenshot unless the actual acquisition was
-            // bracketed by intermediate insets. No retry of a missed animation.
+
+            override fun onEnd(animation: android.view.WindowInsetsAnimation) {
+                if (animation.typeMask and ime != 0) current.set(-1)
+                super.onEnd(animation)
+            }
+        }
+        device.animatorScale(10f)
+        val decor = compose.activity.window.decorView
+        try {
+            // Prepare the scroll and resolve the focus action while the IME is
+            // still closed. Do not enter Compose's idle barrier after focus.
+            compose.onNodeWithTag("atlas-unknown-face-review-screen")
+                .performScrollToNode(hasTestTag("atlas-group-name"))
+            compose.waitForIdle()
+            check(compose.keyboardInsetPx() == 0) { "$theme opening did not start closed" }
+            val requestFocus = requireNotNull(
+                compose.onNodeWithTag("atlas-group-name").fetchSemanticsNode()
+                    .config[SemanticsActions.RequestFocus].action
+            )
             check(visibleSystemAnrRoot() == null) { "$theme opening obscured by system ANR" }
-            val before = compose.keyboardInsetPx()
+            instrumentation.runOnMainSync {
+                decor.setWindowInsetsAnimationCallback(callback)
+                requestFocus()
+                decor.windowInsetsController?.show(ime)
+            }
+            check(ready.await(15, java.util.concurrent.TimeUnit.SECONDS)) {
+                "$theme intermediate opening inset not delivered; peak=${peak.get()}"
+            }
+            // Only publish an acquisition bracketed by actual animated insets.
+            // No synthetic frame, final-state substitution or animation retry.
+            val before = current.get()
             check(before in intermediate) { "$theme opening missed: before=$before" }
             val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
             try {
-                val after = compose.keyboardInsetPx()
-                check(after in intermediate) { "$theme opening missed: before=$before after=$after" }
+                val after = current.get()
+                check(after in intermediate && after >= before) {
+                    "$theme opening missed: before=$before after=$after"
+                }
                 check(visibleSystemAnrRoot() == null) { "$theme opening obscured by system ANR" }
                 check(uiEvidenceProblem(bitmap) == null) { "$theme opening frame invalid" }
                 val png = java.io.ByteArrayOutputStream().also {
@@ -230,6 +277,7 @@ class UnknownFacesKeyboardInsetsTest {
                 bitmap.recycle()
             }
         } finally {
+            instrumentation.runOnMainSync { decor.setWindowInsetsAnimationCallback(null) }
             device.animatorScale(1f)
         }
         compose.awaitKeyboardShown()
