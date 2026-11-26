@@ -34,6 +34,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 import nl.atlas.gallery.featuredesign.AtlasMotion
 
@@ -89,6 +93,12 @@ internal class MeasuredViewerReturn(val request: PendingViewerReturn) {
 
     fun clear() { measured = null }
 }
+
+/** Bound the committed measurement wait; no entry-origin substitution on timeout. */
+internal suspend fun awaitMeasuredViewerReturn(
+    candidates: Flow<SharedPhotoOrigin?>, timeoutMillis: Long = 1500L
+): SharedPhotoOrigin? =
+    withTimeoutOrNull(timeoutMillis) { candidates.filterNotNull().first() }
 
 internal val LocalMeasuredViewerReturn = compositionLocalOf<MeasuredViewerReturn?> { null }
 

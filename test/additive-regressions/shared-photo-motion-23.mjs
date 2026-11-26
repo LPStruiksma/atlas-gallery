@@ -225,3 +225,13 @@ test("FLOW-3 real host open timing records real Android frames and both PERF-3 c
   assert.match(journey, /FLOW3_OPEN_TIMING/);
   assert.match(journey, /frame_p90_ms/);
 });
+
+test("FLOW-3 committed grid return has one bounded measurement wait and no entry-origin fallback", () => {
+  assert.match(motion, /suspend fun awaitMeasuredViewerReturn\(/);
+  assert.match(motion, /timeoutMillis: Long = 1500L/);
+  assert.match(motion, /withTimeoutOrNull\(timeoutMillis\) \{ candidates\.filterNotNull\(\)\.first\(\) \}/);
+  assert.match(main, /else awaitMeasuredViewerReturn\(snapshotFlow \{\s*preparation\.measured\?\.takeIf/);
+  assert.match(main, /if \(returnPreparation === preparation && !viewerExitShared\) \{\s*pendingViewerReturn = null\s*pendingRatioReturn = null\s*pendingRatioAnchor = null/);
+  assert.match(main, /measuredReturnOrigin = target\s*viewerExitShared = true/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+});

@@ -116,3 +116,5 @@ FLOW-3 C6 applies the centered crop interpolation to ordinary entry and Back usi
 FLOW-3 C7 adds a synthetic real-host Stories journey to the paired light/dark suite. It targets the non-grid no-return-tile fade and verifies the same story moment after Back; capture targets only, not a measured grid timeout or a runtime result.
 
 FLOW-3 C8 registers every paired motion capture in the strict CI manifest and adds a real MainActivity grid-to-viewer timing probe using synthetic 4032×3024 PNG, first and repeated opens, PERF-3 callback stamps and Android Window frame-total p90. Hosted measurements, comparison and visual acceptance remain outstanding.
+
+FLOW-3 C9 extracts the existing committed grid measurement wait without changing its 1500 ms deadline, and adds coroutine JVM cases for timeout (short injected deadline), successful measurement and cancellation of obsolete preparation. The host still clears pending seeks and uses a null return origin on timeout; this is a focused wait regression, not a rendered real-grid timeout proof.

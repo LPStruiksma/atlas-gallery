@@ -1,5 +1,12 @@
 package nl.atlas.gallery
 
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -67,6 +74,36 @@ class ViewerReturnAdmissionTest {
         target.offer(source[1], 42L, bounds, 7L)
         target.clear()
         assertTrue(target.measured == null)
+    }
+
+    @Test fun unmeasuredGridReturnExpiresWithoutAnOpeningTileFallback() = runBlocking {
+        val candidates = MutableStateFlow<SharedPhotoOrigin?>(null)
+        // The same bounded wait as the committed host; no real media or grid required.
+        assertNull(awaitMeasuredViewerReturn(candidates, timeoutMillis = 30L))
+    }
+
+    @Test fun aMeasuredTargetBeforeDeadlineIsReturnedUnchanged() = runBlocking {
+        val target = SharedPhotoOrigin(media(2), 42L,
+            androidx.compose.ui.geometry.Rect(10f, 20f, 100f, 110f), 1L)
+        val candidates = MutableStateFlow<SharedPhotoOrigin?>(null)
+        var actual: SharedPhotoOrigin? = null
+        val waiter = launch(start = CoroutineStart.UNDISPATCHED) {
+            actual = awaitMeasuredViewerReturn(candidates)
+        }
+        candidates.value = target
+        waiter.join()
+        assertEquals(target, actual)
+    }
+
+    @Test fun cancelledPreparationDoesNotReturnAnOriginToTheOldHost() = runBlocking {
+        val candidates = MutableStateFlow<SharedPhotoOrigin?>(null)
+        var completed = false
+        val waiter = launch(start = CoroutineStart.UNDISPATCHED) {
+            awaitMeasuredViewerReturn(candidates)
+            completed = true
+        }
+        waiter.cancelAndJoin()
+        assertFalse(completed)
     }
 
     @Test fun visibleItemKeepsScrollOffsetOffscreenItemSeeks() {

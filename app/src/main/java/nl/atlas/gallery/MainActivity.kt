@@ -3536,14 +3536,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     pendingRatioAnchor == null }.first { it }
             }
             null
-        } else withTimeoutOrNull(1500L) {
-            snapshotFlow {
-                preparation.measured?.takeIf {
-                    pendingViewerReturn == null && pendingRatioReturn == null &&
-                        pendingRatioAnchor == null
-                }
-            }.filterNotNull().first()
-        }
+        } else awaitMeasuredViewerReturn(snapshotFlow {
+            preparation.measured?.takeIf {
+                pendingViewerReturn == null && pendingRatioReturn == null &&
+                    pendingRatioAnchor == null
+            }
+        })
         if (returnPreparation === preparation && !viewerExitShared) {
             pendingViewerReturn = null
             pendingRatioReturn = null
