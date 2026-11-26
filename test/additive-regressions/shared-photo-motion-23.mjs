@@ -27,9 +27,10 @@ test("viewer motion is bounded to matching URI and access epoch", () => {
 
 test("return still uses the settled Viewer URI, and never shrinks to a different photo", () => {
   assert.match(main, /onExitSettledUri\s*=\s*\{ lastViewedUri ->/);
-  assert.match(main, /pendingViewerReturn\s*=\s*PendingViewerReturn\(/);
+  assert.match(main, /val request = PendingViewerReturn\(contextItems, uri, returnRoute, publishedGallery\.epoch\)/);
+  assert.match(main, /else pendingViewerReturn = request/);
   assert.match(main, /lastSettledViewerUri = lastViewedUri/);
-  assert.match(main, /request != null && request\.uri == lastSettledViewerUri/);
+  assert.match(main, /returnPreparation\?\.request\?\.uri == lastSettledViewerUri/);
   assert.match(main, /returnPreparation = MeasuredViewerReturn\(request\)/);
   assert.match(main, /viewerReturnMatchesCurrentRoute\(preparation\.request, visible, returnRoute,/);
   assert.match(main, /measuredReturnOrigin = target/);
@@ -72,4 +73,15 @@ test("a fresh touch inherits a cancelling drag but must earn new dismissal inten
   assert.match(viewer, /dragOffset\.floatValue = dragBase\s+tracking = dragBase > 0f/);
   assert.match(viewer, /dragOffset\.floatValue = viewerDownExitTravel\(dragBase, travelY\)/);
   assert.match(viewer, /downExitEligible = viewerMayStartDownExit\(\s*travelY, travelX, elapsed, reversedUp, touchSlopPx\)/);
+});
+
+test("idle settled photo prepositions without committing or freezing viewer input", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /pagerState\.settledPage == pagerState\.currentPage/);
+  assert.match(viewer, /collectLatest \{ uri ->\s*if \(uri != null\) \{\s*delay\(350L\)/);
+  assert.match(viewer, /latestPrepareCallback\?\.invoke\(uri\)/);
+  assert.match(main, /onPrepareSettledUri = \{ uri -> prepareViewerReturn\(uri\) \}/);
+  assert.match(main, /if \(!returnCommitted\) return@LaunchedEffect/);
+  assert.match(main, /if \(currentUri != null && returnCommitted && preparation != null\)/);
+  assert.match(main, /existing\.uri == uri &&\s*viewerReturnMatchesCurrentRoute/);
 });

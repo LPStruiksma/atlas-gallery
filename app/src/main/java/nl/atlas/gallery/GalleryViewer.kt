@@ -165,6 +165,7 @@ fun GalleryViewer(
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
     motionProbe: ViewerFilmstripMotionProbe? = null,
+    onPrepareSettledUri: ((String) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -175,7 +176,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onPrepareSettledUri, onBack)
     }
 }
 
@@ -197,6 +198,7 @@ private fun GalleryViewerSnapshot(
     swapPerson: ViewerSwapPerson?,
     access: ViewerAccess,
     motionProbe: ViewerFilmstripMotionProbe?,
+    onPrepareSettledUri: ((String) -> Unit)?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -343,6 +345,23 @@ private fun GalleryViewerSnapshot(
         }
     }
     var heldScrubIndex by remember(CatalogSourceKey(items)) { mutableStateOf<Int?>(null) }
+    // Prepare only an idle settled URI, never intermediate scrub frames. The
+    // debounce leaves the initial viewer/thumbnail decode path alone on entry.
+    val latestPrepareCallback by rememberUpdatedState(onPrepareSettledUri)
+    LaunchedEffect(pagerState, stripState, CatalogSourceKey(items), onPrepareSettledUri != null) {
+        if (latestPrepareCallback == null) return@LaunchedEffect
+        snapshotFlow {
+            if (!pagerState.isScrollInProgress && !stripState.isScrollInProgress &&
+                selectionRequest == null && heldScrubIndex == null &&
+                pagerState.settledPage == pagerState.currentPage)
+                items.getOrNull(pagerState.settledPage)?.uri else null
+        }.collectLatest { uri ->
+            if (uri != null) {
+                delay(350L)
+                latestPrepareCallback?.invoke(uri)
+            }
+        }
+    }
     LaunchedEffect(CatalogSourceKey(items)) {
         snapshotFlow { liveScrubCentre }.collect { if (it != null) heldScrubIndex = it }
     }

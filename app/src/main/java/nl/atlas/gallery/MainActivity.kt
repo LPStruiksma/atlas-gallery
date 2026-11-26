@@ -1827,6 +1827,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var lastSettledViewerUri by remember { mutableStateOf<String?>(null) }
     var viewerExitShared by remember { mutableStateOf(false) }
     var returnPreparation by remember(viewerUri) { mutableStateOf<MeasuredViewerReturn?>(null) }
+    var returnCommitted by remember(viewerUri) { mutableStateOf(false) }
     var measuredReturnOrigin by remember(viewerUri) { mutableStateOf<SharedPhotoOrigin?>(null) }
     var pendingViewerReturn by remember {
         mutableStateOf<PendingViewerReturn?>(null, referentialEqualityPolicy())
@@ -2634,6 +2635,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         lastSettledViewerUri = null
         viewerExitShared = false
         returnPreparation = null
+        returnCommitted = false
         measuredReturnOrigin = null
         PerformanceSession.viewerOpened()
         viewerItems = items
@@ -2653,7 +2655,13 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         sharedPhotoOrigin = null
         lastSettledViewerUri = null
         viewerExitShared = false
+        if (returnPreparation != null) {
+            pendingViewerReturn = null
+            pendingRatioReturn = null
+            pendingRatioAnchor = null
+        }
         returnPreparation = null
+        returnCommitted = false
         measuredReturnOrigin = null
         SharedPhotoOrigins.clear()
     }
@@ -3480,18 +3488,43 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         faceStep == null && similarStep == null &&
         viewerReturnMatchesCurrentRoute(preparation.request, visible, returnRoute,
             grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch)
+    // A speculative preparation is never a close. Reuse it only for the same
+    // settled URI, source reference, route and epoch; a new settled item gets
+    // its own measured target and cancels the old seek.
+    fun prepareViewerReturn(uri: String) {
+        if (returnCommitted || viewerExitShared) return
+        val existing = returnPreparation?.request
+        if (existing != null && existing.uri == uri &&
+            viewerReturnMatchesCurrentRoute(existing, visible, returnRoute,
+                grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch) &&
+            viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
+            contextItems === visible && tab != 1 && faceStep == null && similarStep == null) return
+        pendingViewerReturn = null
+        pendingRatioReturn = null
+        pendingRatioAnchor = null
+        returnPreparation = null
+        if (!viewerAllowed || viewerAccessEpoch != publishedGallery.epoch ||
+            !grants.hasAny || !publishedGallery.showable(grants) ||
+            contextItems == null || contextItems !== visible || tab == 1 ||
+            faceStep != null || similarStep != null) return
+        val request = PendingViewerReturn(contextItems, uri, returnRoute, publishedGallery.epoch)
+        if (tab == 0 && originalProportions) pendingRatioReturn = request
+        else pendingViewerReturn = request
+        returnPreparation = MeasuredViewerReturn(request)
+    }
     // Await both the existing URI seek and the actual requested tile layout.
     // One overall deadline bounds missing tiles and slow projection/measurement.
-    LaunchedEffect(preparation, returnAuthorized, viewerExitShared) {
+    LaunchedEffect(preparation, returnAuthorized, returnCommitted, viewerExitShared) {
         if (preparation == null) return@LaunchedEffect
         if (!returnAuthorized || readGalleryMediaGrant(context) != grants ||
             vm.publishedInventory.value.epoch != preparation.request.accessEpoch) {
             pendingViewerReturn = null
             pendingRatioReturn = null
             pendingRatioAnchor = null
-            closeViewer()
+            if (returnCommitted) closeViewer() else returnPreparation = null
             return@LaunchedEffect
         }
+        if (!returnCommitted) return@LaunchedEffect
         if (viewerExitShared) return@LaunchedEffect
         val target = if (sharedPhotoAnimationDisabled(context)) {
             // Still position the grid, but do not play a return animation.
@@ -3571,38 +3604,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
                 launchResult != PhotoEditorHandoff.Result.UNAVAILABLE
             },
+            onPrepareSettledUri = { uri -> prepareViewerReturn(uri) },
             onExitSettledUri = { lastViewedUri ->
-                // This callback runs before onBack even on fast filmstrip scrubs.
-                // An exit must never contract towards the originally tapped
-                // cell if a different photo is now settled.
-                if (returnPreparation == null && !viewerExitShared) {
-                // Discard unrelated grid-layout anchors before recording this exit.
-                pendingViewerReturn = null
-                pendingRatioReturn = null
-                pendingRatioAnchor = null
-                lastSettledViewerUri = lastViewedUri
-                if (viewerAllowed && viewerAccessEpoch == publishedGallery.epoch &&
-                    grants.hasAny &&
-                    publishedGallery.showable(grants) &&
-                    // Stories (#439) open the viewer from Albums: no grid to restore.
-                    contextItems === visible && tab != 1 && faceStep == null &&
-                    similarStep == null) {
-                    if (tab == 0 && originalProportions) {
-                        // Only record the immutable intent on the click path.
-                        // Off-main resolution happens with the viewer still mounted.
-                        pendingRatioReturn = PendingViewerReturn(
-                            contextItems, lastViewedUri, 0,
-                            publishedGallery.epoch)
-                    } else {
-                        pendingViewerReturn = PendingViewerReturn(
-                            contextItems, lastViewedUri,
-                            when {
-                                personFilter != null -> 2
-                                tab == 3 -> 1
-                                else -> 0
-                            }, publishedGallery.epoch)
-                    }
-                }
+                if (!returnCommitted && !viewerExitShared) {
+                    // Back during an unsettled scrub still uses the last settled item.
+                    lastSettledViewerUri = lastViewedUri
+                    prepareViewerReturn(lastViewedUri)
                 }
             },
             // "Find this person" only from gallery browsing, not from results.
@@ -3650,10 +3657,10 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
             },
             onBack = {
-                if (returnPreparation == null && !viewerExitShared) {
-                    val request = pendingRatioReturn ?: pendingViewerReturn
-                    if (request != null && request.uri == lastSettledViewerUri) {
-                        returnPreparation = MeasuredViewerReturn(request)
+                if (!returnCommitted && !viewerExitShared) {
+                    if (returnPreparation?.request?.uri == lastSettledViewerUri &&
+                        returnPreparation != null) {
+                        returnCommitted = true
                     } else {
                         // Non-grid sources keep their authorized destination.
                         closeViewer()
@@ -4979,7 +4986,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     }
     renderViewer()
-    if (currentUri != null && preparation != null) {
+    if (currentUri != null && returnCommitted && preparation != null) {
         // Freeze further viewer interaction until this one close completes.
         BackHandler { }
         Box(Modifier.fillMaxSize().pointerInput(Unit) {
