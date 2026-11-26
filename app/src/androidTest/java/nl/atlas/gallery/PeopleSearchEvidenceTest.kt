@@ -132,6 +132,33 @@ class PeopleSearchAppEvidenceTest {
         assertReviewedA10(shortcut, "PeopleSearchShortcuts")
     }
 
+    @Test fun peopleWholeLibraryEntriesRecordA11() {
+        compose.tap(hasTestTag("atlas-nav-people"))
+        waitFor(compose, hasTestTag("atlas-people-home"))
+        assertPeopleWholeLibraryA11("People home")
+
+        compose.tap(hasTestTag("atlas-nav-people"))
+        waitFor(compose, hasTestTag("atlas-people-home"))
+        compose.tap(hasTestTag("atlas-header-more"))
+        waitFor(compose, hasTestTag("atlas-people-hidden-open"))
+        compose.tap(hasTestTag("atlas-people-hidden-open"))
+        waitFor(compose, hasTestTag("atlas-people-hidden"))
+        assertPeopleWholeLibraryA11("Hidden People")
+    }
+
+    private fun assertPeopleWholeLibraryA11(action: String) {
+        compose.tap(hasTestTag("atlas-search-expand"))
+        waitFor(compose, hasTestTag("atlas-search-scope-library"))
+        val before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
+        compose.tap(hasTestTag("atlas-search-scope-library"))
+        waitFor(compose, hasTestTag("atlas-search-field"))
+        compose.awaitThat("$action records exactly one A11 sample", 60_000L) {
+            PerformanceSession.aggregate.snapshot("action_a11_ms").count == before + 1
+        }
+        compose.waitForIdle()
+        assertEquals(action, before + 1, PerformanceSession.aggregate.snapshot("action_a11_ms").count)
+    }
+
     private fun assertReviewedA10(action: SemanticsMatcher, label: String) {
         val before = PerformanceSession.aggregate.snapshot("action_a10_ms").count
         compose.tap(action)

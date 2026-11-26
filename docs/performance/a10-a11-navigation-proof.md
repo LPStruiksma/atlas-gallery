@@ -6,7 +6,7 @@ and the frame-settled `NavigationActionSampleEffect` completion hook. The isolat
 it does **not** prove any actual route starts its timer. The existing
 `PeoplePrototypeJourneyTest` now asserts sample-count deltas on four real MainActivity
 navigation actions; a focused second journey exercises Find Similar and both Face Search
-exits using the same disposable MediaStore fixture and synthetic visual vectors. The real split/Hidden journey and a synthetic reviewed V4 roster journey extend A10 coverage. No test calls `recordActionMs` directly.
+exits using the same disposable MediaStore fixture and synthetic visual vectors. The real split/Hidden journey and a synthetic reviewed V4 roster journey extend A10 coverage. The synthetic album and People home journeys exercise the remaining A11 callbacks, including the staged Declutter confirmation. The shared header is exercised through a folder (the native person header has separate coverage). No test calls `recordActionMs` directly.
 
 | Action | Timer start / completion hook | Actual app-route test | Fix / outcome |
 | --- | --- | --- | --- |
@@ -23,12 +23,12 @@ exits using the same disposable MediaStore fixture and synthetic visual vectors.
 | Search from `FindSimilarRoute` | `startSearch` before closing route | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: A11 +1 | Terminal Results (including empty results), not index-off; execution pending |
 | Search from `FaceSearchRoute.onSearchWholeLibrary` | `startSearch` before closing route | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: A11 +1 | Assertion added; execution pending |
 | Native person album Whole library | `startSearch` in native album callback | PeoplePrototypeJourneyTest: A11 +1 | Assertion added; execution pending |
-| Declutter Whole library | `startSearch` in Declutter callback | Pending | Unverified |
-| Shared folder/person header Whole library | `startSearch` in header scope callback | Pending | Unverified |
-| Hidden Albums Whole library | `startSearch` in hidden albums callback | Pending | Unverified |
-| Albums home Whole library | `startSearch` in Albums callback | Pending | Unverified |
-| Hidden People Whole library | `startSearch` in hidden people callback | Pending | Unverified |
-| People home Whole library | `startSearch` in People home callback | Pending | Unverified |
+| Declutter Whole library | `startSearch` in Declutter callback | CompactHeaderJourneyTest.declutterWholeLibraryRecordsA11AfterConfirmation: no sample before confirmation; A11 +1 after | Assertion added; execution pending |
+| Shared folder/person header Whole library | `startSearch` in header scope callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: folder branch A11 +1 | Assertion added; execution pending |
+| Hidden Albums Whole library | `startSearch` in hidden albums callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
+| Albums home Whole library | `startSearch` in Albums callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
+| Hidden People Whole library | `startSearch` in hidden people callback | PeopleSearchAppEvidenceTest.peopleWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
+| People home Whole library | `startSearch` in People home callback | PeopleSearchAppEvidenceTest.peopleWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
 
 Acceptance requires actual app-route assertions for all rows plus exact-head JVM and
 emulator evidence. Synthetic-hook coverage alone is not acceptance. No physical-device
