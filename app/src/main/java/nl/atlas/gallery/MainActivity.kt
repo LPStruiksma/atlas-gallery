@@ -3572,6 +3572,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             },
             exiting = viewerExitShared,
             allowUnderlay = revealTargetUri != null,
+            exitWithoutUnderlay = returnCommitted && preparation == null,
             returnOrigin = measuredReturnOrigin?.takeIf {
                 returnAuthorized && preparation?.measured?.bounds == it.bounds
             },
@@ -3670,8 +3671,22 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         returnPreparation != null) {
                         returnCommitted = true
                     } else {
-                        // Non-grid sources keep their authorized destination.
-                        closeViewer()
+                        // Non-grid sources have no mounted destination or safe
+                        // tile. Fade the viewer to its black ground, then restore
+                        // the original route; never animate toward the entry tile.
+                        // Revoked access must cut immediately, not retain pixels.
+                        if (readGalleryMediaGrant(context) != grants ||
+                            vm.publishedInventory.value.epoch != viewerAccessEpoch) {
+                            closeViewer()
+                        } else {
+                            pendingViewerReturn = null
+                            pendingRatioReturn = null
+                            pendingRatioAnchor = null
+                            returnPreparation = null
+                            measuredReturnOrigin = null
+                            returnCommitted = true
+                            viewerExitShared = true
+                        }
                     }
                 }
             }
@@ -4994,7 +5009,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     }
     }
     renderViewer()
-    if (currentUri != null && returnCommitted && preparation != null) {
+    if (currentUri != null && returnCommitted) {
         // Freeze further viewer interaction until this one close completes.
         BackHandler { }
         Box(Modifier.fillMaxSize().pointerInput(Unit) {

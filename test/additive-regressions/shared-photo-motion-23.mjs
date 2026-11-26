@@ -82,7 +82,7 @@ test("idle settled photo prepositions without committing or freezing viewer inpu
   assert.match(viewer, /latestPrepareCallback\?\.invoke\(uri\)/);
   assert.match(main, /onPrepareSettledUri = \{ uri -> prepareViewerReturn\(uri\) \}/);
   assert.match(main, /if \(!returnCommitted\) return@LaunchedEffect/);
-  assert.match(main, /if \(currentUri != null && returnCommitted && preparation != null\)/);
+  assert.match(main, /if \(currentUri != null && returnCommitted\)/);
   assert.match(main, /existing\.uri == uri &&\s*viewerReturnMatchesCurrentRoute/);
 });
 
@@ -114,4 +114,15 @@ test("a fresh single pointer can interrupt pinch return without starting a compe
   assert.match(viewer, /var pinchOwned = regrabPinch/);
   assert.match(viewer, /var inheritedPinchPose = regrabPinch/);
   assert.match(viewer, /if \(pinchExitPose\.value != ViewerPinchExitPose\(\)\) \{\s*cancelViewerDrag\(\)\s*break/);
+});
+
+
+test("non-grid return fades without a stale tile, freezes input, and cuts on revoked access", () => {
+  assert.match(main, /if \(readGalleryMediaGrant\(context\) != grants \|\|\s*vm\.publishedInventory\.value\.epoch != viewerAccessEpoch\) \{\s*closeViewer\(\)/);
+  assert.match(main, /returnPreparation = null\s+measuredReturnOrigin = null\s+returnCommitted = true\s+viewerExitShared = true/);
+  assert.match(main, /exitWithoutUnderlay = returnCommitted && preparation == null/);
+  assert.match(main, /if \(currentUri != null && returnCommitted\) \{\s*\/\/ Freeze further viewer interaction/);
+  assert.match(motion, /if \(exiting && exitWithoutUnderlay\) drawRect\(Color\.Black\)/);
+  assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+  assert.match(motion, /if \(!exitDisabled\) \{\s*progress\.animateTo\(0f,/);
 });

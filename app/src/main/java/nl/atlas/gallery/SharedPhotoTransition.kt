@@ -132,6 +132,7 @@ internal fun SharedPhotoMotionLayer(
     modifier: Modifier = Modifier,
     returnOrigin: SharedPhotoOrigin? = origin,
     allowUnderlay: Boolean = false,
+    exitWithoutUnderlay: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -157,7 +158,8 @@ internal fun SharedPhotoMotionLayer(
     val movingOrigin = if (exiting) returnOrigin else origin
     val moving = if (exiting) !exitDisabled else animated
     Box(modifier.fillMaxSize().clipToBounds().drawBehind {
-        if (exiting) drawRect(Color.Black.copy(alpha = progress.value))
+        if (exiting && exitWithoutUnderlay) drawRect(Color.Black)
+        else if (exiting) drawRect(Color.Black.copy(alpha = progress.value))
         else if (!allowUnderlay || progress.value < 1f) drawRect(Color.Black)
     }
         .onGloballyPositioned { coords ->
