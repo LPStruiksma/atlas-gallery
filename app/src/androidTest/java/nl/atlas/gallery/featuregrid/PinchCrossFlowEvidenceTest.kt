@@ -475,6 +475,29 @@ class PinchCrossFlowEvidenceTest {
         assertAnchoredAndStill(tag, focusRoot, "reduced-motion commit 4->7")
     }
 
+    @Test fun pinchWorkGateRejectsMissingAndOverBudgetLookupSamples() {
+        fun sample(wall: Long, cpu: Long?) = PinchWorkSample(wall * 1_000_000, cpu?.times(1_000_000))
+        assertTrue(pinchWorkPasses("bitmaps", listOf(sample(31, 4), sample(2, 1), sample(10, 10))))
+        assertTrue(!pinchWorkPasses("bitmaps", emptyList()))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, null))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, 0))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(5, -1))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(0, 1))))
+        assertTrue(!pinchWorkPasses("bitmaps", listOf(sample(11, 11), sample(2, 1))))
+        assertTrue(!pinchWorkPasses("bitmaps", List(10) { sample(2, 1) } + sample(11, 11)))
+    }
+
+    @Test fun pinchWorkGateUsesMedianOnlyBelowTenSamples() {
+        fun wall(ms: Long) = PinchWorkSample(ms * 1_000_000, null)
+        assertTrue(pinchWorkPasses("draw", listOf(wall(1), wall(2), wall(18))))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(17), wall(18), wall(19))))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(16), wall(18))))
+        assertTrue(pinchWorkPasses("pose", List(9) { wall(16) } + wall(18)))
+        assertTrue(!pinchWorkPasses("geometry", List(8) { wall(16) } + List(2) { wall(18) }))
+        assertTrue(!pinchWorkPasses("pose", emptyList()))
+        assertTrue(!pinchWorkPasses("draw", listOf(wall(-1), wall(2), wall(3))))
+    }
+
     /**
      * Brief state "huge library": 150,000 rows (64 shared synthetic images),
      * pinch 4 → 7 → 4 with FrameMetrics recorded. Reported on logcat
