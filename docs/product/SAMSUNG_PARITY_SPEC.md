@@ -104,3 +104,5 @@ FLOW-3 checkpoint A (#593): prepare the settled item's authorized grid and seek 
 FLOW-3 C1 extends the existing light/dark S24+ synthetic journey with mixed-aspect fixtures, held/reversed/committed drag and measured Back after paging. Assertions and capture targets are not rendered proof; hosted execution and inspection, pinch/ratio/offscreen/fallback cases and paired timing remain owed.
 
 FLOW-3 C2 adds below-fit two-pointer held/reversed/committed return capture targets in the same light/dark journey. The reversal must keep the current photo; commit must start a measured overlay and return to the original tile. Actual pinch scale, pointer ownership and visual continuity still require hosted capture inspection.
+
+FLOW-3 C3 adds a dedicated light/dark dated-catalogue offscreen case: prove the synthetic target is absent initially, choose its filmstrip position, capture measured Back midpoint and assert that exact target tile is displayed after closing. Hosted runtime inspection remains pending; no missing-target fade or timing result is claimed.

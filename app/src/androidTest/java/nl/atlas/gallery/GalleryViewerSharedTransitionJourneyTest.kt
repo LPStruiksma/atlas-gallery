@@ -1,10 +1,14 @@
 package nl.atlas.gallery
 
+import android.content.Context
 import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -23,7 +27,7 @@ import org.junit.runners.model.Statement
 
 /**
  * #23: the real MainActivity and its dated Photos grid, not a mock navigator.
- * Six invented MediaStore PNGs; capture both themes at 1080x2340.
+ * Invented MediaStore PNGs; capture both themes at 1080x2340.
  */
 @RunWith(AndroidJUnit4::class)
 class SharedPhotoLightJourneyTest : SharedPhotoJourneyTest(dark = false)
@@ -33,8 +37,35 @@ class SharedPhotoDarkJourneyTest : SharedPhotoJourneyTest(dark = true)
 
 abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private val compose = createAndroidComposeRule<MainActivity>()
-    private val fixtures = SyntheticHeaderFixtures(sizes = listOf(
-        240 to 160, 160 to 240, 180 to 180, 320 to 100, 100 to 320, 240 to 180))
+    private val mixedSizes = listOf(
+        240 to 160, 160 to 240, 180 to 180, 320 to 100, 100 to 320, 240 to 180)
+    // Only the offscreen case needs a large dated catalogue. Restore the two
+    // sort preferences after its disposable activity and fixtures are gone.
+    private val fixtures = TestRule { base, description ->
+        if (description.methodName != "offscreenSettledPhotoReturnsToItsOwnTile") {
+            SyntheticHeaderFixtures(sizes = mixedSizes).apply(base, description)
+        } else {
+            object : Statement() {
+                override fun evaluate() {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
+                    val prefs = context.getSharedPreferences("atlas_media_sort", Context.MODE_PRIVATE)
+                    val key = prefs.getString("pictures.key", null)
+                    val direction = prefs.getString("pictures.direction", null)
+                    try {
+                        check(prefs.edit().putString("pictures.key", "DATE_CREATED")
+                            .putString("pictures.direction", "DESCENDING").commit())
+                        SyntheticHeaderFixtures(
+                            sizes = List(OFFSCREEN_COUNT) { mixedSizes[it % mixedSizes.size] },
+                            folderOf = { OFFSCREEN_FOLDER }
+                        ).apply(base, description).evaluate()
+                    } finally {
+                        check(prefs.edit().putString("pictures.key", key)
+                            .putString("pictures.direction", direction).commit())
+                    }
+                }
+            }
+        }
+    }
     private val mode = if (dark) "dark" else "light"
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
@@ -259,6 +290,54 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         saveUiEvidence("flow3-pinch-returned-$mode.png")
     }
 
+    // Resolve only the IDs of this journey's synthetic fixture rows. The
+    // final grid assertion must name the same photo chosen in the filmstrip.
+    private fun offscreenTileTag(step: Int): String {
+        val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
+        val id = requireNotNull(resolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Images.Media._ID),
+            "${MediaStore.Images.Media.RELATIVE_PATH} = ? AND ${MediaStore.Images.Media.DISPLAY_NAME} = ?",
+            arrayOf("Pictures/$OFFSCREEN_FOLDER/", "IMG_HEADER_FIXTURE_$step.png"),
+            null
+        )).use { cursor ->
+            check(cursor.moveToFirst()) { "Missing synthetic offscreen fixture $step" }
+            val result = cursor.getLong(0)
+            check(!cursor.moveToNext()) { "Duplicate synthetic offscreen fixture $step" }
+            result
+        }
+        return "atlas-timeline-media-$id"
+    }
+
+    @Test fun offscreenSettledPhotoReturnsToItsOwnTile() {
+        val openingTag = offscreenTileTag(1)
+        val targetTag = offscreenTileTag(OFFSCREEN_COUNT)
+        compose.waitForNode(hasTestTag(openingTag))
+        compose.onNodeWithTag(openingTag, useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag(targetTag, useUnmergedTree = true).assertDoesNotExist()
+        saveUiEvidence("flow3-offscreen-before-$mode.png")
+
+        compose.onNodeWithTag(openingTag, useUnmergedTree = true).performClick()
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        assertTrue("Expected isolated dated fixture order", counter() == "1 of $OFFSCREEN_COUNT")
+        compose.onNodeWithTag("atlas-filmstrip").performScrollToIndex(OFFSCREEN_COUNT - 1)
+        compose.waitForNode(hasTestTag("atlas-thumbnail-${OFFSCREEN_COUNT - 1}"))
+        compose.onNodeWithTag("atlas-thumbnail-${OFFSCREEN_COUNT - 1}").performClick()
+        compose.waitUntil(10_000L) { counter() == "$OFFSCREEN_COUNT of $OFFSCREEN_COUNT" }
+        compose.mainClock.advanceTimeBy(600L)
+
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("atlas-back").performClick()
+            captureReturnMidpoint("flow3-offscreen-back-mid-$mode.png")
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.onNodeWithTag(targetTag, useUnmergedTree = true).assertIsDisplayed()
+        saveUiEvidence("flow3-offscreen-returned-$mode.png")
+    }
+
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {
         val tileTag = firstTile()
         val before = shell23("settings get global animator_duration_scale").trim()
@@ -278,6 +357,11 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
                 shell23("settings delete global animator_duration_scale")
             else shell23("settings put global animator_duration_scale $before")
         }
+    }
+
+    private companion object {
+        const val OFFSCREEN_COUNT = 40
+        const val OFFSCREEN_FOLDER = "ATLAS-Flow3-Offscreen"
     }
 
     private fun counter() = compose.onNodeWithTag("atlas-photo-counter")

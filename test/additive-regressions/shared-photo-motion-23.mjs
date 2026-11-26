@@ -160,3 +160,12 @@ test("FLOW-3 journey targets below-fit pinch reversal and committed return in bo
   assert.match(journey, /fun belowFitPinchReversesThenCommitsToMeasuredTile\(/);
   assert.match(journey, /up\(0\); up\(1\)/);
 });
+
+test("FLOW-3 offscreen journey proves the actual settled tile identity, not just viewer closure", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(journey, /fun offscreenSettledPhotoReturnsToItsOwnTile\(/);
+  assert.match(journey, /onNodeWithTag\(targetTag, useUnmergedTree = true\)\.assertDoesNotExist\(\)/);
+  assert.match(journey, /performScrollToIndex\(OFFSCREEN_COUNT - 1\)/);
+  assert.match(journey, /onNodeWithTag\(targetTag, useUnmergedTree = true\)\.assertIsDisplayed\(\)/);
+  for (const frame of ["flow3-offscreen-before", "flow3-offscreen-back-mid", "flow3-offscreen-returned"]) assert.ok(journey.includes(frame), frame);
+});

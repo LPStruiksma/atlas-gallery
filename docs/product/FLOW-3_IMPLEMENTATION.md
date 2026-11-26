@@ -5,3 +5,5 @@ Issue #593 and its approved design preflight (https://github.com/LPStruiksma/atl
 Checkpoint C1: `SharedPhotoLightJourneyTest` and `SharedPhotoDarkJourneyTest` now target mixed-aspect synthetic photos and capture held, reversed, committed and returned down-drag frames and a paged Back midpoint. No runtime result yet. Remaining: actual capture inspection, pinch, original-ratio and offscreen/missing-target journeys, reduced-motion validation, parity comparison and before/after first-frame/full-decode/frame-p90 timing.
 
 Checkpoint C2: the same light/dark journey targets below-fit two-pointer pinch, reversal and measured committed return. No runtime result yet; actual pinch geometry and cancellation/commit behavior must be inspected on the emulator.
+
+Checkpoint C3: the offscreen dated-grid case uses 40 synthetic fixtures only for this test, forces/restores date sort, checks the exact synthetic MediaStore tile identity before opening and after a far-item measured Back. The before/midpoint/returned captures are targets, not actual evidence. Missing-target runtime fade, original-ratio route, quick close, paired parity and timing still owed.
