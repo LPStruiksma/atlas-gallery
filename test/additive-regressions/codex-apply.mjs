@@ -230,3 +230,162 @@ test('reject undeclared file headers, extra hunk data and truncated hunks', () =
     assert.equal(validateCodexPatch(bad,head).ok,false,JSON.stringify(bad));
   }
 });
+
+// Design-evidence images (#1931). Fixtures are tiny synthetic files turned into real
+// `git format-patch --binary` output, so the parser sees what git emits.
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { verifyEvidenceManifest, EVIDENCE_MAX_FILE_BYTES } from '../../scripts/ci/codex-apply.mjs';
+
+const PNG_MAGIC = Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
+const png = (fill=7,len=64) => Buffer.concat([PNG_MAGIC,Buffer.from([0]),Buffer.alloc(len,fill)]); // the NUL makes git treat it as binary, as in real images
+const webp = (len=64) => Buffer.concat([Buffer.from('RIFF'),Buffer.from([len,0,0,0]),Buffer.from('WEBP'),Buffer.alloc(len,3)]);
+const sha = (b) => createHash('sha256').update(b).digest('hex');
+const git = (cwd,...args) => {
+  const r=spawnSync('git',['-C',cwd,'-c','user.name=t','-c','user.email=t@example.invalid','-c','commit.gpgsign=false',...args],{encoding:'buffer',maxBuffer:64*1024*1024});
+  if(r.status!==0) throw Error('git '+args[0]+': '+r.stderr);
+  return r.stdout;
+};
+const manifestFor = (entries) => JSON.stringify({files:Object.fromEntries(entries.map(([n,b])=>[n,{sha256:sha(b)}]))},null,2)+'\n';
+// base: files committed first; change: files written for the commit that becomes the patch.
+function makePatch({base={},change,remove=[],rename}) {
+  const dir=mkdtempSync(join(tmpdir(),'codex-evidence-'));
+  try {
+    git(dir,'init','-q');
+    writeFileSync(join(dir,'seed.txt'),'seed\n');
+    for (const [n,c] of Object.entries(base)) { mkdirSync(dirname(join(dir,n)),{recursive:true}); writeFileSync(join(dir,n),c); }
+    git(dir,'add','-A'); git(dir,'commit','-q','-m','base');
+    const parent=git(dir,'rev-parse','HEAD').toString().trim();
+    for (const [n,c] of Object.entries(change||{})) { mkdirSync(dirname(join(dir,n)),{recursive:true}); writeFileSync(join(dir,n),c); }
+    for (const n of remove) rmSync(join(dir,n));
+    if (rename) git(dir,'mv',rename[0],rename[1]);
+    git(dir,'add','-A'); git(dir,'commit','-q','-m','add canary');
+    const raw=git(dir,'format-patch','-1','--stdout','--binary').toString('latin1');
+    const lines=raw.split('\n');
+    lines.splice(lines.findIndex(l=>l.startsWith('Subject: '))+1,0,'Parent: '+parent);
+    return {patch:lines.join('\n').replace(/\n$/,''),parent,dir};
+  } catch(e) { rmSync(dir,{recursive:true,force:true}); throw e; }
+}
+const EV=['docs/design/'];
+const check=(m,opts={evidencePrefixes:EV}) => validateCodexPatch(m.patch,m.parent,opts);
+
+test('accept a PNG and a WebP with matching manifest SHA, and git am applies it identically', () => {
+  const a=png(1), b=webp();
+  const m=makePatch({change:{
+    'docs/design/saved-1.png':a,'docs/design/saved-2.webp':b,
+    'docs/design/manifest.json':manifestFor([['saved-1.png',a],['saved-2.webp',b]])}});
+  try {
+    const found=check(m);
+    assert.equal(found.ok,true,JSON.stringify(found));
+    const bins=found.files.filter(f=>f.binary);
+    assert.deepEqual(bins.map(f=>[f.path,f.kind,f.sha256]),[['docs/design/saved-1.png','add',sha(a)],['docs/design/saved-2.webp','add',sha(b)]]);
+    assert.equal(inspectCodexReply('```diff\n'+m.patch+'\n```',m.parent,{evidencePrefixes:EV}).ok,true);
+    // Real git applies the exact validated text to the parent and yields the validated bytes.
+    git(m.dir,'reset','-q','--hard','HEAD^');
+    writeFileSync(join(m.dir,'p.patch'),m.patch+'\n','latin1');
+    git(m.dir,'am','--no-3way',join(m.dir,'p.patch'));
+    assert.equal(sha(git(m.dir,'cat-file','blob','HEAD:docs/design/saved-1.png')),sha(a));
+  } finally { rmSync(m.dir,{recursive:true,force:true}); }
+});
+
+test('accept editing an existing PNG when the edited manifest is in the patch', () => {
+  const a=png(1), a2=png(2);
+  const m=makePatch({base:{'docs/design/x.png':a,'docs/design/manifest.json':manifestFor([['x.png',a]])},
+    change:{'docs/design/x.png':a2,'docs/design/manifest.json':manifestFor([['x.png',a2]])}});
+  try {
+    const found=check(m);
+    assert.equal(found.ok,true,JSON.stringify(found));
+    assert.equal(found.files.find(f=>f.binary).kind,'modify');
+  } finally { rmSync(m.dir,{recursive:true,force:true}); }
+});
+
+test('binary data is refused by default and outside the allowlisted prefix', () => {
+  const a=png();
+  const m=makePatch({change:{'docs/design/s.png':a,'docs/design/manifest.json':manifestFor([['s.png',a]])}});
+  const o=makePatch({change:{'docs/other/s.png':a,'docs/other/manifest.json':manifestFor([['s.png',a]])}});
+  try {
+    assert.equal(check(m,{}).ok,false,'no prefixes configured');
+    assert.equal(check(m,{evidencePrefixes:[]}).ok,false);
+    assert.equal(check(m,{evidencePrefixes:['docs/design/**']}).ok,true,'/** form is accepted');
+    assert.equal(check(o).ok,false,'path outside prefix');
+    assert.equal(check(m,{evidencePrefixes:['docs/**','*']}).ok,true,'broad valid prefix still works');
+    assert.equal(check(m,{evidencePrefixes:['*','docs/des*']}).ok,false,'globs are dropped');
+  } finally { rmSync(m.dir,{recursive:true,force:true}); rmSync(o.dir,{recursive:true,force:true}); }
+});
+
+test('refuse wrong extension, bad magic, and files over the size cap', () => {
+  const a=png();
+  const cases={
+    gif:makePatch({change:{'docs/design/s.gif':a,'docs/design/manifest.json':manifestFor([['s.gif',a]])}}),
+    jpg:makePatch({change:{'docs/design/s.jpg':a,'docs/design/manifest.json':manifestFor([['s.jpg',a]])}}),
+    upper:makePatch({change:{'docs/design/s.PNG':a,'docs/design/manifest.json':manifestFor([['s.PNG',a]])}}),
+    badMagic:(()=>{const b=Buffer.alloc(80,0);return makePatch({change:{'docs/design/s.png':b,'docs/design/manifest.json':manifestFor([['s.png',b]])}});})(),
+    pngAsWebp:makePatch({change:{'docs/design/s.webp':a,'docs/design/manifest.json':manifestFor([['s.webp',a]])}}),
+    // Compressible, so the base85 text stays small while the declared size exceeds the cap.
+    tooBig:(()=>{const b=Buffer.concat([PNG_MAGIC,Buffer.alloc(EVIDENCE_MAX_FILE_BYTES,0)]);return makePatch({change:{'docs/design/s.png':b,'docs/design/manifest.json':manifestFor([['s.png',b]])}});})(),
+  };
+  try {
+    for (const [name,m] of Object.entries(cases)) assert.equal(check(m).ok,false,name);
+    const just=Buffer.concat([PNG_MAGIC,Buffer.alloc(EVIDENCE_MAX_FILE_BYTES-8,0)]);
+    const okM=makePatch({change:{'docs/design/s.png':just,'docs/design/manifest.json':manifestFor([['s.png',just]])}});
+    try { assert.equal(check(okM).ok,true,'exactly at the cap is accepted'); } finally { rmSync(okM.dir,{recursive:true,force:true}); }
+  } finally { for (const m of Object.values(cases)) rmSync(m.dir,{recursive:true,force:true}); }
+});
+
+test('refuse a missing manifest, a missing entry and a mismatched SHA-256', () => {
+  const a=png(1), other=png(2);
+  const cases={
+    none:makePatch({change:{'docs/design/s.png':a}}),
+    wrongDir:makePatch({change:{'docs/design/s.png':a,'docs/manifest.json':manifestFor([['s.png',a]])}}),
+    noEntry:makePatch({change:{'docs/design/s.png':a,'docs/design/manifest.json':manifestFor([['t.png',a]])}}),
+    mismatch:makePatch({change:{'docs/design/s.png':a,'docs/design/manifest.json':manifestFor([['s.png',other]])}}),
+    badJson:makePatch({change:{'docs/design/s.png':a,'docs/design/manifest.json':'{nope'}}),
+  };
+  try { for (const [name,m] of Object.entries(cases)) assert.equal(check(m).ok,false,name); }
+  finally { for (const m of Object.values(cases)) rmSync(m.dir,{recursive:true,force:true}); }
+  // An edited manifest cannot be rebuilt from the patch, so the runner re-checks the committed blob.
+  assert.equal(verifyEvidenceManifest(manifestFor([['s.png',a]]),[{name:'s.png',sha256:sha(a)}]),null);
+  assert.notEqual(verifyEvidenceManifest(manifestFor([['s.png',other]]),[{name:'s.png',sha256:sha(a)}]),null);
+  assert.notEqual(verifyEvidenceManifest('{"files":[]}',[{name:'s.png',sha256:sha(a)}]),null);
+  assert.notEqual(verifyEvidenceManifest('{"files":{"s.png":{"sha256":"nothex"}}}',[{name:'s.png',sha256:sha(a)}]),null);
+});
+
+test('binary deletes, renames, and a mixed patch with another forbidden operation stay refused', () => {
+  const a=png(1);
+  const base={'docs/design/s.png':a,'docs/design/manifest.json':manifestFor([['s.png',a]])};
+  const del=makePatch({base,remove:['docs/design/s.png']});
+  const ren=makePatch({base,rename:['docs/design/s.png','docs/design/t.png']});
+  const good2=makePatch({change:{'docs/design/n.png':a,'docs/design/manifest.json':manifestFor([['n.png',a]])}});
+  try {
+    assert.equal(check(del).ok,false,'delete');
+    assert.equal(check(ren).ok,false,'rename');
+    // Splice a forbidden mode-change section into an otherwise valid image patch.
+    const mixed=good2.patch.replace(/\n-- \n/,'\ndiff --git a/docs/x.md b/docs/x.md\nold mode 100644\nnew mode 100755\n-- \n');
+    assert.notEqual(mixed,good2.patch);
+    assert.equal(check({patch:mixed,parent:good2.parent}).ok,false,'mixed with mode change');
+    // A symlink-mode or 755 image is refused.
+    assert.equal(check({patch:good2.patch.replace('new file mode 100644\nindex 0000000..','new file mode 100755\nindex 0000000..'),parent:good2.parent}).ok,false,'mode 755 binary');
+    // Tampered payload: flip a data character so decoding or the declared length fails.
+    const lines=good2.patch.split('\n'); const at=lines.findIndex(l=>l==='GIT binary patch');
+    lines[at+2]=lines[at+2].slice(0,-1)+(lines[at+2].endsWith('0')?'1':'0');
+    assert.equal(check({patch:lines.join('\n'),parent:good2.parent}).ok,false,'corrupt payload');
+    assert.equal(check({patch:good2.patch.replace('GIT binary patch\nliteral','GIT binary patch\ndelta'),parent:good2.parent}).ok,false,'forward delta');
+    assert.equal(check({patch:good2.patch.replace(/diff --git a\/docs\/design\/n.png b\/docs\/design\/n.png\n/,'diff --git a/docs/design/n.png b/docs/design/n.png\nBinary files /dev/null and b/docs/design/n.png differ\n'),parent:good2.parent}).ok,false,'Binary files line');
+  } finally { for (const m of [del,ren,good2]) rmSync(m.dir,{recursive:true,force:true}); }
+});
+
+test('accept an incompressible multi-line PNG payload and refuse it when one byte of the manifest SHA differs', () => {
+  
+  const a=Buffer.concat([PNG_MAGIC,Buffer.from([0]),randomBytes(3000)]);
+  const m=makePatch({change:{'docs/design/r.png':a,'docs/design/manifest.json':manifestFor([['r.png',a]])}});
+  const bad=makePatch({change:{'docs/design/r.png':a,'docs/design/manifest.json':manifestFor([['r.png',a]]).replace(/[a-f0-9]"/,x=>(x[0]==='0'?'1':'0')+'"')}});
+  try {
+    const found=check(m);
+    assert.equal(found.ok,true,JSON.stringify(found));
+    assert.equal(found.files.find(f=>f.binary).sha256,sha(a));
+    assert.equal(check(bad).ok,false);
+  } finally { rmSync(m.dir,{recursive:true,force:true}); rmSync(bad.dir,{recursive:true,force:true}); }
+});
