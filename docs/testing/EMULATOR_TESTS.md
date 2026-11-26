@@ -125,6 +125,8 @@ One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a t
 
 Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
 
+For cross-branch failure triage, run `python3 scripts/emulator_flake_census.py` (last three UTC days), or pass `SINCE_ISO` and optional `--until` to reproduce a fixed window. `--json` emits machine-readable counts and `--test Class.method` adds matching run/job links. Counts are per distinct shard job from the latest run attempt; missing logs are reported separately and cause a nonzero exit, not an infrastructure-failure classification. The script uses public GitHub REST endpoints without credentials; anonymous API limits or unavailable logs can prevent a complete census. Run the offline regression with `python3 -m unittest discover -s scripts -p 'test_emulator_flake_census.py'`.
+
 ## When an emulator test fails
 
 1. Read the failing step's own message first: `awaitThat`, and `tap` print what was on screen and the device state.
