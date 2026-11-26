@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import nl.atlas.gallery.featuregrid.ORIGINAL_PROPORTIONS_ACTION
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -380,6 +382,56 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-back").performClick()
         awaitClosed()
         compose.onNodeWithTag(secondTag, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test fun originalRatioPhotoTravelsBackToSameTile() {
+        firstTile()
+        val grid = compose.onAllNodes(hasTestTag("atlas-timeline-grid") or hasTestTag("atlas-feature-grid"))
+            .fetchSemanticsNodes()
+        // Use the existing accessible layout action, not an unrelated pinch threshold.
+        val action = grid.flatMap { it.config.getOrNull(SemanticsActions.CustomActions).orEmpty() }
+            .first { it.label == ORIGINAL_PROPORTIONS_ACTION }
+        compose.runOnIdle { check(action.action()) }
+        compose.waitForNode(hasTestTag("atlas-ratio-gallery"))
+        val ratioTile = SemanticsMatcher("non-square synthetic ratio photo") { node ->
+            val tag = node.config.getOrNull(SemanticsProperties.TestTag).orEmpty()
+            tag.startsWith("atlas-ratio-media-") && tag.endsWith("-photo") &&
+                node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+                    .any { it.startsWith("IMG_HEADER_FIXTURE_") } &&
+                node.boundsInRoot.width > 0f && node.boundsInRoot.height > 0f &&
+                kotlin.math.abs(node.boundsInRoot.width / node.boundsInRoot.height - 1f) > .15f
+        }
+        compose.waitForNode(ratioTile)
+        compose.waitForIdle()
+        val tileTag = compose.onAllNodes(ratioTile).fetchSemanticsNodes()
+            .first().config[SemanticsProperties.TestTag]
+        compose.onNodeWithTag(tileTag).assertIsDisplayed()
+        saveUiEvidence("flow3-ratio-before-$mode.png")
+
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag(tileTag).performClick()
+            compose.mainClock.advanceTimeBy(80L)
+            compose.waitForIdle()
+            compose.onNodeWithTag("atlas-shared-photo-enter").assertExists()
+            saveUiEvidence("flow3-ratio-enter-$mode.png")
+            compose.mainClock.advanceTimeBy(320L)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        compose.mainClock.advanceTimeBy(600L)
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("atlas-back").performClick()
+            captureReturnMidpoint("flow3-ratio-back-mid-$mode.png")
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.onNodeWithTag("atlas-ratio-gallery").assertIsDisplayed()
+        compose.onNodeWithTag(tileTag).assertIsDisplayed()
+        saveUiEvidence("flow3-ratio-returned-$mode.png")
     }
 
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {

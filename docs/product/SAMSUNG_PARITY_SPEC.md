@@ -108,3 +108,5 @@ FLOW-3 C2 adds below-fit two-pointer held/reversed/committed return capture targ
 FLOW-3 C3 adds a dedicated light/dark dated-catalogue offscreen case: prove the synthetic target is absent initially, choose its filmstrip position, capture measured Back midpoint and assert that exact target tile is displayed after closing. Hosted runtime inspection remains pending; no missing-target fade or timing result is claimed.
 
 FLOW-3 C4 targets Back during an active entry animation, verifies no coexisting entry/exit semantics, closes to the opening tile, then reopens and returns to a different visible synthetic tile. Paired captures are targets only; actual pixel continuity and quick-close latency remain unmeasured.
+
+FLOW-3 C5 uses the measured click-origin handoff on original-proportion rows and adds light/dark non-square synthetic photo entry, measured Back midpoint and same-ratio-tile return capture targets. No runtime crop or timing result is claimed.

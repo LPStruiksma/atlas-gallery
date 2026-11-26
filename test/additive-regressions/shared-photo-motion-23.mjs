@@ -178,3 +178,12 @@ test("FLOW-3 quick Back during entry clears the old overlay before a different p
   assert.match(journey, /onNodeWithTag\(secondTag, useUnmergedTree = true\)\.performClick\(\)/);
   for (const frame of ["flow3-quick-entry", "flow3-quick-returned", "flow3-quick-reopened"]) assert.ok(journey.includes(frame), frame);
 });
+
+test("FLOW-3 ratio rows offer measured entry only on open and return to the same ratio tile", () => {
+  const ratio = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/featuregrid/AtlasRatioGallery.kt", import.meta.url), "utf8");
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  assert.match(ratio, /onGloballyPositioned \{ sourceBounds\[0\] = it\.boundsInWindow\(\) \}/);
+  assert.match(ratio, /if \(selectionCurrent != null && toggle != null\) toggle\(media\)\s*else \{\s*SharedPhotoOrigins\.offer\(media, catalogueEpoch, sourceBounds\[0\]\)\s*currentOpen\(media\)/);
+  assert.match(journey, /fun originalRatioPhotoTravelsBackToSameTile\(/);
+  for (const frame of ["flow3-ratio-before", "flow3-ratio-enter", "flow3-ratio-back-mid", "flow3-ratio-returned"]) assert.ok(journey.includes(frame), frame);
+});
