@@ -1,6 +1,6 @@
-# EDIT-11a: checkpoint provenance (partial inventory)
+# EDIT-11a0: checkpoint provenance scaffold (partial inventory)
 
-Issue [#876](https://github.com/LPStruiksma/atlas-gallery/issues/876). **No candidate is cleared or measured.** The source commit pins are from the [prior evidence receipt](https://github.com/LPStruiksma/atlas-gallery/issues/876#issuecomment-7204156576); they are not checkpoint identities or byte digests. The licence notes are starting points from the scaffold catalogue, not independently verified legal conclusions. This turn re-read the pinned Depth Anything V2, SAM 2, CodeFormer and MobileSAM READMEs.
+Scaffold acceptance: [#1071](https://github.com/LPStruiksma/atlas-gallery/issues/1071). Follow-on acquisition: issue [#876](https://github.com/LPStruiksma/atlas-gallery/issues/876). **No candidate is cleared or measured.** The source commit pins are from the [prior evidence receipt](https://github.com/LPStruiksma/atlas-gallery/issues/876#issuecomment-7204156576); they are not checkpoint identities or byte digests. The licence notes are starting points from the scaffold catalogue, not independently verified legal conclusions. This turn re-read the pinned Depth Anything V2, SAM 2, CodeFormer and MobileSAM READMEs.
 
 | Candidate | Current triage |
 | --- | --- |
@@ -30,7 +30,7 @@ The machine-readable [manifest](../../tools/editor_models/provenance/manifest.js
 ```sh
 python3 tools/editor_models/provenance/validate.py
 python3 tools/editor_models/provenance/validate.py --require-complete
-python3 -m unittest discover -s tools/editor_models/provenance -p 'test_*.py' -v
+python3 -m unittest discover -s tools/editor_models/tests -p 'test_*.py' -v
 ```
 
-The first command validates structure; the second intentionally fails for missing candidates. Structural validation cannot prove legal clearance, source authenticity, immutable checkpoint identity or byte acquisition; independent Review must inspect evidence. The existing scaffold CI does not establish that these new commands ran. Do not release #877/#879 or update the model licence register on the strength of this partial inventory.
+The first command validates structure; the second intentionally fails for missing candidates. Structural validation cannot prove legal clearance, source authenticity, immutable checkpoint identity or byte acquisition; independent Review must inspect evidence. The existing Editor model Python scaffold CI discovers the provenance tests under `tools/editor_models/tests`. These run both validator CLI modes against the checked-in manifest, expect exit 0 for structure and exit 1 for unresolved completion, and exercise synthetic recorded/blocked and malformed evidence without network access. No real weights are needed for #1071. A blocked row requires checkpoint-specific evidence even in structural mode; missing and blocked rows cannot claim retrieved bytes. Recorded rows require separate artifact identity, a direct checkpoint URL, licence/training evidence, UTC timestamp, positive byte size and non-placeholder SHA-256. Use public HTTPS URLs without userinfo or query strings (including signed URLs); the validator checks format, not truth. #876 remains the gate for actual grants, original-host acquisition and actual-byte hashing. Do not release #877/#879 or update the model licence register on the strength of this partial inventory.
