@@ -167,6 +167,7 @@ fun GalleryViewer(
     motionProbe: ViewerFilmstripMotionProbe? = null,
     onPrepareSettledUri: ((String) -> Unit)? = null,
     returnRevealUri: String? = null,
+    onCommitGestureFrame: ((String, Rect?) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -177,7 +178,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onPrepareSettledUri, returnRevealUri, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onPrepareSettledUri, returnRevealUri, onCommitGestureFrame, onBack)
     }
 }
 
@@ -201,6 +202,7 @@ private fun GalleryViewerSnapshot(
     motionProbe: ViewerFilmstripMotionProbe?,
     onPrepareSettledUri: ((String) -> Unit)?,
     returnRevealUri: String?,
+    onCommitGestureFrame: ((String, Rect?) -> Unit)?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -616,6 +618,19 @@ private fun GalleryViewerSnapshot(
     // touch cancels it where it is (interruptible), so the motion never
     // restarts from a fixed point or swaps surfaces.
     val viewerHeightPx = remember { mutableIntStateOf(0) }
+    val viewerWidthPx = remember { mutableIntStateOf(0) }
+    val focusedReturnSize = remember(pagerState.currentPage, editorReturn.revision) {
+        mutableStateOf(IntSize.Zero)
+    }
+    val latestCommitGestureFrame by rememberUpdatedState(onCommitGestureFrame)
+    fun recordGestureFrame(pose: ViewerPinchExitPose) {
+        val page = pagerState.settledPage.coerceIn(items.indices)
+        val uri = items[page].uri
+        val size = if (page == pagerState.currentPage && !pagerState.isScrollInProgress &&
+            !items[page].isVideo) focusedReturnSize.value else IntSize.Zero
+        latestCommitGestureFrame?.invoke(uri, sharedPhotoGestureFrame(
+            viewerWidthPx.intValue, viewerHeightPx.intValue, size.width, size.height, pose))
+    }
     fun detailsPanelPx(): Float = viewerDetailsPanelPx(viewerHeightPx.intValue.toFloat())
     val detailsFlingPx = with(density) { VIEWER_DETAILS_FLING_DP.dp.toPx() }
     val detailsAnimationsDisabled = LocalViewerAnimationsDisabled.current
@@ -684,6 +699,8 @@ private fun GalleryViewerSnapshot(
     fun finishViewerDrag(velocityY: Float, gateOpen: Boolean) {
         if (viewerDownDismissCommits(dragOffset.floatValue, velocityY, dragThresholdPx,
                 flingThresholdPx, latestZoom, gateOpen)) {
+            recordGestureFrame(viewerDownExitPose(dragOffset.floatValue,
+                viewerHeightPx.intValue.toFloat()))
             returnToGallery()
         } else {
             // Once owned by dismissal, reversing is cancellation, never Details.
@@ -712,7 +729,10 @@ private fun GalleryViewerSnapshot(
     }
     Box(Modifier.fillMaxSize()
         .drawBehind { drawRect(Color.Black.copy(alpha = exitBackdropAlpha())) }
-        .onSizeChanged { viewerHeightPx.intValue = it.height }
+        .onSizeChanged {
+            viewerHeightPx.intValue = it.height
+            viewerWidthPx.intValue = it.width
+        }
         .testTag("atlas-viewer")) {
         // The photo follows a down-drag and shrinks against a dimming black
         // backdrop. For an up-drag the image scales above the rising details cue.
@@ -930,7 +950,11 @@ private fun GalleryViewerSnapshot(
                             pose
                         } else null
                     },
-                    onPinchDismiss = { returnToGallery() },
+                    onPinchDismiss = {
+                        recordGestureFrame(pinchExitPose.value)
+                        returnToGallery()
+                    },
+                    focusedReturnSize = if (focused) focusedReturnSize else null,
                     focusedPinchExitPose = if (focused) pinchExitPose else null,
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
@@ -1634,6 +1658,7 @@ private fun PhotoPage(
     canPinchDismiss: () -> Boolean, onPinchDismiss: () -> Unit,
     takeDragExitPose: () -> ViewerPinchExitPose?,
     focusedPinchExitPose: MutableState<ViewerPinchExitPose>?,
+    focusedReturnSize: MutableState<IntSize>?,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
     openingPage: Boolean = false,
@@ -1686,6 +1711,8 @@ private fun PhotoPage(
         mutableStateOf(ViewerPinchExitPose())
     }
     var pinchPose by (focusedPinchExitPose ?: localPinchExitPose)
+    // Coil's decoded size reflects orientation; never infer it from raw metadata.
+    SideEffect { focusedReturnSize?.value = decodedSize }
     val pinchScope = rememberCoroutineScope()
     val pinchReturn = remember(media.uri, focused, imageRevision) {
         arrayOfNulls<kotlinx.coroutines.Job>(1)

@@ -118,6 +118,20 @@ internal fun sharedPhotoRect(from: Rect, to: Rect, progress: Float): Rect {
 }
 
 
+/** Local fitted-image rectangle at the instant a gesture commits. */
+internal fun sharedPhotoGestureFrame(viewportWidth: Int, viewportHeight: Int,
+    imageWidth: Int, imageHeight: Int, pose: ViewerPinchExitPose): Rect? {
+    if (viewportWidth <= 0 || viewportHeight <= 0 || imageWidth <= 0 || imageHeight <= 0 ||
+        !pose.scale.isFinite() || pose.scale <= 0f || pose.scale > 1f ||
+        !pose.x.isFinite() || !pose.y.isFinite()) return null
+    val fit = minOf(viewportWidth.toFloat() / imageWidth, viewportHeight.toFloat() / imageHeight)
+    val halfWidth = imageWidth * fit * pose.scale / 2f
+    val halfHeight = imageHeight * fit * pose.scale / 2f
+    val cx = viewportWidth / 2f + pose.x
+    val cy = viewportHeight / 2f + pose.y
+    return Rect(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
+}
+
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
  * overlay travels from the measured thumbnail to the full viewer, while the
@@ -133,6 +147,7 @@ internal fun SharedPhotoMotionLayer(
     returnOrigin: SharedPhotoOrigin? = origin,
     allowUnderlay: Boolean = false,
     exitWithoutUnderlay: Boolean = false,
+    gestureFrame: Rect? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -159,8 +174,8 @@ internal fun SharedPhotoMotionLayer(
     val moving = if (exiting) !exitDisabled else animated
     Box(modifier.fillMaxSize().clipToBounds().drawBehind {
         if (exiting && exitWithoutUnderlay) drawRect(Color.Black)
-        else if (exiting) drawRect(Color.Black.copy(alpha = progress.value))
-        else if (!allowUnderlay || progress.value < 1f) drawRect(Color.Black)
+        else if (exiting && !allowUnderlay) drawRect(Color.Black.copy(alpha = progress.value))
+        else if (!exiting && (!allowUnderlay || progress.value < 1f)) drawRect(Color.Black)
     }
         .onGloballyPositioned { coords ->
             val now = coords.boundsInWindow()
@@ -176,8 +191,10 @@ internal fun SharedPhotoMotionLayer(
         if (moving && movingOrigin != null && windowRect.width > 0f &&
             windowRect.height > 0f && (progress.value < 1f || exiting)
         ) {
-            val viewport = Rect(windowRect.left, windowRect.top,
-                windowRect.right, windowRect.bottom)
+            val viewport = if (exiting && gestureFrame != null) Rect(
+                windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
+                windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
+            else Rect(windowRect.left, windowRect.top, windowRect.right, windowRect.bottom)
             val frame = sharedPhotoRect(movingOrigin.bounds, viewport, progress.value)
             val density = LocalDensity.current
             Box(Modifier

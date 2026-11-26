@@ -452,6 +452,24 @@ class ViewerMotionMathTest {
         assertEquals(1f, viewerFreshPinchScale(fresh, Float.NaN), 0f)
     }
 
+    @Test fun committedGestureFrameUsesOrientedFitAndDrawnTransform() {
+        val landscape = sharedPhotoGestureFrame(1000, 2000, 2000, 1000,
+            ViewerPinchExitPose(.8f, 40f, 100f))!!
+        assertEquals(140f, landscape.left, .001f)
+        assertEquals(900f, landscape.top, .001f)
+        assertEquals(940f, landscape.right, .001f)
+        assertEquals(1300f, landscape.bottom, .001f)
+        val portrait = sharedPhotoGestureFrame(1000, 2000, 1000, 2000,
+            ViewerPinchExitPose(.8f, 0f, 200f))!!
+        assertEquals(100f, portrait.left, .001f)
+        assertEquals(400f, portrait.top, .001f)
+        assertEquals(900f, portrait.right, .001f)
+        assertEquals(2000f, portrait.bottom, .001f)
+        assertEquals(null, sharedPhotoGestureFrame(1000, 2000, 0, 0, ViewerPinchExitPose()))
+        assertEquals(null, sharedPhotoGestureFrame(1000, 2000, 2000, 1000,
+            ViewerPinchExitPose(Float.NaN)))
+    }
+
     @Test fun dismissalBackdropTracksScaleReversalAndHandoffOnlyForAuthorizedTarget() {
         val rest = ViewerPinchExitPose()
         val drag = viewerDownExitPose(400f, 1000f)

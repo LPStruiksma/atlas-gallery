@@ -63,7 +63,7 @@ test("below-fit pinch uses the focused photo transform loop and settled return",
   const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
   assert.match(viewer, /viewerMayOwnPinchExit\(pinchOwned, latestCanPinchDismiss\(\)/);
   assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),/);
-  assert.match(viewer, /onPinchDismiss = \{ returnToGallery\(\) \}/);
+  assert.match(viewer, /onPinchDismiss = \{\s*recordGestureFrame\(pinchExitPose\.value\)\s*returnToGallery\(\)/);
   assert.match(viewer, /scaleX = zoomPose\.scale \* pinchPose\.scale/);
 });
 
@@ -95,7 +95,7 @@ test("direct manipulation reveals only a measured settled return and fades chrom
   assert.match(viewer, /drawBehind \{ drawRect\(Color\.Black\.copy\(alpha = exitBackdropAlpha\(\)\)\) \}/);
   assert.equal((viewer.match(/graphicsLayer \{ alpha = exitBackdropAlpha\(\) \}/g) || []).length, 2);
   assert.match(viewer, /focusedPinchExitPose = if \(focused\) pinchExitPose else null/);
-  assert.match(motion, /else if \(!allowUnderlay \|\| progress\.value < 1f\) drawRect\(Color\.Black\)/);
+  assert.match(motion, /else if \(!exiting && \(!allowUnderlay \|\| progress\.value < 1f\)\) drawRect\(Color\.Black\)/);
 });
 
 test("a regrabbed pinch must earn fresh contraction before committing inherited shrink", () => {
@@ -125,4 +125,15 @@ test("non-grid return fades without a stale tile, freezes input, and cuts on rev
   assert.match(motion, /if \(exiting && exitWithoutUnderlay\) drawRect\(Color\.Black\)/);
   assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
   assert.match(motion, /if \(!exitDisabled\) \{\s*progress\.animateTo\(0f,/);
+});
+
+test("gesture return freezes the oriented fitted frame and does not repaint the revealed grid black", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /recordGestureFrame\(viewerDownExitPose\(dragOffset\.floatValue,/);
+  assert.match(viewer, /focusedReturnSize\?\.value = decodedSize/);
+  assert.match(viewer, /latestCommitGestureFrame\?\.invoke\(uri, sharedPhotoGestureFrame\(/);
+  assert.match(main, /onCommitGestureFrame = \{ uri, frame ->/);
+  assert.match(main, /committedGestureFrame\?\.first == it\.media\.uri/);
+  assert.match(motion, /if \(exiting && gestureFrame != null\) Rect\(/);
+  assert.match(motion, /else if \(exiting && !allowUnderlay\) drawRect/);
 });

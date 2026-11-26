@@ -1829,6 +1829,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     var returnPreparation by remember(viewerUri) { mutableStateOf<MeasuredViewerReturn?>(null) }
     var returnCommitted by remember(viewerUri) { mutableStateOf(false) }
     var measuredReturnOrigin by remember(viewerUri) { mutableStateOf<SharedPhotoOrigin?>(null) }
+    var committedGestureFrame by remember(viewerUri) { mutableStateOf<Pair<String, androidx.compose.ui.geometry.Rect?>?>(null) }
     var pendingViewerReturn by remember {
         mutableStateOf<PendingViewerReturn?>(null, referentialEqualityPolicy())
     }
@@ -2637,6 +2638,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         returnPreparation = null
         returnCommitted = false
         measuredReturnOrigin = null
+        committedGestureFrame = null
         PerformanceSession.viewerOpened()
         viewerItems = items
         viewerAccessEpoch = publishedGallery.epoch
@@ -2663,6 +2665,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         returnPreparation = null
         returnCommitted = false
         measuredReturnOrigin = null
+        committedGestureFrame = null
         SharedPhotoOrigins.clear()
     }
     fun galleryAccessCurrent(): Boolean = grants.hasAny &&
@@ -3574,8 +3577,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             allowUnderlay = revealTargetUri != null,
             exitWithoutUnderlay = returnCommitted && preparation == null,
             returnOrigin = measuredReturnOrigin?.takeIf {
-                returnAuthorized && preparation?.measured?.bounds == it.bounds
+                returnAuthorized && preparation?.measured?.bounds == it.bounds &&
+                    (committedGestureFrame == null ||
+                        (committedGestureFrame?.first == it.media.uri && committedGestureFrame?.second != null))
             },
+            gestureFrame = committedGestureFrame?.second,
             onExitFinished = { if (viewerUri != null) closeViewer() }
         ) {
         GalleryViewer(
@@ -3614,6 +3620,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             },
             onPrepareSettledUri = { uri -> prepareViewerReturn(uri) },
             returnRevealUri = revealTargetUri,
+            onCommitGestureFrame = { uri, frame ->
+                if (!returnCommitted && !viewerExitShared) committedGestureFrame = uri to frame
+            },
             onExitSettledUri = { lastViewedUri ->
                 if (!returnCommitted && !viewerExitShared) {
                     // Back during an unsettled scrub still uses the last settled item.
