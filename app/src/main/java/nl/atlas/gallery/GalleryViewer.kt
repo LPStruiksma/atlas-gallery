@@ -756,6 +756,12 @@ private fun GalleryViewerSnapshot(
                             val event = awaitPointerEvent(pass = PointerEventPass.Main)
                             val change = event.changes.firstOrNull { it.id == down.id }
                                 ?: break
+                            // The photo child owns an inherited pinch pose in Main pass.
+                            // Do not also translate the parent or open Details.
+                            if (pinchExitPose.value != ViewerPinchExitPose()) {
+                                cancelViewerDrag()
+                                break
+                            }
                             if (event.changes.size != 1 || latestZoom > 1.01f) {
                                 cancelViewerDrag()
                                 break
@@ -1259,6 +1265,12 @@ internal fun viewerMayOwnPinchExit(
     owned: Boolean, eligible: Boolean, zoom: Float, factor: Float
 ): Boolean = eligible && (owned ||
     (zoom == 1f && factor.isFinite() && factor > 0f && factor < .998f))
+
+/** Regrab only a finite, below-fit pose from an active eligible return. */
+internal fun viewerMayRegrabPinchExit(
+    pose: ViewerPinchExitPose, returning: Boolean, eligible: Boolean, zoom: Float
+): Boolean = returning && eligible && zoom == 1f && pose.scale.isFinite() &&
+    pose.scale > 0f && pose.scale < 1f && pose.x.isFinite() && pose.y.isFinite()
 
 /** Only an actively returning, unzoomed exit may be inherited by a fresh touch. */
 internal fun viewerDownExitRegrabBase(
@@ -1769,12 +1781,17 @@ private fun PhotoPage(
                         // A pinch is a single atomic gesture: when its second
                         // finger lifts (or the photo reaches 1x), the remaining
                         // movement must NOT unexpectedly page to another photo.
-                        var claimed = zoomPose.scale > 1.01f
+                        // Freeze an actively returning pinch at its drawn pose even
+                        // if the new touch begins with only one pointer.
+                        val regrabPinch = viewerMayRegrabPinchExit(pinchPose,
+                            pinchReturn[0]?.isActive == true, latestCanPinchDismiss(), zoomPose.scale)
+                        if (regrabPinch) pinchReturn[0]?.cancel()
+                        var claimed = zoomPose.scale > 1.01f || regrabPinch
                         val poseAtDown = zoomPose
                         var edgeTravelX = 0f
                         var multiTouch = false
-                        var pinchOwned = false
-                        var inheritedPinchPose = false
+                        var pinchOwned = regrabPinch
+                        var inheritedPinchPose = regrabPinch
                         var freshPinchScale = 1f
                         var normalRelease = false
                         try {

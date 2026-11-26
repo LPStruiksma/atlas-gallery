@@ -420,6 +420,23 @@ class ViewerMotionMathTest {
         assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
     }
 
+    @Test fun singlePointerRegrabOnlyInheritsAnActiveEligiblePinchReturn() {
+        val returning = ViewerPinchExitPose(.84f, 20f, 40f)
+        assertTrue(viewerMayRegrabPinchExit(returning, true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, false, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, true, false, 1f))
+        assertFalse(viewerMayRegrabPinchExit(returning, true, true, 1.2f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(), true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(Float.NaN), true, true, 1f))
+        assertFalse(viewerMayRegrabPinchExit(ViewerPinchExitPose(.84f, Float.NaN), true, true, 1f))
+        // A lone pointer follows the inherited pose, but cannot earn contraction.
+        val moved = viewerPinchExitFrame(returning, 1f, 500f, 600f, 1000, 2000, 12f, -8f)
+        assertEquals(.84f, moved.scale, .001f)
+        assertEquals(32f, moved.x, .001f)
+        assertEquals(32f, moved.y, .001f)
+        assertFalse(viewerPinchExitCommits(moved, true, true, 1f))
+    }
+
     @Test fun inheritedPinchNeedsFreshContractionAndReversalClearsIt() {
         val inherited = ViewerPinchExitPose(.85f, 12f, 90f)
         assertTrue(viewerPinchExitCommits(inherited, true))

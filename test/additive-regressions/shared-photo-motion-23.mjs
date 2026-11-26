@@ -105,3 +105,13 @@ test("a regrabbed pinch must earn fresh contraction before committing inherited 
   assert.match(viewer, /freshPinchScale = viewerFreshPinchScale\(freshPinchScale, gestureZoom\)/);
   assert.match(viewer, /viewerPinchExitCommits\(pinchPose, latestCanPinchDismiss\(\),\s*inheritedPinchPose, freshPinchScale\)/);
 });
+
+test("a fresh single pointer can interrupt pinch return without starting a competing parent drag", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(viewer, /val regrabPinch = viewerMayRegrabPinchExit\(pinchPose,/);
+  assert.match(viewer, /if \(regrabPinch\) pinchReturn\[0\]\?\.cancel\(\)/);
+  assert.match(viewer, /var claimed = zoomPose\.scale > 1\.01f \|\| regrabPinch/);
+  assert.match(viewer, /var pinchOwned = regrabPinch/);
+  assert.match(viewer, /var inheritedPinchPose = regrabPinch/);
+  assert.match(viewer, /if \(pinchExitPose\.value != ViewerPinchExitPose\(\)\) \{\s*cancelViewerDrag\(\)\s*break/);
+});
