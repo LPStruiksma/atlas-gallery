@@ -8,6 +8,8 @@ guest-589-dark-c-first
 guest-589-light-c-last
 guest-589-dark-c-last
 guest-589-light-c-landscape
+guest-589-dark-c-landscape
 guest-589-light-os-screencap
 guest-589-dark-os-screencap
 guest-589-light-b-viewer-entry-font200
+guest-589-light-c-viewer-font200

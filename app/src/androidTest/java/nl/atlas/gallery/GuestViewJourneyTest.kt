@@ -29,6 +29,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -176,22 +177,23 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         compose.waitForNode(hasTestTag("atlas-guest-root"))
         awaitPage(1, 3)
         assertTrue("FLAG_SECURE after recreation", secureFlag())
-        if (!dark) {
-            compose.activityRule.scenario.onActivity {
-                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            }
+        compose.activityRule.scenario.onActivity {
+            it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+        try {
             compose.awaitThat("landscape") { displayIsLandscape() }
             compose.awaitWindowSettled()
             compose.waitForNode(hasTestTag("atlas-guest-root"))
             awaitPage(1, 3)
-            captureGuest("guest-589-light-c-landscape.png")
+            captureGuest("guest-589-$theme-c-landscape.png")
+        } finally {
             compose.activityRule.scenario.onActivity {
                 it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
-            compose.awaitThat("portrait") { !displayIsLandscape() }
-            compose.awaitWindowSettled()
-            compose.waitForNode(hasTestTag("atlas-guest-root"))
         }
+        compose.awaitThat("portrait") { !displayIsLandscape() }
+        compose.awaitWindowSettled()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
 
         // Exit → system confirmation → cancel keeps guest.
         compose.tap(hasTestTag("atlas-guest-exit"))
@@ -352,43 +354,51 @@ abstract class GuestViewSelectionJourney(private val dark: Boolean, private val 
         return "$bright/$samples"
     }
 
-    /** The guest window's own pixels (PixelCopy works under FLAG_SECURE; the OS screenshot does not). */
     private fun captureGuest(name: String) {
         compose.awaitWindowSettled()
-        lateinit var bitmap: Bitmap
-        var result = -1
-        val thread = HandlerThread("guest-capture").apply { start() }
-        try {
-            val latch = CountDownLatch(1)
-            compose.activityRule.scenario.onActivity { activity ->
-                val decor = activity.window.decorView
-                bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
-                PixelCopy.request(activity.window, bitmap, { code -> result = code; latch.countDown() },
-                    Handler(thread.looper))
-            }
-            check(latch.await(10, TimeUnit.SECONDS)) { "PixelCopy timed out for $name" }
-        } finally {
-            thread.quitSafely()
-        }
-        check(result == PixelCopy.SUCCESS) { "PixelCopy failed ($result) for $name" }
-        Log.i(PROBE, "$name captured with PixelCopy ${bitmap.width}x${bitmap.height}")
-        val problem = uiEvidenceProblem(bitmap)
-        check(problem == null || problem.startsWith("is ") && !problem.contains("blank")) {
-            "guest evidence $name $problem"
-        }
-        writeGuestPng(name, bitmap)
+        captureGuest(compose.activityRule.scenario, name)
     }
+}
 
-    private fun writeGuestPng(name: String, bitmap: Bitmap) {
-        val png = try {
-            java.io.ByteArrayOutputStream().also {
-                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
-            }.toByteArray()
-        } finally {
-            bitmap.recycle()
+/** The guest window's own pixels (PixelCopy works under FLAG_SECURE; the OS screenshot does not). */
+private fun captureGuest(scenario: ActivityScenario<MainActivity>, name: String) {
+    lateinit var bitmap: Bitmap
+    var result = -1
+    val thread = HandlerThread("guest-capture").apply { start() }
+    try {
+        val latch = CountDownLatch(1)
+        scenario.onActivity { activity ->
+            check(activity.guestActive) { "guest session inactive for $name" }
+            check(activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0) {
+                "guest window not secure for $name"
+            }
+            val decor = activity.window.decorView
+            bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
+            PixelCopy.request(activity.window, bitmap, { code -> result = code; latch.countDown() },
+                Handler(thread.looper))
         }
-        writeUiEvidenceFile(uiEvidenceDisplayName(name), png)
+        check(latch.await(10, TimeUnit.SECONDS)) { "PixelCopy timed out for $name" }
+    } finally {
+        thread.quitSafely()
     }
+    check(result == PixelCopy.SUCCESS) { "PixelCopy failed ($result) for $name" }
+    Log.i(PROBE, "$name captured with PixelCopy ${bitmap.width}x${bitmap.height}")
+    val problem = uiEvidenceProblem(bitmap)
+    check(problem == null || problem.startsWith("is ") && !problem.contains("blank")) {
+        "guest evidence $name $problem"
+    }
+    writeGuestPng(name, bitmap)
+}
+
+private fun writeGuestPng(name: String, bitmap: Bitmap) {
+    val png = try {
+        java.io.ByteArrayOutputStream().also {
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+        }.toByteArray()
+    } finally {
+        bitmap.recycle()
+    }
+    writeUiEvidenceFile(uiEvidenceDisplayName(name), png)
 }
 
 /** Viewer More entry: one photo only, at 200% text, back to that photo after the PIN. */
@@ -436,13 +446,20 @@ class GuestViewViewerEntryTest {
         val declined = findPinButton(automation, false)?.first?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) shell("am task lock stop")
         compose.awaitThat("unpinned for the viewer exit") { lockState() == ActivityManager.LOCK_TASK_MODE_NONE }
+        if (pinWindows().isNotEmpty()) shell("input keyevent 4")
+        compose.awaitThat("viewer pinning prompt dismissed") { pinWindows().isEmpty() }
         Log.i(PROBE, "viewer: pin prompt declined=$declined windows=[${pinWindows()}]")
         compose.awaitWindowSettled()
+        compose.waitForNode(hasTestTag("atlas-guest-root"))
+        compose.waitForNode(hasTestTag("atlas-guest-page-0") and hasContentDescription("Photo 1 of 1"))
         // 200% text: the Exit slab keeps at least 48 dp and stays inside the screen.
         val exit = compose.onNodeWithTag("atlas-guest-exit").getUnclippedBoundsInRoot()
         val root = compose.onNodeWithTag("atlas-guest-root").getUnclippedBoundsInRoot()
         assertTrue("Exit at least 48 dp tall at 200%: $exit", exit.bottom - exit.top >= 48.dp)
-        assertTrue("Exit inside the screen at 200%: $exit in $root", exit.bottom <= root.bottom)
+        assertTrue("Exit inside the screen at 200%: $exit in $root",
+            exit.left >= root.left && exit.top >= root.top &&
+                exit.right <= root.right && exit.bottom <= root.bottom)
+        captureGuest(compose.activityRule.scenario, "guest-589-light-c-viewer-font200.png")
 
         compose.tap(hasTestTag("atlas-guest-exit"))
         compose.awaitThat("the system credential screen") { credentialOnTop() }

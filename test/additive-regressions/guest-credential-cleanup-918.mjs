@@ -40,3 +40,23 @@ test('selection credential submission waits for focus and IME before typing and 
   assert.match(journey, /Application Not Responding: com\.android\.launcher3/);
   assert.match(journey, /findAccessibilityNodeInfosByText\("Wait"\)/);
 });
+
+
+test('guest frame C evidence includes the 200 percent viewer and both landscape themes', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/GuestViewJourneyTest.kt');
+  const manifest = read('scripts/ui-evidence.d/589-guest-view.txt').split(/\r?\n/);
+  const viewer = journey.slice(journey.indexOf('class GuestViewViewerEntryTest'), journey.indexOf('private object GuestGuardCheck'));
+  const capture = 'captureGuest(compose.activityRule.scenario, "guest-589-light-c-viewer-font200.png")';
+  assert.match(viewer, /fontScale = 2f/);
+  assert.ok(viewer.includes(capture));
+  assert.ok(viewer.indexOf('Exit inside the screen at 200%') < viewer.indexOf(capture));
+  assert.ok(viewer.indexOf(capture) < viewer.indexOf('compose.tap(hasTestTag("atlas-guest-exit"))'));
+  for (const name of ['guest-589-light-c-viewer-font200', 'guest-589-light-c-landscape', 'guest-589-dark-c-landscape']) assert.ok(manifest.includes(name));
+  const rotation = journey.slice(journey.indexOf('// Recreation (as on rotation)'), journey.indexOf('// Exit → system confirmation'));
+  assert.doesNotMatch(rotation, /if \(!dark\)/);
+  assert.ok(rotation.includes('captureGuest("guest-589-$theme-c-landscape.png")'));
+  const helper = journey.slice(journey.indexOf('private fun captureGuest(scenario:'), journey.indexOf('private fun writeGuestPng'));
+  assert.match(helper, /FLAG_SECURE/);
+  assert.match(helper, /PixelCopy\.request\(activity\.window/);
+  assert.match(helper, /PixelCopy\.SUCCESS/);
+});
