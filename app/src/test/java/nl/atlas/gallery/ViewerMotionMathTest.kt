@@ -420,6 +420,21 @@ class ViewerMotionMathTest {
         assertTrue(nanTap.translationX.isFinite() && nanTap.translationY.isFinite())
     }
 
+    @Test fun dismissalBackdropTracksScaleReversalAndHandoffOnlyForAuthorizedTarget() {
+        val rest = ViewerPinchExitPose()
+        val drag = viewerDownExitPose(400f, 1000f)
+        val farther = viewerDownExitPose(700f, 1000f)
+        assertEquals(1f, viewerExitBackdropAlpha(true, rest, rest), 0f)
+        val mid = viewerExitBackdropAlpha(true, drag, rest)
+        assertTrue(mid > 0f && mid < 1f)
+        assertTrue(viewerExitBackdropAlpha(true, farther, rest) < mid)
+        assertEquals(mid, viewerExitBackdropAlpha(true, rest, drag), 0f)
+        assertEquals(mid, viewerExitBackdropAlpha(true, drag, drag), 0f)
+        assertEquals(1f, viewerExitBackdropAlpha(false, farther, rest), 0f)
+        assertEquals(1f, viewerExitBackdropAlpha(true, ViewerPinchExitPose(Float.NaN), rest), 0f)
+        assertEquals(0f, viewerExitBackdropAlpha(true, rest, ViewerPinchExitPose(.70f)), .001f)
+    }
+
     @Test fun filmstripTapEasingIsMonotoneBoundedAndConstantTimeForLargeAlbums() {
         assertEquals(260, AtlasMotion.FILMSTRIP_TAP_MS)
         val checkpoints = listOf(0, 16, 65, 130, 195, 260)

@@ -3554,6 +3554,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             }
         }
     }
+    // Do not expose a speculative grid until its seek and actual tile
+    // measurement are complete. The viewer also checks its current settled URI.
+    val revealTargetUri = preparation?.measured?.media?.uri?.takeIf {
+        returnAuthorized && pendingViewerReturn == null && pendingRatioReturn == null &&
+            pendingRatioAnchor == null
+    }
     val renderViewer: @Composable () -> Unit = {
     if (contextItems != null && currentUri != null) {
       // #662: the viewer stays dark whatever the phone's setting, as on Samsung.
@@ -3565,6 +3571,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     it.media.uri == currentUri
             },
             exiting = viewerExitShared,
+            allowUnderlay = revealTargetUri != null,
             returnOrigin = measuredReturnOrigin?.takeIf {
                 returnAuthorized && preparation?.measured?.bounds == it.bounds
             },
@@ -3605,6 +3612,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 launchResult != PhotoEditorHandoff.Result.UNAVAILABLE
             },
             onPrepareSettledUri = { uri -> prepareViewerReturn(uri) },
+            returnRevealUri = revealTargetUri,
             onExitSettledUri = { lastViewedUri ->
                 if (!returnCommitted && !viewerExitShared) {
                     // Back during an unsettled scrub still uses the last settled item.

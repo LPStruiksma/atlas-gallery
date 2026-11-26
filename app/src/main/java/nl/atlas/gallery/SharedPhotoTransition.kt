@@ -5,7 +5,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -131,6 +131,7 @@ internal fun SharedPhotoMotionLayer(
     onExitFinished: () -> Unit,
     modifier: Modifier = Modifier,
     returnOrigin: SharedPhotoOrigin? = origin,
+    allowUnderlay: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -155,8 +156,10 @@ internal fun SharedPhotoMotionLayer(
 
     val movingOrigin = if (exiting) returnOrigin else origin
     val moving = if (exiting) !exitDisabled else animated
-    Box(modifier.fillMaxSize().clipToBounds().background(
-        if (exiting) Color.Black.copy(alpha = progress.value) else Color.Black)
+    Box(modifier.fillMaxSize().clipToBounds().drawBehind {
+        if (exiting) drawRect(Color.Black.copy(alpha = progress.value))
+        else if (!allowUnderlay || progress.value < 1f) drawRect(Color.Black)
+    }
         .onGloballyPositioned { coords ->
             val now = coords.boundsInWindow()
             if (now != windowRect) windowRect = now

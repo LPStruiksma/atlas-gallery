@@ -85,3 +85,15 @@ test("idle settled photo prepositions without committing or freezing viewer inpu
   assert.match(main, /if \(currentUri != null && returnCommitted && preparation != null\)/);
   assert.match(main, /existing\.uri == uri &&\s*viewerReturnMatchesCurrentRoute/);
 });
+
+test("direct manipulation reveals only a measured settled return and fades chrome separately from the image", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(main, /val revealTargetUri = preparation\?\.measured\?\.media\?\.uri\?\.takeIf/);
+  assert.match(main, /allowUnderlay = revealTargetUri != null/);
+  assert.match(main, /returnRevealUri = revealTargetUri/);
+  assert.match(viewer, /returnRevealUri == items\[pagerState\.settledPage\.coerceIn\(items\.indices\)\]\.uri/);
+  assert.match(viewer, /drawBehind \{ drawRect\(Color\.Black\.copy\(alpha = exitBackdropAlpha\(\)\)\) \}/);
+  assert.equal((viewer.match(/graphicsLayer \{ alpha = exitBackdropAlpha\(\) \}/g) || []).length, 2);
+  assert.match(viewer, /focusedPinchExitPose = if \(focused\) pinchExitPose else null/);
+  assert.match(motion, /else if \(!allowUnderlay \|\| progress\.value < 1f\) drawRect\(Color\.Black\)/);
+});

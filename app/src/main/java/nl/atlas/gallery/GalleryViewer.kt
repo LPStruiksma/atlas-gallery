@@ -166,6 +166,7 @@ fun GalleryViewer(
     access: ViewerAccess = ViewerAccess.LIBRARY,
     motionProbe: ViewerFilmstripMotionProbe? = null,
     onPrepareSettledUri: ((String) -> Unit)? = null,
+    returnRevealUri: String? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -176,7 +177,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onPrepareSettledUri, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onPrepareSettledUri, returnRevealUri, onBack)
     }
 }
 
@@ -199,6 +200,7 @@ private fun GalleryViewerSnapshot(
     access: ViewerAccess,
     motionProbe: ViewerFilmstripMotionProbe?,
     onPrepareSettledUri: ((String) -> Unit)?,
+    returnRevealUri: String?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -692,7 +694,24 @@ private fun GalleryViewerSnapshot(
     // #509 layout: the photo is full-bleed on black and the chrome floats
     // over it (back pill top-left, action pill top-right, thin filmstrip and
     // an action pill at the bottom). No title, counter text, labels or rails.
-    Box(Modifier.fillMaxSize().background(Color.Black)
+    // Share only the focused page's exit pose with the backdrop. Draw/layer
+    // reads keep pointer-frequency changes out of the catalogue composition.
+    val pinchExitPose = remember(pagerState.currentPage, editorReturn.revision) {
+        mutableStateOf(ViewerPinchExitPose())
+    }
+    fun exitBackdropAlpha(): Float {
+        val eligible = access == ViewerAccess.LIBRARY &&
+            returnRevealUri != null &&
+            pagerState.currentPage == pagerState.settledPage &&
+            returnRevealUri == items[pagerState.settledPage.coerceIn(items.indices)].uri &&
+            !pagerState.isScrollInProgress && !stripState.isScrollInProgress &&
+            scrubOverlayState.value == null && detailsProgress.floatValue == 0f
+        return viewerExitBackdropAlpha(eligible,
+            viewerDownExitPose(dragOffset.floatValue, viewerHeightPx.intValue.toFloat()),
+            pinchExitPose.value)
+    }
+    Box(Modifier.fillMaxSize()
+        .drawBehind { drawRect(Color.Black.copy(alpha = exitBackdropAlpha())) }
         .onSizeChanged { viewerHeightPx.intValue = it.height }
         .testTag("atlas-viewer")) {
         // The photo follows a down-drag and shrinks against a dimming black
@@ -906,6 +925,7 @@ private fun GalleryViewerSnapshot(
                         } else null
                     },
                     onPinchDismiss = { returnToGallery() },
+                    focusedPinchExitPose = if (focused) pinchExitPose else null,
                     onEdgePageRequested = { target ->
                         if (focused && target in items.indices) {
                             requestViewerSelection(target)
@@ -933,7 +953,8 @@ private fun GalleryViewerSnapshot(
         val current = items[pagerState.currentPage.coerceIn(items.indices)]
         // While Details is on screen the photo and its facts own the screen,
         // as in Samsung Gallery; the chrome fades out with the same 200 ms.
-        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.TopCenter),
+        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.TopCenter)
+            .graphicsLayer { alpha = exitBackdropAlpha() },
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Row(
             Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(AtlasTokens.Colors.Viewer.ChromeScrimTop, Color.Transparent)))
@@ -1016,7 +1037,8 @@ private fun GalleryViewerSnapshot(
                 }
             }
         } }
-        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.BottomCenter),
+        AnimatedVisibility(chromeVisible && !detailsShown, Modifier.align(Alignment.BottomCenter)
+            .graphicsLayer { alpha = exitBackdropAlpha() },
             enter = CHROME_ENTER, exit = CHROME_EXIT) { Column(
             Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, AtlasTokens.Colors.Viewer.ChromeScrimBottom)))
@@ -1268,6 +1290,14 @@ internal fun viewerPinchExitFrame(
     return ViewerPinchExitPose(scale,
         previous.x * ratio + (cx - width / 2f) * (1f - ratio) + panX,
         previous.y * ratio + (cy - height / 2f) * (1f - ratio) + panY)
+}
+
+// Use the same drawn scale for drag and pinch so transferring ownership
+// preserves opacity. A stale or missing destination always stays opaque.
+internal fun viewerExitBackdropAlpha(eligible: Boolean, drag: ViewerPinchExitPose,
+    pinch: ViewerPinchExitPose): Float {
+    if (!eligible || !drag.scale.isFinite() || !pinch.scale.isFinite()) return 1f
+    return (1f - (1f - minOf(drag.scale, pinch.scale)) / .30f).coerceIn(0f, 1f)
 }
 
 internal fun viewerPinchExitCommits(pose: ViewerPinchExitPose, eligible: Boolean): Boolean =
@@ -1584,6 +1614,7 @@ private fun PhotoPage(
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     canPinchDismiss: () -> Boolean, onPinchDismiss: () -> Unit,
     takeDragExitPose: () -> ViewerPinchExitPose?,
+    focusedPinchExitPose: MutableState<ViewerPinchExitPose>?,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
     openingPage: Boolean = false,
@@ -1632,9 +1663,10 @@ private fun PhotoPage(
     val doubleTapZoom = remember(media.uri, focused, imageRevision) {
         arrayOfNulls<kotlinx.coroutines.Job>(1)
     }
-    var pinchPose by remember(media.uri, focused, imageRevision) {
+    val localPinchExitPose = remember(media.uri, focused, imageRevision) {
         mutableStateOf(ViewerPinchExitPose())
     }
+    var pinchPose by (focusedPinchExitPose ?: localPinchExitPose)
     val pinchScope = rememberCoroutineScope()
     val pinchReturn = remember(media.uri, focused, imageRevision) {
         arrayOfNulls<kotlinx.coroutines.Job>(1)
