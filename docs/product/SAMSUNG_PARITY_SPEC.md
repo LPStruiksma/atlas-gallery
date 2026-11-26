@@ -44,7 +44,7 @@ Lukas, 2026-11-10 00:39Z: "Samsung Gallery is relatively minimalistic, but in a 
 | Double tap ×2.31 around the tap point, pan bounded, edge hands off to pager (`VIEW:V20-21`) | Done in earlier units | Kept |
 | Swipe up shows the details panel (Lukas 2026-11-10: "sorely needed"; `VIEW:V26-V27`) | Only the ⓘ button | Swipe up on an unzoomed photo opens Details (viewer PR 2) |
 | Drag down to close (`VIEW:V22`) | missing | Swipe down on an unzoomed photo closes (viewer PR 2); FLOW-3 guards ownership until downward intent and cancels an owned drag on reversal. Grid reveal and runtime evidence remain pending |
-| Close returns the grid to the photo you ended on (`VIEW:V23`) | Done (`onExitSettledUri`) | Kept; shared-element return later |
+| Close returns the grid to the photo you ended on (`VIEW:V23`) | Done (`onExitSettledUri`) | FLOW-3 A prepares and measures the settled tile before exit; runtime proof pending |
 
 ## 2. Pictures grid and app shell (PR 2)
 - **Header:** Preserve the scroll-away Pictures heading (#506 folded in here), a compact search/overflow entry and no permanent duplicate header line. The title/chrome placement follows Quiet Frame; Samsung's large title and fixed compact bar are observations, not layout directives.
@@ -98,3 +98,5 @@ No blocking "Updating your allowed photos" screen (#505): keep showing the last 
 - [ ] 5 Selection and menus
 - [ ] 6 Video
 - [ ] 7 Access and loading (#505)
+
+FLOW-3 checkpoint A (#593): prepare the settled item's authorized grid and seek before the exit, measure its current tile rather than reusing the opening rectangle, and use a bounded no-target fallback. This is implementation evidence only; pinch, crop, paired runtime frames and timing comparison are still required.

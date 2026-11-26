@@ -93,6 +93,7 @@ import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.featuremedia.GridThumbnailPrefetch
 import nl.atlas.gallery.MediaRecord
 import nl.atlas.gallery.SharedPhotoOrigins
+import nl.atlas.gallery.measureViewerReturn
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -994,6 +995,7 @@ fun AtlasTimelineGallery(
                                 Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(3.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .onGloballyPositioned { sourceBounds[0] = it.boundsInWindow() }
+                                    .measureViewerReturn(media, catalogueEpoch)
                                     // The pointer long press belongs to the grid's drag
                                     // detector; TalkBack gets the same start as an action.
                                     .then(if (onSelectionChange != null && !selecting) Modifier.semantics {

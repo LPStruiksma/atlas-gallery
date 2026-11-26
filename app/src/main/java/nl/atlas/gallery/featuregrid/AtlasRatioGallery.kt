@@ -57,6 +57,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import nl.atlas.gallery.MediaPreview
 import nl.atlas.gallery.MediaRecord
+import nl.atlas.gallery.measureViewerReturn
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.onLongClick
@@ -300,6 +301,7 @@ fun AtlasRatioGallery(
                                 // photo fills its cell edge to edge (Samsung look).
                                 Modifier.width(cellWidth).height(cellHeight)
                                     .clipToBounds()
+                                    .measureViewerReturn(media, catalogueEpoch)
                                     // The pointer long press belongs to the list's drag
                                     // detector; TalkBack gets the same start as an action.
                                     .then(if (onSelectionChange != null && !selecting) Modifier.semantics {

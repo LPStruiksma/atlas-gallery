@@ -44,6 +44,31 @@ class ViewerReturnAdmissionTest {
         assertFalse(viewerReturnCanApply(intent, copied, 0, true, copied.lastIndex, copied.size, 42L))
     }
 
+    @Test fun measuredReturnUsesSettledUriNotOpeningTileAndRejectsInvalidBounds() {
+        val source = listOf(media(1), media(2))
+        val pending = PendingViewerReturn(source, source[1].uri, 0, 42L)
+        val bounds = androidx.compose.ui.geometry.Rect(10f, 20f, 100f, 110f)
+        val target = MeasuredViewerReturn(pending)
+        target.offer(source[0], 42L, bounds, 1L)
+        assertTrue(target.measured == null)
+        target.offer(source[1], 41L, bounds, 2L)
+        assertTrue(target.measured == null)
+        target.offer(source[1], 42L, androidx.compose.ui.geometry.Rect.Zero, 3L)
+        assertTrue(target.measured == null)
+        target.offer(source[1], 42L, bounds, 4L)
+        assertTrue(target.measured?.media?.uri == source[1].uri)
+        assertTrue(target.measured?.bounds == bounds)
+        assertFalse(viewerReturnMatchesCurrentRoute(pending, source, 0, false, 42L))
+        assertFalse(viewerReturnMatchesCurrentRoute(pending, source, 1, true, 42L))
+        target.offer(source[1], 42L, androidx.compose.ui.geometry.Rect.Zero, 5L)
+        assertTrue(target.measured == null)
+        target.offer(source[1].copy(isVideo = true), 42L, bounds, 6L)
+        assertTrue(target.measured == null)
+        target.offer(source[1], 42L, bounds, 7L)
+        target.clear()
+        assertTrue(target.measured == null)
+    }
+
     @Test fun visibleItemKeepsScrollOffsetOffscreenItemSeeks() {
         assertTrue(viewerReturnOverlapsViewport(300, 200, 0, 1000))
         assertTrue(viewerReturnOverlapsViewport(900, 200, 0, 1000))

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +72,36 @@ internal object SharedPhotoOrigins {
     fun clear() { pending = null }
 }
 
+/** Only the requested tile reports geometry; no catalogue-sized bounds cache. */
+internal class MeasuredViewerReturn(val request: PendingViewerReturn) {
+    var measured by mutableStateOf<SharedPhotoOrigin?>(null)
+        private set
+
+    fun offer(media: MediaRecord, epoch: Long, bounds: Rect, nowMillis: Long) {
+        if (media.uri != request.uri || epoch != request.accessEpoch) return
+        measured = if (!media.isVideo && bounds.width > 0f && bounds.height > 0f &&
+            listOf(bounds.left, bounds.top, bounds.right, bounds.bottom).all { it.isFinite() })
+            SharedPhotoOrigin(media, epoch, bounds, nowMillis) else null
+    }
+
+    fun clear() { measured = null }
+}
+
+internal val LocalMeasuredViewerReturn = compositionLocalOf<MeasuredViewerReturn?> { null }
+
+@Composable
+internal fun Modifier.measureViewerReturn(media: MediaRecord, epoch: Long): Modifier {
+    val target = LocalMeasuredViewerReturn.current ?: return this
+    if (target.request.uri != media.uri || target.request.accessEpoch != epoch || media.isVideo)
+        return this
+    DisposableEffect(target, media.uri, epoch) {
+        onDispose { target.clear() }
+    }
+    return onGloballyPositioned { coordinates ->
+        target.offer(media, epoch, coordinates.boundsInWindow(), SystemClock.uptimeMillis())
+    }
+}
+
 internal fun sharedPhotoAnimationDisabled(context: Context): Boolean =
     runCatching {
         Settings.Global.getFloat(context.contentResolver,
@@ -89,9 +121,8 @@ internal fun sharedPhotoRect(from: Rect, to: Rect, progress: Float): Rect {
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
  * overlay travels from the measured thumbnail to the full viewer, while the
- * viewer fades in underneath; on an unchanged URI Back reverses that travel.
- * The source grid is unmounted while the viewer is live. If a scrub changed
- * the URI, callers close normally rather than animating to the WRONG tile.
+ * viewer fades in underneath. Exit uses a separately measured current tile,
+ * or fades when no authorized target was obtained. Entry state is unchanged.
  */
 @Composable
 internal fun SharedPhotoMotionLayer(
@@ -99,10 +130,12 @@ internal fun SharedPhotoMotionLayer(
     exiting: Boolean,
     onExitFinished: () -> Unit,
     modifier: Modifier = Modifier,
+    returnOrigin: SharedPhotoOrigin? = origin,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val disabled = remember(origin) { sharedPhotoAnimationDisabled(context) }
+    val exitDisabled = remember(exiting) { exiting && sharedPhotoAnimationDisabled(context) }
     val animated = origin != null && !disabled
     val progress = remember(origin) { Animatable(if (animated) 0f else 1f) }
     val currentOnExit = androidx.compose.runtime.rememberUpdatedState(onExitFinished)
@@ -110,32 +143,37 @@ internal fun SharedPhotoMotionLayer(
 
     LaunchedEffect(origin, exiting, animated) {
         if (exiting) {
-            if (animated) progress.animateTo(0f,
-                tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
+            if (!exitDisabled) {
+                progress.animateTo(0f,
+                    tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
+            }
             currentOnExit.value()
         } else if (animated) {
             progress.animateTo(1f, tween(AtlasMotion.SHARED_ELEMENT_MS, easing = AtlasMotion.SineInOut70))
         }
     }
 
-    Box(modifier.fillMaxSize().clipToBounds().background(Color.Black)
+    val movingOrigin = if (exiting) returnOrigin else origin
+    val moving = if (exiting) !exitDisabled else animated
+    Box(modifier.fillMaxSize().clipToBounds().background(
+        if (exiting) Color.Black.copy(alpha = progress.value) else Color.Black)
         .onGloballyPositioned { coords ->
             val now = coords.boundsInWindow()
             if (now != windowRect) windowRect = now
         }) {
         Box(Modifier.fillMaxSize().graphicsLayer {
-            alpha = if (animated) progress.value else 1f
+            alpha = if (animated || exiting) progress.value else 1f
         }) { content() }
 
         // Draw only while a measured, authorized entry is moving. During the
         // transition the image is a single low-resolution copy; GalleryViewer
         // retains ownership of the full-res decode and of all gestures.
-        if (animated && origin != null && windowRect.width > 0f &&
+        if (moving && movingOrigin != null && windowRect.width > 0f &&
             windowRect.height > 0f && (progress.value < 1f || exiting)
         ) {
             val viewport = Rect(windowRect.left, windowRect.top,
                 windowRect.right, windowRect.bottom)
-            val frame = sharedPhotoRect(origin.bounds, viewport, progress.value)
+            val frame = sharedPhotoRect(movingOrigin.bounds, viewport, progress.value)
             val density = LocalDensity.current
             Box(Modifier
                 .offset {
@@ -147,7 +185,7 @@ internal fun SharedPhotoMotionLayer(
                 .alpha(1f - progress.value)
                 .testTag(if (exiting) "atlas-shared-photo-exit"
                     else "atlas-shared-photo-enter")) {
-                MediaPreview(origin.media, Modifier.fillMaxSize(),
+                MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
                     ContentScale.Crop, 600)
             }
         }
