@@ -30,7 +30,8 @@ data class AutocompleteAlbum(val volume: String, val relativePath: String, val n
 /** A caller-computed bucket of media in this exact authorized scope, not the library. */
 data class AutocompleteDate(val year: Int, val month: Int?, val mediaCount: Int)
 
-private val autocompleteWordSplit = Regex("[\\s\\-_.,'’]+")
+private val autocompleteWhitespace = Regex("\\s+")
+private val autocompleteBoundary = Regex("[\\-_.,'’]+")
 private val autocompleteMonths = listOf("January", "February", "March", "April", "May",
     "June", "July", "August", "September", "October", "November", "December")
 
@@ -165,10 +166,14 @@ class AutocompleteCandidateIndex(
             val builders = HashMap<String, PostingBuilder>()
             entries.forEachIndexed { index, candidate ->
                 val prefixes = HashSet<String>()
-                candidate.key.split(autocompleteWordSplit).filter { it.isNotEmpty() }.forEach { word ->
-                    // Admitted query tokens cannot exceed the input limit;
-                    // allow normalization expansion by indexing the full word.
-                    for (n in 1..word.length) prefixes += word.substring(0, n)
+                candidate.key.split(autocompleteWhitespace).filter { it.isNotEmpty() }.forEach { word ->
+                    // Preserve punctuation in a typed token (IMG_2019, O'Neil),
+                    // and also index starts after punctuation, as People does.
+                    val starts = listOf(0) + autocompleteBoundary.findAll(word)
+                        .map { it.range.last + 1 }.toList()
+                    for (start in starts) {
+                        for (end in start + 1..word.length) prefixes += word.substring(start, end)
+                    }
                 }
                 prefixes.forEach { prefix ->
                     builders.getOrPut(prefix) { PostingBuilder() }.add(index)
