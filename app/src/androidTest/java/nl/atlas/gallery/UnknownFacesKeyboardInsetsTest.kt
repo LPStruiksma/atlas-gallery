@@ -214,7 +214,7 @@ class UnknownFacesKeyboardInsetsTest {
         val peak = java.util.concurrent.atomic.AtomicInteger(0)
         val ready = java.util.concurrent.CountDownLatch(1)
         val callback = object : android.view.WindowInsetsAnimation.Callback(
-            DISPATCH_MODE_CONTINUE_ON_SUBTREE
+            android.view.WindowInsetsAnimation.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE
         ) {
             override fun onProgress(
                 insets: android.view.WindowInsets,
