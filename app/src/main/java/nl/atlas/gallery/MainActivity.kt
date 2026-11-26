@@ -628,6 +628,8 @@ class MainActivity : ComponentActivity() {
 
     /** Owner, a live guest session, or the recovery shell. Never Owner without a confirmed exit. */
     private var guestBoot by mutableStateOf<GuestBoot>(GuestBoot.Owner)
+    private var guestActivityId = GuestAndroid.newToken()
+    private var guestTransitionHidden = false
 
     /** After a confirmed exit from a viewer entry: the photo to reopen once for the owner. */
     private var guestReturnViewerUri by mutableStateOf<String?>(null)
@@ -645,6 +647,7 @@ class MainActivity : ComponentActivity() {
     internal var perfA1Probe: PerfA1FrameProbe? = null
 
     override fun onStart() {
+        reconcileGuestGuard()
         super.onStart()
         perfA1Probe?.onStarted()
     }
@@ -655,6 +658,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        guestActivities.remove(this)
+        if (isFinishing && guestAuthOwnerId == guestActivityId) {
+            clearGuestAuth()
+            guestRepinAfterAuth = false
+        }
         perfA1Probe?.close()
         perfA1Probe = null
         super.onDestroy()
@@ -663,8 +671,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
+        guestActivityId = savedInstanceState?.getString(GUEST_ACTIVITY_KEY) ?: guestActivityId
         guestStore = GuestAndroid.store(this)
-        guestBoot = guestStore.boot()
+        guestBoot = readGuestBoot()
+        guestActivities.add(this)
         if (GuestGuard.routesToGuest(guestBoot)) {
             // Secure window before the first draw; the intent is not even parsed.
             applyGuestWindow(true)
@@ -694,12 +704,19 @@ class MainActivity : ComponentActivity() {
                 val ownerState = rememberSaveableStateHolder()
                 val guest = guestBoot
                 if (guest !is GuestBoot.Owner) {
-                    AtlasGalleryTheme(dark = true) {
-                        GuestScreen(guest, onExit = ::requestGuestExit,
-                            onPageSettled = ::onGuestPageSettled, onFirstFrame = ::offerGuestPin)
+                    val sessionId = (guest as? GuestBoot.Guest)?.record?.sessionId
+                    key(sessionId) {
+                        AtlasGalleryTheme(dark = true) {
+                            GuestScreen(guest, onExit = { requestGuestExit(sessionId) },
+                                onPageSettled = { onGuestPageSettled(it, sessionId) },
+                                onFirstFrame = { offerGuestPin(sessionId) })
+                        }
                     }
+                    // Reveal only once the new guest-only composition has applied.
+                    SideEffect { revealGuestTransition() }
                     return@setContent
                 }
+                SideEffect { revealGuestTransition() }
                 val entry = externalEntry
                 if (entry.opensExternalViewer()) {
                     // Open with / camera review: one item, no catalogue, no scan,
@@ -745,17 +762,83 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        val guarded = reconcileGuestGuard()
         super.onNewIntent(intent)
-        // GUEST-1: while guest view is live no new request is read or routed.
-        if (guestActive || GuestGuard.routesToGuest(guestStore.boot())) return
+        // No incoming request may replace the guest-only tree.
+        if (guarded || isFinishing) return
         setIntent(intent)
         acceptExternalIntent(intent, newRequest = true)
     }
 
     override fun onResume() {
+        reconcileGuestGuard()
         super.onResume()
-        if (guestActive) applyGuestWindow(true)
     }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        if (hasFocus) reconcileGuestGuard()
+        super.onWindowFocusChanged(hasFocus)
+    }
+
+    /** Read the durable guard before any foreground owner route. A peer with
+     * an uncertain write must also fail closed, even if disk still says Owner. */
+    private fun readGuestBoot(): GuestBoot {
+        val disk = guestStore.boot()
+        if (disk !is GuestBoot.Owner) return disk
+        return guestActivities.firstOrNull { it.guestActive }?.guestBoot ?: disk
+    }
+
+    private fun reconcileGuestGuard(): Boolean {
+        if (!::guestStore.isInitialized) return guestActive
+        val next = readGuestBoot()
+        if (next !is GuestBoot.Owner) adoptGuestBoot(next)
+        // Only a successful authenticated exit broadcasts Owner.
+        return guestActive
+    }
+
+    /** All MainActivity instances are on the main thread. Secure and remove
+     * stale owner/picker content synchronously, including visible split-screen
+     * peers, rather than waiting for them to be recreated. */
+    private fun broadcastGuestBoot(next: GuestBoot) {
+        guestActivities.toList().forEach { it.adoptGuestBoot(next) }
+    }
+
+    private fun adoptGuestBoot(next: GuestBoot) {
+        if (isFinishing || isDestroyed) return
+        val previous = guestBoot
+        if (next is GuestBoot.Owner) {
+            if (previous is GuestBoot.Owner) return
+            applyGuestWindow(false)
+            guestBoot = next
+            return
+        }
+        applyGuestWindow(true)
+        val oldSession = (previous as? GuestBoot.Guest)?.record?.sessionId
+        val newSession = (next as? GuestBoot.Guest)?.record?.sessionId
+        if (previous is GuestBoot.Owner || oldSession != newSession) {
+            window.findViewById<android.view.View>(android.R.id.content)?.visibility =
+                android.view.View.INVISIBLE
+            guestTransitionHidden = true
+            guestReturnViewerUri = null
+        }
+        guestBoot = next
+        // An existing external picker is no longer allowed to answer with media.
+        if (externalEntry is ExternalEntry.Pick) {
+            pickAnswered = true
+            setResult(RESULT_CANCELED)
+            finish()
+        }
+    }
+
+    private fun revealGuestTransition() {
+        if (!guestTransitionHidden || isFinishing) return
+        guestTransitionHidden = false
+        window.findViewById<android.view.View>(android.R.id.content)?.visibility =
+            android.view.View.VISIBLE
+    }
+
+    private fun currentGuestSessionId(): String? =
+        (guestBoot as? GuestBoot.Guest)?.record?.sessionId
 
     /**
      * Brief v2 gap 4: FLAG_SECURE keeps guest frames out of screenshots,
@@ -778,25 +861,28 @@ class MainActivity : ComponentActivity() {
 
     /** Selection More / viewer More → Guest view. */
     private fun startGuest(selectedInTapOrder: List<GuestCandidate>, returnViewerUri: String?) {
-        if (guestActive) return
+        if (reconcileGuestGuard() || isFinishing ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
         when (val plan = GuestEntry.plan(selectedInTapOrder, GuestAndroid.deviceSecure(this))) {
             is GuestEntryPlan.Refuse -> plan.message?.let {
                 Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
             }
             is GuestEntryPlan.Start -> {
                 applyGuestWindow(true)
-                guestBoot = when (val started = guestStore.start(plan.items, returnViewerUri.orEmpty())) {
+                val next = when (val started = guestStore.start(plan.items, returnViewerUri.orEmpty())) {
                     is GuestStartResult.Started -> GuestBoot.Guest(started.record)
                     GuestStartResult.Shell -> GuestBoot.RecoveryShell
                 }
+                broadcastGuestBoot(next)
             }
         }
     }
 
-    private fun onGuestPageSettled(page: Int) {
-        val record = (guestBoot as? GuestBoot.Guest)?.record ?: return
+    private fun onGuestPageSettled(page: Int, expectedSessionId: String?) {
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        val record = guestStore.activeRecord()?.takeIf { it.sessionId == expectedSessionId } ?: return
         val index = GuestPaging.clamp(page, record.items.size)
-        if (guestStore.activeRecord()?.index != index) guestStore.update { it.copy(index = index) }
+        if (record.index != index) guestStore.update { it.copy(index = index) }
     }
 
     private fun lockTaskState(): Int =
@@ -808,10 +894,11 @@ class MainActivity : ComponentActivity() {
      * visible. Only the OS's own pinning prompt can appear; a decline is final
      * for the session and guest view stays confined inside ATLAS.
      */
-    private fun offerGuestPin() {
-        if (guestBoot !is GuestBoot.Guest || isFinishing) return
+    private fun offerGuestPin(expectedSessionId: String?) {
+        if (guestBoot !is GuestBoot.Guest || isFinishing ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
         if (lockTaskState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) return
-        val record = guestStore.activeRecord() ?: return
+        val record = guestStore.activeRecord()?.takeIf { it.sessionId == expectedSessionId } ?: return
         if (record.pinOffered) return
         guestStore.update { it.copy(pinOffered = true) } ?: return
         try {
@@ -822,8 +909,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /** "Exit guest view": persist a fresh nonce, then open the system confirmation. */
-    private fun requestGuestExit() {
-        if (!guestActive) return
+    private fun requestGuestExit(expectedSessionId: String?) {
+        if (!reconcileGuestGuard() || isFinishing ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
+            currentGuestSessionId() != expectedSessionId ||
+            (guestAuthPending != null && guestAuthOwnerId == guestActivityId)) return
         val intent = GuestAndroid.confirmIntent(this)
         if (intent == null) {
             // The lock was removed while guest view was live: stay in guest
@@ -833,6 +923,8 @@ class MainActivity : ComponentActivity() {
         }
         val request = guestStore.prepareAuth() ?: return
         guestAuthPending = request
+        guestAuthOwnerId = guestActivityId
+        guestRepinAfterAuth = false
         val pinned = lockTaskState()
         android.util.Log.i(GUEST_LOG, "Exit requested; lockTaskModeState=$pinned")
         try {
@@ -844,7 +936,7 @@ class MainActivity : ComponentActivity() {
             android.util.Log.i(GUEST_LOG, "Confirmation refused (${refused.javaClass.simpleName}); " +
                 "lockTaskModeState=$pinned")
             if (pinned == android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
-                guestAuthPending = null
+                clearGuestAuth()
                 return
             }
             try {
@@ -852,15 +944,23 @@ class MainActivity : ComponentActivity() {
                 stopLockTask()
                 guestAuthLauncher.launch(intent)
             } catch (again: Exception) {
-                guestAuthPending = null
+                clearGuestAuth()
                 repinGuestIfNeeded()
             }
         }
     }
 
-    private fun onGuestAuthResult(resultCode: Int) {
-        val launched = guestAuthPending
+    private fun clearGuestAuth() {
         guestAuthPending = null
+        guestAuthOwnerId = null
+    }
+
+    private fun onGuestAuthResult(resultCode: Int) {
+        // A result from another existing instance must never consume the
+        // newest request. The logical Activity id survives rotation only.
+        if (guestAuthOwnerId != guestActivityId) return
+        val launched = guestAuthPending
+        clearGuestAuth()
         val returnUri = guestStore.activeRecord()?.returnViewerUri.orEmpty()
         val pinOffered = guestStore.activeRecord()?.pinOffered == true
         if (!guestStore.exit(resultCode == RESULT_OK, launched)) {
@@ -872,9 +972,8 @@ class MainActivity : ComponentActivity() {
         if (pinOffered && lockTaskState() != android.app.ActivityManager.LOCK_TASK_MODE_NONE) {
             try { stopLockTask() } catch (_: Exception) { }
         }
-        applyGuestWindow(false)
         guestReturnViewerUri = returnUri.ifEmpty { null }
-        guestBoot = GuestBoot.Owner
+        broadcastGuestBoot(GuestBoot.Owner)
     }
 
     private fun repinGuestIfNeeded() {
@@ -886,6 +985,7 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(PICK_SESSION_KEY, pickSession)
+        outState.putString(GUEST_ACTIVITY_KEY, guestActivityId)
     }
 
     /**
@@ -917,6 +1017,10 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val PICK_SESSION_KEY = "atlas.external.pickSession"
         const val GUEST_LOG = "ATLAS_GUEST"
+        const val GUEST_ACTIVITY_KEY = "atlas.guest.activity"
+        val guestActivities = java.util.Collections.newSetFromMap(
+            java.util.WeakHashMap<MainActivity, Boolean>())
+        var guestAuthOwnerId: String? = null
 
         // Process memory only: survives rotation while the system prompt is up,
         // never process death, so an old RESULT_OK cannot end a session.
@@ -932,7 +1036,7 @@ class MainActivity : ComponentActivity() {
      * [plan] has been checked by [PickResultPlanner] and the provider already.
      */
     private fun answerPick(plan: PickResultPlan?) {
-        if (pickAnswered || isFinishing) return
+        if (reconcileGuestGuard() || pickAnswered || isFinishing) return
         pickAnswered = true
         if (plan == null) setResult(RESULT_CANCELED) else setResult(RESULT_OK, pickResultIntent(plan))
         finish()
@@ -4013,7 +4117,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         SelectionMoreAction("Move to album", "atlas-selection-move-to-album") {
                             albumPicker = AlbumTransferMode.MOVE
                         }
-                    ) else emptyList()) + (if (guestPort != null && live) listOf(
+                    ) else emptyList()) + (if (guestPort != null && live && GuestEntry.offeredInSelection(guestCandidates(photosSelection))) listOf(
                         // GUEST-1 (#589): the chosen photos, in tap order, and nothing else.
                         SelectionMoreAction(GuestCopy.ENTRY, "atlas-selection-guest-view") {
                             guestPort.start(guestCandidates(photosSelection), null)

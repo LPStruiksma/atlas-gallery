@@ -71,6 +71,11 @@ object GuestEntry {
         return GuestEntryPlan.Start(items)
     }
 
+    /** A mixed selection offers the action but plan refuses it atomically.
+     * An empty or video-only selection must not offer the action. */
+    fun offeredInSelection(candidates: List<GuestCandidate>): Boolean =
+        candidates.any(::offeredInViewer)
+
     /** Viewer More shows "Guest view" only on a still photo. */
     fun offeredInViewer(candidate: GuestCandidate): Boolean =
         !candidate.isVideo && isImageUri(candidate.uri)

@@ -95,6 +95,16 @@ class GuestSessionTest {
             GuestEntry.plan(listOf(GuestCandidate(3, "file:///sdcard/a.jpg", false)), true))
     }
 
+    @Test fun selectionMenuOffersOnlyWhenThereIsAStillPhoto() {
+        assertFalse(GuestEntry.offeredInSelection(emptyList()))
+        assertFalse(GuestEntry.offeredInSelection(listOf(vid(1), vid(2))))
+        assertTrue(GuestEntry.offeredInSelection(listOf(img(1), vid(2))))
+        assertEquals(GuestEntryPlan.Refuse(GuestCopy.PHOTOS_ONLY),
+            GuestEntry.plan(listOf(img(1), vid(2)), true))
+        assertTrue(GuestEntry.offeredInSelection(listOf(img(1), img(2))))
+        assertTrue(GuestEntry.plan(listOf(img(1), img(2)), true) is GuestEntryPlan.Start)
+    }
+
     @Test fun noSecureLockNeverEnters() {
         assertEquals(GuestEntryPlan.Refuse(GuestCopy.NEEDS_LOCK), GuestEntry.plan(listOf(img(1)), false))
     }

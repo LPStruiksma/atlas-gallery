@@ -613,3 +613,74 @@ class GuestExternalPickCancellationTest {
         }
     }
 }
+
+
+/** Two real existing activity instances on the synthetic emulator, not a recreation. */
+@RunWith(AndroidJUnit4::class)
+class GuestExistingActivityTest {
+    @get:Rule val guestStore: TestRule = GuestStoreRule()
+
+    @Test fun earlierOwnerInstanceReconcilesWhenItReturnsToForeground() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        androidx.test.core.app.ActivityScenario.launch<MainActivity>(
+            Intent(context, MainActivity::class.java).setAction(Intent.ACTION_MAIN)
+        ).use { scenario ->
+            activateGuestInSecondActivity(scenario)
+            scenario.onActivity { earlier ->
+                assertTrue("earlier owner now guarded", earlier.guestActive)
+                assertTrue("earlier owner window secure",
+                    earlier.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
+            }
+        }
+    }
+
+    @Test fun earlierPickerReturnsCancelledWithoutDataWhenGuestStartsElsewhere() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        androidx.test.core.app.ActivityScenario.launchActivityForResult<MainActivity>(
+            Intent(context, MainActivity::class.java).setAction(Intent.ACTION_GET_CONTENT).setType("image/*")
+        ).use { scenario ->
+            activateGuestInSecondActivity(scenario)
+            assertEquals(android.app.Activity.RESULT_CANCELED, scenario.result.resultCode)
+            assertEquals(null, scenario.result.resultData)
+        }
+    }
+
+    private fun activateGuestInSecondActivity(scenario: androidx.test.core.app.ActivityScenario<MainActivity>) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val monitor = instrumentation.addMonitor(MainActivity::class.java.name, null, false)
+        var second: MainActivity? = null
+        try {
+            lateinit var earlier: MainActivity
+            scenario.onActivity {
+                earlier = it
+                assertFalse("first activity starts in owner mode", it.guestActive)
+                it.startActivity(Intent(it, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            }
+            val other = requireNotNull(instrumentation.waitForMonitorWithTimeout(monitor, 10_000)) as MainActivity
+            second = other
+            assertTrue("standard launch creates a distinct activity", earlier !== other)
+            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                assertFalse("second activity starts in owner mode", other.guestActive)
+                val store = GuestAndroid.store(other)
+                val item = nl.atlas.gallery.featureguest.GuestItem(Long.MAX_VALUE,
+                    "content://media/external/images/media/${Long.MAX_VALUE}")
+                assertTrue(store.start(listOf(item), "") is nl.atlas.gallery.featureguest.GuestStartResult.Started)
+                // Suppress OS pin prompting for this lifecycle-only synthetic probe.
+                assertTrue(store.update { it.copy(pinOffered = true) } != null)
+                other.startActivity(Intent(other, MainActivity::class.java)
+                    .setAction(Intent.ACTION_MAIN).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            }
+            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync {
+                assertTrue("second activity reconciles on new intent", other.guestActive)
+                other.finish()
+            }
+            instrumentation.waitForIdleSync()
+            assertTrue(GuestAndroid.store(instrumentation.targetContext).boot() is GuestBoot.Guest)
+        } finally {
+            instrumentation.removeMonitor(monitor)
+            second?.let { activity -> instrumentation.runOnMainSync { if (!activity.isFinishing) activity.finish() } }
+        }
+    }
+}
