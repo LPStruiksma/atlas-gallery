@@ -661,16 +661,12 @@ private fun GalleryViewerSnapshot(
         }
     }
     fun finishViewerDrag(velocityY: Float, gateOpen: Boolean) {
-        when (viewerVerticalRelease(dragOffset.floatValue, velocityY, dragThresholdPx,
+        if (viewerDownDismissCommits(dragOffset.floatValue, velocityY, dragThresholdPx,
                 flingThresholdPx, latestZoom, gateOpen)) {
-            ViewerVerticalSwipe.CLOSE -> {
-                returnToGallery()
-            }
-            ViewerVerticalSwipe.DETAILS -> {
-                dragOffset.floatValue = 0f
-                if (access.details) openDetails() else cancelViewerDrag()
-            }
-            ViewerVerticalSwipe.NONE -> cancelViewerDrag()
+            returnToGallery()
+        } else {
+            // Once owned by dismissal, reversing is cancellation, never Details.
+            cancelViewerDrag()
         }
     }
 
@@ -697,8 +693,6 @@ private fun GalleryViewerSnapshot(
                         var previous = down.position
                         var reversedUp = false
                         var downExitEligible = false
-                        var lastElapsedMs = 0L
-                        var upEligible = false
                         var tracking = false
                         // #details-motion: an up-drag (or any vertical drag while
                         // Details is on screen) moves the details surface 1:1
@@ -740,15 +734,13 @@ private fun GalleryViewerSnapshot(
                             if (!tracking) reversedUp = viewerEarlyUpwardReversal(
                                 reversedUp, delta.y, touchSlopPx)
                             val elapsed = change.uptimeMillis - down.uptimeMillis
-                            lastElapsedMs = elapsed
                             // The V22 ratio applies to the *whole* movement, not an
                             // early vertical segment that later turns diagonal.
                             downExitEligible = viewerMayStartDownExit(
                                 travelY, travelX, elapsed, reversedUp, touchSlopPx)
-                            upEligible = travelY < -touchSlopPx &&
-                                abs(travelY) > abs(travelX) * 1.4f
-                            val verticallyDominant = abs(travelY) > abs(travelX) * 1.4f
-                            if (verticallyDominant && abs(travelY) > touchSlopPx && !tracking) {
+                            if (!tracking && viewerMayTrackVerticalGesture(
+                                    travelY, travelX, touchSlopPx, detailsBase > 0f,
+                                    downExitEligible)) {
                                 tracking = true
                                 detailsGesture = detailsBase > 0f || travelY < 0f
                                 if (detailsGesture) {
@@ -779,16 +771,14 @@ private fun GalleryViewerSnapshot(
                                 velocityUp, panel, detailsFlingPx),
                                 if (panel > 0f) velocityUp / panel else 0f)
                         } else if (released && tracking) {
-                            finishViewerDrag(tracker.calculateVelocity().y,
-                                if (dragOffset.floatValue > 0f)
-                                    downExitEligible && viewerMayStartDownExit(
-                                        travelY, travelX, lastElapsedMs,
-                                        reversedUp, touchSlopPx) else upEligible)
+                            finishViewerDrag(tracker.calculateVelocity().y, downExitEligible)
                         } else if (released) {
                             cancelViewerDrag()
                             if (detailsGesture || detailsBase > 0f) resumeDetailsSettle()
                         } else if (detailsGesture || detailsBase > 0f) {
                             resumeDetailsSettle()
+                        } else {
+                            cancelViewerDrag()
                         }
                     }
                 }
@@ -1212,6 +1202,20 @@ internal fun viewerMayStartDownExit(
 
 internal fun viewerEarlyUpwardReversal(cancelled: Boolean, stepY: Float, slop: Float): Boolean =
     cancelled || (stepY.isFinite() && stepY < -slop / 3f)
+
+/** Details can own an up-drag immediately; dismissal waits for V22 intent. */
+internal fun viewerMayTrackVerticalGesture(
+    dy: Float, dx: Float, slop: Float, detailsActive: Boolean, downExitEligible: Boolean
+): Boolean = dy.isFinite() && dx.isFinite() &&
+    abs(dy) > slop && abs(dy) > abs(dx) * 1.4f &&
+    (detailsActive || dy < 0f || downExitEligible)
+
+/** An owned downward gesture may only close or restore the viewer. */
+internal fun viewerDownDismissCommits(
+    dy: Float, velocityY: Float, distancePx: Float, flingPx: Float,
+    zoom: Float, gateOpen: Boolean
+): Boolean = viewerVerticalRelease(dy, velocityY, distancePx, flingPx, zoom, gateOpen) ==
+    ViewerVerticalSwipe.CLOSE
 
 internal fun viewerVerticalRelease(
     dy: Float, velocityY: Float, distancePx: Float, flingPx: Float,

@@ -43,7 +43,7 @@ Lukas, 2026-11-10 00:39Z: "Samsung Gallery is relatively minimalistic, but in a 
 | Scrubbing: the big photo always equals the strip's centre item; low-res while moving, sharp when it stops; nothing jumps on release (`PERF:S1`, `VIEW:V11`) | Pager chased the strip page by page, fell several photos behind on a fast scrub, then one of the two jumped on release | While the strip moves, an overlay shows the centre item every frame from the strip's own cached thumbnail, sharpened to the 800 px preview after a 60 ms pause. On release the pager lands once on that same item and the overlay stays until it has. Pager never animates through intermediate pages |
 | Double tap ×2.31 around the tap point, pan bounded, edge hands off to pager (`VIEW:V20-21`) | Done in earlier units | Kept |
 | Swipe up shows the details panel (Lukas 2026-11-10: "sorely needed"; `VIEW:V26-V27`) | Only the ⓘ button | Swipe up on an unzoomed photo opens Details (viewer PR 2) |
-| Drag down to close (`VIEW:V22`) | missing | Swipe down on an unzoomed photo closes (viewer PR 2) |
+| Drag down to close (`VIEW:V22`) | missing | Swipe down on an unzoomed photo closes (viewer PR 2); FLOW-3 guards ownership until downward intent and cancels an owned drag on reversal. Grid reveal and runtime evidence remain pending |
 | Close returns the grid to the photo you ended on (`VIEW:V23`) | Done (`onExitSettledUri`) | Kept; shared-element return later |
 
 ## 2. Pictures grid and app shell (PR 2)
