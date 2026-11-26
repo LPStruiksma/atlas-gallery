@@ -122,6 +122,14 @@ internal class AiEditLineageStore(
         }
     }
 
+    /**
+     * Forget one completed edit after its published copy was deleted by a confirmed session Undo
+     * (AIE-21). Only the exact edited Uri row; never a pending-save journal entry.
+     */
+    fun remove(editedUri: String): Boolean = db { database ->
+        database.delete("edit_lineage", "edited_uri = ?", arrayOf(editedUri)) == 1
+    }
+
     /** Read only persisted, completed edit relationships; never changes MediaStore. */
     fun all(): List<AiEditLineage> = db { database ->
         database.query("edit_lineage", arrayOf(

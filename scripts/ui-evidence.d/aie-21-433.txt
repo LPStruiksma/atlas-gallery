@@ -1,0 +1,51 @@
+# AIE-21 rev 5 (#433): AI Edit compare, refine and save. AiEdit21UiEvidenceTest renders these
+# from synthetic pixels only (no provider, network or personal photo) on the S24+ 1080x2340
+# display: A composing/suggestions/recent, C results/filmstrip/trail/history, D split compare,
+# zoom and hold, E refine/saved/undo, F font 1.3 and landscape, B keyboard with a long prompt.
+aie-21-light-a-compose-empty
+aie-21-light-a-no-service
+aie-21-light-a-more-suggestions
+aie-21-light-a-recent-empty
+aie-21-light-a-recent-list
+aie-21-light-c-result-one
+aie-21-light-c-result-four-selected-2
+aie-21-light-c-result-four-selected-3
+aie-21-light-c-trail-deep
+aie-21-light-c-history-sheet
+aie-21-light-d-compare-50
+aie-21-light-d-compare-25-zoomed
+aie-21-light-d-hold-original
+aie-21-light-e-refine-result-2
+aie-21-light-e-refine-generating
+aie-21-light-e-saved
+aie-21-light-e-undoing
+aie-21-light-e-undo-failed
+aie-21-light-e-undo-removed
+aie-21-light-f-font13-result-four
+aie-21-light-f-font13-saved
+aie-21-light-f-landscape-result
+aie-21-light-f-landscape-compare
+aie-21-dark-a-compose-empty
+aie-21-dark-a-no-service
+aie-21-dark-a-more-suggestions
+aie-21-dark-a-recent-empty
+aie-21-dark-a-recent-list
+aie-21-dark-c-result-one
+aie-21-dark-c-result-four-selected-2
+aie-21-dark-c-result-four-selected-3
+aie-21-dark-c-trail-deep
+aie-21-dark-c-history-sheet
+aie-21-dark-d-compare-50
+aie-21-dark-d-compare-25-zoomed
+aie-21-dark-d-hold-original
+aie-21-dark-e-refine-result-2
+aie-21-dark-e-refine-generating
+aie-21-dark-e-saved
+aie-21-dark-e-undoing
+aie-21-dark-e-undo-failed
+aie-21-dark-e-undo-removed
+aie-21-dark-f-font13-result-four
+aie-21-dark-f-font13-saved
+aie-21-dark-f-landscape-result
+aie-21-dark-f-landscape-compare
+aie-21-light-b-keyboard-long-prompt

@@ -367,6 +367,72 @@ internal class AiEditSaver(
     }
 
     /**
+     * Session Undo (AIE-21): delete exactly the copy [result] published, after proving it is
+     * still this app's own published row with the same lineage. Serialized with saves and
+     * recovery. Never touches the original, a sibling or a pending-save journal row; never asks
+     * for broader permission. A refusal or failure leaves the copy in place.
+     */
+    suspend fun undoPublished(result: AiEditSaveResult, onRefresh: () -> Unit = {}): AiEditUndoOutcome {
+        val outcome = withContext(Dispatchers.IO) {
+            saveMutex.withLock { runCatching { undoBlocking(result) }.getOrDefault(AiEditUndoOutcome.FAILED) }
+        }
+        if (outcome == AiEditUndoOutcome.REMOVED) withContext(Dispatchers.Main.immediate) {
+            clearViewerMetadataCache()
+            onRefresh()
+        }
+        return outcome
+    }
+
+    private fun undoBlocking(result: AiEditSaveResult): AiEditUndoOutcome {
+        val saved = result.uri
+        val id = runCatching { ContentUris.parseId(saved) }.getOrNull()
+        val volume = saved.pathSegments.firstOrNull()
+        val canonical = if (id != null && id >= 0 && volume != null && saved.authority == MediaStore.AUTHORITY)
+            runCatching { ContentUris.withAppendedId(collection(volume), id).toString() }.getOrNull() else null
+        val expectedPath = runCatching { sourceFacts(result.originalUri).relativePath }.getOrNull()
+        var exists = false
+        var owner: String? = null
+        var pending = false
+        var path: String? = null
+        if (canonical == saved.toString()) {
+            resolver.query(MediaStore.setIncludePending(saved), arrayOf(
+                MediaStore.Images.Media.OWNER_PACKAGE_NAME,
+                MediaStore.Images.Media.IS_PENDING,
+                MediaStore.Images.Media.RELATIVE_PATH), null, null, null)?.use {
+                if (it.moveToFirst()) {
+                    exists = true
+                    owner = it.getString(0)
+                    pending = it.getInt(1) != 0
+                    path = it.getString(2)
+                }
+            } ?: return AiEditUndoOutcome.FAILED
+        }
+        val verdict = AiEditUndoPolicy.decide(AiEditUndoPolicy.Facts(
+            savedUri = saved.toString(), originalUri = result.originalUri.toString(),
+            canonicalUri = canonical, rowExists = exists, ownerPackage = owner,
+            appPackage = context.packageName, pending = pending, relativePath = path,
+            expectedRelativePath = expectedPath,
+            lineageOriginalUri = lineageStore.get(saved.toString())?.originalUri))
+        return when (verdict) {
+            AiEditUndoPolicy.Verdict.REFUSE -> AiEditUndoOutcome.FAILED
+            AiEditUndoPolicy.Verdict.ALREADY_GONE -> {
+                runCatching { lineageStore.remove(saved.toString()) }
+                AiEditUndoOutcome.REMOVED
+            }
+            AiEditUndoPolicy.Verdict.DELETE -> {
+                // An app may delete its own MediaStore rows without a consent prompt; a
+                // RecoverableSecurityException (or 0 rows) means nothing was deleted.
+                val deleted = try { resolver.delete(saved, null, null) } catch (_: SecurityException) { 0 }
+                if (deleted != 1) AiEditUndoOutcome.FAILED
+                else {
+                    runCatching { lineageStore.remove(saved.toString()) }
+                    AiEditUndoOutcome.REMOVED
+                }
+            }
+        }
+    }
+
+    /**
      * One-off sanitized upload source for AIE-5. Returns an app-cache JPEG
      * owned by the caller, which MUST delete it in finally after the request.
      * The re-encode carries no EXIF at all (including GPS/camera/person tags).

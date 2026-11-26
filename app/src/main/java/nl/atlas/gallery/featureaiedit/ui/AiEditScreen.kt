@@ -10,7 +10,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -67,6 +73,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,7 +120,10 @@ internal data class AiEditExtras(
     val gate: AiEditGate? = null,
     val showHoldHint: Boolean = true,
     val toast: String? = null,
-    val recentPrompts: List<String> = emptyList()
+    val recentPrompts: List<String> = emptyList(),
+    /** A copy was published in this screen session and may still be undone (AIE-21 E). */
+    val canUndo: Boolean = false,
+    val undoing: Boolean = false
 )
 
 /** User actions of the stateless body. */
@@ -134,7 +145,9 @@ internal class AiEditActions(
     val onHintSeen: () -> Unit = {},
     val onView: () -> Unit = {},
     val onToastShown: () -> Unit = {},
-    val onClearHistory: () -> Unit = {}
+    val onClearHistory: () -> Unit = {},
+    val onEditThisResult: () -> Unit = {},
+    val onUndo: () -> Unit = {}
 )
 
 /**
@@ -147,8 +160,11 @@ internal fun AiEditScreen(
     sourceUri: Uri,
     sessionId: String,
     onRefresh: () -> Unit,
-    onSaved: (Uri) -> Unit,
-    onExit: () -> Unit
+    /** View on the Saved slab: focus exactly this new copy once the catalogue has it. */
+    onView: (Uri) -> Unit,
+    onExit: () -> Unit,
+    /** Told about each published copy; never moves focus by itself. */
+    onSaved: (Uri) -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext
@@ -161,7 +177,6 @@ internal fun AiEditScreen(
     val vm: AiEditViewModel = viewModel(key = "ai-edit:$sessionId")
     var settingsOpen by remember { mutableStateOf(false) }
     var hintSeen by remember { mutableStateOf(preferences.getBoolean("holdHintSeen", false)) }
-    var savedUri by remember { mutableStateOf<Uri?>(null) }
     val promptHistory = remember(app) {
         AiEditPromptHistory(File(app.noBackupFilesDir, AI_EDIT_PROMPT_HISTORY_FILE))
     }
@@ -190,9 +205,16 @@ internal fun AiEditScreen(
     val selectedUri = vm.ui.selectedCandidate?.let { ref ->
         runCatching { Uri.fromFile(store.candidateFile(ref.fileName)) }.getOrNull()
     }
+    val refineUri = (AiEditRefineSource.of(vm.ui) as? AiEditRefineSource.Candidate)?.let { ref ->
+        runCatching { Uri.fromFile(store.candidateFile(ref.fileName)) }.getOrNull()
+    }
+    val viewer = remember(sessionId) { AiEditViewerState() }
     AiEditScreenContent(
         state = vm.ui,
-        extras = AiEditExtras(vm.services, vm.costLine, vm.sizeNotice, vm.gate, !hintSeen, vm.toast, recentPrompts),
+        extras = AiEditExtras(vm.services, vm.costLine, vm.sizeNotice, vm.gate, !hintSeen, vm.toast, recentPrompts,
+            canUndo = vm.lastSave != null, undoing = vm.undoing),
+        refineSourceUri = refineUri,
+        viewer = viewer,
         originalUri = sourceUri,
         selectedCandidateUri = selectedUri,
         candidateUri = { item -> runCatching { Uri.fromFile(store.candidateFile(item.fileName)) }.getOrNull() },
@@ -201,11 +223,10 @@ internal fun AiEditScreen(
             onPromptChanged = vm::promptChanged,
             onGenerate = vm::requestGenerate,
             onCancel = vm::cancel,
-            onAccept = {
-                vm.accept(app, sourceUri, store, onRefresh) { uri -> savedUri = uri; onSaved(uri) }
-            },
+            onAccept = { vm.accept(app, sourceUri, store, onRefresh, onSaved) },
             onChangePrompt = vm::changePrompt,
-            onStartOver = { vm.selectBranch(null); vm.changePrompt() },
+            onEditThisResult = vm::editThisResult,
+            onStartOver = vm::startOver,
             onSelectCandidate = vm::selectCandidate,
             onChooseService = vm::chooseService,
             onIssueAction = { action ->
@@ -224,7 +245,11 @@ internal fun AiEditScreen(
             onGateDismiss = vm::dismissGate,
             onGateOpenService = { open(profileKind?.let { AiEditServices.pricingUrl(it) }) },
             onHintSeen = { hintSeen = true; preferences.edit().putBoolean("holdHintSeen", true).apply() },
-            onView = { savedUri?.let { onExit() } },
+            onView = {
+                // Exactly the Uri this save returned; the gallery focuses it after its refresh.
+                vm.lastSave?.uri?.let { uri -> onView(uri); vm.discard(store, onExit) }
+            },
+            onUndo = { vm.undo(app, onRefresh) },
             onToastShown = vm::dismissToast,
             onClearHistory = {
                 if (promptHistory.clear()) recentPrompts = emptyList()
@@ -259,28 +284,41 @@ internal fun AiEditScreenContent(
     originalUri: Uri,
     selectedCandidateUri: Uri?,
     candidateUri: (AiEditWorkingCandidate) -> Uri?,
-    actions: AiEditActions
+    actions: AiEditActions,
+    /** The photo the next Generate sends when refining a result; null means the original. */
+    refineSourceUri: Uri? = null,
+    viewer: AiEditViewerState = remember { AiEditViewerState() }
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    var showOriginal by remember { mutableStateOf(false) }
     var suggestionsOpen by remember { mutableStateOf(false) }
     var recentOpen by remember { mutableStateOf(false) }
     var confirmClearHistory by remember { mutableStateOf(false) }
+    var historyOpen by remember { mutableStateOf(false) }
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val hasPreview = selectedCandidateUri != null && state.phase in
         setOf(AiEditPhase.Result, AiEditPhase.Accepting, AiEditPhase.Saved)
     val service = state.serviceName ?: "the service"
     val noService = extras.services.isEmpty()
     val busy = state.phase in setOf(AiEditPhase.Generating, AiEditPhase.Accepting)
+    val composingPhase = state.phase in setOf(AiEditPhase.Idle, AiEditPhase.Composing, AiEditPhase.Cancelled)
+    val trail = AiEditLineage.trail(state.candidates, state.selectedId)
+    val selectedLabel = state.selectedId?.let { AiEditLineage.label(state.candidates, it) } ?: "Result"
+    val refining = AiEditRefineSource.of(state) as? AiEditRefineSource.Candidate
+    val refiningLabel = refining?.let { AiEditLineage.label(state.candidates, it.id) }
+    // Leaving the result (refine, start over, saving) ends compare; zoom and focus stay.
+    LaunchedEffect(hasPreview) { if (!hasPreview) { viewer.endCompare(); viewer.pinnedOriginal = false } }
 
-    Box(
+    BoxWithConstraints(
         Modifier.fillMaxSize().background(AiEditColors.Ground)
             .windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
             .testTag("atlas-ai-edit-screen")
     ) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            // Top row: back, title, service chip.
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+        // F: a short, wide window puts the controls beside the photo instead of a clipped pile.
+        val sideBySide = maxWidth > maxHeight && maxHeight < 520.dp
+
+        val header: @Composable () -> Unit = {
+            Row(Modifier.fillMaxWidth().heightIn(min = if (sideBySide) 48.dp else 56.dp),
+                verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = actions.onBack, enabled = state.phase != AiEditPhase.Accepting,
                     modifier = Modifier.size(48.dp).testTag("atlas-ai-edit-back")) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AiEditColors.Ink)
@@ -300,53 +338,45 @@ internal fun AiEditScreenContent(
                     }
                 }
             }
-            // Photo: fit on black, never hidden. Hold (or the "Show original" action) shows the original.
-            Box(
-                Modifier.fillMaxWidth().weight(1f).heightIn(min = 160.dp)
-                    .testTag("atlas-ai-edit-compare")
-                    .pointerInput(hasPreview) {
-                        detectTapGestures(onPress = {
-                            if (hasPreview) { showOriginal = true; actions.onHintSeen() }
-                            tryAwaitRelease()
-                            showOriginal = false
-                        })
-                    }
-                    .semantics {
-                        if (hasPreview) customActions = listOf(CustomAccessibilityAction("Show original") {
-                            showOriginal = !showOriginal; true
-                        })
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(model = if (hasPreview && !showOriginal) selectedCandidateUri else originalUri,
-                    contentDescription = if (hasPreview && !showOriginal) "Edited photo" else "Original photo",
-                    contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-                if (hasPreview && (extras.showHoldHint || showOriginal)) Text(
-                    if (showOriginal) "Original" else "Hold to see original",
-                    style = Secondary, color = AiEditColors.Ink,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)
-                        .background(AiEditColors.Surface, RoundedCornerShape(22.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                        .testTag("atlas-ai-edit-compare-hint")
+        }
+
+        val photo: @Composable (Modifier) -> Unit = { modifier ->
+            Box(modifier.heightIn(min = 160.dp).testTag("atlas-ai-edit-compare")) {
+                AiEditCompareViewer(
+                    state = viewer,
+                    originalUri = if (composingPhase || state.phase == AiEditPhase.Generating) refineSourceUri ?: originalUri else originalUri,
+                    editedUri = if (hasPreview) selectedCandidateUri else null,
+                    editedLabel = selectedLabel,
+                    showHoldHint = extras.showHoldHint,
+                    onHoldShown = actions.onHintSeen,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (refiningLabel != null && (composingPhase || state.phase == AiEditPhase.Generating)) Text(
+                    "Editing $refiningLabel", style = Secondary, color = AiEditColors.Ink,
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp)
+                        .background(AiEditColors.Surface, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .testTag("atlas-ai-edit-refining")
                 )
             }
-            if (state.candidates.size > 1 && state.phase == AiEditPhase.Result) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("atlas-ai-edit-candidates")) {
-                    items(state.candidates, key = { it.id }) { c ->
-                        AsyncImage(model = candidateUri(c), contentDescription = "Earlier result",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp))
-                                .background(if (c.id == state.selectedId) AiEditColors.OnBrand else AiEditColors.Surface)
-                                .padding(if (c.id == state.selectedId) 2.dp else 0.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { actions.onSelectCandidate(c.id) }
-                                .testTag("atlas-ai-edit-candidate-${c.id}"))
-                    }
+        }
+
+        val belowPhoto: @Composable () -> Unit = {
+            if (state.candidates.isNotEmpty() && state.phase == AiEditPhase.Result) {
+                Filmstrip(state, candidateUri, actions.onSelectCandidate)
+                TrailRow(trail, viewer, hasPreview,
+                    onOriginal = actions.onStartOver,
+                    onStep = actions.onSelectCandidate,
+                    onHistory = { historyOpen = true })
+            }
+            if (refiningLabel != null && composingPhase && !imeOpen) {
+                TextButton(onClick = actions.onStartOver,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-use-original")) {
+                    Text("Use the original instead", style = Secondary, color = AiEditColors.Ink)
                 }
             }
             // One short line under the photo: cost/currency/unknown, or the size notice.
-            if (!noService && state.phase in setOf(AiEditPhase.Idle, AiEditPhase.Composing, AiEditPhase.Cancelled)) {
+            if (!noService && !imeOpen && composingPhase) {
                 extras.costLine?.let {
                     Text(it, style = Secondary, color = AiEditColors.InkSecondary, maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -375,9 +405,8 @@ internal fun AiEditScreenContent(
                         .padding(horizontal = 16.dp, vertical = 12.dp).testTag("atlas-ai-edit-failed"))
             }
             // Static text only: a chip changes the editable prompt but never triggers Generate.
-            // Hide while the IME is open to keep the photo and action row unobstructed.
-            if (!imeOpen && state.phase in setOf(
-                    AiEditPhase.Idle, AiEditPhase.Composing, AiEditPhase.Cancelled)) {
+            // Hidden while the IME is open to keep the photo and action row unobstructed.
+            if (!imeOpen && composingPhase) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth().testTag("atlas-ai-edit-suggestions"),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -425,10 +454,19 @@ internal fun AiEditScreenContent(
                         Text("Saving a copy…", style = Body, color = AiEditColors.OnBrand, modifier = Modifier.weight(1f))
                     }
                     state.phase == AiEditPhase.Saved -> {
-                        Text("Saved as a copy", style = Body, color = AiEditColors.OnBrand,
-                            modifier = Modifier.weight(1f).testTag("atlas-ai-edit-saved"))
-                        SecondaryPill("View", "atlas-ai-edit-view", onClick = actions.onView)
-                        PrimaryPill("Done", "atlas-ai-edit-done", onClick = actions.onBack)
+                        Column(Modifier.weight(1f)) {
+                            Text("Saved as a copy", style = Body, color = AiEditColors.OnBrand,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                    .testTag("atlas-ai-edit-saved"))
+                            FlowRow(Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                SecondaryPill("View", "atlas-ai-edit-view", enabled = !extras.undoing, onClick = actions.onView)
+                                if (extras.canUndo) SecondaryPill(if (extras.undoing) "Undoing…" else "Undo",
+                                    "atlas-ai-edit-undo", enabled = !extras.undoing, onClick = actions.onUndo)
+                                PrimaryPill("Done", "atlas-ai-edit-done", enabled = !extras.undoing, onClick = actions.onBack)
+                            }
+                        }
                     }
                     state.phase == AiEditPhase.Result -> {
                         Column(Modifier.weight(1f)) {
@@ -439,7 +477,7 @@ internal fun AiEditScreenContent(
                             FlowRow(Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                SecondaryPill("Change", "atlas-ai-edit-change", onClick = actions.onChangePrompt)
+                                SecondaryPill("Edit this result", "atlas-ai-edit-change", onClick = actions.onEditThisResult)
                                 SecondaryPill("Start over", "atlas-ai-edit-start-over", onClick = actions.onStartOver)
                                 PrimaryPill("Save copy", "atlas-ai-edit-accept",
                                     enabled = state.selectedCandidate != null, onClick = actions.onAccept)
@@ -450,16 +488,16 @@ internal fun AiEditScreenContent(
                         FlowRow(Modifier.weight(1f),
                             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        card.actions.forEachIndexed { index, action ->
-                            val label = AiEditStateCopy.actionLabel(action, service)
-                            val tag = "atlas-ai-edit-action-${action.name}"
-                            val click = {
-                                if (action == IssueAction.TRY_ANOTHER_SERVICE) menuOpen = true
-                                actions.onIssueAction(action)
+                            card.actions.forEachIndexed { index, action ->
+                                val label = AiEditStateCopy.actionLabel(action, service)
+                                val tag = "atlas-ai-edit-action-${action.name}"
+                                val click = {
+                                    if (action == IssueAction.TRY_ANOTHER_SERVICE) menuOpen = true
+                                    actions.onIssueAction(action)
+                                }
+                                if (index == card.actions.lastIndex) PrimaryPill(label, tag, onClick = click)
+                                else SecondaryPill(label, tag, onClick = click)
                             }
-                            if (index == card.actions.lastIndex) PrimaryPill(label, tag, onClick = click)
-                            else SecondaryPill(label, tag, onClick = click)
-                        }
                         }
                     }
                     else -> {
@@ -473,6 +511,25 @@ internal fun AiEditScreenContent(
             }
             Spacer(Modifier.size(8.dp))
         }
+
+        if (sideBySide) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                header()
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    photo(Modifier.weight(1f).fillMaxHeight())
+                    Column(Modifier.widthIn(max = 360.dp).fillMaxHeight()
+                        .verticalScroll(rememberScrollState()).testTag("atlas-ai-edit-controls")) {
+                        belowPhoto()
+                    }
+                }
+            }
+        } else {
+            Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                header()
+                photo(Modifier.fillMaxWidth().weight(1f).heightIn(min = 160.dp))
+                belowPhoto()
+            }
+        }
         extras.toast?.let { message ->
             Text(message, style = Secondary, color = AiEditColors.Ink,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 64.dp, start = 16.dp, end = 16.dp)
@@ -484,6 +541,30 @@ internal fun AiEditScreenContent(
         }
     }
     extras.gate?.let { GateDialog(it, service, actions) }
+    if (historyOpen) AlertDialog(
+        onDismissRequest = { historyOpen = false },
+        title = { Text("Edit history") },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                if (trail.broken) item {
+                    Text("Earlier results are no longer available.", style = Secondary,
+                        modifier = Modifier.padding(vertical = 8.dp))
+                }
+                items(trail.steps) { step ->
+                    val current = step == trail.current
+                    TextButton(onClick = {
+                        historyOpen = false
+                        if (step.candidateId == null) actions.onStartOver() else actions.onSelectCandidate(step.candidateId)
+                    }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag("atlas-ai-edit-history-${step.candidateId ?: "original"}")) {
+                        Text(if (current) "${step.label} (shown)" else step.label)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { historyOpen = false }) { Text("Close") } },
+        modifier = Modifier.testTag("atlas-ai-edit-lineage-sheet")
+    )
     if (suggestionsOpen) AlertDialog(
         onDismissRequest = { suggestionsOpen = false },
         title = { Text("Suggestions") },
@@ -591,12 +672,108 @@ private fun PrimaryPill(label: String, tag: String, enabled: Boolean = true, onC
 }
 
 @Composable
-private fun SecondaryPill(label: String, tag: String, onClick: () -> Unit) {
+private fun SecondaryPill(label: String, tag: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
-        Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick)
+        Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp)).clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 12.dp).testTag(tag),
         contentAlignment = Alignment.Center
-    ) { Text(label, style = Nav, color = AiEditColors.OnBrandSecondary, maxLines = 1) }
+    ) {
+        Text(label, style = Nav, maxLines = 1,
+            color = if (enabled) AiEditColors.OnBrandSecondary else AiEditColors.OnBrandSecondary.copy(alpha = .55f))
+    }
+}
+
+/**
+ * C: one 48 dp target per result. The selected one has a 2 dp white ring and the small held
+ * sphere above it (brand text token on the black viewer); TalkBack reads "Result 2 of 4, selected".
+ */
+@Composable
+private fun Filmstrip(state: AiEditUiState, uri: (AiEditWorkingCandidate) -> Uri?, onSelect: (String) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp).testTag("atlas-ai-edit-candidates")) {
+        items(state.candidates, key = { it.id }) { c ->
+            val index = state.candidates.indexOf(c)
+            val selected = c.id == state.selectedId
+            Column(horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.semantics(mergeDescendants = true) {
+                    contentDescription = "Result ${index + 1} of ${state.candidates.size}" +
+                        if (selected) ", selected" else ""
+                    this.selected = selected
+                }) {
+                Canvas(Modifier.size(width = 48.dp, height = 10.dp)) {
+                    if (selected) drawCircle(AiEditColors.BrandText, radius = 4.dp.toPx())
+                }
+                Box(
+                    Modifier.size(48.dp).clip(RoundedCornerShape(10.dp))
+                        .then(if (selected) Modifier.border(2.dp, AiEditColors.OnBrand, RoundedCornerShape(10.dp))
+                            else Modifier)
+                        .clickable { onSelect(c.id) }
+                        .testTag("atlas-ai-edit-candidate-${c.id}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(model = uri(c), contentDescription = null, contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().padding(if (selected) 3.dp else 0.dp)
+                            .clip(RoundedCornerShape(8.dp)))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * C/D: "Original › parent › current" in one line, a History action when steps are hidden, and
+ * the 48 dp Compare toggle. Every step is a labelled, focusable target; no internal ids.
+ */
+@Composable
+private fun TrailRow(
+    trail: AiEditLineage.Trail,
+    viewer: AiEditViewerState,
+    canCompare: Boolean,
+    onOriginal: () -> Unit,
+    onStep: (String) -> Unit,
+    onHistory: () -> Unit
+) {
+    val compact = AiEditLineage.compact(trail)
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("atlas-ai-edit-trail"),
+        verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically) {
+            compact.steps.forEachIndexed { i, step ->
+                if (i > 0) Text(if (i == 1 && compact.needsHistory) "› … ›" else "›",
+                    style = Secondary, color = AiEditColors.InkSecondary,
+                    modifier = Modifier.padding(horizontal = 2.dp).clearAndSetSemantics { })
+                val current = i == compact.steps.lastIndex
+                Box(
+                    Modifier.heightIn(min = 48.dp).sizeIn(minWidth = 48.dp).clip(RoundedCornerShape(24.dp))
+                        .clickable(enabled = !current) {
+                            if (step.candidateId == null) onOriginal() else onStep(step.candidateId)
+                        }
+                        .padding(horizontal = 6.dp)
+                        .semantics { contentDescription = if (current) "${step.label}, shown" else step.label }
+                        .testTag("atlas-ai-edit-trail-${step.candidateId ?: "original"}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(step.label, style = if (current) Nav else Secondary, maxLines = 1,
+                        color = if (current) AiEditColors.Ink else AiEditColors.InkSecondary)
+                }
+            }
+        }
+        if (compact.needsHistory) TextButton(onClick = onHistory,
+            modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-ai-edit-history")) {
+            Text("History", style = Secondary, color = AiEditColors.Ink)
+        }
+        if (canCompare) Box(
+            Modifier.heightIn(min = 48.dp).sizeIn(minWidth = 48.dp).clip(RoundedCornerShape(24.dp))
+                .background(if (viewer.compare) AiEditColors.Slab else AiEditColors.Surface)
+                .clickable { if (viewer.compare) viewer.endCompare() else viewer.startCompare() }
+                .padding(horizontal = 14.dp)
+                .semantics { this.selected = viewer.compare }
+                .testTag("atlas-ai-edit-compare-toggle"),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Compare", style = Nav, color = if (viewer.compare) AiEditColors.OnBrand else AiEditColors.Ink)
+        }
+    }
 }
 
 @Composable

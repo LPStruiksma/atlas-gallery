@@ -198,3 +198,33 @@ class AiEditStateMachineTest {
         assertFalse(machine.chooseProvider("p-fal", setOf("p-fal"), "fal.ai", null))
     }
 }
+
+class AiEditUndoTransitionTest {
+    private fun saved(): AiEditStateMachine {
+        val m = AiEditStateMachine()
+        m.compose("Brighten the sky")
+        val t = requireNotNull(m.generate())
+        m.onResult(t, listOf(AiEditWorkingCandidate("c1", "c1.png", null, "Brighten the sky",
+            "atlas-synthetic-mock", "mock", "1")))
+        requireNotNull(m.beginAccept())
+        org.junit.Assert.assertTrue(m.saved())
+        return m
+    }
+
+    @org.junit.Test fun undoneReturnsToTheSelectedResultUnsavedAgain() {
+        val m = saved()
+        org.junit.Assert.assertFalse(m.state.hasUnsavedCandidates)
+        org.junit.Assert.assertTrue(m.undone())
+        org.junit.Assert.assertEquals(AiEditPhase.Result, m.state.phase)
+        org.junit.Assert.assertEquals("c1", m.state.selectedId)
+        org.junit.Assert.assertTrue(m.state.hasUnsavedCandidates)
+    }
+
+    @org.junit.Test fun undoneOnlyFromSaved() {
+        val m = AiEditStateMachine()
+        org.junit.Assert.assertFalse(m.undone())
+        val s = saved()
+        org.junit.Assert.assertTrue(s.undone())
+        org.junit.Assert.assertFalse(s.undone())
+    }
+}

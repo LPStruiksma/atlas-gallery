@@ -166,7 +166,7 @@ class AiEditServiceJourneyTest {
                     AtlasGalleryTheme(dark = true) {
                         key(session) {
                             AiEditScreen(sourceUri = source, sessionId = session, onRefresh = {},
-                                onSaved = { savedUri = it }, onExit = {})
+                                onSaved = { savedUri = it }, onView = {}, onExit = {})
                         }
                     }
                 }

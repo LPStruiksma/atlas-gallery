@@ -44,7 +44,9 @@ import nl.atlas.gallery.featureaiedit.provider.ResizePlan
 import nl.atlas.gallery.featureaiedit.provider.SubmitJournal
 import nl.atlas.gallery.featureaiedit.save.AiEditCandidate
 import nl.atlas.gallery.featureaiedit.save.AiEditImageFormat
+import nl.atlas.gallery.featureaiedit.save.AiEditSaveResult
 import nl.atlas.gallery.featureaiedit.save.AiEditSaver
+import nl.atlas.gallery.featureaiedit.save.AiEditUndoOutcome
 import nl.atlas.gallery.featureaiedit.settings.HostedInputs
 import nl.atlas.gallery.featureaiedit.settings.ProviderCredentialVault
 import nl.atlas.gallery.featureaiedit.settings.ProviderProfile
@@ -90,6 +92,11 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
     var sizeNotice by mutableStateOf<String?>(null)
         private set
     var costLine by mutableStateOf<String?>(null)
+        private set
+    /** The copy published in this screen session; Undo targets exactly this and nothing else. */
+    var lastSave by mutableStateOf<AiEditSaveResult?>(null)
+        private set
+    var undoing by mutableStateOf(false)
         private set
 
     private var env: AiEditEnvironment? = null
@@ -189,9 +196,26 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
     }
 
     fun promptChanged(text: String) { if (machine.compose(text)) publish() }
-    fun selectCandidate(id: String) { if (machine.selectCandidate(id)) publish() }
-    fun selectBranch(id: String?) { if (machine.selectBranch(id)) publish() }
+    fun selectCandidate(id: String) { if (machine.selectCandidate(id)) { publish(); refreshEstimate() } }
+    fun selectBranch(id: String?) { if (machine.selectBranch(id)) { publish(); refreshEstimate() } }
     fun changePrompt() { if (machine.compose()) { journal?.clear(); publish() } }
+
+    /**
+     * "Edit this result": the selected result becomes the next request's actual source photo and
+     * its prompt stays editable. Sends nothing.
+     */
+    fun editThisResult() {
+        val id = machine.state.selectedId ?: return
+        if (!machine.selectBranch(id)) return
+        val prompt = machine.state.selectedCandidate?.prompt ?: machine.state.prompt
+        if (machine.compose(prompt)) { journal?.clear(); publish(); refreshEstimate() }
+    }
+
+    /** "Start over": the next request starts from the untouched original. No remote work. */
+    fun startOver() {
+        if (!machine.selectBranch(null)) return
+        if (machine.compose()) { journal?.clear(); publish(); refreshEstimate() }
+    }
     fun dismissToast() { toast = null }
 
     /** Provider changes never dispatch work; the user must tap Generate again. */
@@ -208,8 +232,21 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
         AiEditServices.create(p, e.registry, HostedInputs(
             apiKey = { e.vault.get(p.id) }, images = loader, outputDirectory = e.store.resultsDirectory()))
 
-    private fun loader(e: AiEditEnvironment): AndroidSourceImageLoader? = source?.let {
-        AndroidSourceImageLoader(e.context.contentResolver, it, e.settings.keepLocationInUploads)
+    /**
+     * The one photo the next request may read: the chosen result's private file when refining
+     * (AIE-21), else the opened photo. Location can only be kept for the opened photo itself.
+     */
+    private fun loader(e: AiEditEnvironment, state: AiEditUiState = machine.state): AndroidSourceImageLoader? {
+        val original = source ?: return null
+        return when (val chosen = AiEditRefineSource.of(state)) {
+            AiEditRefineSource.Original ->
+                AndroidSourceImageLoader(e.context.contentResolver, original, e.settings.keepLocationInUploads)
+            is AiEditRefineSource.Candidate -> {
+                val file = runCatching { e.store.candidateFile(chosen.fileName) }.getOrNull()
+                    ?.takeIf { it.isFile } ?: return null
+                AndroidSourceImageLoader(e.context.contentResolver, Uri.fromFile(file), keepLocation = false)
+            }
+        }
     }
 
     /** Builds the exact request Generate would send; never sends it. */
@@ -487,6 +524,7 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
                     format = format,
                     candidateParentUri = null
                 ), onRefresh = onRefresh)
+                lastSave = result
                 if (machine.saved()) publish()
                 onSaved(result.uri)
             } catch (cancelled: CancellationException) {
@@ -494,6 +532,29 @@ internal class AiEditViewModel(private val handle: SavedStateHandle) : ViewModel
             } catch (_: Exception) {
                 if (machine.saveFailed()) publish()
             }
+        }
+    }
+
+    /**
+     * Session Undo of the copy saved in this screen. Says "Copy removed" only after MediaStore
+     * confirmed the deletion; otherwise the copy stays and View/Done remain.
+     */
+    fun undo(context: Context, onRefresh: () -> Unit) {
+        val saved = lastSave ?: return
+        if (ui.phase != AiEditPhase.Saved || undoing) return
+        undoing = true
+        viewModelScope.launch {
+            val outcome = try {
+                AiEditSaver(context).undoPublished(saved, onRefresh)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) { AiEditUndoOutcome.FAILED }
+            undoing = false
+            if (outcome == AiEditUndoOutcome.REMOVED) {
+                lastSave = null
+                if (machine.undone()) publish()
+                toast = AiEditStateCopy.UNDO_REMOVED
+            } else toast = AiEditStateCopy.UNDO_FAILED
         }
     }
 

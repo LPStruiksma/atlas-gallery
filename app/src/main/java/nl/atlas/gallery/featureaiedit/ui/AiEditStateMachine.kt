@@ -217,6 +217,16 @@ class AiEditStateMachine(initial: AiEditUiState = AiEditUiState()) {
         return true
     }
 
+    /**
+     * A confirmed session Undo removed the published copy (AIE-21): back to the selected result,
+     * which is unsaved again. Only from Saved, and only after the deletion was confirmed.
+     */
+    fun undone(): Boolean {
+        if (state.phase != AiEditPhase.Saved || state.selectedCandidate == null) return false
+        state = state.copy(phase = AiEditPhase.Result, error = null)
+        return true
+    }
+
     companion object {
         /**
          * Resume only candidates still present in the session cache. An interrupted request is
