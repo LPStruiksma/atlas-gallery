@@ -1,6 +1,7 @@
 package nl.atlas.gallery
 
 import android.os.ParcelFileDescriptor
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -31,7 +33,8 @@ class SharedPhotoDarkJourneyTest : SharedPhotoJourneyTest(dark = true)
 
 abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
     private val compose = createAndroidComposeRule<MainActivity>()
-    private val fixtures = SyntheticHeaderFixtures()
+    private val fixtures = SyntheticHeaderFixtures(sizes = listOf(
+        240 to 160, 160 to 240, 180 to 180, 320 to 100, 100 to 320, 240 to 180))
     private val mode = if (dark) "dark" else "light"
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
@@ -93,13 +96,102 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
         val target = if (start == 0) 1 else start - 1
         compose.onNodeWithTag("atlas-thumbnail-$target").performClick()
         compose.waitUntil(10_000L) { counter().startsWith("${target + 1} of ") }
-        compose.onNodeWithTag("atlas-back").performClick()
-        compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
+        compose.mainClock.advanceTimeBy(600L)
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("atlas-back").performClick()
+            captureReturnMidpoint("flow3-paged-back-mid-$mode.png")
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        saveUiEvidence("shared-23-far-scrub-$mode.png")
+    }
+
+    private fun captureReturnMidpoint(shot: String) {
+        // Measurement is asynchronous; don't sample at a fixed time after Back.
+        repeat(100) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            if (compose.onAllNodes(hasTestTag("atlas-shared-photo-exit"))
+                    .fetchSemanticsNodes().isNotEmpty()) {
+                compose.mainClock.advanceTimeBy(64L)
+                compose.waitForIdle()
+                compose.onNodeWithTag("atlas-shared-photo-exit").assertExists()
+                saveUiEvidence(shot)
+                compose.mainClock.advanceTimeBy(320L)
+                return
+            }
+        }
+        throw AssertionError("Settled synthetic photo did not start a measured return")
+    }
+
+    private fun awaitClosed() {
         compose.waitUntil(10_000L) {
             compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
         }
         compose.waitForIdle()
-        saveUiEvidence("shared-23-far-scrub-$mode.png")
+    }
+
+    @Test fun downwardGestureReversesThenCommitsToMeasuredTile() {
+        val tileTag = firstTile()
+        compose.onNodeWithTag(tileTag, useUnmergedTree = true).performClick()
+        compose.waitForNode(hasTestTag("atlas-photo-counter"))
+        val decoded = SemanticsMatcher("focused decoded photo") {
+            it.config.getOrNull(ViewerPhotoDecodedKey) == true
+        }
+        compose.waitUntil(30_000L) {
+            compose.onAllNodes(decoded).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.mainClock.advanceTimeBy(600L)
+        compose.waitForIdle()
+        val photo = compose.onNodeWithTag("atlas-viewer-drag-photo")
+        val resting = photo.fetchSemanticsNode().boundsInRoot
+        val startCounter = counter()
+        val pager = compose.onNodeWithTag("atlas-main-pager")
+        compose.mainClock.autoAdvance = false
+        try {
+            pager.performTouchInput {
+                down(center.copy(y = height * .25f))
+                repeat(6) { moveBy(Offset(0f, height * .025f)) }
+            }
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            val dragged = photo.fetchSemanticsNode().boundsInRoot
+            assertTrue("Held drag must move and shrink the photo",
+                dragged.top > resting.top && dragged.width < resting.width)
+            saveUiEvidence("flow3-drag-held-$mode.png")
+            pager.performTouchInput {
+                repeat(6) { moveBy(Offset(0f, -height * .025f)) }
+                up()
+            }
+            compose.mainClock.advanceTimeBy(600L)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        compose.waitForIdle()
+        assertTrue("Reversed drag must keep the settled photo", counter() == startCounter)
+        assertTrue("Reversal must restore fitted width",
+            kotlin.math.abs(photo.fetchSemanticsNode().boundsInRoot.width - resting.width) < 2f)
+        saveUiEvidence("flow3-drag-reversed-$mode.png")
+
+        compose.mainClock.autoAdvance = false
+        try {
+            pager.performTouchInput {
+                down(center.copy(y = height * .25f))
+                repeat(10) { moveBy(Offset(0f, height * .035f)) }
+            }
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            saveUiEvidence("flow3-drag-commit-held-$mode.png")
+            pager.performTouchInput { up() }
+            captureReturnMidpoint("flow3-drag-commit-mid-$mode.png")
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitClosed()
+        compose.onNodeWithTag(tileTag, useUnmergedTree = true).assertExists()
+        saveUiEvidence("flow3-drag-returned-$mode.png")
     }
 
     @Test fun reducedMotionSkipsOverlayWithoutBreakingViewerBack() {

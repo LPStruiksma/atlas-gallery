@@ -146,3 +146,10 @@ test("committed return derives its clip from normalized crop and uniform scale",
   assert.match(motion, /val frame = cropFrame\?\.frame \?: sharedPhotoRect/);
   assert.match(motion, /\.clipToBounds\(\)\s+\.alpha\(1f - progress.value\)/);
 });
+
+test("FLOW-3 journey captures held, reversed and committed drag in both themes", () => {
+  const journey = readFileSync(new URL("../../app/src/androidTest/java/nl/atlas/gallery/GalleryViewerSharedTransitionJourneyTest.kt", import.meta.url), "utf8");
+  for (const frame of ["flow3-drag-held", "flow3-drag-reversed", "flow3-drag-commit-mid", "flow3-drag-returned", "flow3-paged-back-mid"]) assert.ok(journey.includes(frame), frame);
+  assert.match(journey, /class SharedPhotoLightJourneyTest/);
+  assert.match(journey, /class SharedPhotoDarkJourneyTest/);
+});
