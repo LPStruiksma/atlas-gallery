@@ -796,11 +796,9 @@ private fun GalleryViewerSnapshot(
                 translationY = transform.translationY
                 scaleX = transform.scale; scaleY = transform.scale
             } else {
-                val offset = dragOffset.floatValue.coerceAtLeast(0f)
-                val fraction = (offset / (size.height * .65f).coerceAtLeast(1f)).coerceIn(0f, 1f)
-                translationY = offset
-                val scale = 1f - .22f * fraction
-                scaleX = scale; scaleY = scale
+                val pose = viewerDownExitPose(dragOffset.floatValue, size.height)
+                translationY = pose.y
+                scaleX = pose.scale; scaleY = pose.scale
             }
         }.testTag("atlas-viewer-drag-photo")) {
         HorizontalPager(
@@ -872,6 +870,15 @@ private fun GalleryViewerSnapshot(
                             !pagerState.isScrollInProgress && !stripState.isScrollInProgress &&
                             scrubOverlayState.value == null && detailsShownMedia == null &&
                             detailsProgress.floatValue == 0f
+                    },
+                    takeDragExitPose = {
+                        val pose = viewerDownExitPose(dragOffset.floatValue,
+                            viewerHeightPx.intValue.toFloat())
+                        if (pose != ViewerPinchExitPose()) {
+                            dragAnimationJob?.cancel()
+                            dragOffset.floatValue = 0f
+                            pose
+                        } else null
                     },
                     onPinchDismiss = { returnToGallery() },
                     onEdgePageRequested = { target ->
@@ -1206,16 +1213,27 @@ internal fun viewerMayOwnPinchExit(
 ): Boolean = eligible && (owned ||
     (zoom == 1f && factor.isFinite() && factor > 0f && factor < .998f))
 
+internal fun viewerDownExitPose(offset: Float, height: Float): ViewerPinchExitPose {
+    if (!offset.isFinite() || !height.isFinite() || height <= 0f || offset <= 0f)
+        return ViewerPinchExitPose()
+    val fraction = (offset / (height * .65f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+    return ViewerPinchExitPose(1f - .22f * fraction, 0f, offset)
+}
+
 internal fun viewerPinchExitFrame(
     previous: ViewerPinchExitPose, factor: Float, cx: Float, cy: Float,
-    width: Int, height: Int
+    width: Int, height: Int, panX: Float = 0f, panY: Float = 0f
 ): ViewerPinchExitPose {
     if (!factor.isFinite() || factor <= 0f || !cx.isFinite() || !cy.isFinite() ||
+        !panX.isFinite() || !panY.isFinite() || previous.scale <= 0f ||
         width <= 0 || height <= 0) return previous
     val scale = (previous.scale * factor).coerceIn(.70f, 1f)
     if (scale == 1f) return ViewerPinchExitPose()
-    return ViewerPinchExitPose(scale, (cx - width / 2f) * (1f - scale),
-        (cy - height / 2f) * (1f - scale))
+    // Apply the change around the previous centroid of the already drawn pose.
+    val ratio = scale / previous.scale
+    return ViewerPinchExitPose(scale,
+        previous.x * ratio + (cx - width / 2f) * (1f - ratio) + panX,
+        previous.y * ratio + (cy - height / 2f) * (1f - ratio) + panY)
 }
 
 internal fun viewerPinchExitCommits(pose: ViewerPinchExitPose, eligible: Boolean): Boolean =
@@ -1531,6 +1549,7 @@ private fun PhotoPage(
     forceFresh: Boolean, refreshRevision: Long,
     onZoomChanged: (Float) -> Unit, onToggleChrome: () -> Unit,
     canPinchDismiss: () -> Boolean, onPinchDismiss: () -> Unit,
+    takeDragExitPose: () -> ViewerPinchExitPose?,
     onEdgePageRequested: (Int) -> Unit,
     onPreviewReady: (() -> Unit)?,
     openingPage: Boolean = false,
@@ -1545,6 +1564,7 @@ private fun PhotoPage(
     val latestToggleChrome by rememberUpdatedState(onToggleChrome)
     val latestCanPinchDismiss by rememberUpdatedState(canPinchDismiss)
     val latestPinchDismiss by rememberUpdatedState(onPinchDismiss)
+    val latestTakeDragExitPose by rememberUpdatedState(takeDragExitPose)
     // Pager retains neighboring pages to keep swipes fluid. They must not
     // retain a previous zoom/pan when they stop being the focused photo:
     // otherwise shared pager gestures are enabled while an offscreen page
@@ -1707,12 +1727,29 @@ private fun PhotoPage(
                                         edgeTravelX += pan.x
                                     }
                                 }
+                                // Main pass reaches the photo before the parent drag.
+                                // Transfer the drawn pose before the parent cancels it.
+                                if (activePointers > 1 && !pinchOwned && previous.scale == 1f &&
+                                    latestCanPinchDismiss()) {
+                                    val transferred = latestTakeDragExitPose()
+                                    if (transferred != null) {
+                                        pinchReturn[0]?.cancel()
+                                        pinchPose = transferred
+                                        pinchOwned = true
+                                    } else if (pinchPose != ViewerPinchExitPose()) {
+                                        pinchReturn[0]?.cancel()
+                                        pinchOwned = true
+                                    }
+                                }
                                 if (activePointers > 1 && viewerMayOwnPinchExit(pinchOwned, latestCanPinchDismiss(),
                                         previous.scale, gestureZoom)) {
                                     pinchOwned = true
                                     pinchReturn[0]?.cancel()
                                     pinchPose = viewerPinchExitFrame(pinchPose, gestureZoom,
-                                        centroid.x, centroid.y, viewport.width, viewport.height)
+                                        centroid.x, centroid.y, viewport.width, viewport.height, pan.x, pan.y)
+                                } else if (pinchOwned && activePointers == 1 && latestCanPinchDismiss()) {
+                                    pinchPose = viewerPinchExitFrame(pinchPose, 1f,
+                                        centroid.x, centroid.y, viewport.width, viewport.height, pan.x, pan.y)
                                 } else if (!pinchOwned) {
                                     val next = viewerZoomGesture(
                                         previous, gestureZoom, pan.x, pan.y,

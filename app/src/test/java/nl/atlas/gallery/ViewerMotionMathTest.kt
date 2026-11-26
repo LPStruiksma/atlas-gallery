@@ -95,6 +95,27 @@ class ViewerMotionMathTest {
         assertEquals(down, viewerPinchExitFrame(down, Float.NaN, 0f, 0f, 1000, 1000))
     }
 
+    @Test fun pinchExitTracksMovingCentroidWithoutReanchoring() {
+        val start = viewerPinchExitFrame(ViewerPinchExitPose(), .8f, 750f, 300f, 1000, 1000)
+        val moved = viewerPinchExitFrame(start, 1f, 750f, 300f, 1000, 1000, 30f, 40f)
+        assertEquals(start.scale, moved.scale, .001f)
+        assertEquals(start.x + 30f, moved.x, .001f)
+        assertEquals(start.y + 40f, moved.y, .001f)
+        val next = viewerPinchExitFrame(moved, .9f, 780f, 340f, 1000, 1000)
+        assertEquals(780f, 500f + 250f * next.scale + next.x, .001f)
+        assertEquals(340f, 500f - 200f * next.scale + next.y, .001f)
+        assertEquals(moved, viewerPinchExitFrame(moved, .8f, 780f, 340f, 1000, 1000, Float.NaN))
+    }
+
+    @Test fun dragToPinchStartsAtTheDrawnDragPose() {
+        val drag = viewerDownExitPose(260f, 1000f)
+        assertEquals(.912f, drag.scale, .001f)
+        assertEquals(260f, drag.y, .001f)
+        assertEquals(drag, viewerPinchExitFrame(drag, 1f, 500f, 500f, 1000, 1000))
+        assertEquals(ViewerPinchExitPose(), viewerDownExitPose(-20f, 1000f))
+        assertEquals(ViewerPinchExitPose(), viewerDownExitPose(Float.NaN, 1000f))
+    }
+
     @Test fun ordinaryPagerSwipeIsNeverClaimedByPhotoAtRest() {
         assertFalse(viewerMayHandleTransform(0, 1f))
         assertFalse(viewerMayHandleTransform(1, 1f))
