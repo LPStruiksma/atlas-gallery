@@ -130,6 +130,7 @@ class PeopleSearchAppEvidenceTest {
             compose.exists(shortcut, useUnmergedTree = true)
         }
         assertReviewedA10(shortcut, "PeopleSearchShortcuts")
+        assertPeopleWholeLibraryA11("Imported V4 person header")
     }
 
     @Test fun peopleWholeLibraryEntriesRecordA11() {
@@ -152,6 +153,9 @@ class PeopleSearchAppEvidenceTest {
         val before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
         compose.tap(hasTestTag("atlas-search-scope-library"))
         waitFor(compose, hasTestTag("atlas-search-field"))
+        waitFor(compose, hasTestTag("atlas-search-overflow"))
+        compose.onNodeWithTag("atlas-person-album-back", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("atlas-person-album-count", useUnmergedTree = true).assertDoesNotExist()
         compose.awaitThat("$action records exactly one A11 sample", 60_000L) {
             PerformanceSession.aggregate.snapshot("action_a11_ms").count == before + 1
         }

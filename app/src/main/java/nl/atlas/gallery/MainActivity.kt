@@ -3632,6 +3632,28 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
+    // Explicit Whole library navigation is not Back to the result origin.
+    // Match the primary Search destination's unfiltered route state.
+    fun openWholeLibraryFromResults() {
+        statusOpen = false
+        settingsOpen = false
+        storiesOpen = false
+        storyPlayback.position = null
+        photoDnaOpen = false
+        hideAlbumsOpen = false
+        personFilter = null
+        nativePersonAlbum = null
+        hiddenPeopleOpen = false
+        needsSplittingOpen = false
+        hiddenNeedsSplittingOpen = false
+        album = null
+        albumVolume = null
+        albumReturnToAlbums = false
+        overviewQuery = ""
+        overviewScope = AtlasSearchScope.LIBRARY
+        tab = 3
+    }
+
     val pendingSimilarReturn = similarReturn
     if (pendingSimilarReturn != null && similarStep == null) {
         LaunchedEffect(pendingSimilarReturn) {
@@ -3671,7 +3693,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             onSearchWholeLibrary = {
                 navigationActionTimers.startSearch()
                 closeFindSimilar()
-                tab = 3
+                openWholeLibraryFromResults()
             },
             thumbnail = { record ->
                 withContext(Dispatchers.IO) {
@@ -3724,7 +3746,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             onSearchWholeLibrary = {
                 navigationActionTimers.startSearch()
                 closeFaceSearch()
-                tab = 3
+                openWholeLibraryFromResults()
             }
         )
         return

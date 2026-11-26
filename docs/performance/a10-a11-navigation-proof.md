@@ -6,7 +6,7 @@ and the frame-settled `NavigationActionSampleEffect` completion hook. The isolat
 it does **not** prove any actual route starts its timer. The existing
 `PeoplePrototypeJourneyTest` now asserts sample-count deltas on four real MainActivity
 navigation actions; a focused second journey exercises Find Similar and both Face Search
-exits using the same disposable MediaStore fixture and synthetic visual vectors. The real split/Hidden journey and a synthetic reviewed V4 roster journey extend A10 coverage. The synthetic album and People home journeys exercise the remaining A11 callbacks, including the staged Declutter confirmation. The shared header is exercised through a folder (the native person header has separate coverage). No test calls `recordActionMs` directly.
+exits using the same disposable MediaStore fixture and synthetic visual vectors. The real split/Hidden journey and a synthetic reviewed V4 roster journey extend A10 coverage. The synthetic album and People home journeys exercise the remaining A11 callbacks, including the staged Declutter confirmation. The shared header is exercised separately through a folder and an imported V4 person album (the native person header has separate coverage). The result-screen exits also exercise the legacy person-filter origin; global Search must own the destination before the single A11 increment. No test calls `recordActionMs` directly.
 
 | Action | Timer start / completion hook | Actual app-route test | Fix / outcome |
 | --- | --- | --- | --- |
@@ -22,9 +22,12 @@ exits using the same disposable MediaStore fixture and synthetic visual vectors.
 | Search from bottom tab | `startSearch` in primary navigation callback | PeoplePrototypeJourneyTest: A11 +1 | Assertion added; execution pending |
 | Search from `FindSimilarRoute` | `startSearch` before closing route | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: A11 +1 | Terminal Results (including empty results), not index-off; execution pending |
 | Search from `FaceSearchRoute.onSearchWholeLibrary` | `startSearch` before closing route | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: A11 +1 | Assertion added; execution pending |
+| Find Similar Whole library — imported V4 person origin | `startSearch`, close result and reset destination state | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: source and result gone, global Search, A11 +1 | Route reset fixed; execution pending |
+| Face Search Whole library — imported V4 person origin | `startSearch`, close result and reset destination state | PeoplePrototypeJourneyTest.findSimilarAndFaceSearchRecordNavigationSamples: source and result gone, global Search, A11 +1 | Route reset fixed; execution pending |
 | Native person album Whole library | `startSearch` in native album callback | PeoplePrototypeJourneyTest: A11 +1 | Assertion added; execution pending |
 | Declutter Whole library | `startSearch` in Declutter callback | CompactHeaderJourneyTest.declutterWholeLibraryRecordsA11AfterConfirmation: no sample before confirmation; A11 +1 after | Assertion added; execution pending |
-| Shared folder/person header Whole library | `startSearch` in header scope callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: folder branch A11 +1 | Assertion added; execution pending |
+| Shared header Whole library — folder | `startSearch` in header scope callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: folder branch A11 +1 | Assertion added; execution pending |
+| Shared header Whole library — imported V4 person | `startSearch` in header scope callback, clears person filter | PeopleSearchAppEvidenceTest.reviewedProfileAndSearchShortcutRecordA10: source album gone, global Search, A11 +1 | Assertion added; execution pending |
 | Hidden Albums Whole library | `startSearch` in hidden albums callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
 | Albums home Whole library | `startSearch` in Albums callback | CompactHeaderJourneyTest.albumWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |
 | Hidden People Whole library | `startSearch` in hidden people callback | PeopleSearchAppEvidenceTest.peopleWholeLibraryEntriesRecordA11: A11 +1 | Assertion added; execution pending |

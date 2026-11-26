@@ -57,6 +57,13 @@ assert.match(visualResults, /AtlasSearch\(/);
 // Regression: folder/person scope escalation cannot leave the narrow route active.
 assert.match(main, /onScopeChange = \{ requested ->[\s\S]*?requested == AtlasSearchScope\.LIBRARY[\s\S]*?personFilter = null[\s\S]*?album = null[\s\S]*?albumVolume = null[\s\S]*?tab = 3/);
 assert.match(main, /scopedMediaMatches\(overviewBase, sorted, people, overviewQuery,\s*AtlasSearchScope\.THIS_SCREEN/);
+// Result routes can originate in a filtered imported person album or folder.
+// Their explicit library exit must clear conflicting route state, unlike Back.
+for (const close of ['closeFindSimilar', 'closeFaceSearch']) {
+  assert.match(main, new RegExp('onSearchWholeLibrary = \\{\\s*navigationActionTimers\\.startSearch\\(\\)\\s*' +
+    close + '\\(\\)\\s*openWholeLibraryFromResults\\(\\)\\s*\\}'));
+}
+assert.match(main, /fun openWholeLibraryFromResults\(\) \{[^}]*personFilter = null[^}]*nativePersonAlbum = null[^}]*album = null[^}]*albumVolume = null[^}]*tab = 3\s*\}/);
 // Global Search remains inline even when expanded chrome is dismissed.
 assert.match(search, /persistentInline: Boolean = false/);
 assert.match(search, /if \(persistentInline\) \{\s*contents\(\)/);

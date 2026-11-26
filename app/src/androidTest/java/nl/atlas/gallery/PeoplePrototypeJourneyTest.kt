@@ -97,6 +97,7 @@ class PeoplePrototypeJourneyTest {
     private val stores = mutableListOf<FaceIndexStore>()
     private var visualStore: VisualIndexStore? = null
     private var visualFixtureEnabled = false
+    private var importedFixturePath: String? = null
     /** The "Discover faces" choice survives a restart, like the app's preferences. */
     private val optIn = object : PeopleOptInMemory {
         @Volatile var value: PeopleOptIn? = null
@@ -117,6 +118,7 @@ class PeoplePrototypeJourneyTest {
                 try {
                     insertFaces()
                     visualFixtureEnabled = description.methodName == "findSimilarAndFaceSearchRecordNavigationSamples"
+                    if (visualFixtureEnabled) seedImportedFixture()
                     installHost()
                     base.evaluate()
                 } finally {
@@ -124,6 +126,7 @@ class PeoplePrototypeJourneyTest {
                     PeopleScanWorkRuntime.clear()
                     stores.forEach { runCatching { it.close() } }
                     runCatching { visualStore?.close() }
+                    removeImportedFixture()
                     dir.deleteRecursively()
                     inserted.forEach { runCatching { target.contentResolver.delete(it, null, null) } }
                 }
@@ -181,6 +184,36 @@ class PeoplePrototypeJourneyTest {
             }, null, null)
             specs[ContentUris.parseId(uri)] = spec
         }
+    }
+
+    // Link exactly one of the invented indexed photos into a separate V4
+    // profile, before MainActivity loads its roster. Never replace a roster.
+    private fun seedImportedFixture() {
+        val uri = inserted.first()
+        val path = requireNotNull(target.contentResolver.query(uri,
+            arrayOf(MediaStore.Images.Media.DATA), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }) { "Synthetic fixture has no MediaStore path" }
+        PeopleRepository(target).use { repo ->
+            check(repo.people().isEmpty()) { "Imported fixture requires an empty test roster" }
+            repo.writableDatabase.insertOrThrow("assignments", null, ContentValues().apply {
+                put("face_id", IMPORTED_ID)
+                put("person_id", IMPORTED_ID)
+                put("person_name", IMPORTED_NAME)
+                put("image_path", path)
+            })
+            importedFixturePath = path
+        }
+    }
+
+    private fun removeImportedFixture() {
+        val path = importedFixturePath ?: return
+        PeopleRepository(target).use { repo ->
+            repo.writableDatabase.delete("assignments",
+                "face_id=? AND person_id=? AND person_name=? AND image_path=?",
+                arrayOf(IMPORTED_ID.toString(), IMPORTED_ID.toString(), IMPORTED_NAME, path))
+        }
+        importedFixturePath = null
     }
 
     /** Each fixture store uses its own disposable database file. */
@@ -461,6 +494,34 @@ class PeoplePrototypeJourneyTest {
 
         openFixtureFaceSearch()
         assertWholeLibrarySample("Face Search")
+
+        // Both result routes are also reachable from an imported V4 album.
+        // A global escape must not leave that person filter mounted.
+        openPeople()
+        openImportedFixtureAlbum()
+        openFixtureViewer()
+        compose.tap(hasTestTag("atlas-viewer-find-similar"))
+        compose.awaitThat("Imported Find similar reached results", WAIT_MS) {
+            compose.exists(hasTestTag("atlas-visual-search-grid"), useUnmergedTree = true) ||
+                compose.exists(hasTestTag("atlas-visual-search-empty"), useUnmergedTree = true)
+        }
+        assertWholeLibrarySample("Imported person Find similar")
+
+        openPeople()
+        openImportedFixtureAlbum()
+        openFixtureFaceSearch()
+        assertWholeLibrarySample("Imported person Face Search")
+    }
+
+    private fun openImportedFixtureAlbum() {
+        val profile = hasTestTag("atlas-people-profile-$IMPORTED_ID")
+        compose.waitForNode(profile, WAIT_MS, useUnmergedTree = true)
+        compose.tap(profile)
+        compose.awaitThat("imported person album contains only its linked fixture", WAIT_MS) {
+            compose.exists(hasTestTag("atlas-person-album-count") and
+                hasText("1 linked photos and videos"), useUnmergedTree = true) &&
+                fixtureTilesShown() == setOf(ContentUris.parseId(inserted.first()))
+        }
     }
 
     private fun openFixtureAlbum() {
@@ -509,6 +570,11 @@ class PeoplePrototypeJourneyTest {
         val before = PerformanceSession.aggregate.snapshot("action_a11_ms").count
         compose.tap(hasTestTag("atlas-search-scope-library"))
         compose.waitForNode(hasTestTag("atlas-search-field"), WAIT_MS)
+        compose.waitForNode(hasTestTag("atlas-search-overflow"), WAIT_MS, useUnmergedTree = true)
+        listOf("atlas-person-album-back", "atlas-person-album-count",
+            "atlas-visual-search-grid", "atlas-visual-search-empty", "atlas-face-results-grid").forEach {
+            compose.onNodeWithTag(it, useUnmergedTree = true).assertDoesNotExist()
+        }
         assertNavigationSample("action_a11_ms", before, action)
     }
 
@@ -651,6 +717,8 @@ class PeoplePrototypeJourneyTest {
         const val PHOTOS = 6
         const val NAME = "Synthetic Ada"
         const val FOLDER = "ATLAS-People-Prototype"
+        const val IMPORTED_ID = 9102702L
+        const val IMPORTED_NAME = "Fictional V4 Bea"
         /** Scans, decodes and MediaStore work run on real time on a slow emulator. */
         const val WAIT_MS = 60_000L
     }
