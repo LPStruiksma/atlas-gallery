@@ -261,6 +261,115 @@ class FaceIndexStoreScaleAndroidTest {
             pubWritten <= 2L * (ClusterPublicationCadence.GROWTH_DIVISOR + 1) * photos)
     }
 
+    /**
+     * #599: one independently reproducible, opt-in measurement on the real
+     * store. Run each (seed, pending) case in a fresh instrumentation process:
+     * seed = 25000 or 100000; pending = 1, 1000 or 16384.
+     *
+     * The fixture uses no real media. Bulk row insertion is setup only; both
+     * the seed and timed step use the production publication transaction.
+     * Heap values are managed-heap occupancy estimates, not an object-graph
+     * retained-size analysis. The 2 ms sampler is a lower bound on the peak.
+     * No unstable absolute heap or timing assertions in ordinary CI.
+     */
+    @Test fun faceReviewPublicationFootprint() {
+        val args = InstrumentationRegistry.getArguments()
+        assumeTrue("Opt-in: -e atlasFaceFootprint true",
+            args.getString("atlasFaceFootprint") == "true")
+        val seedCount = requireNotNull(args.getString("atlasFaceSeed")?.toIntOrNull())
+        val pendingCount = requireNotNull(args.getString("atlasFacePending")?.toIntOrNull())
+        require(seedCount in setOf(25_000, 100_000))
+        require(pendingCount in setOf(1, 1_000, 16_384))
+        val runtime = Runtime.getRuntime()
+        fun used(): Long = runtime.totalMemory() - runtime.freeMemory()
+        fun settled(): Long {
+            repeat(4) { System.gc(); Thread.sleep(50) }
+            return used()
+        }
+        withStore { store, _ ->
+            stage(store, seedCount + pendingCount)
+            val db = store.writableDatabase
+            // Distinct photos, 128 well-separated deterministic identities.
+            // Match the existing scale witness's direct synthetic seed path.
+            fun addRows(start: Int, end: Int) {
+                db.beginTransaction()
+                try {
+                    for (i in start until end) {
+                        val media = key(i)
+                        val uid = (i + 1).toString(16).padStart(32, '0')
+                        db.execSQL("UPDATE catalog SET state='processed' WHERE media_key=?",
+                            arrayOf(media.key))
+                        db.execSQL("""INSERT INTO faces(media_key,ordinal,face_uid,l,t,r,b)
+                            VALUES(?,0,?,0.1,0.2,0.5,0.8)""", arrayOf<Any>(media.key, uid))
+                        db.execSQL("""INSERT INTO embeddings(face_uid,source_revision,model_version,vector)
+                            VALUES(?,?,?,?)""", arrayOf<Any>(uid, media.revision, version,
+                            FaceEmbeddingVectorCodec.encode(axis(i))))
+                    }
+                    db.execSQL("UPDATE cluster_generation SET dirty=1,pending=? WHERE singleton=1",
+                        arrayOf<Any>(end - start))
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+            }
+
+            addRows(0, seedCount)
+            do {
+                assertTrue(store.publishClustersIfDue(epoch, scanFinished = true))
+            } while (store.clusterPublicationContinues(epoch))
+            addRows(seedCount, seedCount + pendingCount)
+
+            // Read the last published review while the new rows are pending,
+            // as an open People page would. Hold it through the timed step.
+            val beforeReview = settled()
+            val readStart = SystemClock.elapsedRealtimeNanos()
+            val review = requireNotNull(store.peopleReview(epoch))
+            val reviewMs = (SystemClock.elapsedRealtimeNanos() - readStart) / 1e6
+            assertEquals(seedCount, review.clusters.faceCount)
+            val afterReview = settled()
+            val peak = AtomicLong(afterReview)
+            val running = java.util.concurrent.atomic.AtomicBoolean(true)
+            val ready = java.util.concurrent.CountDownLatch(1)
+            val sampler = Thread {
+                ready.countDown()
+                while (running.get()) {
+                    peak.accumulateAndGet(used(), ::maxOf)
+                    Thread.sleep(2)
+                }
+            }
+            sampler.start()
+            ready.await()
+            val publishStart = SystemClock.elapsedRealtimeNanos()
+            val wallMs: Double
+            try {
+                assertTrue(store.publishClustersIfDue(epoch, scanFinished = true))
+                wallMs = (SystemClock.elapsedRealtimeNanos() - publishStart) / 1e6
+            } finally {
+                peak.accumulateAndGet(used(), ::maxOf)
+                running.set(false)
+                sampler.join()
+            }
+            val work = requireNotNull(store.lastPublicationWork)
+            val afterPublication = settled()
+            // Keep the old review reachable through both heap readings.
+            assertEquals(seedCount, review.clusters.faceCount)
+            assertFalse(store.clusterPublicationContinues(epoch))
+            val next = requireNotNull(store.peopleReview(epoch))
+            assertEquals(seedCount + pendingCount, next.clusters.faceCount)
+            assertEquals(ClusterReviewFacts.NONE, next.clusters.reviews)
+            log("phase" to "face_review_footprint",
+                "seed_faces" to seedCount, "pending_faces" to pendingCount,
+                "review_wall_ms" to reviewMs, "publication_wall_ms" to wallMs,
+                "before_review_bytes" to beforeReview, "after_review_bytes" to afterReview,
+                "review_retained_estimate_bytes" to (afterReview - beforeReview),
+                "publication_sampled_peak_bytes" to peak.get(),
+                "publication_peak_increment_bytes" to (peak.get() - afterReview),
+                "after_publication_gc_bytes" to afterPublication,
+                "publication_rows_read" to work.rowsRead,
+                "publication_rows_written" to work.rowsWritten)
+        }
+    }
+
     @Test fun scale1kOneIdentity() = scenario(1_000, "single")
     @Test fun scale10kManySmallClusters() = scenario(10_000, "small")
     @Test fun scale50kOneIdentity() {
