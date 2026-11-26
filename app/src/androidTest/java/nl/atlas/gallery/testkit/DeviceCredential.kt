@@ -3,6 +3,7 @@ package nl.atlas.gallery.testkit
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.rules.TestRule
@@ -35,7 +36,8 @@ class DeviceCredentialRule(val pin: String) : TestRule {
                 pinAttempted = true
                 checkedShell("set synthetic PIN", "locksettings set-pin $pin")
                 awaitDevice("synthetic credential installed") { keyguard.isDeviceSecure }
-                checkedShell("verify synthetic PIN", "locksettings verify --old $pin")
+                check(checkedShell("verify synthetic PIN", "locksettings verify --old $pin") ==
+                    "Lock credential verified successfully") { "Synthetic credential verification failed" }
                 base.evaluate()
             } catch (t: Throwable) {
                 failure = t
@@ -102,7 +104,16 @@ class DeviceCredentialRule(val pin: String) : TestRule {
 
     private fun checkedShell(label: String, command: String): String {
         check(!command.contains('\'') && !command.contains('\n'))
-        val output = testShell("sh -c '$command; printf \"\\nATLAS_CREDENTIAL_EXIT=%s\\n\" \"\$?\"'")
+        // UiAutomation executes an argv string, not an interactive shell; feed
+        // the script over stdin so quotation and the exit marker reach sh intact.
+        check(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { "Credential fixture requires API 31+" }
+        val descriptors = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommandRw("sh")
+        val output = ParcelFileDescriptor.AutoCloseInputStream(descriptors[0]).use { stdout ->
+            ParcelFileDescriptor.AutoCloseOutputStream(descriptors[1]).bufferedWriter().use { stdin ->
+                stdin.write("$command\nprintf '\\nATLAS_CREDENTIAL_EXIT=%s\\n' \"\$?\"\nexit\n")
+            }
+            stdout.bufferedReader().readText().trim()
+        }
         val lastLine = output.lineSequence().lastOrNull()
         val status = lastLine?.takeIf { it.startsWith("ATLAS_CREDENTIAL_EXIT=") }
             ?.substringAfter('=')?.toIntOrNull()
