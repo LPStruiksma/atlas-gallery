@@ -1,6 +1,6 @@
 # ATLAS self-hosted image editor (AIE-8a)
 
-Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
+Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). The separately named `flux2-head` is a non-executing admission scaffold; see [HEAD_DEPLOYMENT.md](../../docs/identity-studio/HEAD_DEPLOYMENT.md). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
 
 ## Run the fake locally (no Python dependencies)
 
@@ -86,3 +86,47 @@ The proxy normalizes the selected source/mask/references through Pillow to fresh
 - No user-selectable network backend URL, no redirects on the ComfyUI proxy, no background library scan, no ATLAS-side category filters. Follow all applicable laws and model licenses separately.
 - One process has 1 worker, 32 job slots, and 1-hour terminal retention. In-memory queue/results are lost on restart, not multi-replica safe; no durable storage, per-user quotas, accurate GPU progress, hard GPU cancellation, TLS termination or production hardening.
 - Use only synthetic/licensed imagery for tests. AIE-8b must bind this protocol to explicit user choices and implement client-side non-destructive save and failure handling.
+
+## Provenance-gated FLUX.2 whole-head route (IDS-12B)
+
+`flux2-head` is a distinct route; it never aliases the existing `flux` (FLUX.1
+Kontext) mode. It is disabled by default and startup fails closed unless the mode is exactly `scaffold` (the default),
+`ATLAS_FLUX2_HEAD_ENABLED=true` and `ATLAS_FLUX2_HEAD_CONFIG` names an admission
+JSON file. The admission file is operator-controlled—not accepted on `/v1/edits`—and
+must contain `schema_version: 1`, a fixed `comfy_url`, and independent true evidence
+gates named `licences_verified`, `adapter_provenance_verified`,
+`operator_safeguards_verified`, and `ids12a_acceptance_passed`. Each of `model`,
+`encoder`, `runtime`, `adapter`, and `workflow` must have an absolute local `path`,
+lowercase immutable `sha256`, and non-empty `original_host`, `licence`, and
+`provenance` records. Every hash is checked at startup and again before each job.
+A file name, placeholder, mirror, or BFS adapter alone is not evidence.
+
+The admission check requires the predecessor's target, mask, reference, instruction,
+seed and adapter placeholder contract. This is not typed graph validation.
+Every attempted edit requires a bounded crop, seed, full-size mask and at least
+one reference. The scaffold does not execute the workflow or publish output or
+lineage; `full_head` is never advertised. The typed graph, actual crop binding
+and output validation are deferred to #1012 and a separately reviewed activation.
+
+Example shape only (the values below are deliberately not deployable evidence):
+
+~~~json
+{
+  "schema_version": 1,
+  "comfy_url": "http://127.0.0.1:8188",
+  "artifacts": {
+    "model": {"path": "/absolute/model", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "encoder": {"path": "/absolute/encoder", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "runtime": {"path": "/absolute/runtime", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "adapter": {"path": "/absolute/adapter", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "workflow": {"path": "/absolute/workflow.json", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"}
+  },
+  "evidence": {"licences_verified": false, "adapter_provenance_verified": false, "operator_safeguards_verified": false, "ids12a_acceptance_passed": false}
+}
+~~~
+
+The checked-in state has no verified values and therefore remains **HEAD
+unavailable / NOT MEASURED**. Do not change a gate to true without independently
+reviewable evidence. Transport inherits the server's bearer authentication,
+loopback-only HTTP/remote TLS rule, redirect ban, size/deadline bounds, and
+cancellation-without-publication behavior.
