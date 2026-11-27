@@ -121,25 +121,11 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
           retention-days: 2
-  emulator-ui-shard:
-    # AutoDev Actions-minutes rule: PR heads get build + JVM tests only; the API35 emulator job
-    # runs on opted-in dispatch runs (which is how review-emulator-trigger.yml starts it from
-    # the `emulator:run` label).
-    # Job names stay static: a run cancelled before it starts must not leave checks under an
-    # unevaluated expression name, which would block the merge join for that head.
-    # #588: the instrumented suite outgrew one 40-minute job, so it runs as two
-    # shards (each with its own cap). Shard 0 also runs the upgrade phases. The
-    # emulator-ui job below is the single check that joins and reviews read.
+  emulator-upgrade:
+    # Stateful upgrade and standalone process proofs, independent of the suite.
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui_tests }}
-    name: emulator-ui shard ${{ matrix.shard }}
-    needs: build
     runs-on: ubuntu-24.04
-    # Shard 0 (341 tests plus the upgrade phases) ran 37-40+ min and was cancelled at 40 with 0 failures; 50 leaves headroom.
-    timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1]
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,7 +184,71 @@ jobs:
           profile: pixel_6
           disable-animations: true
           # Run one shell command; the runner would otherwise execute each line separately.
-          script: env ATLAS_SHARD_INDEX=${{ matrix.shard }} ATLAS_SHARD_COUNT=2 bash scripts/ci_android_upgrade_emulator.sh
+          script: env ATLAS_PHASES=upgrade bash scripts/ci_android_upgrade_emulator.sh
+      - name: Upload upgrade screenshots and instrumented test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS-android-UI-evidence-shard-upgrade
+          path: |
+            ui-evidence/*
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 7
+  emulator-ui-shard:
+    # AutoDev Actions-minutes rule: PR heads get build + JVM tests only; the API35 emulator job
+    # runs on opted-in dispatch runs (which is how review-emulator-trigger.yml starts it from
+    # the `emulator:run` label).
+    # Job names stay static: a run cancelled before it starts must not leave checks under an
+    # unevaluated expression name, which would block the merge join for that head.
+    # Three independent suite shards; upgrade and build run in parallel.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ui_tests }}
+    name: emulator-ui shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      # Official android-emulator-runner Linux GitHub Actions setup: without
+      # KVM access this job falls back to extremely slow software emulation.
+      - name: Enable KVM hardware acceleration (fail fast if unavailable)
+        shell: bash
+        # #597: settle udev and retry; every failure prints "::error::KVM unavailable".
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Install emulator system image (bounded retry)
+        # #377: the runner's single image download can end in "Error on ZipFile
+        # unknown archive"; install and verify it first, then the runner skips it.
+        env:
+          ATLAS_EMULATOR_API: ${{ inputs.api_level || '35' }}
+        run: bash scripts/ci_install_emulator_image.sh
+      - name: Emulator Compose interactions
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # PR checks default to API35; manual dispatch supports a separate
+          # API34 acceptance run without doubling every PR's emulator minutes.
+          api-level: ${{ inputs.api_level || '35' }}
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          # Run one shell command; the runner would otherwise execute each line separately.
+          script: env ATLAS_PHASES=suite ATLAS_SHARD_INDEX=${{ matrix.shard }} ATLAS_SHARD_COUNT=3 bash scripts/ci_android_upgrade_emulator.sh
       - name: Upload this shard's screenshots and instrumented test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -215,17 +265,21 @@ jobs:
     # the shards together saved the whole UI-evidence set. Skipped with the
     # shards (PR events, pushes); never runs when cancelled.
     if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
-    needs: emulator-ui-shard
+    needs: [build, emulator-upgrade, emulator-ui-shard]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Require every emulator shard to pass
         shell: bash
         env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          UPGRADE_RESULT: ${{ needs.emulator-upgrade.result }}
           SHARDS_RESULT: ${{ needs.emulator-ui-shard.result }}
         run: |
           set -euo pipefail
-          echo "Emulator shards: $SHARDS_RESULT"
+          echo "Build: $BUILD_RESULT; upgrade: $UPGRADE_RESULT; emulator shards: $SHARDS_RESULT"
+          [[ "$BUILD_RESULT" == "success" ]] || { echo "::error::Build did not pass ($BUILD_RESULT)"; exit 1; }
+          [[ "$UPGRADE_RESULT" == "success" ]] || { echo "::error::Emulator upgrade did not pass ($UPGRADE_RESULT)"; exit 1; }
           [[ "$SHARDS_RESULT" == "success" ]] || { echo "::error::An emulator-ui shard did not pass ($SHARDS_RESULT)"; exit 1; }
       - uses: actions/checkout@v4
         with:
