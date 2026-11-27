@@ -1,0 +1,4 @@
+# HIDE-1 #1105 fix-head check
+8 nl.atlas.gallery.StoriesJourneyTest#albumsStoriesEntryOpensSlideshowViewerAndBackReturnsToAlbums
+8 nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives
+8 nl.atlas.gallery.featuregrid.OriginalProportionsAlbumJourneyTest#albumAtOriginalProportionsTimelineOn
