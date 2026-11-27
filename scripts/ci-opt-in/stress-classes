@@ -1,0 +1,4 @@
+# RC5 #920: five repetitions per test class, per arm and shard.
+# Strategy-authorized batch following same-run artifact and OFF launch validation.
+5 nl.atlas.gallery.featureintents.ExternalPickerJourneyTest
+5 nl.atlas.gallery.featureintents.ExternalNeighboursJourneyTest

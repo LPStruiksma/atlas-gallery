@@ -119,24 +119,42 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
           retention-days: 2
+  plan-emulator-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Select the normal or RC5 proof emulator matrix
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f scripts/ci-opt-in/rc5-920-arms && -f scripts/ci-opt-in/stress-classes ]]; then
+            echo 'matrix={"include":[{"shard":0,"arm":"OFF"},{"shard":1,"arm":"OFF"},{"shard":0,"arm":"NO-IME-POLL"},{"shard":1,"arm":"NO-IME-POLL"},{"shard":0,"arm":"FULL"},{"shard":1,"arm":"FULL"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"shard":0,"arm":""},{"shard":1,"arm":""}]}' >> "$GITHUB_OUTPUT"
+          fi
   emulator-ui-shard:
     # AutoDev Actions-minutes rule: draft PR heads and heads without next:review get build + JVM
     # tests only; the API35 emulator job runs on a non-draft PR labelled next:review and on
     # opted-in manual runs (which is how review-emulator-trigger.yml starts it).
     # Job names stay static: a run cancelled before it starts must not leave checks under an
     # unevaluated expression name, which would block the merge join for that head.
-    # #588: the instrumented suite outgrew one 40-minute job, so it runs as two
-    # shards (each with its own cap). Shard 0 also runs the upgrade phases. The
-    # emulator-ui job below is the single check that joins and reviews read.
+    # #588: standard CI runs shards 0 and 1. The proof-only RC5 marker selects
+    # six isolated arm×shard jobs instead, all using this run's build artifacts.
+    # Shard 0 also runs the stateful upgrade phases. The aggregate check joins both.
     if: ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'next:review')) || (github.event_name == 'workflow_dispatch' && inputs.run_ui_tests) }}
-    name: emulator-ui shard ${{ matrix.shard }}
-    needs: build
+    name: emulator-ui shard ${{ matrix.shard }}${{ matrix.arm && format(' arm {0}', matrix.arm) || '' }}
+    needs: [build, plan-emulator-matrix]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        shard: [0, 1]
+      matrix: ${{ fromJSON(needs.plan-emulator-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -185,6 +203,16 @@ jobs:
         env:
           ATLAS_EMULATOR_API: ${{ inputs.api_level || '35' }}
         run: bash scripts/ci_install_emulator_image.sh
+      - name: Download this run's immutable app APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ATLAS-native-debug-APK
+          path: rc5-apks/app
+      - name: Download this run's immutable AndroidTest APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ATLAS-ui-test-APK
+          path: rc5-apks/androidTest
       - name: Emulator Compose interactions + private People upgrade preservation
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -195,12 +223,12 @@ jobs:
           profile: pixel_6
           disable-animations: true
           # Run one shell command; the runner would otherwise execute each line separately.
-          script: env ATLAS_SHARD_INDEX=${{ matrix.shard }} ATLAS_SHARD_COUNT=2 bash scripts/ci_android_upgrade_emulator.sh
+          script: env ATLAS_SHARD_INDEX=${{ matrix.shard }} ATLAS_SHARD_COUNT=2 ATLAS_RC5_ARM=${{ matrix.arm }} bash scripts/ci_android_upgrade_emulator.sh
       - name: Upload this shard's screenshots and instrumented test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}
+          name: ATLAS-android-UI-evidence-shard-${{ matrix.shard }}${{ matrix.arm && format('-{0}', matrix.arm) || '' }}
           path: |
             ui-evidence/*
             app/build/outputs/androidTest-results/**
@@ -233,15 +261,55 @@ jobs:
         with:
           pattern: ATLAS-android-UI-evidence-shard-*
           path: shards
-      - name: Merge shard screenshots and check the full UI-evidence set
+      - name: Merge shard evidence and validate the applicable proof
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p ui-evidence
           for dir in shards/*/ui-evidence; do
-            [[ -d "$dir" ]] && cp -n "$dir"/*.png ui-evidence/ 2>/dev/null || true
+            [[ -d "$dir" ]] || continue
+            cp -n "$dir"/*.png ui-evidence/ 2>/dev/null || true
+            cp -n "$dir"/*.txt ui-evidence/ 2>/dev/null || true
           done
-          bash scripts/ci_ui_evidence.sh verify
+
+          if [[ -f scripts/ci-opt-in/rc5-920-arms ]]; then
+            # RC5 stress-only jobs intentionally do not produce the normal app screenshots.
+            # Require the complete six-job arm/shard set and both raw files per test case.
+            mapfile -t pair_files < <(find shards -type f -path '*/ui-evidence/rc5-920-apk-pair-*.txt' | sort)
+            [[ "${#pair_files[@]}" -eq 6 ]] || {
+              echo "::error::Expected six RC5 APK-pair fingerprints, found ${#pair_files[@]}"; exit 1;
+            }
+            app_test_pair=""
+            for arm in OFF NO-IME-POLL FULL; do
+              for shard in 0 1; do
+                dir="shards/ATLAS-android-UI-evidence-shard-$shard-$arm/ui-evidence"
+                pair_file="$dir/rc5-920-apk-pair-$arm-$shard.txt"
+                [[ -s "$pair_file" ]] || { echo "::error::Missing RC5 pair evidence: $pair_file"; exit 1; }
+                grep -Eq "^RC5_920_SHARED_APKS run=$GITHUB_RUN_ID source=$GITHUB_SHA app_sha256=[0-9a-f]{64} test_sha256=[0-9a-f]{64}$" "$pair_file" || {
+                  echo "::error::Malformed or wrong-run RC5 APK fingerprint: $pair_file"; exit 1;
+                }
+                pair="$(sed -E 's/.* app_sha256=([0-9a-f]{64}) test_sha256=([0-9a-f]{64})$/\1 \2/' "$pair_file")"
+                if [[ -z "$app_test_pair" ]]; then app_test_pair="$pair"; fi
+                [[ "$pair" == "$app_test_pair" ]] || {
+                  echo "::error::RC5 APK pair differs across arm/shard jobs"; exit 1;
+                }
+                for test_class in ExternalPickerJourneyTest ExternalNeighboursJourneyTest; do
+                  base="rc5-920-$shard-$arm-$test_class-1"
+                  [[ -s "$dir/$base-instrument.txt" && -s "$dir/$base-logcat.txt" ]] || {
+                    echo "::error::Missing RC5 instrument/logcat evidence for $arm shard $shard $test_class"; exit 1;
+                  }
+                done
+              done
+            done
+            instrument_count="$(find shards -type f -path '*/ui-evidence/rc5-920-*-instrument.txt' | wc -l)"
+            logcat_count="$(find shards -type f -path '*/ui-evidence/rc5-920-*-logcat.txt' | wc -l)"
+            [[ "$instrument_count" == "12" && "$logcat_count" == "12" ]] || {
+              echo "::error::Expected 12 RC5 instrument and 12 logcat files; found $instrument_count/$logcat_count"; exit 1;
+            }
+            echo "PASS: six arm/shard jobs shared app/test APK SHA pair $app_test_pair and produced 12 instrument + 12 logcat records"
+          else
+            bash scripts/ci_ui_evidence.sh verify
+          fi
       - name: Upload merged screenshots and shard test results
         if: always()
         uses: actions/upload-artifact@v4

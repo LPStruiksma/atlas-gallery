@@ -29,6 +29,27 @@ gradle() {
     "$@"
 }
 
+# RC5 #920 proof-only: all six arm/shard jobs consume the two APK artifacts
+# uploaded by this very workflow run's build job. No cross-run API token is used.
+rc5_load_same_run_apks() {
+  local app_source="rc5-apks/app/app-debug.apk"
+  local test_source="rc5-apks/androidTest/app-debug-androidTest.apk"
+  local app_sha test_sha
+
+  [[ -s "$app_source" && -s "$test_source" ]] || {
+    echo "::error::RC5 same-run build artifacts are missing"
+    return 1
+  }
+  mkdir -p "$(dirname "$NEW")" "$(dirname "$TEST")"
+  cp "$app_source" "$NEW"
+  cp "$test_source" "$TEST"
+  app_sha="$(sha256sum "$NEW" | awk '{print $1}')"
+  test_sha="$(sha256sum "$TEST" | awk '{print $1}')"
+  mkdir -p ui-evidence
+  echo "RC5_920_SHARED_APKS run=${GITHUB_RUN_ID:-unknown} source=${GITHUB_SHA:-unknown} app_sha256=$app_sha test_sha256=$test_sha" \
+    | tee "ui-evidence/rc5-920-apk-pair-${ATLAS_RC5_ARM:-unknown}-${SHARD_INDEX:-unknown}.txt"
+}
+
 # #143: the same synthetic test APK runs on the installed baseline and the
 # candidate at 1080x2340. Save a render for each system theme; the baseline
 # intentionally does not assert candidate-only grid geometry.
@@ -282,8 +303,19 @@ LISTENER=nl.atlas.gallery.testkit.AtlasRunListener
 if [[ "$SHARD_INDEX" != "0" ]]; then
   gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 fi
-adb install -r "$NEW"
-adb install -r "$TEST"
+if [[ -f scripts/ci-opt-in/rc5-920-arms ]]; then
+  rc5_load_same_run_apks
+  # The same-run APK was signed on the build runner. Remove any candidate
+  # produced during the stateful preamble so an old debug signer/data set
+  # cannot contaminate the isolated measurement installation.
+  adb uninstall nl.atlas.gallery >/dev/null 2>&1 || true
+  adb uninstall nl.atlas.gallery.test >/dev/null 2>&1 || true
+  adb install "$NEW"
+  adb install "$TEST"
+else
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+fi
 adb logcat -c || true
 health_out=/tmp/atlas-keyboard-health.txt
 adb shell am instrument -w -r -e atlas_keyboard_health true -e listener "$LISTENER" \
@@ -307,8 +339,30 @@ fi
 # per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   adb logcat -G 16M || true
+  # Each arm gets a fresh emulator from the workflow matrix; all download the same build artifacts.
+  mapfile -t rc5_arms < scripts/ci-opt-in/rc5-920-arms
+  [[ "${rc5_arms[*]}" == "OFF NO-IME-POLL FULL" ]] || {
+    echo "::error::Expected exact RC5 arm set: OFF NO-IME-POLL FULL"
+    exit 1
+  }
+  arm="${ATLAS_RC5_ARM:-}"
+  case " ${rc5_arms[*]} " in
+    *" $arm "*) ;;
+    *) echo "::error::Missing or invalid RC5 arm '$arm'"; exit 1;;
+  esac
+  case "$arm" in OFF|NO-IME-POLL|FULL) ;; *) echo "::error::Bad RC5 arm $arm"; exit 1;; esac
   stress_fail=0
   stress_out=/tmp/atlas-stress.txt
+  mkdir -p ui-evidence
+  ime_poll=on
+    if [[ "$arm" == "NO-IME-POLL" ]]; then ime_poll=off; fi
+    listener_args=()
+    selftest_args=()
+    if [[ "$arm" != "OFF" ]]; then
+      listener_args=(-e listener "$LISTENER")
+      selftest_args=(-e atlas_listener_selftest true)
+    fi
+    echo "RC5_920 frozen_source=4a700e4be78850a78cf713095ae7a1908c4c6443 head=${GITHUB_SHA:-$(git rev-parse HEAD)} arm=$arm shard=$SHARD_INDEX run=${GITHUB_RUN_ID:-unknown}"
   while read -r stress_count stress_target || [[ -n "${stress_count:-}${stress_target:-}" ]]; do
     [[ -z "${stress_count:-}" || "$stress_count" == \#* ]] && continue
     if [[ ! "$stress_count" =~ ^[0-9]{1,2}$ ||
@@ -320,15 +374,38 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       adb logcat -c || true
       # </dev/null: adb shell would otherwise read the rest of the list.
       # atlas_listener_selftest turns on AtlasRunListenerSelfTest; no other test reads it.
-      adb shell am instrument -w -r -e listener "$LISTENER" -e atlas_listener_selftest true \
+      start_seconds=$SECONDS
+      adb shell am instrument -w -r "${listener_args[@]}" -e atlas_rc5_ime_poll "$ime_poll" "${selftest_args[@]}" \
         -e class "$stress_target" "$RUNNER" > "$stress_out" 2>&1 < /dev/null || true
-      if grep -Eq '^OK \([0-9]+ tests?\)' "$stress_out"; then
+      duration=$((SECONDS - start_seconds))
+      run_id="$SHARD_INDEX-$arm-${stress_target##*.}-$stress_run"
+      cp "$stress_out" "ui-evidence/rc5-920-$run_id-instrument.txt"
+      timeout 30 adb logcat -d -v time -s ATLAS_BASELINE:V ATLAS_DIAG:V ATLAS_TESTKIT:V ATLAS_TOUCH1:V AtlasSystemWindows:V \
+        > "ui-evidence/rc5-920-$run_id-logcat.txt" || true
+      callbacks="$(grep -c "RC5_CALLBACK mode=" "ui-evidence/rc5-920-$run_id-logcat.txt" || true)"
+      passed_tests="$(sed -nE 's/^OK \(([0-9]+) tests?\)$/\1/p' "$stress_out" | tail -1)"
+      if [[ "$arm" == "OFF" ]]; then
+        if [[ ! "$passed_tests" =~ ^[1-9][0-9]*$ ]]; then
+          echo "::error::OFF arm launched no tests"
+          stress_fail=1
+        elif [[ "$callbacks" != "0" ]]; then
+          echo "::error::OFF listener unexpectedly active: $callbacks callbacks"
+          stress_fail=1
+        fi
+      else
+        if [[ ! "$passed_tests" =~ ^[1-9][0-9]*$ || "$callbacks" != "$passed_tests" ]] || ! grep -Fq "RC5_CALLBACK mode=$arm " "ui-evidence/rc5-920-$run_id-logcat.txt"; then
+          echo "::error::Listener callbacks/mode mismatch in $arm (tests=$passed_tests callbacks=$callbacks)"
+          stress_fail=1
+        fi
+      fi
+      echo "RC5_920 arm=$arm shard=$SHARD_INDEX class=$stress_target repeat=$stress_run/$stress_count seconds=$duration tests=$passed_tests callbacks=$callbacks"
+      grep -E 'checked [0-9]+ test|ATLAS_DIAG|drift |listener testStarted skipped' "ui-evidence/rc5-920-$run_id-logcat.txt" || true
+      if grep -Eq '^OK \([1-9][0-9]* tests?\)' "$stress_out"; then
         echo "STRESS $stress_target run $stress_run/$stress_count: PASS"
       else
         echo "STRESS $stress_target run $stress_run/$stress_count: FAIL"
         stress_fail=1
-        grep -E 'INSTRUMENTATION_STATUS: (test|stack)=|^Error in |^Tests run|^FAILURES|AssertionError|Exception' \
-          "$stress_out" | cut -c1-600 | head -60 || true
+        cat "$stress_out"  # Preserve complete failures and teardown signatures.
       fi
       echo "::group::STRESS $stress_target run $stress_run logcat"
       timeout 30 adb logcat -d -v time -s ATLAS_TESTKIT:V ATLAS_PINCH:V ATLAS_GROUP_IME:V ATLAS_EDIT2:V \
@@ -337,7 +414,7 @@ if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" !=
       echo "::endgroup::"
     done
   done < scripts/ci-opt-in/stress-classes
-  echo "NOTICE: opt-in stress head; full emulator suite skipped on purpose"
+  echo "NOTICE: RC5 #920 disposable proof head for arm=$arm, full suite skipped; NEVER MERGE"
   exit "$stress_fail"
 fi
 

@@ -59,10 +59,16 @@ class AtlasRunListener : RunListener() {
     }
 
     override fun testStarted(description: Description) = guarded("testStarted") {
+        // #920 proof-only switch, scoped to testStarted; health and run-start unchanged.
+        val skip = InstrumentationRegistry.getArguments().getString("atlas_rc5_ime_poll") == "off"
+        val mode = if (skip) "NO-IME-POLL" else "FULL"
+        Log.i(BASELINE_LOG_TAG, "RC5_CALLBACK mode=$mode test=${description.name()}")
         val started = SystemClock.uptimeMillis()
+        DeviceBaseline.skipImePollDuringTestStart = skip
         try {
             checkBaseline()
         } finally {
+            DeviceBaseline.skipImePollDuringTestStart = false
             checkedTests++
             checkMillis += SystemClock.uptimeMillis() - started
         }
@@ -273,6 +279,9 @@ internal data class DeviceBaseline(
     }
 
     companion object {
+        /** #920 proof-only, set only while testStarted executes. */
+        @Volatile var skipImePollDuringTestStart = false
+
         private val context: Context
             get() = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -304,10 +313,13 @@ internal data class DeviceBaseline(
          * and the keyboard was still on screen, so the flag is the signal
          * that catches a leak; the window list is not read at all (#870).
          */
-        fun keyboardShown(): Boolean = runCatching {
-            testShell("dumpsys input_method").lineSequence()
-                .any { it.trim().startsWith("mInputShown=true") }
-        }.getOrDefault(false)
+        fun keyboardShown(): Boolean {
+            if (skipImePollDuringTestStart) return false
+            return runCatching {
+                testShell("dumpsys input_method").lineSequence()
+                    .any { it.trim().startsWith("mInputShown=true") }
+            }.getOrDefault(false)
+        }
 
         /**
          * The focused window as window manager reports it, from one
