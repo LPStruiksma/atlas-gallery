@@ -63,6 +63,21 @@ def example(attempt=1):
         item["run_attempt"] = attempt
     return event, current, workflow, jobs, {2: KVM_MISSING, 4: JOIN_FAILURE}
 
+def split_example(failed="emulator-upgrade"):
+    event, current, workflow, jobs, logs = example()
+    event["workflow_run"]["event"] = current["event"] = "workflow_dispatch"
+    jobs[1] = job(2, "emulator-ui shard 0", "success")
+    jobs.extend([job(5, "emulator-ui shard 2", "success"),
+                 job(6, "emulator-upgrade", "success")])
+    target = next(item for item in jobs if item["name"] == failed)
+    target["conclusion"] = "failure"
+    target["steps"].append({"name": "Enable KVM hardware acceleration (fail fast if unavailable)",
+                            "conclusion": "failure"})
+    logs = {target["id"]: KVM_MISSING, 4: (
+        "##[error]Emulator upgrade did not pass (failure)\n"
+        if failed == "emulator-upgrade" else JOIN_FAILURE)}
+    return event, current, workflow, jobs, logs
+
 
 class RetryPolicyTests(unittest.TestCase):
     def check(self, fixture, expected, reason=None):
@@ -78,6 +93,21 @@ class RetryPolicyTests(unittest.TestCase):
         case = example()
         case[4][2] = KVM_UNUSABLE
         self.check(case, True)
+
+    def test_split_workflow_exact_kvm_failures_only(self):
+        for name in ("emulator-upgrade", "emulator-ui shard 0",
+                     "emulator-ui shard 1", "emulator-ui shard 2"):
+            with self.subTest(name=name):
+                self.check(split_example(name), True)
+        case = split_example()
+        case[3].pop(4)
+        self.check(case, False)
+        case = split_example()
+        case[4][4] = JOIN_FAILURE
+        self.check(case, False)
+        case = split_example()
+        case[3][-1]["steps"][-1]["name"] = "Instrumented tests"
+        self.check(case, False)
 
     def test_third_and_later_attempt_not_retried(self):
         for attempt in (3, 4):
