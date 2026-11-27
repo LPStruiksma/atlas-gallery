@@ -31,6 +31,10 @@ t142 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(t142)
 r2, rect, overlap = t142.r2, t142.rect, t142.overlap
 
+cspec = importlib.util.spec_from_file_location("contract", HERE / "contract.py")
+contract = importlib.util.module_from_spec(cspec)
+cspec.loader.exec_module(contract)
+
 PX_PER_DP = 2.8125  # emulator S24DisplayRule density used by the #142 measurements
 
 # ---- OBSERVED (archived parity research; static analysis of Samsung Gallery 15.9, not runtime) ----
@@ -324,11 +328,13 @@ def board(vp, theme, state, duration_ms, t_ms, font=1.0, frame_state=None):
     ]
     st_lines = {
         "held": ["180 ms hold on the centred video expanded it in place;",
-                 "playhead starts at the current position; playback paused.",
+                 "playhead starts where the strip stood (no jump); new scrub gen,",
+                 "play state snapshotted, playback paused, follow off.",
                  "Neighbours slide outward; theme does not change the viewer."],
         "dragging": ["finger drag moves the span under the playhead;",
-                     "main view (orange dash) shows the nearest cached frame tile",
-                     "until a 60 ms pause, then the decoder frame; elapsed text",
+                     "main view (orange dash) shows the cached tile nearest by decoded",
+                     "PTS (approximate; unknown PTS marked), then after 60 ms still the",
+                     "matching-generation decoder frame; elapsed text shows requested T and",
                      "redraws only when the second changes (VIEW:V17)."],
         "unavailable": ["frame 3 and 4 could not be extracted: mist tiles, no glyph,",
                         "no text; seeking still works through the player."],
@@ -353,15 +359,19 @@ STATES = [
     ("idle", "Strip as #142: video is one 44×56 tile, ring + sphere on it. Photo strip rules apply."),
     ("armed 0–180 ms", "Finger down on centred video, within touch slop. Nothing moves yet. Moving > slop = normal strip drag."),
     ("expanded (180 ms)", "Hold reached 180 ms [OBSERVED V16]: tile expands in place to N frames over 200 ms Lift; tick once."),
-    ("dragging", "Span follows finger 1:1. Main view = nearest cached frame. Tick when playhead crosses a frame boundary."),
+    ("dragging", "Span follows finger 1:1. Main view = cached tile nearest by decoded PTS (approximate; unknown PTS marked). Tick per frame-tile boundary."),
     ("pause ≥ 60 ms", "Finger still: decoder frame (CLOSEST_SYNC seek) replaces the cached tile in the main view."),
     ("still ≥ 180 ms", "EXACT seek decodes the frame at T; audio/neighbour work allowed. Nothing in the strip moves."),
     ("fling", "Platform spline decay ×1.0 within the span; preview follows; clamps at 0 / end without bounce; no snap."),
-    ("interrupted fling", "Finger down stops the span where it is; that time becomes the new drag origin; no seek is committed."),
-    ("release", "Commit T at release (or fling end). Offset, sphere, elapsed text unchanged. Resume if it was playing."),
+    ("interrupted fling", "Finger down = new scrub gen; span stops where it is; the fling's ORIGINAL resume intent transfers; its late callbacks are dropped."),
+    ("release / settling", "EXACT seek to T_r. Offset, T_r and elapsed text held; follow stays off; still paused until exact confirmation (matching gen)."),
+    ("confirmed → follow", "Resume only now, if intent was playing. Follow anchors at T_r with lead 0; lead grows to 200 ms as playback advances (no jump)."),
+    ("second scrub while playing", "Finger down on the open seeker: new gen, snapshot playing, pause, follow off, T = where the strip stands."),
+    ("cancelled", "Back swipe, lifecycle stop, audio focus, unplug: stay paused at last selected T; collapse. Then a paused page: Play works (a later stop clears a queued Play)."),
+    ("exact decode failed", "Stay paused at T_r; keep the frame on screen, marked approximate even if its PTS equals T; no resume; #142 error retry (not Play)."),
     ("edge 0:00", "Span's left edge sits under the playhead; further drag is clamped (no pager hand-off while expanded)."),
-    ("edge end", "Clamped at the last frame time d−1 frame; same rule."),
-    ("frame unavailable", "Mist #14152A tile, no glyph or text. Main view keeps last good frame until the decoder frame lands."),
+    ("edge end", "Clamped at the last decodable PTS (else d − 100 ms, marked approximate). Endpoint decode requested; tile N−1 shown as approximate meanwhile."),
+    ("frame unavailable", "Mist #14152A tile, no glyph or text. Main view keeps the last valid preview until a matching-generation frame lands."),
     ("decoder error", "Hold does not expand; strip stays a photo strip; #142 error state on the page. Mid-drag error: freeze, collapse on release."),
     ("short video < 300 ms", "Seeker not offered; hold does nothing (no tick)."),
     ("4 s video", "N = max(3, ⌊7·log10 4⌋) = 4 frames, span 176 dp."),
@@ -390,12 +400,14 @@ def states_board(vp):
         out(f'<g transform="translate(0,{r2(dy)})">')
         out(f'<rect x="0" y="{r2(band["top"]-6)}" width="{W}" height="{r2(band["height"]+12)}" fill="#000"/>')
         dur, t, fstate, expanded = 30_000, 12_000, None, True
-        if name.startswith("idle") or name.startswith("armed") or name.startswith("decoder") or name.startswith("short"):
+        if name.startswith("idle") or name.startswith("armed") or name.startswith("decoder") or name.startswith("short") or name.startswith("cancelled") or name.startswith("exact decode"):
             expanded = False
         if name.startswith("edge 0"):
             t = 0
         if name.startswith("edge end"):
-            t = dur - 33
+            t = dur - 34
+        if name.startswith("confirmed") or name.startswith("second"):
+            t = 15_000
         if name.startswith("frame unav"):
             fstate = {3: "unavailable", 4: "unavailable"}
         if name.startswith("4 s"):
@@ -408,7 +420,7 @@ def states_board(vp):
         if expanded:
             sk = seeker_model(vp, lay, dur, t, name)
             draw_seeker(out, sk, tone, frame_state=fstate, prefix=f"r{idx}")
-            if name in ("dragging", "fling"):
+            if name in ("dragging", "fling", "second scrub while playing"):
                 x = sk["playhead_x"]
                 d = -1 if name == "dragging" else -1
                 out(f'<path d="M{r2(x+60)} {r2(band["bottom"]-3)} h{-40*d*-1}" stroke="#FFB020" stroke-width="1.2" marker-end="url(#a)"/>')
@@ -418,7 +430,7 @@ def states_board(vp):
                 v = tile["visible"]
                 tt = "bright" if i % 2 else "dark"
                 scene(out, v["left"], v["top"], v["width"], v["height"], .4, tt, f"r{idx}t{i}", 8)
-                if name.startswith("decoder") and tile.get("current"):
+                if (name.startswith("decoder") or name.startswith("exact decode")) and tile.get("current"):
                     out(f'<rect x="{r2(v["left"])}" y="{r2(v["top"])}" width="{r2(v["width"])}" height="{r2(v["height"])}" rx="8" fill="{MIST_DARK}"/>')
                 if tile.get("current"):
                     rg, sp = tile["ring"], tile["sphere"]
@@ -448,16 +460,16 @@ def states_board(vp):
 
 # ---- Timing / seek diagram ----
 def timing_svg():
-    W, H = 900, 455
+    lanes = ["finger", "seeker state", "player state", "main view", "player seek", "frame cache", "haptic", "TalkBack"]
+    W, H = 900, 60 + len(lanes) * 46 + 70
     out_l = svg_open(W, H, "VIDEO-V2 seeker timing")
     out = out_l.append
     out(f'<rect width="{W}" height="{H}" fill="#1B1C24"/>')
-    out('<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED seeker timing and seek pipeline (ms; one example gesture)</text>')
-    out(f'<text x="12" y="32" font-size="8" fill="{INK2}">OBSERVED values carry a finding ID; everything else is an ATLAS proposal. Media3 behaviour must be proven by the Dev JVM/emulator tests named in README.</text>')
+    out('<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED seeker timing and seek pipeline (ms; one scrub that starts while playing)</text>')
+    out(f'<text x="12" y="32" font-size="8" fill="{INK2}">OBSERVED values carry a finding ID; everything else is an ATLAS proposal. Repeat scrubs, interrupted fling, pause/cancel and stale callbacks: svg/lifecycle.svg. Media3 behaviour must be measured, not inferred.</text>')
     X0, SC = 110, 0.62   # 1 ms = 0.62 px
     def x(ms):
         return X0 + ms * SC
-    lanes = ["finger", "seeker state", "main view", "player seek", "frame cache", "haptic", "TalkBack"]
     for i, ln in enumerate(lanes):
         y = 60 + i * 46
         out(f'<text x="12" y="{y+16}" font-size="9" fill="#FFF">{ln}</text>')
@@ -480,32 +492,258 @@ def timing_svg():
     seg(0, 820, 960, "#5E60CE", "drag")
     tick(0, 960, "up (v < min fling)")
     seg(1, 0, 180, "#3A3C4A", "armed")
-    tick(1, 180, "expand 180 ms [V16]")
+    tick(1, 180, "expand 180 ms [V16] = scrub begin, gen g")
     seg(1, 180, 380, "#2639C9", "200 ms Lift")
-    seg(1, 380, 960, LAPIS, "seeking")
-    seg(1, 960, 1260, "#2639C9", "committed, stays expanded")
-    seg(2, 180, 620, "#6D6875", "nearest cached frame tile")
-    tick(2, 620, "+60 ms")
-    seg(2, 620, 740, "#457B9D", "sync frame")
-    tick(2, 740, "+180 ms")
-    seg(2, 740, 820, "#2A9D8F", "exact")
-    seg(2, 820, 960, "#6D6875", "cached tile")
-    seg(2, 960, 1260, "#2A9D8F", "exact at T_release")
-    seg(3, 180, 560, "#3A3C4A", "≤1 CLOSEST_SYNC in flight, newest wins")
-    tick(3, 620, "CLOSEST_SYNC(T)")
-    tick(3, 740, "EXACT(T)")
-    tick(3, 820, "cancel: new target", "#FF5A5F")
-    tick(3, 960, "EXACT(T_r) commit")
-    seg(4, 180, 520, "#6A4C93", "extract N tiles at t_i (off main)")
-    tick(4, 1100, "collapse/page → cancel jobs", "#FF5A5F")
+    seg(1, 380, 960, LAPIS, "dragging (follow off)")
+    seg(1, 960, 1050, "#6A4C93", "settling")
+    tick(1, 1050, "exact confirmed (gen g)", "#2EC4B6")
+    seg(1, 1050, 1260, "#2639C9", "follow: T_r + advance, lead 0→200")
+    seg(2, 0, 180, "#2A9D8F", "playing")
+    tick(2, 180, "snapshot playing=true · pause")
+    seg(2, 180, 1050, "#3A3C4A", "paused (resume intent = true)")
+    tick(2, 1050, "resume", "#2EC4B6")
+    seg(2, 1050, 1260, "#2A9D8F", "playing")
+    seg(3, 180, 620, "#6D6875", "cached tile nearest by PTS (approx)")
+    tick(3, 620, "+60 ms")
+    seg(3, 620, 740, "#457B9D", "sync frame, gen g")
+    tick(3, 740, "+180 ms")
+    seg(3, 740, 820, "#2A9D8F", "exact")
+    seg(3, 820, 960, "#6D6875", "cached tile")
+    seg(3, 960, 1050, "#6D6875", "last preview")
+    seg(3, 1050, 1260, "#2A9D8F", "decoded frame, then playback")
+    seg(4, 180, 560, "#3A3C4A", "≤1 CLOSEST_SYNC in flight, newest wins")
+    tick(4, 620, "CLOSEST_SYNC(T)")
+    tick(4, 740, "EXACT(T)")
+    tick(4, 820, "cancel: new target", "#FF5A5F")
+    tick(4, 960, "EXACT(T_r) commit")
+    seg(5, 180, 520, "#6A4C93", "extract N tiles at nominal t_i (off main)")
+    tick(5, 1100, "collapse/page → cancel jobs", "#FF5A5F")
     for ms in (260, 340, 450, 880):
-        tick(5, ms, "tick")
-    tick(5, 180, "expand")
-    tick(6, 1140, "announce once")
-    out('<g transform="translate(110,428)">')
-    out(f'<text x="0" y="0" font-size="7.8" fill="{INK}">Release invariance: at ACTION_UP the strip offset x_r, target T_r = clamp(map(x_r), 0, d − 1 frame) and the elapsed label are frozen; the commit only replaces the preview image with the decoded frame at T_r.</text>')
-    out(f'<text x="0" y="12" font-size="7.8" fill="{INK}">A fling ends with the same rule at its rest offset. No snap to a frame tile: the time axis is continuous; frame tiles are only a visual index.</text>')
+        tick(6, ms, "tick")
+    tick(6, 180, "expand")
+    tick(7, 1140, "announce once")
+    yb = 60 + len(lanes) * 46 + 26
+    out(f'<g transform="translate(110,{yb})">')
+    out(f'<text x="0" y="0" font-size="7.8" fill="{INK}">Release invariance: from ACTION_UP until exact confirmation the strip offset x_r, requested T_r = clamp(map(x_r), 0, T_max) and the elapsed label are frozen and follow is off.</text>')
+    out(f'<text x="0" y="12" font-size="7.8" fill="{INK}">Resume happens only after the matching-generation confirmation. Follow then starts at T_r with lead 0 and the 200 ms lead [V16] grows only as playback advances (no +200 ms jump).</text>')
+    out(f'<text x="0" y="24" font-size="7.8" fill="{INK}">Preview PTS are approximate unless reported by the decoder; the exact frame\'s decoded PTS is recorded, not promised. No snap to a frame tile: the time axis is continuous.</text>')
     out('</g></svg>')
+    return "\n".join(out_l)
+
+
+def board_scenario():
+    """One continuous synthetic run of the reference model, drawn on svg/lifecycle.svg."""
+    S = contract.Seeker(30_000, playing=True, pos=10_000)
+    marks = []
+    def run(ms):
+        for _ in range(int(ms // 10)):
+            S.advance(10)
+    def drag(to, ms, steps=8):
+        start = S.t_sel
+        toks = []
+        for k in range(1, steps + 1):
+            run(ms / steps)
+            toks.append(S.move(start + (to - start) * k / steps))
+        return toks
+    run(400)
+    marks.append((S.clock, "hold → scrub 1"))
+    S.down()
+    toks = drag(10_900, 400)
+    S.preview_result(toks[-1], 10_870)
+    ex1 = S.release()
+    marks.append((S.clock, "release"))
+    run(100)
+    S.exact_result(ex1, True, 10_900)
+    marks.append((S.clock, "confirm → resume"))
+    run(700)
+    marks.append((S.clock, "scrub 2 (playing)"))
+    S.down()
+    drag(S.t_sel - 500, 250, 5)
+    S.release(fling=True)
+    marks.append((S.clock, "fling"))
+    late = None
+    for k in range(4):
+        run(40)
+        late = S.move(S.t_sel - 120 + k * 25)
+    marks.append((S.clock, "down mid-fling → scrub 3"))
+    S.down()
+    drag(S.t_sel + 250, 200, 5)
+    ex3 = S.release()
+    run(40)
+    S.preview_result(late, 10_700)          # gen 2 preview arrives late: dropped
+    marks.append((S.clock, "stale gen-2 callback dropped"))
+    run(70)
+    S.exact_result(ex3, True, S.t_sel)
+    marks.append((S.clock, "confirm → resume (intent carried)"))
+    run(600)
+    S.pause()
+    marks.append((S.clock, "pause"))
+    run(300)
+    S.play()
+    marks.append((S.clock, "play"))
+    run(400)
+    marks.append((S.clock, "scrub 4"))
+    S.down()
+    drag(S.t_sel + 300, 160, 4)
+    cx = S.cancel("audio focus loss")
+    marks.append((S.clock, "cancel → paused"))
+    run(60)
+    S.exact_result(cx, True, S.t_sel)
+    marks.append((S.clock, "exact frame: paused page, Play works"))
+    run(340)
+    return S, marks
+
+
+def lifecycle_svg():
+    S, marks = board_scenario()
+    smp = S.samples
+    W, H = 980, 590
+    out_l = svg_open(W, H, "VIDEO-V2 seeker lifecycle")
+    out = out_l.append
+    out(f'<rect width="{W}" height="{H}" fill="#1B1C24"/>')
+    out('<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED per-scrub lifecycle · generated from the contract.py reference model (synthetic, not a device run)</text>')
+    out(f'<text x="12" y="32" font-size="8" fill="{INK2}">playing → hold → release → playing → second scrub → interrupted fling → stale callback → pause / play → cancel. Lines are model samples every 10 ms; contract-cases.md has the asserted traces.</text>')
+    t_end = max(p["clock"] for p in smp)
+    X0, X1, Y0, Y1 = 90, W - 20, 52, 270
+    lo = min(min(p["strip_t"], p["pos"]) for p in smp) - 50
+    hi = max(max(p["strip_t"], p["pos"]) for p in smp) + 50
+    def x(c):
+        return X0 + (X1 - X0) * c / t_end
+    def y(v):
+        return Y1 - (Y1 - Y0) * (v - lo) / (hi - lo)
+    out(f'<rect x="{X0}" y="{Y0}" width="{X1-X0}" height="{Y1-Y0}" fill="#14151C" stroke="#3A3C4A"/>')
+    for v in range(int(lo // 250 + 1) * 250, int(hi), 250):
+        out(f'<line x1="{X0}" y1="{r2(y(v))}" x2="{X1}" y2="{r2(y(v))}" stroke="#2A2C38"/>')
+        out(f'<text x="{X0-4}" y="{r2(y(v)+3)}" font-size="7.2" fill="{INK2}" text-anchor="end">{v/1000:.2f} s</text>')
+    for c in range(0, int(t_end) + 1, 250):
+        out(f'<text x="{r2(x(c))}" y="{Y1+11}" font-size="7" fill="{INK2}" text-anchor="middle">{c}</text>')
+    out(f'<text x="{X1}" y="{Y1+22}" font-size="7.4" fill="{INK2}" text-anchor="end">wall clock, ms</text>')
+    out(f'<text x="14" y="{Y0+10}" font-size="7.6" fill="{INK2}">media time</text>')
+    def poly(key, colour, width, dash=""):
+        pts = " ".join(f"{r2(x(p['clock']))},{r2(y(p[key]))}" for p in smp)
+        out(f'<polyline points="{pts}" fill="none" stroke="{colour}" stroke-width="{width}" {dash}/>')
+    poly("pos", "#FFB020", 1.6)
+    poly("strip_t", SPHERE, 1.4, 'stroke-dasharray="4 2"')
+    out(f'<rect x="{X0+8}" y="{Y0+6}" width="10" height="3" fill="{SPHERE}"/><text x="{X0+22}" y="{Y0+10}" font-size="7.4" fill="{INK}">strip T under the playhead (requested T while scrubbing)</text>')
+    out(f'<rect x="{X0+8}" y="{Y0+16}" width="10" height="3" fill="#FFB020"/><text x="{X0+22}" y="{Y0+20}" font-size="7.4" fill="{INK}">player position</text>')
+    for i, (c, label) in enumerate(marks):
+        out(f'<line x1="{r2(x(c))}" y1="{Y0}" x2="{r2(x(c))}" y2="{Y1+232}" stroke="#5A5C6A" stroke-dasharray="1 2"/>')
+        out(f'<text transform="translate({r2(x(c)+2)},{Y1+232}) rotate(-90)" font-size="6.8" fill="{INK}">{label}</text>')
+    # lanes
+    lane_y = {"phase": Y1 + 30, "gen": Y1 + 50, "playing": Y1 + 64, "resume": Y1 + 78, "follow": Y1 + 92}
+    colours = {"follow": "#2639C9", "dragging": LAPIS, "flinging": "#5E60CE", "settling": "#6A4C93", "cancelled": "#FF5A5F", "error": "#FF5A5F"}
+    for name, yy in lane_y.items():
+        out(f'<text x="12" y="{yy+8}" font-size="7.6" fill="#FFF">{name if name != "resume" else "resume intent"}</text>')
+    for a, b in zip(smp, smp[1:]):
+        xa, xb = x(a["clock"]), x(b["clock"])
+        if xb <= xa:
+            continue
+        out(f'<rect x="{r2(xa)}" y="{lane_y["phase"]}" width="{r2(xb-xa)}" height="12" fill="{colours.get(a["phase"], "#444")}"/>')
+        if a["playing"]:
+            out(f'<rect x="{r2(xa)}" y="{lane_y["playing"]}" width="{r2(xb-xa)}" height="8" fill="#2A9D8F"/>')
+        if a["resume"]:
+            out(f'<rect x="{r2(xa)}" y="{lane_y["resume"]}" width="{r2(xb-xa)}" height="8" fill="#E9C46A"/>')
+        if a["follow"]:
+            out(f'<rect x="{r2(xa)}" y="{lane_y["follow"]}" width="{r2(xb-xa)}" height="8" fill="#2639C9"/>')
+    last = None
+    for p in smp:
+        if p["gen"] != last:
+            out(f'<text x="{r2(x(p["clock"])+2)}" y="{lane_y["gen"]+8}" font-size="7.4" fill="#FFF">g{p["gen"]}</text>')
+            last = p["gen"]
+    lx = X0
+    for ph in ("follow", "dragging", "flinging", "settling", "cancelled"):
+        out(f'<rect x="{lx}" y="{Y1+16}" width="8" height="7" fill="{colours[ph]}"/><text x="{lx+11}" y="{Y1+22}" font-size="7" fill="{INK2}">{ph}</text>')
+        lx += 70
+    yt = Y1 + 252
+    rules = [
+        "Each finger down on the band starts a new generation g: snapshot play state (or carry the original intent if a fling or commit of g−1 is unfinished), pause, stop follow,",
+        "hold T where the strip stands. Only the one live request is accepted; superseded, older-g and post-commit results are dropped. Resume happens only after the matching-g exact confirmation.",
+        "Follow re-anchors at the committed T with lead 0; the lead grows to 200 ms over 400 ms of real playback (strip moves at ≤ 1.5× playback speed, never jumps).",
+        "Pause freezes the strip where it stands; play continues from there. Cancel (back swipe, lifecycle stop, audio focus, unplug) stays paused at the last selected T.",
+    ]
+    for i, t in enumerate(rules):
+        out(f'<text x="12" y="{yt+i*11}" font-size="7.6" fill="{INK}">{t}</text>')
+    out('</svg>')
+    return "\n".join(out_l)
+
+
+def timestamps_svg():
+    d, n = 30_000, contract.obs_frame_count(30)
+    nom = contract.nominal_offsets(d, n)
+    half = contract.tile_interval(d, n) / 2
+    t_end = d - 1000 / 30
+    W, H = 980, 488
+    out_l = svg_open(W, H, "VIDEO-V2 preview timestamps")
+    out = out_l.append
+    out(f'<rect width="{W}" height="{H}" fill="#1B1C24"/>')
+    out('<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED timestamp truth · d = 30 s, N = 10 · nominal grid vs requested T vs decoded PTS (synthetic)</text>')
+    out(f'<text x="12" y="32" font-size="8" fill="{INK2}">Nominal offsets t_i = i·(d − 100 ms)/N [V16] are request times, not frame timestamps. Numbers come from contract.py (cases C6, C7).</text>')
+    X0, X1 = 120, W - 30
+    def x(ms):
+        return X0 + (X1 - X0) * ms / d
+    def axis(yy, label, line=True):
+        out(f'<text x="12" y="{yy+4}" font-size="8" fill="#FFF">{label}</text>')
+        if line:
+            out(f'<line x1="{X0}" y1="{yy}" x2="{X1}" y2="{yy}" stroke="#5A5C6A"/>')
+    # row 1: nominal grid
+    y1 = 70
+    axis(y1, "nominal grid")
+    for i, t in enumerate(nom):
+        out(f'<line x1="{r2(x(t))}" y1="{y1-6}" x2="{r2(x(t))}" y2="{y1+6}" stroke="#9AA0B8"/>')
+        out(f'<text x="{r2(x(t))}" y="{y1-9}" font-size="6.8" fill="{INK2}" text-anchor="middle">t{i} {t/1000:.2f}</text>')
+    out(f'<line x1="{r2(x(d))}" y1="{y1-8}" x2="{r2(x(d))}" y2="{y1+8}" stroke="#FF5A5F"/><text x="{r2(x(d))}" y="{y1+18}" font-size="6.8" fill="#FF5A5F" text-anchor="end">d 30.00</text>')
+    # end gap bracket
+    yb = y1 + 30
+    out(f'<path d="M{r2(x(nom[-1]))} {yb} v6 H{r2(x(t_end))} v-6" fill="none" stroke="#FFB020" stroke-width="1.4"/>')
+    out(f'<text x="{r2(x(nom[-1]))-4}" y="{yb+16}" font-size="7.4" fill="#FFB020" text-anchor="end">end gap {t_end-nom[-1]:,.0f} ms &gt; half tile interval {half:,.0f} ms (old bound false)</text>')
+    # row 2: endpoint example
+    y2 = 150
+    axis(y2, "near the end", line=False)
+    rows = [
+        (y2, t_end, SPHERE, f"requested/displayed T = last PTS {t_end/1000:.2f} s (clamp)"),
+        (y2 + 22, nom[-1], "#9AA0B8", "cached tile 9: PTS 26.91 s (reported) → approximate, error 3,057 ms → endpoint decode requested"),
+        (y2 + 44, t_end, "#2EC4B6", "endpoint decode (live request) PTS 29.97 s replaces it; a superseded or older-gen frame never does"),
+        (y2 + 66, t_end, "#2A9D8F", "exact seek on release: decoded PTS recorded and compared with T_r in the emulator proof (not promised)"),
+    ]
+    for yy, t, col, label in rows:
+        out(f'<circle cx="{r2(x(t))}" cy="{yy}" r="3.6" fill="{col}"/>')
+        out(f'<text x="{r2(x(t))-8}" y="{yy+3}" font-size="7.4" fill="{INK}" text-anchor="end">{label}</text>')
+    # row 3: VFR
+    y3 = 260
+    axis(y3, "VFR clip")
+    vfr = list(nom)
+    vfr[3], vfr[4] = 9_100.0, 11_300.0
+    for i in (2, 3, 4, 5):
+        out(f'<line x1="{r2(x(nom[i]))}" y1="{y3-6}" x2="{r2(x(nom[i]))}" y2="{y3+6}" stroke="#9AA0B8"/>')
+        out(f'<circle cx="{r2(x(vfr[i]))}" cy="{y3}" r="3" fill="#2EC4B6"/>')
+        out(f'<text x="{r2(x(vfr[i]))}" y="{y3+16}" font-size="6.8" fill="#2EC4B6" text-anchor="middle">PTS {vfr[i]/1000:.2f}</text>')
+    out(f'<circle cx="{r2(x(10_300))}" cy="{y3-14}" r="3.6" fill="{SPHERE}"/>')
+    out(f'<text x="{r2(x(10_300))+8}" y="{y3-11}" font-size="7.4" fill="{INK}">T = 10.30 s → tile 4 by decoded PTS (1,000 ms away), not tile 3 by nominal offset</text>')
+    # row 4: unknown PTS
+    y4 = 310
+    axis(y4, "PTS unknown")
+    for i, t in enumerate(nom):
+        out(f'<rect x="{r2(x(t))-3}" y="{y4-3}" width="6" height="6" fill="none" stroke="#9AA0B8" stroke-dasharray="1 1"/>')
+    out(f'<text x="{X0}" y="{y4+18}" font-size="7.4" fill="{INK}">Extractor gave no PTS (e.g. a bitmap-only retriever): tiles are an index only; preview marked approximate/unknown; no error bound claimed; endpoint decode still requested near the ends.</text>')
+    # row 5: start
+    y5 = 350
+    axis(y5, "near the start")
+    out(f'<circle cx="{r2(x(0))}" cy="{y5}" r="3.6" fill="{SPHERE}"/><circle cx="{r2(x(400))}" cy="{y5+12}" r="3" fill="#2EC4B6"/>')
+    out(f'<text x="{r2(x(400))+8}" y="{y5+15}" font-size="7.4" fill="{INK}">T = 0: tile 0 came from the nearest sync frame at PTS 0.40 s → approximate, 400 ms error; never labelled exact</text>')
+    # definitions
+    yd = 392
+    defs = [
+        ("Requested / displayed T", "from the strip offset; drives sphere, seek-bar thumb and elapsed label; never changed by a decode result"),
+        ("Nominal offset t_i", "V16 extraction request time for tile i; an index, not a timestamp"),
+        ("Preview PTS", "PTS of the cached tile or CLOSEST_SYNC / endpoint frame when the decoder reports it; else unknown; always approximate unless equal to T"),
+        ("Exact decoded PTS", "PTS of the frame the EXACT seek rendered; recorded for the proof; accuracy is measured, not inferred (no fixed frame-interval promise, VFR)"),
+        ("End clamp T_max", "min(d, last decodable PTS) when known; else d − 100 ms marked approximate; start clamp 0"),
+        ("Endpoint decode", "T past the last tile's PTS (nominal if unknown) or before tile 0's PTS (< half interval if unknown), AND best preview > half interval away or PTS unknown"),
+    ]
+    for i, (k, v) in enumerate(defs):
+        out(f'<text x="12" y="{yd+i*13}" font-size="7.8" fill="#FFF" font-weight="600">{k}</text>')
+        out(f'<text x="170" y="{yd+i*13}" font-size="7.8" fill="{INK}">{v}</text>')
+    out('</svg>')
     return "\n".join(out_l)
 
 
@@ -567,6 +805,8 @@ def main():
                               "checks": chk})
         (SVG_DIR / f'{vp["name"]}--states.svg').write_text(states_board(vp))
     (SVG_DIR / "timing.svg").write_text(timing_svg())
+    (SVG_DIR / "lifecycle.svg").write_text(lifecycle_svg())
+    (SVG_DIR / "timestamps.svg").write_text(timestamps_svg())
     (HERE / "geometry.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n")
     q = render_md_table(out["quantization"], [("Duration", "duration"), ("N frames", "N"), ("Span dp", "span_dp"),
                                               ("Span px", "span_px"), ("ms per px", "ms_per_px"), ("Tile interval ms", "tile_interval_ms"),
@@ -579,7 +819,10 @@ def main():
     (HERE / "tables.md").write_text("# Generated tables (do not edit; run generate.py)\n\n## Q1 Timestamp quantization\n\n" + q +
                                     "\n\nFrame-interval column shows 30 fps; 60 fps is half. ‘decoder frames’ = one px of drag moves less than one 60 fps frame, so precision is the decoder's; ‘strip pixels’ = one px skips more than one 30 fps frame.\n\n"
                                     "## G1 Geometry checks per board\n\n" + "\n".join(c) + "\n")
-    print("ok:", len(out["boards"]), "boards,", len(vps), "viewports")
+    _, passed, total = contract.run_all()
+    if passed != total:
+        raise SystemExit(f"contract check failed: {passed}/{total}; see contract-cases.md")
+    print("ok:", len(out["boards"]), "boards,", len(vps), "viewports;", f"contract {passed}/{total}")
 
 
 if __name__ == "__main__":

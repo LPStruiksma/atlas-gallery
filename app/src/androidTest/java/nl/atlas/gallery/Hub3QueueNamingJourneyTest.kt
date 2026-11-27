@@ -166,7 +166,8 @@ class Hub3QueueNamingJourneyTest {
         val rows = mutableListOf<MediaRecord>()
         val count = if (testName.methodName in setOf(
             "mixedSurvivesNamingUndo", "skipSurvivesNamingUndo",
-            "staleStoreGenerationRefusesInFlightNaming", "hostConfirmationLoadingWithReducedMotion"
+            "staleStoreGenerationRefusesInFlightNaming", "hostConfirmationLoadingWithReducedMotion",
+            "hostConfirmationLoadingWithMotion"
         )) 12 else 8
         for (i in 1..count) {
             val spec = SyntheticFace.Spec(480, 480, 0.4f + 0.02f * i, 0.5f, 0.8f + 0.01f * i)

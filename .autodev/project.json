@@ -93,6 +93,11 @@
         "candidateExecutionBoundary": "narrow-only",
         "platformHardFloorOverride": "forbidden"
       }
+    },
+    "codexApply": {
+      "evidencePrefixes": [
+        "docs/design/**"
+      ]
     }
   },
   "state": {
