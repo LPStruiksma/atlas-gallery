@@ -319,7 +319,7 @@ class PerfHashPlaceholderFlingBenchmarkTest {
                 }
             }
             assertTrue("timeline never planned", ready.await(60, TimeUnit.SECONDS))
-            SystemClock.sleep(2_000) // first screen settles; not measured
+            awaitChoreographerFrames(120) // first screen settles (~2 s of real frames); not measured
             scenario.onActivity { refreshHz = it.window.decorView.display?.refreshRate ?: 0f }
             val screen = checkNotNull(metrics)
             val gridState = checkNotNull(gridRef.get())
@@ -340,7 +340,7 @@ class PerfHashPlaceholderFlingBenchmarkTest {
                 for (down in listOf(true, true, false, false, true)) {
                     val before = gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
                     injectFling(x, if (down) bottom else top, if (down) top else bottom)
-                    SystemClock.sleep(1_000) // fill-in after release is part of the measurement
+                    awaitChoreographerFrames(60) // fill-in after release (~1 s of real frames) is measured
                     val after = gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset
                     if (after != before) throwsMoved++
                 }
@@ -449,7 +449,7 @@ class PerfHashPlaceholderFlingBenchmarkTest {
                 Choreographer.getInstance().postFrameCallback(callback)
             }
             body()
-            SystemClock.sleep(1_000) // settle: does the screen fill in?
+            awaitChoreographerFrames(60) // settle (~1 s of real frames): does the screen fill in?
             running.set(false)
             stopped.await(5, TimeUnit.SECONDS)
             // Episodes still open at the end are counted up to the last frame.
@@ -612,7 +612,7 @@ class PerfHashPlaceholderFlingBenchmarkTest {
                     .sortedByDescending { it.takenAtMillis }
             } catch (t: Exception) {
                 last = t
-                SystemClock.sleep(3_000)
+                awaitChoreographerFrames(180) // provider settles its generation (~3 s)
             }
         }
         throw checkNotNull(last)
@@ -684,6 +684,27 @@ class PerfHashPlaceholderFlingBenchmarkTest {
     }
 
     private companion object {
+        /**
+         * Waits for [count] real Choreographer frames: the measurement windows
+         * are defined in frames, as PERF-A2A's post-release frames are. Fails
+         * if the display stops producing frames.
+         */
+        fun awaitChoreographerFrames(count: Int) {
+            val latch = CountDownLatch(count)
+            val callback = object : Choreographer.FrameCallback {
+                override fun doFrame(frameTimeNanos: Long) {
+                    latch.countDown()
+                    if (latch.count > 0) Choreographer.getInstance().postFrameCallback(this)
+                }
+            }
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                Choreographer.getInstance().postFrameCallback(callback)
+            }
+            check(latch.await(count * 50L + 5_000L, TimeUnit.MILLISECONDS)) {
+                "display produced fewer than $count frames"
+            }
+        }
+
         const val TAG = "ATLAS_SCALE"
         const val KIT_TAG = "ATLAS_TESTKIT"
         const val VIEW_KEY_PREFIX = "perf-hash-592-"
