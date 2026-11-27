@@ -622,12 +622,17 @@ abstract class SharedPhotoJourneyTest(private val dark: Boolean) {
             compose.waitForNode(hasTestTag("atlas-photo-counter"))
             compose.onNodeWithTag("atlas-shared-photo-enter").assertDoesNotExist()
             saveUiEvidence("shared-23-reduced-$mode.png")
+            compose.mainClock.autoAdvance = false
             compose.onNodeWithTag("atlas-back").performClick()
+            compose.mainClock.advanceTimeBy(48L)
+            compose.waitForIdle()
             compose.onNodeWithTag("atlas-shared-photo-exit").assertDoesNotExist()
-            compose.waitUntil(10_000L) {
-                compose.onAllNodes(hasTestTag("atlas-viewer")).fetchSemanticsNodes().isEmpty()
-            }
+            compose.onNodeWithTag("atlas-viewer").assertDoesNotExist()
+            compose.mainClock.autoAdvance = true
+            compose.waitForNode(hasTestTag(tileTag))
+            compose.onNodeWithTag(tileTag, useUnmergedTree = true).assertIsDisplayed()
         } finally {
+            compose.mainClock.autoAdvance = true
             if (before == "null" || before.isBlank())
                 shell23("settings delete global animator_duration_scale")
             else shell23("settings put global animator_duration_scale $before")

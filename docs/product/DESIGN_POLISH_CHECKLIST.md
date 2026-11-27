@@ -79,3 +79,5 @@ Retain related live flow repairs (#593/#1029, #905/#906, #997/#1023) and existin
 4. Daily Strategy first routes verified flow obstacles to existing owners, then visual-only gaps, using the evidence backlog to resolve unknowns in parallel where ownership permits. Capture missing primary-task states first (Pictures/atlas, viewer/return, navigation, selection, search/sort, then lower-frequency and cross-cutting actions); this is a provisional capture order, not a measured gap rank. Keep capture work with existing BRAND/flow/SORT/FIND units; no replacement V01–V17 queue. Reconcile the current Plan and exact-head CI/renders before marking any row done.
 
 **Important:** this documentation-only change updates the evaluator, not app behavior. No runtime pixel inspection or measured visual scores were performed; the standing daily ranking remains incomplete until real action-state evidence is inspected.
+
+FLOW-3 (#593): single moving main-photo draw ownership and synchronous animation-off Back source changes are pending independent review and hosted Android evidence; no acceptance or timing improvement claimed.

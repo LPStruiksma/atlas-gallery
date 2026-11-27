@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +22,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -101,6 +101,10 @@ internal suspend fun awaitMeasuredViewerReturn(
     withTimeoutOrNull(timeoutMillis) { candidates.filterNotNull().first() }
 
 internal val LocalMeasuredViewerReturn = compositionLocalOf<MeasuredViewerReturn?> { null }
+internal val LocalSharedPhotoViewerAlpha = compositionLocalOf { 1f }
+
+internal fun sharedPhotoViewerImageAlpha(frame: SharedPhotoCropFrame?): Float =
+    if (frame == null) 1f else 0f
 
 @Composable
 internal fun Modifier.measureViewerReturn(media: MediaRecord, epoch: Long): Modifier {
@@ -110,9 +114,11 @@ internal fun Modifier.measureViewerReturn(media: MediaRecord, epoch: Long): Modi
     DisposableEffect(target, media.uri, epoch) {
         onDispose { target.clear() }
     }
+    // Keep measuring and decoding the destination, but do not draw a second
+    // copy under the finger-tracked viewer or the committed moving photo.
     return onGloballyPositioned { coordinates ->
         target.offer(media, epoch, coordinates.boundsInWindow(), SystemClock.uptimeMillis())
-    }
+    }.graphicsLayer { alpha = 0f }
 }
 
 internal fun sharedPhotoAnimationDisabled(context: Context): Boolean =
@@ -194,7 +200,7 @@ internal fun sharedPhotoReturnCrop(source: Rect, tile: Rect, progress: Float): S
 /**
  * The viewer owns Back and settled-URI semantics as before. The image-only
  * overlay travels from the measured thumbnail to the full viewer, while the
- * viewer fades in underneath. Exit uses a separately measured current tile,
+ * viewer chrome/backdrop fades in underneath. Exit uses a separately measured current tile,
  * or fades when no authorized target was obtained. Entry state is unchanged.
  */
 @Composable
@@ -231,6 +237,20 @@ internal fun SharedPhotoMotionLayer(
 
     val movingOrigin = if (exiting) returnOrigin else origin
     val moving = if (exiting) !exitDisabled else animated
+    // Resolve geometry before composing either owner, so the same frame
+    // switches ownership atomically. Invalid dimensions retain the fade.
+    val cropFrame = if (moving && movingOrigin != null && windowRect.width > 0f &&
+        windowRect.height > 0f && (progress.value < 1f || exiting)
+    ) {
+        val oriented = viewerOrientedSize(movingOrigin.media, IntSize.Zero)
+        val fitted = if (exiting && gestureFrame != null) Rect(
+            windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
+            windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
+        else sharedPhotoFittedFrame(windowRect, oriented.width, oriented.height)
+        fitted?.let {
+            sharedPhotoReturnCrop(it, movingOrigin.bounds, progress.value)
+        }
+    } else null
     Box(modifier.fillMaxSize().clipToBounds().drawBehind {
         if (exiting && exitWithoutUnderlay) drawRect(Color.Black)
         else if (exiting && !allowUnderlay) drawRect(Color.Black.copy(alpha = progress.value))
@@ -242,45 +262,28 @@ internal fun SharedPhotoMotionLayer(
         }) {
         Box(Modifier.fillMaxSize().graphicsLayer {
             alpha = if (animated || exiting) progress.value else 1f
-        }) { content() }
+        }) {
+            CompositionLocalProvider(LocalSharedPhotoViewerAlpha provides sharedPhotoViewerImageAlpha(cropFrame)) { content() }
+        }
 
-        // Draw only while a measured, authorized entry is moving. During the
-        // transition the image is a single low-resolution copy; GalleryViewer
-        // retains ownership of the full-res decode and of all gestures.
-        if (moving && movingOrigin != null && windowRect.width > 0f &&
-            windowRect.height > 0f && (progress.value < 1f || exiting)
-        ) {
-            // Use the frozen decoded gesture pose when available. Ordinary entry
-            // and Back use the existing oriented catalogue dimensions without
-            // waiting for another decode. Unknown geometry keeps the fade only.
-            val oriented = viewerOrientedSize(movingOrigin.media, IntSize.Zero)
-            val fitted = if (exiting && gestureFrame != null) Rect(
-                windowRect.left + gestureFrame.left, windowRect.top + gestureFrame.top,
-                windowRect.left + gestureFrame.right, windowRect.top + gestureFrame.bottom)
-            else sharedPhotoFittedFrame(windowRect, oriented.width, oriented.height)
-            val cropFrame = fitted?.let {
-                sharedPhotoReturnCrop(it, movingOrigin.bounds, progress.value)
-            }
-            if (cropFrame != null) {
-                val frame = cropFrame.frame
-                val density = LocalDensity.current
-                Box(Modifier
-                    .absoluteOffset {
-                        IntOffset((frame.left - windowRect.left).roundToInt(),
-                            (frame.top - windowRect.top).roundToInt())
-                    }
-                    .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
-                    .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
-                        with(density) { frame.height.coerceAtLeast(1f).toDp() })
-                    .clipToBounds()
-                    .alpha(1f - progress.value)
-                    .testTag(if (exiting) "atlas-shared-photo-exit"
-                        else "atlas-shared-photo-enter")) {
-                    // Centered Crop on this derived clip renders the interpolated
-                    // image-coordinate window at uniform scale (modulo pixel rounding).
-                    MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
-                        ContentScale.Crop, 600)
+        if (cropFrame != null && movingOrigin != null) {
+            val frame = cropFrame.frame
+            val density = LocalDensity.current
+            Box(Modifier
+                .absoluteOffset {
+                    IntOffset((frame.left - windowRect.left).roundToInt(),
+                        (frame.top - windowRect.top).roundToInt())
                 }
+                .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true)
+                .size(with(density) { frame.width.coerceAtLeast(1f).toDp() },
+                    with(density) { frame.height.coerceAtLeast(1f).toDp() })
+                .clipToBounds()
+                .testTag(if (exiting) "atlas-shared-photo-exit"
+                    else "atlas-shared-photo-enter")) {
+                // Centered Crop on this derived clip renders the interpolated
+                // image-coordinate window at uniform scale (modulo pixel rounding).
+                MediaPreview(movingOrigin.media, Modifier.fillMaxSize(),
+                    ContentScale.Crop, 600)
             }
         }
     }

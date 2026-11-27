@@ -49,7 +49,7 @@ test("square, dated and ratio grids measure only the requested return tile", () 
   assert.match(motion, /target\.request\.uri != media\.uri \|\| target\.request\.accessEpoch != epoch \|\| media\.isVideo/);
   assert.match(motion, /target\.offer\(media, epoch, coordinates\.boundsInWindow\(\)/);
   assert.match(motion, /onDispose \{ target\.clear\(\) \}/);
-  assert.match(main, /withTimeoutOrNull\(1500L\)/);
+  assert.match(motion, /timeoutMillis: Long = 1500L/);
 });
 
 test("disabled system animation scale and stale grants cancel pixels immediately", () => {
@@ -144,7 +144,7 @@ test("committed return derives its clip from normalized crop and uniform scale",
   assert.match(motion, /val crop = sharedPhotoRect\(tileCrop, Rect\(0f, 0f, 1f, 1f\), p\)/);
   assert.match(motion, /sharedPhotoReturnCrop\(it, movingOrigin\.bounds, progress\.value\)/);
   assert.match(motion, /val frame = cropFrame\.frame/);
-  assert.match(motion, /\.clipToBounds\(\)\s+\.alpha\(1f - progress.value\)/);
+  assert.doesNotMatch(motion, /\.alpha\(1f - progress.value\)/);
 });
 
 test("FLOW-3 journey captures held, reversed and committed drag in both themes", () => {
@@ -191,8 +191,8 @@ test("FLOW-3 ratio rows offer measured entry only on open and return to the same
 test("FLOW-3 entry and ordinary Back use oriented fitted image geometry rather than full-window crop", () => {
   assert.match(motion, /viewerOrientedSize\(movingOrigin\.media, IntSize\.Zero\)/);
   assert.match(motion, /sharedPhotoFittedFrame\(windowRect, oriented\.width, oriented\.height\)/);
-  assert.match(motion, /val cropFrame = fitted\?\.let \{/);
-  assert.match(motion, /if \(cropFrame != null\) \{/);
+  assert.match(motion, /val cropFrame = if \(moving && movingOrigin != null/);
+  assert.match(motion, /if \(cropFrame != null && movingOrigin != null\) \{/);
   assert.doesNotMatch(motion, /sharedPhotoRect\(movingOrigin\.bounds, viewport/);
 });
 
@@ -230,8 +230,22 @@ test("FLOW-3 committed grid return has one bounded measurement wait and no entry
   assert.match(motion, /suspend fun awaitMeasuredViewerReturn\(/);
   assert.match(motion, /timeoutMillis: Long = 1500L/);
   assert.match(motion, /withTimeoutOrNull\(timeoutMillis\) \{ candidates\.filterNotNull\(\)\.first\(\) \}/);
-  assert.match(main, /else awaitMeasuredViewerReturn\(snapshotFlow \{\s*preparation\.measured\?\.takeIf/);
+  assert.match(main, /val target = awaitMeasuredViewerReturn\(snapshotFlow \{\s*preparation\.measured\?\.takeIf/);
   assert.match(main, /if \(returnPreparation === preparation && !viewerExitShared\) \{\s*pendingViewerReturn = null\s*pendingRatioReturn = null\s*pendingRatioAnchor = null/);
   assert.match(main, /measuredReturnOrigin = target\s*viewerExitShared = true/);
   assert.match(motion, /val movingOrigin = if \(exiting\) returnOrigin else origin/);
+});
+
+test("one moving photo owns drawing while the viewer and matching destination are suppressed", () => {
+  const viewer = readFileSync(new URL("../../app/src/main/java/nl/atlas/gallery/GalleryViewer.kt", import.meta.url), "utf8");
+  assert.match(motion, /LocalSharedPhotoViewerAlpha provides sharedPhotoViewerImageAlpha\(cropFrame\)/);
+  assert.match(viewer, /alpha = sharedPhotoViewerAlpha/);
+  assert.match(motion, /\.graphicsLayer \{ alpha = 0f \}/);
+  assert.doesNotMatch(motion, /\.alpha\(1f - progress.value\)/);
+});
+test("animation-off Back closes directly before any committed wait and keeps only the authorized anchor", () => {
+  assert.match(main, /if \(sharedPhotoAnimationDisabled\(context\)\) \{\s*closeViewer\(keepReturnAnchor =/);
+  assert.match(main, /if \(returnPreparation != null && !keepReturnAnchor\)/);
+  assert.match(main, /fun canKeepReturnAnchor\(\): Boolean/);
+  assert.doesNotMatch(main, /withTimeoutOrNull\(1500L\)/);
 });

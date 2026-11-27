@@ -716,6 +716,7 @@ private fun GalleryViewerSnapshot(
     val pinchExitPose = remember(pagerState.currentPage, editorReturn.revision) {
         mutableStateOf(ViewerPinchExitPose())
     }
+    val sharedPhotoViewerAlpha = LocalSharedPhotoViewerAlpha.current
     fun exitBackdropAlpha(): Float {
         val eligible = access == ViewerAccess.LIBRARY &&
             returnRevealUri != null &&
@@ -853,6 +854,7 @@ private fun GalleryViewerSnapshot(
                     }
                 }
             .graphicsLayer {
+            alpha = sharedPhotoViewerAlpha
             val details = detailsProgress.floatValue
             if (details > 0f) {
                 // #details-motion: the photo glides up with the details surface
@@ -971,7 +973,9 @@ private fun GalleryViewerSnapshot(
             }
         }
         }
-        ViewerScrubLayer(items, scrubOverlayState, { liveScrubCentre == null }, editorReturn)
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = sharedPhotoViewerAlpha }) {
+            ViewerScrubLayer(items, scrubOverlayState, { liveScrubCentre == null }, editorReturn)
+        }
         // Screen readers and tests still get "N of M"; nothing is drawn.
         if (chromeVisible) Box(Modifier.size(0.dp).testTag("atlas-photo-counter")
             .semantics {

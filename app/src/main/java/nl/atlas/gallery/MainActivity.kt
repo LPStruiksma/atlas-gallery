@@ -2644,7 +2644,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         viewerAccessEpoch = publishedGallery.epoch
         viewerUri = uri
     }
-    fun closeViewer() {
+    fun closeViewer(keepReturnAnchor: Boolean = false) {
         if (viewerUri != null) {
             PerformanceSession.updateViewer()
             if (grants.hasAny && publishedGallery.showable(grants)) {
@@ -2657,7 +2657,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         sharedPhotoOrigin = null
         lastSettledViewerUri = null
         viewerExitShared = false
-        if (returnPreparation != null) {
+        if (returnPreparation != null && !keepReturnAnchor) {
             pendingViewerReturn = null
             pendingRatioReturn = null
             pendingRatioAnchor = null
@@ -3515,6 +3515,16 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         else pendingViewerReturn = request
         returnPreparation = MeasuredViewerReturn(request)
     }
+    fun canKeepReturnAnchor(): Boolean {
+        val request = returnPreparation?.request ?: return false
+        return request.uri == lastSettledViewerUri && viewerAllowed &&
+            viewerAccessEpoch == publishedGallery.epoch && contextItems === visible &&
+            tab != 1 && faceStep == null && similarStep == null &&
+            readGalleryMediaGrant(context) == grants &&
+            vm.publishedInventory.value.epoch == request.accessEpoch &&
+            viewerReturnMatchesCurrentRoute(request, visible, returnRoute,
+                grants.hasAny && publishedGallery.showable(grants), publishedGallery.epoch)
+    }
     // Await both the existing URI seek and the actual requested tile layout.
     // One overall deadline bounds missing tiles and slow projection/measurement.
     LaunchedEffect(preparation, returnAuthorized, returnCommitted, viewerExitShared) {
@@ -3529,14 +3539,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         }
         if (!returnCommitted) return@LaunchedEffect
         if (viewerExitShared) return@LaunchedEffect
-        val target = if (sharedPhotoAnimationDisabled(context)) {
-            // Still position the grid, but do not play a return animation.
-            withTimeoutOrNull(1500L) {
-                snapshotFlow { pendingViewerReturn == null && pendingRatioReturn == null &&
-                    pendingRatioAnchor == null }.first { it }
-            }
-            null
-        } else awaitMeasuredViewerReturn(snapshotFlow {
+        if (sharedPhotoAnimationDisabled(context)) {
+            closeViewer(keepReturnAnchor = canKeepReturnAnchor())
+            return@LaunchedEffect
+        }
+        val target = awaitMeasuredViewerReturn(snapshotFlow {
             preparation.measured?.takeIf {
                 pendingViewerReturn == null && pendingRatioReturn == null &&
                     pendingRatioAnchor == null
@@ -3674,7 +3681,11 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
             },
             onBack = {
                 if (!returnCommitted && !viewerExitShared) {
-                    if (returnPreparation?.request?.uri == lastSettledViewerUri &&
+                    if (sharedPhotoAnimationDisabled(context)) {
+                        // Cut synchronously; the existing URI seek effects may finish
+                        // after the viewer is gone, with their own route/epoch checks.
+                        closeViewer(keepReturnAnchor = canKeepReturnAnchor())
+                    } else if (returnPreparation?.request?.uri == lastSettledViewerUri &&
                         returnPreparation != null) {
                         returnCommitted = true
                     } else {

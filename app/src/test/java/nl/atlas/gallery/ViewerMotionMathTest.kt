@@ -488,6 +488,19 @@ class ViewerMotionMathTest {
             androidx.compose.ui.geometry.Rect(Float.NaN, 0f, 100f, 100f), 1000, 1000))
     }
 
+    @Test fun offsetMixedAspectMotionHasOnlyOneRegisteredFrame() {
+        val window = androidx.compose.ui.geometry.Rect(20f, 100f, 1020f, 2100f)
+        val fitted = sharedPhotoFittedFrame(window, 2000, 1000)!!
+        val tile = androidx.compose.ui.geometry.Rect(40f, 150f, 240f, 350f)
+        for (p in listOf(.25f, .5f, .75f)) {
+            val moving = sharedPhotoReturnCrop(fitted, tile, p)!!
+            assertTrue(moving.frame != fitted && moving.frame != tile)
+            assertTrue(moving.frame.center != fitted.center && moving.frame.center != tile.center)
+            assertEquals(0f, sharedPhotoViewerImageAlpha(moving), 0f)
+        }
+        assertEquals(1f, sharedPhotoViewerImageAlpha(null), 0f)
+    }
+
     @Test fun committedReturnInterpolatesCenteredCropWithoutStretch() {
         val source = androidx.compose.ui.geometry.Rect(140f, 900f, 940f, 1300f)
         val tile = androidx.compose.ui.geometry.Rect(390f, 880f, 690f, 1180f)
