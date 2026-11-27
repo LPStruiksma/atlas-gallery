@@ -3190,7 +3190,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     requestScopedRefresh(grants)
                 }) { Text("Retry") }
             } else {
-                nl.atlas.gallery.featuredesign.AtlasLoadingArc(null, Modifier.testTag("atlas-first-scan"))
+                nl.atlas.gallery.featuredesign.AtlasFirstScanLoading()
             }
         }
         return

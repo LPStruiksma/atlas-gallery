@@ -429,8 +429,7 @@ private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
         verticalAlignment = Alignment.CenterVertically) {
         if (active) {
             val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
-            AtlasLoadingArc(progress, Modifier.testTag("atlas-people-progress"),
-                size = 28.dp)
+            AtlasLoadingArc(progress, size = 28.dp, tag = "atlas-people-progress")
             Spacer(Modifier.width(10.dp))
         }
         Text(line,

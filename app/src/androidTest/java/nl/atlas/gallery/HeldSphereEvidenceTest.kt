@@ -25,7 +25,16 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import nl.atlas.gallery.featuredesign.AtlasFirstScanLoading
 import nl.atlas.gallery.featuredesign.AtlasGalleryLoading
+import nl.atlas.gallery.testkit.captureWhole
+import nl.atlas.gallery.testkit.withAnimatorScale
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import org.junit.Assert.assertTrue
 import nl.atlas.gallery.featuredesign.AtlasGalleryTheme
 import nl.atlas.gallery.featuredesign.AtlasLoadingArc
 import nl.atlas.gallery.featureorganization.SelectionCheckCircle
@@ -76,14 +85,18 @@ class HeldSphereEvidenceTest {
                     )) {
                         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically) {
-                            AtlasLoadingArc(progress, size = 28.dp)
+                            AtlasLoadingArc(progress, size = 28.dp,
+                                tag = "held-arc-${(progress * 100).toInt()}")
                             Spacer(Modifier.width(10.dp))
                             Text(line, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Box(Modifier.fillMaxWidth().height(260.dp)) {
+                    Box(Modifier.fillMaxWidth().height(200.dp)) {
                         AtlasGalleryLoading(bottomInset = 0.dp)
+                    }
+                    Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                        AtlasFirstScanLoading()
                     }
                 }
             }
@@ -96,8 +109,48 @@ class HeldSphereEvidenceTest {
             assertEquals(4, compose.onAllNodesWithTag("atlas-selection-sphere", useUnmergedTree = true)
                 .fetchSemanticsNodes().size)
             compose.onNodeWithTag("atlas-quiet-loading").assertExists()
+            // Progress semantics survive the custom arc: a range when known…
+            for (percent in listOf(0, 58, 100)) {
+                val range = compose.onNodeWithTag("held-arc-$percent", useUnmergedTree = true)
+                    .fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+                assertEquals(percent / 100f, range.current, 0.01f)
+                assertEquals(0f..1f, range.range)
+            }
+            // …and indeterminate progress for the quiet loading line and the first scan.
+            for (tag in listOf("atlas-loading-arc", "atlas-first-scan")) {
+                compose.onNodeWithTag(tag, useUnmergedTree = true)
+                    .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
+                        ProgressBarRangeInfo.Indeterminate))
+            }
             compose.waitForIdle()
             saveUiEvidence("l4-657-spheres-${if (theme) "dark" else "light"}.png")
+        }
+    }
+
+    /**
+     * With the system "remove animations" setting on, the loading sphere
+     * rests: two captures 800 ms apart are the same picture. With
+     * animations on it climbs, so the same captures differ.
+     */
+    @Test fun loadingSphereRestsWhenAnimationsAreRemoved() {
+        withAnimatorScale("0") {
+            compose.setContent {
+                AtlasGalleryTheme(dark = false) {
+                    Box(Modifier.size(96.dp).background(MaterialTheme.colorScheme.background)) {
+                        AtlasLoadingArc(progress = null, size = 96.dp, tag = "still-arc")
+                    }
+                }
+            }
+            compose.waitForIdle()
+            val first = compose.onNodeWithTag("still-arc").captureWhole().asAndroidBitmap()
+            compose.mainClock.advanceTimeBy(800L)
+            compose.waitForIdle()
+            val second = compose.onNodeWithTag("still-arc").captureWhole().asAndroidBitmap()
+            assertTrue("the loading sphere moved with animations removed", first.sameAs(second))
+            compose.onNodeWithTag("still-arc", useUnmergedTree = true)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo,
+                    ProgressBarRangeInfo.Indeterminate))
+            saveUiEvidence("l4-657-loading-reduced-motion.png")
         }
     }
 }

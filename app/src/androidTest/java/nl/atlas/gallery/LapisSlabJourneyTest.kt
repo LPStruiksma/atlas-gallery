@@ -8,17 +8,26 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import nl.atlas.gallery.featuredesign.AtlasTokens
 import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.KeyboardAfter
+import nl.atlas.gallery.testkit.KeyboardRule
+import nl.atlas.gallery.testkit.TestKeyboard
+import nl.atlas.gallery.testkit.assertAboveKeyboard
+import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
+import nl.atlas.gallery.testkit.typeText
 import nl.atlas.gallery.testkit.withAnimatorScale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,16 +35,19 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
+import kotlin.math.abs
 import kotlin.math.pow
 
 /**
  * BRAND-L4 (#657): real MainActivity on S24+ (1080 × 2340) over 120 synthetic
  * colour tiles spread across four months. One journey per theme captures the
- * brief's states: Pictures idle and fast-scrolling (month sphere), the slab
- * on each place (Pictures, Collections → Albums and People, search), a
+ * brief's states: Pictures idle, a fast-scroll sequence (the month sphere
+ * across four held positions), the slab on each place (Pictures,
+ * Collections → Albums, Stories and People, search with the keyboard up), a
  * selection of 3 (held spheres), and the viewer filmstrip (ring + sphere,
- * lapis action slab). The reduced-motion class repeats Pictures and the
- * fast scroll with the system "remove animations" setting on.
+ * lapis action slab, a tap on the neighbouring item). Every tap is the
+ * kit's pointer tap with its outcome. The reduced-motion class repeats
+ * Pictures and the fast scroll with the system "remove animations" setting on.
  * No personal media, network or People data.
  */
 @RunWith(AndroidJUnit4::class)
@@ -55,10 +67,11 @@ class LapisSlabReducedMotionJourneyTest {
     @Test fun fastScrollSphereAppearsAndFollowsWithoutAnimation() = withAnimatorScale("0") {
         compose.waitForNode(hasTestTag("atlas-nav-pill"))
         compose.waitForNode(hasTestTag("atlas-timeline-grid"))
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-pictures-reduced-motion")
         saveUiEvidence("l4-657-pictures-reduced-motion.png")
         val month = holdFastScroll(compose, 0.45f)
         assertTrue("month sphere shows a short month: $month", month.length in 3..5)
+        compose.awaitScreenStill("l4-657-fastscroll-reduced-motion")
         saveUiEvidence("l4-657-fastscroll-reduced-motion.png")
         releaseFastScroll(compose)
     }
@@ -83,13 +96,15 @@ class LapisSlabLargeFontJourneyTest {
                 box.left >= slab.left - 1f && box.right <= slab.right + 1f &&
                     box.top >= slab.top - 1f && box.bottom <= slab.bottom + 1f)
         }
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-pictures-font200-dark")
         saveUiEvidence("l4-657-pictures-font200-dark.png")
-        compose.onNodeWithTag("atlas-nav-albums").performClick()
-        compose.waitForNode(hasTestTag("atlas-collections-people"))
-        compose.onNodeWithTag("atlas-collections-people").performClick()
-        compose.waitForNode(hasTestTag("atlas-people-home"))
-        compose.waitForIdle()
+        compose.tap(hasTestTag("atlas-nav-albums")) {
+            compose.exists(hasTestTag("atlas-collections-people"))
+        }
+        compose.tap(hasTestTag("atlas-collections-people")) {
+            compose.exists(hasTestTag("atlas-people-home"))
+        }
+        compose.awaitScreenStill("l4-657-collections-people-font200-dark")
         saveUiEvidence("l4-657-collections-people-font200-dark.png")
     }
 }
@@ -98,8 +113,10 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
     private val compose = createAndroidComposeRule<MainActivity>()
     private val fixtures = lapisFixtures()
 
-    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
-        .around(DisplayPrefsRule(dark)).around(fixtures).around(compose)
+    // The fixed test keyboard (outer rule, chosen before the Activity starts)
+    // so search with the keyboard up is a stable, known height.
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(KeyboardRule(TestKeyboard.Fixed))
+        .around(S24DisplayRule()).around(DisplayPrefsRule(dark)).around(fixtures).around(compose)
 
     private val mode = if (dark) "dark" else "light"
 
@@ -112,14 +129,18 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-nav-search").assertIsNotSelected()
         // Two places and the sphere: no four-tab bar, no People place.
         compose.onNodeWithTag("atlas-nav-people").assertDoesNotExist()
-        compose.waitForIdle()
+        assertSlabGeometry()
+        compose.awaitScreenStill("l4-657-pictures-$mode")
         saveUiEvidence("l4-657-pictures-$mode.png")
 
-        // Fast scroll: the 46 dp month sphere at the thumb.
-        val month = holdFastScroll(compose, 0.55f)
-        assertTrue("month sphere shows a short month: $month", month.length in 3..5)
-        saveUiEvidence("l4-657-fastscroll-$mode.png")
-        releaseFastScroll(compose)
+        // Fast scroll: one finger held on the thumb, moved down the track in
+        // four steps. Each frame is captured; the 46 dp sphere names the month.
+        val months = fastScrollSequence(compose, listOf(.1f, .4f, .65f, .92f)) { step, month ->
+            assertTrue("month sphere shows a short month: $month", month.length in 3..5)
+            compose.awaitScreenStill("l4-657-fastscroll-$step-$mode")
+            saveUiEvidence("l4-657-fastscroll-$step-$mode.png")
+        }
+        assertTrue("the sphere's month changes along the track: $months", months.toSet().size >= 2)
 
         // Selection of 3: each pick is a lapis sphere with a white halo.
         val tileMatcher = SemanticsMatcher("timeline tile") {
@@ -129,47 +150,67 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
             .sortedWith(compareBy({ it.boundsInRoot.top }, { it.boundsInRoot.left })).take(3)
             .map { it.config[SemanticsProperties.TestTag] }
         assertEquals(3, tiles.size)
+        // Long press has no kit helper; its outcome is awaited like a tap's.
         compose.onNodeWithTag(tiles[0]).performTouchInput { longClick() }
         compose.waitForNode(hasTestTag("atlas-selection-count"))
-        compose.onNodeWithTag(tiles[1]).performClick()
-        compose.onNodeWithTag(tiles[2]).performClick()
-        compose.waitForNode(hasTestTag("atlas-selection-count") and hasText("3 selected"))
+        compose.tap(hasTestTag(tiles[1])) {
+            compose.exists(hasTestTag("atlas-selection-count") and hasText("2 selected"))
+        }
+        compose.tap(hasTestTag(tiles[2])) {
+            compose.exists(hasTestTag("atlas-selection-count") and hasText("3 selected"))
+        }
         compose.waitUntil(10_000L) {
             compose.onAllNodesWithTag("atlas-selection-sphere", useUnmergedTree = true)
                 .fetchSemanticsNodes().size == 3
         }
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-selection-3-$mode")
         saveUiEvidence("l4-657-selection-3-$mode.png")
         systemBack()
         compose.waitForNode(hasTestTag("atlas-nav-pill"))
 
         // Viewer: filmstrip ring + sphere on the current item, lapis action slab.
-        compose.onNodeWithTag(tiles[1]).performClick()
-        compose.waitForNode(hasTestTag("atlas-filmstrip-sphere"), useUnmergedTree = true)
+        compose.tap(hasTestTag(tiles[1])) {
+            compose.exists(hasTestTag("atlas-filmstrip-sphere"), useUnmergedTree = true)
+        }
         compose.waitForNode(hasTestTag("atlas-filmstrip-ring"), useUnmergedTree = true)
         assertEquals(1, compose.onAllNodesWithTag("atlas-filmstrip-sphere", useUnmergedTree = true)
             .fetchSemanticsNodes().size)
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-viewer-$mode")
         saveUiEvidence("l4-657-viewer-$mode.png")
+        tapNeighbouringFilmstripItem()
         systemBack()
         compose.waitForNode(hasTestTag("atlas-nav-pill"))
 
         // Collections opens on Albums; People and Stories are its sections.
-        compose.onNodeWithTag("atlas-nav-albums").performClick()
-        compose.waitForNode(hasTestTag("atlas-album-grid"))
+        compose.tap(hasTestTag("atlas-nav-albums")) {
+            compose.exists(hasTestTag("atlas-album-grid"))
+        }
         compose.onNodeWithTag("atlas-nav-albums").assertIsSelected()
         compose.onNodeWithTag("atlas-collections-albums").assertIsSelected()
         compose.onNodeWithTag("atlas-collections-people").assertIsNotSelected()
         compose.onNodeWithTag("atlas-collections-stories").assertIsNotSelected()
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-collections-albums-$mode")
         saveUiEvidence("l4-657-collections-albums-$mode.png")
 
-        compose.onNodeWithTag("atlas-collections-people").performClick()
-        compose.waitForNode(hasTestTag("atlas-people-home"))
+        // Stories opens from its section; system Back returns to Albums.
+        compose.tap(hasTestTag("atlas-collections-stories")) {
+            listOf("atlas-stories-grid", "atlas-stories-empty", "atlas-stories-planning")
+                .any { compose.exists(hasTestTag(it)) }
+        }
+        compose.awaitScreenStill("l4-657-collections-stories-$mode")
+        saveUiEvidence("l4-657-collections-stories-$mode.png")
+        systemBack()
+        compose.waitForNode(hasTestTag("atlas-album-grid"))
+        compose.onNodeWithTag("atlas-collections-albums").assertIsSelected()
+        compose.onNodeWithTag("atlas-nav-albums").assertIsSelected()
+
+        compose.tap(hasTestTag("atlas-collections-people")) {
+            compose.exists(hasTestTag("atlas-people-home"))
+        }
         // People keeps Collections current in the slab.
         compose.onNodeWithTag("atlas-nav-albums").assertIsSelected()
         compose.onNodeWithTag("atlas-collections-people").assertIsSelected()
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-collections-people-$mode")
         saveUiEvidence("l4-657-collections-people-$mode.png")
         // System Back from People behaves as before: back to Pictures.
         systemBack()
@@ -177,13 +218,70 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-nav-photos").assertIsSelected()
 
         // The search sphere opens the existing search.
-        compose.onNodeWithTag("atlas-nav-search").performClick()
-        compose.waitForNode(hasTestTag("atlas-search-field"))
+        compose.tap(hasTestTag("atlas-nav-search")) {
+            compose.exists(hasTestTag("atlas-search-field"))
+        }
         compose.onNodeWithTag("atlas-nav-search").assertIsSelected()
         compose.onNodeWithTag("atlas-nav-photos").assertIsNotSelected()
         compose.onNodeWithTag("atlas-nav-albums").assertIsNotSelected()
-        compose.waitForIdle()
+        compose.awaitScreenStill("l4-657-search-$mode")
         saveUiEvidence("l4-657-search-$mode.png")
+        // With the keyboard up, the field stays whole above it.
+        compose.typeText(hasTestTag("atlas-search-field"), "a", KeyboardAfter.Shown)
+        compose.assertAboveKeyboard(hasTestTag("atlas-search-field"))
+        compose.awaitScreenStill("l4-657-search-keyboard-$mode")
+        saveUiEvidence("l4-657-search-keyboard-$mode.png")
+    }
+
+    /**
+     * The slab's three targets: each at least 48 dp both ways, none
+     * overlapping, all inside the slab, and the slab centred on the screen.
+     */
+    private fun assertSlabGeometry() {
+        val minPx = with(compose.density) { 48.dp.toPx() } - 1f
+        val slab = compose.onNodeWithTag("atlas-nav-pill").fetchSemanticsNode().boundsInRoot
+        val boxes = listOf("photos", "albums", "search").map { name ->
+            name to compose.onNodeWithTag("atlas-nav-$name").fetchSemanticsNode().boundsInRoot
+        }
+        for ((name, box) in boxes) {
+            assertTrue("$name is at least 48 dp: $box", box.width >= minPx && box.height >= minPx)
+            assertTrue("$name inside the slab: $box in $slab",
+                box.left >= slab.left - 1f && box.right <= slab.right + 1f &&
+                    box.top >= slab.top - 1f && box.bottom <= slab.bottom + 1f)
+        }
+        for (i in boxes.indices) for (j in i + 1 until boxes.size) {
+            val (a, ra) = boxes[i]
+            val (b, rb) = boxes[j]
+            val overlap = ra.intersect(rb)
+            assertTrue("$a and $b overlap: $ra, $rb", overlap.width <= 1f || overlap.height <= 1f)
+        }
+        val width = compose.activity.window.decorView.width
+        assertTrue("slab centred: $slab on a $width px screen",
+            abs(slab.center.x - width / 2f) <= 2f)
+    }
+
+    /**
+     * Filmstrip items are touching, non-overlapping 48 dp targets; a pointer
+     * tap on the item beside the current one makes it current.
+     */
+    private fun tapNeighbouringFilmstripItem() {
+        val items = compose.onAllNodes(SemanticsMatcher("filmstrip item") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("atlas-thumbnail-") == true
+        }).fetchSemanticsNodes().sortedBy { it.boundsInRoot.left }
+        val current = items.indexOfFirst { it.config.getOrNull(SemanticsProperties.Selected) == true }
+        assertTrue("one filmstrip item is current", current >= 0)
+        val neighbour = if (current + 1 < items.size) current + 1 else current - 1
+        assertTrue("the filmstrip shows a neighbour", neighbour in items.indices)
+        val minPx = with(compose.density) { 48.dp.toPx() } - 1f
+        val here = items[current].boundsInRoot
+        val there = items[neighbour].boundsInRoot
+        assertTrue("filmstrip targets are at least 48 dp: $here, $there",
+            here.width >= minPx && there.width >= minPx && here.height >= minPx)
+        val gap = if (neighbour > current) there.left - here.right else here.left - there.right
+        assertTrue("neighbouring filmstrip targets touch without overlap: gap $gap px", abs(gap) <= 1f)
+        val tag = items[neighbour].config[SemanticsProperties.TestTag]
+        compose.tap(hasTestTag(tag)) { compose.exists(hasTestTag(tag) and isSelected()) }
+        compose.waitForNode(hasTestTag("atlas-filmstrip-sphere"), useUnmergedTree = true)
     }
 
     /** Slab text meets WCAG 4.5:1: white on the lapis fill, lapis on the white pill. */
@@ -221,23 +319,56 @@ private fun lapisFixtures() = SyntheticHeaderFixtures(
 )
 
 /**
- * Scrolls the grid so the fast scroller shows, then holds its thumb at
- * [fraction] of the track. Returns the month shown in the held sphere. The
- * finger stays down; [releaseFastScroll] lifts it.
+ * Scrolls the grid so the fast scroller shows, then puts one finger on its
+ * thumb and moves it to each of [fractions] of the track in turn, calling
+ * [atEach] with the step (1-based) and the month in the held sphere once the
+ * move has landed. The finger lifts at the end. Returns the months seen.
+ */
+private fun fastScrollSequence(
+    compose: androidx.compose.ui.test.junit4.ComposeTestRule,
+    fractions: List<Float>,
+    atEach: (step: Int, month: String) -> Unit
+): List<String> {
+    startFastScroll(compose)
+    val months = fractions.mapIndexed { i, fraction ->
+        compose.onNodeWithTag("atlas-timeline-date-scrub").performTouchInput {
+            moveTo(Offset(centerX, height * fraction))
+        }
+        val month = heldMonth(compose)
+        atEach(i + 1, month)
+        month
+    }
+    releaseFastScroll(compose)
+    return months
+}
+
+/**
+ * Holds the thumb at [fraction] of the track and returns the month in the
+ * held sphere. The finger stays down; [releaseFastScroll] lifts it.
  */
 private fun holdFastScroll(
     compose: androidx.compose.ui.test.junit4.ComposeTestRule,
     fraction: Float
 ): String {
+    startFastScroll(compose)
+    compose.onNodeWithTag("atlas-timeline-date-scrub").performTouchInput {
+        moveTo(Offset(centerX, height * (fraction / 2f)))
+        moveTo(Offset(centerX, height * fraction))
+    }
+    return heldMonth(compose)
+}
+
+private fun startFastScroll(compose: androidx.compose.ui.test.junit4.ComposeTestRule) {
     compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
         swipeUp(startY = height * .7f, endY = height * .5f, durationMillis = 300L)
     }
     compose.waitForNode(hasTestTag("atlas-fast-scroll-sphere"), useUnmergedTree = true)
     compose.onNodeWithTag("atlas-timeline-date-scrub").performTouchInput {
         down(Offset(centerX, height * .05f))
-        moveTo(Offset(centerX, height * (fraction / 2f)))
-        moveTo(Offset(centerX, height * fraction))
     }
+}
+
+private fun heldMonth(compose: androidx.compose.ui.test.junit4.ComposeTestRule): String {
     compose.waitForNode(hasTestTag("atlas-fast-scroll-sphere-label"), useUnmergedTree = true)
     compose.waitForIdle()
     return compose.onNodeWithTag("atlas-fast-scroll-sphere-label", useUnmergedTree = true)

@@ -1,25 +1,38 @@
 # BRAND-L4 #657 Lapis slab and held sphere, S24+ 1080x2340, synthetic media only.
-# LapisSlabLight/DarkJourneyTest: real MainActivity, every place and state.
+# LapisSlabLight/DarkJourneyTest: real MainActivity, every place and state;
+# fastscroll-1..4 are one held finger moved down the track (frame sequence).
 l4-657-pictures-light
-l4-657-fastscroll-light
+l4-657-fastscroll-1-light
+l4-657-fastscroll-2-light
+l4-657-fastscroll-3-light
+l4-657-fastscroll-4-light
 l4-657-selection-3-light
 l4-657-viewer-light
 l4-657-collections-albums-light
+l4-657-collections-stories-light
 l4-657-collections-people-light
 l4-657-search-light
+l4-657-search-keyboard-light
 l4-657-pictures-dark
-l4-657-fastscroll-dark
+l4-657-fastscroll-1-dark
+l4-657-fastscroll-2-dark
+l4-657-fastscroll-3-dark
+l4-657-fastscroll-4-dark
 l4-657-selection-3-dark
 l4-657-viewer-dark
 l4-657-collections-albums-dark
+l4-657-collections-stories-dark
 l4-657-collections-people-dark
 l4-657-search-dark
+l4-657-search-keyboard-dark
 # LapisSlabReducedMotionJourneyTest: system "remove animations" on.
 l4-657-pictures-reduced-motion
 l4-657-fastscroll-reduced-motion
-# HeldSphereEvidenceTest: selection (tick and ordered numbers) and loading arc.
+# HeldSphereEvidenceTest: selection (tick and ordered numbers), loading arcs,
+# and the loading sphere at rest with animations removed.
 l4-657-spheres-light
 l4-657-spheres-dark
+l4-657-loading-reduced-motion
 # LapisSlabLargeFontJourneyTest: 200 % system font, dark.
 l4-657-pictures-font200-dark
 l4-657-collections-people-font200-dark

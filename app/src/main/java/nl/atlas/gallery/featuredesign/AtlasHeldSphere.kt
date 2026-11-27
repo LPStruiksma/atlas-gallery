@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -96,7 +97,8 @@ private fun currentFontScale(): Float =
 fun AtlasLoadingArc(
     progress: Float?,
     modifier: Modifier = Modifier,
-    size: Dp = AtlasTokens.Sphere.LoadingArc
+    size: Dp = AtlasTokens.Sphere.LoadingArc,
+    tag: String = "atlas-loading-arc"
 ) {
     val context = LocalContext.current
     val still = remember(context) { AtlasMotion.animationsDisabled(context) }
@@ -109,7 +111,11 @@ fun AtlasLoadingArc(
     val fraction = (progress ?: climb?.value ?: 0.5f).coerceIn(0f, 1f)
     val track = MaterialTheme.colorScheme.surfaceVariant
     val sphere = AtlasHeldSphere.fill
-    Canvas(modifier.size(size).testTag("atlas-loading-arc")) {
+    // Same semantics as Material's progress indicators: a range when the
+    // progress is known, an indeterminate progress bar otherwise.
+    val semantics = if (progress != null) Modifier.progressSemantics(fraction)
+        else Modifier.progressSemantics()
+    Canvas(modifier.size(size).then(semantics).testTag(tag)) {
         val sphereRadius = AtlasTokens.Sphere.Loading.toPx() / 2f
         val stroke = 2.dp.toPx()
         val radius = (minOf(this.size.width, this.size.height) / 2f) - sphereRadius
@@ -123,6 +129,15 @@ fun AtlasLoadingArc(
         val at = Offset(centre.x + radius * cos(angle).toFloat(), centre.y + radius * sin(angle).toFloat())
         drawCircle(sphere, sphereRadius, at)
     }
+}
+
+/**
+ * The first library scan: the loading sphere alone, centred by its caller,
+ * announced as indeterminate progress.
+ */
+@Composable
+fun AtlasFirstScanLoading(modifier: Modifier = Modifier) {
+    AtlasLoadingArc(progress = null, modifier = modifier, tag = "atlas-first-scan")
 }
 
 /**

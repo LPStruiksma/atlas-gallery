@@ -47,7 +47,11 @@ test('the held sphere marks fast scroll, selection, filmstrip and loading', () =
   assert.match(viewer, /atlas-filmstrip-sphere/);
   assert.match(viewer, /atlas-filmstrip-ring/);
   assert.match(viewer, /private val STRIP_ITEM_WIDTH = 48\.dp/);
-  assert.match(people, /AtlasLoadingArc\(progress, Modifier\.testTag\("atlas-people-progress"\)/);
+  assert.match(people, /AtlasLoadingArc\(progress, size = 28\.dp, tag = "atlas-people-progress"\)/);
+  // Progress keeps Material's semantics: a range when known, indeterminate otherwise.
+  assert.match(sphere, /Modifier\.progressSemantics\(fraction\)/);
+  assert.match(sphere, /else Modifier\.progressSemantics\(\)/);
+  assert.match(activity, /AtlasFirstScanLoading\(\)/);
   // Nothing moves on its own with "remove animations" on.
   assert.match(sphere, /AtlasMotion\.animationsDisabled\(context\)/);
 });
@@ -59,11 +63,25 @@ test('viewer actions sit on an opaque #3448E0 slab', () => {
 
 test('every brief state is declared as S24+ evidence in both themes', () => {
   for (const mode of ['light', 'dark']) {
-    for (const state of ['pictures', 'fastscroll', 'selection-3', 'viewer',
-      'collections-albums', 'collections-people', 'search', 'spheres']) {
+    for (const state of ['pictures', 'fastscroll-1', 'fastscroll-2', 'fastscroll-3',
+      'fastscroll-4', 'selection-3', 'viewer', 'collections-albums', 'collections-stories',
+      'collections-people', 'search', 'search-keyboard', 'spheres']) {
       assert.match(declared, new RegExp(`^l4-657-${state}-${mode}$`, 'm'));
     }
   }
   assert.match(declared, /^l4-657-fastscroll-reduced-motion$/m);
+  assert.match(declared, /^l4-657-loading-reduced-motion$/m);
   assert.match(declared, /^l4-657-pictures-font200-dark$/m);
+});
+
+test('the journey uses real pointer taps and waits for a still screen', () => {
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/LapisSlabJourneyTest.kt');
+  assert.doesNotMatch(journey, /performClick/);
+  assert.match(journey, /compose\.tap\(hasTestTag\("atlas-collections-stories"\)\)/);
+  assert.match(journey, /typeText\(hasTestTag\("atlas-search-field"\), "a", KeyboardAfter\.Shown\)/);
+  assert.match(journey, /assertAboveKeyboard\(hasTestTag\("atlas-search-field"\)\)/);
+  assert.match(journey, /private fun tapNeighbouringFilmstripItem\(\)/);
+  const captures = journey.match(/saveUiEvidence\(/g).length;
+  const stills = journey.match(/awaitScreenStill\(/g).length;
+  assert.ok(stills >= captures, `${stills} still-screen waits for ${captures} captures`);
 });

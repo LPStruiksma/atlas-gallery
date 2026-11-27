@@ -2,9 +2,7 @@ package nl.atlas.gallery
 
 import android.util.Log
 import androidx.compose.ui.semantics.SemanticsNode
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
@@ -12,6 +10,8 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.printToString
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 
 /**
  * Shared self-diagnosing wait for journey tests (#641 follow-up of #653):
@@ -89,10 +89,12 @@ private fun callerLine(): String = Throwable().stackTrace
  * the way a person does: tap Collections in the slab, then the People section.
  */
 fun ComposeTestRule.openPeopleSection(timeoutMillis: Long = 60_000L) {
-    waitForNode(androidx.compose.ui.test.hasTestTag("atlas-nav-albums"), timeoutMillis)
-    onNode(androidx.compose.ui.test.hasTestTag("atlas-nav-albums"))
-        .performSemanticsAction(SemanticsActions.OnClick)
-    waitForNode(androidx.compose.ui.test.hasTestTag("atlas-collections-people"), timeoutMillis)
-    onNode(androidx.compose.ui.test.hasTestTag("atlas-collections-people"))
-        .performSemanticsAction(SemanticsActions.OnClick)
+    val albums = androidx.compose.ui.test.hasTestTag("atlas-nav-albums")
+    val people = androidx.compose.ui.test.hasTestTag("atlas-collections-people")
+    waitForNode(albums, timeoutMillis)
+    tap(albums, timeoutMs = timeoutMillis) { exists(people) }
+    // People keeps Collections current; its section pill turns selected.
+    tap(people, timeoutMs = timeoutMillis) {
+        exists(people and androidx.compose.ui.test.isSelected())
+    }
 }
