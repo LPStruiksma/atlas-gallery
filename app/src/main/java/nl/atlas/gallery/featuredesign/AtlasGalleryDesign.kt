@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import android.os.Build
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlurEffect
@@ -325,113 +326,127 @@ enum class AtlasDestination(
     val icon: ImageVector,
     val selectedIcon: ImageVector
 ) {
-    // #685: photos = a single picture, albums = a four-tile grid.
-    // #652: inactive glyphs are outlined; active glyphs are filled (#509 §0).
-    PHOTOS("Photos", Icons.Outlined.Image, Icons.Filled.Image),
-    ALBUMS("Albums", Icons.Outlined.GridView, Icons.Filled.GridView),
+    // BRAND-L4 (#657, Quiet Frame v3 Structure 1): two places and search.
+    // PHOTOS is "Pictures"; ALBUMS is "Collections", which also hosts People
+    // and Stories until BRAND-L5. PEOPLE stays a route, never a primary place.
+    PHOTOS("Pictures", Icons.Outlined.Image, Icons.Filled.Image),
+    ALBUMS("Collections", Icons.Outlined.GridView, Icons.Filled.GridView),
     PEOPLE("People", Icons.Outlined.People, Icons.Filled.People),
     SEARCH("Search", Icons.Outlined.Search, Icons.Filled.Search)
 }
 
-/**
- * #22: the Scaffold's main content records its actual drawing commands in a
- * reusable layer. The navigation pill samples that layer independently; simply
- * adding Modifier.blur to a Surface would blur the glyphs, not its backdrop.
- * No bitmap readback, image copies, photo access or per-frame PixelCopy.
- */
-internal class AtlasTabBackdropState(val layer: GraphicsLayer) {
-    var originInRoot by mutableStateOf(Offset.Unspecified)
-}
+/** The slab's places, in order. The search sphere follows them. */
+val AtlasSlabPlaces: List<AtlasDestination> = listOf(AtlasDestination.PHOTOS, AtlasDestination.ALBUMS)
 
-internal val LocalAtlasTabBackdrop = staticCompositionLocalOf<AtlasTabBackdropState?> { null }
-
-@Composable
-internal fun rememberAtlasTabBackdropState(): AtlasTabBackdropState {
-    val layer = rememberGraphicsLayer()
-    return remember(layer) { AtlasTabBackdropState(layer) }
-}
-
-internal fun Modifier.atlasCaptureTabBackdrop(backdrop: AtlasTabBackdropState): Modifier =
-    this.onGloballyPositioned { backdrop.originInRoot = it.positionInRoot() }
-        .drawWithContent {
-            backdrop.layer.record {
-                this@drawWithContent.drawContent()
-            }
-            drawLayer(backdrop.layer)
-        }
+/** BRAND-L4: which slab target shows as current; People lives under Collections. */
+fun navigationSelection(destination: AtlasDestination): AtlasDestination =
+    if (destination == AtlasDestination.PEOPLE) AtlasDestination.ALBUMS else destination
 
 /**
- * #640 (#509 §2): Samsung's compact floating tab bar. One fully rounded dark
- * pill, 12 dp from the screen edges, outlined-weight 24 dp icons with small
- * labels; the active tab uses the filled glyph, tint and label weight,
- * never a Material selection blob. Activity is a secondary settings surface, never a primary
- * gallery destination.
+ * BRAND-L4 (#657; Quiet Frame v3 Structure 1, Components "Navigation slab"):
+ * a short, centred, lapis-filled slab with a 24 dp radius. It holds the two
+ * places, Pictures and Collections, and the search sphere. The current place
+ * is a white pill with lapis text; the search sphere is the white held sphere
+ * with a lapis glyph. It is opaque, so nothing is sampled or blurred under it.
+ *
+ * Every target is at least 48 dp. Labels grow with the system font (a 200 %
+ * cap); if a very long label ever runs out of width the sphere moves to a
+ * second row inside the same slab, never detached (#816 geometry audit).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AtlasGalleryNavigation(
     selected: AtlasDestination,
     onSelect: (AtlasDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val current = navigationSelection(selected)
     Box(
         modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = AtlasPillEdge, vertical = 8.dp),
+            .padding(horizontal = AtlasPillEdge, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        val backdrop = LocalAtlasTabBackdrop.current
-        val blurredLayer = rememberGraphicsLayer()
-        val blurRadiusPx = with(LocalDensity.current) { 14.dp.toPx() }
-        val blurEffect = remember(blurRadiusPx) {
-            BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Clamp)
-        }
-        var pillOrigin by remember { mutableStateOf(Offset.Unspecified) }
-        Box(
-            Modifier.fillMaxWidth().height(AtlasTabPillHeight)
-                .onGloballyPositioned { pillOrigin = it.positionInRoot() }
+        Surface(
+            shape = RoundedCornerShape(AtlasTokens.Radii.Slab),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            // A soft lift keeps the slab off a white page; on black it adds nothing.
+            shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
+            modifier = Modifier.testTag("atlas-nav-pill")
         ) {
-            // API31+: blur only the live page underneath the pill, clipped to
-            // its outline. The translucent Surface and all four tab items are
-            // drawn *after* the effect, so text and glyphs remain pixel-sharp.
-            // API29-30: no RenderEffect; keep the existing translucent Surface.
-            if (Build.VERSION.SDK_INT >= 31 && backdrop != null) {
-                Box(Modifier.matchParentSize().clip(CircleShape).drawWithContent {
-                    if (pillOrigin.isSpecified && backdrop.originInRoot.isSpecified) {
-                        val shift = backdrop.originInRoot - pillOrigin
-                        blurredLayer.record(
-                            size = IntSize(size.width.roundToInt(), size.height.roundToInt())
-                        ) {
-                            translate(left = shift.x, top = shift.y) {
-                                drawLayer(backdrop.layer)
-                            }
-                        }
-                        blurredLayer.renderEffect = blurEffect
-                        drawLayer(blurredLayer)
-                    }
-                })
-            }
-            Surface(
-                shape = CircleShape,
-                color = AtlasPillColor,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                // A white pill needs a soft shadow to lift off a white page.
-                shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
-                modifier = Modifier.matchParentSize().testTag("atlas-nav-pill")
+            FlowRow(
+                Modifier.padding(AtlasTokens.Spacing.SlabPadding),
+                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    Modifier.fillMaxSize().padding(horizontal = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AtlasDestination.entries.forEach { destination ->
-                        AtlasTabItem(
-                            destination = destination,
-                            selected = selected == destination,
-                            onClick = { onSelect(destination) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                AtlasSlabPlaces.forEach { destination ->
+                    AtlasSlabPlace(
+                        destination = destination,
+                        selected = current == destination,
+                        onClick = { onSelect(destination) }
+                    )
                 }
+                AtlasSearchSphere(
+                    selected = current == AtlasDestination.SEARCH,
+                    onClick = { onSelect(AtlasDestination.SEARCH) }
+                )
+            }
+        }
+    }
+}
+
+/** BRAND-L4: the screens Collections hosts until BRAND-L5's rows land. */
+enum class AtlasCollectionsSection(val title: String) {
+    ALBUMS("Albums"), PEOPLE("People"), STORIES("Stories")
+}
+
+/**
+ * BRAND-L4 (#657, unit item 1): Collections hosts today's Albums, People and
+ * Stories screens as sections, so nothing loses its home when the four-tab
+ * bar goes. The current section is the solid lapis pill; each pill is a
+ * 48 dp target. BRAND-L5 replaces this with collection rows.
+ */
+@Composable
+fun AtlasCollectionsSections(
+    current: AtlasCollectionsSection,
+    onSelect: (AtlasCollectionsSection) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(horizontal = AtlasTokens.Spacing.Gutter, vertical = 4.dp)
+            .testTag("atlas-collections-sections"),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AtlasCollectionsSection.entries.forEach { section ->
+            val selected = section == current
+            Box(
+                Modifier
+                    .heightIn(min = AtlasTokens.Spacing.MinimumTarget)
+                    .widthIn(min = AtlasTokens.Spacing.MinimumTarget)
+                    .clip(CircleShape)
+                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant)
+                    .selectable(selected = selected, role = Role.Tab) { onSelect(section) }
+                    .padding(horizontal = 18.dp, vertical = 6.dp)
+                    .testTag("atlas-collections-" + section.name.lowercase()),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    section.title,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
         }
     }
@@ -440,14 +455,15 @@ fun AtlasGalleryNavigation(
 /**
  * #652: height of the floating tab bar (pill, its margins and the system
  * navigation bar) that a screen lets its scrolling content draw under. Lazy
- * grids add it as bottom content padding so the last row stays reachable;
+ * grids add it as bottom content padding so their last row stays reachable;
  * 0 when the screen is padded above the bar instead.
  */
 val LocalAtlasBottomChrome = compositionLocalOf { 0.dp }
 
 /**
- * Floating chrome (#509 §0): translucent pill, 12 dp from the screen edges;
- * dark on the dark theme (#652 alpha), white with a soft lift on light (#662).
+ * Floating chrome (#509 §0) for the selection action bar: translucent pill,
+ * 12 dp from the screen edges; dark on the dark theme (#652 alpha), white with
+ * a soft lift on light (#662). The navigation slab itself is opaque lapis.
  */
 val AtlasPillColor: Color
     @Composable @ReadOnlyComposable get() =
@@ -457,56 +473,67 @@ val AtlasPillEdge = AtlasTokens.Spacing.PillEdge
 val AtlasTabPillHeight = AtlasTokens.Spacing.TabHeight
 
 /**
- * #413: factor that caps a tab label's effective font scale at 130%, so the
- * 60dp Samsung-style pill stays compact and its labels never collide.
+ * BRAND-L4: the effective font-scale factor for slab labels. Labels follow the
+ * system font up to 200 % (the approved slab geometry, #816); beyond that the
+ * size is capped so the slab stays one control.
  */
 internal fun navigationLabelCap(fontScale: Float) =
-    fontScale.coerceAtLeast(1f).coerceAtMost(1.3f) / fontScale.coerceAtLeast(0.01f)
+    fontScale.coerceAtLeast(1f).coerceAtMost(2f) / fontScale.coerceAtLeast(0.01f)
 
-/** Keep the 60dp Samsung-style pill compact while preventing large-font tab collisions. */
+/** Slab label size in sp, with [navigationLabelCap] applied. */
 internal fun navigationLabelSize(fontScale: Float) =
     AtlasTokens.Type.NavigationLabel * navigationLabelCap(fontScale)
 
 @Composable
-private fun AtlasTabItem(
+private fun AtlasSlabPlace(
     destination: AtlasDestination,
     selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
-    val ink = MaterialTheme.colorScheme.onSurface
     val fontScale = LocalDensity.current.fontScale
-    val labelSize = navigationLabelSize(LocalDensity.current.fontScale)
-    // #413: the inherited line height is in sp too; cap it with the size, or at
-    // 200% its taller line box pushes the label onto the pill's bottom edge.
-    val inheritedLineHeight = LocalTextStyle.current.lineHeight
-    // An em line height already follows the capped size; only sp needs the cap.
-    val labelLineHeight = if (inheritedLineHeight.isSp)
-        inheritedLineHeight * navigationLabelCap(fontScale) else inheritedLineHeight
-    // 14sp labels still meet text contrast over a white tile behind the dark pill.
-    val tint = if (selected) ink else ink.copy(alpha = 0.78f)
-    Column(
-        modifier
-            .fillMaxHeight()
+    val labelSize = navigationLabelSize(fontScale)
+    // #413: an sp line height must take the same cap as the size.
+    val lineHeight = AtlasTokens.Type.NavigationLineHeight * navigationLabelCap(fontScale)
+    // Current place: white pill, lapis text. Others: white text on the lapis slab.
+    val ink = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+    Box(
+        Modifier
+            .heightIn(min = AtlasTokens.Spacing.MinimumTarget)
+            .widthIn(min = AtlasTokens.Spacing.MinimumTarget)
             .clip(CircleShape)
+            .background(if (selected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Transparent)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = AtlasTokens.Spacing.SlabPlacePadding, vertical = 6.dp)
             .testTag("atlas-nav-" + destination.name.lowercase()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Icon(if (selected) destination.selectedIcon else destination.icon,
-            contentDescription = null, tint = tint,
-            modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(2.dp))
         Text(
             destination.title,
-            color = tint,
+            color = ink,
             fontSize = labelSize,
-            lineHeight = labelLineHeight,
-            modifier = Modifier.testTag("atlas-nav-label-" + destination.name.lowercase()),
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            maxLines = 1
+            lineHeight = lineHeight,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.testTag("atlas-nav-label-" + destination.name.lowercase())
         )
+    }
+}
+
+/** The search sphere: the held sphere in white with a lapis glyph, 48 dp. */
+@Composable
+private fun AtlasSearchSphere(selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(AtlasTokens.Spacing.MinimumTarget)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onPrimaryContainer)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .testTag("atlas-nav-search"),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = AtlasDestination.SEARCH.title,
+            tint = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(24.dp))
     }
 }
 
@@ -785,11 +812,8 @@ fun AtlasGalleryLoading(
         verticalArrangement = Arrangement.Center
     ) {
         if (visible) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(AtlasQuietState.IconSize),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // BRAND-L4 (#657): the held sphere climbs an arc beside the line.
+            AtlasLoadingArc(progress = null)
             Spacer(Modifier.height(12.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

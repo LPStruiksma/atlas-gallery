@@ -85,7 +85,7 @@ class StrictModeBaselineTest {
         openViewer("viewer-first-open")
 
         // 3. People tab, first entry.
-        openTab("people-first-open", "atlas-nav-people", "atlas-people-home")
+        openPeople("people-first-open")
 
         // 4. Search tab, first entry, then the first typed query.
         openTab("search-first-open", "atlas-nav-search", "atlas-search-field", "atlas-search-expand")
@@ -104,7 +104,7 @@ class StrictModeBaselineTest {
         repeat(REPEATS) {
             openTab("photos-reentry", "atlas-nav-photos", "atlas-timeline-grid", "atlas-feature-grid")
             openViewer("viewer-reopen")
-            openTab("people-reentry", "atlas-nav-people", "atlas-people-home")
+            openPeople("people-reentry")
             openTab("search-reentry", "atlas-nav-search", "atlas-search-field", "atlas-search-expand")
         }
         StrictModeBaseline.phase = "after-flows"
@@ -129,6 +129,16 @@ class StrictModeBaselineTest {
     }
 
     /** Tap a tab and wait for any of [tags]; time and frames cover tap to settled. */
+    /** BRAND-L4 (#657): People is the Collections → People section. */
+    private fun openPeople(phase: String) {
+        compose.waitForNode(hasTestTag("atlas-nav-albums"))
+        begin(phase)
+        compose.openPeopleSection()
+        compose.waitForNode(hasTestTag("atlas-people-home"))
+        settledPhase()
+        end(phase)
+    }
+
     private fun openTab(phase: String, tab: String, vararg tags: String) {
         compose.waitForNode(hasTestTag(tab))
         begin(phase)

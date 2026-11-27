@@ -1,0 +1,22 @@
+# BRAND-L4 #657 Lapis slab and held sphere, S24+ 1080x2340, synthetic media only.
+# LapisSlabLight/DarkJourneyTest: real MainActivity, every place and state.
+l4-657-pictures-light
+l4-657-fastscroll-light
+l4-657-selection-3-light
+l4-657-viewer-light
+l4-657-collections-albums-light
+l4-657-collections-people-light
+l4-657-search-light
+l4-657-pictures-dark
+l4-657-fastscroll-dark
+l4-657-selection-3-dark
+l4-657-viewer-dark
+l4-657-collections-albums-dark
+l4-657-collections-people-dark
+l4-657-search-dark
+# LapisSlabReducedMotionJourneyTest: system "remove animations" on.
+l4-657-pictures-reduced-motion
+l4-657-fastscroll-reduced-motion
+# HeldSphereEvidenceTest: selection (tick and ordered numbers) and loading arc.
+l4-657-spheres-light
+l4-657-spheres-dark

@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,8 +61,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private val TrackTouchWidth = 28.dp
-private val ThumbHeight = 44.dp
+// BRAND-L4 (#657): the thumb is the 46 dp held sphere inside a 48 dp target.
+private val TrackTouchWidth = nl.atlas.gallery.featuredesign.AtlasTokens.Spacing.MinimumTarget
+private val ThumbHeight = nl.atlas.gallery.featuredesign.AtlasTokens.Spacing.MinimumTarget
+private val SphereSize = nl.atlas.gallery.featuredesign.AtlasTokens.Sphere.FastScroll
 private const val HIDE_DELAY_MS = 1_500L
 /** Below this the release is a placement, not a throw (ViewConfiguration-like). */
 private const val MIN_FLING_PX_PER_S = 400f
@@ -91,7 +97,8 @@ internal fun TimelineFastScroller(
     onDrag: (Float) -> Unit,
     onRelease: () -> Unit,
     modifier: Modifier = Modifier,
-    topInset: Dp = 0.dp
+    topInset: Dp = 0.dp,
+    sphereLabel: String? = null
 ) {
     var dragging by remember { mutableStateOf(false) }
     var flinging by remember { mutableStateOf(false) }
@@ -134,7 +141,7 @@ internal fun TimelineFastScroller(
             enter = fadeIn(tween(200, easing = FastOutSlowInEasing)),
             exit = fadeOut(tween(300, easing = FastOutSlowInEasing)),
             modifier = Modifier.align(Alignment.TopEnd)
-                .offset { IntOffset(-(TrackTouchWidth + 12.dp).roundToPx(),
+                .offset { IntOffset(-(TrackTouchWidth + 8.dp).roundToPx(),
                     thumbY + ((thumbPx - 40.dp.toPx()) / 2f).roundToInt()) }
         ) {
             // §0 floating chrome: translucent dark, fully rounded pill.
@@ -209,19 +216,38 @@ internal fun TimelineFastScroller(
                 }
                 .testTag("atlas-timeline-date-scrub")
         ) {
+            // BRAND-L4: the held sphere at the thumb, showing the month.
             Box(
                 Modifier.align(Alignment.TopEnd)
                     .offset { IntOffset(0, thumbY) }
-                    .padding(end = 4.dp)
-                    .width(if (held) 6.dp else 4.dp)
-                    .height(ThumbHeight)
+                    .size(TrackTouchWidth, ThumbHeight)
                     .alpha(alpha)
-                    .clip(CircleShape)
-                    // #662: the page's ink, so the thumb reads on a light page too.
-                    .background(MaterialTheme.colorScheme.onSurface.let {
-                        if (held) it else it.copy(alpha = .70f) })
-                    .testTag("atlas-fast-scroll-thumb")
-            )
+                    .testTag("atlas-fast-scroll-thumb"),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    Modifier.size(SphereSize)
+                        .graphicsLayer {
+                            // Lift: the held sphere rises a hair while held.
+                            val grow = if (held) 1.04f else 1f
+                            scaleX = grow; scaleY = grow
+                        }
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .testTag("atlas-fast-scroll-sphere"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (sphereLabel != null) Text(
+                        sphereLabel,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        // Fixed inside the fixed 46 dp sphere at every font scale.
+                        fontSize = (14f / LocalDensity.current.fontScale.coerceAtLeast(0.01f)).sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        modifier = Modifier.testTag("atlas-fast-scroll-sphere-label")
+                    )
+                }
+            }
         }
     }
 }

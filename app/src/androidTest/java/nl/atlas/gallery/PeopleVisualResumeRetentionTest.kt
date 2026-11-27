@@ -335,7 +335,7 @@ class PeopleVisualResumeRetentionTest {
         compose.awaitThat("synthetic photos in gallery", timeoutMs = 60_000L) {
             vm.publishedInventory.value.items.count { it.id in specs } == PHOTOS
         }
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         compose.awaitThat("People tab", timeoutMs = 60_000L) { has("atlas-people-home") }
         compose.awaitThat("Discover faces", timeoutMs = 60_000L) {
             compose.onAllNodesWithText("Discover faces").fetchSemanticsNodes().isNotEmpty()
@@ -464,7 +464,7 @@ class PeopleVisualResumeRetentionTest {
         compose.onNodeWithTag("atlas-first-scan").assertDoesNotExist()
         compose.onNodeWithTag("atlas-nav-albums").performClick()
         compose.awaitThat("$label Albums first frame", timeoutMs = 60_000L) { has("atlas-album-card") }
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         compose.awaitThat("$label People again", timeoutMs = 60_000L) { has("atlas-native-person-album") }
     }
 

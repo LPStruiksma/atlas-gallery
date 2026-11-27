@@ -280,7 +280,7 @@ class Hub1CNeedsSplittingJourneyTest {
     }
 
     private fun openPeople() {
-        compose.tap(hasTestTag("atlas-nav-people"))
+        compose.openPeopleSection(WAIT_MS)
         compose.waitForNode(hasTestTag("atlas-people-home"), WAIT_MS, useUnmergedTree = true)
     }
 

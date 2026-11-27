@@ -1142,9 +1142,19 @@ private fun TimelineFastScrollLayer(
         else fastScrollBubbleLabel(sort, target.dateLabel,
             media?.sizeBytes ?: 0L, target.mediaIndex, items.size)
     }
+    // BRAND-L4: the sphere shows the short month for date sorts only.
+    val sphereLabel = destination?.let { target ->
+        val media = items.getOrNull(target.mediaIndex) ?: return@let null
+        val usesDates = mediaSort?.usesDateHeaders
+            ?: (sort == TimelineSort.NEWEST || sort == TimelineSort.OLDEST)
+        val millis = if (mediaSort?.key == nl.atlas.gallery.MediaSortKey.DATE_MODIFIED)
+            media.modifiedAtSeconds * 1_000L else media.takenAtMillis
+        nl.atlas.gallery.featuredesign.fastScrollSphereLabel(usesDates, millis)
+    }
     TimelineFastScroller(
         fraction = shownFraction,
         label = label,
+        sphereLabel = sphereLabel,
         enabled = tl != null,
         gridScrolling = scrolling,
         alwaysShown = alwaysShown,

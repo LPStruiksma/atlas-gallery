@@ -103,7 +103,7 @@ class CompactHeaderJourneyTest {
         waitFor(hasTestTag("atlas-header-title") and hasText("Settings"))
         assertSlimHeader()
         compose.onNodeWithTag("atlas-header-back").performClick()
-        waitFor(hasTestTag("atlas-header-title") and hasText("Photos"))
+        waitFor(hasTestTag("atlas-header-title") and hasText("Pictures"))
 
         // Albums: slim header, an opened album shows its name with Back to All albums.
         compose.onNodeWithTag("atlas-nav-albums").performClick()

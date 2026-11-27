@@ -2,7 +2,9 @@ package nl.atlas.gallery
 
 import android.util.Log
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
@@ -81,3 +83,16 @@ private val MEDIA_TILE = Regex("-media-|thumbnail-|tile-")
 private fun callerLine(): String = Throwable().stackTrace
     .firstOrNull { it.fileName?.endsWith("Test.kt") == true && !it.methodName.startsWith("waitFor") }
     ?.let { "${it.fileName}:${it.lineNumber}" } ?: "unknown step"
+
+/**
+ * BRAND-L4 (#657): People is a Collections section, not a slab place. Open it
+ * the way a person does: tap Collections in the slab, then the People section.
+ */
+fun ComposeTestRule.openPeopleSection(timeoutMillis: Long = 60_000L) {
+    waitForNode(androidx.compose.ui.test.hasTestTag("atlas-nav-albums"), timeoutMillis)
+    onNode(androidx.compose.ui.test.hasTestTag("atlas-nav-albums"))
+        .performSemanticsAction(SemanticsActions.OnClick)
+    waitForNode(androidx.compose.ui.test.hasTestTag("atlas-collections-people"), timeoutMillis)
+    onNode(androidx.compose.ui.test.hasTestTag("atlas-collections-people"))
+        .performSemanticsAction(SemanticsActions.OnClick)
+}

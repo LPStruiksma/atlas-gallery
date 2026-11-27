@@ -61,8 +61,8 @@ import androidx.compose.ui.unit.dp
 val SelectionCheckBlue = nl.atlas.gallery.featuredesign.AtlasTokens.Colors.Selection.Accent
 
 /**
- * Samsung check circle: an outlined ring while unchecked, a filled blue
- * circle with a tick when checked. A photo tile retains its white overlay ring;
+ * Selection mark: an outlined ring while unchecked; when checked, the Lapis
+ * held sphere (BRAND-L4), with [order] as its number when the selection is ordered. A photo tile retains its white overlay ring;
  * "All" and date headers instead use the theme's contrasting page ink.
  */
 @Composable
@@ -70,14 +70,16 @@ fun SelectionCheckCircle(
     checked: Boolean,
     modifier: Modifier = Modifier,
     size: Int = 22,
-    onPage: Boolean = false
+    onPage: Boolean = false,
+    order: Int? = null
 ) {
     val ring = modifier.size(size.dp).then(
         if (onPage && !checked) Modifier.testTag("atlas-selection-page-ring") else Modifier
     )
     if (checked) {
-        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SelectionCheckBlue,
-            modifier = ring)
+        // BRAND-L4 (#657): the held sphere marks what is chosen: a lapis
+        // sphere with a 2 dp white halo, the pick number when ordered.
+        nl.atlas.gallery.featuredesign.AtlasSelectionSphere(modifier, size.dp, order)
     } else {
         // A subdued image scrim keeps the white ring readable against bright thumbnails.
         Box(ring.clip(CircleShape).then(if (onPage) Modifier else

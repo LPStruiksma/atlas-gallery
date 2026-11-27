@@ -76,7 +76,10 @@ object AtlasTokens {
             val FilmstripTrack = Dark.Surface
             val Favourite = Dark.BrandText
             val Backdrop = Dark.ViewerGround
-            val ActionPill = Dark.BrandFill.copy(alpha = 0.85f)
+            // BRAND-L4 (#657, Structure 6): viewer actions sit on an opaque #3448E0 slab.
+            val ActionPill = Dark.BrandFill
+            val FilmstripSphere = Dark.BrandText
+            val FilmstripRing = Dark.OnBrand
             val MediaTrack = Dark.Surface
             // Necessary transparent black overlays preserve media visibility.
             val Scrim = Color(0xA0000000)
@@ -131,6 +134,19 @@ object AtlasTokens {
         val TabHeight = 60.dp
         val HeaderHeight = 56.dp
         val GridGap = 2.dp
+        // BRAND-L4 (#657): slab inner padding and the horizontal padding of a place pill.
+        val SlabPadding = 4.dp
+        val SlabPlacePadding = 20.dp
+    }
+
+    /** BRAND-L4 (#657, Quiet Frame v3 "Signature"): the held sphere's sizes. */
+    object Sphere {
+        val FastScroll = 46.dp
+        val Halo = 2.dp
+        val Selection = 22.dp
+        val Filmstrip = 8.dp
+        val Loading = 14.dp
+        val LoadingArc = 48.dp
     }
 
     object Radii {
@@ -140,12 +156,14 @@ object AtlasTokens {
         val GridTile = 3.dp
         val PersonCard = 20.dp
         val PersonCover = 18.dp
+        val Slab = 24.dp
     }
 
     object Type {
         val BodyLineHeight = 22.sp
-        // Existing navigation caps at 200% are preserved pending BRAND-L4.
+        // Quiet Frame v3 Type "Nav": 14 / 20 sp, Funnel Sans 600.
         val NavigationLabel = 14.sp
+        val NavigationLineHeight = 20.sp
         val DisplayTracking = (-0.03f).em
     }
 }

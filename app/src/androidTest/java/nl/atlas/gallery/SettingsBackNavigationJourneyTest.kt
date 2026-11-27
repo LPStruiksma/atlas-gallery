@@ -58,7 +58,7 @@ class SettingsBackNavigationJourneyTest {
         systemBack()
         waitFor(hasTestTag("atlas-settings-screen"))
         compose.onNodeWithTag("atlas-settings-advanced").assertExists()
-        compose.onNodeWithTag("atlas-nav-people").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
 
         // The header arrow is a second exit route with the same origin.
         compose.onNodeWithTag("atlas-header-back").performClick()
