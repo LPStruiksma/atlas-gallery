@@ -54,7 +54,9 @@ test('the honest result copy is kept word for word', () => {
 });
 
 test('one host lives in the Scaffold snackbar slot, above whichever bar is shown', () => {
-  assert.match(main, /snackbarHost = \{ SelectionResultSnackbarHost\(selectionResults\) \}/);
+  // HIDE-1 (#585) adds the one Undo-carrying result beside it, in a Column; the
+  // selection host itself stays Undo-free and unique.
+  assert.match(main, /snackbarHost = \{\s*Column \{\s*SelectionResultSnackbarHost\(selectionResults\)\s*HiddenUndoSnackbarHost\(hiddenResults\)\s*\}\s*\}/);
   assert.equal(main.match(/SelectionResultSnackbarHost\(/g).length, 1);
   assert.equal(main.match(/rememberSaveable\(saver = SelectionResultMessages\.Saver\) \{ SelectionResultMessages\(\) \}/g).length, 1);
 });

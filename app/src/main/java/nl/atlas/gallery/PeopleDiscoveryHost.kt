@@ -195,8 +195,25 @@ internal data class PeopleDiscoveryStatus(
      * yet (a regroup or the #580 refill runs). Not an empty result: People
      * must keep what it showed, or its restoring screen, never "No people".
      */
-    val peoplePending: Boolean = false
+    val peoplePending: Boolean = false,
+    /**
+     * HIDE-1 (#585): the hidden-set generation [people] was computed under. A
+     * consumer shows [people] only while this is the generation it currently
+     * holds (see [gatedForHidden]); anything else is stale or unknown.
+     */
+    val hiddenGeneration: Any? = null
 )
+
+/**
+ * HIDE-1 (#585): fail-closed consumption boundary for People home counts,
+ * covers and Search person suggestions. [people] survives only when it was
+ * computed under exactly [current]; unknown (null) or stale generations read as
+ * "not readable yet" (never an unfiltered home), so a hidden photo's face can
+ * not flash while the host's async hidden-key set catches up.
+ */
+internal fun PeopleDiscoveryStatus.gatedForHidden(current: Any?): PeopleDiscoveryStatus =
+    if (people == null || (current != null && hiddenGeneration === current)) this
+    else copy(people = null, peoplePending = true)
 
 /** The scope-gated, identity-free fields allowed in diagnostic export. */
 internal data class PeopleAggregateDiagnostics(
@@ -233,7 +250,9 @@ internal fun holdPendingPeople(
         return holdPendingPeople(previous, next.copy(peoplePending = true))
     }
     if (!next.peoplePending) return next
+    // Never hold People computed under another hidden-set generation (#585).
     val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
+        ?.takeIf { previous.hiddenGeneration === next.hiddenGeneration }
         ?: return next
     return next.copy(people = held, peoplePending = false)
 }
@@ -843,8 +862,31 @@ internal class PeopleDiscoveryHost(
         val state: PeopleClusterReviewState,
         val storeGeneration: String
     )
-    private class LiveHome(val state: PeopleHomeSummary, val storeGeneration: String)
+    private class LiveHome(
+        val state: PeopleHomeSummary, val storeGeneration: String,
+        val hidden: Set<String>?
+    )
     @Volatile private var liveHome: LiveHome? = null
+    /**
+     * HIDE-1 (#585): canonical face-index keys of hidden media. People home
+     * counts and covers skip them; the index itself keeps its full inventory.
+     * Null means "not read yet": People home stays unreadable rather than
+     * showing a hidden photo's face.
+     */
+    @Volatile private var hiddenMediaKeys: Set<String>? = emptySet()
+
+    @Volatile private var hiddenGeneration: Any? = null
+
+    /** [generation] identifies what [keys] was computed from; statuses carry it back. */
+    fun setHiddenMedia(keys: Set<String>?, generation: Any? = null) {
+        synchronized(reviewLock) {
+            if (keys == hiddenMediaKeys && generation === hiddenGeneration) return
+            if (keys != hiddenMediaKeys) liveHome = null
+            hiddenMediaKeys = keys
+            hiddenGeneration = generation
+        }
+        changed()
+    }
     private val reviewLock = Any()
     @Volatile private var liveReview: LiveReview? = null
     private val _changes = MutableStateFlow(0L)
@@ -2126,6 +2168,7 @@ internal class PeopleDiscoveryHost(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,
             counts.awaitingReview, nativeDetectorInstalled = true, realStartActionAvailable = true
         ), scoped.epoch).copy(statusNote = note)
+        val homeGeneration = synchronized(reviewLock) { hiddenGeneration }
         val people = currentHome(scoped.epoch)
         // #75: null people with published groups is "not readable yet", not empty.
         val peoplePending = people == null && try { store.hasPublishedMembership(scoped.epoch) }
@@ -2134,7 +2177,8 @@ internal class PeopleDiscoveryHost(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
             mayResumeScan = ui.phase == FaceDiscoveryPhase.PAUSED,
             mayOpenReview = counts.awaitingReview > 0
-        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = peoplePending)
+        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = peoplePending,
+            hiddenGeneration = homeGeneration)
     }
 
     /**
@@ -2245,10 +2289,12 @@ internal class PeopleDiscoveryHost(
             liveHome = null
             return null
         }
+        val hidden = hiddenMediaKeys ?: return null
         liveHome?.takeIf {
-            it.state.permissionEpoch == epoch && it.storeGeneration == generation
+            it.state.permissionEpoch == epoch && it.storeGeneration == generation &&
+                it.hidden == hidden
         }?.let { return it.state }
-        val stored = store.peopleHome(epoch) ?: run {
+        val stored = store.peopleHome(epoch, hidden) ?: run {
             liveHome = null
             return null
         }
@@ -2258,7 +2304,7 @@ internal class PeopleDiscoveryHost(
                     person.mediaCount, person.firstAppearanceMs, person.mostRecentAppearanceMs,
                     person.photoCount, person.videoCount)
             }, stored.unnamed.map { PeopleHomeGroup(it.anchorUid, it.faceCount) })
-            .also { liveHome = LiveHome(it, stored.generation) }
+            .also { liveHome = LiveHome(it, stored.generation, hidden) }
     }
 
     /**
@@ -2763,7 +2809,14 @@ internal class PeopleDiscoveryBinding(
     /** The "Visual search index" switch; off can also delete its data. */
     val onVisualIndex: (enabled: Boolean) -> Unit = {},
     val onDeleteVisualIndex: () -> Unit = {}
-)
+) {
+    /** Same actions; People data only while it matches the current hidden set (#585). */
+    fun gatedForHidden(current: Any?): PeopleDiscoveryBinding {
+        val gated = status?.gatedForHidden(current)
+        return if (gated === status) this else PeopleDiscoveryBinding(
+            gated, onStart, onScanNow, onPause, onResume, onVisualIndex, onDeleteVisualIndex)
+    }
+}
 
 /**
  * Status follows [PeopleDiscoveryHost.changes] and [galleryGrant]; a new
@@ -3090,3 +3143,18 @@ internal fun sampleVisualVideo(
 private fun stillAuthorized(
     source: (FaceMediaKey) -> FaceVisibleMedia, key: FaceMediaKey, row: FaceVisibleMedia
 ): Boolean = try { source(key).uri == row.uri } catch (_: SecurityException) { false }
+
+/**
+ * HIDE-1 (#585): the face index's canonical media keys of [hidden] items, for
+ * [PeopleDiscoveryHost.setHiddenMedia]. Same projection as the catalogue
+ * publication; an item without a durable face identity has no faces to hide.
+ */
+internal fun hiddenFaceMediaKeys(hidden: List<MediaRecord>): Set<String> {
+    val keys = HashSet<String>()
+    for (record in hidden) {
+        try { keys += record.toFaceVisibleMedia(editorRevision = 0L).toDurableFaceKey().canonicalMediaKey }
+        catch (_: IllegalArgumentException) {}
+        catch (_: IllegalStateException) {}
+    }
+    return keys
+}

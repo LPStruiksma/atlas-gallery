@@ -14,6 +14,7 @@ import nl.atlas.gallery.featureface.search.FaceSearchCorpus
 import nl.atlas.gallery.featurepeople.cluster.ClusterReviewFacts
 import nl.atlas.gallery.featurepeople.cluster.FacePair
 import nl.atlas.gallery.featurepeople.cluster.PersonKey
+import nl.atlas.gallery.featurepersistence.HiddenMedia
 import nl.atlas.gallery.featurepersistence.IndexedFaceBox
 import nl.atlas.gallery.featurepersistence.IndexedMedia
 import org.junit.Assert.assertEquals
@@ -132,6 +133,19 @@ class FaceSearchSessionTest {
         assertTrue(state.hits.none { it.record.uri == uri(4) || it.record.uri == uri(5) })
         assertNull("no confirmed person, no album offer", state.person)
         assertFalse(state.truncated)
+    }
+
+    /** HIDE-1 (#585): MainActivity resolves hits through the filtered catalogue. */
+    @Test fun hiddenMediaIsNeverAFaceSearchHit() {
+        val port = FakePort(corpus(listOf(Row(1, 1, at(query, 0.8f)), Row(2, 2, at(query, 0.7f)),
+            Row(3, 3, at(query, 0.6f)))))
+        val hidden = setOf(HiddenMedia.keyOf(gallery.getValue(uri(2))))
+        val visible = HiddenMedia.visible(gallery.values.toList(), hidden)
+        val filtered = FaceSearchSession(port,
+            records = { uris -> visible.filter { it.uri in uris }.associateBy { it.uri } },
+            io = Dispatchers.Unconfined, cpu = Dispatchers.Unconfined)
+        val state = filtered.searchNow() as FaceSearchState.Results
+        assertEquals(listOf(uri(1), uri(3)), state.records.map { it.uri })
     }
 
     @Test fun confirmedPersonOffersTheirAlbumOnlyWithAName() {
