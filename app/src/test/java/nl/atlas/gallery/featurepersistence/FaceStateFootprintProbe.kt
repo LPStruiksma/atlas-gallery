@@ -14,6 +14,8 @@ import kotlin.random.Random
  * (Lukas's library size when v0.8.4 hit OOM at 511/512 MB). Skipped unless
  * ATLAS_MEM_PROBE=1; JVM numbers, close to but not the same as ART:
  *
+ * Set ATLAS_MEM_PROBE_FACES=25000 or 100000 for the #599 scale comparison.
+ *
  *     ATLAS_MEM_PROBE=1 gradle :app:testDebugUnitTest --tests '*FaceStateFootprintProbe'
  */
 class FaceStateFootprintProbe {
@@ -25,7 +27,8 @@ class FaceStateFootprintProbe {
 
     @Test fun probe() {
         assumeTrue(System.getenv("ATLAS_MEM_PROBE") == "1")
-        val n = 263_000
+        val n = System.getenv("ATLAS_MEM_PROBE_FACES")?.toInt() ?: 263_000
+        require(n in setOf(25_000, 100_000, 263_000))
         val model = "sface-2021dec-int8"
         val rng = Random(1)
         val base = used()
