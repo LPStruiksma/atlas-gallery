@@ -108,7 +108,7 @@ fi
 
 # #603 temporary diagnostic-only lane. Remove marker, hook and runner before review.
 # Deliberately does not run the upgrade/UI suite or manufacture screenshot evidence.
-if [[ -f scripts/ci-opt-in/cached-first-frame-stage ]]; then
+if [[ -f scripts/ci-opt-in/cached-first-frame-stage && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   [[ "$RECOVERY_ONLY" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "0" &&
      ! -f scripts/ci-opt-in/thumbnail-fling && ! -f scripts/ci-opt-in/face-footprint ]] || {
     echo "::error::Cached first frame must be an isolated diagnostic lane"; exit 1;
