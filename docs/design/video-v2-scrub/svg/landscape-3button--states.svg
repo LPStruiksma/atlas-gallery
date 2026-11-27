@@ -1967,8 +1967,8 @@
 </g>
 </g>
 <text x="842.0" y="1044.0" font-size="8.4" fill="#FFF" font-weight="600">12. cancelled</text>
-<text x="842.0" y="1057.0" font-size="7.4" fill="#F2F3F8">Back swipe, lifecycle stop, audio focus, unplug: stay paused at the last selected T;</text>
-<text x="842.0" y="1067.0" font-size="7.4" fill="#F2F3F8">intent dropped; collapse. Then an ordinary paused page: Play works.</text>
+<text x="842.0" y="1057.0" font-size="7.4" fill="#F2F3F8">Back swipe, lifecycle stop, audio focus, unplug: stay paused at last selected T;</text>
+<text x="842.0" y="1067.0" font-size="7.4" fill="#F2F3F8">collapse. Then a paused page: Play works (a later stop clears a queued Play).</text>
 <g transform="translate(0,888.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r12t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
@@ -2097,8 +2097,8 @@
 </g>
 </g>
 <text x="842.0" y="1134.0" font-size="8.4" fill="#FFF" font-weight="600">13. exact decode failed</text>
-<text x="842.0" y="1147.0" font-size="7.4" fill="#F2F3F8">Stay paused at T_r; keep the last approximate preview (never shown as exact); no resume;</text>
-<text x="842.0" y="1157.0" font-size="7.4" fill="#F2F3F8">#142 error state owns retry (not Play).</text>
+<text x="842.0" y="1147.0" font-size="7.4" fill="#F2F3F8">Stay paused at T_r; keep the frame on screen, marked approximate even if its PTS equals</text>
+<text x="842.0" y="1157.0" font-size="7.4" fill="#F2F3F8">T; no resume; #142 error retry (not Play).</text>
 <g transform="translate(0,978.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r13band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>

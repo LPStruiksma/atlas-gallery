@@ -2,7 +2,7 @@
 
 Synthetic reference model only: no Android, Media3 or emulator run. Each case drives the proposed contract with explicit events and asserts it.
 
-**Result: 70/70 assertions pass across 7 cases.**
+**Result: 78/78 assertions pass across 7 cases.**
 
 ## E1 Endpoint gap of the nominal grid (30 fps fixture, last PTS = d − 33.33 ms)
 
@@ -45,7 +45,7 @@ playing -> hold -> drag -> release -> confirm -> playing -> second scrub while p
 | 2 | move | T 14000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 14000.0 | 10160.0 |
 | 3 | move | T 15000.0; CLOSEST_SYNC seq 2 | 1 | dragging | False | True | 15000.0 | 10160.0 |
 | 4 | preview result | DROPPED stale (gen 1 seq 1; live request gen 1 seq 2, phase dragging) | 1 | dragging | False | True | 15000.0 | 10160.0 |
-| 5 | preview result | accepted decoder PTS 14000; preview now tile 5 (approximate, PTS known) | 1 | dragging | False | True | 15000.0 | 10160.0 |
+| 5 | preview result | accepted decoder PTS 14000; preview now decoder gen 1 seq 2 (approximate, PTS known) | 1 | dragging | False | True | 15000.0 | 10160.0 |
 | 6 | preview result | DROPPED stale (gen 1 seq 2; live request none, phase dragging) | 1 | dragging | False | True | 15000.0 | 10160.0 |
 | 7 | up | settling: EXACT seek to T_r 15000.0; offset and T held; follow off | 1 | settling | False | True | 15000.0 | 10160.0 |
 | 8 | exact result | confirmed; follow anchored at T_c 15000.0; resume playback | 1 | follow | True | False | 15000.0 | 15000.0 |
@@ -120,6 +120,11 @@ play/pause during commit; cancel mid-drag; backgrounded while following
 - PASS: after cancel, ordinary Play works without a new scrub (seeker collapsed) (pos 9516.0)
 - PASS: Play tapped while the cancel's exact seek is pending does not play early
 - PASS: ... and plays from the cancelled T once it lands
+- PASS: queued Play is pending while the cancel seek is in flight
+- PASS: a later lifecycle stop clears the queued Play
+- PASS: cancel seek lands in the background: no playback starts, T kept
+- PASS: on return, ordinary Play still recovers from T
+- PASS: audio-focus loss while the cancel seek is pending also clears queued Play
 - PASS: pause while following: strip frozen in place (no backward jump) (12680.0 vs 12680.0)
 - PASS: resume after pause: continuous, lead keeps ramping (step 16.0)
 - PASS: backgrounded while following: paused, strip frozen in place
@@ -164,17 +169,20 @@ play/pause during commit; cancel mid-drag; backgrounded while following
 release -> EXACT seek reports an error
 
 - PASS: stays paused, T retained, no resume
-- PASS: preview stays approximate, never claimed exact (approximate, PTS known)
+- PASS: preview stays approximate, never claimed exact (approximate (exact decode failed; last displayed frame kept))
 - PASS: unlike cancel, Play does not recover from an exact failure: #142 error state owns retry
 - PASS: late preview after the failure is dropped
+- PASS: failure before a new preview arrives keeps the frame on screen (not recomputed) (shown displayed tile 3 / kept displayed tile 3)
+- PASS: kept frame whose PTS equals T is still marked approximate, never exact (PTS 8970.0 T 8970.0 status approximate (exact decode failed; last displayed frame kept))
+- PASS: failure after a decoder preview keeps that decoder frame
 
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
 |---|---|---|---|---|---|---|---|---|
 | 1 | down | begin from playing; gen 1; resume intent True; T held at 1000.0 | 1 | dragging | False | True | 1000.0 | 1000.0 |
 | 2 | move | T 20000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 20000.0 | 1000.0 |
-| 3 | preview result | accepted decoder PTS 19000; preview now tile 7 (approximate, PTS known) | 1 | dragging | False | True | 20000.0 | 1000.0 |
+| 3 | preview result | accepted decoder PTS 19000; preview now decoder gen 1 seq 1 (approximate, PTS known) | 1 | dragging | False | True | 20000.0 | 1000.0 |
 | 4 | up | settling: EXACT seek to T_r 20000.0; offset and T held; follow off | 1 | settling | False | True | 20000.0 | 1000.0 |
-| 5 | exact result | FAILED: stay paused at T 20000.0; keep approximate preview; no resume | 1 | error | False | False | 20000.0 | 1000.0 |
+| 5 | exact result | FAILED: stay paused at T 20000.0; keep the displayed frame, marked approximate; no resume | 1 | error | False | False | 20000.0 | 1000.0 |
 | 6 | play | ignored: #142 error state owns recovery (retry reloads the player) | 1 | error | False | False | 20000.0 | 1000.0 |
 | 7 | preview result | DROPPED stale (gen 1 seq 1; live request none, phase error) | 1 | error | False | False | 20000.0 | 1000.0 |
 
@@ -187,7 +195,7 @@ nominal grid vs requested T at both ends; endpoint-specific decode
 - PASS: near end: preview is tile 9, approximate with 3,057 ms error, endpoint decode requested ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 3056.67, 'status': 'approximate, PTS known', 'endpoint_region': 'end', 'endpoint_decode': True})
 - PASS: end clamp uses the last decodable PTS (T 29966.666666666668)
 - PASS: superseded request dropped on first arrival after the endpoint request was issued
-- PASS: matching-generation endpoint frame replaces the approximate preview (before player, after endpoint decode gen 1 seq 2)
+- PASS: matching-generation endpoint frame replaces the approximate preview (before displayed tile 9, after endpoint decode gen 1 seq 2)
 - PASS: requested T never changed by preview results
 - PASS: start: tile 0 at PTS 0 serves T=0 with zero error, no endpoint decode
 - PASS: end region starts right after the last tile: T=28.0 s (1,090 ms from tile 9, < half) needs no decode ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 1090.0, 'status': 'approximate, PTS known', 'endpoint_region': 'end', 'endpoint_decode': False})

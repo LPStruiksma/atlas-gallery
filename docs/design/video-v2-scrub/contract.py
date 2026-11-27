@@ -173,6 +173,9 @@ class Seeker:
         self.seq += 1
         tok = (self.gen, "sync", self.seq, self.t_sel)
         self.live_preview = tok               # issuing a request supersedes every earlier one
+        # timing rule 1: while moving, the main view shows the cached frame nearest by decoded PTS
+        self.preview = select_preview(self.t_sel, self.tiles, self.d, self.n, self.extra)
+        self.preview["source"] = "displayed " + self.preview["source"]
         self._log("move" if self.phase == "dragging" else "fling step", f"T {round(self.t_sel, 2)}; CLOSEST_SYNC seq {self.seq}")
         return tok
 
@@ -203,7 +206,11 @@ class Seeker:
             return False
         self.live_preview = None              # one result per request
         self.extra.append((pts, f"{source} gen {gen} seq {seq}"))
-        self.preview = select_preview(self.t_sel, self.tiles, self.d, self.n, self.extra)
+        # timing rule 2: the live request's sharp decoder (or endpoint) frame replaces the cached tile
+        err = None if pts is None else round(abs(pts - self.t_sel), 2)
+        self.preview = {"source": f"{source} gen {gen} seq {seq}", "pts": pts, "error_ms": err,
+                        "status": "approximate, PTS unknown" if pts is None else
+                        ("PTS equals requested T" if err == 0 else "approximate, PTS known")}
         self._log("preview result", f"accepted {source} PTS {pts}; preview now {self.preview['source']} ({self.preview['status']})")
         return True
 
@@ -217,8 +224,11 @@ class Seeker:
             self.collapsed = True
             self.resume = False
             self.exact = None
-            self.preview = dict(select_preview(self.t_sel, self.tiles, self.d, self.n, self.extra))
-            self._log("exact result", f"FAILED: stay paused at T {round(self.t_sel, 2)}; keep approximate preview; no resume")
+            kept = dict(self.preview)         # the frame actually on screen; never recomputed
+            kept["status"] = "approximate (exact decode failed; last displayed frame kept)"
+            kept["exact"] = False
+            self.preview = kept
+            self._log("exact result", f"FAILED: stay paused at T {round(self.t_sel, 2)}; keep the displayed frame, marked approximate; no resume")
             return True
         self.pos = self.t_sel                 # player position reports the requested seek position
         self.preview = {"source": "exact decode", "pts": pts,
@@ -286,6 +296,11 @@ class Seeker:
             self.exact = (self.gen, "exact", 1, self.t_sel)   # exact frame for the paused page, never a resume
             self._log("cancel", f"{reason}: stay paused at last selected T {round(self.t_sel, 2)}; collapse")
             return self.exact
+        if self.phase == "cancelled":
+            # a later lifecycle/focus/unplug event while the cancel's seek is pending clears any queued Play
+            self.resume = False
+            self._log("cancel", f"{reason}: cancel seek still pending; queued Play cleared; stays paused at T {round(self.t_sel, 2)}")
+            return None
         if self.playing:
             s = self.strip_t()
             self.anchor = (self.pos, self.pos, s - self.pos)
@@ -450,6 +465,25 @@ def run_pause_resume_cancel():
     c.check("Play tapped while the cancel's exact seek is pending does not play early", not s.playing)
     s.exact_result(cy, True, 13_000)
     c.check("... and plays from the cancelled T once it lands", s.playing and s.pos == 13_000)
+    r = Seeker(30_000, playing=True, pos=2_000)
+    r.down(); r.move(5_000)
+    rx = r.cancel("ACTION_CANCEL (back swipe)")
+    r.play()
+    c.check("queued Play is pending while the cancel seek is in flight", r.resume and not r.playing)
+    r.cancel("lifecycle stop (backgrounded)")
+    c.check("a later lifecycle stop clears the queued Play", not r.resume)
+    r.exact_result(rx, True, 5_000)
+    c.check("cancel seek lands in the background: no playback starts, T kept", (not r.playing) and r.pos == 5_000 and r.phase == "follow")
+    r.play()
+    r.advance(16)
+    c.check("on return, ordinary Play still recovers from T", r.playing and r.pos == 5_016)
+    f = Seeker(30_000, playing=True, pos=2_000)
+    f.down(); f.move(6_000)
+    fx = f.cancel("ACTION_CANCEL (back swipe)")
+    f.play()
+    f.cancel("audio focus loss")
+    f.exact_result(fx, True, 6_000)
+    c.check("audio-focus loss while the cancel seek is pending also clears queued Play", not f.playing)
     s.down(); s.move(12_000)
     ex3 = s.release()
     s.exact_result(ex3, True, 12_000)
@@ -496,6 +530,28 @@ def run_decode_failure():
     s.play()
     c.check("unlike cancel, Play does not recover from an exact failure: #142 error state owns retry", not s.playing)
     c.check("late preview after the failure is dropped", not s.preview_result(tok, 19_500))
+    a = Seeker(30_000, playing=True, pos=1_000)
+    a.down()
+    ta = a.move(19_000)
+    a.preview_result(ta, 19_000)
+    a.move(8_970)                             # no new decoder result arrives for this target
+    shown = dict(a.preview)
+    exa = a.release()
+    a.exact_result(exa, ok=False)
+    c.check("failure before a new preview arrives keeps the frame on screen (not recomputed)",
+            a.preview["source"] == shown["source"] and a.preview["pts"] == shown["pts"], f"shown {shown['source']} / kept {a.preview['source']}")
+    c.check("kept frame whose PTS equals T is still marked approximate, never exact",
+            a.preview["pts"] == a.t_sel and a.preview["status"].startswith("approximate") and a.preview["exact"] is False,
+            f"PTS {a.preview['pts']} T {a.t_sel} status {a.preview['status']}")
+    b2 = Seeker(30_000, playing=False, pos=1_000)
+    b2.down()
+    tb = b2.move(12_000)
+    b2.preview_result(tb, 11_800)
+    shown = dict(b2.preview)
+    exb = b2.release()
+    b2.exact_result(exb, ok=False)
+    c.check("failure after a decoder preview keeps that decoder frame",
+            b2.preview["source"] == shown["source"] and b2.preview["pts"] == 11_800)
     c.trace = s.log
     return c, s
 
