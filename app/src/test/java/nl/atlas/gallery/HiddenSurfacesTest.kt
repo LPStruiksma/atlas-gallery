@@ -117,8 +117,8 @@ class HiddenSurfacesTest {
         val g2 = HashSet<String>()
         val previous = status(g1, home)
         val pendingNext = status(g2, null).copy(peoplePending = true)
-        assertNull(holdPendingPeople(previous, pendingNext).people)
+        assertNull(holdPendingPeople(previous, pendingNext)?.people)
         val sameGeneration = status(g1, null).copy(peoplePending = true)
-        assertNotNull(holdPendingPeople(previous, sameGeneration).people)
+        assertNotNull(holdPendingPeople(previous, sameGeneration)?.people)
     }
 }
