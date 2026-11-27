@@ -232,12 +232,13 @@
 <text x="0" y="253" font-size="7.6" fill="#F2F3F8" font-weight="400"></text>
 <text x="0" y="264" font-size="7.6" fill="#FFF" font-weight="600">State</text>
 <text x="0" y="275" font-size="7.6" fill="#F2F3F8" font-weight="400">finger drag moves the span under the playhead;</text>
-<text x="0" y="286" font-size="7.6" fill="#F2F3F8" font-weight="400">main view (orange dash) shows the nearest cached frame tile</text>
-<text x="0" y="297" font-size="7.6" fill="#F2F3F8" font-weight="400">until a 60 ms pause, then the decoder frame; elapsed text</text>
-<text x="0" y="308" font-size="7.6" fill="#F2F3F8" font-weight="400">redraws only when the second changes (VIEW:V17).</text>
-<rect x="0" y="318" width="9" height="7" fill="#2EC4B6" opacity=".8"/><text x="13" y="325" font-size="7.2" fill="#9AA0B8">measured safeDrawing</text>
-<rect x="0" y="329" width="9" height="7" fill="#2D6CDF" opacity=".8"/><text x="13" y="336" font-size="7.2" fill="#9AA0B8">measured system bars</text>
-<rect x="0" y="340" width="9" height="7" fill="#FF3B30" opacity=".8"/><text x="13" y="347" font-size="7.2" fill="#9AA0B8">measured cutout</text>
-<rect x="0" y="351" width="9" height="7" fill="#FF2D55" opacity=".8"/><text x="13" y="358" font-size="7.2" fill="#9AA0B8">proposed semantic hit</text>
-<rect x="0" y="362" width="9" height="7" fill="#FFB020" opacity=".8"/><text x="13" y="369" font-size="7.2" fill="#9AA0B8">playhead / preview</text>
+<text x="0" y="286" font-size="7.6" fill="#F2F3F8" font-weight="400">main view (orange dash) shows the cached tile nearest by decoded</text>
+<text x="0" y="297" font-size="7.6" fill="#F2F3F8" font-weight="400">PTS (approximate; unknown PTS marked), then after 60 ms still the</text>
+<text x="0" y="308" font-size="7.6" fill="#F2F3F8" font-weight="400">matching-generation decoder frame; elapsed text shows requested T and</text>
+<text x="0" y="319" font-size="7.6" fill="#F2F3F8" font-weight="400">redraws only when the second changes (VIEW:V17).</text>
+<rect x="0" y="329" width="9" height="7" fill="#2EC4B6" opacity=".8"/><text x="13" y="336" font-size="7.2" fill="#9AA0B8">measured safeDrawing</text>
+<rect x="0" y="340" width="9" height="7" fill="#2D6CDF" opacity=".8"/><text x="13" y="347" font-size="7.2" fill="#9AA0B8">measured system bars</text>
+<rect x="0" y="351" width="9" height="7" fill="#FF3B30" opacity=".8"/><text x="13" y="358" font-size="7.2" fill="#9AA0B8">measured cutout</text>
+<rect x="0" y="362" width="9" height="7" fill="#FF2D55" opacity=".8"/><text x="13" y="369" font-size="7.2" fill="#9AA0B8">proposed semantic hit</text>
+<rect x="0" y="373" width="9" height="7" fill="#FFB020" opacity=".8"/><text x="13" y="380" font-size="7.2" fill="#9AA0B8">playhead / preview</text>
 </g></svg>
