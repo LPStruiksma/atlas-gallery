@@ -75,7 +75,7 @@
 <line x1="876.75" y1="52" x2="876.75" y2="502" stroke="#5A5C6A" stroke-dasharray="1 2"/>
 <text transform="translate(878.75,502) rotate(-90)" font-size="6.8" fill="#F2F3F8">cancel → paused</text>
 <line x1="889.23" y1="52" x2="889.23" y2="502" stroke="#5A5C6A" stroke-dasharray="1 2"/>
-<text transform="translate(891.23,502) rotate(-90)" font-size="6.8" fill="#F2F3F8">exact frame, still paused</text>
+<text transform="translate(891.23,502) rotate(-90)" font-size="6.8" fill="#F2F3F8">exact frame: paused page, Play works</text>
 <text x="12" y="308" font-size="7.6" fill="#FFF">phase</text>
 <text x="12" y="328" font-size="7.6" fill="#FFF">gen</text>
 <text x="12" y="342" font-size="7.6" fill="#FFF">playing</text>
@@ -1053,40 +1053,74 @@
 <rect x="882.99" y="300" width="2.08" height="12" fill="#FF5A5F"/>
 <rect x="885.07" y="300" width="2.08" height="12" fill="#FF5A5F"/>
 <rect x="887.15" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="889.23" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="891.32" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="893.4" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="895.48" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="897.56" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="899.64" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="901.72" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="903.8" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="905.89" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="907.97" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="910.05" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="912.13" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="914.21" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="916.29" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="918.37" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="920.45" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="922.54" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="924.62" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="926.7" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="928.78" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="930.86" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="932.94" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="935.02" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="937.11" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="939.19" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="941.27" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="943.35" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="945.43" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="947.51" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="949.59" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="951.67" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="953.76" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="955.84" y="300" width="2.08" height="12" fill="#FF5A5F"/>
-<rect x="957.92" y="300" width="2.08" height="12" fill="#FF5A5F"/>
+<rect x="889.23" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="889.23" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="891.32" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="891.32" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="893.4" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="893.4" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="895.48" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="895.48" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="897.56" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="897.56" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="899.64" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="899.64" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="901.72" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="901.72" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="903.8" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="903.8" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="905.89" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="905.89" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="907.97" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="907.97" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="910.05" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="910.05" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="912.13" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="912.13" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="914.21" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="914.21" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="916.29" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="916.29" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="918.37" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="918.37" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="920.45" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="920.45" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="922.54" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="922.54" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="924.62" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="924.62" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="926.7" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="926.7" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="928.78" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="928.78" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="930.86" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="930.86" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="932.94" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="932.94" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="935.02" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="935.02" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="937.11" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="937.11" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="939.19" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="939.19" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="941.27" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="941.27" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="943.35" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="943.35" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="945.43" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="945.43" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="947.51" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="947.51" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="949.59" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="949.59" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="951.67" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="951.67" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="953.76" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="953.76" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="955.84" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="955.84" y="362" width="2.08" height="8" fill="#2639C9"/>
+<rect x="957.92" y="300" width="2.08" height="12" fill="#2639C9"/>
+<rect x="957.92" y="362" width="2.08" height="8" fill="#2639C9"/>
 <text x="92.0" y="328" font-size="7.4" fill="#FFF">g0</text>
 <text x="175.25" y="328" font-size="7.4" fill="#FFF">g1</text>
 <text x="425.01" y="328" font-size="7.4" fill="#FFF">g2</text>
@@ -1098,7 +1132,7 @@
 <rect x="300" y="286" width="8" height="7" fill="#6A4C93"/><text x="311" y="292" font-size="7" fill="#9AA0B8">settling</text>
 <rect x="370" y="286" width="8" height="7" fill="#FF5A5F"/><text x="381" y="292" font-size="7" fill="#9AA0B8">cancelled</text>
 <text x="12" y="522" font-size="7.6" fill="#F2F3F8">Each finger down on the band starts a new generation g: snapshot play state (or carry the original intent if a fling or commit of g−1 is unfinished), pause, stop follow,</text>
-<text x="12" y="533" font-size="7.6" fill="#F2F3F8">hold T where the strip stands. Results tagged with an older g, or an older request seq, are dropped. Resume happens only after the matching-g exact confirmation.</text>
+<text x="12" y="533" font-size="7.6" fill="#F2F3F8">hold T where the strip stands. Only the one live request is accepted; superseded, older-g and post-commit results are dropped. Resume happens only after the matching-g exact confirmation.</text>
 <text x="12" y="544" font-size="7.6" fill="#F2F3F8">Follow re-anchors at the committed T with lead 0; the lead grows to 200 ms over 400 ms of real playback (strip moves at ≤ 1.5× playback speed, never jumps).</text>
 <text x="12" y="555" font-size="7.6" fill="#F2F3F8">Pause freezes the strip where it stands; play continues from there. Cancel (back swipe, lifecycle stop, audio focus, unplug) stays paused at the last selected T.</text>
 </svg>

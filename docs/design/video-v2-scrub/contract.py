@@ -75,10 +75,18 @@ def select_preview(t_req, tiles, d_ms, n, extra=()):
         err = None
         res = {"source": f"tile {i}", "pts": None, "error_ms": None, "status": "approximate, PTS unknown",
                "nominal_ms": round(nom[i], 2)}
-    # endpoint fallback: the best preview is far from T (or unknown) and T sits in an end gap
-    first_known = tiles[0] if tiles and tiles[0] is not None else 0.0
-    in_end_gap = t_req > nom[-1] + half or t_req < first_known - half
-    res["endpoint_decode"] = bool(in_end_gap and (err is None or err > half))
+    # endpoint fallback (README "Endpoint fallback"): T lies in an end region AND the best
+    # preview is farther than half a tile interval from T, or its PTS is unknown.
+    #   end region:   T > last tile's PTS (its nominal offset when the PTS is unknown)
+    #   start region: T < tile 0's PTS; when tile 0's PTS is unknown, T < half a tile interval
+    last_ref = tiles[-1] if tiles and tiles[-1] is not None else nom[-1]
+    if tiles and tiles[0] is not None:
+        in_start = t_req < tiles[0]
+    else:
+        in_start = t_req < half
+    in_end = t_req > last_ref
+    res["endpoint_region"] = "end" if in_end else ("start" if in_start else None)
+    res["endpoint_decode"] = bool((in_end or in_start) and (err is None or err > half))
     return res
 
 
@@ -104,7 +112,8 @@ class Seeker:
         self.t_sel = None
         self.exact = None
         self.seq = 0
-        self.last_seq = 0
+        self.live_preview = None       # the one preview request allowed to update the main view
+        self.collapsed = False
         self.preview = {"source": "player", "pts": self.pos, "status": "playback frame"}
         self.extra = []
         self.clock = 0.0
@@ -153,6 +162,8 @@ class Seeker:
         self.t_sel = self.clamp(t)            # visual target = where the strip already is (no jump)
         self.exact = None
         self.extra = []
+        self.live_preview = None              # older generation's requests are superseded
+        self.collapsed = False
         self.phase = "dragging"
         self._log("down", f"{kind}; gen {self.gen}; resume intent {resume}; T held at {round(self.t_sel, 2)}")
 
@@ -161,6 +172,7 @@ class Seeker:
         self.t_sel = self.clamp(t)
         self.seq += 1
         tok = (self.gen, "sync", self.seq, self.t_sel)
+        self.live_preview = tok               # issuing a request supersedes every earlier one
         self._log("move" if self.phase == "dragging" else "fling step", f"T {round(self.t_sel, 2)}; CLOSEST_SYNC seq {self.seq}")
         return tok
 
@@ -185,10 +197,11 @@ class Seeker:
     # ---- async results ----
     def preview_result(self, tok, pts, source="decoder"):
         gen, kind, seq, target = tok
-        if gen != self.gen or seq <= self.last_seq:
-            self._log("preview result", f"DROPPED stale (gen {gen} seq {seq}; live gen {self.gen}, last seq {self.last_seq})")
+        if tok != self.live_preview or self.phase not in ("dragging", "flinging", "settling"):
+            live = "none" if self.live_preview is None else f"gen {self.live_preview[0]} seq {self.live_preview[2]}"
+            self._log("preview result", f"DROPPED stale (gen {gen} seq {seq}; live request {live}, phase {self.phase})")
             return False
-        self.last_seq = seq
+        self.live_preview = None              # one result per request
         self.extra.append((pts, f"{source} gen {gen} seq {seq}"))
         self.preview = select_preview(self.t_sel, self.tiles, self.d, self.n, self.extra)
         self._log("preview result", f"accepted {source} PTS {pts}; preview now {self.preview['source']} ({self.preview['status']})")
@@ -198,8 +211,10 @@ class Seeker:
         if tok != self.exact or self.phase not in ("settling", "cancelled"):
             self._log("exact result", f"DROPPED stale (token gen {tok[0]} T {round(tok[3], 2)}; live gen {self.gen}, phase {self.phase})")
             return False
+        self.live_preview = None              # commit, cancel and error invalidate every preview request
         if not ok:
             self.phase = "error"
+            self.collapsed = True
             self.resume = False
             self.exact = None
             self.preview = dict(select_preview(self.t_sel, self.tiles, self.d, self.n, self.extra))
@@ -211,7 +226,13 @@ class Seeker:
                         "error_ms": None if pts is None else round(abs(pts - self.t_sel), 2)}
         self.exact = None
         if self.phase == "cancelled":
-            self._log("exact result", "applied to paused frame; cancelled scrub never resumes")
+            # the page becomes an ordinary paused page at T (seeker collapsed); normal Play works again
+            self.anchor = (self.t_sel, self.pos, 0.0)
+            self.phase = "follow"
+            self.playing = self.resume        # only an explicit Play tap made after the cancel sets this
+            self.resume = False
+            self._log("exact result", "cancel's paused frame applied; paused page owns playback again" +
+                      ("; Play tapped meanwhile: play" if self.playing else ""))
             return True
         self.anchor = (self.t_sel, self.pos, 0.0)   # follow re-anchors at the committed T, lead 0
         self.phase = "follow"
@@ -229,7 +250,12 @@ class Seeker:
         self._sample("tick")
 
     def play(self):
-        if self.phase in ("settling", "flinging"):
+        if self.phase == "error":
+            self._log("play", "ignored: #142 error state owns recovery (retry reloads the player)")
+        elif self.phase == "cancelled":
+            self.resume = True
+            self._log("play", "Play tapped while the cancel's exact seek is pending: plays from T once it lands")
+        elif self.phase in ("settling", "flinging"):
             self.resume = True
             self._log("play", "resume intent set; playback starts only after exact confirmation")
         elif self.phase == "follow" and not self.playing:
@@ -240,7 +266,7 @@ class Seeker:
             self._log("play", "ignored (second pointer during drag, or already playing)")
 
     def pause(self):
-        if self.phase in ("settling", "flinging"):
+        if self.phase in ("settling", "flinging", "cancelled"):
             self.resume = False
             self._log("pause", "resume intent cleared; commit still completes, stays paused")
         elif self.phase == "follow" and self.playing:
@@ -254,6 +280,8 @@ class Seeker:
     def cancel(self, reason):
         if self.phase in ("dragging", "flinging", "settling"):
             self.phase = "cancelled"
+            self.collapsed = True
+            self.live_preview = None
             self.resume = False
             self.exact = (self.gen, "exact", 1, self.t_sel)   # exact frame for the paused page, never a resume
             self._log("cancel", f"{reason}: stay paused at last selected T {round(self.t_sel, 2)}; collapse")
@@ -262,6 +290,7 @@ class Seeker:
             s = self.strip_t()
             self.anchor = (self.pos, self.pos, s - self.pos)
             self.playing = False
+        self.collapsed = True
         self._log("cancel", f"{reason}: not scrubbing; playback paused (V17), position kept")
         return None
 
@@ -297,9 +326,12 @@ def run_repeat_scrub():
     s.down()
     c.check("scrub 1 begin pauses and snapshots playing", (not s.playing) and s.resume and s.gen == 1)
     c.check("begin does not move the strip", abs(s.strip_t() - t0) < 1e-9, f"{s.strip_t()} vs {t0}")
+    tok_a = s.move(14_000)
     tok = s.move(15_000)
+    c.check("superseded request A dropped on its FIRST arrival after B was issued", not s.preview_result(tok_a, 13_900))
     s.advance(60)
-    s.preview_result(tok, 14_000)
+    c.check("newest request B accepted", s.preview_result(tok, 14_000))
+    c.check("a second result for B is dropped", not s.preview_result(tok, 14_000))
     c.check("no follow while dragging", s.anchor is None)
     ex = s.release()
     t_r = s.t_sel
@@ -309,6 +341,8 @@ def run_repeat_scrub():
     i_confirm = len(s.samples)
     s.exact_result(ex, True, 15_000)
     c.check("resume only after exact confirmation", s.playing and s.phase == "follow")
+    c.check("late preview after exact confirmation cannot replace the committed frame",
+            not s.preview_result(tok, 14_000) and s.preview["source"] == "exact decode")
     before = s.strip_t()
     c.check("no +200 ms jump at resume", abs(before - t_r) < 1e-9, f"strip {before} T_r {t_r}")
     for _ in range(40):
@@ -364,7 +398,11 @@ def run_interrupted_fling():
 def run_interrupted_settle():
     c = Case("C3 down during commit", "release -> EXACT pending -> finger down again -> old confirmation arrives late")
     s = Seeker(30_000, playing=True, pos=3_000)
-    s.down(); s.move(4_000)
+    s.down()
+    t1 = s.move(3_500)
+    t2 = s.move(4_000)
+    c.check("same-gen out of order: newer seq 2 accepted, then older seq 1 dropped",
+            s.preview_result(t2, 4_000) and not s.preview_result(t1, 3_500))
     ex_a = s.release()
     s.down()
     c.check("interrupting a pending commit keeps resume intent", s.resume and s.gen == 2 and not s.playing)
@@ -394,11 +432,24 @@ def run_pause_resume_cancel():
     s.pause(); s.play()
     s.exact_result(ex2, True, 7_000)
     c.check("play during settling resumes only after confirmation", s.playing and s.pos == 7_000)
-    s.down(); s.move(9_500)
+    s.down()
+    tp = s.move(9_500)
     cx = s.cancel("audio focus loss")
     c.check("cancel stays paused with last selected T", (not s.playing) and s.t_sel == 9_500 and not s.resume)
+    c.check("late preview after cancel is dropped", not s.preview_result(tp, 9_400))
     s.exact_result(cx, True, 9_500)
     c.check("cancel's exact frame never resumes", not s.playing and s.pos == 9_500)
+    c.check("a late duplicate of the cancel's exact result is dropped", not s.exact_result(cx, True, 9_500))
+    s.play()
+    s.advance(16)
+    c.check("after cancel, ordinary Play works without a new scrub (seeker collapsed)",
+            s.playing and s.collapsed and s.pos == 9_516, f"pos {s.pos}")
+    s.down(); s.move(13_000)
+    cy = s.cancel("ACTION_CANCEL (back swipe)")
+    s.play()
+    c.check("Play tapped while the cancel's exact seek is pending does not play early", not s.playing)
+    s.exact_result(cy, True, 13_000)
+    c.check("... and plays from the cancelled T once it lands", s.playing and s.pos == 13_000)
     s.down(); s.move(12_000)
     ex3 = s.release()
     s.exact_result(ex3, True, 12_000)
@@ -417,6 +468,16 @@ def run_pause_resume_cancel():
     t = b.strip_t()
     b.cancel("lifecycle stop (backgrounded)")
     c.check("backgrounded while following: paused, strip frozen in place", (not b.playing) and abs(b.strip_t() - t) < 1e-9)
+    pos = b.pos
+    b.play()
+    b.advance(16)
+    c.check("on return, Play resumes from the remembered position", b.playing and b.pos == pos + 16)
+    g = Seeker(30_000, playing=True, pos=4_000)
+    g.down(); g.move(6_000)
+    gx = g.release()
+    g.cancel("lifecycle stop (backgrounded mid-commit)")
+    g.exact_result(gx, True, 6_000)
+    c.check("backgrounded mid-commit: the scrub's own confirmation is dropped, no resume", not g.playing and g.phase == "cancelled")
     c.trace = s.log
     return c, s
 
@@ -432,6 +493,9 @@ def run_decode_failure():
     c.check("stays paused, T retained, no resume", (not s.playing) and s.t_sel == 20_000 and s.phase == "error")
     c.check("preview stays approximate, never claimed exact", s.preview["status"].startswith("approximate"),
             s.preview["status"])
+    s.play()
+    c.check("unlike cancel, Play does not recover from an exact failure: #142 error state owns retry", not s.playing)
+    c.check("late preview after the failure is dropped", not s.preview_result(tok, 19_500))
     c.trace = s.log
     return c, s
 
@@ -454,19 +518,27 @@ def run_endpoints():
     old = s.move(29_000)
     tok = s.move(40_000)
     c.check("end clamp uses the last decodable PTS", s.t_sel == t_end, f"T {s.t_sel}")
-    s.preview_result(old, 28_000)
     before = dict(s.preview)
-    c.check("stale/older endpoint callback is dropped", not s.preview_result(old, 28_000))
+    c.check("superseded request dropped on first arrival after the endpoint request was issued", not s.preview_result(old, 28_000))
     s.preview_result(tok, t_end, source="endpoint decode")
     c.check("matching-generation endpoint frame replaces the approximate preview", s.preview["source"].startswith("endpoint decode")
             and s.preview["error_ms"] == 0, f"before {before['source']}, after {s.preview['source']}")
     c.check("requested T never changed by preview results", s.t_sel == t_end)
     pv0 = select_preview(0, nom, d, n)
     c.check("start: tile 0 at PTS 0 serves T=0 with zero error, no endpoint decode", pv0["error_ms"] == 0 and not pv0["endpoint_decode"])
+    pv28 = select_preview(28_000, nom, d, n)
+    c.check("end region starts right after the last tile: T=28.0 s (1,090 ms from tile 9, < half) needs no decode",
+            pv28["endpoint_region"] == "end" and not pv28["endpoint_decode"], str(pv28))
+    pv29 = select_preview(28_500, nom, d, n)
+    c.check("T=28.5 s (1,590 ms from tile 9, > half) requests an end decode", pv29["endpoint_decode"], str(pv29))
     tiles_sync = [400.0] + nom[1:]          # first tile decoded at a sync frame 0.4 s in
     pv0s = select_preview(0, tiles_sync, d, n)
     c.check("start with tile 0 at a later sync PTS: approximate 400 ms error, no false exact", pv0s["error_ms"] == 400 and
             pv0s["status"] == "approximate, PTS known", str(pv0s))
+    tiles_far = [2_000.0] + nom[1:]         # tile 0 decoded 2 s in (long GOP)
+    pvf = select_preview(0, tiles_far, d, n)
+    c.check("start fallback: T=0 with tile 0 at PTS 2.0 s (> half interval) requests a start decode",
+            pvf["endpoint_region"] == "start" and pvf["endpoint_decode"], str(pvf))
     u = Seeker(d, playing=False, pos=0, last_pts=None)
     c.check("unknown last PTS: clamp falls back to d - 100 ms and says so", u.t_max == d - 100 and "approximate" in u.t_max_basis)
     c.trace = s.log
@@ -488,6 +560,12 @@ def run_pts_truth():
     c.check("unknown PTS: preview marked approximate/unknown, no PTS reported", pu["pts"] is None and pu["status"] == "approximate, PTS unknown")
     pue = select_preview(29_900, unk, d, 10)
     c.check("unknown PTS at the end still requests an endpoint decode", pue["endpoint_decode"])
+    pu28 = select_preview(28_000, unk, d, 10)
+    c.check("unknown PTS: T=28.0 s, just past the last nominal tile (26.91 s), requests an end decode", pu28["endpoint_decode"], str(pu28))
+    pu0 = select_preview(0, unk, d, 10)
+    c.check("unknown PTS: T=0 requests a start decode (tile 0's sync PTS unknown)", pu0["endpoint_region"] == "start" and pu0["endpoint_decode"], str(pu0))
+    pum = select_preview(10_300, unk, d, 10)
+    c.check("unknown PTS mid-clip: no endpoint decode (60 ms sync frame is the path)", not pum["endpoint_decode"])
     ds, ns = 300, obs_frame_count(0.3)
     gs = end_clamp(ds, 300 - 1000 / 30)[0] - nominal_offsets(ds, ns)[-1]
     c.check("short clip 300 ms: N=3, last nominal 133 ms, end gap 133 ms", ns == 3 and round(gs) == 133, f"gap {round(gs, 2)}")

@@ -367,8 +367,8 @@ STATES = [
     ("release / settling", "EXACT seek to T_r. Offset, T_r and elapsed text held; follow stays off; still paused until exact confirmation (matching gen)."),
     ("confirmed → follow", "Resume only now, if intent was playing. Follow anchors at T_r with lead 0; lead grows to 200 ms as playback advances (no jump)."),
     ("second scrub while playing", "Finger down on the open seeker: new gen, snapshot playing, pause, follow off, T = where the strip stands."),
-    ("cancelled", "Back swipe, lifecycle stop, audio focus, unplug: stay paused at the last selected T; resume intent dropped; collapse."),
-    ("exact decode failed", "Stay paused at T_r; keep the last approximate preview (never shown as exact); no resume; #142 error state."),
+    ("cancelled", "Back swipe, lifecycle stop, audio focus, unplug: stay paused at the last selected T; intent dropped; collapse. Then an ordinary paused page: Play works."),
+    ("exact decode failed", "Stay paused at T_r; keep the last approximate preview (never shown as exact); no resume; #142 error state owns retry (not Play)."),
     ("edge 0:00", "Span's left edge sits under the playhead; further drag is clamped (no pager hand-off while expanded)."),
     ("edge end", "Clamped at the last decodable PTS (else d − 100 ms, marked approximate). Endpoint decode requested; tile N−1 shown as approximate meanwhile."),
     ("frame unavailable", "Mist #14152A tile, no glyph or text. Main view keeps the last valid preview until a matching-generation frame lands."),
@@ -589,7 +589,7 @@ def board_scenario():
     marks.append((S.clock, "cancel → paused"))
     run(60)
     S.exact_result(cx, True, S.t_sel)
-    marks.append((S.clock, "exact frame, still paused"))
+    marks.append((S.clock, "exact frame: paused page, Play works"))
     run(340)
     return S, marks
 
@@ -657,7 +657,7 @@ def lifecycle_svg():
     yt = Y1 + 252
     rules = [
         "Each finger down on the band starts a new generation g: snapshot play state (or carry the original intent if a fling or commit of g−1 is unfinished), pause, stop follow,",
-        "hold T where the strip stands. Results tagged with an older g, or an older request seq, are dropped. Resume happens only after the matching-g exact confirmation.",
+        "hold T where the strip stands. Only the one live request is accepted; superseded, older-g and post-commit results are dropped. Resume happens only after the matching-g exact confirmation.",
         "Follow re-anchors at the committed T with lead 0; the lead grows to 200 ms over 400 ms of real playback (strip moves at ≤ 1.5× playback speed, never jumps).",
         "Pause freezes the strip where it stands; play continues from there. Cancel (back swipe, lifecycle stop, audio focus, unplug) stays paused at the last selected T.",
     ]
@@ -672,7 +672,7 @@ def timestamps_svg():
     nom = contract.nominal_offsets(d, n)
     half = contract.tile_interval(d, n) / 2
     t_end = d - 1000 / 30
-    W, H = 980, 470
+    W, H = 980, 488
     out_l = svg_open(W, H, "VIDEO-V2 preview timestamps")
     out = out_l.append
     out(f'<rect width="{W}" height="{H}" fill="#1B1C24"/>')
@@ -702,7 +702,7 @@ def timestamps_svg():
     rows = [
         (y2, t_end, SPHERE, f"requested/displayed T = last PTS {t_end/1000:.2f} s (clamp)"),
         (y2 + 22, nom[-1], "#9AA0B8", "cached tile 9: PTS 26.91 s (reported) → approximate, error 3,057 ms → endpoint decode requested"),
-        (y2 + 44, t_end, "#2EC4B6", "endpoint decode (matching gen) PTS 29.97 s replaces it; a stale gen frame never does"),
+        (y2 + 44, t_end, "#2EC4B6", "endpoint decode (live request) PTS 29.97 s replaces it; a superseded or older-gen frame never does"),
         (y2 + 66, t_end, "#2A9D8F", "exact seek on release: decoded PTS recorded and compared with T_r in the emulator proof (not promised)"),
     ]
     for yy, t, col, label in rows:
@@ -738,6 +738,7 @@ def timestamps_svg():
         ("Preview PTS", "PTS of the cached tile or CLOSEST_SYNC / endpoint frame when the decoder reports it; else unknown; always approximate unless equal to T"),
         ("Exact decoded PTS", "PTS of the frame the EXACT seek rendered; recorded for the proof; accuracy is measured, not inferred (no fixed frame-interval promise, VFR)"),
         ("End clamp T_max", "min(d, last decodable PTS) when known; else d − 100 ms marked approximate; start clamp 0"),
+        ("Endpoint decode", "T past the last tile's PTS (nominal if unknown) or before tile 0's PTS (< half interval if unknown), AND best preview > half interval away or PTS unknown"),
     ]
     for i, (k, v) in enumerate(defs):
         out(f'<text x="12" y="{yd+i*13}" font-size="7.8" fill="#FFF" font-weight="600">{k}</text>')

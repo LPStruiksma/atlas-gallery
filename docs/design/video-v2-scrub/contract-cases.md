@@ -2,7 +2,7 @@
 
 Synthetic reference model only: no Android, Media3 or emulator run. Each case drives the proposed contract with explicit events and asserts it.
 
-**Result: 50/50 assertions pass across 7 cases.**
+**Result: 70/70 assertions pass across 7 cases.**
 
 ## E1 Endpoint gap of the nominal grid (30 fps fixture, last PTS = d − 33.33 ms)
 
@@ -24,9 +24,13 @@ playing -> hold -> drag -> release -> confirm -> playing -> second scrub while p
 - PASS: following leads playback by at most 200 ms (strip 10240.0 pos 10160.0)
 - PASS: scrub 1 begin pauses and snapshots playing
 - PASS: begin does not move the strip (10240.0 vs 10240.0)
+- PASS: superseded request A dropped on its FIRST arrival after B was issued
+- PASS: newest request B accepted
+- PASS: a second result for B is dropped
 - PASS: no follow while dragging
 - PASS: settling: T and offset held, still paused
 - PASS: resume only after exact confirmation
+- PASS: late preview after exact confirmation cannot replace the committed frame
 - PASS: no +200 ms jump at resume (strip 15000.0 T_r 15000.0)
 - PASS: lead reintroduced continuously (max step per 16 ms frame <= 16*1.5 ms) (max step 24.0 ms)
 - PASS: lead reaches 200 ms after 400 ms of playback (lead 200.0)
@@ -38,15 +42,19 @@ playing -> hold -> drag -> release -> confirm -> playing -> second scrub while p
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
 |---|---|---|---|---|---|---|---|---|
 | 1 | down | begin from playing; gen 1; resume intent True; T held at 10240.0 | 1 | dragging | False | True | 10240.0 | 10160.0 |
-| 2 | move | T 15000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 15000.0 | 10160.0 |
-| 3 | preview result | accepted decoder PTS 14000; preview now tile 5 (approximate, PTS known) | 1 | dragging | False | True | 15000.0 | 10160.0 |
-| 4 | up | settling: EXACT seek to T_r 15000.0; offset and T held; follow off | 1 | settling | False | True | 15000.0 | 10160.0 |
-| 5 | exact result | confirmed; follow anchored at T_c 15000.0; resume playback | 1 | follow | True | False | 15000.0 | 15000.0 |
-| 6 | down | begin from playing; gen 2; resume intent True; T held at 15840.0 | 2 | dragging | False | True | 15840.0 | 15640.0 |
-| 7 | move | T 5000.0; CLOSEST_SYNC seq 2 | 2 | dragging | False | True | 5000.0 | 15640.0 |
-| 8 | up | settling: EXACT seek to T_r 5000.0; offset and T held; follow off | 2 | settling | False | True | 5000.0 | 15640.0 |
-| 9 | exact result | DROPPED stale (token gen 1 T 15000.0; live gen 2, phase settling) | 2 | settling | False | True | 5000.0 | 15640.0 |
-| 10 | exact result | confirmed; follow anchored at T_c 5000.0; resume playback | 2 | follow | True | False | 5000.0 | 5000.0 |
+| 2 | move | T 14000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 14000.0 | 10160.0 |
+| 3 | move | T 15000.0; CLOSEST_SYNC seq 2 | 1 | dragging | False | True | 15000.0 | 10160.0 |
+| 4 | preview result | DROPPED stale (gen 1 seq 1; live request gen 1 seq 2, phase dragging) | 1 | dragging | False | True | 15000.0 | 10160.0 |
+| 5 | preview result | accepted decoder PTS 14000; preview now tile 5 (approximate, PTS known) | 1 | dragging | False | True | 15000.0 | 10160.0 |
+| 6 | preview result | DROPPED stale (gen 1 seq 2; live request none, phase dragging) | 1 | dragging | False | True | 15000.0 | 10160.0 |
+| 7 | up | settling: EXACT seek to T_r 15000.0; offset and T held; follow off | 1 | settling | False | True | 15000.0 | 10160.0 |
+| 8 | exact result | confirmed; follow anchored at T_c 15000.0; resume playback | 1 | follow | True | False | 15000.0 | 15000.0 |
+| 9 | preview result | DROPPED stale (gen 1 seq 2; live request none, phase follow) | 1 | follow | True | False | 15000.0 | 15000.0 |
+| 10 | down | begin from playing; gen 2; resume intent True; T held at 15840.0 | 2 | dragging | False | True | 15840.0 | 15640.0 |
+| 11 | move | T 5000.0; CLOSEST_SYNC seq 3 | 2 | dragging | False | True | 5000.0 | 15640.0 |
+| 12 | up | settling: EXACT seek to T_r 5000.0; offset and T held; follow off | 2 | settling | False | True | 5000.0 | 15640.0 |
+| 13 | exact result | DROPPED stale (token gen 1 T 15000.0; live gen 2, phase settling) | 2 | settling | False | True | 5000.0 | 15640.0 |
+| 14 | exact result | confirmed; follow anchored at T_c 5000.0; resume playback | 2 | follow | True | False | 5000.0 | 5000.0 |
 
 ## C2 interrupted fling: PASS
 
@@ -69,8 +77,8 @@ playing -> scrub A -> fling -> finger down mid-fling -> scrub B -> release -> co
 | 3 | up (fling) | fling owns the strip; still paused | 1 | flinging | False | True | 9000.0 | 8000.0 |
 | 4 | fling step | T 11000.0; CLOSEST_SYNC seq 2 | 1 | flinging | False | True | 11000.0 | 8000.0 |
 | 5 | down | interrupt flinging; gen 2; resume intent True; T held at 11000.0 | 2 | dragging | False | True | 11000.0 | 8000.0 |
-| 6 | preview result | DROPPED stale (gen 1 seq 2; live gen 2, last seq 0) | 2 | dragging | False | True | 11000.0 | 8000.0 |
-| 7 | preview result | DROPPED stale (gen 1 seq 1; live gen 2, last seq 0) | 2 | dragging | False | True | 11000.0 | 8000.0 |
+| 6 | preview result | DROPPED stale (gen 1 seq 2; live request none, phase dragging) | 2 | dragging | False | True | 11000.0 | 8000.0 |
+| 7 | preview result | DROPPED stale (gen 1 seq 1; live request none, phase dragging) | 2 | dragging | False | True | 11000.0 | 8000.0 |
 | 8 | move | T 12500.0; CLOSEST_SYNC seq 3 | 2 | dragging | False | True | 12500.0 | 8000.0 |
 | 9 | up | settling: EXACT seek to T_r 12500.0; offset and T held; follow off | 2 | settling | False | True | 12500.0 | 8000.0 |
 | 10 | exact result | confirmed; follow anchored at T_c 12500.0; resume playback | 2 | follow | True | False | 12500.0 | 12500.0 |
@@ -79,6 +87,7 @@ playing -> scrub A -> fling -> finger down mid-fling -> scrub B -> release -> co
 
 release -> EXACT pending -> finger down again -> old confirmation arrives late
 
+- PASS: same-gen out of order: newer seq 2 accepted, then older seq 1 dropped
 - PASS: interrupting a pending commit keeps resume intent
 - PASS: late confirmation for gen 1 is dropped, no premature resume
 - PASS: gen 2 commit resumes
@@ -86,13 +95,16 @@ release -> EXACT pending -> finger down again -> old confirmation arrives late
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
 |---|---|---|---|---|---|---|---|---|
 | 1 | down | begin from playing; gen 1; resume intent True; T held at 3000.0 | 1 | dragging | False | True | 3000.0 | 3000.0 |
-| 2 | move | T 4000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 4000.0 | 3000.0 |
-| 3 | up | settling: EXACT seek to T_r 4000.0; offset and T held; follow off | 1 | settling | False | True | 4000.0 | 3000.0 |
-| 4 | down | interrupt settling; gen 2; resume intent True; T held at 4000.0 | 2 | dragging | False | True | 4000.0 | 3000.0 |
-| 5 | exact result | DROPPED stale (token gen 1 T 4000.0; live gen 2, phase dragging) | 2 | dragging | False | True | 4000.0 | 3000.0 |
-| 6 | move | T 6000.0; CLOSEST_SYNC seq 2 | 2 | dragging | False | True | 6000.0 | 3000.0 |
-| 7 | up | settling: EXACT seek to T_r 6000.0; offset and T held; follow off | 2 | settling | False | True | 6000.0 | 3000.0 |
-| 8 | exact result | confirmed; follow anchored at T_c 6000.0; resume playback | 2 | follow | True | False | 6000.0 | 6000.0 |
+| 2 | move | T 3500.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | True | 3500.0 | 3000.0 |
+| 3 | move | T 4000.0; CLOSEST_SYNC seq 2 | 1 | dragging | False | True | 4000.0 | 3000.0 |
+| 4 | preview result | accepted decoder PTS 4000; preview now decoder gen 1 seq 2 (PTS equals requested T) | 1 | dragging | False | True | 4000.0 | 3000.0 |
+| 5 | preview result | DROPPED stale (gen 1 seq 1; live request none, phase dragging) | 1 | dragging | False | True | 4000.0 | 3000.0 |
+| 6 | up | settling: EXACT seek to T_r 4000.0; offset and T held; follow off | 1 | settling | False | True | 4000.0 | 3000.0 |
+| 7 | down | interrupt settling; gen 2; resume intent True; T held at 4000.0 | 2 | dragging | False | True | 4000.0 | 3000.0 |
+| 8 | exact result | DROPPED stale (token gen 1 T 4000.0; live gen 2, phase dragging) | 2 | dragging | False | True | 4000.0 | 3000.0 |
+| 9 | move | T 6000.0; CLOSEST_SYNC seq 3 | 2 | dragging | False | True | 6000.0 | 3000.0 |
+| 10 | up | settling: EXACT seek to T_r 6000.0; offset and T held; follow off | 2 | settling | False | True | 6000.0 | 3000.0 |
+| 11 | exact result | confirmed; follow anchored at T_c 6000.0; resume playback | 2 | follow | True | False | 6000.0 | 6000.0 |
 
 ## C4 pause, resume, cancel, background: PASS
 
@@ -102,10 +114,17 @@ play/pause during commit; cancel mid-drag; backgrounded while following
 - PASS: play from paused follow is continuous
 - PASS: play during settling resumes only after confirmation
 - PASS: cancel stays paused with last selected T
+- PASS: late preview after cancel is dropped
 - PASS: cancel's exact frame never resumes
-- PASS: pause while following: strip frozen in place (no backward jump) (12000.0 vs 12000.0)
-- PASS: resume after pause: continuous, lead keeps ramping (step 24.0)
+- PASS: a late duplicate of the cancel's exact result is dropped
+- PASS: after cancel, ordinary Play works without a new scrub (seeker collapsed) (pos 9516.0)
+- PASS: Play tapped while the cancel's exact seek is pending does not play early
+- PASS: ... and plays from the cancelled T once it lands
+- PASS: pause while following: strip frozen in place (no backward jump) (12680.0 vs 12680.0)
+- PASS: resume after pause: continuous, lead keeps ramping (step 16.0)
 - PASS: backgrounded while following: paused, strip frozen in place
+- PASS: on return, Play resumes from the remembered position
+- PASS: backgrounded mid-commit: the scrub's own confirmation is dropped, no resume
 
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
 |---|---|---|---|---|---|---|---|---|
@@ -124,13 +143,21 @@ play/pause during commit; cancel mid-drag; backgrounded while following
 | 13 | down | begin from playing; gen 3; resume intent True; T held at 7000.0 | 3 | dragging | False | True | 7000.0 | 7000.0 |
 | 14 | move | T 9500.0; CLOSEST_SYNC seq 3 | 3 | dragging | False | True | 9500.0 | 7000.0 |
 | 15 | cancel | audio focus loss: stay paused at last selected T 9500.0; collapse | 3 | cancelled | False | False | 9500.0 | 7000.0 |
-| 16 | exact result | applied to paused frame; cancelled scrub never resumes | 3 | cancelled | False | False | 9500.0 | 9500.0 |
-| 17 | down | begin from paused; gen 4; resume intent False; T held at 9500.0 | 4 | dragging | False | False | 9500.0 | 9500.0 |
-| 18 | move | T 12000.0; CLOSEST_SYNC seq 4 | 4 | dragging | False | False | 12000.0 | 9500.0 |
-| 19 | up | settling: EXACT seek to T_r 12000.0; offset and T held; follow off | 4 | settling | False | False | 12000.0 | 9500.0 |
-| 20 | exact result | confirmed; follow anchored at T_c 12000.0; stay paused | 4 | follow | False | False | 12000.0 | 12000.0 |
-| 21 | pause | ignored | 4 | follow | False | False | 12000.0 | 12000.0 |
-| 22 | play | playing; lead continues from where it stood | 4 | follow | True | False | 12000.0 | 12000.0 |
+| 16 | preview result | DROPPED stale (gen 3 seq 3; live request none, phase cancelled) | 3 | cancelled | False | False | 9500.0 | 7000.0 |
+| 17 | exact result | cancel's paused frame applied; paused page owns playback again | 3 | follow | False | False | 9500.0 | 9500.0 |
+| 18 | exact result | DROPPED stale (token gen 3 T 9500.0; live gen 3, phase follow) | 3 | follow | False | False | 9500.0 | 9500.0 |
+| 19 | play | playing; lead continues from where it stood | 3 | follow | True | False | 9500.0 | 9500.0 |
+| 20 | down | begin from playing; gen 4; resume intent True; T held at 9524.0 | 4 | dragging | False | True | 9524.0 | 9516.0 |
+| 21 | move | T 13000.0; CLOSEST_SYNC seq 4 | 4 | dragging | False | True | 13000.0 | 9516.0 |
+| 22 | cancel | ACTION_CANCEL (back swipe): stay paused at last selected T 13000.0; collapse | 4 | cancelled | False | False | 13000.0 | 9516.0 |
+| 23 | play | Play tapped while the cancel's exact seek is pending: plays from T once it lands | 4 | cancelled | False | True | 13000.0 | 9516.0 |
+| 24 | exact result | cancel's paused frame applied; paused page owns playback again; Play tapped meanwhile: play | 4 | follow | True | False | 13000.0 | 13000.0 |
+| 25 | down | begin from playing; gen 5; resume intent True; T held at 13000.0 | 5 | dragging | False | True | 13000.0 | 13000.0 |
+| 26 | move | T 12000.0; CLOSEST_SYNC seq 5 | 5 | dragging | False | True | 12000.0 | 13000.0 |
+| 27 | up | settling: EXACT seek to T_r 12000.0; offset and T held; follow off | 5 | settling | False | True | 12000.0 | 13000.0 |
+| 28 | exact result | confirmed; follow anchored at T_c 12000.0; resume playback | 5 | follow | True | False | 12000.0 | 12000.0 |
+| 29 | pause | paused; strip frozen in place | 5 | follow | False | False | 12680.0 | 12480.0 |
+| 30 | play | playing; lead continues from where it stood | 5 | follow | True | False | 12680.0 | 12480.0 |
 
 ## C5 exact decode fails: PASS
 
@@ -138,6 +165,8 @@ release -> EXACT seek reports an error
 
 - PASS: stays paused, T retained, no resume
 - PASS: preview stays approximate, never claimed exact (approximate, PTS known)
+- PASS: unlike cancel, Play does not recover from an exact failure: #142 error state owns retry
+- PASS: late preview after the failure is dropped
 
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
 |---|---|---|---|---|---|---|---|---|
@@ -146,6 +175,8 @@ release -> EXACT seek reports an error
 | 3 | preview result | accepted decoder PTS 19000; preview now tile 7 (approximate, PTS known) | 1 | dragging | False | True | 20000.0 | 1000.0 |
 | 4 | up | settling: EXACT seek to T_r 20000.0; offset and T held; follow off | 1 | settling | False | True | 20000.0 | 1000.0 |
 | 5 | exact result | FAILED: stay paused at T 20000.0; keep approximate preview; no resume | 1 | error | False | False | 20000.0 | 1000.0 |
+| 6 | play | ignored: #142 error state owns recovery (retry reloads the player) | 1 | error | False | False | 20000.0 | 1000.0 |
+| 7 | preview result | DROPPED stale (gen 1 seq 1; live request none, phase error) | 1 | error | False | False | 20000.0 | 1000.0 |
 
 ## C6 endpoints d=30 s, N=10: PASS
 
@@ -153,13 +184,16 @@ nominal grid vs requested T at both ends; endpoint-specific decode
 
 - PASS: last nominal tile is 26.91 s (26910.0)
 - PASS: end gap 29.97 s - 26.91 s = 3.06 s exceeds half a tile interval (1.495 s) (gap 3056.67 ms, half interval 1495.0)
-- PASS: near end: preview is tile 9, approximate with 3,057 ms error, endpoint decode requested ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 3056.67, 'status': 'approximate, PTS known', 'endpoint_decode': True})
+- PASS: near end: preview is tile 9, approximate with 3,057 ms error, endpoint decode requested ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 3056.67, 'status': 'approximate, PTS known', 'endpoint_region': 'end', 'endpoint_decode': True})
 - PASS: end clamp uses the last decodable PTS (T 29966.666666666668)
-- PASS: stale/older endpoint callback is dropped
-- PASS: matching-generation endpoint frame replaces the approximate preview (before decoder gen 1 seq 1, after endpoint decode gen 1 seq 2)
+- PASS: superseded request dropped on first arrival after the endpoint request was issued
+- PASS: matching-generation endpoint frame replaces the approximate preview (before player, after endpoint decode gen 1 seq 2)
 - PASS: requested T never changed by preview results
 - PASS: start: tile 0 at PTS 0 serves T=0 with zero error, no endpoint decode
-- PASS: start with tile 0 at a later sync PTS: approximate 400 ms error, no false exact ({'source': 'tile 0', 'pts': 400.0, 'error_ms': 400.0, 'status': 'approximate, PTS known', 'endpoint_decode': False})
+- PASS: end region starts right after the last tile: T=28.0 s (1,090 ms from tile 9, < half) needs no decode ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 1090.0, 'status': 'approximate, PTS known', 'endpoint_region': 'end', 'endpoint_decode': False})
+- PASS: T=28.5 s (1,590 ms from tile 9, > half) requests an end decode ({'source': 'tile 9', 'pts': 26910.0, 'error_ms': 1590.0, 'status': 'approximate, PTS known', 'endpoint_region': 'end', 'endpoint_decode': True})
+- PASS: start with tile 0 at a later sync PTS: approximate 400 ms error, no false exact ({'source': 'tile 0', 'pts': 400.0, 'error_ms': 400.0, 'status': 'approximate, PTS known', 'endpoint_region': 'start', 'endpoint_decode': False})
+- PASS: start fallback: T=0 with tile 0 at PTS 2.0 s (> half interval) requests a start decode ({'source': 'tile 0', 'pts': 2000.0, 'error_ms': 2000.0, 'status': 'approximate, PTS known', 'endpoint_region': 'start', 'endpoint_decode': True})
 - PASS: unknown last PTS: clamp falls back to d - 100 ms and says so
 
 | # | Event | Outcome | gen | phase | playing | resume intent | strip T | player pos |
@@ -167,9 +201,8 @@ nominal grid vs requested T at both ends; endpoint-specific decode
 | 1 | down | begin from paused; gen 1; resume intent False; T held at 25000.0 | 1 | dragging | False | False | 25000.0 | 25000.0 |
 | 2 | move | T 29000.0; CLOSEST_SYNC seq 1 | 1 | dragging | False | False | 29000.0 | 25000.0 |
 | 3 | move | T 29966.67; CLOSEST_SYNC seq 2 | 1 | dragging | False | False | 29966.67 | 25000.0 |
-| 4 | preview result | accepted decoder PTS 28000; preview now decoder gen 1 seq 1 (approximate, PTS known) | 1 | dragging | False | False | 29966.67 | 25000.0 |
-| 5 | preview result | DROPPED stale (gen 1 seq 1; live gen 1, last seq 1) | 1 | dragging | False | False | 29966.67 | 25000.0 |
-| 6 | preview result | accepted endpoint decode PTS 29966.666666666668; preview now endpoint decode gen 1 seq 2 (PTS equals requested T) | 1 | dragging | False | False | 29966.67 | 25000.0 |
+| 4 | preview result | DROPPED stale (gen 1 seq 1; live request gen 1 seq 2, phase dragging) | 1 | dragging | False | False | 29966.67 | 25000.0 |
+| 5 | preview result | accepted endpoint decode PTS 29966.666666666668; preview now endpoint decode gen 1 seq 2 (PTS equals requested T) | 1 | dragging | False | False | 29966.67 | 25000.0 |
 
 ## C7 VFR, unknown PTS, short and long clips: PASS
 
@@ -178,5 +211,8 @@ select by decoded PTS; never infer PTS from the grid
 - PASS: VFR: decoded PTS picks tile 4 (1,000 ms away), not nominal-nearest tile 3 (by PTS tile 4 err 1000.0; by nominal tile 3)
 - PASS: unknown PTS: preview marked approximate/unknown, no PTS reported
 - PASS: unknown PTS at the end still requests an endpoint decode
+- PASS: unknown PTS: T=28.0 s, just past the last nominal tile (26.91 s), requests an end decode ({'source': 'tile 9', 'pts': None, 'error_ms': None, 'status': 'approximate, PTS unknown', 'nominal_ms': 26910.0, 'endpoint_region': 'end', 'endpoint_decode': True})
+- PASS: unknown PTS: T=0 requests a start decode (tile 0's sync PTS unknown) ({'source': 'tile 0', 'pts': None, 'error_ms': None, 'status': 'approximate, PTS unknown', 'nominal_ms': 0.0, 'endpoint_region': 'start', 'endpoint_decode': True})
+- PASS: unknown PTS mid-clip: no endpoint decode (60 ms sync frame is the path)
 - PASS: short clip 300 ms: N=3, last nominal 133 ms, end gap 133 ms (gap 133.33)
 - PASS: long clip 1:23:45: N=25, end gap about 201 s (gap 201063 ms)
