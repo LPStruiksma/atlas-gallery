@@ -1642,8 +1642,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Stories (#439) plan only while Albums is shown, once per grant/catalogue/day.
     // Minted in remember(): no plain field is written during composition (#451).
     val storyRevision = rememberStoryCatalogRevision(media)
+    // HIDE-1 (#585): until the Hidden set is read the catalogue is empty, so a
+    // live-token deck would be empty and settleRestored would drop a story
+    // restored after an Activity recreate. No tokens means nothing is planned
+    // and the pending restore waits for the filtered catalogue.
     val storyTokens = storyPlanTokensOrNull(grants, publishedGallery.epoch,
-        authorized = searchGrant != null,
+        authorized = searchGrant != null && hiddenKeys != null,
         catalogRevision = storyRevision,
         epochDay = java.time.LocalDate.now().toEpochDay())
     val storyDeck = rememberStoryDeck(media, storyTokens, enabled = tab == 1)
@@ -1656,7 +1660,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // Photo DNA (#442) hashes same-size files only while it is open, once per
     // grant/catalogue publication; a grant change mid-read yields Unknown.
     val photoDnaTokens = photoDnaTokensOrNull(grants, publishedGallery.epoch,
-        authorized = searchGrant != null, source = media)
+        authorized = searchGrant != null && hiddenKeys != null, source = media)
     val latestPhotoDnaTokens = rememberUpdatedState(photoDnaTokens)
     val photoDnaGrant = grants
     val photoDnaPlanning = rememberPhotoDna(media, photoDnaTokens,
