@@ -40,7 +40,9 @@ def strip_png_metadata(data, width, height):
     grey/RGB/alpha (no palette), exactly ``width`` x ``height``, with
     decompressible pixel data of the exact expected length. Every ancillary
     chunk (tEXt/iTXt/zTXt prompt and workflow text, eXIf, tIME, iCCP, pHYs and
-    any private chunk) is dropped; the pixel stream is kept byte for byte.
+    any private chunk) is dropped. IDAT chunks must be consecutive and hold
+    exactly one zlib stream with no trailing bytes; the decoded pixels are
+    recompressed, so nothing but raster data survives.
     """
     if not isinstance(data, (bytes, bytearray)) or not data.startswith(_SIGNATURE):
         raise HeadOutputError("Provider output is not a PNG")
@@ -49,6 +51,7 @@ def strip_png_metadata(data, width, height):
     ihdr = None
     idat = []
     ended = False
+    idat_closed = False
     while offset < len(data):
         if ended:
             raise HeadOutputError("Provider PNG has data after IEND")
@@ -70,14 +73,20 @@ def strip_png_metadata(data, width, height):
                 raise HeadOutputError("Provider PNG has an invalid IHDR")
             ihdr = payload
         elif kind == b"IDAT":
+            if idat_closed:
+                raise HeadOutputError("Provider PNG has non-consecutive IDAT chunks")
             idat.append(payload)
         elif kind == b"IEND":
+            if length:
+                raise HeadOutputError("Provider PNG has a non-empty IEND")
             ended = True
         elif kind == b"PLTE":
             raise HeadOutputError("Palette PNG output is not supported")
         elif not (kind[0] & 0x20):
             # Unknown critical chunk: cannot be dropped safely.
             raise HeadOutputError("Provider PNG has an unknown critical chunk")
+        if idat and kind != b"IDAT":
+            idat_closed = True
         offset = end
     if ihdr is None or not ended or not idat:
         raise HeadOutputError("Provider PNG is incomplete")
@@ -97,11 +106,13 @@ def strip_png_metadata(data, width, height):
         pixels = inflater.decompress(stream, expected + 1)
     except zlib.error as exc:
         raise HeadOutputError("Provider PNG pixel data is corrupt") from exc
-    if len(pixels) != expected or inflater.unconsumed_tail or not inflater.eof:
+    if (len(pixels) != expected or inflater.unconsumed_tail or not inflater.eof
+            or inflater.unused_data):
         raise HeadOutputError("Provider PNG pixel data has the wrong length")
     if any(pixels[row * (1 + stride)] > 4 for row in range(out_h)):
         raise HeadOutputError("Provider PNG has an invalid row filter")
-    return _SIGNATURE + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", stream) + _chunk(b"IEND", b"")
+    return (_SIGNATURE + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", zlib.compress(pixels)) +
+            _chunk(b"IEND", b""))
 
 
 def head_lineage(*, seed, artifact_hashes, mode):

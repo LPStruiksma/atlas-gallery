@@ -142,15 +142,20 @@ artifact hashes, and the repository verdict ledger
 `NOT_MEASURED`, and only the separately reviewed verdict unit (#1092) may change
 it, so no deployment can activate today and `full_head` stays unadvertised.
 
-When every gate is open, a job re-checks the gates, uploads the target, mask
-and reference as freshly re-encoded PNGs (EXIF/GPS dropped), binds the admitted
+When every gate is open, a job re-checks the gates (the admission file must
+also equal the admitted snapshot, so a changed artifact path, digest,
+provenance, endpoint or timeout closes it), uploads the target, mask and
+reference as pixel-only PNGs rebuilt from raw pixels (no EXIF, GPS, ICC or
+text; gates re-checked before each upload), binds the admitted
 seven-node graph in one replacement pass, re-checks the gates again and submits
 it. It then requires exactly one image from output node 7 (any other count or
 node is an error), fetches it, and accepts it only as a complete, CRC-valid,
 non-interlaced 8/16-bit grey/RGB/alpha PNG of exactly the declared crop size
 with correctly sized pixel data. All ancillary chunks (ComfyUI's tEXt prompt and
-workflow, eXIf, tIME, iCCP and the rest) are dropped; pixels are kept byte for
-byte. The crop is returned with lineage: `engine`, `version`, `mode`, `seed` and
+workflow, eXIf, tIME, iCCP and the rest) are dropped, IDAT must be consecutive
+and hold one zlib stream with no trailing bytes, IEND must be empty, and the
+decoded pixels are recompressed. Advertised `full_head`/`lineage` drop to false
+as soon as any gate is revoked. The crop is returned with lineage: `engine`, `version`, `mode`, `seed` and
 the SHA-256 of model, encoder, runtime, adapter and workflow. Gates are checked
 once more before publication; a provider error, refusal, cancel, closed gate or
 changed artifact deletes only this job's queued prompt and publishes neither an

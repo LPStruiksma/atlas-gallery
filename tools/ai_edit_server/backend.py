@@ -525,6 +525,9 @@ class Flux2HeadBackend(ComfyBackend):
         self.mode = mode
         self.config_path = config_path
         config = self._load_admission(config_path, mode)
+        # Canonical snapshot of the admitted file; any later edit (artifact
+        # path, digest, provenance, endpoint, timeout) closes the gate.
+        self._admitted_config = json.dumps(config, sort_keys=True)
         artifacts = config.get("artifacts")
         if not isinstance(artifacts, dict):
             raise ValueError("FLUX.2 head artifacts are required")
@@ -561,6 +564,7 @@ class Flux2HeadBackend(ComfyBackend):
         self.artifact_hashes = checked
         self.artifact_paths = {kind: artifacts[kind]["path"] for kind in self._ARTIFACTS}
         self._verify_unchanged()
+        self._fingerprints = self._stat_fingerprints()
         self.activated = mode == "activate"
         if self.activated:
             self.display_name = "FLUX.2 whole-head (self-hosted, gated)"
@@ -590,18 +594,50 @@ class Flux2HeadBackend(ComfyBackend):
                              "HEAD unavailable")
         return config
 
-    def _require_gates(self):
-        """Re-check every activation gate immediately before provider use."""
+    def _stat_fingerprints(self):
+        prints = {}
+        for kind, path in self.artifact_paths.items():
+            try:
+                info = os.stat(path)
+            except OSError as exc:
+                raise BackendError("Admitted artifact became unavailable") from exc
+            prints[kind] = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+        return prints
+
+    def _require_gates(self, full_hash=True):
+        """Re-check every activation gate before provider use.
+
+        Each check needs: activated at startup, enable flag and mode unchanged,
+        PASS ledger and every evidence gate (re-read), the admission file equal
+        to the admitted snapshot, and unchanged artifacts. ``full_hash`` re-hashes
+        every artifact; the cheap form (before each upload and for capability
+        advertising) compares stat fingerprints, so multi-GB weights are not
+        re-hashed per call. Job start, prompt submission and publication always
+        use the full hash.
+        """
         if not self.activated:
             raise BackendError("FLUX.2 head route is not activated")
         if (os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true" or
                 os.environ.get("ATLAS_FLUX2_HEAD_MODE") != "activate"):
             raise BackendError("FLUX.2 head gate closed: enable flag or mode changed")
         try:
-            self._load_admission(self.config_path, "activate")
+            config = self._load_admission(self.config_path, "activate")
         except ValueError as exc:
             raise BackendError("FLUX.2 head gate closed") from exc
-        self._verify_unchanged()
+        if json.dumps(config, sort_keys=True) != self._admitted_config:
+            raise BackendError("FLUX.2 head gate closed: admission file changed")
+        if self._stat_fingerprints() != self._fingerprints:
+            raise BackendError("Admitted artifact changed after startup")
+        if full_hash:
+            self._verify_unchanged()
+
+    def admission_valid(self):
+        """True only while an activated route would pass every gate now."""
+        try:
+            self._require_gates(full_hash=False)
+        except BackendError:
+            return False
+        return True
 
     def _verify_unchanged(self):
         for kind, path in self.artifact_paths.items():
@@ -617,8 +653,10 @@ class Flux2HeadBackend(ComfyBackend):
         caps = super().capabilities()
         # Only an activated backend, which needs the PASS verdict ledger, may
         # advertise full_head; the checked-in ledger keeps this False.
-        caps["features"]["full_head"] = self.activated
-        caps["features"]["lineage"] = self.activated
+        # Revoking any gate after startup withdraws the advertisement too.
+        valid = self.activated and self.admission_valid()
+        caps["features"]["full_head"] = valid
+        caps["features"]["lineage"] = valid
         caps["features"]["instruction_edit"] = False
         return caps
 
@@ -686,12 +724,23 @@ class Flux2HeadBackend(ComfyBackend):
         return self._activate(request, cancelled, (x, y, width, height))
 
     def _prepare_upload(self, data):
-        """Re-encode an input to a fresh RGB PNG (drops EXIF/GPS) before upload."""
+        """Re-encode an input as a pixel-only RGB PNG before upload.
+
+        Pillow's exif_transpose only drops the orientation tag and convert()
+        keeps ``info`` (EXIF, ICC, text), which PNG save may copy. Build a fresh
+        image from raw pixels instead, then pass the bytes through the stdlib
+        sanitizer so only IHDR, IDAT and IEND can ever leave this process.
+        """
         from PIL import Image, ImageOps
         with Image.open(io.BytesIO(data)) as source:
+            upright = ImageOps.exif_transpose(source).convert("RGB")
+            fresh = Image.frombytes("RGB", upright.size, upright.tobytes())
             output = io.BytesIO()
-            ImageOps.exif_transpose(source).convert("RGB").save(output, format="PNG")
-            return output.getvalue()
+            fresh.save(output, format="PNG")
+        try:
+            return head_workflow.strip_png_metadata(output.getvalue(), *fresh.size)
+        except head_workflow.HeadOutputError as exc:
+            raise BackendError("Head input could not be sanitized") from exc
 
     def _activate(self, request, cancelled, crop):
         deadline = time.monotonic() + self.timeout_seconds
@@ -709,6 +758,8 @@ class Flux2HeadBackend(ComfyBackend):
                                   ("ATLAS_MASK", request.mask),
                                   ("ATLAS_REFERENCE_0", request.references[0])):
             check()
+            # A gate revoked between uploads stops before the next upload.
+            self._require_gates(full_hash=False)
             uploads[placeholder] = self._upload(
                 self._prepare_upload(data), uuid.uuid4().hex + ".png",
                 deadline=deadline, cancelled=cancelled)

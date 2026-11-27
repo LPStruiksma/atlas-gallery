@@ -82,7 +82,9 @@ class MockComfy:
         self.calls = []
         self.prompts = []
         self.deleted = []
+        self.uploads = []
         self.on_poll = None
+        self.on_upload = None
 
     def history_item(self):
         if self.history is not None:
@@ -97,6 +99,9 @@ class MockComfy:
             raise Cancelled()
         self.calls.append((method, path.split("?")[0]))
         if path == "/upload/image":
+            self.uploads.append(body)
+            if self.on_upload:
+                self.on_upload()
             return json.dumps({"name": "upload-%d.png" % len(self.calls)}).encode()
         if path == "/prompt":
             self.prompts.append(json.loads(body))
@@ -121,7 +126,9 @@ class MockComfy:
         return [path for _, path in self.calls]
 
 
-class HeadActivationTest(unittest.TestCase):
+class AdmittedFixture(unittest.TestCase):
+    """Synthetic admitted activation config; holds no tests itself."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
@@ -187,6 +194,8 @@ class HeadActivationTest(unittest.TestCase):
         backend = self.backend(comfy)
         return backend.generate(request or self.request(), cancelled or threading.Event())
 
+
+class HeadActivationTest(AdmittedFixture):
     # -- all gates true ---------------------------------------------------
 
     def test_all_gates_true_returns_clean_crop_with_lineage(self):
@@ -285,6 +294,33 @@ class HeadActivationTest(unittest.TestCase):
             with self.subTest(data=data[:12]):
                 with self.assertRaises(BackendError):
                     self.run_job(MockComfy(data))
+
+    def test_hidden_idat_payloads_and_bad_ordering_are_rejected(self):
+        rows = b"".join(b"\x00" + bytes(32 * 3) for _ in range(40))
+        ihdr = chunk(b"IHDR", struct.pack(">IIBBBBB", 32, 40, 8, 2, 0, 0, 0))
+        sig = b"\x89PNG\r\n\x1a\n"
+        stream = zlib.compress(rows)
+        cases = {
+            "trailing bytes": sig + ihdr + chunk(b"IDAT", stream + b"hidden") +
+            chunk(b"IEND", b""),
+            "second zlib stream": sig + ihdr + chunk(b"IDAT", stream + zlib.compress(b"x")) +
+            chunk(b"IEND", b""),
+            "non-empty IEND": sig + ihdr + chunk(b"IDAT", stream) + chunk(b"IEND", b"x"),
+            "split IDAT": sig + ihdr + chunk(b"IDAT", stream[:10]) +
+            chunk(b"tEXt", b"k\x00v") + chunk(b"IDAT", stream[10:]) + chunk(b"IEND", b""),
+        }
+        for label, data in cases.items():
+            with self.subTest(label):
+                with self.assertRaises(head_workflow.HeadOutputError):
+                    head_workflow.strip_png_metadata(data, 32, 40)
+                with self.assertRaises(BackendError):
+                    self.run_job(MockComfy(data))
+        # Consecutive IDAT chunks are fine and are recompressed into one.
+        split = (sig + ihdr + chunk(b"IDAT", stream[:10]) + chunk(b"IDAT", stream[10:]) +
+                 chunk(b"IEND", b""))
+        self.assertEqual(head_workflow.strip_png_metadata(split, 32, 40),
+                         sig + ihdr + chunk(b"IDAT", zlib.compress(rows)) +
+                         chunk(b"IEND", b""))
 
     def test_provider_error_and_refusal(self):
         comfy = MockComfy(png(32, 40), history={"status": {"status_str": "error"}})
@@ -404,6 +440,48 @@ class HeadActivationTest(unittest.TestCase):
                         backend.generate(self.request(), threading.Event())
                 self.assertEqual(comfy.calls, [])
 
+    def test_admission_file_edits_after_startup_close_the_gate(self):
+        def digest(d): d["artifacts"]["model"]["sha256"] = "0" * 64
+        def path(d): d["artifacts"]["adapter"]["path"] = str(self.paths["model"])
+        def provenance(d): d["artifacts"]["adapter"]["provenance"] = "changed"
+        def missing(d): d["artifacts"]["encoder"].pop("licence")
+        def no_artifacts(d): d.pop("artifacts")
+        def endpoint(d): d["comfy_url"] = "http://localhost:9999"
+        def timeout(d): d["timeout_seconds"] = 60
+        for edit in (digest, path, provenance, missing, no_artifacts, endpoint, timeout):
+            with self.subTest(edit.__name__):
+                original = json.loads(json.dumps(self.data))
+                comfy = MockComfy(png(32, 40))
+                backend = self.backend(comfy)
+                edit(self.data)
+                self.write_config()
+                self.assertFalse(backend.capabilities()["features"]["full_head"])
+                self.assertFalse(backend.capabilities()["features"]["lineage"])
+                with self.assertRaisesRegex(BackendError, "gate closed"):
+                    backend.generate(self.request(), threading.Event())
+                self.assertEqual(comfy.calls, [])
+                self.data = original
+                self.write_config()
+
+    def test_gate_revoked_between_uploads_stops_next_upload(self):
+        comfy = MockComfy(png(32, 40))
+
+        def revoke():
+            self.data["evidence"]["licences_verified"] = False
+            self.write_config()
+        comfy.on_upload = revoke
+        with self.assertRaisesRegex(BackendError, "gate closed"):
+            self.run_job(comfy)
+        self.assertEqual(comfy.provider_paths(), ["/upload/image"])
+
+    def test_revoked_gate_withdraws_capability(self):
+        backend = self.backend(MockComfy(png(32, 40)))
+        self.assertTrue(backend.capabilities()["features"]["full_head"])
+        with mock.patch.object(head_workflow, "HEAD_VERDICT_LEDGER", "NOT_MEASURED"):
+            self.assertFalse(backend.capabilities()["features"]["full_head"])
+        with mock.patch.dict(os.environ, {"ATLAS_FLUX2_HEAD_ENABLED": "false"}):
+            self.assertFalse(backend.capabilities()["features"]["full_head"])
+
     def test_gate_closed_mid_job_publishes_nothing(self):
         comfy = MockComfy(png(32, 40), polls_before_done=1)
 
@@ -435,6 +513,56 @@ class HeadActivationTest(unittest.TestCase):
                 with self.assertRaises(BackendError):
                     backend.generate(request, threading.Event())
         self.assertEqual(comfy.calls, [])
+
+
+try:
+    from PIL import Image as PILImage
+except ImportError:  # CI may lack Pillow; the stdlib cases above still run.
+    PILImage = None
+
+
+@unittest.skipUnless(PILImage, "Pillow not installed")
+class RealPillowUploadTest(AdmittedFixture):
+    """Real Pillow: metadata-bearing inputs leave as pixel-only PNG uploads."""
+
+    def source(self, fmt, colour):
+        import io
+        image = PILImage.new("RGB", (100, 100), colour)
+        exif = PILImage.Exif()
+        exif[0x0112] = 6                      # orientation
+        exif[0x010E] = "SECRET-DESCRIPTION"   # image description
+        exif[0x8825] = {2: (52.0, 22.0, 1.0)} # GPS IFD latitude
+        out = io.BytesIO()
+        kwargs = {"exif": exif.tobytes(), "icc_profile": b"SECRET-ICC" * 20}
+        if fmt == "PNG":
+            from PIL import PngImagePlugin
+            info = PngImagePlugin.PngInfo()
+            info.add_text("Comment", "SECRET-TEXT")
+            kwargs["pnginfo"] = info
+        image.save(out, format=fmt, **kwargs)
+        return out.getvalue()
+
+    def test_uploaded_multipart_pngs_carry_no_metadata(self):
+        for fmt in ("PNG", "JPEG"):
+            with self.subTest(fmt=fmt):
+                comfy = MockComfy(png(32, 40))
+                backend = Flux2HeadBackend(str(self.config))
+                backend._fetch = comfy.fetch
+                backend._validate_mask = lambda *args: None
+                request = self.request(image=self.source(fmt, (200, 10, 10)),
+                                       mask=self.source(fmt, (255, 255, 255)),
+                                       references=(self.source(fmt, (10, 10, 200)),))
+                backend.generate(request, threading.Event())
+                self.assertEqual(len(comfy.uploads), 3)
+                for body in comfy.uploads:
+                    start = body.index(b"\x89PNG")
+                    end = body.index(b"IEND") + 8
+                    upload = body[start:end]
+                    self.assertEqual(chunk_types(upload), [b"IHDR", b"IDAT", b"IEND"])
+                    for secret in (b"SECRET", b"Exif", b"eXIf", b"iCCP", b"GPS"):
+                        self.assertNotIn(secret, upload)
+                    # Orientation 6 was applied to pixels (still 100x100 here).
+                    self.assertEqual(struct.unpack(">II", upload[16:24]), (100, 100))
 
 
 class CheckedInLedgerTest(unittest.TestCase):
