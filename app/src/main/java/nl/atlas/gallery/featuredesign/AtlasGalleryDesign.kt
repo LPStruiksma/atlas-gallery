@@ -365,7 +365,9 @@ fun AtlasGalleryNavigation(
         modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = AtlasPillEdge, vertical = 12.dp),
+            // 8 dp above the slab is the bars' shared top padding: the
+            // selection result's 12–16 dp gap is measured from it.
+            .padding(start = AtlasPillEdge, end = AtlasPillEdge, top = 8.dp, bottom = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
