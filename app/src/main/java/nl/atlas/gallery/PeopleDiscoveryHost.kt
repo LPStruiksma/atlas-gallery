@@ -251,9 +251,9 @@ internal fun holdPendingPeople(
     }
     if (!next.peoplePending) return next
     // Never hold People computed under another hidden-set generation (#585).
-    val held = previous?.people?.takeIf {
-        it.permissionEpoch == next.displayEpoch && previous.hiddenGeneration === next.hiddenGeneration
-    } ?: return next
+    val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
+        ?.takeIf { previous.hiddenGeneration === next.hiddenGeneration }
+        ?: return next
     return next.copy(people = held, peoplePending = false)
 }
 
