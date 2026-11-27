@@ -160,6 +160,26 @@ No number below was measured on the phone.
 
 So the local verdict does not depend on the uncertain parts of the estimate: even a factor of three in either direction leaves several minutes to hours per edit.
 
+## 7a. Android HEAD engine (IDS-12C, [#479](https://github.com/LPStruiksma/atlas-gallery/issues/479))
+
+Code: `app/src/main/java/nl/atlas/gallery/featureidentity/head/` (`HeadSwapEngine`, `SelfHostedHeadTransport`, `HeadMaskComposer`). Status: **built and JVM-tested against a fake transport only. Unavailable on every real configuration.** No UI offers it; the reveal is [#774](https://github.com/LPStruiksma/atlas-gallery/issues/774), after the real-backend verdict in [#1092](https://github.com/LPStruiksma/atlas-gallery/issues/1092).
+
+**Gate (fail closed, checked at load).** The engine implements `IdentityEditEngine` with `mode = HEAD` only and route `SELF_HOSTED`. It loads only when all hold, else it returns the named failure and never falls back to FACE, PAID or LOCAL:
+
+| Condition | Otherwise |
+|---|---|
+| The user explicitly approved a SELF_HOSTED route for whole-head edits (`HeadRouteApproval`) | ROUTE_NOT_APPROVED |
+| A transport is configured and the server answers its capabilities | MODE_UNAVAILABLE |
+| `provider_id` is `self-hosted-flux2-head` (never the stock `fake`, `qwen`, `flux` or `comfy` backends) and the accepted model id is listed | MODE_UNAVAILABLE |
+| `features.full_head` is true, plus `mask_edit` and `seed` | MODE_UNAVAILABLE |
+| `features.head_adapter.sha256` equals the adapter SHA-256 the user accepted, and `reference_images.max_count` covers the accepted reference count | MODE_UNAVAILABLE |
+
+Today's `flux2-head` scaffold (#1017, #1063) reports `full_head: false` and no adapter hash, so the engine is unavailable. Activation needs the server to admit `full_head` and advertise `head_adapter.sha256`, which is #1090/#1092's job, not this engine's. A reply whose provider, model or adapter hash differs from the accepted identity mid-session closes the warm engine with MODE_UNAVAILABLE. The engine version recorded in lineage carries the first 12 hex digits of the adapter hash.
+
+**Per candidate.** The engine grows the detected face box into a whole-head crop (face width +45% each side for ears and hair volume, face height +75% above for crown and hairline, +45% below for the neck boundary), checks it against the server's `head_width`/`head_height` limits, and sends the full target, a prior head mask (ellipse from crown to chin plus a neck column, always inside the crop), the chosen references (up to the accepted count, at most 4) and the variation seed reduced to 0..4294967295. The returned crop must be exactly crop-sized. It is pasted into a copy of the full-resolution source through a change-following mask: pixels the generated crop changed beyond noise and that connect to the head are included (so new hair outside the prior lands and old target hair is not left behind), holes are closed, and the edge is feathered down to zero at the crop border. Every pixel outside the crop, and every pixel inside with mask 0, is bit-identical to the source. The output PNG is written only in the candidate session's private workspace; the original is never touched. Cancel, cleanup, warm reuse and lineage come from `IdentityCandidateSession` unchanged.
+
+**What this does not prove.** The JVM tests cover the gate, crop and mask geometry, reference selection, cancel, offline/error/refusal, no fallback, bit equality outside the fence and lineage. They prove nothing about photographic fidelity: head scale, hairline, neck seam and identity are measured only by the IDS-12A matrix on a real backend in #1092. No real transport over HTTP is wired yet; it belongs with activation and must keep the `AtlasProtocolProvider` rules (bearer auth, TLS off loopback, no redirects, bounded uploads, metadata-stripped uploads, single non-retried submit, server-side cancel).
+
 ## 7. What was not measured
 
 - **GHOST 2.0 and UniBioTransfer were not run.** Both need a PyTorch stack that this machine could not install within its disk allowance (the PyPI build of PyTorch ships its GPU libraries) and a 3D-model toolchain (GHOST 2.0) or 11 GB of VRAM (UniBioTransfer). Their rows in §3 rest on their papers and repositories. The comparison "editor route beats dedicated models" therefore joins a measurement to reported numbers on different data, and should be re-checked on the IDS-2 bench if a GPU host is ever approved.
