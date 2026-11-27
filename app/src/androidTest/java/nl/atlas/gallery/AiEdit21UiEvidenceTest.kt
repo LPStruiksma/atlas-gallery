@@ -21,10 +21,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -225,6 +230,10 @@ class AiEdit21UiEvidenceTest {
             compose.runOnIdle { extras = extras.copy(recentPrompts = listOf("Brighten the sky", "Remove object")) }
             compose.waitForIdle()
             shot("a-recent-list")
+            // Close the dialog so it does not cover every later state.
+            compose.onNode(hasText("Close") and hasClickAction()).performClick()
+            compose.waitForIdle()
+            compose.onAllNodesWithText("Recent prompts").assertCountEquals(0)
             set(composing)
 
             // C: one and four results; filmstrip ring + sphere; trail; Compare toggle.
