@@ -34,7 +34,7 @@ class PhotoQualitySignalsBenchmarkTest {
                 val result = PhotoQualitySignals.analyseArgb8888(pixels, width, height)
                 elapsed[sample] = System.nanoTime() - start
                 val afterBytes = allocatedBytes(counter, threadId)
-                if (beforeBytes == null || afterBytes == null || afterBytes < beforeBytes) {
+                if (beforeBytes < 0 || afterBytes < 0 || afterBytes < beforeBytes) {
                     allocationAvailable = false
                 } else {
                     allocationSum += (afterBytes - beforeBytes).toDouble()
@@ -109,14 +109,14 @@ class PhotoQualitySignalsBenchmarkTest {
         null
     }
 
-    private fun allocatedBytes(counter: ThreadMXBean?, threadId: Long): Long? = try {
-        counter?.getThreadAllocatedBytes(threadId)?.takeIf { it >= 0 }
+    private fun allocatedBytes(counter: ThreadMXBean?, threadId: Long): Long = try {
+        if (counter == null) -1L else counter.getThreadAllocatedBytes(threadId)
     } catch (_: SecurityException) {
-        null
+        -1L
     } catch (_: UnsupportedOperationException) {
-        null
+        -1L
     } catch (_: LinkageError) {
-        null
+        -1L
     }
 
     // Nearest rank over the sorted sample array, no interpolation.
