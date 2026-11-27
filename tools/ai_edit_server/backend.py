@@ -458,8 +458,53 @@ class Flux2HeadBackend(ComfyBackend):
     max_input_pixels = 4_194_304
     max_output_pixels = 4_194_304
     _ARTIFACTS = ("model", "encoder", "runtime", "adapter", "workflow")
-    _PLACEHOLDERS = ("ATLAS_IMAGE", "ATLAS_MASK", "ATLAS_REFERENCE_0",
-                     "ATLAS_SEED", "ATLAS_ADAPTER")
+    @staticmethod
+    def _graph_contract():
+        # This is an admission-only API graph schema, not a claim that the
+        # custom AtlasFlux2Head runtime node or its weights exist or are licensed.
+        def node(class_type, **inputs):
+            return {"class_type": class_type, "inputs": inputs}
+
+        def crop(source):
+            return node("ImageCrop", image=[source, 0],
+                        x="ATLAS_HEAD_X", y="ATLAS_HEAD_Y",
+                        width="ATLAS_HEAD_WIDTH", height="ATLAS_HEAD_HEIGHT")
+
+        return {
+            "1": node("LoadImage", image="ATLAS_IMAGE"),
+            "2": node("LoadImage", image="ATLAS_MASK"),
+            "3": node("LoadImage", image="ATLAS_REFERENCE_0"),
+            "4": crop("1"),
+            "5": crop("2"),
+            "6": node("AtlasFlux2Head", target=["4", 0], mask=["5", 0],
+                      reference=["3", 0], instruction="ATLAS_INSTRUCTION",
+                      seed="ATLAS_SEED", adapter="ATLAS_ADAPTER"),
+            "7": node("PreviewImage", images=["6", 0]),
+        }
+
+    def _validate_graph(self):
+        # Compare canonical JSON, not Python equality (False == 0). Exact
+        # nodes, fields and edges prevent disconnected or extra bindings.
+        if json.dumps(self.workflow, sort_keys=True) != json.dumps(
+                self._graph_contract(), sort_keys=True):
+            raise ValueError("Head workflow lacks mandatory typed semantic bindings")
+        self.output_node_id = "7"
+
+    def _bind_head_workflow(self, request):
+        # The three image names are intentionally unresolved until a future
+        # independently reviewed transport implementation. No upload occurs.
+        self._validate_graph()
+        values = {
+            "ATLAS_HEAD_X": request.options["head_x"],
+            "ATLAS_HEAD_Y": request.options["head_y"],
+            "ATLAS_HEAD_WIDTH": request.options["head_width"],
+            "ATLAS_HEAD_HEIGHT": request.options["head_height"],
+            "ATLAS_SEED": request.options["seed"],
+            "ATLAS_INSTRUCTION": request.instruction,
+            "ATLAS_ADAPTER": self.adapter_path,
+        }
+        return self._replace(self.workflow, values)
+
 
     def __init__(self, config_path):
         if os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true":
@@ -507,11 +552,9 @@ class Flux2HeadBackend(ComfyBackend):
                          model_id="flux.2-klein-4b+verified-head-adapter",
                          token=os.environ.get("ATLAS_COMFY_TOKEN"),
                          timeout_seconds=config.get("timeout_seconds", 300))
-        if any(value not in self.template for value in self._PLACEHOLDERS):
-            raise ValueError("Head workflow lacks mandatory semantic bindings")
-        # One reference is mandatory; additional placeholders remain contiguous.
-        if self.max_references < 1:
-            raise ValueError("Head workflow must bind a reference image")
+        self._validate_graph()
+        # The admitted graph has exactly one connected reference.
+        self.max_references = 1
         self.adapter_path = artifacts["adapter"]["path"]
         self.artifact_hashes = checked
         self.artifact_paths = {kind: artifacts[kind]["path"] for kind in self._ARTIFACTS}
@@ -588,7 +631,10 @@ class Flux2HeadBackend(ComfyBackend):
             raise BackendError("Head crop exceeds target bounds")
         self._validate_mask(request.mask, request.image_width, request.image_height,
                             (x, y, width, height))
-        # No provider call until a separate graph/crop repair and real evidence.
+        # Exercise the actual coordinate binding on each admitted attempt.
+        # The prepared graph is deliberately discarded; there is no provider
+        # call, even when synthetic evidence and all graph checks pass.
+        self._bind_head_workflow(request)
         raise BackendError("FLUX.2 head is an admission scaffold only; inference is unavailable")
 
 

@@ -19,11 +19,20 @@ class Flux2HeadAdmissionTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
         workflow = {
-            "load": {"inputs": {"image": "ATLAS_IMAGE"}},
-            "mask": {"inputs": {"image": "ATLAS_MASK"}},
-            "reference": {"inputs": {"image": "ATLAS_REFERENCE_0"}},
-            "prompt": {"inputs": {"text": "ATLAS_INSTRUCTION"}},
-            "sampler": {"inputs": {"seed": "ATLAS_SEED", "adapter": "ATLAS_ADAPTER"}},
+            "1": {"class_type": "LoadImage", "inputs": {"image": "ATLAS_IMAGE"}},
+            "2": {"class_type": "LoadImage", "inputs": {"image": "ATLAS_MASK"}},
+            "3": {"class_type": "LoadImage", "inputs": {"image": "ATLAS_REFERENCE_0"}},
+            "4": {"class_type": "ImageCrop", "inputs": {"image": ["1", 0],
+                  "x": "ATLAS_HEAD_X", "y": "ATLAS_HEAD_Y",
+                  "width": "ATLAS_HEAD_WIDTH", "height": "ATLAS_HEAD_HEIGHT"}},
+            "5": {"class_type": "ImageCrop", "inputs": {"image": ["2", 0],
+                  "x": "ATLAS_HEAD_X", "y": "ATLAS_HEAD_Y",
+                  "width": "ATLAS_HEAD_WIDTH", "height": "ATLAS_HEAD_HEIGHT"}},
+            "6": {"class_type": "AtlasFlux2Head", "inputs": {
+                  "target": ["4", 0], "mask": ["5", 0], "reference": ["3", 0],
+                  "instruction": "ATLAS_INSTRUCTION", "seed": "ATLAS_SEED",
+                  "adapter": "ATLAS_ADAPTER"}},
+            "7": {"class_type": "PreviewImage", "inputs": {"images": ["6", 0]}},
         }
         self.paths = {}
         for name in ("model", "encoder", "runtime", "adapter"):
@@ -120,13 +129,65 @@ class Flux2HeadAdmissionTest(unittest.TestCase):
 
     def test_workflow_requires_real_semantic_bindings(self):
         workflow = json.loads(self.paths["workflow"].read_text())
-        workflow["sampler"]["inputs"].pop("adapter")
+        workflow["6"]["inputs"].pop("adapter")
         self.paths["workflow"].write_text(json.dumps(workflow))
         self.data["artifacts"]["workflow"]["sha256"] = hashlib.sha256(
             self.paths["workflow"].read_bytes()).hexdigest()
         self.write_config()
         with self.assertRaisesRegex(ValueError, "semantic bindings"):
             Flux2HeadBackend(str(self.config))
+
+    def test_graph_rejects_wrong_fields_edges_classes_and_extra_outputs(self):
+        original = self.paths["workflow"].read_text()
+        changes = [
+            lambda g: g["6"]["inputs"].update(target=["1", 0]),
+            lambda g: g["6"]["inputs"].update(mask=["2", 0]),
+            lambda g: g["6"]["inputs"].update(reference=["1", 0]),
+            lambda g: g["4"]["inputs"].update(image=["1", False]),
+            lambda g: g["4"]["inputs"].update(x="ATLAS_HEAD_Y"),
+            lambda g: g["5"]["inputs"].update(y=0),
+            lambda g: g["6"].update(class_type="UnknownNode"),
+            lambda g: g["6"]["inputs"].update(seed="ATLAS_ADAPTER", adapter="ATLAS_SEED"),
+            lambda g: g["7"]["inputs"].update(images=["4", 0]),
+            lambda g: g.update({"8": g["7"]}),
+            lambda g: g.update({"8": {"class_type": "LoadImage",
+                                      "inputs": {"image": "ATLAS_REFERENCE_1"}}}),
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                workflow = json.loads(original)
+                change(workflow)
+                self.paths["workflow"].write_text(json.dumps(workflow))
+                self.data["artifacts"]["workflow"]["sha256"] = hashlib.sha256(
+                    self.paths["workflow"].read_bytes()).hexdigest()
+                self.write_config()
+                with self.assertRaises(ValueError):
+                    Flux2HeadBackend(str(self.config))
+
+    def test_non_origin_crop_binds_both_paths_without_mutating_template(self):
+        backend = Flux2HeadBackend(str(self.config))
+        before = json.dumps(backend.workflow, sort_keys=True)
+        request = self.request()
+        with mock.patch.object(backend, "_validate_mask"), mock.patch.object(
+                backend, "_bind_head_workflow", wraps=backend._bind_head_workflow) as bind:
+            with self.assertRaisesRegex(BackendError, "scaffold only"):
+                backend.generate(request, threading.Event())
+            bind.assert_called_once_with(request)
+        graph = backend._bind_head_workflow(request)
+        for node, source in (("4", "1"), ("5", "2")):
+            self.assertEqual(graph[node]["inputs"],
+                             {"image": [source, 0], "x": 2, "y": 3,
+                              "width": 32, "height": 40})
+        self.assertEqual(graph["6"]["inputs"]["adapter"], str(self.paths["adapter"]))
+        self.assertEqual(graph["6"]["inputs"]["seed"], 7)
+        self.assertEqual(graph[backend.output_node_id]["inputs"]["images"], ["6", 0])
+        self.assertEqual(json.dumps(backend.workflow, sort_keys=True), before)
+        second = self.request(options={"seed": 8, "head_x": 10, "head_y": 11,
+                                       "head_width": 40, "head_height": 32})
+        again = backend._bind_head_workflow(second)
+        self.assertEqual(again["4"]["inputs"]["x"], 10)
+        self.assertEqual(again["5"]["inputs"]["y"], 11)
+        self.assertEqual(graph["4"]["inputs"]["x"], 2)
 
     def test_bounded_crop_refs_mask_seed_and_no_execution(self):
         backend = Flux2HeadBackend(str(self.config))
