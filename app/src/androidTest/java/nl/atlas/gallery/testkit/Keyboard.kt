@@ -201,7 +201,15 @@ fun ComposeTestRule.awaitKeyboardShown(
             // Only needed when no Compose window overlaps the keyboard (a Dialog).
             val window = if (frames.last().inset > 0) 0 else inputMethodWindowPx()
             val now = SystemClock.uptimeMillis()
-            if (!everUp && frames.last().inset == 0 && now - asked >= 1_000L) {
+            // Ask again whenever the keyboard is down NOW, also after it was up once (#954):
+            // a field the product recreates (the search panel swaps to its one-row layout
+            // when the keyboard resizes the host) takes focus with it and the system hides
+            // the keyboard ~170 ms after it first showed. Samples that caught that brief
+            // "up" used to latch and never ask again, so the wait ran out with the keyboard
+            // down. The wait still ends only on a shown, still keyboard.
+            val downNow = frames.last().inset == 0 &&
+                !(frames.last().requested && window > 0)
+            if (downNow && now - asked >= 1_000L) {
                 asked = now
                 onMainThread { view.windowInsetsController?.show(WindowInsets.Type.ime()) }
             }
