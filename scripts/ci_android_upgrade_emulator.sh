@@ -106,18 +106,6 @@ if [[ "$SHARD_COUNT" -gt 1 && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "1" ]]; then
   echo "::error::The signer-mismatch lane must run unsharded"; exit 1
 fi
 
-# #599 temporary diagnostic-only lane. Remove marker, hook and runner before review.
-# Deliberately does not run the upgrade/UI suite or manufacture screenshot evidence.
-if [[ -f scripts/ci-opt-in/face-footprint && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
-  [[ "$RECOVERY_ONLY" == "0" && ! -f scripts/ci-opt-in/thumbnail-fling ]] || {
-    echo "::error::Face footprint must be an isolated diagnostic lane"; exit 1;
-  }
-  export CENTRAL_MIRROR_INIT
-  export -f gradle
-  timeout --kill-after=30s 40m bash scripts/ci/face-footprint.sh "$SHARD_INDEX" "$SHARD_COUNT" "$NEW" "$TEST" "$RUNNER"
-  exit 0
-fi
-
 # Two independently built APKs on the SAME runner use its debug signing key.
 # Passing this is NOT evidence that the key matches a Galaxy S24+ installation.
 if [[ "$SHARD_INDEX" == "0" ]]; then
