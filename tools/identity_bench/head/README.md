@@ -21,6 +21,28 @@ Input is untrusted JSON: `normalize_input()` is the single shape boundary (cohor
 
 Row fields are `{"status": "measured", "value": ..., "method": ...}` or `{"status": "not_measured", "reason": ...}`. Every row must also carry `claimed_success` (explicit boolean: was it surfaced as a whole-head success), `licence_evidence` (matching the frozen cohort licence) and `output_mask_hash` (SHA-256 plus method); absence fails closed. `test/additive-regressions/identity-head-quality-772.mjs` runs both suites in the existing hosted static job. `check_outside_fence()` builds the `outside_fence` value from raw pixels and a fence mask. Gate 5 sets no numeric identity threshold (none was pre-registered): it requires two independent profile-capable sources per pair that agree, and reports how many said preserved.
 
+## First real 20-pair cohort run (IDS-12F, #1091)
+
+`run_cohort.py` runs the first real full-head measurement under the frozen IDS-12A rubric: 20 distinct synthetic target/reference pairs, the `klein-lora` candidate against the paired face-only baseline, on the same free 4-core CPU cloud machine class IDS-3 used. No GPU, no Actions run of the model, no spend. It reuses `probe.py`'s engines and judges and `quality.py`'s row format.
+
+    P="python3 tools/identity_bench/head/run_cohort.py"; M=/tmp/headprobe/models; W=/tmp/ids12f   # W outside git
+    $P fixtures --models $M --work $W                 # 13 synthetic people, about 11 min each
+    $P freeze   --models $M --work $W                 # writes cohort.json: commit it before any pair runs
+    $P run      --models $M --work $W --stage baseline    # face-only baseline, seconds per pair
+    $P run      --models $M --work $W --stage candidate   # about 15 min per pair; resumable
+    $P export   --models $M --work $W                 # rows, run log, blinded sheets, evaluator report
+
+The baseline needs the identity bench's weights too (`ghost_1_256`, `crossface_ghost`, `arcface_w600k_r50`, `selfie_multiclass_256`, `glintr100`; fetched on first use into `~/.cache/atlas-identity-bench/`, hash-checked) and `ai-edge-litert` for the MediaPipe mask.
+
+- **Cohort (`cohort.json`)**: frozen before any result. Stable pair IDs `f01` to `f20`, the people's prompts and seeds (the six IDS-3 people keep their recipe; seven are new), licence, pose tags (measured from each target's yaw proxy at freeze time; the prompts intended 3 frontal, 3 three-quarter and 2 profile targets), reference hair shapes (long curly, bald, afro, short straight, long straight), hairline and hard-boundary flags, per-pair seed, the locked engine with model and adapter SHA-256, each fixture's SHA-256 from this run, and the edit-fence hash. `pairs_digest` makes any later edit detectable. Generated pixels are not bit-reproducible across machines, so the fixture and fence hashes bind the cohort to this run's images, which stay outside the repository.
+- **Fence**: computed from the target alone (`FENCE_RECIPE` in the code: head-parse mask dilated by a quarter face width plus an ellipse 1.1 x 1.3 face boxes around the head, inside the engine's square crop). The candidate is pasted back through its edit mask intersected with the fence, so every pixel outside the fence is the target's byte for byte; the same fence is enforced on the baseline.
+- **Resume**: each pair and stage writes one checkpoint file atomically when it finishes; a restart reruns only the pair in flight. A failed pair keeps its checkpoint with the error and stays in `N`.
+- **Rows (`results/ids12f/rows.json`)**: the `quality.py` format. Measured automatically: class, target pose, head span (eye midpoint to mouth midpoint) and its relative error, outside-fence equality, output-mask hash, identity by two methods (SFace as the frontal method, glintr100 as the profile-capable one), and the SHA-256 of the model and adapter files actually loaded. Judge votes are `not_measured`: the two-judge step and the final verdict are the follow-up unit.
+- **Sheets (`results/ids12f/sheets/`)**: one JPEG per pair, `target | reference | A | B` cropped to the head region, with the candidate's side from a frozen random order (`blind_seed`). The key is `results/ids12f/sheet-key.json`; keep it from the judges. `votes-template.csv` is the empty vote form. The JPEGs carry no metadata (the test checks).
+- **Also committed**: `run-log.json` (host, runtime versions, wall time per pair) and `evaluator-report.json` (`quality.evaluate` over the rows; not a PASS while votes are missing).
+
+    python3 -m unittest tools/identity_bench/head/test_run_cohort.py -v   # standard library only
+
 ## Re-running a probe
 
 Needs about 12 GB of free RAM, 10 GB of disk and network access to `huggingface.co`, `us.aws.cdn.hf.co` and `media.githubusercontent.com`. No GPU, no account, no key.
@@ -85,5 +107,6 @@ Records name the engines `klein4b-Q4_0-headlora` (`--engine klein-lora`), `klein
 - `probe.py`: the tool (pure helpers at the top, engines and judges below).
 - `test_probe.py`: offline tests.
 - `quality.py`, `test_quality.py`: the IDS-12A evaluator and its synthetic tests.
+- `run_cohort.py`, `test_run_cohort.py`, `cohort.json`, `results/ids12f/`: the IDS-12F cohort run (above).
 - `results/results.json`: every measured record from the run reported in the document, with host details.
 - [`docs/identity-studio/full-head-sheet.jpg`](../../../docs/identity-studio/full-head-sheet.jpg): contact sheet of that run (synthetic people only; generated by this probe, depicts no real person).
