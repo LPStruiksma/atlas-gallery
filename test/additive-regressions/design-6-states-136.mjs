@@ -43,7 +43,8 @@ test('state 7: loading is quiet for 300 ms, then one small centred line', () => 
   assert.match(loading, /delay\(AtlasQuietState\.LoadingQuietMillis\)/);
   assert.match(loading, /if \(visible\)/);
   assert.match(loading, /verticalArrangement = Arrangement\.Center/);
-  assert.match(loading, /Modifier\.size\(AtlasQuietState\.IconSize\)/);
+  // BRAND-L4 (#657): the one small indicator is the held sphere on its arc.
+  assert.match(loading, /AtlasLoadingArc\(progress = null\)/);
   for (const text of [albums, cover, stories]) {
     assert.doesNotMatch(text, /Gathering albums on this device|Finding album cover choices/);
   }

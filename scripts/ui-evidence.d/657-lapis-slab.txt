@@ -20,3 +20,6 @@ l4-657-fastscroll-reduced-motion
 # HeldSphereEvidenceTest: selection (tick and ordered numbers) and loading arc.
 l4-657-spheres-light
 l4-657-spheres-dark
+# LapisSlabLargeFontJourneyTest: 200 % system font, dark.
+l4-657-pictures-font200-dark
+l4-657-collections-people-font200-dark

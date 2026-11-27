@@ -1,6 +1,5 @@
 package nl.atlas.gallery
 
-import android.os.ParcelFileDescriptor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -18,17 +17,15 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import nl.atlas.gallery.featuredesign.AtlasTokens
+import nl.atlas.gallery.testkit.DisplayPrefsRule
+import nl.atlas.gallery.testkit.withAnimatorScale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.junit.rules.TestRule
-import org.junit.runner.Description
 import org.junit.runner.RunWith
-import org.junit.runners.model.Statement
 import kotlin.math.pow
 
 /**
@@ -53,10 +50,9 @@ class LapisSlabReducedMotionJourneyTest {
     private val fixtures = lapisFixtures()
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
-        .around(SlabNightModeRule(dark = false)).around(RemoveAnimationsRule())
-        .around(fixtures).around(compose)
+        .around(DisplayPrefsRule(dark = false)).around(fixtures).around(compose)
 
-    @Test fun fastScrollSphereAppearsAndFollowsWithoutAnimation() {
+    @Test fun fastScrollSphereAppearsAndFollowsWithoutAnimation() = withAnimatorScale("0") {
         compose.waitForNode(hasTestTag("atlas-nav-pill"))
         compose.waitForNode(hasTestTag("atlas-timeline-grid"))
         compose.waitForIdle()
@@ -68,12 +64,42 @@ class LapisSlabReducedMotionJourneyTest {
     }
 }
 
+/** The slab and Collections sections in the real app at 200 % font, dark. */
+@RunWith(AndroidJUnit4::class)
+class LapisSlabLargeFontJourneyTest {
+    private val compose = createAndroidComposeRule<MainActivity>()
+    private val fixtures = lapisFixtures()
+
+    @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
+        .around(DisplayPrefsRule(dark = true, fontScale = 2f)).around(fixtures).around(compose)
+
+    @Test fun slabAndSectionsStayWholeAt200PercentFont() {
+        compose.waitForNode(hasTestTag("atlas-nav-pill"))
+        compose.waitForNode(hasTestTag("atlas-timeline-grid"))
+        val slab = compose.onNodeWithTag("atlas-nav-pill").fetchSemanticsNode().boundsInRoot
+        for (name in listOf("photos", "albums", "search")) {
+            val box = compose.onNodeWithTag("atlas-nav-$name").fetchSemanticsNode().boundsInRoot
+            assertTrue("$name inside the slab at 200 %: $box in $slab",
+                box.left >= slab.left - 1f && box.right <= slab.right + 1f &&
+                    box.top >= slab.top - 1f && box.bottom <= slab.bottom + 1f)
+        }
+        compose.waitForIdle()
+        saveUiEvidence("l4-657-pictures-font200-dark.png")
+        compose.onNodeWithTag("atlas-nav-albums").performClick()
+        compose.waitForNode(hasTestTag("atlas-collections-people"))
+        compose.onNodeWithTag("atlas-collections-people").performClick()
+        compose.waitForNode(hasTestTag("atlas-people-home"))
+        compose.waitForIdle()
+        saveUiEvidence("l4-657-collections-people-font200-dark.png")
+    }
+}
+
 abstract class LapisSlabJourney(private val dark: Boolean) {
     private val compose = createAndroidComposeRule<MainActivity>()
     private val fixtures = lapisFixtures()
 
     @get:Rule val chain: RuleChain = RuleChain.outerRule(S24DisplayRule())
-        .around(SlabNightModeRule(dark)).around(fixtures).around(compose)
+        .around(DisplayPrefsRule(dark)).around(fixtures).around(compose)
 
     private val mode = if (dark) "dark" else "light"
 
@@ -222,44 +248,4 @@ private fun holdFastScroll(
 private fun releaseFastScroll(compose: androidx.compose.ui.test.junit4.ComposeTestRule) {
     compose.onNodeWithTag("atlas-timeline-date-scrub").performTouchInput { up() }
     compose.waitForIdle()
-}
-
-/** Test-only system setting; restored even after assertion or emulator failure. */
-private class SlabNightModeRule(private val dark: Boolean) : TestRule {
-    override fun apply(base: Statement, description: Description): Statement =
-        object : Statement() {
-            override fun evaluate() {
-                val before = shell("cmd uimode night").substringAfter(":").trim()
-                shell("cmd uimode night " + if (dark) "yes" else "no")
-                try {
-                    base.evaluate()
-                } finally {
-                    if (before in setOf("yes", "no", "auto")) shell("cmd uimode night $before")
-                }
-            }
-        }
-}
-
-/** System "remove animations" (animator duration scale 0) for one test; restored after. */
-private class RemoveAnimationsRule : TestRule {
-    override fun apply(base: Statement, description: Description): Statement =
-        object : Statement() {
-            override fun evaluate() {
-                val before = shell("settings get global animator_duration_scale").trim()
-                shell("settings put global animator_duration_scale 0")
-                try {
-                    base.evaluate()
-                } finally {
-                    val restore = before.toFloatOrNull()?.toString() ?: "1.0"
-                    shell("settings put global animator_duration_scale $restore")
-                }
-            }
-        }
-}
-
-private fun shell(command: String): String {
-    val parcel = InstrumentationRegistry.getInstrumentation().uiAutomation
-        .executeShellCommand(command)
-    return ParcelFileDescriptor.AutoCloseInputStream(parcel)
-        .use { it.readBytes().decodeToString() }
 }
