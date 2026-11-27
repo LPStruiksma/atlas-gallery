@@ -106,19 +106,6 @@ if [[ "$SHARD_COUNT" -gt 1 && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "1" ]]; then
   echo "::error::The signer-mismatch lane must run unsharded"; exit 1
 fi
 
-# #603 temporary diagnostic-only lane. Remove marker, hook and runner before review.
-# Deliberately does not run the upgrade/UI suite or manufacture screenshot evidence.
-if [[ -f scripts/ci-opt-in/cached-first-frame-stage && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
-  [[ "$RECOVERY_ONLY" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "0" &&
-     ! -f scripts/ci-opt-in/thumbnail-fling && ! -f scripts/ci-opt-in/face-footprint ]] || {
-    echo "::error::Cached first frame must be an isolated diagnostic lane"; exit 1;
-  }
-  export CENTRAL_MIRROR_INIT
-  export -f gradle
-  timeout --kill-after=30s 30m bash scripts/ci/cached-first-frame-stage.sh "$SHARD_INDEX" "$SHARD_COUNT"
-  exit 0
-fi
-
 # Two independently built APKs on the SAME runner use its debug signing key.
 # Passing this is NOT evidence that the key matches a Galaxy S24+ installation.
 if [[ "$SHARD_INDEX" == "0" ]]; then
