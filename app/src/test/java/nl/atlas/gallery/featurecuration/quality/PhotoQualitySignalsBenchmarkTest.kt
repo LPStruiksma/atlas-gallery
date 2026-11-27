@@ -1,7 +1,7 @@
 package nl.atlas.gallery.featurecuration.quality
 
-import com.sun.management.ThreadMXBean
-import java.lang.management.ManagementFactory
+import java.io.File
+import java.lang.reflect.Method
 import java.util.Locale
 import kotlin.math.ceil
 import org.junit.Assert.*
@@ -15,6 +15,7 @@ class PhotoQualitySignalsBenchmarkTest {
     }
 
     @Test fun benchmarkPredecodedArgb() {
+        val evidenceLines = mutableListOf<String>()
         for ((width, height) in listOf(512 to 384, 1024 to 768, 2048 to 1536)) {
             val pixels = fixture(width, height)
             val reference = PhotoQualitySignals.analyseArgb8888(pixels, width, height)
@@ -49,8 +50,7 @@ class PhotoQualitySignalsBenchmarkTest {
             } else {
                 "NOT MEASURED"
             }
-            println(
-                "QUALITY_EVAL_1 {" +
+            val evidenceLine = "QUALITY_EVAL_1 {" +
                     "\"environment\":\"host-JVM\"," +
                     "\"os\":${jsonString(System.getProperty("os.name", "unknown"))}," +
                     "\"os_version\":${jsonString(System.getProperty("os.version", "unknown"))}," +
@@ -61,7 +61,12 @@ class PhotoQualitySignalsBenchmarkTest {
                     "\"p50_ms\":${milliseconds(percentile(elapsed, 0.50))}," +
                     "\"p95_ms\":${milliseconds(percentile(elapsed, 0.95))}," +
                     "\"mean_allocated_bytes_per_call\":${if (allocationAvailable) meanBytes else jsonString(meanBytes)}}"
-            )
+            println(evidenceLine)
+            evidenceLines.add(evidenceLine)
+        }
+        // Gradle may suppress successful-test stdout; the GitHub step summary is independent.
+        System.getenv("GITHUB_STEP_SUMMARY")?.takeIf { it.isNotBlank() }?.let { path ->
+            File(path).appendText(evidenceLines.joinToString("\n", prefix = "\n```text\n", postfix = "\n```\n"))
         }
     }
 
@@ -98,24 +103,41 @@ class PhotoQualitySignalsBenchmarkTest {
         assertNotNull(result.exposure)
     }
 
-    private fun allocationCounter(): ThreadMXBean? = try {
-        val bean = ManagementFactory.getThreadMXBean() as? ThreadMXBean
-        bean?.takeIf { it.isThreadAllocatedMemorySupported && it.isThreadAllocatedMemoryEnabled }
-    } catch (_: SecurityException) {
+    private data class AllocationCounter(val bean: Any, val readBytes: Method)
+
+    // Android's compile classpath lacks these host-JVM management APIs.
+    // Resolve the public extension interface at runtime, not an internal JVM implementation.
+    private fun allocationCounter(): AllocationCounter? = try {
+        val factory = Class.forName("java.lang.management.ManagementFactory")
+        val extension = Class.forName("com.sun.management.ThreadMXBean")
+        val bean = factory.getMethod("getThreadMXBean").invoke(null)
+        if (bean != null && extension.isInstance(bean) &&
+            extension.getMethod("isThreadAllocatedMemorySupported").invoke(bean) == true &&
+            extension.getMethod("isThreadAllocatedMemoryEnabled").invoke(bean) == true
+        ) {
+            AllocationCounter(
+                bean,
+                extension.getMethod("getThreadAllocatedBytes", Long::class.javaPrimitiveType!!)
+            )
+        } else {
+            null
+        }
+    } catch (e: ReflectiveOperationException) {
         null
-    } catch (_: UnsupportedOperationException) {
+    } catch (e: SecurityException) {
         null
-    } catch (_: LinkageError) {
+    } catch (e: LinkageError) {
         null
     }
 
-    private fun allocatedBytes(counter: ThreadMXBean?, threadId: Long): Long = try {
-        if (counter == null) -1L else counter.getThreadAllocatedBytes(threadId)
-    } catch (_: SecurityException) {
+    private fun allocatedBytes(counter: AllocationCounter?, threadId: Long): Long = try {
+        if (counter == null) -1L
+        else (counter.readBytes.invoke(counter.bean, threadId) as? Long) ?: -1L
+    } catch (e: ReflectiveOperationException) {
         -1L
-    } catch (_: UnsupportedOperationException) {
+    } catch (e: SecurityException) {
         -1L
-    } catch (_: LinkageError) {
+    } catch (e: LinkageError) {
         -1L
     }
 
