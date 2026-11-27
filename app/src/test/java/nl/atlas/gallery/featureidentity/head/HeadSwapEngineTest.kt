@@ -54,8 +54,10 @@ class HeadSwapEngineTest {
         model: String = HeadAdapterIdentity.HEAD_MODEL_ID,
         fullHead: Boolean = true,
         adapterSha: String? = sha,
-        maxRefs: Int = 4
-    ) = HeadServerCapabilities(provider, listOf(model), fullHead, true, true, maxRefs, 4_194_304L, adapterSha, 32, 2048)
+        maxRefs: Int = 4,
+        maxOutputPixels: Long = 4_194_304L
+    ) = HeadServerCapabilities(provider, listOf(model), fullHead, true, true, maxRefs, 4_194_304L, maxOutputPixels,
+        adapterSha, 32, 2048)
 
     /** Fake head server: replaces a head-shaped region (bigger than the prior) with seed colours. */
     private inner class FakeTransport(
@@ -98,7 +100,8 @@ class HeadSwapEngineTest {
         mode: IdentityEditMode = IdentityEditMode.HEAD,
         box: FaceBox = FaceBox(44, 44, 76, 76),
         refs: Int = 5,
-        src: EditImage = source()
+        src: EditImage = source(),
+        refSize: Int = 32
     ) = IdentitySessionInput(
         source = src,
         target = TargetFace(box, listOf(
@@ -109,7 +112,7 @@ class HeadSwapEngineTest {
             FacePoint(box.left + box.width * 0.65f, box.top + box.height * 0.75f)
         )),
         references = IdentityReferenceSet("synthetic-profile", "default",
-            List(refs) { EditImage("synthetic-ref-$it", 32, 32, ImageFormat.PNG) }),
+            List(refs) { EditImage("synthetic-ref-$it", refSize, refSize, ImageFormat.PNG) }),
         mode = mode
     )
 
@@ -135,8 +138,9 @@ class HeadSwapEngineTest {
             assertEquals(EngineRoute.SELF_HOSTED, c.route)
             assertEquals(HeadSwapEngine.ENGINE_ID, c.engineId)
             assertEquals("1+adapter-${sha.take(12)}", c.engineVersion)
-            assertTrue(c.file!!.isFile && c.file!!.name == HeadSwapEngine.OUTPUT_NAME)
-            assertTrue(c.file!!.canonicalPath.startsWith(root.canonicalPath))
+            val file = c.file!!
+            assertTrue(file.isFile && file.name == HeadSwapEngine.OUTPUT_NAME)
+            assertTrue(file.canonicalPath.startsWith(root.canonicalPath))
         }
         val lineage = IdentityEditSave.provenance(run.newCandidates[1], "synthetic-profile", "default", null)
         assertEquals("head", lineage.kind)
@@ -249,6 +253,31 @@ class HeadSwapEngineTest {
         assertTrue(flaggedCaps.fullHead)
         assertFalse(HeadSwapEngine.admits(flaggedCaps, adapter))
         assertNull(HeadServerCapabilities.fromProtocolJson(json + ("protocol_version" to "2.0")))
+        assertEquals(4_194_304L, caps.maxOutputPixels)
+    }
+
+    @Test fun malformedAdvertisedLimitsFailAdmissionInsteadOfDefaulting() {
+        fun caps(features: Map<String, Any?>, params: List<Map<String, Any?>>) = HeadServerCapabilities.fromProtocolJson(mapOf(
+            "schema_version" to 1L, "protocol_version" to "1.0", "provider_id" to "self-hosted-flux2-head",
+            "models" to listOf(mapOf("id" to HeadAdapterIdentity.HEAD_MODEL_ID)),
+            "features" to features, "advanced_parameters" to params
+        ))
+        val features = mapOf<String, Any?>(
+            "mask_edit" to true, "seed" to true, "full_head" to true,
+            "reference_images" to mapOf("max_count" to 1L),
+            "max_input_pixels" to 4_194_304L, "max_output_pixels" to 4_194_304L,
+            "head_adapter" to mapOf("sha256" to sha)
+        )
+        val good = listOf(mapOf<String, Any?>("name" to "head_width", "minimum" to 32L, "maximum" to 1024L))
+        val parsed = caps(features, good)!!
+        assertEquals(1024, parsed.maxCropEdge)
+        assertTrue(HeadSwapEngine.admits(parsed, adapter))
+        assertNull(caps(features, listOf(mapOf("name" to "head_width", "minimum" to "32"))))
+        assertNull(caps(features, listOf(mapOf("name" to "head_height", "maximum" to 1.5))))
+        assertNull(caps(features, listOf(mapOf("name" to "head_height", "maximum" to -4L))))
+        assertNull(caps(features, listOf(mapOf("name" to "head_width", "minimum" to 900L, "maximum" to 100L))))
+        assertNull(caps(features - "max_output_pixels", good))
+        assertNull(caps(features + ("max_output_pixels" to "big"), good))
     }
 
     @Test fun adapterMismatchIsModeUnavailable() {
@@ -362,6 +391,47 @@ class HeadSwapEngineTest {
         val limited = FakeTransport(HeadHandshake.Reachable(admitted().copy(maxInputPixels = 10_000L)))
         assertEquals(IdentityFailureKind.PHOTO_TOO_LARGE,
             open(HeadSwapEngine(approval(), limited)).generate(3).problem!!.kind)
+    }
+
+    @Test fun oversizedReferenceOrCropOutputIsRefusedBeforeSubmit() {
+        val transport = FakeTransport(HeadHandshake.Reachable(admitted().copy(maxInputPixels = 20_000L)))
+        val run = open(HeadSwapEngine(approval(), transport), input(refSize = 200)).generate(3)
+        assertEquals(IdentityFailureKind.PHOTO_TOO_LARGE, run.problem!!.kind)
+        assertTrue(transport.jobs.isEmpty())
+        // Crop is 62 x 71 here, so an output ceiling of 3,000 pixels must stop it.
+        val small = FakeTransport(HeadHandshake.Reachable(admitted(maxOutputPixels = 3_000L)))
+        val run2 = open(HeadSwapEngine(approval(), small)).generate(3)
+        assertEquals(IdentityFailureKind.PHOTO_TOO_LARGE, run2.problem!!.kind)
+        assertTrue(small.jobs.isEmpty())
+        val edge = FakeTransport(HeadHandshake.Reachable(admitted().copy(maxCropEdge = 40)))
+        assertEquals(IdentityFailureKind.PHOTO_TOO_LARGE,
+            open(HeadSwapEngine(approval(), edge)).generate(3).problem!!.kind)
+        assertTrue(edge.jobs.isEmpty())
+    }
+
+    @Test fun revokedAdapterStaysUnavailableAcrossMoreWithoutNewSubmits() {
+        val transport = FakeTransport(reply = { r, o ->
+            HeadTransportResult.Success(o, r.crop.width, r.crop.height,
+                HeadAdapterIdentity.HEAD_PROVIDER_ID, HeadAdapterIdentity.HEAD_MODEL_ID, "c".repeat(64))
+        })
+        val engine = HeadSwapEngine(approval(), transport)
+        val session = open(engine)
+        val first = session.generate(3)
+        assertEquals(IdentityFailureKind.MODE_UNAVAILABLE, first.problem!!.kind)
+        assertTrue(engine.adapterRevoked)
+        repeat(2) {
+            val more = session.more(1)
+            assertEquals(IdentityRunStatus.FAILED, more.status)
+            assertEquals(IdentityFailureKind.MODE_UNAVAILABLE, more.problem!!.kind)
+        }
+        assertEquals("no submit after revocation", 1, transport.jobs.size)
+        assertEquals(1, transport.handshakes)
+        // A fresh load (after idle release or a new session) is refused too.
+        assertEquals(IdentityFailureKind.MODE_UNAVAILABLE, (engine.load() as EngineLoadResult.Unavailable).kind)
+        val again = open(engine).generate(3)
+        assertEquals(IdentityFailureKind.MODE_UNAVAILABLE, again.problem!!.kind)
+        assertEquals(1, transport.jobs.size)
+        assertTrue(session.candidates.isEmpty())
     }
 
     @Test fun versionPinsTheAcceptedAdapter() {

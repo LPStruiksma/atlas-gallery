@@ -71,7 +71,15 @@ class HeadSwapEngine(
         maxSourcePixels = MAX_SOURCE_PIXELS
     )
 
+    /**
+     * Set when a reply came from something other than the accepted adapter. Latched for this
+     * engine's life: the warm engine and any later load stay MODE_UNAVAILABLE, with no new submit.
+     */
+    @Volatile var adapterRevoked = false
+        private set
+
     override fun load(): EngineLoadResult {
+        if (adapterRevoked) return EngineLoadResult.Unavailable(IdentityFailureKind.MODE_UNAVAILABLE)
         val chosen = approval
         if (chosen == null || chosen.route != EngineRoute.SELF_HOSTED || !chosen.userApproved)
             return EngineLoadResult.Unavailable(IdentityFailureKind.ROUTE_NOT_APPROVED)
@@ -100,6 +108,7 @@ class HeadSwapEngine(
             cancellation: IdentityCancellation
         ): IdentityEngineResult {
             check(!closed) { "Engine was released" }
+            if (adapterRevoked) return fail(IdentityFailureKind.MODE_UNAVAILABLE)
             if (request.mode != IdentityEditMode.HEAD) return fail(IdentityFailureKind.MODE_UNAVAILABLE)
             val refs = request.references.references
             if (refs.isEmpty()) return fail(IdentityFailureKind.NO_REFERENCES)
@@ -108,12 +117,16 @@ class HeadSwapEngine(
             val pixelsCount = source.width.toLong() * source.height
             if (pixelsCount > minOf(caps.maxInputPixels, MAX_SOURCE_PIXELS))
                 return fail(IdentityFailureKind.PHOTO_TOO_LARGE)
+            // The server applies its input ceiling to every reference too.
+            if (refs.any { it.width.toLong() * it.height > caps.maxInputPixels })
+                return fail(IdentityFailureKind.PHOTO_TOO_LARGE)
             val face = request.target.box
             if (face.width < MIN_FACE_EDGE || face.height < MIN_FACE_EDGE) return fail(IdentityFailureKind.FACE_TOO_SMALL)
             val crop = HeadMaskComposer.headCrop(request.target, source.width, source.height)
             if (crop.width < caps.minCropEdge || crop.height < caps.minCropEdge)
                 return fail(IdentityFailureKind.FACE_TOO_SMALL)
-            if (crop.width > caps.maxCropEdge || crop.height > caps.maxCropEdge)
+            if (crop.width > caps.maxCropEdge || crop.height > caps.maxCropEdge ||
+                crop.width.toLong() * crop.height > caps.maxOutputPixels)
                 return fail(IdentityFailureKind.PHOTO_TOO_LARGE)
             cancellation.throwIfCancelled()
 
@@ -144,7 +157,7 @@ class HeadSwapEngine(
             if (generated.providerId != adapter.providerId || generated.modelId != adapter.modelId ||
                 generated.adapterSha256 != adapter.adapterSha256) {
                 // The server swapped what runs behind the accepted identity: stop using it.
-                closed = true
+                adapterRevoked = true
                 return fail(IdentityFailureKind.MODE_UNAVAILABLE)
             }
             if (generated.width != crop.width || generated.height != crop.height ||

@@ -62,7 +62,10 @@ data class HeadServerCapabilities(
     val maskEdit: Boolean,
     val seed: Boolean,
     val maxReferences: Int,
+    /** Applies to the target, the mask and every reference, as the server enforces. */
     val maxInputPixels: Long,
+    /** Ceiling for the returned crop. */
+    val maxOutputPixels: Long,
     val adapterSha256: String?,
     val minCropEdge: Int,
     val maxCropEdge: Int
@@ -88,6 +91,7 @@ data class HeadServerCapabilities(
             val refs = SelfHostedWire.int(SelfHostedWire.map(f["reference_images"])?.get("max_count"), 0, 10)
                 ?: return null
             val pixels = SelfHostedWire.long(f["max_input_pixels"], 1, 100_000_000) ?: return null
+            val outPixels = SelfHostedWire.long(f["max_output_pixels"], 1, 100_000_000) ?: return null
             val adapter = when (val raw = f["head_adapter"]) {
                 null -> null
                 else -> (SelfHostedWire.map(raw)?.get("sha256") as? String)
@@ -98,12 +102,15 @@ data class HeadServerCapabilities(
             for (raw in SelfHostedWire.list(json["advanced_parameters"]) ?: emptyList()) {
                 val p = SelfHostedWire.map(raw) ?: return null
                 if (p["name"] == "head_width" || p["name"] == "head_height") {
-                    SelfHostedWire.int(p["minimum"], 1, 65_535)?.let { minEdge = maxOf(minEdge, it) }
-                    SelfHostedWire.int(p["maximum"], 1, 65_535)?.let { maxEdge = minOf(maxEdge, it) }
+                    // An advertised limit that cannot be read fails admission; never default it away.
+                    if (p["minimum"] != null)
+                        minEdge = maxOf(minEdge, SelfHostedWire.int(p["minimum"], 1, 65_535) ?: return null)
+                    if (p["maximum"] != null)
+                        maxEdge = minOf(maxEdge, SelfHostedWire.int(p["maximum"], 1, 65_535) ?: return null)
                 }
             }
             if (minEdge > maxEdge) return null
-            return HeadServerCapabilities(provider, models, fullHead, mask, seed, refs, pixels, adapter, minEdge, maxEdge)
+            return HeadServerCapabilities(provider, models, fullHead, mask, seed, refs, pixels, outPixels, adapter, minEdge, maxEdge)
         }
 
         const val DEFAULT_MIN_CROP_EDGE = 32
