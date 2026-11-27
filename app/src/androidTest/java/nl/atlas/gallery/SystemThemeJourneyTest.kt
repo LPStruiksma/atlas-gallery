@@ -134,7 +134,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 dark, it.resources.configuration.isNightMode())
         }
         listOf("photos", "albums", "people", "search").forEach { tab ->
-            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            openPlace(tab)
             settle()
             saveUiEvidence("theme-662-$tab-$mode.png")
             // #685: capture the real selected and inactive pill icons on
@@ -301,7 +301,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
     @Test fun settingsFromPhotosAlbumsPeopleFollowSystemTheme() {
         waitFor(hasTestTag("atlas-nav-photos"))
         listOf("photos", "albums", "people").forEach { tab ->
-            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            openPlace(tab)
             waitFor(hasTestTag("atlas-header-more"))
             if (tab == "photos") {
                 // The Photos sort icon remains available on the Photos route.
@@ -351,7 +351,17 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 waitFor(hasTestTag("atlas-settings-screen"))
             }
             compose.onNodeWithTag("atlas-header-back").performClick()
-            waitFor(hasTestTag("atlas-nav-$tab"))
+            waitFor(hasTestTag(if (tab == "people") "atlas-people-home" else "atlas-nav-$tab"))
+        }
+    }
+
+    /** BRAND-L4 (#657): People is a Collections section; the rest are slab places. */
+    private fun openPlace(tab: String) {
+        if (tab == "people") {
+            compose.openPeopleSection()
+            waitFor(hasTestTag("atlas-people-home"))
+        } else {
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
         }
     }
 

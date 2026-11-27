@@ -282,6 +282,12 @@ internal class SyntheticHeaderFixtures(
     private val sizes: List<Pair<Int, Int>> = List(6) { 120 to 90 },
     /** Folder per 1-based image step; more folders give more album cards (#506). */
     private val folderOf: (Int) -> String = { "ATLAS-Header-Fixture" },
+    /**
+     * File name per 1-based step and its taken time. The emulator's media
+     * scanner can drop DATE_TAKEN on a PNG without EXIF; a camera-style name
+     * carries the same date as ATLAS's filename hint (BRAND-L4 #657).
+     */
+    private val nameOf: (Int, Long) -> String = { step, _ -> "IMG_HEADER_FIXTURE_$step.png" },
     private val beforeLaunch: (android.content.Context) -> Unit = {}
 ) : TestRule {
     private val inserted = mutableListOf<Uri>()
@@ -312,7 +318,7 @@ internal class SyntheticHeaderFixtures(
             val step = i + 1
             val taken = now - step * 86_400_000L
             val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_HEADER_FIXTURE_$step.png")
+                put(MediaStore.Images.Media.DISPLAY_NAME, nameOf(step, taken))
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/${folderOf(step)}/")
                 put(MediaStore.Images.Media.DATE_TAKEN, taken)

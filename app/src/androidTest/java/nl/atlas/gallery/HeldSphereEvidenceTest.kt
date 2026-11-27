@@ -136,8 +136,16 @@ class HeldSphereEvidenceTest {
         withAnimatorScale("0") {
             compose.setContent {
                 AtlasGalleryTheme(dark = false) {
-                    Box(Modifier.size(96.dp).background(MaterialTheme.colorScheme.background)) {
-                        AtlasLoadingArc(progress = null, size = 96.dp, tag = "still-arc")
+                    // Full screen, so the evidence capture shows the resting
+                    // sphere and its count line, not an empty window.
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        AtlasLoadingArc(progress = null, size = 160.dp, tag = "still-arc")
+                        Spacer(Modifier.height(16.dp))
+                        Text("Finding faces, 7.140 of 12.305",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

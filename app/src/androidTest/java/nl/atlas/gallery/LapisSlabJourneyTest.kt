@@ -318,7 +318,14 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
 /** 120 synthetic tiles, one per day, in four folders: four months of Pictures. */
 private fun lapisFixtures() = SyntheticHeaderFixtures(
     sizes = List(120) { 120 to 90 },
-    folderOf = { step -> "ATLAS-Lapis-657-${step % 4}" }
+    folderOf = { step -> "ATLAS-Lapis-657-${step % 4}" },
+    // The date is also in the name (IMG_yyyyMMdd_HHmmss), so the months hold
+    // even if the emulator's scanner drops DATE_TAKEN on these PNGs.
+    nameOf = { step, taken ->
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT)
+            .format(java.util.Date(taken))
+        "IMG_${stamp}_L657_$step.png"
+    }
 )
 
 /**
