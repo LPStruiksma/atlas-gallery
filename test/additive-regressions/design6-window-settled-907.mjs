@@ -36,3 +36,33 @@ test('Design6 inset comparison waits for stable display frames, not elapsed quie
   assert.ok(!source.includes('450L'));
   assert.ok(!source.includes('settledBounds'));
 });
+
+// #968: require a measured, inset-normalized host-edge invariant in both themes.
+test('Design6 media arrival compares normalized host edges within 1 dp', () => {
+  assert.ok(source.includes('normalizedHostBoundsDp'));
+  assert.ok(source.includes('normalizedBefore'));
+  assert.ok(source.includes('normalizedAfter'));
+  assert.ok(source.includes('platformTopDp'));
+  assert.ok(source.includes('platformBottomDp'));
+  assert.ok(source.includes('composeTopDp'));
+  assert.ok(source.includes('composeBottomDp'));
+  assert.ok(source.includes('raw=${beforeEvidence.rawHostBoundsDp}'));
+  assert.ok(source.includes('kotlin.math.abs(after.top - before.top) <= tolerance'));
+  assert.ok(source.includes('kotlin.math.abs(after.bottom - before.bottom) <= tolerance'));
+});
+
+test('Design6 uses only consumed Compose padding and has no raw movement gate', () => {
+  assert.ok(source.includes('onConsumedWindowInsetsChanged'));
+  assert.ok(source.includes('appliedSafeDrawing.getTop(density)'));
+  assert.ok(source.includes('appliedSafeDrawing.getBottom(density)'));
+  assert.ok(source.includes('platformMinusAppliedDp'));
+  const normalize = source.slice(source.indexOf('private fun normalizedHostBoundsDp('),
+    source.indexOf('private fun hostEdgesWithinTolerance('));
+  assert.match(normalize, /rawHostBoundsDp\.top - insets\.composeTopDp/);
+  assert.match(normalize, /rawHostBoundsDp\.bottom \+ insets\.composeBottomDp/);
+  assert.doesNotMatch(normalize, /platform|\bmaxOf\s*\(/);
+  assert.doesNotMatch(source, /loaded\.(top|bottom)\s*-\s*area\./);
+  assert.ok(!source.includes('content area moved:'));
+  assert.ok(source.includes('normalizedHostEdgesRejectMovementDespitePlatformDisagreement'));
+  assert.match(source, /hostEdgesWithinTolerance\(normalizedBefore, normalizedAfter, tolerance\)/);
+});
