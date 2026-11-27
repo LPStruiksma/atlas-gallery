@@ -15,8 +15,10 @@ class RecipeMigration(val fromVersion: Int, val migrate: (Map<String, Any?>) -> 
  * an Atlas edit (EDIT-3) so the edit can be reopened, adjusted and reverted.
  */
 object RecipeJson {
-    /** Schema migrations, oldest first. Version 1 is the first schema, so none exist yet. */
-    val MIGRATIONS: List<RecipeMigration> = emptyList()
+    /** V1 fields and operation order are unchanged; only the schema envelope advances to v2. */
+    val MIGRATIONS: List<RecipeMigration> = listOf(RecipeMigration(1) { old ->
+        old + ("version" to 2L)
+    })
 
     private const val MAX_BYTES = 8 * 1024 * 1024
 
@@ -120,6 +122,29 @@ object RecipeJson {
             "adjust" -> EditOperation.Adjust(id, AdjustParam.fromKey(m.str("param")) ?: bad("param"), m.dbl("value"))
             "resetAdjustments" -> EditOperation.ResetAdjustments(id)
             "filter" -> EditOperation.Filter(id, m.optStr("lut"), m.optStr("lutHash"), m.dbl("strength"))
+            "curves" -> EditOperation.Curves(
+                id, curveFrom(m.list("rgb")), curveFrom(m.list("red")),
+                curveFrom(m.list("green")), curveFrom(m.list("blue")),
+            )
+            "colorMix" -> EditOperation.ColorMix(
+                id,
+                m.list("presets").map { hueFrom(it) },
+                m.list("custom").map { sampledFrom(it) },
+            )
+            "spotColor" -> EditOperation.SpotColor(
+                id,
+                m.list("keep").map { it as? String ?: bad("keep") },
+                m.list("remove").map { it as? String ?: bad("remove") },
+                m.dbl("tolerance"), m.optStr("brushMaskHash"),
+            )
+            "shapeCrop" -> EditOperation.ShapeCrop(
+                id,
+                m.optList("polygon")?.let { polygonFrom(it) },
+                m.optStr("preset")?.let { CropShape.fromKey(it) ?: bad("preset") },
+                CropOutside.fromKey(m.str("outside")) ?: bad("outside"),
+                m.optStr("fillColor"),
+            )
+            "resize" -> EditOperation.Resize(id, m.optInt("longEdge"), m.optDouble("percentage"))
             "overlayAdd" -> EditOperation.OverlayAdd(id, layerFrom(m.obj("layer")))
             "overlayUpdate" -> EditOperation.OverlayUpdate(id, layerFrom(m.obj("layer")))
             "overlayRemove" -> EditOperation.OverlayRemove(id, m.str("layerId"))
@@ -135,6 +160,34 @@ object RecipeJson {
             )
             else -> throw RecipeFormatException("Unknown operation type (${type.length} chars)")
         }
+    }
+
+
+    private fun curveFrom(raw: List<Any?>): List<CurvePoint> = raw.map { point ->
+        val pair = point as? List<*> ?: bad("curve")
+        if (pair.size != 2) bad("curve")
+        CurvePoint((pair[0] as? Number)?.toDouble() ?: bad("curve"),
+            (pair[1] as? Number)?.toDouble() ?: bad("curve"))
+    }
+
+    private fun hueFrom(raw: Any?): HueAdjustment {
+        @Suppress("UNCHECKED_CAST")
+        val m = raw as? Map<String, Any?> ?: bad("preset")
+        return HueAdjustment(PresetHue.fromKey(m.str("hue")) ?: bad("hue"),
+            m.dbl("h"), m.dbl("s"), m.dbl("l"))
+    }
+
+    private fun sampledFrom(raw: Any?): SampledHue {
+        @Suppress("UNCHECKED_CAST")
+        val m = raw as? Map<String, Any?> ?: bad("custom")
+        return SampledHue(m.str("color"), m.dbl("h"), m.dbl("s"), m.dbl("l"))
+    }
+
+    private fun polygonFrom(raw: List<Any?>): List<Point2> = raw.map { point ->
+        val pair = point as? List<*> ?: bad("polygon")
+        if (pair.size != 2) bad("polygon")
+        Point2((pair[0] as? Number)?.toDouble() ?: bad("polygon"),
+            (pair[1] as? Number)?.toDouble() ?: bad("polygon"))
     }
 
     private fun layerFrom(m: Map<String, Any?>): OverlayLayer {
@@ -170,6 +223,12 @@ object RecipeJson {
         else -> bad(k)
     }
     private fun Map<String, Any?>.dbl(k: String): Double = (this[k] as? Number)?.toDouble() ?: bad(k)
+    private fun Map<String, Any?>.optDouble(k: String): Double? =
+        if (this[k] == null) null else (this[k] as? Number)?.toDouble() ?: bad(k)
+    private fun Map<String, Any?>.optInt(k: String): Int? =
+        if (this[k] == null) null else int(k)
+    private fun Map<String, Any?>.optList(k: String): List<Any?>? =
+        if (this[k] == null) null else list(k)
     private fun Map<String, Any?>.int(k: String): Int {
         val v = this[k]
         return when {
@@ -220,6 +279,49 @@ object RecipeJson {
                     op.lutHash?.let { key("lutHash"); str(it) }
                     key("strength"); num(op.strength)
                 }
+                is EditOperation.Curves -> {
+                    str("curves")
+                    key("rgb"); curve(op.rgb)
+                    key("red"); curve(op.red)
+                    key("green"); curve(op.green)
+                    key("blue"); curve(op.blue)
+                }
+                is EditOperation.ColorMix -> {
+                    str("colorMix")
+                    key("presets"); arr(op.presets) { hue ->
+                        obj {
+                            key("hue"); str(hue.hue.key)
+                            key("h"); num(hue.hueShift); key("s"); num(hue.saturation); key("l"); num(hue.luminance)
+                        }
+                    }
+                    key("custom"); arr(op.custom) { hue ->
+                        obj {
+                            key("color"); str(hue.color)
+                            key("h"); num(hue.hueShift); key("s"); num(hue.saturation); key("l"); num(hue.luminance)
+                        }
+                    }
+                }
+                is EditOperation.SpotColor -> {
+                    str("spotColor")
+                    key("keep"); arr(op.keep) { str(it) }
+                    key("remove"); arr(op.remove) { str(it) }
+                    key("tolerance"); num(op.tolerance)
+                    op.brushMaskHash?.let { key("brushMaskHash"); str(it) }
+                }
+                is EditOperation.ShapeCrop -> {
+                    str("shapeCrop")
+                    op.polygon?.let { key("polygon"); arr(it) { point ->
+                        arr(listOf(point.x, point.y)) { num(it) }
+                    } }
+                    op.preset?.let { key("preset"); str(it.key) }
+                    key("outside"); str(op.outside.key)
+                    op.fillColor?.let { key("fillColor"); str(it) }
+                }
+                is EditOperation.Resize -> {
+                    str("resize")
+                    op.longEdge?.let { key("longEdge"); num(it.toLong()) }
+                    op.percentage?.let { key("percentage"); num(it) }
+                }
                 is EditOperation.OverlayAdd -> { str("overlayAdd"); key("layer"); layer(op.layer) }
                 is EditOperation.OverlayUpdate -> { str("overlayUpdate"); key("layer"); layer(op.layer) }
                 is EditOperation.OverlayRemove -> { str("overlayRemove"); key("layerId"); str(op.layerId) }
@@ -246,6 +348,10 @@ object RecipeJson {
         }
 
         fun rect(r: NormRect) = arr(listOf(r.left, r.top, r.right, r.bottom)) { num(it) }
+
+        fun curve(points: List<CurvePoint>) = arr(points) { point ->
+            arr(listOf(point.x, point.y)) { num(it) }
+        }
 
         fun obj(body: Writer.() -> Unit) {
             sep(); sb.append('{'); needComma = false; body(); sb.append('}'); needComma = true

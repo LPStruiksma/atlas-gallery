@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { inspectCodexReply, codexPathRefusal } from './codex-apply.mjs';
+import { inspectCodexReply, codexPathRefusal, normalizeEvidencePrefixes, verifyEvidenceManifest, evidenceSha256 } from './codex-apply.mjs';
 
 const repository=process.env.GITHUB_REPOSITORY;
 const token=process.env.GH_TOKEN;
@@ -55,11 +55,14 @@ try {
     refuse('one auto-apply per canary PR');
   // The Codex reply must declare the exact expected head in its mail header.
   if(event.comment.body!==comment.body) refuse('event comment changed since delivery');
-  const result=inspectCodexReply(comment.body,baseSha);
+  // Path policy comes from trusted main (this runner's own checkout), never the PR.
+  const projectPolicy=JSON.parse(readFileSync(new URL('../../.autodev/project.json',import.meta.url),'utf8'));
+  const protection=projectPolicy?.authority?.protection;
+  // Design-evidence image prefixes (#1931). Absent or empty: every binary hunk is refused.
+  const evidencePrefixes=normalizeEvidencePrefixes(projectPolicy?.authority?.codexApply?.evidencePrefixes);
+  const result=inspectCodexReply(comment.body,baseSha,{evidencePrefixes});
   if(!result.ok) refuse(result.reason);
   reportedCodexSha=result.reportedCommit||null;
-  // Path policy comes from trusted main (this runner's own checkout), never the PR.
-  const protection=JSON.parse(readFileSync(new URL('../../.autodev/project.json',import.meta.url),'utf8'))?.authority?.protection;
   const denied=[protection?.unconditionalHumanOnlyPaths,protection?.candidateHardWriteDenied];
   if(denied.some(list=>!Array.isArray(list)||!list.length)) refuse('trusted path policy unreadable');
   for(const name of result.paths) {
@@ -105,6 +108,27 @@ try {
       return kinds.get(name)==='add' ? !/^:000000 100644 [a-f0-9]{40} [a-f0-9]{40} A\t/.test(x)
         : !/^:(100644|100755) \1 [a-f0-9]{40} [a-f0-9]{40} M\t/.test(x);}))
     refuse('unexpected file mode');
+  // Re-verify committed image blobs against the committed manifest (covers an edited manifest).
+  const imageFiles=result.files.filter(f=>f.binary);
+  if(imageFiles.length) {
+    const blob=(name)=>{
+      const r=spawnSync('git',['-C',checkout,'cat-file','blob','HEAD:'+name],{maxBuffer:16*1024*1024});
+      if(r.error||r.status!==0) refuse('cannot read committed blob: '+name);
+      return r.stdout;
+    };
+    const dirs=new Map();
+    for(const f of imageFiles) {
+      const sha256=evidenceSha256(blob(f.path));
+      if(sha256!==f.sha256) refuse('committed image differs from the validated patch: '+f.path);
+      const dir=f.path.slice(0,f.path.lastIndexOf('/'));
+      if(!dirs.has(dir)) dirs.set(dir,[]);
+      dirs.get(dir).push({name:f.path.slice(dir.length+1),sha256});
+    }
+    for(const [dir,entries] of dirs) {
+      const why=verifyEvidenceManifest(blob(dir+'/manifest.json').toString('utf8'),entries);
+      if(why) refuse(why);
+    }
+  }
   const committedParent=exec('git',['-C',checkout,'rev-parse','HEAD^']);
   if(committedParent!==baseSha) refuse('parent mismatch after am');
   appliedSha=exec('git',['-C',checkout,'rev-parse','HEAD']);

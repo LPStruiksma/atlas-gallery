@@ -1670,6 +1670,11 @@ class FaceIndexStore(
      */
     private fun buildClusterState(db: SQLiteDatabase, version: String,
                                   onlyMaterialized: Boolean = false): FaceClusterState {
+        // OOM fix (264k faces): reuse the immutable embeddings of the last
+        // state this store built while anything (a People snapshot, a
+        // publication seed) still holds it, so those share one decoded copy
+        // instead of each decoding every vector again.
+        val prior = sharedFaces.prior(version)
         val embeddings = ArrayList<FaceEmbedding>()
         val groups = LinkedHashMap<String, MutableList<NativeFaceObservationId>>()
         val facts = reviewFacts(db)
@@ -1686,18 +1691,21 @@ class FaceIndexStore(
                 else ""} ORDER BY e.face_uid""", arrayOf(version)).use { c ->
             while (c.moveToNext()) {
                 meteredRowsRead++
-                val id = NativeFaceObservationId(c.getString(0))
-                embeddings += ClusterPolicy.DEFAULT.embedding(id, version,
-                    FaceEmbeddingVectorCodec.decode(c.getBlob(1)),
-                    ClusterFrameKey.of(c.getString(3), if (c.isNull(4)) null else c.getLong(4)))
-                if (!c.isNull(2)) groups.getOrPut(c.getString(2)) { ArrayList() }.add(id)
+                val frame = ClusterFrameKey.of(c.getString(3), if (c.isNull(4)) null else c.getLong(4))
+                val face = SharedClusterFaces.reuse(prior, c.getString(0), frame)
+                    ?: ClusterPolicy.DEFAULT.embedding(NativeFaceObservationId(c.getString(0)),
+                        version, FaceEmbeddingVectorCodec.decode(c.getBlob(1)), frame)
+                embeddings += face
+                if (!c.isNull(2)) groups.getOrPut(c.getString(2)) { ArrayList() }.add(face.observation)
             }
         }
         if (embeddings.isEmpty()) return FaceClusterState.empty(
             version, SFaceModel.DIMENSION, ClusterPolicy.DEFAULT)
         return FaceClusterer.restore(version, ClusterPolicy.DEFAULT,
-            embeddings, groups.values, facts)
+            embeddings, groups.values, facts).also(sharedFaces::remember)
     }
+
+    private val sharedFaces = SharedClusterFaces()
 
     private fun reviewRows(db: SQLiteDatabase): PeopleReviewRecords.Rows {
         fun pairs(sql: String): Set<Pair<String, String>> {
@@ -1816,11 +1824,22 @@ class FaceIndexStore(
     }
 
     /** Every `cluster_members` row, valid or stale. */
-    private fun membershipRows(db: SQLiteDatabase): Map<String, String> {
+    private fun membershipRows(db: SQLiteDatabase,
+                               canonical: FaceClusterState? = null): Map<String, String> {
         meteredStatements++
+        // OOM fix: with [canonical], uids it holds reuse its strings instead of
+        // two fresh strings per row (about 36 MB at 263k faces).
+        fun uid(raw: String): String {
+            val faces = canonical?.faces ?: return raw
+            val id = try { NativeFaceObservationId(raw) } catch (_: IllegalArgumentException) { return raw }
+            return faces[id]?.observation?.localHex ?: raw
+        }
         return db.rawQuery("SELECT face_uid,anchor_uid FROM cluster_members", null).use { c ->
             val rows = HashMap<String, String>(maxOf(16, c.count * 2))
-            while (c.moveToNext()) { meteredRowsRead++; rows[c.getString(0)] = c.getString(1) }
+            while (c.moveToNext()) {
+                meteredRowsRead++
+                rows[uid(c.getString(0))] = uid(c.getString(1))
+            }
             rows
         }
     }
@@ -1912,8 +1931,8 @@ class FaceIndexStore(
             if (!force && !ClusterPublicationCadence.due(gen.dirty, gen.pending,
                     gen.published, scanFinished)) return@metered false
             regroupIfPolicyChanged(db)
-            val old = membershipRows(db)
             val seed = buildClusterState(db, version, onlyMaterialized = true)
+            val old = membershipRows(db, canonical = seed)
             val pending = ArrayList<FaceEmbedding>()
             meteredStatements++
             // #508: at most publicationFaceLimit pending faces per transaction
@@ -1941,6 +1960,7 @@ class FaceIndexStore(
             val more = pending.size > publicationFaceLimit
             if (more) pending.removeAt(pending.size - 1)
             val state = ClusterPublication.publish(seed, pending)
+            sharedFaces.remember(state)
             val expected = ClusterPublication.membership(state)
             val confirmedFaces = state.reviews.confirmed.keys.count { it in state }
             check(expected.size + confirmedFaces == state.faceCount) {
@@ -2087,6 +2107,18 @@ class FaceIndexStore(
                         it in names
                     })
             }
+        }
+
+    /**
+     * The name of [person] under [epoch], gated like [peopleReview] but
+     * without building the whole cluster state (face search shows one name).
+     */
+    fun personName(epoch: String, person: PersonKey): String? =
+        authorizedEmbeddingRead(epoch, null) { db, _ ->
+            if (!servable(db)) null
+            else db.also { meteredStatements++ }.rawQuery(
+                "SELECT name FROM people_names WHERE person_key=?", arrayOf(person.value)
+            ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
         }
 
     /**

@@ -88,4 +88,39 @@ class GalleryZoomLadderTest {
             .destination?.squareDensityOrNull())
         assertNull(GalleryZoomRequest(null, 280f, 92L).focal)
     }
+    /** Ladder steps for a target progress: one stop is a 1.5x span change. */
+    private fun factorFor(stops: Float): Float = Math.pow(1.5, -stops.toDouble()).toFloat()
+
+    @Test fun samsungReleaseRuleCommitsFromOneFifthAndRevertsBelow() {
+        // FLOW-1 (#711), parity research GRID:G3.
+        val small = GalleryZoomGesture(GalleryZoomStop.MEDIUM)
+        small.addZoomFactor(factorFor(.15f))
+        assertEquals(GalleryZoomStop.MEDIUM, small.settle())
+        val enough = GalleryZoomGesture(GalleryZoomStop.MEDIUM)
+        enough.addZoomFactor(factorFor(.22f))
+        assertEquals(GalleryZoomStop.SMALL, enough.settle())
+    }
+
+    @Test fun pinchingBackNeedsFourFifthsToCommit() {
+        val back = GalleryZoomGesture(GalleryZoomStop.MEDIUM)
+        back.addZoomFactor(factorFor(.45f))
+        back.addZoomFactor(factorFor(.45f))   // 0.9 toward SMALL
+        back.addZoomFactor(factorFor(-.2f))   // fingers coming back: 0.7
+        assertEquals(GalleryZoomStop.MEDIUM, back.settle())
+        val stillFar = GalleryZoomGesture(GalleryZoomStop.MEDIUM)
+        stillFar.addZoomFactor(factorFor(.45f))
+        stillFar.addZoomFactor(factorFor(.45f))
+        stillFar.addZoomFactor(factorFor(-.05f)) // 0.85 while coming back
+        assertEquals(GalleryZoomStop.SMALL, stillFar.settle())
+    }
+
+    @Test fun multiLevelPinchCommitsTheStopItIsInside() {
+        val far = GalleryZoomGesture(GalleryZoomStop.LARGE)
+        repeat(5) { far.addZoomFactor(factorFor(.45f)) } // 2.25 stops toward smaller
+        assertEquals(GalleryZoomStop.MONTH, far.settle())
+        val short = GalleryZoomGesture(GalleryZoomStop.LARGE)
+        repeat(4) { short.addZoomFactor(factorFor(.45f)) }
+        short.addZoomFactor(factorFor(.1f))              // 1.9 stops: into SMALL, not MONTH
+        assertEquals(GalleryZoomStop.SMALL, short.settle())
+    }
 }

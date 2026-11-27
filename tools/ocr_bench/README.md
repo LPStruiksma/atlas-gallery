@@ -23,3 +23,25 @@ For the prefilter experiment, predeclare a threshold on a development split, run
 ## OCR-0A: real-model run (#873)
 
 `requirements-ocr.txt` pins the benchmark-only packages. `fetch_models.py` downloads the pinned PP-OCRv5 and docTR/OnnxTR ONNX files and verifies SHA-256; `gen_corpus.py` renders the deterministic EN/NL corpus; `run_models.py ppocr|doctr` runs real inference and writes prediction JSONL with per-stage timings; `run_manifest.py` records host, versions and hashes. Recorded outputs: `docs/visual-search/results/ocr0a/`. `test_corpus.py` skips without Pillow.
+
+## OCR-0B: non-production int8/prefilter experiment (#874)
+
+Keep models, quantized files, and generated pixels outside Git. After the OCR-0A fetch and corpus
+commands, run `python3 -m tools.ocr_bench.ocr0b quantize MODELS WORK/int8`, then validate each
+candidate's detector and recognizer together by placing the generated files at their normal paths
+in a disposable model tree and running `run_models.py` plus `evaluate` on the frozen corpus.
+`SESSION_VALIDATED` means only that ONNX Runtime loaded the graph; it is **not** inference validation.
+Record an unsupported operator or failed candidate run as `NOT MEASURED`, never as zero.
+
+Run `python3 -m tools.ocr_bench.ocr0b prefilter CORPUS WORK/prefilter.json --minimum-recall .99`.
+The threshold is chosen solely from the fixed development split; output independently reports
+locked-test EN/NL and kind recall, false skips, no-text pass/skip, bytes read and latency. This
+command does not invoke OCR, so an OCR empty prediction cannot become a prefilter skip.
+
+Measure a candidate with the existing inference instrumentation and produce the charging-only
+projection with `python3 -m tools.ocr_bench.ocr0b benchmark ppocr CORPUS MODELS WORK/bench.json
+--prefilter-results WORK/prefilter.json` (use `doctr` for the other candidate). The first result
+includes model construction and is cold; warmups are discarded before the warm sample. Output
+reports independently measured decode, detector, recognizer and end-to-end totals, process peak
+RSS, and uses the documented zero-based nearest-rank-down percentile (`floor(q * (n - 1))`). A
+missing runtime, model, or unexecuted inference stage remains **NOT MEASURED**; it is never zero.

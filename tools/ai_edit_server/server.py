@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlsplit
 import uuid
 
-from .backend import (BackendError, Cancelled, EditRequest, FakeBackend,
+from .backend import (BackendError, Cancelled, EditRequest, FakeBackend, Flux2HeadBackend, GeneratedEdit,
                       Refused, select_backend)
 
 MAX_UPLOAD_BYTES = 20_000_000
@@ -270,9 +270,14 @@ def read_form(content_type, body, backend):
         )):
             raise Problem(422, "option_value", "Invalid option: " + key)
     # No prompt text or source images are ever logged or returned in job JSON.
-    mime, _, _ = image_info(image)
+    mime, image_width, image_height = image_info(image)
+    if isinstance(backend, Flux2HeadBackend) and mask is not None:
+        _, mask_width, mask_height = image_info(mask)
+        if (mask_width, mask_height) != (image_width, image_height):
+            raise Problem(422, "mask_dimensions", "Mask must match target dimensions")
     return EditRequest(image=image, mime=mime, instruction=instruction,
-                       options=options, mask=mask, references=tuple(references))
+                       options=options, mask=mask, references=tuple(references),
+                       image_width=image_width, image_height=image_height)
 
 
 @dataclass
@@ -286,6 +291,7 @@ class Job:
     result: bytes | None = None
     refusal: dict | None = None
     error: dict | None = None
+    lineage: dict | None = None
     completed_at: float | None = None
 
 
@@ -320,6 +326,8 @@ class JobStore:
             obj["refusal"] = job.refusal.copy()
         if job.error:
             obj["error"] = job.error.copy()
+        if job.status == "succeeded" and job.lineage:
+            obj["lineage"] = job.lineage.copy()
         return obj
 
     def submit(self, request):
@@ -342,7 +350,11 @@ class JobStore:
             job.progress = 10
             job.updated_at = now_iso()
         try:
-            image = self.backend.generate(request, job.cancel)
+            generated = self.backend.generate(request, job.cancel)
+            if isinstance(generated, GeneratedEdit):
+                image, lineage = generated.image, generated.lineage
+            else:
+                image, lineage = generated, None
             if not isinstance(image, bytes):
                 raise BackendError("Backend did not return bytes")
             mime, width, height = image_info(image)
@@ -356,6 +368,7 @@ class JobStore:
             with self.lock:
                 if not job.cancel.is_set():
                     job.result = image
+                    job.lineage = lineage
                     job.status = "succeeded"
                     job.progress = 100
         except Cancelled:
@@ -380,6 +393,7 @@ class JobStore:
                     job.result = None
                     job.refusal = None
                     job.error = None
+                    job.lineage = None
                 job.updated_at = now_iso()
                 if job.status in TERMINAL:
                     job.completed_at = time.monotonic()
@@ -503,7 +517,7 @@ def create_server(host, port, token, backend=None):
 
 def main():
     parser = argparse.ArgumentParser(description="ATLAS self-hosted edit protocol v1")
-    parser.add_argument("--backend", choices=["fake", "qwen", "flux", "comfy"],
+    parser.add_argument("--backend", choices=["fake", "qwen", "flux", "comfy", "flux2-head"],
                         default=os.environ.get("ATLAS_BACKEND", "fake"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)

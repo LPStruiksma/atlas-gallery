@@ -1,0 +1,243 @@
+{
+  "format": "atlas-lut-v1",
+  "looks": [
+    {
+      "id": "atlas-clear",
+      "name": "Clear Air",
+      "contrast": 1.04,
+      "saturation": 1.03,
+      "warmth": 0,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.68,
+      "size": 33,
+      "sha256": "48f32565292e455b88afb3d65e14b330f0e897f33ec0e5a98230622ecbd30d43",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-hearth",
+      "name": "Hearth",
+      "contrast": 1.03,
+      "saturation": 1.05,
+      "warmth": 0.035,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.62,
+      "size": 33,
+      "sha256": "66141ee57ffa4b2e837a6dca5273f4c54eacd4e4669d25e0a7e9185658aa000f",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-drift",
+      "name": "Blue Drift",
+      "contrast": 1.02,
+      "saturation": 0.94,
+      "warmth": -0.035,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.62,
+      "size": 33,
+      "sha256": "1535d8687865ce4b402ca5a5b245eb8d9f6c89b3cec9323c2e8654fcdf1e1fa4",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-moss",
+      "name": "Moss Path",
+      "contrast": 1.04,
+      "saturation": 0.9,
+      "warmth": -0.008,
+      "fade": 0,
+      "lift": [
+        -0.005,
+        0.012,
+        -0.006
+      ],
+      "preview_strength": 0.64,
+      "size": 33,
+      "sha256": "f2f827ef272ea0b4ed03413f8112c68564abee2dfa7ca93741b93141764614b4",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-amber",
+      "name": "Amber Hour",
+      "contrast": 1.06,
+      "saturation": 1.08,
+      "warmth": 0.055,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.48,
+      "size": 33,
+      "sha256": "fd8c08e2cf642f709a1f0f9c7ccdaa2e2c77193cb78e9d59cbf76fa9506b0b15",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-slate",
+      "name": "Slate",
+      "contrast": 1.09,
+      "saturation": 0.55,
+      "warmth": -0.018,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.5,
+      "size": 33,
+      "sha256": "4418652e80a5075ad40ab5dd8af89d470a96197e3c7908b22d8b5bb170d7159e",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-linen",
+      "name": "Linen",
+      "contrast": 0.94,
+      "saturation": 0.82,
+      "warmth": 0.022,
+      "fade": 0.045,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.66,
+      "size": 33,
+      "sha256": "418b5dc070e2faf86b512cc893036dd3a949a6ccc2e5f98977ffa04ffcd50279",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-orchard",
+      "name": "Orchard",
+      "contrast": 1.02,
+      "saturation": 1.1,
+      "warmth": 0.012,
+      "fade": 0,
+      "lift": [
+        0.004,
+        0.008,
+        -0.006
+      ],
+      "preview_strength": 0.58,
+      "size": 33,
+      "sha256": "8b1f218ec9fa0c431120eff32fefc050793069990c57519dcea3ce5e12c4e05d",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-coast",
+      "name": "Quiet Coast",
+      "contrast": 0.98,
+      "saturation": 0.91,
+      "warmth": -0.025,
+      "fade": 0.018,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.64,
+      "size": 33,
+      "sha256": "2a86f90bac520ee9e02d4d094b31829af43ebea560a37c98e31217c1c9661a98",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-copper",
+      "name": "Copper Leaf",
+      "contrast": 1.08,
+      "saturation": 0.96,
+      "warmth": 0.042,
+      "fade": 0,
+      "lift": [
+        0.012,
+        -0.004,
+        -0.012
+      ],
+      "preview_strength": 0.54,
+      "size": 33,
+      "sha256": "136c59ba7ea07ba69da31d4c46d6cb7677251fee21915f9f08a6cfc0db12883e",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-dawn",
+      "name": "Dawn Glass",
+      "contrast": 0.96,
+      "saturation": 0.88,
+      "warmth": 0.018,
+      "fade": 0.028,
+      "lift": [
+        0.008,
+        0.002,
+        0.012
+      ],
+      "preview_strength": 0.68,
+      "size": 33,
+      "sha256": "815f694660fa529d3d46b22f1342127ddfe53c12d8e0593d47aeaf37b290c561",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-pine",
+      "name": "Pine Shade",
+      "contrast": 1.07,
+      "saturation": 0.86,
+      "warmth": -0.014,
+      "fade": 0,
+      "lift": [
+        -0.008,
+        0.008,
+        0.002
+      ],
+      "preview_strength": 0.62,
+      "size": 33,
+      "sha256": "b09ffb758e2aa7748e68b21c12bc9af8b693d9a6a7deb98a3a353a5cfdb03baa",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-bloom",
+      "name": "Soft Bloom",
+      "contrast": 0.93,
+      "saturation": 1.02,
+      "warmth": 0.018,
+      "fade": 0.055,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.62,
+      "size": 33,
+      "sha256": "cc8a5a6eabc07d220884f5a6b8d3048a2e2221966f8978ce8eac073f25272f46",
+      "bytes": 107821
+    },
+    {
+      "id": "atlas-ink",
+      "name": "Atlas Ink",
+      "contrast": 1.12,
+      "saturation": 0,
+      "warmth": -0.005,
+      "fade": 0,
+      "lift": [
+        0,
+        0,
+        0
+      ],
+      "preview_strength": 0.28,
+      "size": 33,
+      "sha256": "9f49729043b5f3a6046c0bcd21553da01ef72f6c585b62bb63f902a4ec23e595",
+      "bytes": 107821
+    }
+  ]
+}

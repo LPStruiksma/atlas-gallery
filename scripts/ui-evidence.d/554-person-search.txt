@@ -2,3 +2,5 @@
 search-person-suggest
 search-person-chip
 search-person-year
+parity-24-search-person-dark
+parity-24-search-person-light

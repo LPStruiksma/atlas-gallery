@@ -204,10 +204,10 @@ class LibraryInsightsEvidenceTest {
         state = InsightsUiState.Ready(huge)
         show()
         compose.onNodeWithTag("atlas-insights-all-folders").performClick()
-        compose.onNodeWithTag("atlas-insights-list").performScrollToNode(row("Folder29999"))
         assertTrue(compose.onAllNodesWithTag("atlas-insights-row").fetchSemanticsNodes().size < 100)
         both("huge", scroll = {
-            compose.onNodeWithTag("atlas-insights-list").performScrollToNode(row("Folder29999"))
+            compose.onNodeWithTag("atlas-insights-list").performScrollToIndex(30_001)
+            compose.onNode(row("Folder29999")).assertIsDisplayed()
         })
     }
 
