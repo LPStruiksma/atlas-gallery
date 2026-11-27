@@ -13,6 +13,8 @@ from urllib.parse import quote, urlencode, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import uuid
 
+from . import head_workflow
+
 
 class BackendError(Exception):
     """A processing failure, not a refusal."""
@@ -444,11 +446,14 @@ class ComfyBackend(Backend):
 
 
 class Flux2HeadBackend(ComfyBackend):
-    """Non-executing provenance-gated FLUX.2 whole-head admission scaffold.
+    """Provenance-gated FLUX.2 whole-head route: scaffold or gated activation.
 
     This is deliberately not the ``flux`` backend.  Construction is admission:
     every independent evidence gate and every local artifact must match before
-    the server can start or advertise the capability.
+    the server can start or advertise the capability.  Mode ``scaffold`` (the
+    default) never calls the provider.  Mode ``activate`` submits the admitted
+    typed graph only while every gate is true, including the repository verdict
+    ledger in ``head_workflow``, which reads NOT_MEASURED until #1092.
     """
     provider_id = "self-hosted-flux2-head"
     display_name = "FLUX.2 head admission scaffold (unavailable)"
@@ -490,11 +495,13 @@ class Flux2HeadBackend(ComfyBackend):
             raise ValueError("Head workflow lacks mandatory typed semantic bindings")
         self.output_node_id = "7"
 
-    def _bind_head_workflow(self, request):
-        # The three image names are intentionally unresolved until a future
-        # independently reviewed transport implementation. No upload occurs.
+    def _bind_head_workflow(self, request, uploads=None):
+        # Scaffold mode leaves the three image names unresolved (no upload).
+        # Activation passes the provider's upload names; one replacement pass
+        # keeps instruction text from being re-substituted.
         self._validate_graph()
-        values = {
+        values = dict(uploads or {})
+        values.update({
             "ATLAS_HEAD_X": request.options["head_x"],
             "ATLAS_HEAD_Y": request.options["head_y"],
             "ATLAS_HEAD_WIDTH": request.options["head_width"],
@@ -502,27 +509,22 @@ class Flux2HeadBackend(ComfyBackend):
             "ATLAS_SEED": request.options["seed"],
             "ATLAS_INSTRUCTION": request.instruction,
             "ATLAS_ADAPTER": self.adapter_path,
-        }
+        })
         return self._replace(self.workflow, values)
 
 
     def __init__(self, config_path):
         if os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true":
             raise ValueError("FLUX.2 head route is disabled; set explicit enable flag")
-        if os.environ.get("ATLAS_FLUX2_HEAD_MODE", "scaffold") != "scaffold":
-            raise ValueError("FLUX.2 head mode must be scaffold; full_head is forbidden")
+        mode = os.environ.get("ATLAS_FLUX2_HEAD_MODE", "scaffold")
+        if mode not in ("scaffold", "activate"):
+            raise ValueError("FLUX.2 head mode must be scaffold or activate; "
+                             "full_head is forbidden")
         if not config_path:
             raise ValueError("ATLAS_FLUX2_HEAD_CONFIG is required")
-        with open(config_path, encoding="utf-8") as handle:
-            config = json.load(handle)
-        if (not isinstance(config, dict) or type(config.get("schema_version")) is not int
-                or config["schema_version"] != 1):
-            raise ValueError("Invalid FLUX.2 head admission config")
-        evidence = config.get("evidence", {})
-        required = ("licences_verified", "adapter_provenance_verified",
-                    "operator_safeguards_verified", "ids12a_acceptance_passed")
-        if not isinstance(evidence, dict) or any(evidence.get(item) is not True for item in required):
-            raise ValueError("FLUX.2 head evidence is unverified")
+        self.mode = mode
+        self.config_path = config_path
+        config = self._load_admission(config_path, mode)
         artifacts = config.get("artifacts")
         if not isinstance(artifacts, dict):
             raise ValueError("FLUX.2 head artifacts are required")
@@ -559,6 +561,47 @@ class Flux2HeadBackend(ComfyBackend):
         self.artifact_hashes = checked
         self.artifact_paths = {kind: artifacts[kind]["path"] for kind in self._ARTIFACTS}
         self._verify_unchanged()
+        self.activated = mode == "activate"
+        if self.activated:
+            self.display_name = "FLUX.2 whole-head (self-hosted, gated)"
+
+    _SCAFFOLD_EVIDENCE = ("licences_verified", "adapter_provenance_verified",
+                          "operator_safeguards_verified", "ids12a_acceptance_passed")
+
+    @classmethod
+    def _load_admission(cls, config_path, mode):
+        """Load the admission file and fail closed unless every gate is true."""
+        try:
+            with open(config_path, encoding="utf-8") as handle:
+                config = json.load(handle)
+        except (OSError, ValueError) as exc:
+            raise ValueError("Unreadable FLUX.2 head admission config") from exc
+        if (not isinstance(config, dict) or type(config.get("schema_version")) is not int
+                or config["schema_version"] != 1):
+            raise ValueError("Invalid FLUX.2 head admission config")
+        evidence = config.get("evidence", {})
+        required = cls._SCAFFOLD_EVIDENCE
+        if mode == "activate":
+            required += head_workflow.ACTIVATION_EVIDENCE
+        if not isinstance(evidence, dict) or any(evidence.get(item) is not True for item in required):
+            raise ValueError("FLUX.2 head evidence is unverified")
+        if mode == "activate" and head_workflow.HEAD_VERDICT_LEDGER != "PASS":
+            raise ValueError("FLUX.2 head activation needs a PASS verdict ledger; "
+                             "HEAD unavailable")
+        return config
+
+    def _require_gates(self):
+        """Re-check every activation gate immediately before provider use."""
+        if not self.activated:
+            raise BackendError("FLUX.2 head route is not activated")
+        if (os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true" or
+                os.environ.get("ATLAS_FLUX2_HEAD_MODE") != "activate"):
+            raise BackendError("FLUX.2 head gate closed: enable flag or mode changed")
+        try:
+            self._load_admission(self.config_path, "activate")
+        except ValueError as exc:
+            raise BackendError("FLUX.2 head gate closed") from exc
+        self._verify_unchanged()
 
     def _verify_unchanged(self):
         for kind, path in self.artifact_paths.items():
@@ -572,8 +615,10 @@ class Flux2HeadBackend(ComfyBackend):
 
     def capabilities(self):
         caps = super().capabilities()
-        caps["features"]["full_head"] = False
-        caps["features"]["lineage"] = False
+        # Only an activated backend, which needs the PASS verdict ledger, may
+        # advertise full_head; the checked-in ledger keeps this False.
+        caps["features"]["full_head"] = self.activated
+        caps["features"]["lineage"] = self.activated
         caps["features"]["instruction_edit"] = False
         return caps
 
@@ -631,11 +676,108 @@ class Flux2HeadBackend(ComfyBackend):
             raise BackendError("Head crop exceeds target bounds")
         self._validate_mask(request.mask, request.image_width, request.image_height,
                             (x, y, width, height))
-        # Exercise the actual coordinate binding on each admitted attempt.
-        # The prepared graph is deliberately discarded; there is no provider
-        # call, even when synthetic evidence and all graph checks pass.
-        self._bind_head_workflow(request)
-        raise BackendError("FLUX.2 head is an admission scaffold only; inference is unavailable")
+        if not self.activated:
+            # Exercise the actual coordinate binding on each admitted attempt.
+            # The prepared graph is deliberately discarded; there is no
+            # provider call, even when synthetic evidence and graph checks pass.
+            self._bind_head_workflow(request)
+            raise BackendError("FLUX.2 head is an admission scaffold only; "
+                               "inference is unavailable")
+        return self._activate(request, cancelled, (x, y, width, height))
+
+    def _prepare_upload(self, data):
+        """Re-encode an input to a fresh RGB PNG (drops EXIF/GPS) before upload."""
+        from PIL import Image, ImageOps
+        with Image.open(io.BytesIO(data)) as source:
+            output = io.BytesIO()
+            ImageOps.exif_transpose(source).convert("RGB").save(output, format="PNG")
+            return output.getvalue()
+
+    def _activate(self, request, cancelled, crop):
+        deadline = time.monotonic() + self.timeout_seconds
+
+        def check():
+            if cancelled.is_set():
+                raise Cancelled()
+            if time.monotonic() >= deadline:
+                raise BackendError("ComfyUI job exceeded the configured timeout")
+
+        check()
+        self._require_gates()
+        uploads = {}
+        for placeholder, data in (("ATLAS_IMAGE", request.image),
+                                  ("ATLAS_MASK", request.mask),
+                                  ("ATLAS_REFERENCE_0", request.references[0])):
+            check()
+            uploads[placeholder] = self._upload(
+                self._prepare_upload(data), uuid.uuid4().hex + ".png",
+                deadline=deadline, cancelled=cancelled)
+        graph = self._bind_head_workflow(request, uploads)
+        check()
+        # Last gate check before the prompt leaves this process.
+        self._require_gates()
+        submitted = self._json("POST", "/prompt",
+                               {"prompt": graph, "client_id": uuid.uuid4().hex},
+                               deadline=deadline, cancelled=cancelled)
+        prompt_id = submitted.get("prompt_id") if isinstance(submitted, dict) else None
+        if not isinstance(prompt_id, str) or not prompt_id:
+            raise BackendError("ComfyUI did not enqueue a prompt")
+        try:
+            image = self._await_single_crop(prompt_id, crop, check, deadline, cancelled)
+            check()
+            # Artifacts or gates changed while the job ran: publish nothing.
+            self._require_gates()
+            check()
+            return GeneratedEdit(image=image, lineage=head_workflow.head_lineage(
+                seed=request.options["seed"], artifact_hashes=self.artifact_hashes,
+                mode=self.mode))
+        except (Cancelled, BackendError, Refused):
+            self._delete_prompt(prompt_id)
+            raise
+
+    def _await_single_crop(self, prompt_id, crop, check, deadline, cancelled):
+        _, _, width, height = crop
+        while True:
+            check()
+            history = self._json("GET", "/history/" + quote(prompt_id, safe=""),
+                                 deadline=deadline, cancelled=cancelled)
+            item = history.get(prompt_id, {}) if isinstance(history, dict) else {}
+            if isinstance(item, dict) and item:
+                status = item.get("status", {})
+                status = status if isinstance(status, dict) else {}
+                if item.get("atlas_status") == "refused":
+                    raise Refused(str(item.get("atlas_code", "WORKFLOW_REFUSED")),
+                                  "The ComfyUI workflow explicitly refused the edit")
+                if status.get("status_str") == "error":
+                    raise BackendError("ComfyUI workflow execution failed")
+                if status.get("status_str") == "success":
+                    break
+            cancelled.wait(min(0.5, max(0, deadline - time.monotonic())))
+        outputs = item.get("outputs", {})
+        pictures = []
+        if isinstance(outputs, dict):
+            for node_id, output in outputs.items():
+                found = output.get("images", []) if isinstance(output, dict) else []
+                if not isinstance(found, list):
+                    raise BackendError("ComfyUI returned malformed outputs")
+                pictures.extend((node_id, picture) for picture in found)
+        if len(pictures) != 1:
+            raise BackendError("Head workflow must return exactly one image")
+        node_id, picture = pictures[0]
+        if node_id != self.output_node_id or not isinstance(picture, dict):
+            raise BackendError("Head image came from an unexpected node")
+        name = picture.get("filename")
+        if not isinstance(name, str) or not name:
+            raise BackendError("ComfyUI returned an invalid output filename")
+        query = urlencode({"filename": name,
+                           "subfolder": str(picture.get("subfolder", "")),
+                           "type": str(picture.get("type", "output"))})
+        data = self._fetch("GET", "/view?" + query, deadline=deadline, cancelled=cancelled)
+        check()
+        try:
+            return head_workflow.strip_png_metadata(data, width, height)
+        except head_workflow.HeadOutputError as exc:
+            raise BackendError(str(exc)) from exc
 
 
 def hmac_compare(left, right):

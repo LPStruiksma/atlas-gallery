@@ -1,6 +1,6 @@
 # ATLAS self-hosted image editor (AIE-8a)
 
-Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). The separately named `flux2-head` is a non-executing admission scaffold; see [HEAD_DEPLOYMENT.md](../../docs/identity-studio/HEAD_DEPLOYMENT.md). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
+Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). The separately named `flux2-head` is a provenance-gated route that is a non-executing scaffold by default and can only activate behind a PASS verdict ledger; see [HEAD_DEPLOYMENT.md](../../docs/identity-studio/HEAD_DEPLOYMENT.md). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
 
 ## Run the fake locally (no Python dependencies)
 
@@ -130,6 +130,32 @@ Example shape only (the values below are deliberately not deployable evidence):
   "evidence": {"licences_verified": false, "adapter_provenance_verified": false, "operator_safeguards_verified": false, "ids12a_acceptance_passed": false}
 }
 ~~~
+
+### Gated activation (IDS-12B activation half, #773)
+
+`ATLAS_FLUX2_HEAD_MODE=activate` is the only other accepted mode (`full_head`
+and anything else still fail closed). Activation needs, all at once: the enable
+flag, every scaffold evidence gate, two more evidence gates
+`adapter_dossier_passed` (#1090) and `head_verdict_passed` (#1092), unchanged
+artifact hashes, and the repository verdict ledger
+`head_workflow.HEAD_VERDICT_LEDGER == "PASS"`. That ledger is checked in as
+`NOT_MEASURED`, and only the separately reviewed verdict unit (#1092) may change
+it, so no deployment can activate today and `full_head` stays unadvertised.
+
+When every gate is open, a job re-checks the gates, uploads the target, mask
+and reference as freshly re-encoded PNGs (EXIF/GPS dropped), binds the admitted
+seven-node graph in one replacement pass, re-checks the gates again and submits
+it. It then requires exactly one image from output node 7 (any other count or
+node is an error), fetches it, and accepts it only as a complete, CRC-valid,
+non-interlaced 8/16-bit grey/RGB/alpha PNG of exactly the declared crop size
+with correctly sized pixel data. All ancillary chunks (ComfyUI's tEXt prompt and
+workflow, eXIf, tIME, iCCP and the rest) are dropped; pixels are kept byte for
+byte. The crop is returned with lineage: `engine`, `version`, `mode`, `seed` and
+the SHA-256 of model, encoder, runtime, adapter and workflow. Gates are checked
+once more before publication; a provider error, refusal, cancel, closed gate or
+changed artifact deletes only this job's queued prompt and publishes neither an
+image nor lineage. Tests mock the provider (`tests/test_head_workflow.py`);
+real model quality is proven only by #1091/#1092.
 
 The checked-in state has no verified values and therefore remains **HEAD
 unavailable / NOT MEASURED**. Do not change a gate to true without independently

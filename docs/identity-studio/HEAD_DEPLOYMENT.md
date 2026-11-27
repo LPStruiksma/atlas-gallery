@@ -15,7 +15,8 @@ An admitted workflow must consume the target photograph, a *predeclared explicit
 | Evidence | Current status |
 | --- | --- |
 | Original-host model, encoder, runtime, adapter, workflow licence/provenance and exact hashes | NOT MEASURED / NOT VERIFIED |
-| Mocked protocol and all fail-closed paths in exact-head hosted Python CI | NOT MEASURED for IDS-12B |
+| Mocked protocol and all fail-closed paths in exact-head hosted Python CI | Activation path covered by `tools/ai_edit_server/tests/test_head_workflow.py` (mocked provider only; see the PR's exact-head CI) |
+| Repository verdict ledger (`head_workflow.HEAD_VERDICT_LEDGER`) | NOT_MEASURED (only #1092 may change it) |
 | Real, blinded, licence-cleared/synthetic 20+ pair whole-head acceptance under frozen IDS-12A rubric | NOT MEASURED |
 | User-advertised whole-head capability | UNAVAILABLE |
 
@@ -43,6 +44,19 @@ target, mask, one reference), 4–5 (ImageCrop: target and mask), 6
 fields and edges are rejected. Both crop nodes receive the same explicit
 non-origin coordinates and dimensions. The custom node is an interface contract,
 not proof of an existing runtime. The graph is prepared but never submitted.
-Actual provider output decoding, exactly one crop-sized PNG, metadata removal,
-lineage and execution require a separately reviewed activation and real evidence.
 BFS remains tier D / benchmark-only.
+
+## Gated activation (code present, locked)
+
+The activation half (#773) is implemented but cannot run in any real
+deployment. Mode `activate` requires the enable flag, every evidence gate above
+plus `adapter_dossier_passed` (#1090) and `head_verdict_passed` (#1092),
+unchanged artifact hashes, and the in-repository verdict ledger reading `PASS`.
+The ledger is checked in as `NOT_MEASURED`; this unit does not flip it. Once
+open, a job submits the admitted graph, requires exactly one PNG from output
+node 7 at exactly the declared crop size, strips every ancillary (metadata)
+chunk, and returns the crop with lineage (engine, version, mode, seed and the
+model, encoder, runtime, adapter and workflow SHA-256). Gates are re-checked
+before submission and before publication; a cancel, provider error, refusal,
+closed gate or changed artifact publishes neither image nor lineage. All of this
+is tested against a mocked provider only; no real inference has run.
