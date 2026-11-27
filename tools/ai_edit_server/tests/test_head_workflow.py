@@ -474,6 +474,66 @@ class HeadActivationTest(AdmittedFixture):
             self.run_job(comfy)
         self.assertEqual(comfy.provider_paths(), ["/upload/image"])
 
+    def revoke(self):
+        self.data["evidence"]["head_verdict_passed"] = False
+        self.write_config()
+
+    def test_gate_revoked_during_upload_preparation_sends_nothing(self):
+        comfy = MockComfy(png(32, 40))
+        backend = self.backend(comfy)
+
+        def prepare(data):
+            self.revoke()
+            return b"normalized:" + data
+        backend._prepare_upload = prepare
+        with self.assertRaisesRegex(BackendError, "gate closed"):
+            backend.generate(self.request(), threading.Event())
+        self.assertEqual(comfy.calls, [])
+
+    def test_gate_revoked_during_hashing_blocks_prompt_and_publication(self):
+        for phase in ("before prompt", "before publication"):
+            with self.subTest(phase):
+                self.data["evidence"]["head_verdict_passed"] = True
+                self.write_config()
+                comfy = MockComfy(png(32, 40))
+                backend = self.backend(comfy)
+                original = backend._verify_unchanged
+
+                def hashing():
+                    original()
+                    paths = comfy.provider_paths()
+                    if ((phase == "before prompt" and paths.count("/upload/image") == 3)
+                            or (phase == "before publication" and "/view" in paths)):
+                        self.revoke()
+                backend._verify_unchanged = hashing
+                with self.assertRaisesRegex(BackendError, "gate closed"):
+                    backend.generate(self.request(), threading.Event())
+                if phase == "before prompt":
+                    self.assertNotIn("/prompt", comfy.provider_paths())
+                else:
+                    self.assertEqual(comfy.deleted, [{"delete": ["p-1"]}])
+
+    def test_gate_revoked_at_job_store_publication_publishes_nothing(self):
+        comfy = MockComfy(png(32, 40))
+        backend = self.backend(comfy)
+        original = backend.generate
+
+        def generate(request, cancelled):
+            result = original(request, cancelled)
+            self.revoke()  # after the backend finished, before publication
+            return result
+        backend.generate = generate
+        store = JobStore(backend)
+        try:
+            job = store.submit(self.request())
+            store.executor.shutdown(wait=True)
+            snapshot = store.get(job["id"])
+            self.assertEqual(snapshot["status"], "error")
+            self.assertNotIn("lineage", snapshot)
+            self.assertEqual(snapshot["result_urls"], [])
+        finally:
+            store.executor.shutdown(wait=True)
+
     def test_revoked_gate_withdraws_capability(self):
         backend = self.backend(MockComfy(png(32, 40)))
         self.assertTrue(backend.capabilities()["features"]["full_head"])

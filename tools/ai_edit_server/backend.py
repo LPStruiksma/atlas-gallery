@@ -105,6 +105,10 @@ class Backend:
     def generate(self, request: EditRequest, cancelled: threading.Event) -> bytes:
         raise NotImplementedError
 
+    def publication_allowed(self):
+        """Last check before the server publishes a result (default: yes)."""
+        return True
+
 
 class FakeBackend(Backend):
     """Echoes synthetic image bytes. Not an image editor or a fidelity benchmark."""
@@ -617,6 +621,10 @@ class Flux2HeadBackend(ComfyBackend):
         """
         if not self.activated:
             raise BackendError("FLUX.2 head route is not activated")
+        if full_hash:
+            # Hash first: hashing large weights takes time, so the live gates
+            # below are read after it, immediately before the side effect.
+            self._verify_unchanged()
         if (os.environ.get("ATLAS_FLUX2_HEAD_ENABLED") != "true" or
                 os.environ.get("ATLAS_FLUX2_HEAD_MODE") != "activate"):
             raise BackendError("FLUX.2 head gate closed: enable flag or mode changed")
@@ -628,8 +636,11 @@ class Flux2HeadBackend(ComfyBackend):
             raise BackendError("FLUX.2 head gate closed: admission file changed")
         if self._stat_fingerprints() != self._fingerprints:
             raise BackendError("Admitted artifact changed after startup")
-        if full_hash:
-            self._verify_unchanged()
+
+    def publication_allowed(self):
+        """Server publication boundary: an activated route publishes only
+        while still admitted; the scaffold never produces output anyway."""
+        return not self.activated or self.admission_valid()
 
     def admission_valid(self):
         """True only while an activated route would pass every gate now."""
@@ -758,10 +769,12 @@ class Flux2HeadBackend(ComfyBackend):
                                   ("ATLAS_MASK", request.mask),
                                   ("ATLAS_REFERENCE_0", request.references[0])):
             check()
-            # A gate revoked between uploads stops before the next upload.
+            prepared = self._prepare_upload(data)
+            check()
+            # Checked after preparation, immediately before each upload.
             self._require_gates(full_hash=False)
             uploads[placeholder] = self._upload(
-                self._prepare_upload(data), uuid.uuid4().hex + ".png",
+                prepared, uuid.uuid4().hex + ".png",
                 deadline=deadline, cancelled=cancelled)
         graph = self._bind_head_workflow(request, uploads)
         check()
