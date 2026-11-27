@@ -798,20 +798,30 @@ class Hub3QueueNamingJourneyTest {
             enabled("atlas-same-queue-subject-name")
             compose.tap(hasTestTag("atlas-same-queue-subject-name"))
             typeName("Synthetic separate")
-            compose.tap(hasTestTag("atlas-person-name-suggestion"))
-            assertTrue("real candidate crop requested", cropEntered.await(20, TimeUnit.SECONDS))
-            compose.waitForNode(hasTestTag("atlas-same-queue-merge-image-0"), WAIT_MS,
-                useUnmergedTree = true)
-            compose.onNodeWithTag("atlas-same-queue-merge-image-0", useUnmergedTree = true).assertIsDisplayed()
-            assertTrue("candidate must still be a fallback",
-                !compose.exists(hasTestTag("atlas-same-queue-merge-image-1"), useUnmergedTree = true))
-            compose.onNodeWithTag("atlas-person-merge-confirm").assertIsNotEnabled()
-            compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
-            assertEquals(if (reduced) 0f else 1f,
-                testShell("settings get global animator_duration_scale").trim().toFloat(), 0f)
             val previousAutoAdvance = compose.mainClock.autoAdvance
+            // Compose's test InfiniteAnimationPolicy cancels an infinite
+            // transition if it starts while autoAdvance is true. Own the
+            // clock BEFORE the tap composes the confirmation, not after it.
             compose.mainClock.autoAdvance = false
             try {
+                compose.tap(hasTestTag("atlas-person-name-suggestion"))
+                // Drive composition while waiting for the real IO crop gate.
+                // With autoAdvance off, a plain latch wait cannot start it.
+                compose.awaitThat("real candidate crop requested", 20_000L) {
+                    compose.advanceVirtualTime(16)
+                    cropEntered.count == 0L
+                }
+                compose.awaitThat("source confirmation portrait displayed", WAIT_MS) {
+                    compose.advanceVirtualTime(16)
+                    compose.exists(hasTestTag("atlas-same-queue-merge-image-0"), useUnmergedTree = true)
+                }
+                compose.onNodeWithTag("atlas-same-queue-merge-image-0", useUnmergedTree = true).assertIsDisplayed()
+                assertTrue("candidate must still be a fallback",
+                    !compose.exists(hasTestTag("atlas-same-queue-merge-image-1"), useUnmergedTree = true))
+                compose.onNodeWithTag("atlas-person-merge-confirm").assertIsNotEnabled()
+                compose.onNodeWithTag("atlas-person-name-progress").assertIsDisplayed()
+                assertEquals(if (reduced) 0f else 1f,
+                    testShell("settings get global animator_duration_scale").trim().toFloat(), 0f)
                 fun pixels(): List<androidx.compose.ui.graphics.Color> {
                     val map = compose.onNodeWithTag("atlas-person-name-progress")
                         .captureWhole().toPixelMap()

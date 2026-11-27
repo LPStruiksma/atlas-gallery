@@ -35,3 +35,12 @@ assert.match(queue, /if \(portraitsReady\) saveName\(candidate.name, candidate\)
 assert.match(shared, /AtlasMotion.animationsDisabled/)
 assert.match(shared, /rememberInfiniteTransition/)
 assert.match(shared, /RepeatMode.Reverse/)
+
+// The real confirmation transition must be born with a manual Compose clock.
+// Otherwise the test framework cancels infinite animations before sampling.
+const journey = readFileSync('app/src/androidTest/java/nl/atlas/gallery/Hub3QueueNamingJourneyTest.kt', 'utf8')
+const loading = journey.slice(journey.indexOf('private fun hostConfirmationLoading(reduced: Boolean)'), journey.indexOf('fun enlargedSearchKeepsEditorAndExpandedListAcrossCancel'))
+assert.match(loading, /mainClock\.autoAdvance = false\s*try \{\s*compose\.tap\(hasTestTag\("atlas-person-name-suggestion"\)\)/)
+assert.match(loading, /cropEntered\.count == 0L/)
+assert.match(loading, /assertEquals\("only the normal-motion sphere moves", reduced, before == after\)/)
+assert.match(loading, /finally \{\s*compose\.mainClock\.autoAdvance = previousAutoAdvance/)
