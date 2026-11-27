@@ -1,0 +1,4 @@
+# HIDE-1 #1105 flake triage: 8 samples per test, per shard (Strategy decision on the PR).
+8 nl.atlas.gallery.Design6QuietStatesEvidenceTest#photosQuietLineHoldsTheContentAreaWhenMediaArrives
+8 nl.atlas.gallery.StoriesJourneyTest#albumsStoriesEntryOpensSlideshowViewerAndBackReturnsToAlbums
+8 nl.atlas.gallery.featuregrid.OriginalProportionsAlbumJourneyTest#albumAtOriginalProportionsTimelineOn
