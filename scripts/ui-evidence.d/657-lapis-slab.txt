@@ -1,11 +1,20 @@
 # BRAND-L4 #657 Lapis slab and held sphere, S24+ 1080x2340, synthetic media only.
 # LapisSlabLight/DarkJourneyTest: real MainActivity, every place and state;
-# fastscroll-1..4 are one held finger moved down the track (frame sequence).
+# fastscroll-1..4 are one held finger moved down the track (settled stills).
+# fastscroll-recording-<mode> is the short recording (Strategy, #657): an
+# animated PNG of 18 frames taken during one continuous drag at real timing
+# (1 before the drag, 16 moves, 1 after release; frame delays = measured
+# gaps, last frame holds 1 s). Its tEXt "Comment" lists each frame's ms since
+# the first; -sheet is the same 18 frames with "#n +ms" labels, for viewers
+# that show only an APNG's first frame. The test asserts strictly increasing
+# timestamps and a month change during the drag.
 l4-657-pictures-light
 l4-657-fastscroll-1-light
 l4-657-fastscroll-2-light
 l4-657-fastscroll-3-light
 l4-657-fastscroll-4-light
+l4-657-fastscroll-recording-light
+l4-657-fastscroll-recording-light-sheet
 l4-657-selection-3-light
 l4-657-viewer-light
 l4-657-collections-albums-light
@@ -18,6 +27,8 @@ l4-657-fastscroll-1-dark
 l4-657-fastscroll-2-dark
 l4-657-fastscroll-3-dark
 l4-657-fastscroll-4-dark
+l4-657-fastscroll-recording-dark
+l4-657-fastscroll-recording-dark-sheet
 l4-657-selection-3-dark
 l4-657-viewer-dark
 l4-657-collections-albums-dark

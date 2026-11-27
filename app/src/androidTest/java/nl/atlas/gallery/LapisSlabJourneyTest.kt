@@ -141,6 +141,9 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
             saveUiEvidence("l4-657-fastscroll-$step-$mode.png")
         }
         assertTrue("the sphere's month changes along the track: $months", months.toSet().size >= 2)
+        // The short recording (Strategy decision on #657): frames taken during
+        // one continuous drag at real timing, as an APNG plus a timestamped sheet.
+        recordFastScroll(compose, "l4-657-fastscroll-recording-$mode")
 
         // Selection of 3: each pick is a lapis sphere with a white halo.
         val tileMatcher = SemanticsMatcher("timeline tile") {
@@ -340,6 +343,44 @@ private fun fastScrollSequence(
     }
     releaseFastScroll(compose)
     return months
+}
+
+/**
+ * The fast-scroll recording: one finger goes down on the thumb and drags it
+ * down the track in [steps] moves without lifting; a screenshot is taken
+ * after each move lands, stamped with the real clock (no still-screen wait,
+ * so the frames show the motion as it happens). Writes `[name].png` (APNG)
+ * and `[name]-sheet.png` (contact sheet with each frame's ms).
+ */
+private fun recordFastScroll(
+    compose: androidx.compose.ui.test.junit4.ComposeTestRule,
+    name: String,
+    steps: Int = 16
+) {
+    val recorder = FastScrollRecorder()
+    startFastScroll(compose)
+    compose.waitForIdle()
+    recorder.capture()
+    var firstMonth = ""
+    for (i in 1..steps) {
+        val fraction = .05f + .9f * i / steps
+        compose.onNodeWithTag("atlas-timeline-date-scrub").performTouchInput {
+            moveTo(Offset(centerX, height * fraction))
+        }
+        compose.waitForIdle()
+        recorder.capture()
+        if (i == 1) firstMonth = heldMonth(compose)
+    }
+    val lastMonth = heldMonth(compose)
+    releaseFastScroll(compose)
+    recorder.capture()
+    val times = recorder.timestamps
+    assertEquals(steps + 2, times.size)
+    assertTrue("recording frames are in real time order: $times",
+        times.zipWithNext().all { (a, b) -> b > a })
+    assertTrue("the held sphere's month changes during the recording: $firstMonth → $lastMonth",
+        firstMonth != lastMonth)
+    recorder.save(name)
 }
 
 /**

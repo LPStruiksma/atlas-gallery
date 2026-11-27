@@ -64,13 +64,16 @@ test('viewer actions sit on an opaque #3448E0 slab', () => {
 test('every brief state is declared as S24+ evidence in both themes', () => {
   for (const mode of ['light', 'dark']) {
     for (const state of ['pictures', 'fastscroll-1', 'fastscroll-2', 'fastscroll-3',
-      'fastscroll-4', 'selection-3', 'viewer', 'collections-albums', 'collections-stories',
+      'fastscroll-4', 'fastscroll-recording', 'selection-3', 'viewer', 'collections-albums', 'collections-stories',
       'collections-people', 'search', 'search-keyboard', 'spheres']) {
       assert.match(declared, new RegExp(`^l4-657-${state}-${mode}$`, 'm'));
     }
   }
   assert.match(declared, /^l4-657-fastscroll-reduced-motion$/m);
   assert.match(declared, /^l4-657-loading-reduced-motion$/m);
+  for (const mode of ['light', 'dark']) {
+    assert.match(declared, new RegExp(`^l4-657-fastscroll-recording-${mode}-sheet$`, 'm'));
+  }
   assert.match(declared, /^l4-657-pictures-font200-dark$/m);
 });
 
@@ -84,4 +87,14 @@ test('the journey uses real pointer taps and waits for a still screen', () => {
   const captures = journey.match(/saveUiEvidence\(/g).length;
   const stills = journey.match(/awaitScreenStill\(/g).length;
   assert.ok(stills >= captures, `${stills} still-screen waits for ${captures} captures`);
+});
+
+test('the fast-scroll recording is an APNG of real-timing frames plus a timestamped sheet', () => {
+  const recorder = read('app/src/androidTest/java/nl/atlas/gallery/FastScrollRecording.kt');
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/LapisSlabJourneyTest.kt');
+  for (const chunk of ['acTL', 'fcTL', 'fdAT', 'tEXt']) assert.match(recorder, new RegExp(`"${chunk}"`));
+  assert.match(recorder, /SystemClock\.uptimeMillis\(\)/);
+  assert.match(recorder, /\$name-sheet\.png/);
+  assert.match(journey, /recordFastScroll\(compose, "l4-657-fastscroll-recording-\$mode"\)/);
+  assert.match(journey, /times\.zipWithNext\(\)\.all \{ \(a, b\) -> b > a \}/);
 });
