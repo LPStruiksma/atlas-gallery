@@ -389,7 +389,30 @@ if [[ "$run_suite" == "1" ]]; then
 adb logcat -G 16M || true
 adb logcat -c || true
 shard_args=()
-if [[ "$SHARD_COUNT" -gt 1 ]]; then
+if [[ "$PHASES" == "suite" ]]; then
+  [[ "$SHARD_COUNT" == "3" && "${GITHUB_ACTIONS:-}" == "true" ]] || {
+    echo "::error::Class partition requires the three hosted suite shards"; exit 1;
+  }
+  [[ "$(adb devices | awk '$2 == "device" {n++} END {print n+0}')" == "1" &&
+     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
+    echo "::error::Class discovery requires exactly one isolated emulator"; exit 1;
+  }
+  gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+  adb install -r "$NEW"
+  adb install -r "$TEST"
+  mkdir -p ui-evidence
+  # Each shard independently discovers the unfiltered runner inventory, including
+  # parameterized methods. No test body executes during the log-only pass.
+  timeout 120 adb shell am instrument -w -r -e log true "$RUNNER" > ui-evidence/suite-discovery.txt
+  selector="$(python3 scripts/ci_suite_partition.py select ui-evidence/suite-discovery.txt "$SHARD_INDEX")"
+  [[ -n "$selector" ]] || { echo "::error::Empty class selector"; exit 1; }
+  printf '%s\n' "$selector" > ui-evidence/suite-selector.txt
+  # Remove only the two disposable hosted-emulator packages so Gradle starts
+  # the selected suite with the same fresh app state as before discovery.
+  adb uninstall nl.atlas.gallery.test
+  adb uninstall nl.atlas.gallery
+  shard_args=(-Pandroid.testInstrumentationRunnerArguments.class="$selector")
+elif [[ "$SHARD_COUNT" -gt 1 ]]; then
   shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
     -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD_INDEX")
 fi

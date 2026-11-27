@@ -25,6 +25,7 @@ on:
       # #597: script-only PRs must run emulator-ui too.
       - 'scripts/ci_android_upgrade_emulator.sh'
       - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_suite_partition.py'
       - 'scripts/ci_enable_kvm.sh'
       - 'scripts/ci_install_emulator_image.sh'
   pull_request:
@@ -44,6 +45,7 @@ on:
       # #597: script-only PRs must run emulator-ui too.
       - 'scripts/ci_android_upgrade_emulator.sh'
       - 'scripts/ci_ui_evidence.sh'
+      - 'scripts/ci_suite_partition.py'
       - 'scripts/ci_enable_kvm.sh'
       - 'scripts/ci_install_emulator_image.sh'
 permissions:
@@ -290,6 +292,8 @@ jobs:
         with:
           pattern: ATLAS-android-UI-evidence-shard-*
           path: shards
+      - name: Verify the full unfiltered class and test identity union
+        run: python3 scripts/ci_suite_partition.py verify shards
       - name: Merge shard screenshots and check the full UI-evidence set
         shell: bash
         run: |
@@ -306,6 +310,8 @@ jobs:
           name: ATLAS-android-UI-evidence
           path: |
             ui-evidence/*
+            shards/*/ui-evidence/suite-discovery.txt
+            shards/*/ui-evidence/suite-selector.txt
             shards/*/app/build/outputs/androidTest-results/**
             shards/*/app/build/reports/androidTests/**
           if-no-files-found: warn
