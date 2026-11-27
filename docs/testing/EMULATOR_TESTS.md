@@ -123,7 +123,7 @@ One sample per 25-minute suite cannot tell a 30% flake from a fix. To repeat a t
 8 nl.atlas.gallery.testkit.TestKitSelfTest#tapWithAnEffectFailsWhenNothingHappens
 ```
 
-Each line runs as its own instrumentation run, on both shards (two independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
+Each line runs as its own instrumentation run, on all three suite shards (three independent emulators), and prints `STRESS <target> run i/n: PASS` or `FAIL` with the failure and the kit's log lines. About 8 minutes for 10 runs of one class. The full suite is skipped on such a head, and the static job fails while the file exists, so it cannot reach main: never open a PR from that branch. Call a flake fixed only after a stress run on the fix head.
 
 ## When an emulator test fails
 
@@ -139,3 +139,9 @@ Each line runs as its own instrumentation run, on both shards (two independent e
 ```
 ATLAS_UI_DEBT_WRITE=1 node test/additive-regressions/ui-test-reliability.mjs
 ```
+
+## Full dispatch topology (CI speed U4, #989)
+
+The opt-in API35 (or separately requested API34) dispatch starts the build, three independent suite shards (indices 0–2, `ATLAS_SHARD_COUNT=3`) and `emulator-upgrade` concurrently on standard hosted runners. Suite shards run only the normal AndroidJUnitRunner partition; each is capped at 35 minutes. The dedicated proof lane builds the baseline and candidate, preserves the real install -r seed/verify/cleanup and before/after Albums and BRAND-L2 captures, runs StrictMode and splash, PERF-A1A and separate-process People/worker proofs. It never runs the connected suite. Legacy signer recovery retains the default `ATLAS_PHASES=all` contract.
+
+The single `emulator-ui` join requires build, upgrade and all suite shards to succeed, downloads their evidence artifacts (including `ATLAS-android-UI-evidence-shard-upgrade`), and verifies the full declared PNG set and parity checks. A skipped PR-event aggregate is not acceptance. Review must inspect two full dispatch runs on the exact candidate head; compare the union of suite XML test identities (class + method) with the original two-shard run, checking each identity occurs once and every original class is represented. Runner hashing may distribute methods of one class across shards; do not infer class-exclusive coverage from shard numbers. Record per-job and run-start-to-aggregate-completion timings, with a target of 30 minutes or less on each dispatch. No test quarantine, reduced evidence or paid runners to meet the target.
