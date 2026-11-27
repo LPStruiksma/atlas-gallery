@@ -446,10 +446,13 @@ class GuestViewViewerEntryTest {
         val declined = findPinButton(automation, false)?.first?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) shell("am task lock stop")
         compose.awaitThat("unpinned for the viewer exit") { lockState() == ActivityManager.LOCK_TASK_MODE_NONE }
-        if (pinWindows().isNotEmpty()) shell("input keyevent 4")
-        compose.awaitThat("viewer pinning prompt dismissed") { pinWindows().isEmpty() }
+        // A disposed ScreenPinningConfirmation may remain in the WM inventory.
+        // Never send Back to ATLAS just because such a record still exists.
+        if (pinPromptFocused()) shell("input keyevent 4")
+        compose.awaitThat("viewer pinning prompt dismissed") { viewerPinPromptDismissed() }
         Log.i(PROBE, "viewer: pin prompt declined=$declined windows=[${pinWindows()}]")
         compose.awaitWindowSettled()
+        compose.awaitThat("viewer pinning prompt still dismissed") { viewerPinPromptDismissed() }
         compose.waitForNode(hasTestTag("atlas-guest-root"))
         compose.waitForNode(hasTestTag("atlas-guest-page-0") and hasContentDescription("Photo 1 of 1"))
         // 200% text: the Exit slab keeps at least 48 dp and stays inside the screen.
@@ -619,6 +622,32 @@ private fun pinWindows(): String = shell("dumpsys window windows").lineSequence(
     .map { it.trim() }.filter { it.startsWith("Window #") && it.contains("ScreenPinning") }
     .joinToString("; ").take(200)
 
+private fun pinPromptFocused(): Boolean = shell("dumpsys window").lineSequence()
+    .map { it.trim() }
+    .any { it.startsWith("mCurrentFocus=") && it.contains("ScreenPinningConfirmation") }
+
+/**
+ * A named but surface-less confirmation is not a displayed prompt. Require
+ * ATLAS focus and NONE lock-task state as well; any live or unrecognized
+ * pinning record remains a failure. Do not waive generic SystemUI windows.
+ */
+private fun viewerPinPromptDismissed(): Boolean {
+    if (lockState() != ActivityManager.LOCK_TASK_MODE_NONE) return false
+    val windows = shell("dumpsys window windows")
+    if (!windows.contains("WINDOW MANAGER WINDOWS")) return false
+    val records = windows.split(Regex("""(?m)^\s*Window #\d+ """)).drop(1)
+    if (records.isEmpty()) return false
+    val pinRecords = records.filter { it.lineSequence().first().contains("ScreenPinning") }
+    if (pinRecords.any { record ->
+            !record.lineSequence().first().contains(" ScreenPinningConfirmation}") ||
+                !Regex("""\bmHasSurface=false\b""").containsMatchIn(record)
+        }) return false
+    val focus = shell("dumpsys window").lineSequence().map { it.trim() }.toList()
+    return focus.any { it.startsWith("mCurrentFocus=") && it.contains("nl.atlas.gallery/nl.atlas.gallery.MainActivity") } &&
+        focus.any { it.startsWith("mFocusedApp=") && it.contains("nl.atlas.gallery/.MainActivity") } &&
+        lockState() == ActivityManager.LOCK_TASK_MODE_NONE
+}
+
 /**
  * The OS pinning prompt's accept or decline button (SystemUI's own view id
  * first, then its label), in any window but ATLAS's; null when not shown.
@@ -742,6 +771,32 @@ class GuestExistingActivityTest {
         instrumentation.waitForIdleSync()
     }
 
+    /** Observe the exact activity, not idle queues or a different instance. */
+    private fun awaitSecondResume(activity: MainActivity, description: String, trigger: (() -> Unit)? = null) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val monitor = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+        val resumed = CountDownLatch(1)
+        val stage = androidx.test.runner.lifecycle.Stage.RESUMED
+        val callback = androidx.test.runner.lifecycle.ActivityLifecycleCallback { seen, event ->
+            if (seen === activity && event == stage) resumed.countDown()
+        }
+        try {
+            instrumentation.runOnMainSync {
+                monitor.addLifecycleCallback(callback)
+                if (trigger != null) {
+                    assertEquals("second activity resumed before dispatch", stage, monitor.getLifecycleStageOf(activity))
+                    trigger()
+                } else if (monitor.getLifecycleStageOf(activity) == stage) {
+                    resumed.countDown()
+                }
+            }
+            assertTrue(description, resumed.await(15, TimeUnit.SECONDS))
+        } finally {
+            instrumentation.runOnMainSync { monitor.removeLifecycleCallback(callback) }
+        }
+        instrumentation.waitForIdleSync()
+    }
+
     private fun activateGuestInSecondActivity(scenario: androidx.test.core.app.ActivityScenario<MainActivity>): MainActivity {
         lateinit var earlier: MainActivity
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -756,8 +811,11 @@ class GuestExistingActivityTest {
             val other = requireNotNull(instrumentation.waitForMonitorWithTimeout(monitor, 10_000)) as MainActivity
             second = other
             assertTrue("standard launch creates a distinct activity", earlier !== other)
-            instrumentation.waitForIdleSync()
-            instrumentation.runOnMainSync {
+            awaitSecondResume(other, "initial second activity resume")
+            // An idle main queue is not proof that ActivityTaskManager has
+            // delivered the SINGLE_TOP transaction. Observe the actual next
+            // RESUMED lifecycle event of this exact activity.
+            awaitSecondResume(other, "second activity resume after new intent") {
                 assertFalse("second activity starts in owner mode", other.guestActive)
                 val store = GuestAndroid.store(other)
                 val item = nl.atlas.gallery.featureguest.GuestItem(Long.MAX_VALUE,
@@ -768,9 +826,10 @@ class GuestExistingActivityTest {
                 other.startActivity(Intent(other, MainActivity::class.java)
                     .setAction(Intent.ACTION_MAIN).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP))
             }
-            instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
                 assertTrue("second activity reconciles on new intent", other.guestActive)
+                assertTrue("second activity window secure after new intent",
+                    other.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
                 other.finish()
             }
             instrumentation.waitForIdleSync()
