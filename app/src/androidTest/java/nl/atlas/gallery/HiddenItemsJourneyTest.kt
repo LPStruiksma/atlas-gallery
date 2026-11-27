@@ -132,10 +132,15 @@ abstract class HiddenItemsJourney(private val dark: Boolean) {
         awaitNode(hasTestTag("atlas-hidden-result-undo"))
         compose.waitForIdle()
         saveUiEvidence("hidden-585-viewer-undo-$theme.png")
+        // 5. Undo is real: tapping it restores the item durably and in Photos.
+        compose.tap(hasTestTag("atlas-hidden-result-undo"))
+        compose.awaitThat("Undo restored the viewer item") {
+            HiddenMediaStore(fixtures.context).readOrNull()?.size == 0
+        }
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         awaitNode(hasTestTag("atlas-timeline-grid"))
-        compose.awaitThat("viewer item left Photos") {
-            compose.onAllNodes(hasTestTag("atlas-timeline-media-${ids[2]}")).fetchSemanticsNodes().isEmpty()
+        compose.awaitThat("undone item is back in Photos") {
+            compose.exists(hasTestTag("atlas-timeline-media-${ids[2]}"))
         }
         compose.onAllNodesWithTag("atlas-timeline-media-${ids[3]}").assertCountEquals(1)
         assertEquals(4, fixtures.namesIn(FIXTURE_PATH).size)

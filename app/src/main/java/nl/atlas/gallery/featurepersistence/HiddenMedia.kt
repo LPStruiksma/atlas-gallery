@@ -39,6 +39,20 @@ object HiddenMedia {
 
     /** Idempotent membership transitions; the same key twice never duplicates. */
     fun withHidden(current: Set<String>, keys: Collection<String>): Set<String> = current + keys
+    /**
+     * The keys an operation would really change: hiding skips keys already
+     * hidden, unhiding skips keys not hidden. Results and Undo cover only these.
+     */
+    fun delta(current: Set<String>, keys: Collection<String>, hide: Boolean): List<String> =
+        keys.distinct().filter { (it in current) != hide }
+
+    /**
+     * Of [changed] (what an operation committed), the keys still in the state
+     * that operation produced. A later transition of a key fences it out of Undo.
+     */
+    fun stillUndoable(current: Set<String>, changed: Collection<String>, hide: Boolean): List<String> =
+        changed.filter { (it in current) == hide }
+
     fun withoutHidden(current: Set<String>, keys: Collection<String>): Set<String> = current - keys.toSet()
 }
 

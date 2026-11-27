@@ -1682,14 +1682,18 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // The face index prunes media missing from its inventory, so it must see the
     // UNFILTERED catalogue: hiding must never delete face data. Hidden photos are
     // filtered from every People surface that derives from [media].
-    val discovery = rememberPeopleDiscovery(discoveryHost, searchGrant, allMedia)
+    val discoveryRaw = rememberPeopleDiscovery(discoveryHost, searchGrant, allMedia)
+    // HIDE-1 (#585): People home, counts, covers and Search suggestions are read
+    // through the CURRENT hidden set in the same composition as the filtered
+    // catalogue, so a stale or not-yet-applied host set reads as "not ready".
+    val discovery = discoveryRaw.gatedForHidden(hiddenKeys)
     // HIDE-1 (#585): People home counts and covers skip hidden media; the face
     // index keeps scanning the unfiltered inventory (`allMedia`) above.
     LaunchedEffect(discoveryHost, CatalogSourceKey(allMedia), hiddenKeys) {
         val hidden = hiddenKeys
         discoveryHost.setHiddenMedia(if (hidden == null) null else withContext(Dispatchers.Default) {
             hiddenFaceMediaKeys(HiddenMedia.hiddenOnly(allMedia, hidden))
-        })
+        }, hidden)
     }
     val diagnosticPeople = discovery.status?.ui
     LaunchedEffect(diagnosticPeople?.phase, diagnosticPeople?.processed,
@@ -3017,35 +3021,48 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
     // changes. [onResult] runs on the main thread after the durable write.
     val hiddenResults = remember { HiddenUndoMessages() }
     val hiddenWriteLock = remember { kotlinx.coroutines.sync.Mutex() }
-    fun changeHidden(
-        records: List<MediaRecord>, hide: Boolean, onResult: (Boolean) -> Unit = {}
-    ) {
-        val keys = records.map { HiddenMedia.keyOf(it) }.distinct()
-        if (keys.isEmpty() || hiddenKeys == null) { onResult(false); return }
-        atlasScope.launch {
-            val ok = hiddenWriteLock.withLock {
-                withContext(Dispatchers.IO) {
-                    if (hide) hiddenStore.hide(keys) else hiddenStore.unhide(keys)
-                }
+    // Membership, durable write, publication and result run under one lock, so a
+    // repeated or rapid operation always sees the committed state. Results and
+    // Undo cover only the keys that really changed, and Undo is fenced: it only
+    // reverts keys still in the state this operation produced.
+    suspend fun commitHidden(records: List<MediaRecord>, hide: Boolean): Boolean =
+        hiddenWriteLock.withLock {
+            val current = hiddenKeys
+            if (records.isEmpty() || current == null) return@withLock false
+            val byKey = records.associateBy { HiddenMedia.keyOf(it) }
+            val changed = HiddenMedia.delta(current, byKey.keys, hide)
+            if (changed.isEmpty()) return@withLock true // already in that state: no write, Undo untouched
+            val ok = withContext(Dispatchers.IO) {
+                if (hide) hiddenStore.hide(changed) else hiddenStore.unhide(changed)
             }
             if (!ok) {
                 // Whole operation rolled back; the in-memory set is unchanged.
-                selectionResults.show(
-                    if (hide) "Couldn't hide items. Try again." else "Couldn't unhide items. Try again.",
-                    SelectionResultDuration.SHORT)
-                onResult(false)
-                return@launch
+                hiddenResults.showError(
+                    if (hide) "Couldn't hide items. Try again." else "Couldn't unhide items. Try again.")
+                return@withLock false
             }
-            hiddenKeys = hiddenKeys?.let {
-                if (hide) HiddenMedia.withHidden(it, keys) else HiddenMedia.withoutHidden(it, keys)
-            }
-            val what = if (keys.size == 1) (if (records.first().isVideo) "Video" else "Photo")
-                else "${keys.size} items"
+            hiddenKeys = if (hide) HiddenMedia.withHidden(current, changed)
+                else HiddenMedia.withoutHidden(current, changed)
+            val changedRecords = changed.mapNotNull { byKey[it] }
+            val what = if (changed.size == 1) (if (changedRecords.first().isVideo) "Video" else "Photo")
+                else "${changed.size} items"
             hiddenResults.show(what + if (hide) " hidden" else " unhidden") {
-                changeHidden(records, !hide)
+                atlasScope.launch {
+                    val now = hiddenKeys ?: return@launch
+                    val keep = HiddenMedia.stillUndoable(now, changed, hide).toSet()
+                    if (keep.isEmpty()) {
+                        hiddenResults.showError("Can't undo: these items changed since.")
+                    } else {
+                        commitHidden(changedRecords.filter { HiddenMedia.keyOf(it) in keep }, !hide)
+                    }
+                }
             }
-            onResult(true)
+            true
         }
+    fun changeHidden(
+        records: List<MediaRecord>, hide: Boolean, onResult: (Boolean) -> Unit = {}
+    ) {
+        atlasScope.launch { onResult(commitHidden(records, hide)) }
     }
     fun hideBatch() {
         val selection = batchSelection ?: return
@@ -3061,13 +3078,12 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 }
                 if (records == null || batchSelection !== selection) {
                     selectionResults.show("Selected files changed. Select again; nothing was hidden.")
-                } else {
-                    changeHidden(records, hide = true) { ok ->
-                        // A failed write keeps the selection so the user can retry.
-                        if (ok) { batchSelection = null; pendingSelectionRestore = null }
-                    }
+                } else if (commitHidden(records, hide = true)) {
+                    // A failed write keeps the selection so the user can retry.
+                    batchSelection = null; pendingSelectionRestore = null
                 }
             } finally {
+                // Released only after the durable write and result finished.
                 batchOperating = false
             }
         }
@@ -4613,7 +4629,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 hiddenViewer = true
                                 openViewer(hiddenItems.orEmpty(), record.uri)
                             },
-                            onUnhide = { records -> changeHidden(records, hide = false) },
+                            onUnhide = { records, onDone -> changeHidden(records, hide = false, onResult = onDone) },
                             onClose = { hiddenOpen = false },
                             tileRenderer = { record, modifier ->
                                 MediaPreview(record, modifier, ContentScale.Crop, 256)
@@ -5014,7 +5030,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                     }
                                 },
                                 liveNativePeopleAtAction = {
-                                    discoveryHost.liveHomePeople(discovery.status?.displayEpoch)
+                                    if (discovery.status?.people == null) null
+                                    else discoveryHost.liveHomePeople(discovery.status?.displayEpoch)
                                 },
                                 menuItems = peopleMenu,
                                 onOpenLibraryStatus = { settingsOpen = true },

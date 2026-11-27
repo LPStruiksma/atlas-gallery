@@ -52,12 +52,14 @@ import nl.atlas.gallery.featureorganization.SelectionCheckCircle
 fun HiddenMediaScreen(
     items: List<MediaRecord>?,
     onOpen: (MediaRecord) -> Unit,
-    onUnhide: (List<MediaRecord>) -> Unit,
+    /** [onDone] gets true once the durable write committed; false keeps the selection. */
+    onUnhide: (List<MediaRecord>, onDone: (Boolean) -> Unit) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     tileRenderer: (@Composable (MediaRecord, Modifier) -> Unit)? = null
 ) {
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var submitting by remember { mutableStateOf(false) }
     val selecting = selected.isNotEmpty()
     // Back leaves selection first, then the screen.
     BackHandler { if (selecting) selected = emptySet() else onClose() }
@@ -123,10 +125,19 @@ fun HiddenMediaScreen(
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.End) {
                         TextButton(
+                            enabled = !submitting,
                             onClick = {
-                                val chosen = items.filter { it.uri in selected }
-                                selected = emptySet()
-                                onUnhide(chosen)
+                                if (!submitting) {
+                                    val chosen = items.filter { it.uri in selected }
+                                    submitting = true
+                                    // Selection is cleared only after the write committed, so a
+                                    // failed Unhide keeps it for a retry and a double tap can
+                                    // not submit twice.
+                                    onUnhide(chosen) { ok ->
+                                        submitting = false
+                                        if (ok) selected = selected - chosen.map { it.uri }.toSet()
+                                    }
+                                }
                             },
                             modifier = Modifier.heightIn(min = 48.dp)
                                 .semantics { contentDescription = "Unhide, ${selected.size} selected items" }

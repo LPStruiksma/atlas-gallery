@@ -195,8 +195,25 @@ internal data class PeopleDiscoveryStatus(
      * yet (a regroup or the #580 refill runs). Not an empty result: People
      * must keep what it showed, or its restoring screen, never "No people".
      */
-    val peoplePending: Boolean = false
+    val peoplePending: Boolean = false,
+    /**
+     * HIDE-1 (#585): the hidden-set generation [people] was computed under. A
+     * consumer shows [people] only while this is the generation it currently
+     * holds (see [gatedForHidden]); anything else is stale or unknown.
+     */
+    val hiddenGeneration: Any? = null
 )
+
+/**
+ * HIDE-1 (#585): fail-closed consumption boundary for People home counts,
+ * covers and Search person suggestions. [people] survives only when it was
+ * computed under exactly [current]; unknown (null) or stale generations read as
+ * "not readable yet" (never an unfiltered home), so a hidden photo's face can
+ * not flash while the host's async hidden-key set catches up.
+ */
+internal fun PeopleDiscoveryStatus.gatedForHidden(current: Any?): PeopleDiscoveryStatus =
+    if (people == null || (current != null && hiddenGeneration === current)) this
+    else copy(people = null, peoplePending = true)
 
 /** The scope-gated, identity-free fields allowed in diagnostic export. */
 internal data class PeopleAggregateDiagnostics(
@@ -233,8 +250,10 @@ internal fun holdPendingPeople(
         return holdPendingPeople(previous, next.copy(peoplePending = true))
     }
     if (!next.peoplePending) return next
-    val held = previous?.people?.takeIf { it.permissionEpoch == next.displayEpoch }
-        ?: return next
+    // Never hold People computed under another hidden-set generation (#585).
+    val held = previous?.people?.takeIf {
+        it.permissionEpoch == next.displayEpoch && previous.hiddenGeneration === next.hiddenGeneration
+    } ?: return next
     return next.copy(people = held, peoplePending = false)
 }
 
@@ -856,11 +875,15 @@ internal class PeopleDiscoveryHost(
      */
     @Volatile private var hiddenMediaKeys: Set<String>? = emptySet()
 
-    fun setHiddenMedia(keys: Set<String>?) {
-        if (keys == hiddenMediaKeys) return
+    @Volatile private var hiddenGeneration: Any? = null
+
+    /** [generation] identifies what [keys] was computed from; statuses carry it back. */
+    fun setHiddenMedia(keys: Set<String>?, generation: Any? = null) {
         synchronized(reviewLock) {
+            if (keys == hiddenMediaKeys && generation === hiddenGeneration) return
+            if (keys != hiddenMediaKeys) liveHome = null
             hiddenMediaKeys = keys
-            liveHome = null
+            hiddenGeneration = generation
         }
         changed()
     }
@@ -2145,6 +2168,7 @@ internal class PeopleDiscoveryHost(
             phase.name, scoped.epoch, total, progress.processed + progress.failed,
             counts.awaitingReview, nativeDetectorInstalled = true, realStartActionAvailable = true
         ), scoped.epoch).copy(statusNote = note)
+        val homeGeneration = synchronized(reviewLock) { hiddenGeneration }
         val people = currentHome(scoped.epoch)
         // #75: null people with published groups is "not readable yet", not empty.
         val peoplePending = people == null && try { store.hasPublishedMembership(scoped.epoch) }
@@ -2153,7 +2177,8 @@ internal class PeopleDiscoveryHost(
             mayPauseScan = ui.phase == FaceDiscoveryPhase.SCANNING,
             mayResumeScan = ui.phase == FaceDiscoveryPhase.PAUSED,
             mayOpenReview = counts.awaitingReview > 0
-        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = peoplePending)
+        ), people, visualStatus(scoped.epoch), scoped.provenance, peoplePending = peoplePending,
+            hiddenGeneration = homeGeneration)
     }
 
     /**
@@ -2784,7 +2809,14 @@ internal class PeopleDiscoveryBinding(
     /** The "Visual search index" switch; off can also delete its data. */
     val onVisualIndex: (enabled: Boolean) -> Unit = {},
     val onDeleteVisualIndex: () -> Unit = {}
-)
+) {
+    /** Same actions; People data only while it matches the current hidden set (#585). */
+    fun gatedForHidden(current: Any?): PeopleDiscoveryBinding {
+        val gated = status?.gatedForHidden(current)
+        return if (gated === status) this else PeopleDiscoveryBinding(
+            gated, onStart, onScanNow, onPause, onResume, onVisualIndex, onDeleteVisualIndex)
+    }
+}
 
 /**
  * Status follows [PeopleDiscoveryHost.changes] and [galleryGrant]; a new

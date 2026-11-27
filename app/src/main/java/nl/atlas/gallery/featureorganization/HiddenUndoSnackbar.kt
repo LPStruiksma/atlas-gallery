@@ -2,6 +2,8 @@ package nl.atlas.gallery.featureorganization
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -35,7 +37,7 @@ import kotlinx.coroutines.delay
  */
 @Stable
 class HiddenUndoMessages {
-    class Message(val text: String, val undo: () -> Unit, val generation: Long)
+    class Message(val text: String, val undo: (() -> Unit)?, val generation: Long)
 
     var current: Message? by mutableStateOf(null)
         private set
@@ -44,6 +46,12 @@ class HiddenUndoMessages {
     fun show(text: String, undo: () -> Unit) {
         require(text.isNotBlank())
         current = Message(text, undo, ++lastGeneration)
+    }
+
+    /** A failure or refusal: same replace-only slot, no Undo button. */
+    fun showError(text: String) {
+        require(text.isNotBlank())
+        current = Message(text, null, ++lastGeneration)
     }
 
     fun dismiss(generation: Long) {
@@ -78,10 +86,12 @@ fun HiddenUndoSnackbarHost(messages: HiddenUndoMessages, modifier: Modifier = Mo
                     Modifier.padding(start = 20.dp, top = 14.dp, bottom = 14.dp, end = 8.dp)
                         .testTag("atlas-hidden-result-text"),
                     style = MaterialTheme.typography.bodyMedium)
-                TextButton(
-                    onClick = { messages.dismiss(message.generation); message.undo() },
+                val undo = message.undo
+                if (undo != null) TextButton(
+                    onClick = { messages.dismiss(message.generation); undo() },
                     modifier = Modifier.heightIn(min = 48.dp).testTag("atlas-hidden-result-undo")
                 ) { Text("Undo", color = MaterialTheme.colorScheme.inversePrimary) }
+                else Spacer(Modifier.width(12.dp))
             }
         }
     }
