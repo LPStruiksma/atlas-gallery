@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const workflow = readFileSync('.github/workflows/build-apk.yml', 'utf8');
+const script = readFileSync('scripts/ci_android_upgrade_emulator.sh', 'utf8');
+const suite = workflow.split('  emulator-ui-shard:\n')[1]?.split('\n  emulator-')[0] ?? '';
+const upgrade = workflow.split('  emulator-upgrade:\n')[1]?.split('\n  emulator-')[0] ?? '';
+const join = workflow.split('  emulator-ui:\n')[1] ?? '';
+assert.match(suite, /shard: \[0, 1, 2\]/);
+assert.match(suite, /timeout-minutes: 35/);
+assert.doesNotMatch(suite, /needs: build|path: upgrade-baseline/);
+assert.match(suite, /ATLAS_PHASES=suite.*ATLAS_SHARD_COUNT=3/);
+assert.match(upgrade, /path: upgrade-baseline/);
+assert.match(upgrade, /ATLAS_PHASES=upgrade/);
+assert.match(join, /needs: \[build, emulator-upgrade, emulator-ui-shard\]/);
+assert.match(join, /needs\.build\.result/);
+assert.match(join, /needs\.emulator-upgrade\.result/);
+assert.match(join, /needs\.emulator-ui-shard\.result/);
+assert.match(join, /scripts\/ci_ui_evidence\.sh verify/);
+assert.match(script, /PHASES="\$\{ATLAS_PHASES:-all\}"/);
+assert.match(script, /ATLAS_PHASES/);
+assert.match(script, /numShards="\$SHARD_COUNT"/);
+assert.match(script, /shardIndex="\$SHARD_INDEX"/);
+assert.match(script, /ci_ui_evidence\.sh pull-some/);
+console.log('PASS: independent upgrade and three full-suite shards retain aggregate gate');
