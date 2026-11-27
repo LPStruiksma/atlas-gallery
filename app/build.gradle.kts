@@ -1,3 +1,7 @@
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.testing.TestOutputEvent
+import org.gradle.api.tasks.testing.TestOutputListener
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -82,6 +86,20 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+}
+
+// QUALITY-EVAL-1: expose only machine-readable benchmark stdout, not general test logs.
+tasks.withType<Test>().configureEach {
+    val benchmarkLogger = logger
+    addTestOutputListener(TestOutputListener { descriptor, event ->
+        if (descriptor.className == "nl.atlas.gallery.featurecuration.quality.PhotoQualitySignalsBenchmarkTest" &&
+            event.destination == TestOutputEvent.Destination.StdOut
+        ) {
+            event.message.lineSequence()
+                .filter { it.startsWith("QUALITY_EVAL_1 ") }
+                .forEach { benchmarkLogger.lifecycle(it) }
+        }
+    })
 }
 
 kotlin {
