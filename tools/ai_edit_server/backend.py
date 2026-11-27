@@ -723,6 +723,15 @@ class Flux2HeadBackend(ComfyBackend):
             request.image_width * request.image_height > self.max_input_pixels or
             x + width > request.image_width or y + height > request.image_height):
             raise BackendError("Head crop exceeds target bounds")
+        if self.activated:
+            # One coordinate space: the crop is checked against the target's
+            # encoded pixel grid, so a target or mask whose EXIF orientation
+            # would rotate or mirror it is refused before mask validation and
+            # before any upload.
+            for data in (request.image, request.mask):
+                if not self._orientation_is_canonical(data):
+                    raise BackendError("Head target and mask must have canonical "
+                                       "orientation (EXIF orientation 1 or absent)")
         self._validate_mask(request.mask, request.image_width, request.image_height,
                             (x, y, width, height))
         if not self.activated:
@@ -733,6 +742,15 @@ class Flux2HeadBackend(ComfyBackend):
             raise BackendError("FLUX.2 head is an admission scaffold only; "
                                "inference is unavailable")
         return self._activate(request, cancelled, (x, y, width, height))
+
+    @staticmethod
+    def _orientation_is_canonical(data):
+        from PIL import Image
+        try:
+            with Image.open(io.BytesIO(data)) as source:
+                return source.getexif().get(0x0112, 1) == 1
+        except Exception as exc:
+            raise BackendError("Head input could not be decoded") from exc
 
     def _prepare_upload(self, data):
         """Re-encode an input as a pixel-only RGB PNG before upload.

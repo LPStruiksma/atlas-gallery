@@ -188,6 +188,7 @@ class AdmittedFixture(unittest.TestCase):
         backend._fetch = comfy.fetch
         backend._prepare_upload = lambda data: b"normalized:" + data
         backend._validate_mask = lambda *args: None
+        backend._orientation_is_canonical = lambda data: True
         return backend
 
     def run_job(self, comfy, request=None, cancelled=None):
@@ -585,11 +586,11 @@ except ImportError:  # CI may lack Pillow; the stdlib cases above still run.
 class RealPillowUploadTest(AdmittedFixture):
     """Real Pillow: metadata-bearing inputs leave as pixel-only PNG uploads."""
 
-    def source(self, fmt, colour):
+    def source(self, fmt, colour, orientation=1):
         import io
         image = PILImage.new("RGB", (100, 100), colour)
         exif = PILImage.Exif()
-        exif[0x0112] = 6                      # orientation
+        exif[0x0112] = orientation
         exif[0x010E] = "SECRET-DESCRIPTION"   # image description
         exif[0x8825] = {2: (52.0, 22.0, 1.0)} # GPS IFD latitude
         out = io.BytesIO()
@@ -611,7 +612,7 @@ class RealPillowUploadTest(AdmittedFixture):
                 backend._validate_mask = lambda *args: None
                 request = self.request(image=self.source(fmt, (200, 10, 10)),
                                        mask=self.source(fmt, (255, 255, 255)),
-                                       references=(self.source(fmt, (10, 10, 200)),))
+                                       references=(self.source(fmt, (10, 10, 200), 6),))
                 backend.generate(request, threading.Event())
                 self.assertEqual(len(comfy.uploads), 3)
                 for body in comfy.uploads:
@@ -621,8 +622,80 @@ class RealPillowUploadTest(AdmittedFixture):
                     self.assertEqual(chunk_types(upload), [b"IHDR", b"IDAT", b"IEND"])
                     for secret in (b"SECRET", b"Exif", b"eXIf", b"iCCP", b"GPS"):
                         self.assertNotIn(secret, upload)
-                    # Orientation 6 was applied to pixels (still 100x100 here).
                     self.assertEqual(struct.unpack(">II", upload[16:24]), (100, 100))
+
+
+@unittest.skipUnless(PILImage, "Pillow not installed")
+class RealPillowGeometryTest(AdmittedFixture):
+    """Real Pillow and real mask validation on a non-square asymmetric target."""
+
+    def encode(self, image, fmt, orientation=None):
+        import io
+        out = io.BytesIO()
+        kwargs = {}
+        if orientation is not None:
+            exif = PILImage.Exif()
+            exif[0x0112] = orientation
+            kwargs["exif"] = exif.tobytes()
+        image.save(out, format=fmt, **kwargs)
+        return out.getvalue()
+
+    def inputs(self, fmt, orientation):
+        target = PILImage.new("RGB", (100, 60), (20, 20, 20))
+        target.paste((250, 0, 0), (65, 0, 97, 32))   # asymmetric marker
+        mask = PILImage.new("L", (100, 60), 0)
+        mask.paste(255, (65, 0, 97, 32))
+        reference = PILImage.new("RGB", (40, 40), (0, 0, 250))
+        return self.request(
+            image=self.encode(target, fmt, orientation),
+            mask=self.encode(mask, "PNG", orientation),
+            references=(self.encode(reference, fmt),),
+            image_width=100, image_height=60,
+            options={"seed": 7, "head_x": 65, "head_y": 0,
+                     "head_width": 32, "head_height": 32})
+
+    def backend(self, comfy):
+        backend = Flux2HeadBackend(str(self.config))
+        backend._fetch = comfy.fetch
+        return backend
+
+    def test_rotated_target_or_mask_is_refused_before_upload(self):
+        for fmt in ("JPEG", "PNG"):
+            for orientation in (2, 3, 6, 8):
+                with self.subTest(fmt=fmt, orientation=orientation):
+                    comfy = MockComfy(png(32, 32))
+                    with self.assertRaisesRegex(BackendError, "canonical orientation"):
+                        self.backend(comfy).generate(self.inputs(fmt, orientation),
+                                                     threading.Event())
+                    self.assertEqual(comfy.calls, [])
+
+    def test_canonical_inputs_upload_in_the_validated_coordinate_space(self):
+        for fmt, orientation in (("JPEG", None), ("PNG", None), ("JPEG", 1)):
+            with self.subTest(fmt=fmt, orientation=orientation):
+                comfy = MockComfy(png(32, 32))
+                result = self.backend(comfy).generate(self.inputs(fmt, orientation),
+                                                      threading.Event())
+                self.assertEqual(struct.unpack(">II", result.image[16:24]), (32, 32))
+                sizes = []
+                for body in comfy.uploads:
+                    start = body.index(b"\x89PNG")
+                    sizes.append(struct.unpack(">II", body[start + 16:start + 24]))
+                # Target and mask keep the 100x60 grid the crop was checked in.
+                self.assertEqual(sizes, [(100, 60), (100, 60), (40, 40)])
+                graph = comfy.prompts[0]["prompt"]
+                self.assertEqual(graph["4"]["inputs"]["x"], 65)
+
+    def test_mask_outside_crop_still_fails_with_real_validation(self):
+        comfy = MockComfy(png(32, 32))
+        request = self.inputs("PNG", None)
+        request = self.request(image=request.image, mask=request.mask,
+                               references=request.references,
+                               image_width=100, image_height=60,
+                               options={"seed": 7, "head_x": 0, "head_y": 0,
+                                        "head_width": 32, "head_height": 32})
+        with self.assertRaisesRegex(BackendError, "exceeds the explicit crop"):
+            self.backend(comfy).generate(request, threading.Event())
+        self.assertEqual(comfy.calls, [])
 
 
 class CheckedInLedgerTest(unittest.TestCase):

@@ -146,7 +146,9 @@ When every gate is open, a job re-checks the gates (the admission file must
 also equal the admitted snapshot, so a changed artifact path, digest,
 provenance, endpoint or timeout closes it), uploads the target, mask and
 reference as pixel-only PNGs rebuilt from raw pixels (no EXIF, GPS, ICC or
-text; gates re-checked before each upload), binds the admitted
+text; gates re-checked before each upload; a target or mask with a
+non-identity EXIF orientation is refused first, so crop, mask and uploads share
+the target's encoded pixel grid), binds the admitted
 seven-node graph in one replacement pass, re-checks the gates again and submits
 it. It then requires exactly one image from output node 7 (any other count or
 node is an error), fetches it, and accepts it only as a complete, CRC-valid,
