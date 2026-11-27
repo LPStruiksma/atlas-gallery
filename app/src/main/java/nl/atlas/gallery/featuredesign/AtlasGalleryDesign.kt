@@ -374,8 +374,8 @@ fun AtlasGalleryNavigation(
             shape = RoundedCornerShape(AtlasTokens.Radii.Slab),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            // A soft lift keeps the slab off a white page; on black it adds nothing.
-            shadowElevation = if (LocalAtlasDark.current) 0.dp else 4.dp,
+            // No shadow: the opaque lapis slab already stands off any page, and a
+            // shadow would spill over the tiles just above it.
             modifier = Modifier.testTag("atlas-nav-pill")
         ) {
             FlowRow(
