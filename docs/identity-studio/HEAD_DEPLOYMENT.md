@@ -36,6 +36,13 @@ Startup and each attempted edit recheck all artifact bytes. The scaffold require
 a bounded explicit crop, seed, full-size mask and reference(s). It never calls
 the provider, imports a model or publishes an image or lineage.
 The exact mode is scaffold; full_head and all other modes are rejected even
-with affirmative synthetic evidence. The typed graph, actual crop binding and
-validated output contract remain follow-up #1012; execution needs a separately
-reviewed change and real evidence. BFS remains tier D / benchmark-only.
+with affirmative synthetic evidence. The admission-only typed graph contract (#1012) fixes nodes 1–3 (LoadImage:
+target, mask, one reference), 4–5 (ImageCrop: target and mask), 6
+(AtlasFlux2Head: both crops, reference, instruction, seed, adapter) and 7
+(PreviewImage: sole output from node 6 port 0). Extra nodes, wrong classes,
+fields and edges are rejected. Both crop nodes receive the same explicit
+non-origin coordinates and dimensions. The custom node is an interface contract,
+not proof of an existing runtime. The graph is prepared but never submitted.
+Actual provider output decoding, exactly one crop-sized PNG, metadata removal,
+lineage and execution require a separately reviewed activation and real evidence.
+BFS remains tier D / benchmark-only.

@@ -101,12 +101,18 @@ lowercase immutable `sha256`, and non-empty `original_host`, `licence`, and
 `provenance` records. Every hash is checked at startup and again before each job.
 A file name, placeholder, mirror, or BFS adapter alone is not evidence.
 
-The admission check requires the predecessor's target, mask, reference, instruction,
-seed and adapter placeholder contract. This is not typed graph validation.
-Every attempted edit requires a bounded crop, seed, full-size mask and at least
-one reference. The scaffold does not execute the workflow or publish output or
-lineage; `full_head` is never advertised. The typed graph, actual crop binding
-and output validation are deferred to #1012 and a separately reviewed activation.
+The admission-only contract is an exact seven-node API graph: IDs 1–3 are
+LoadImage nodes for target, mask and one reference; 4–5 are ImageCrop nodes
+linked to target and mask respectively; 6 is an AtlasFlux2Head contract node
+linked to both crops and the reference, with instruction, seed and adapter
+inputs; 7 is the sole PreviewImage output linked to node 6 port 0. Extra nodes,
+wrong classes, fields, links or placeholder locations fail closed. Both crop
+nodes bind the same explicit x/y/width/height in the prepared graph. The custom
+node name is a proposed interface, not evidence of an installed runtime.
+The scaffold discards the prepared graph: no upload, execution, output or
+lineage; `full_head` is never advertised. Actual output decoding, exactly one
+crop-sized PNG and lineage must be verified before any separately reviewed
+activation.
 
 Example shape only (the values below are deliberately not deployable evidence):
 
