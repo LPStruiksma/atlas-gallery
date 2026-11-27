@@ -91,24 +91,46 @@ capture_albums_grid() {
 }
 
 
-# #588: the emulator-ui job runs as shards. Shard 0 also runs the upgrade
-# phases; every shard runs its share of the instrumented suite.
+# #989: the normal dispatch separates standalone proofs from the suite.
+# Default all preserves legacy callers, including the signer recovery lane.
 # #591: synthetic signer-mismatch recovery is one indivisible, stateful
 # upgrade/restore sequence; only the independent UI suite may be sharded.
 SHARD_INDEX="${ATLAS_SHARD_INDEX:-0}"
 SHARD_COUNT="${ATLAS_SHARD_COUNT:-1}"
 RECOVERY_ONLY="${ATLAS_RECOVERY_ONLY:-0}"
+PHASES="${ATLAS_PHASES:-all}"
 [[ "$SHARD_COUNT" =~ ^[1-9]$ && "$SHARD_INDEX" =~ ^[0-9]$ && "$SHARD_INDEX" -lt "$SHARD_COUNT" ]] || {
   echo "::error::Bad shard ${SHARD_INDEX}/${SHARD_COUNT}"; exit 1;
 }
-echo "Emulator shard $((SHARD_INDEX + 1)) of $SHARD_COUNT"
+case "$PHASES" in
+  all|suite|upgrade) ;;
+  *) echo "::error::Bad ATLAS_PHASES: $PHASES"; exit 1 ;;
+esac
+if [[ "$PHASES" == "upgrade" && "$SHARD_COUNT" != "1" ]]; then
+  echo "::error::Upgrade proofs must run unsharded"; exit 1
+fi
+if [[ "$PHASES" != "all" && ( "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "1" || "$RECOVERY_ONLY" == "1" ) ]]; then
+  echo "::error::Signer recovery requires the legacy all phase"; exit 1
+fi
+run_upgrade=0
+run_suite=0
+run_paired=0
+if [[ "$PHASES" == "upgrade" || ( "$PHASES" == "all" && "$SHARD_INDEX" == "0" ) ]]; then run_upgrade=1; fi
+if [[ "$PHASES" != "upgrade" ]]; then run_suite=1; fi
+if [[ "$PHASES" == "upgrade" || ( "$PHASES" == "all" && ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ) ]]; then run_paired=1; fi
+echo "Emulator phase $PHASES, shard $((SHARD_INDEX + 1)) of $SHARD_COUNT"
+# Diagnostic-only branches run their opt-in tests on suite shards, not here.
+if [[ "$PHASES" == "upgrade" && ( -f scripts/ci-opt-in/thumbnail-fling || -f scripts/ci-opt-in/stress-classes ) ]]; then
+  echo "NOTICE: opt-in diagnostic head; standalone proofs skipped on purpose"
+  exit 0
+fi
 if [[ "$SHARD_COUNT" -gt 1 && "${ATLAS_SYNTHETIC_MISMATCH:-0}" == "1" ]]; then
   echo "::error::The signer-mismatch lane must run unsharded"; exit 1
 fi
 
 # Two independently built APKs on the SAME runner use its debug signing key.
 # Passing this is NOT evidence that the key matches a Galaxy S24+ installation.
-if [[ "$SHARD_INDEX" == "0" ]]; then
+if [[ "$run_upgrade" == "1" ]]; then
 gradle -p upgrade-baseline :app:assembleDebug --no-daemon --stacktrace
 gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 
@@ -157,8 +179,8 @@ adb install -r "$NEW"
 run_phase verify verifyAfterUpgrade
 echo "PASS: real emulator adb install -r preserved synthetic app-private People SQLite"
 else
-echo "Shard $SHARD_INDEX: upgrade phases run on shard 0"
-fi  # SHARD_INDEX == 0
+echo "This phase does not build or seed the baseline APK"
+fi  # run_upgrade
 
 # Expensive negative-signer scenario is opt-in. Routine Android PRs keep the
 # proven same-signature People preservation + fast viewer regressions. The
@@ -249,15 +271,23 @@ echo "NOTICE: test does not preserve SAF permissions or other phone settings; ow
 
 fi  # ATLAS_SYNTHETIC_MISMATCH
 
-# Shard 0 carries the stateful upgrade proof. After its final verify (also
+# The upgrade phase carries the stateful proof. After its final verify (also
 # after restore in the signer-mismatch lane), discard only the fictional
 # upgrade row before any People UI evidence is captured. Other shards never
 # seed the upgrade database.
-if [[ "$SHARD_INDEX" == "0" ]]; then
+if [[ "$run_upgrade" == "1" ]]; then
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
     echo "::error::People upgrade fixture cleanup requires an isolated emulator"; exit 1
   }
   run_phase cleanup cleanupAfterUpgradeForPeopleEvidence
+  # The old connected suite uninstalled the packages before standalone proofs.
+  # Recreate that clean app state on the dedicated hosted emulator only.
+  if [[ "$PHASES" == "upgrade" ]]; then
+    [[ "${GITHUB_ACTIONS:-}" == "true" ]] || { echo "::error::Standalone proofs require hosted emulator"; exit 1; }
+    [[ "$(adb devices | awk '$2 == "device" {n++} END {print n+0}')" == "1" ]] || { echo "::error::Expected one emulator"; exit 1; }
+    adb uninstall nl.atlas.gallery.test
+    adb uninstall nl.atlas.gallery
+  fi
 fi
 
 # In the dedicated mismatch job the stateful recovery proof ends here.
@@ -277,7 +307,7 @@ fi
 # before review so the final head runs the full suite below. The
 # signer-mismatch job keeps its own full suite.
 if [[ -f scripts/ci-opt-in/thumbnail-fling && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
-  if [[ "$SHARD_INDEX" != "0" ]]; then
+  if [[ "$run_upgrade" != "1" ]]; then
     gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
   fi
   adb install -r "$NEW"
@@ -307,11 +337,11 @@ fi
 # Opt-in stress run (docs/testing/EMULATOR_TESTS.md, "Stress a test"). A
 # head that commits scripts/ci-opt-in/stress-classes runs ONLY the tests it
 # lists, each as its own instrumentation run, on every shard: each shard is
-# an independent emulator, so one dispatch gives 2 x count samples in minutes
+# an independent emulator, so one dispatch gives 3 x count samples in minutes
 # instead of one sample per full suite. One "<count> <Class or Class#method>"
 # per line. Remove the file before review: the static guard fails while the file exists.
 if [[ -f scripts/ci-opt-in/stress-classes && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
-  if [[ "$SHARD_INDEX" != "0" ]]; then
+  if [[ "$run_upgrade" != "1" ]]; then
     gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
   fi
   adb install -r "$NEW"
@@ -354,9 +384,10 @@ fi
 # retain the same environment or it will attempt to install signer A again.
 # D2-5p scale lines (FaceIndexStoreScaleAndroidTest) go to logcat; keep a
 # buffer large enough for the whole suite and print them even on failure.
+connected_status=0
+if [[ "$run_suite" == "1" ]]; then
 adb logcat -G 16M || true
 adb logcat -c || true
-connected_status=0
 shard_args=()
 if [[ "$SHARD_COUNT" -gt 1 ]]; then
   shard_args=(-Pandroid.testInstrumentationRunnerArguments.numShards="$SHARD_COUNT"
@@ -387,6 +418,7 @@ echo "::group::ATLAS_SCALE synthetic SQLite measurements"
 # "- waiting for device -" until the job cap and turns a red shard into a cancel.
 timeout 30 adb logcat -d -s ATLAS_SCALE:I || echo "ATLAS_SCALE logcat unavailable (device gone or timed out)"
 echo "::endgroup::"
+fi  # run_suite
 # #417 PERF-7a: debug StrictMode baseline on shard 1 (or an unsharded run).
 # Report-only: a violation never fails the shard, and a missing report is a
 # warning that Review checks. It runs before the suite's own exit status is
@@ -599,12 +631,12 @@ PY
 }
 
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
-  ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  "$run_paired" == "1" ]]; then
   strictmode_baseline_417
   lapis_cold_start_splash_986
 fi
 if [[ "$connected_status" != "0" ]]; then exit "$connected_status"; fi
-# PERF-A1A #546: run only on shard 0, after the full connected suite.
+# PERF-A1A #546: run in the dedicated upgrade/proof lane (legacy shard 0).
 # The shell owns process-cold boundaries (the test runner cannot kill itself).
 # Every destructive action is scoped to one GitHub-hosted emulator.
 run_perf_a1_cached_frame() (
@@ -792,7 +824,7 @@ run_perf_a1_cached_frame() (
     }'
 )
 
-if [[ "$SHARD_INDEX" == "0" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
+if [[ "$run_upgrade" == "1" && "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" ]]; then
   # The connected test task already uninstalled both APKs.
   adb install -r "$NEW"
   adb install -r "$TEST"
@@ -803,9 +835,9 @@ fi
 # one instrumentation invocation: force-stop must kill the target process
 # between them. The test seeds only invented images and its own app-private
 # database, while MainActivity and the Android permission publication are real.
-# Run after the sharded suite to avoid polluting its MediaStore fixture counts;
-# the PNGs still remain for the final evidence pull.
-if [[ "$SHARD_INDEX" == "0" ]]; then
+# Run on a separate emulator from the suite to avoid polluting its MediaStore
+# fixture counts; the PNGs still remain for the final evidence pull.
+if [[ "$run_upgrade" == "1" ]]; then
   [[ "${GITHUB_ACTIONS:-}" == "true" &&
     "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == "1" ]] || {
     echo "::error::#31 real-process fixture requires isolated GitHub emulator"; exit 1
@@ -1141,10 +1173,10 @@ fi
 
 # The candidate UI tests above assert three-column geometry and exercise
 # Albums menus. Run only the paired theme capture here with the same synthetic
-# fixture as the baseline. Shard 1 owns the candidate captures; shard 0 owns
-# the pre-upgrade baseline captures. In an unsharded run both happen here.
+# fixture as the baseline. The dedicated proof lane owns both captures;
+# legacy all mode retains its original shard assignment.
 if [[ "${ATLAS_SYNTHETIC_MISMATCH:-0}" != "1" &&
-  ( "$SHARD_INDEX" == "1" || "$SHARD_COUNT" == "1" ) ]]; then
+  "$run_paired" == "1" ]]; then
   adb install -r "$NEW"
   adb install -r "$TEST"
   capture_albums_grid "after" "light"
@@ -1158,7 +1190,7 @@ fi
 # the expected names are declared per feature in scripts/ui-evidence.d/.
 # A shard pulls only its own screenshots; the aggregate emulator-ui job
 # checks that the shards together saved the whole set.
-if [[ "$SHARD_COUNT" -gt 1 ]]; then
+if [[ "$PHASES" != "all" || "$SHARD_COUNT" -gt 1 ]]; then
   bash scripts/ci_ui_evidence.sh pull-some
 else
   bash scripts/ci_ui_evidence.sh pull
