@@ -21,6 +21,7 @@ JOIN_STEP = "Require every emulator shard to pass"
 EXPECTED_JOBS = {
     "build", "emulator-ui shard 0", "emulator-ui shard 1", "emulator-ui"
 }
+SPLIT_JOBS = EXPECTED_JOBS | {"emulator-upgrade", "emulator-ui shard 2"}
 KVM_MESSAGES = (
     "KVM unavailable; /dev/kvm does not exist on this runner, "
     "refusing multi-minute software-emulation fallback",
@@ -113,16 +114,19 @@ def assess(event, current, workflow, jobs, logs):
     if (not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha)
             or current.get("head_sha") != sha):
         return False, "head mismatch"
-    if not isinstance(jobs, list) or len(jobs) != 4:
+    if not isinstance(jobs, list) or len(jobs) not in (4, 6):
         return False, "unknown or incomplete job set"
 
+    expected = SPLIT_JOBS if len(jobs) == 6 else EXPECTED_JOBS
+    if expected == SPLIT_JOBS and run.get("event") != "workflow_dispatch":
+        return False, "split job set requires dispatch"
     by_name = {}
     ids = set()
     for job in jobs:
         if not isinstance(job, dict):
             return False, "invalid job"
         name, job_id = job.get("name"), job.get("id")
-        if (name not in EXPECTED_JOBS or name in by_name or
+        if (name not in expected or name in by_name or
                 not positive_int(job_id) or job_id in ids):
             return False, "unknown or duplicate job id/name"
         if (job.get("run_id") != run_id or
@@ -132,7 +136,7 @@ def assess(event, current, workflow, jobs, logs):
             return False, "unknown, skipped or cancelled job"
         ids.add(job_id)
         by_name[name] = job
-    if set(by_name) != EXPECTED_JOBS:
+    if set(by_name) != expected:
         return False, "required jobs missing"
     if by_name["build"]["conclusion"] != "success":
         return False, "build did not pass"
@@ -144,11 +148,16 @@ def assess(event, current, workflow, jobs, logs):
     join_log = logs.get(join["id"])
     if not isinstance(join_log, str):
         return False, "missing aggregate job log"
-    if JOIN_MESSAGE not in error_messages(join_log):
+    expected_join = ("Emulator upgrade did not pass (failure)"
+                     if "emulator-upgrade" in by_name and
+                     by_name["emulator-upgrade"]["conclusion"] == "failure"
+                     else JOIN_MESSAGE)
+    if expected_join not in error_messages(join_log):
         return False, "aggregate lacks exact shard-failure diagnostic"
 
     kvm_failed = 0
-    for name in ("emulator-ui shard 0", "emulator-ui shard 1"):
+    emulator_jobs = sorted(expected - {"build", "emulator-ui"})
+    for name in emulator_jobs:
         job = by_name[name]
         if job["conclusion"] == "success":
             continue
@@ -165,7 +174,7 @@ def assess(event, current, workflow, jobs, logs):
 
     # A quota/budget failure anywhere in the observed failed-job logs is never
     # recoverable by spending more Actions minutes.
-    for name in ("emulator-ui", "emulator-ui shard 0", "emulator-ui shard 1"):
+    for name in ["emulator-ui", *emulator_jobs]:
         job = by_name[name]
         if job["conclusion"] != "failure":
             continue
