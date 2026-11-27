@@ -15,18 +15,18 @@ albums-detail	light	yes	parity-24-albums-detail-light.png	SystemLightThemeJourne
 albums-detail	dark	yes	parity-24-albums-detail-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-overview	light	yes	theme-662-people-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-overview	dark	yes	theme-662-people-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
-people-named	light	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
-people-named	dark	no		PersonPageJourneyTest	Named synthetic person has no independently verified light/dark Activity capture pair
+people-named	light	yes	parity-24-people-named-light.png	PersonPageJourneyTest	
+people-named	dark	yes	parity-24-people-named-dark.png	PersonPageJourneyTest	
 people-hidden	light	yes	parity-24-people-hidden-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 people-hidden	dark	yes	parity-24-people-hidden-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-photo	light	yes	theme-662-viewer-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-photo	dark	yes	theme-662-viewer-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
-viewer-details-people	light	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
-viewer-details-people	dark	no		PhotoPeopleDetailsTest	Details People mapping screenshot exists but no controlled light/dark pair
+viewer-details-people	light	yes	parity-24-viewer-details-people-light.png	PhotoPeopleDetailsTest	
+viewer-details-people	dark	yes	parity-24-viewer-details-people-dark.png	PhotoPeopleDetailsTest	
 viewer-filmstrip	light	yes	parity-24-viewer-filmstrip-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
 viewer-filmstrip	dark	yes	parity-24-viewer-filmstrip-dark.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	
-search-person	light	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
-search-person	dark	no		PersonNameSearchEvidenceTest	Synthetic person search screenshot has no controlled light/dark pair
+search-person	light	yes	parity-24-search-person-light.png	PersonNameSearchEvidenceTest	
+search-person	dark	yes	parity-24-search-person-dark.png	PersonNameSearchEvidenceTest	
 selection-more	light	yes	selection-pill-17-light-more.png	SelectionPillLightJourneyTest / SelectionPillDarkJourneyTest	
 selection-more	dark	yes	selection-pill-17-dark-more.png	SelectionPillLightJourneyTest / SelectionPillDarkJourneyTest	
 photo-dna	light	yes	theme-662-photo-dna-light.png	SystemLightThemeJourneyTest / SystemDarkThemeJourneyTest	

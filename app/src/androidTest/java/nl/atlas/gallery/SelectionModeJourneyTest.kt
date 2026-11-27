@@ -12,7 +12,12 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import nl.atlas.gallery.featuregrid.LARGER_TILES_ACTION
+import nl.atlas.gallery.featuregrid.ORIGINAL_PROPORTIONS_ACTION
+import nl.atlas.gallery.featuregrid.SMALLER_TILES_ACTION
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -157,6 +162,249 @@ class SelectionModeJourneyTest {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         waitFor(hasTestTag("atlas-nav-photos"))
         compose.onNodeWithTag("atlas-selection-bottom-bar").assertDoesNotExist()
+    }
+
+    /**
+     * Lukas 2026-11-22: the grid flashed blank on long-press and the drag
+     * selected only one photo. The first tile's selection swaps the tab bar
+     * for the action bar; the drag is split around an idle frame so that swap
+     * (and any grid rebuild it causes) happens while the finger is still down.
+     */
+    @Test fun dragKeepsSelectingAfterTheSelectionBarsSwapIn() {
+        val ids = fixtures.ids
+        waitFor(hasTestTag("atlas-nav-photos"))
+        waitFor(hasTestTag("atlas-timeline-media-${ids[11]}"))
+        compose.waitForIdle()
+        val grid = compose.onNodeWithTag("atlas-timeline-grid").fetchSemanticsNode().boundsInRoot
+        fun centre(id: Long): Offset =
+            compose.onNodeWithTag("atlas-timeline-media-$id").fetchSemanticsNode()
+                .boundsInRoot.center - grid.topLeft
+        val from = centre(ids[0])
+        val to = centre(ids[5])
+        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+            down(from)
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 150L)
+            moveBy(Offset(1f, 0f))
+        }
+        // Finger still down: selection mode is on screen, the grid is not blank.
+        waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag("atlas-selection-bottom-bar").assertExists()
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-timeline-media-${ids[1]}").assertExists()
+        compose.onNodeWithTag("atlas-timeline-media-${ids[0]}").assertIsSelected()
+        saveUiEvidence("selection-959-drag-held.png")
+        compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+            val start = from + Offset(1f, 0f)
+            val steps = 12
+            for (i in 1..steps) {
+                moveTo(start + (to - start) * (i / steps.toFloat()))
+                advanceEventTime(16L)
+            }
+            up()
+        }
+        waitFor(hasTestTag("atlas-selection-count") and hasText("6 selected"))
+        compose.waitForIdle()
+        saveUiEvidence("selection-959-drag-range.png")
+        fun assertTile(id: Long, selected: Boolean) {
+            val tag = "atlas-timeline-media-$id"
+            compose.onNodeWithTag("atlas-timeline-grid").performScrollToNode(hasTestTag(tag))
+            if (selected) compose.onNodeWithTag(tag).assertIsSelected()
+            else compose.onNodeWithTag(tag).assertIsNotSelected()
+        }
+        (0..5).forEach { assertTile(ids[it], selected = true) }
+        assertTile(ids[6], selected = false)
+    }
+
+    /** Lukas 2026-11-22: at the original-proportions level a long press selected nothing. */
+    @Test fun originalProportionsLongPressAndDragSelect() {
+        val ids = fixtures.ids
+        waitFor(hasTestTag("atlas-nav-photos"))
+        waitFor(hasTestTag("atlas-timeline-media-${ids[11]}"))
+        // The TalkBack route into original rows; the pinch has its own journey.
+        val withAction = SemanticsMatcher("offers $ORIGINAL_PROPORTIONS_ACTION") { node ->
+            node.config.getOrNull(SemanticsActions.CustomActions)
+                ?.any { it.label == ORIGINAL_PROPORTIONS_ACTION } == true
+        }
+        waitFor(withAction)
+        val actions = compose.onNode(withAction).fetchSemanticsNode()
+            .config[SemanticsActions.CustomActions]
+        compose.runOnIdle { actions.first { it.label == ORIGINAL_PROPORTIONS_ACTION }.action() }
+        fun tile(id: Long) = "atlas-ratio-media-$id-photo"
+        waitFor(hasTestTag(tile(ids[0])))
+        compose.waitForIdle()
+
+        // 1. A plain long press selects that photo; the bars swap like on the square grid.
+        compose.onNodeWithTag(tile(ids[1])).performTouchInput { longClick() }
+        waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.onNodeWithTag(tile(ids[1])).assertIsSelected()
+        compose.onNodeWithTag("atlas-selection-bottom-bar").assertExists()
+        compose.onNodeWithTag("atlas-nav-photos").assertDoesNotExist()
+        compose.waitForIdle()
+        saveUiEvidence("selection-959-original-single.png")
+        // A tap toggles instead of opening the viewer.
+        compose.tap(hasTestTag(tile(ids[1])))
+        waitFor(hasTestTag("atlas-selection-count") and hasText("Select items"))
+
+        // 2. Long-press the first photo and drag to the fourth, split around an idle frame.
+        val list = compose.onNodeWithTag("atlas-ratio-gallery").fetchSemanticsNode().boundsInRoot
+        fun centre(id: Long): Offset =
+            compose.onNodeWithTag(tile(id)).fetchSemanticsNode().boundsInRoot.center - list.topLeft
+        val from = centre(ids[0])
+        val to = centre(ids[3])
+        compose.onNodeWithTag("atlas-ratio-gallery").performTouchInput {
+            down(from)
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 150L)
+            moveBy(Offset(1f, 0f))
+        }
+        waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+        compose.waitForIdle()
+        compose.onNodeWithTag("atlas-ratio-gallery").performTouchInput {
+            val start = from + Offset(1f, 0f)
+            val steps = 12
+            for (i in 1..steps) {
+                moveTo(start + (to - start) * (i / steps.toFloat()))
+                advanceEventTime(16L)
+            }
+            up()
+        }
+        waitFor(hasTestTag("atlas-selection-count") and hasText("4 selected"))
+        compose.waitForIdle()
+        saveUiEvidence("selection-959-original-drag-range.png")
+        fun assertTile(id: Long, selected: Boolean) {
+            compose.onNodeWithTag("atlas-ratio-gallery").performScrollToNode(hasTestTag(tile(id)))
+            if (selected) compose.onNodeWithTag(tile(id)).assertIsSelected()
+            else compose.onNodeWithTag(tile(id)).assertIsNotSelected()
+        }
+        (0..3).forEach { assertTile(ids[it], selected = true) }
+        assertTile(ids[4], selected = false)
+
+        // Back leaves selection and keeps the original rows.
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        waitFor(hasTestTag("atlas-nav-photos"))
+        compose.onNodeWithTag("atlas-ratio-gallery").assertExists()
+    }
+
+    /**
+     * Lukas 2026-11-22: long-press selected only at the original-proportions
+     * level. Every Photos layout and zoom level must start selection with a
+     * still long press and extend it with a drag: the timeline at all five
+     * levels (3, 4, 7, 12 and 28 columns), original rows, and the plain grid
+     * (timeline off) at its three levels.
+     */
+    @Test fun longPressAndDragSelectInEveryGridModeAndZoomLevel() {
+        val ids = fixtures.ids
+        waitFor(hasTestTag("atlas-nav-photos"))
+        waitFor(hasTestTag("atlas-timeline-media-${ids[11]}"))
+        compose.waitForIdle()
+        fun timelineTile(id: Long) = "atlas-timeline-media-$id"
+
+        // Timeline: start at the largest tiles, then step down through every level.
+        var larger = 0
+        while (runGridAction("atlas-timeline-grid", LARGER_TILES_ACTION)) larger++
+        val levels = listOf("timeline-3", "timeline-4", "timeline-7", "timeline-12", "timeline-28")
+        levels.forEachIndexed { i, level ->
+            assertSelects(level, "atlas-timeline-grid", ::timelineTile)
+            if (i < levels.lastIndex) {
+                check(runGridAction("atlas-timeline-grid", SMALLER_TILES_ACTION)) {
+                    "$level offers no $SMALLER_TILES_ACTION"
+                }
+            }
+        }
+        // Back to the level this test found (the density is remembered).
+        repeat(levels.size - 1 - larger) {
+            check(runGridAction("atlas-timeline-grid", LARGER_TILES_ACTION))
+        }
+        waitFor(hasTestTag(timelineTile(ids[3])))
+
+        // Original rows, entered from the timeline.
+        check(runGridAction("atlas-timeline-grid", ORIGINAL_PROPORTIONS_ACTION))
+        assertSelects("original", "atlas-ratio-gallery") { "atlas-ratio-media-$it-photo" }
+
+        // Plain grid (timeline off) at Large, Medium and Small. From original
+        // rows the toggle returns to the timeline; a second one turns it off.
+        fun toggleTimeline() {
+            compose.tap(hasTestTag("atlas-header-more"))
+            waitFor(hasTestTag("atlas-timeline-toggle"))
+            compose.tap(hasTestTag("atlas-timeline-toggle"))
+            compose.waitForIdle()
+        }
+        toggleTimeline()
+        waitFor(hasTestTag("atlas-timeline-grid"))
+        toggleTimeline()
+        waitFor(hasTestTag("atlas-feature-grid"))
+        for (columns in listOf(3, 4, 7)) {
+            compose.tap(hasTestTag("atlas-grid-density-$columns"))
+            compose.waitForIdle()
+            assertSelects("plain-$columns", "atlas-feature-grid") { "atlas-grid-media-$it-photo" }
+        }
+        // The plain grid remembers its level: leave it at the default.
+        compose.tap(hasTestTag("atlas-grid-density-4"))
+        compose.waitForIdle()
+    }
+
+    /** Runs a TalkBack custom action on [tag]; false when the node does not offer it. */
+    private fun runGridAction(tag: String, label: String): Boolean {
+        waitFor(hasTestTag(tag))
+        compose.waitForIdle()
+        val action = compose.onNodeWithTag(tag).fetchSemanticsNode().config
+            .getOrNull(SemanticsActions.CustomActions)?.firstOrNull { it.label == label }
+            ?: return false
+        compose.runOnIdle { action.action() }
+        compose.waitForIdle()
+        return true
+    }
+
+    /**
+     * In [mode]: a still long press on the second photo selects exactly it;
+     * then a long press on the first photo dragged, without lifting, to the
+     * fourth selects all four. Back leaves selection after each.
+     */
+    private fun assertSelects(mode: String, container: String, tile: (Long) -> String) {
+        val ids = fixtures.ids
+        waitFor(hasTestTag(tile(ids[3])))
+        compose.waitForIdle()
+        try {
+            // 1. Hold still, then lift: exactly that photo, bars swapped.
+            compose.onNodeWithTag(tile(ids[1])).performTouchInput { longClick() }
+            waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+            compose.onNodeWithTag(tile(ids[1])).assertIsSelected()
+            compose.onNodeWithTag("atlas-selection-bottom-bar").assertExists()
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            waitFor(hasTestTag("atlas-nav-photos"))
+            compose.waitForIdle()
+
+            // 2. Hold the first photo, then drag to the fourth without lifting.
+            val box = compose.onNodeWithTag(container).fetchSemanticsNode().boundsInRoot
+            fun centre(id: Long): Offset =
+                compose.onNodeWithTag(tile(id)).fetchSemanticsNode().boundsInRoot.center - box.topLeft
+            val from = centre(ids[0])
+            compose.onNodeWithTag(container).performTouchInput {
+                down(from)
+                advanceEventTime(viewConfiguration.longPressTimeoutMillis + 150L)
+                moveBy(Offset(1f, 0f))
+            }
+            waitFor(hasTestTag("atlas-selection-count") and hasText("1 selected"))
+            compose.waitForIdle()
+            // Read the target after the bars swapped, as the user sees it.
+            val held = from + Offset(1f, 0f)
+            val to = centre(ids[3])
+            compose.onNodeWithTag(container).performTouchInput {
+                val steps = 12
+                for (i in 1..steps) {
+                    moveTo(held + (to - held) * (i / steps.toFloat()))
+                    advanceEventTime(16L)
+                }
+                up()
+            }
+            waitFor(hasTestTag("atlas-selection-count") and hasText("4 selected"))
+            compose.waitForIdle()
+            saveUiEvidence("selection-modes-$mode.png")
+            compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+            waitFor(hasTestTag("atlas-nav-photos"))
+            compose.waitForIdle()
+        } catch (e: Throwable) {
+            throw AssertionError("Selection failed in $mode", e)
+        }
     }
 
     /** Fails with the header tags actually on screen, so a date mismatch is visible in CI. */

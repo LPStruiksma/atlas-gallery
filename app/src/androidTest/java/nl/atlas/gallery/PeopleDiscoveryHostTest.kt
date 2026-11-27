@@ -565,8 +565,9 @@ class PeopleDiscoveryHostTest {
      * #532 equality: the lean People home read equals what the full cluster
      * read shows on People home (the visible ordered list of person + name,
      * via peopleWithPresentFaces + peopleAlbumsForGrant), plus per-person
-     * present-face counts (confirmed plus matched, #580) and the lowest
-     * present confirmed face as cover.
+     * present-face counts (confirmed plus matched, #580) and a cover from
+     * current, published person membership (COVER-2 quality ranking is tested
+     * separately in BestShotCoverAndroidTest).
      */
     private fun assertHomeEqualsFullRead(epoch: String): Map<PersonKey, Int> {
         val home = store.peopleHome(epoch)!!
@@ -579,7 +580,7 @@ class PeopleDiscoveryHostTest {
         val presentByPerson = expected.clusters.reviews.confirmed
             .filterKeys { it in expected.clusters }.entries
             .groupBy({ it.value }, { it.key.localHex })
-        // #580: faces grouping added on its own count too; the cover stays confirmed.
+        // #580: matched members contribute to the face count and can supply a COVER-2 cover.
         val matchedByPerson = expected.clusters.matched.entries
             .groupBy({ it.value.person }, { it.key.localHex })
         val summary = nl.atlas.gallery.featurepeopleui.PeopleHomeSummary(epoch, generation,
@@ -595,9 +596,12 @@ class PeopleDiscoveryHostTest {
             expected.names.keys.associateWith {
                 (presentByPerson[it]?.size ?: 0) + (matchedByPerson[it]?.size ?: 0) },
             home.people.mapValues { it.value.faceCount })
-        assertEquals("cover = lowest present face",
-            expected.names.keys.associateWith { presentByPerson[it]?.minOrNull() },
-            home.people.mapValues { it.value.coverFaceUid })
+        for ((person, entry) in home.people) {
+            val present = presentByPerson[person].orEmpty().toSet() +
+                matchedByPerson[person].orEmpty().toSet()
+            assertTrue("cover must be a current member of $person",
+                entry.coverFaceUid in present)
+        }
         return home.people.mapValues { it.value.faceCount }
     }
 
@@ -642,17 +646,22 @@ class PeopleDiscoveryHostTest {
             assertTrue(store.materializeClusters(epoch))
         }
         val faces = group.members.map { it.localHex }.sorted()
-        // The cover (lowest face) goes stale by source revision.
+        // One member goes stale by source revision; the selected cover may be
+        // any current quality-ranked member, not necessarily the lowest UID.
         db.execSQL("UPDATE embeddings SET source_revision=? WHERE face_uid=?",
             arrayOf("obsolete-revision", faces[0]))
         republish()
         assertEquals(group.members.size - 1, assertHomeEqualsFullRead(epoch)[person])
-        assertEquals(faces[1], store.peopleHome(epoch)!!.people[person]?.coverFaceUid)
+        val currentCover = store.peopleHome(epoch)!!.people[person]?.coverFaceUid
+        assertTrue("invalidated source must not be the cover",
+            currentCover in faces.drop(1))
 
         db.execSQL("UPDATE embeddings SET model_version=? WHERE face_uid=?",
             arrayOf("obsolete-model", faces[1]))
         republish()
         assertEquals(group.members.size - 2, assertHomeEqualsFullRead(epoch)[person])
+        assertTrue("stale model must not be the cover",
+            store.peopleHome(epoch)!!.people[person]?.coverFaceUid in faces.drop(2))
 
         // Live fallback (a file from before the summary) gives the same rows.
         val served = store.peopleHome(epoch)

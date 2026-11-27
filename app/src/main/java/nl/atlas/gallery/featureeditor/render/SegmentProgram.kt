@@ -131,6 +131,13 @@ class SegmentProgram private constructor(
                 is RenderStage.ColourAdjust -> adjust = stage
                 is RenderStage.Lut -> lut = stage
                 is RenderStage.Overlays -> overlays = stage
+                // EDIT-8 schema-v2 stages are plan metadata until their pixel backends land.
+                // Resize dimensions are already represented by plan.outputWidth/outputHeight.
+                is RenderStage.ShapeCrop,
+                is RenderStage.Resize,
+                is RenderStage.Curves,
+                is RenderStage.ColorMix,
+                is RenderStage.SpotColor -> Unit
             }
             val planToOutput = Matrix3.scale(outputWidth.toDouble() / plan.outputWidth, outputHeight.toDouble() / plan.outputHeight)
             val s2o = planToOutput * (geometry?.sourceToOutput ?: Matrix3.IDENTITY)

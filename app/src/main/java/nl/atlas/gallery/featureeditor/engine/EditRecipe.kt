@@ -42,6 +42,7 @@ data class EditRecipe(
         when (op) {
             is EditOperation.RasterPatch -> listOfNotNull(op.contentHash, op.maskHash)
             is EditOperation.Filter -> listOfNotNull(op.lutHash)
+            is EditOperation.SpotColor -> listOfNotNull(op.brushMaskHash)
             is EditOperation.OverlayAdd -> listOfNotNull(op.layer.contentHash)
             is EditOperation.OverlayUpdate -> listOfNotNull(op.layer.contentHash)
             else -> emptyList()
@@ -54,7 +55,7 @@ data class EditRecipe(
     val isEmpty: Boolean get() = operations.isEmpty()
 
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
         const val SCHEMA_NAME = "atlas.edit-recipe"
     }
 }
@@ -246,6 +247,89 @@ data class OverlayLayer(
     }
 }
 
+
+/** Monotone tone-curve knot, normalized to [0,1]. Points are in increasing x order. */
+data class CurvePoint(val x: Double, val y: Double)
+
+private val IDENTITY_CURVE = listOf(CurvePoint(0.0, 0.0), CurvePoint(1.0, 1.0))
+
+private fun validCurve(points: List<CurvePoint>): Boolean =
+    points.size in 2..32 && points.first().x == 0.0 && points.last().x == 1.0 &&
+        points.all { it.x.isFinite() && it.y.isFinite() && it.x in 0.0..1.0 && it.y in 0.0..1.0 } &&
+        points.zipWithNext().all { (a, b) -> b.x > a.x && b.y >= a.y }
+
+private fun isRgbHex(color: String): Boolean =
+    color.length == 7 && color[0] == '#' && color.drop(1).all { it in '0'..'9' || it in 'a'..'f' }
+
+/** The eight independently adjustable colour-mix wheel buckets. */
+enum class PresetHue(val key: String) {
+    RED("red"), ORANGE("orange"), YELLOW("yellow"), GREEN("green"),
+    CYAN("cyan"), BLUE("blue"), PURPLE("purple"), MAGENTA("magenta");
+    companion object { fun fromKey(key: String): PresetHue? = entries.firstOrNull { it.key == key } }
+}
+
+/** Absolute HSL offsets; all three axes are in [-1,1], where zero is unchanged. */
+data class HueAdjustment(
+    val hue: PresetHue,
+    val hueShift: Double = 0.0,
+    val saturation: Double = 0.0,
+    val luminance: Double = 0.0,
+) {
+    fun isValid(): Boolean = listOf(hueShift, saturation, luminance).all { it.isFinite() && it in -1.0..1.0 }
+    fun isNeutral(): Boolean = hueShift == 0.0 && saturation == 0.0 && luminance == 0.0
+}
+
+/** Eyedropper sample, an RGB value in canonical lower-case #rrggbb plus HSL offsets. */
+data class SampledHue(
+    val color: String,
+    val hueShift: Double = 0.0,
+    val saturation: Double = 0.0,
+    val luminance: Double = 0.0,
+) {
+    fun isValid(): Boolean = isRgbHex(color) &&
+        listOf(hueShift, saturation, luminance).all { it.isFinite() && it in -1.0..1.0 }
+    fun isNeutral(): Boolean = hueShift == 0.0 && saturation == 0.0 && luminance == 0.0
+}
+
+/** Atlas preset masks; exact Samsung catalogue remains device-canary dependent. */
+enum class CropShape(val key: String) {
+    CIRCLE("circle"), OVAL("oval"), RECTANGLE("rectangle"), ROUNDED_RECT("rounded-rect"),
+    HEART("heart"), STAR("star");
+    companion object { fun fromKey(key: String): CropShape? = entries.firstOrNull { it.key == key } }
+}
+
+enum class CropOutside(val key: String) {
+    TRANSPARENT("transparent"), SOLID("solid");
+    companion object { fun fromKey(key: String): CropOutside? = entries.firstOrNull { it.key == key } }
+}
+
+/** Reject self-intersection while allowing non-convex lasso outlines. */
+private fun validLasso(points: List<Point2>): Boolean {
+    if (points.size !in 3..256 || points.any {
+            !it.x.isFinite() || !it.y.isFinite() || it.x !in 0.0..1.0 || it.y !in 0.0..1.0
+        } || polygonArea(points) < 1e-4) return false
+    if (points.indices.any { points[it] == points[(it + 1) % points.size] }) return false
+    fun cross(a: Point2, b: Point2, c: Point2) =
+        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+    fun crosses(a: Point2, b: Point2, c: Point2, d: Point2): Boolean {
+        val abC = cross(a, b, c); val abD = cross(a, b, d)
+        val cdA = cross(c, d, a); val cdB = cross(c, d, b)
+        // Adjacent segments are not tested; collinear non-adjacent overlap is invalid.
+        if (kotlin.math.abs(abC) < 1e-12 && kotlin.math.abs(abD) < 1e-12) {
+            val xOverlap = maxOf(minOf(a.x, b.x), minOf(c.x, d.x)) <= minOf(maxOf(a.x, b.x), maxOf(c.x, d.x))
+            val yOverlap = maxOf(minOf(a.y, b.y), minOf(c.y, d.y)) <= minOf(maxOf(a.y, b.y), maxOf(c.y, d.y))
+            return xOverlap && yOverlap
+        }
+        return abC * abD <= 0.0 && cdA * cdB <= 0.0
+    }
+    for (i in points.indices) for (j in i + 1 until points.size) {
+        if (j == i + 1 || (i == 0 && j == points.lastIndex)) continue
+        if (crosses(points[i], points[(i + 1) % points.size], points[j],
+                points[(j + 1) % points.size])) return false
+    }
+    return true
+}
+
 /**
  * One user action in the recipe. Every operation has a stable [id] so history entries, UI
  * selection and AI patch bookkeeping can name it.
@@ -306,6 +390,97 @@ sealed class EditOperation {
             !(strength.isFinite() && strength in 0.0..1.0) -> "filter strength out of range"
             lutHash != null && !isContentHash(lutHash) -> "filter hash is malformed"
             lutId != null && lutId.isBlank() -> "filter id is blank"
+            else -> null
+        }
+    }
+
+
+    /** Absolute monotone curves for composite RGB and three individual channels. */
+    data class Curves(
+        override val id: String,
+        val rgb: List<CurvePoint> = IDENTITY_CURVE,
+        val red: List<CurvePoint> = IDENTITY_CURVE,
+        val green: List<CurvePoint> = IDENTITY_CURVE,
+        val blue: List<CurvePoint> = IDENTITY_CURVE,
+    ) : EditOperation() {
+        override fun validate(): String? =
+            if (listOf(rgb, red, green, blue).all(::validCurve)) null else "curve knots are invalid"
+        fun isNeutral() = listOf(rgb, red, green, blue).all { it == IDENTITY_CURVE }
+    }
+
+    /** Absolute HSL changes for up to eight preset hues and three eyedropper samples. */
+    data class ColorMix(
+        override val id: String,
+        val presets: List<HueAdjustment> = emptyList(),
+        val custom: List<SampledHue> = emptyList(),
+    ) : EditOperation() {
+        override fun validate(): String? = when {
+            presets.size > 8 || presets.map { it.hue }.toSet().size != presets.size ->
+                "colour mix presets repeat or exceed eight"
+            custom.size > 3 || custom.map { it.color }.toSet().size != custom.size ->
+                "colour mix samples repeat or exceed three"
+            !presets.all { it.isValid() } || !custom.all { it.isValid() } ->
+                "colour mix HSL value or sample is invalid"
+            else -> null
+        }
+        fun isNeutral() = presets.all { it.isNeutral() } && custom.all { it.isNeutral() }
+    }
+
+    /**
+     * Spot colour isolates [keep] and suppresses [remove], with an optional brush-erase mask
+     * stored by hash. Sampled RGB keys and tolerance are exact recipe values, not guessed hues.
+     */
+    data class SpotColor(
+        override val id: String,
+        val keep: List<String> = emptyList(),
+        val remove: List<String> = emptyList(),
+        val tolerance: Double = 0.1,
+        val brushMaskHash: String? = null,
+    ) : EditOperation() {
+        override fun validate(): String? = when {
+            !tolerance.isFinite() || tolerance !in 0.0..1.0 -> "spot colour tolerance out of range"
+            keep.any { !isRgbHex(it) } || remove.any { !isRgbHex(it) } -> "spot colour sample invalid"
+            (keep + remove).toSet().size != keep.size + remove.size -> "spot colour sample repeated"
+            keep.size + remove.size > 16 -> "too many spot colour samples"
+            brushMaskHash != null && !isContentHash(brushMaskHash) -> "spot colour brush mask invalid"
+            brushMaskHash != null && keep.isEmpty() && remove.isEmpty() -> "spot colour brush has no sample"
+            else -> null
+        }
+        fun isNeutral() = keep.isEmpty() && remove.isEmpty()
+    }
+
+    /**
+     * Mask in normalized display-canvas space: exactly one freeform polygon or preset shape.
+     * The outside is transparent by default; SOLID requires a canonical RGB fill colour.
+     */
+    data class ShapeCrop(
+        override val id: String,
+        val polygon: List<Point2>? = null,
+        val preset: CropShape? = null,
+        val outside: CropOutside = CropOutside.TRANSPARENT,
+        val fillColor: String? = null,
+    ) : EditOperation() {
+        override fun validate(): String? = when {
+            (polygon == null) == (preset == null) -> "shape crop needs one boundary"
+            polygon != null && !validLasso(polygon) -> "lasso boundary invalid"
+            outside == CropOutside.SOLID && (fillColor == null || !isRgbHex(fillColor)) ->
+                "solid shape crop fill invalid"
+            outside == CropOutside.TRANSPARENT && fillColor != null -> "transparent shape crop has fill"
+            else -> null
+        }
+    }
+
+    /** An output long edge or a percentage of the pre-resize geometry, never both. */
+    data class Resize(
+        override val id: String,
+        val longEdge: Int? = null,
+        val percentage: Double? = null,
+    ) : EditOperation() {
+        override fun validate(): String? = when {
+            (longEdge == null) == (percentage == null) -> "resize needs exactly one dimension mode"
+            longEdge != null && longEdge !in 1..32768 -> "resize long edge out of range"
+            percentage != null && (!percentage.isFinite() || percentage !in 1.0..400.0) ->
+                "resize percentage out of range"
             else -> null
         }
     }
