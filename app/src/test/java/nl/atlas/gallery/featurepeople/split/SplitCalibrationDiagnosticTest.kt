@@ -167,7 +167,7 @@ class SplitCalibrationDiagnosticTest {
 
     @Test fun handComputedMatchingAndBins() {
         // g0 = A4 B3, g1 = A3, g2 = B1, Unsure = A1.
-        // Greedy majority would keep 4; exact matching keeps B3 + A3 = 6.
+        // Greedy first choice A4 blocks the optimum; exact matching keeps B3 + A3 = 6.
         val truth = (1..12).associate { id(it) to if (it in 1..4 || it in 8..10 || it == 12) 0 else 1 }
         val groups = listOf((1..7).map { Placement(id(it), 0.8f) },
             (8..10).map { Placement(id(it), 0.2f) }, listOf(Placement(id(11), 1f)))
