@@ -92,6 +92,16 @@ fun ComposeTestRule.openPeopleSection(timeoutMillis: Long = 60_000L) {
     val albums = androidx.compose.ui.test.hasTestTag("atlas-nav-albums")
     val people = androidx.compose.ui.test.hasTestTag("atlas-collections-people")
     waitForNode(albums, timeoutMillis)
+    // Paired before/after captures (BRAND-L2, shard 0) run this candidate test
+    // APK against the installed pre-L4 baseline too, which still has a People
+    // tab: use it there.
+    val legacyPeopleTab = androidx.compose.ui.test.hasTestTag("atlas-nav-people")
+    if (exists(legacyPeopleTab)) {
+        tap(legacyPeopleTab, timeoutMs = timeoutMillis) {
+            exists(androidx.compose.ui.test.hasTestTag("atlas-people-home"))
+        }
+        return
+    }
     tap(albums, timeoutMs = timeoutMillis) { exists(people) }
     // People keeps Collections current; its section pill turns selected.
     tap(people, timeoutMs = timeoutMillis) {
