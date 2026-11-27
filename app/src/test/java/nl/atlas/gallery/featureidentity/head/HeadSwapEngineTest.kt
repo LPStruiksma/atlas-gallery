@@ -257,11 +257,13 @@ class HeadSwapEngineTest {
     }
 
     @Test fun malformedAdvertisedLimitsFailAdmissionInsteadOfDefaulting() {
-        fun caps(features: Map<String, Any?>, params: List<Map<String, Any?>>) = HeadServerCapabilities.fromProtocolJson(mapOf(
+        fun base(features: Map<String, Any?>) = mapOf<String, Any?>(
             "schema_version" to 1L, "protocol_version" to "1.0", "provider_id" to "self-hosted-flux2-head",
             "models" to listOf(mapOf("id" to HeadAdapterIdentity.HEAD_MODEL_ID)),
-            "features" to features, "advanced_parameters" to params
-        ))
+            "features" to features
+        )
+        fun caps(features: Map<String, Any?>, params: Any?) =
+            HeadServerCapabilities.fromProtocolJson(base(features) + ("advanced_parameters" to params))
         val features = mapOf<String, Any?>(
             "mask_edit" to true, "seed" to true, "full_head" to true,
             "reference_images" to mapOf("max_count" to 1L),
@@ -276,6 +278,19 @@ class HeadSwapEngineTest {
         assertNull(caps(features, listOf(mapOf("name" to "head_height", "maximum" to 1.5))))
         assertNull(caps(features, listOf(mapOf("name" to "head_height", "maximum" to -4L))))
         assertNull(caps(features, listOf(mapOf("name" to "head_width", "minimum" to 900L, "maximum" to 100L))))
+        assertNull(caps(features, listOf(mapOf("name" to "head_width", "minimum" to null))))
+        assertNull(caps(features, listOf(mapOf("name" to "head_height", "maximum" to null))))
+        // Wrong-type container: an object, a string or null instead of an array fails admission.
+        for (container in listOf<Any?>(mapOf("head_width" to mapOf("maximum" to 64L)), "head_width<=64", null, 7L)) {
+            assertNull("container $container", caps(features, container))
+            val transport = FakeTransport(HeadHandshake.Reachable(
+                caps(features, container) ?: admitted(fullHead = false)))
+            assertUnavailable(HeadSwapEngine(approval(), transport))
+            assertTrue(transport.jobs.isEmpty())
+        }
+        // Omitted entirely is allowed and keeps the protocol defaults.
+        val omitted = HeadServerCapabilities.fromProtocolJson(base(features))!!
+        assertEquals(HeadServerCapabilities.DEFAULT_MAX_CROP_EDGE, omitted.maxCropEdge)
         assertNull(caps(features - "max_output_pixels", good))
         assertNull(caps(features + ("max_output_pixels" to "big"), good))
     }

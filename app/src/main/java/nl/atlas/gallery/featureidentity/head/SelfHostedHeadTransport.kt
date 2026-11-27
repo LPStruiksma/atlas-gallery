@@ -75,6 +75,9 @@ data class HeadServerCapabilities(
          * Strict decode. Anything malformed returns null, which the engine treats as unavailable.
          * `features.full_head` missing means false. `features.head_adapter.sha256` is the adapter
          * identity the activation unit (#1090/#1092) must advertise; without it nothing admits.
+         * `advanced_parameters` may be omitted; if present it must be an array, and a present
+         * `head_width`/`head_height` bound must be an integer (explicit null fails). Width and
+         * height limits are intersected into one conservative edge range.
          */
         fun fromProtocolJson(json: Map<String, Any?>?): HeadServerCapabilities? {
             if (json == null || SelfHostedWire.int(json["schema_version"], 1, 1) != 1 ||
@@ -99,13 +102,17 @@ data class HeadServerCapabilities(
             }
             var minEdge = DEFAULT_MIN_CROP_EDGE
             var maxEdge = DEFAULT_MAX_CROP_EDGE
-            for (raw in SelfHostedWire.list(json["advanced_parameters"]) ?: emptyList()) {
+            // Omitted means no extra limits; present must be an array (null or any other type fails).
+            val params = if (!json.containsKey("advanced_parameters")) emptyList()
+            else SelfHostedWire.list(json["advanced_parameters"]) ?: return null
+            for (raw in params) {
                 val p = SelfHostedWire.map(raw) ?: return null
                 if (p["name"] == "head_width" || p["name"] == "head_height") {
                     // An advertised limit that cannot be read fails admission; never default it away.
-                    if (p["minimum"] != null)
+                    // A present bound must be a whole number; an explicit null is malformed, not absent.
+                    if (p.containsKey("minimum"))
                         minEdge = maxOf(minEdge, SelfHostedWire.int(p["minimum"], 1, 65_535) ?: return null)
-                    if (p["maximum"] != null)
+                    if (p.containsKey("maximum"))
                         maxEdge = minOf(maxEdge, SelfHostedWire.int(p["maximum"], 1, 65_535) ?: return null)
                 }
             }
