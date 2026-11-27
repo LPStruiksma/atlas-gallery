@@ -365,6 +365,9 @@ class JobStore:
                 # JPEG input and must not pretend that it converted it.
                 if not isinstance(self.backend, FakeBackend):
                     raise BackendError("Backend must produce PNG output")
+            # Gated backends re-check live admission after output validation.
+            if not self.backend.publication_allowed():
+                raise BackendError("Backend admission closed before publication")
             with self.lock:
                 if not job.cancel.is_set():
                     job.result = image
