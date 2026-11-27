@@ -3,8 +3,10 @@ import copy
 import hashlib
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -27,23 +29,59 @@ class ProvenanceTests(unittest.TestCase):
     def test_inventory(self):
         self.assertEqual(self.errors(), [])
 
-    def test_cli_structure_and_strict_incomplete(self):
-        for args, code in (([], 0), (["--require-complete"], 1)):
-            with self.subTest(args=args):
-                result = subprocess.run(
-                    [sys.executable, str(SCRIPT), *args],
-                    capture_output=True, text=True, check=False,
-                )
-                self.assertEqual(result.returncode, code, result.stdout + result.stderr)
-                if code:
-                    self.assertIn("unresolved candidate", result.stdout)
+    def run_cli(self, script, *args):
+        return subprocess.run(
+            [sys.executable, str(script), *args],
+            capture_output=True, text=True, check=False,
+        )
+
+    def test_cli_live_structure(self):
+        result = self.run_cli(SCRIPT)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_cli_synthetic_incomplete_and_complete(self):
+        self.synthetic_complete()
+        with tempfile.TemporaryDirectory() as directory:
+            # Mirror the CLI's relative file layout without modifying the checkout.
+            root = Path(directory)
+            script = root / "provenance" / SCRIPT.name
+            script.parent.mkdir()
+            shutil.copyfile(SCRIPT, script)
+            (root / "candidates.json").write_text(json.dumps(self.catalogue), encoding="utf-8")
+            manifest = script.parent / "manifest.json"
+            complete = copy.deepcopy(self.data)
+            self.synthetic_missing()
+            for data, strict_code in ((self.data, 1), (complete, 0)):
+                manifest.write_text(json.dumps(data), encoding="utf-8")
+                with self.subTest(strict_code=strict_code):
+                    structural = self.run_cli(script)
+                    self.assertEqual(structural.returncode, 0, structural.stdout + structural.stderr)
+                    strict = self.run_cli(script, "--require-complete")
+                    self.assertEqual(strict.returncode, strict_code, strict.stdout + strict.stderr)
+                    if strict_code:
+                        self.assertIn("unresolved candidate", strict.stdout)
+                    else:
+                        self.assertNotIn("unresolved candidate", strict.stdout)
 
     def synthetic_complete(self):
         # Fictional URLs and bytes: never write these into the live manifest.
-        for row in self.data["candidates"]:
-            row.update(status="blocked", reason="Synthetic prohibition",
-                       checkpoint_grant_evidence="https://example.invalid/prohibition",
-                       bytes=None, sha256=None, retrieved_url=None, retrieved_at_utc=None)
+        self.data = {
+            "schema_version": 1,
+            "source_pin_receipt": "https://example.invalid/source-pins",
+            "candidates": [
+                dict(id=candidate["id"], status="blocked", reason="Synthetic prohibition",
+                     project_url="https://example.invalid/project",
+                     project_revision="b" * 40, checkpoint_revision=None,
+                     original_url="https://example.invalid/discovery", original_url_kind="discovery",
+                     project_license_note="Synthetic licence note",
+                     checkpoint_grant_note="Synthetic grant note",
+                     training_data_note="Synthetic training note",
+                     project_license_evidence=None, training_data_evidence=None,
+                     checkpoint_grant_evidence="https://example.invalid/prohibition",
+                     bytes=None, sha256=None, retrieved_url=None, retrieved_at_utc=None)
+                for candidate in self.catalogue["candidates"]
+            ],
+        }
         row = self.data["candidates"][0]
         payload = b"synthetic fixture only"
         row.update(status="recorded", reason="Synthetic recorded fixture",
@@ -70,11 +108,19 @@ class ProvenanceTests(unittest.TestCase):
         self.data["candidates"].pop()
         self.assertTrue(self.errors())
 
-    def test_missing_is_not_complete_and_cannot_claim_bytes(self):
+    def synthetic_missing(self):
         row = self.data["candidates"][0]
-        self.assertTrue(self.errors(True))
+        row.update(status="missing", reason="Synthetic unresolved candidate",
+                   bytes=None, sha256=None, retrieved_url=None, retrieved_at_utc=None)
+        return row
+
+    def test_missing_is_not_complete_and_cannot_claim_bytes(self):
+        self.synthetic_complete()
+        row = self.synthetic_missing()
+        self.assertEqual(self.errors(), [])
+        self.assertEqual(self.errors(True), [f"{row['id']}: unresolved candidate"])
         row["sha256"] = "a" * 64
-        self.assertTrue(self.errors())
+        self.assertIn(f"{row['id']}: unrecorded candidate must not claim byte evidence", self.errors())
 
     def test_blocked_requires_evidence_even_in_structural_mode(self):
         self.synthetic_complete()
