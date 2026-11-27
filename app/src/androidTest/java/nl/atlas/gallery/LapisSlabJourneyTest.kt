@@ -25,6 +25,7 @@ import nl.atlas.gallery.testkit.KeyboardRule
 import nl.atlas.gallery.testkit.TestKeyboard
 import nl.atlas.gallery.testkit.assertAboveKeyboard
 import nl.atlas.gallery.testkit.awaitScreenStill
+import nl.atlas.gallery.testkit.awaitThat
 import nl.atlas.gallery.testkit.exists
 import nl.atlas.gallery.testkit.tap
 import nl.atlas.gallery.testkit.typeText
@@ -162,9 +163,15 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
         compose.tap(hasTestTag(tiles[2])) {
             compose.exists(hasTestTag("atlas-selection-count") and hasText("3 selected"))
         }
-        compose.waitUntil(10_000L) {
-            compose.onAllNodesWithTag("atlas-selection-sphere", useUnmergedTree = true)
-                .fetchSemanticsNodes().size == 3
+        // Each picked tile carries its own sphere (a fully picked day's header
+        // check shows one too, so count spheres inside the three tiles).
+        compose.awaitThat("a held sphere on each of the 3 picked tiles") {
+            val spheres = compose.onAllNodesWithTag("atlas-selection-sphere", useUnmergedTree = true)
+                .fetchSemanticsNodes().map { it.boundsInRoot }
+            tiles.all { tag ->
+                val tile = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+                spheres.any { tile.contains(it.center) }
+            }
         }
         compose.awaitScreenStill("l4-657-selection-3-$mode")
         saveUiEvidence("l4-657-selection-3-$mode.png")
