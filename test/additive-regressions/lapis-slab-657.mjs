@@ -107,3 +107,13 @@ test('the fast-scroll track keeps its 28 dp width; only the thumb is a 48 dp tar
   const journey = read('app/src/androidTest/java/nl/atlas/gallery/LapisSlabJourneyTest.kt');
   assert.match(journey, /tapRightColumnTileWhileScrollerShows\(\)\n/);
 });
+
+test('the thumb touch area follows the thumb except under its own finger', () => {
+  const handle = read('app/src/main/java/nl/atlas/gallery/featuregrid/TimelineScrubHandle.kt');
+  assert.match(handle, /\.offset \{ IntOffset\(0, if \(hitPointerDown\) hitAnchorY else thumbY\) \}/);
+  assert.match(handle, /onDown = \{ hitAnchorY = hitPlacedY; hitPointerDown = true \}/);
+  assert.match(handle, /onUp = \{ hitPointerDown = false \}/);
+  const journey = read('app/src/androidTest/java/nl/atlas/gallery/LapisSlabJourneyTest.kt');
+  assert.match(journey, /assertThumbHitAreaOnThumb\(compose, "while dragging from the track/);
+  assert.match(journey, /assertThumbHitAreaOnThumb\(compose, "after a drag from the thumb"\)/);
+});

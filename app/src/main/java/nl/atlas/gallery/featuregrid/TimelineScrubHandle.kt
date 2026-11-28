@@ -48,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -161,11 +163,16 @@ internal fun TimelineFastScroller(
                     modifier = Modifier.testTag("atlas-fast-scroll-bubble"))
             }
         }
-        val thumbYNow by rememberUpdatedState(thumbY)
-        // Where the thumb's extra touch area sits: frozen for the length of a
-        // drag, so the finger's positions stay in track coordinates.
+        // The thumb's extra touch area follows the visible thumb, except while
+        // its own finger is down: then it holds still, so that finger's
+        // positions stay in track coordinates. A drag from the track, or the
+        // momentum after any release, leaves it on the thumb.
+        var hitPlacedY by remember { mutableStateOf(0) }
         var hitAnchorY by remember { mutableStateOf(0) }
-        suspend fun PointerInputScope.scrub(yOffset: () -> Float, onDown: () -> Unit) {
+        var hitPointerDown by remember { mutableStateOf(false) }
+        suspend fun PointerInputScope.scrub(
+            yOffset: () -> Float, onDown: () -> Unit, onUp: () -> Unit
+        ) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 onDown()
@@ -193,6 +200,7 @@ internal fun TimelineFastScroller(
                     currentEvent.changes.firstOrNull { it.id == down.id }
                         ?.let { tracker.addPosition(it.uptimeMillis, it.position) }
                 } finally {
+                    onUp()
                     dragging = false
                     val velocityPx = if (completed) tracker.calculateVelocity().y else 0f
                     if (travelPx > 0f && abs(velocityPx) > MIN_FLING_PX_PER_S) {
@@ -230,17 +238,24 @@ internal fun TimelineFastScroller(
             Box(
                 Modifier.align(Alignment.TopEnd).width(TrackTouchWidth).fillMaxHeight()
                     .then(if (visible) Modifier.pointerInput(trackPx, thumbPx) {
-                        scrub(yOffset = { 0f }, onDown = {})
+                        scrub(yOffset = { 0f }, onDown = {}, onUp = {})
                     } else Modifier)
             )
             // The rest of the sphere's 48 dp target, only beside the thumb.
             Box(
                 Modifier.align(Alignment.TopStart)
-                    .offset { IntOffset(0, if (held) hitAnchorY else thumbY) }
+                    .offset { IntOffset(0, if (hitPointerDown) hitAnchorY else thumbY) }
                     .size(ScrubWidth - TrackTouchWidth, ThumbHeight)
+                    .onPlaced { hitPlacedY = it.positionInParent().y.roundToInt() }
                     .then(if (visible) Modifier.pointerInput(trackPx, thumbPx) {
-                        scrub(yOffset = { hitAnchorY.toFloat() }, onDown = { hitAnchorY = thumbYNow })
+                        scrub(
+                            yOffset = { hitAnchorY.toFloat() },
+                            // Where the area actually was when this finger landed.
+                            onDown = { hitAnchorY = hitPlacedY; hitPointerDown = true },
+                            onUp = { hitPointerDown = false }
+                        )
                     } else Modifier)
+                    .testTag("atlas-fast-scroll-thumb-hit")
             )
             // BRAND-L4: the held sphere at the thumb, showing the month.
             Box(

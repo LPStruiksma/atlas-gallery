@@ -144,6 +144,7 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
             saveUiEvidence("l4-657-fastscroll-$step-$mode.png")
         }
         assertTrue("the sphere's month changes along the track: $months", months.toSet().size >= 2)
+        dragFromThumbHitArea(compose)
         // The short recording (Strategy decision on #657): frames taken during
         // one continuous drag at real timing, as an APNG plus a timestamped sheet.
         recordFastScroll(compose, "l4-657-fastscroll-recording-$mode")
@@ -416,11 +417,60 @@ private fun fastScrollSequence(
             moveTo(Offset(centerX, height * fraction))
         }
         val month = heldMonth(compose)
+        // A drag from the track: the thumb's extra 20 dp touch area stays on
+        // the moving thumb (it holds still only under its own finger).
+        assertThumbHitAreaOnThumb(compose, "while dragging from the track, step ${i + 1}")
         atEach(i + 1, month)
         month
     }
     releaseFastScroll(compose)
+    assertThumbHitAreaOnThumb(compose, "after the release")
     return months
+}
+
+/**
+ * A drag that starts on the thumb's extra 20 dp touch area (left of the
+ * track) moves the thumb, and after the release that area is back level with
+ * the thumb instead of where the finger landed.
+ */
+private fun dragFromThumbHitArea(compose: androidx.compose.ui.test.junit4.ComposeTestRule) {
+    compose.onNodeWithTag("atlas-timeline-grid").performTouchInput {
+        swipeUp(startY = height * .7f, endY = height * .5f, durationMillis = 300L)
+    }
+    compose.waitForNode(hasTestTag("atlas-fast-scroll-thumb-hit"), useUnmergedTree = true)
+    val before = compose.onNodeWithTag("atlas-fast-scroll-thumb", useUnmergedTree = true)
+        .fetchSemanticsNode().boundsInRoot.top
+    compose.onNodeWithTag("atlas-fast-scroll-thumb-hit", useUnmergedTree = true).performTouchInput {
+        down(center)
+        // Upwards: the sequence before this left the thumb near the bottom.
+        moveBy(Offset(0f, -200f))
+        moveBy(Offset(0f, -200f))
+    }
+    compose.waitForIdle()
+    val during = compose.onNodeWithTag("atlas-fast-scroll-thumb", useUnmergedTree = true)
+        .fetchSemanticsNode().boundsInRoot.top
+    assertTrue("a drag from the thumb's extra touch area moves the thumb: $before → $during",
+        during < before - 100f)
+    compose.onNodeWithTag("atlas-fast-scroll-thumb-hit", useUnmergedTree = true)
+        .performTouchInput { up() }
+    assertThumbHitAreaOnThumb(compose, "after a drag from the thumb")
+}
+
+/** The thumb's extra touch area sits level with the visible thumb, left of the track. */
+private fun assertThumbHitAreaOnThumb(
+    compose: androidx.compose.ui.test.junit4.ComposeTestRule,
+    moment: String
+) {
+    compose.waitForIdle()
+    val thumb = compose.onNodeWithTag("atlas-fast-scroll-thumb", useUnmergedTree = true)
+        .fetchSemanticsNode().boundsInRoot
+    val hits = compose.onAllNodes(hasTestTag("atlas-fast-scroll-thumb-hit"), useUnmergedTree = true)
+        .fetchSemanticsNodes()
+    if (hits.isEmpty()) return // the scroller hid: no touch area to misplace
+    val hit = hits.single().boundsInRoot
+    assertTrue("thumb touch area $hit level with the thumb $thumb $moment",
+        abs(hit.top - thumb.top) <= 1f && abs(hit.bottom - thumb.bottom) <= 1f &&
+            abs(hit.left - thumb.left) <= 1f)
 }
 
 /**
