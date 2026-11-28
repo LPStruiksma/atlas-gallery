@@ -444,6 +444,28 @@ def validate_checkpoint(cohort: dict, pair: dict, stage: str, rec: dict, pairs_d
     return probs
 
 
+def write_image(path: Path, img, writer) -> None:
+    """Write an output image or raise. Any earlier file is removed first, so stale bytes can never be hashed."""
+    path = Path(path)
+    if path.exists():
+        path.unlink()
+    if writer(str(path), img) is not True or not path.exists():
+        raise OSError(f"could not write {path.name}")
+
+
+def orphan_outputs(pid: str, stage: str, rec, pairs_dir: Path) -> list[str]:
+    """Output images present for a stage that has no successful checkpoint: evidence not tied to any row."""
+    if isinstance(rec, dict) and rec.get("status") == "ok":
+        return []
+    return [n for n in stage_outputs(pid, stage) if (Path(pairs_dir) / n).exists()]
+
+
+def sheet_inputs(pid: str, recs: dict, pairs_dir: Path) -> dict:
+    """The only images a blinded sheet may show: outputs of validated successful stages; None means placeholder."""
+    return {s: (Path(pairs_dir) / f"{pid}.{s}.png" if isinstance(recs.get(s), dict) and recs[s].get("status") == "ok" else None)
+            for s in STAGES}
+
+
 def cmd_run(args) -> int:
     import cv2
     work, models = Path(args.work), Path(args.models)
@@ -496,7 +518,7 @@ def cmd_run(args) -> int:
                 eng = engine()
                 res = eng.swap(m.judge, target, reference, seed=int(p["seed"]))
                 out, mask = fenced_composite(m.judge, target, res["raw"], fence)
-                cv2.imwrite(str(work / "pairs" / f"{pid}.candidate_raw.png"), res["raw"])
+                write_image(work / "pairs" / f"{pid}.candidate_raw.png", res["raw"], cv2.imwrite)
                 rec.update(seconds=res["seconds"], load_s=round(eng.load_s, 1), files_sha256=state["files"])
             else:
                 toolbox, det, enc, cfg = bench_tools()
@@ -511,7 +533,7 @@ def cmd_run(args) -> int:
                 mask = ((sw.mask > 0) & (fence == 1)).astype("uint8")
                 rec.update(seconds={"total": round(time.time() - t0, 2)}, notes=sw.notes,
                            baseline_pixels_outside_fence_reset=outside_changed)
-            cv2.imwrite(str(work / "pairs" / f"{pid}.{args.stage}.png"), out)
+            write_image(work / "pairs" / f"{pid}.{args.stage}.png", out, cv2.imwrite)
             rec["outputs_sha256"] = {n: file_sha256(work / "pairs" / n) for n in stage_outputs(pid, args.stage)}
             rec["measure"] = m.measure(target, reference, out, fence, mask)
             rec["status"] = "ok"
@@ -740,7 +762,7 @@ def jpeg_has_metadata(data: bytes) -> bool:
     return True
 
 
-def _sheet(cohort, pair, work, sides, edge=320):
+def _sheet(cohort, pair, work, sides, inputs, edge=320):
     import cv2
     import numpy as np
     fx = work / "fixtures"
@@ -749,8 +771,7 @@ def _sheet(cohort, pair, work, sides, edge=320):
     ft, fr = judge_face(target), judge_face(reference)
     tb = probe.head_crop_box(ft, target.shape[1], target.shape[0])
     rb = probe.head_crop_box(fr, reference.shape[1], reference.shape[0], scale=3.0)
-    imgs = {s: (probe._read(work / "pairs" / f"{pair['pair_id']}.{s}.png") if (work / "pairs" / f"{pair['pair_id']}.{s}.png").exists() else None)
-            for s in ("candidate", "baseline")}
+    imgs = {s: (probe._read(path) if path is not None else None) for s, path in inputs.items()}
     cells = [("target", target[tb[1]:tb[3], tb[0]:tb[2]]), ("reference", reference[rb[1]:rb[3], rb[0]:rb[2]])]
     for label, side in zip(("A", "B"), sides):
         img = imgs[side]
@@ -779,6 +800,8 @@ def cmd_export(args) -> int:
     for p in cohort["pairs"]:
         for s in STAGES:
             rec = stage(p["pair_id"], s)
+            probs += [f"{p['pair_id']}.{s}: {n} has no successful checkpoint (orphan output)"
+                      for n in orphan_outputs(p["pair_id"], s, rec, work / "pairs")]
             if rec is None:
                 continue
             probs += validate_checkpoint(cohort, p, s, rec, work / "pairs")
@@ -821,8 +844,10 @@ def cmd_export(args) -> int:
     order = sheet_order(pids, cohort["blind_seed"])
     (RESULTS / "sheets").mkdir(exist_ok=True)
     for p in cohort["pairs"]:
-        sheet = _sheet(cohort, p, work, order[p["pair_id"]])
-        cv2.imwrite(str(RESULTS / "sheets" / f"{p['pair_id']}.jpg"), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        recs = {s: stage(p["pair_id"], s) for s in STAGES}
+        sheet = _sheet(cohort, p, work, order[p["pair_id"]], sheet_inputs(p["pair_id"], recs, work / "pairs"))
+        if not cv2.imwrite(str(RESULTS / "sheets" / f"{p['pair_id']}.jpg"), sheet, [cv2.IMWRITE_JPEG_QUALITY, 85]):
+            raise OSError(f"could not write sheet {p['pair_id']}.jpg")
     key = {"blind_seed": cohort["blind_seed"], "note": "Keep away from the judges until both have voted.",
            "pairs": {pid: {"A": s[0], "B": s[1]} for pid, s in order.items()}}
     (RESULTS / "sheet-key.json").write_text(json.dumps(key, indent=1) + "\n")

@@ -283,6 +283,38 @@ class ProvenanceTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             rc.run_pending(["f01"], done, lambda pid: None)
 
+    def test_orphan_outputs_block_export(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            pid = pair["pair_id"]
+            self.assertEqual(rc.orphan_outputs(pid, "candidate", rec, d), [])
+            # interrupted run: PNGs left, no checkpoint; or checkpoint marked failed after measure() raised
+            self.assertEqual(rc.orphan_outputs(pid, "candidate", None, d), list(rc.stage_outputs(pid, "candidate")))
+            self.assertTrue(rc.orphan_outputs(pid, "candidate", dict(rec, status="failed"), d))
+            self.assertEqual(rc.orphan_outputs(pid, "baseline", None, d), [])  # nothing on disk for that stage
+
+    def test_sheet_inputs_only_from_successful_stages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pair, d, rec = self.make(tmp)
+            pid = pair["pair_id"]
+            got = rc.sheet_inputs(pid, {"candidate": rec, "baseline": None}, d)
+            self.assertEqual(got, {"baseline": None, "candidate": d / f"{pid}.candidate.png"})
+            got = rc.sheet_inputs(pid, {"candidate": dict(rec, status="failed"), "baseline": None}, d)
+            self.assertEqual(got, {"baseline": None, "candidate": None})  # placeholder, never the orphan PNG
+
+    def test_failed_write_never_leaves_stale_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "f01.candidate.png"
+            path.write_bytes(b"old output from an earlier attempt")
+            with self.assertRaises(OSError):
+                rc.write_image(path, None, lambda p, img: False)
+            self.assertFalse(path.exists())  # the old bytes cannot be hashed and bound to new measurements
+            path.write_bytes(b"old")
+            with self.assertRaises(OSError):
+                rc.write_image(path, None, lambda p, img: True)  # claims success but wrote nothing
+            rc.write_image(path, b"new", lambda p, img: Path(p).write_bytes(img) and True)
+            self.assertEqual(path.read_bytes(), b"new")
+
     def test_bind_legacy(self):
         with tempfile.TemporaryDirectory() as tmp:
             pair, d, rec = self.make(tmp)
