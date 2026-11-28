@@ -401,10 +401,18 @@ abstract class LapisSlabJourney(private val dark: Boolean) {
     }
 }
 
-/** 120 synthetic tiles, one per day, in four folders: four months of Pictures. */
+/**
+ * 120 synthetic tiles in four folders: six a day, every sixth day, so four
+ * months of Pictures whose days fill whole grid rows (with one photo a day,
+ * each day's header would leave only the left column filled).
+ */
 private fun lapisFixtures() = SyntheticHeaderFixtures(
     sizes = List(120) { 120 to 90 },
     folderOf = { step -> "ATLAS-Lapis-657-${step % 4}" },
+    takenOf = { step, now ->
+        val day = ((step - 1) / 6) * 6 + 1
+        now - day * 86_400_000L - ((step - 1) % 6) * 1_000L
+    },
     // The date is also in the name (IMG_yyyyMMdd_HHmmss), so the months hold
     // even if the emulator's scanner drops DATE_TAKEN on these PNGs.
     nameOf = { step, taken ->

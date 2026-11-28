@@ -288,6 +288,8 @@ internal class SyntheticHeaderFixtures(
      * carries the same date as ATLAS's filename hint (BRAND-L4 #657).
      */
     private val nameOf: (Int, Long) -> String = { step, _ -> "IMG_HEADER_FIXTURE_$step.png" },
+    /** Taken time per 1-based step, from the insert time; one day apart by default. */
+    private val takenOf: (step: Int, now: Long) -> Long = { step, now -> now - step * 86_400_000L },
     private val beforeLaunch: (android.content.Context) -> Unit = {}
 ) : TestRule {
     private val inserted = mutableListOf<Uri>()
@@ -316,7 +318,7 @@ internal class SyntheticHeaderFixtures(
         val now = System.currentTimeMillis()
         sizes.forEachIndexed { i, (width, height) ->
             val step = i + 1
-            val taken = now - step * 86_400_000L
+            val taken = takenOf(step, now)
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, nameOf(step, taken))
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
