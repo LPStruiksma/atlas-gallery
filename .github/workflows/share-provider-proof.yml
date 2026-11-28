@@ -1,0 +1,87 @@
+name: ATLAS share provider proof
+on:
+  pull_request:
+    types: [labeled]
+    paths:
+      - 'test-fixtures/share-proof/**'
+      - 'scripts/ci_share_provider_proof.sh'
+      - '.github/workflows/share-provider-proof.yml'
+      - 'docs/testing/SHARE_PROVIDER_PROOF.md'
+      - 'app/src/main/**'
+      - 'app/src/androidTest/**'
+      - 'app/src/shareProof/**'
+      - 'app/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'scripts/ci/**'
+      - 'scripts/ci_enable_kvm.sh'
+      - 'scripts/ci_install_emulator_image.sh'
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.event.label.name == 'share-proof:run' && format('share-proof-pr-{0}', github.event.pull_request.number) || format('share-proof-unrelated-{0}', github.run_id) }}
+  cancel-in-progress: true
+jobs:
+  share-provider-proof:
+    if: ${{ github.event.label.name == 'share-proof:run' && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 33, 35]
+    name: share-provider-proof API ${{ matrix.api }}
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      ATLAS_EMULATOR_API: ${{ matrix.api }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit exact non-draft same-repo head
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          gh api "repos/$GH_REPO/pulls/$PR_NUMBER" | jq -e --arg head "$EXPECTED_HEAD" --arg repo "$GH_REPO" '.state == "open" and (.draft | not) and .head.sha == $head and .head.repo.full_name == $repo' >/dev/null
+          echo "PR=$PR_NUMBER head=$EXPECTED_HEAD API=$ATLAS_EMULATOR_API run=$GITHUB_SERVER_URL/$GH_REPO/actions/runs/$GITHUB_RUN_ID"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Enable KVM
+        run: bash scripts/ci_enable_kvm.sh
+      - name: Install system image
+        run: bash scripts/ci_install_emulator_image.sh
+      - name: Synthetic grant capability probe (not product acceptance)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/ci_share_provider_proof.sh
+      - name: Recheck live head before accepting result
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          gh api "repos/$GH_REPO/pulls/$PR_NUMBER" | jq -e --arg head "$EXPECTED_HEAD" --arg repo "$GH_REPO" '.state == "open" and (.draft | not) and .head.sha == $head and .head.repo.full_name == $repo' >/dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: share-proof-api-${{ matrix.api }}
+          path: share-proof-evidence/*.json
+          if-no-files-found: warn
+          retention-days: 7
