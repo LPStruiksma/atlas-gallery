@@ -165,6 +165,7 @@ fun GalleryViewer(
     // library or write action; SECURE also drops Details (lock-screen review).
     access: ViewerAccess = ViewerAccess.LIBRARY,
     motionProbe: ViewerFilmstripMotionProbe? = null,
+    onViewerTimingUpdated: (() -> Unit)? = null,
     onBack: () -> Unit
 ) {
     // A new immutable album OR an explicit different requested entry URI
@@ -175,7 +176,7 @@ fun GalleryViewer(
     key(CatalogSourceKey(items), startUri) {
         GalleryViewerSnapshot(items, startUri, timingProbe, onEdit, onAiEdit, onExitSettledUri,
             faceSearch, faceHighlights, findSimilar, videoStartPositions, onTrashed,
-            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onBack)
+            favouriteOverrides, photoPeople, swapPerson, access, motionProbe, onViewerTimingUpdated, onBack)
     }
 }
 
@@ -197,6 +198,7 @@ private fun GalleryViewerSnapshot(
     swapPerson: ViewerSwapPerson?,
     access: ViewerAccess,
     motionProbe: ViewerFilmstripMotionProbe?,
+    onViewerTimingUpdated: (() -> Unit)?,
     onBack: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -472,6 +474,7 @@ private fun GalleryViewerSnapshot(
     LaunchedEffect(pagerState.currentPage) {
         if (pagerState.currentPage != start) onEntryPage = false
         timingProbe?.pageEntered(pagerState.currentPage)
+        onViewerTimingUpdated?.invoke()
         currentZoom = 1f
         // Do NOT recenter the strip here: a finished thumbnail fling commits
         // its own centred item; a pager swipe is reconciled above.
@@ -876,7 +879,11 @@ private fun GalleryViewerSnapshot(
                         }
                     },
                     onPreviewReady = if (focused && timingProbe != null) {
-                        { timingProbe.firstPreviewReady(page) }
+                        {
+                            timingProbe.firstPreviewReady(page)
+                            // Publish completed timing while the viewer is still open.
+                            onViewerTimingUpdated?.invoke()
+                        }
                     } else null,
                     openingPage = onEntryPage && page == start,
                     onGainmapDecoded = { revision, hasGainmap ->
@@ -1568,6 +1575,7 @@ private fun PhotoPage(
     // when the first image (borrowed or decoded) and the sharp base landed.
     var firstFrameAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
     var sharpAt by remember(media.uri, imageRevision) { mutableLongStateOf(0L) }
+    var previewMemoryHit by remember(media.uri, imageRevision) { mutableStateOf(false) }
     // Zoom transforms are intentionally applied only to the photo. Clip its
     // outer viewport so magnified pixels never bleed into the Back toolbar,
     // filmstrip or other adjacent gallery controls.
@@ -1710,6 +1718,7 @@ private fun PhotoPage(
                         this[ViewerPhotoFirstFrameAtKey] = firstFrameAt
                         this[ViewerPhotoSharpAtKey] = sharpAt
                         this[ViewerPhotoSettledAtKey] = settledAt
+                        if (observePreviewLoads) this[ViewerPhotoPreviewMemoryHitKey] = previewMemoryHit
                         if (zoomPoseProbe) this[ViewerZoomPoseKey] = zoomPose
                         stateDescription = if (chromeVisible)
                             "Gallery controls visible" else "Gallery controls hidden"
@@ -1730,6 +1739,7 @@ private fun PhotoPage(
                 ViewerPhotoPreview(media,
                     Modifier.fillMaxSize().clearAndSetSemantics {},
                     onLoaded = onPreviewReady.takeIf { observePreviewLoads },
+                    onMemoryHit = if (observePreviewLoads) { { hit -> previewMemoryHit = hit } } else null,
                     motionProbe = motionProbe, pageIndex = pageIndex,
                     onFirstFrame = {
                         previewFailed = false
@@ -1793,7 +1803,7 @@ private fun PhotoPage(
 @Composable
 private fun ViewerPhotoPreview(
     media: MediaRecord, modifier: Modifier,
-    onLoaded: (() -> Unit)?, onFirstFrame: () -> Unit,
+    onLoaded: (() -> Unit)?, onMemoryHit: ((Boolean) -> Unit)?, onFirstFrame: () -> Unit,
     onDecodeError: () -> Unit,
     forceFresh: Boolean, refreshRevision: Long,
     motionProbe: ViewerFilmstripMotionProbe?, pageIndex: Int
@@ -1817,6 +1827,7 @@ private fun ViewerPhotoPreview(
     }
     var previewLoaded by remember(request) { mutableStateOf(false) }
     val currentOnLoaded by rememberUpdatedState(onLoaded)
+    val currentOnMemoryHit by rememberUpdatedState(onMemoryHit)
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
     val currentOnDecodeError by rememberUpdatedState(onDecodeError)
     // A neighbouring page may finish while still offscreen; the probe counts
@@ -1834,10 +1845,12 @@ private fun ViewerPhotoPreview(
                 }
                 is AsyncImagePainter.State.Success -> {
                     currentOnFirstFrame()
+                    currentOnMemoryHit?.invoke(state.result.dataSource == coil3.decode.DataSource.MEMORY_CACHE)
                     previewLoaded = true
                 }
                 is AsyncImagePainter.State.Error -> {
                     previewLoaded = false
+                    currentOnMemoryHit?.invoke(false)
                     currentOnDecodeError()
                 }
                 else -> Unit
@@ -1871,6 +1884,9 @@ internal val ViewerPhotoSharpAtKey = SemanticsPropertyKey<Long>("AtlasViewerPhot
  * the decode lands, so a gesture test that zooms earlier races the decode.
  */
 internal val ViewerPhotoDecodedKey = SemanticsPropertyKey<Boolean>("AtlasViewerPhotoDecoded")
+
+/** Emulator proof of the actual preview result source, not a borrowed placeholder. */
+internal val ViewerPhotoPreviewMemoryHitKey = SemanticsPropertyKey<Boolean>("AtlasViewerPhotoPreviewMemoryHit")
 
 /**
  * FLOW-4 (#713) emulator proof only: when [LocalViewerZoomPoseProbe] is true,
