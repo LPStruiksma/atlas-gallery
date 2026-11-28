@@ -1,0 +1,15 @@
+# HIDE-1 (#585) Hidden items, Galaxy S24+ 1080x2340, synthetic images only, light and dark.
+hidden-585-selection-more-light
+hidden-585-after-hide-light
+hidden-585-viewer-more-light
+hidden-585-filled-light
+hidden-585-empty-light
+hidden-585-selection-more-dark
+hidden-585-after-hide-dark
+hidden-585-viewer-more-dark
+hidden-585-filled-dark
+hidden-585-empty-dark
+hidden-585-collections-row-light
+hidden-585-viewer-undo-light
+hidden-585-collections-row-dark
+hidden-585-viewer-undo-dark

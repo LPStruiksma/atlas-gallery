@@ -843,8 +843,27 @@ internal class PeopleDiscoveryHost(
         val state: PeopleClusterReviewState,
         val storeGeneration: String
     )
-    private class LiveHome(val state: PeopleHomeSummary, val storeGeneration: String)
+    private class LiveHome(
+        val state: PeopleHomeSummary, val storeGeneration: String,
+        val hidden: Set<String>?
+    )
     @Volatile private var liveHome: LiveHome? = null
+    /**
+     * HIDE-1 (#585): canonical face-index keys of hidden media. People home
+     * counts and covers skip them; the index itself keeps its full inventory.
+     * Null means "not read yet": People home stays unreadable rather than
+     * showing a hidden photo's face.
+     */
+    @Volatile private var hiddenMediaKeys: Set<String>? = emptySet()
+
+    fun setHiddenMedia(keys: Set<String>?) {
+        if (keys == hiddenMediaKeys) return
+        synchronized(reviewLock) {
+            hiddenMediaKeys = keys
+            liveHome = null
+        }
+        changed()
+    }
     private val reviewLock = Any()
     @Volatile private var liveReview: LiveReview? = null
     private val _changes = MutableStateFlow(0L)
@@ -2245,10 +2264,12 @@ internal class PeopleDiscoveryHost(
             liveHome = null
             return null
         }
+        val hidden = hiddenMediaKeys ?: return null
         liveHome?.takeIf {
-            it.state.permissionEpoch == epoch && it.storeGeneration == generation
+            it.state.permissionEpoch == epoch && it.storeGeneration == generation &&
+                it.hidden == hidden
         }?.let { return it.state }
-        val stored = store.peopleHome(epoch) ?: run {
+        val stored = store.peopleHome(epoch, hidden) ?: run {
             liveHome = null
             return null
         }
@@ -2258,7 +2279,7 @@ internal class PeopleDiscoveryHost(
                     person.mediaCount, person.firstAppearanceMs, person.mostRecentAppearanceMs,
                     person.photoCount, person.videoCount)
             }, stored.unnamed.map { PeopleHomeGroup(it.anchorUid, it.faceCount) })
-            .also { liveHome = LiveHome(it, stored.generation) }
+            .also { liveHome = LiveHome(it, stored.generation, hidden) }
     }
 
     /**
@@ -3090,3 +3111,18 @@ internal fun sampleVisualVideo(
 private fun stillAuthorized(
     source: (FaceMediaKey) -> FaceVisibleMedia, key: FaceMediaKey, row: FaceVisibleMedia
 ): Boolean = try { source(key).uri == row.uri } catch (_: SecurityException) { false }
+
+/**
+ * HIDE-1 (#585): the face index's canonical media keys of [hidden] items, for
+ * [PeopleDiscoveryHost.setHiddenMedia]. Same projection as the catalogue
+ * publication; an item without a durable face identity has no faces to hide.
+ */
+internal fun hiddenFaceMediaKeys(hidden: List<MediaRecord>): Set<String> {
+    val keys = HashSet<String>()
+    for (record in hidden) {
+        try { keys += record.toFaceVisibleMedia(editorRevision = 0L).toDurableFaceKey().canonicalMediaKey }
+        catch (_: IllegalArgumentException) {}
+        catch (_: IllegalStateException) {}
+    }
+    return keys
+}

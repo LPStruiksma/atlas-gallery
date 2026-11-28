@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
@@ -320,6 +321,10 @@ fun AtlasAlbumsScreen(
     onOpenPhotoDna: (() -> Unit)? = null,
     /** Samsung's "Hide albums" screen (#568, parity research GRID:A7). */
     onOpenHideAlbums: (() -> Unit)? = null,
+    /** HIDE-1 (#585): the Hidden utility row (label and count only, no covers). */
+    onOpenHidden: (() -> Unit)? = null,
+    /** Number of hidden items; null shows the row without a count (also when zero). */
+    hiddenCount: Int? = null,
     /** Explicit whole-library search belongs to the host Search destination. */
     onSearchWholeLibrary: (() -> Unit)? = null,
     /**
@@ -394,6 +399,8 @@ fun AtlasAlbumsScreen(
                 },
                 modifier = Modifier.testTag("atlas-albums-quiet")
             )
+            // Hiding everything empties Albums; Unhide must stay one tap away.
+            if (onOpenHidden != null) HiddenUtilityRow(hiddenCount, onOpenHidden)
             return@Column
         }
         AlbumGrid(
@@ -404,8 +411,39 @@ fun AtlasAlbumsScreen(
             coverIllustration = coverIllustration,
             coverRenderer = coverRenderer,
             onChooseCover = onChooseCover,
-            onReorderAlbums = onReorderAlbums
+            onReorderAlbums = onReorderAlbums,
+            onOpenHidden = onOpenHidden,
+            hiddenCount = hiddenCount
         )
+    }
+}
+
+/**
+ * HIDE-1 (#585): Collections utility row for the Hidden collection. Label and
+ * count only: no thumbnail is shown before the user enters it. One tap, no
+ * auth sheet; hidden media stay in MediaStore (app-only filter).
+ */
+@Composable
+private fun HiddenUtilityRow(count: Int?, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val label = if (count == null || count <= 0) "Hidden" else
+        "Hidden, " + if (count == 1) "1 item" else "$count items"
+    Row(
+        modifier.fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClickLabel = "Open Hidden", onClick = onOpen)
+            .padding(horizontal = AtlasSpace.Gutter, vertical = 12.dp)
+            .semantics(mergeDescendants = true) { contentDescription = label }
+            .testTag("atlas-albums-hidden-row"),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Hidden", style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f))
+        if (count != null && count > 0) {
+            Text(if (count == 1) "1 item" else "$count items",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -426,7 +464,9 @@ private fun AlbumGrid(
     coverIllustration: (@Composable (AlbumSummary) -> Unit)?,
     coverRenderer: (@Composable (MediaRecord, Modifier) -> Unit)?,
     onChooseCover: ((AlbumRoute) -> Unit)?,
-    onReorderAlbums: ((List<AlbumSummary>) -> Unit)?
+    onReorderAlbums: ((List<AlbumSummary>) -> Unit)?,
+    onOpenHidden: (() -> Unit)? = null,
+    hiddenCount: Int? = null
 ) {
     // Scroll position survives a reorder (a new list) but holds no album data.
     val gridState = rememberLazyGridState()
@@ -567,6 +607,11 @@ private fun AlbumGrid(
                         }
                     }
             )
+        }
+        if (onOpenHidden != null) {
+            item(key = "atlas-hidden-row", span = { GridItemSpan(maxLineSpan) }) {
+                HiddenUtilityRow(hiddenCount, onOpenHidden)
+            }
         }
     }
     }
