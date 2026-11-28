@@ -635,9 +635,10 @@
       276.5,
       312.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
@@ -713,7 +714,7 @@
     276.5,
     312.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
@@ -781,17 +782,17 @@
     810.0
    ],
    "scroll": {
-    "container": "menu",
+    "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     137.0,
+     340.5,
      787.5,
-     806.0
+     602.5
     ],
     "offset_px": 0,
     "position": "top",
-    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is tappable on its visible part and focus scrolls it fully into view first"
    },
    "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
    "controls": [
@@ -803,9 +804,10 @@
       313,
       157.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
@@ -887,7 +889,7 @@
     313,
     157.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
@@ -955,17 +957,17 @@
     810.0
    ],
    "scroll": {
-    "container": "menu",
+    "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     137.0,
+     340.5,
      787.5,
-     806.0
+     602.5
     ],
     "offset_px": 347.3,
     "position": "end",
-    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is tappable on its visible part and focus scrolls it fully into view first"
    },
    "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
    "controls": [
@@ -973,27 +975,22 @@
      "id": "menu-identity",
      "role": "heading",
      "label": "Actions for Synthetic lake photo",
-     "rect_px": null,
-     "visibility": "offscreen",
-     "content_rect_px": [
+     "rect_px": [
       313,
       157.5,
       771.5,
       183
-     ]
+     ],
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
      "role": "menuitem",
      "label": "AI Edit",
-     "rect_px": [
-      313,
-      137.0,
-      771.5,
-      61.1
-     ],
+     "rect_px": null,
      "lines": 1,
-     "visibility": "partial",
+     "visibility": "offscreen",
      "content_rect_px": [
       313,
       340.5,
@@ -1007,12 +1004,18 @@
      "label": "Swap person",
      "rect_px": [
       313,
-      198.1,
+      340.5,
       771.5,
-      204.9
+      62.5
      ],
      "lines": 1,
-     "visibility": "full"
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      545.4,
+      771.5,
+      204.9
+     ]
     },
     {
      "id": "set-wallpaper",
@@ -1057,7 +1060,12 @@
     "slab-share",
     "slab-delete"
    ],
-   "focus_ring_px": null,
+   "focus_ring_px": [
+    313,
+    157.5,
+    771.5,
+    183
+   ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "menu_items": [
@@ -1134,9 +1142,10 @@
       276.5,
       312.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
@@ -1212,7 +1221,7 @@
     276.5,
     312.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
@@ -1280,17 +1289,17 @@
     810.0
    ],
    "scroll": {
-    "container": "menu",
+    "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     137.0,
+     340.5,
      787.5,
-     806.0
+     602.5
     ],
     "offset_px": 0,
     "position": "top",
-    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is tappable on its visible part and focus scrolls it fully into view first"
    },
    "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
    "controls": [
@@ -1302,9 +1311,10 @@
       313,
       157.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
@@ -1386,7 +1396,7 @@
     313,
     157.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
@@ -1454,17 +1464,17 @@
     810.0
    ],
    "scroll": {
-    "container": "menu",
+    "container": "menu rows (identity header pinned)",
     "content_px": 1157.3,
     "viewport_px": [
      305,
-     137.0,
+     340.5,
      787.5,
-     806.0
+     602.5
     ],
     "offset_px": 347.3,
     "position": "end",
-    "reveal": "focus or a swipe scrolls the menu; every item can be fully shown"
+    "reveal": "focus or a swipe scrolls the rows; every item can be fully shown; a partly shown row is tappable on its visible part and focus scrolls it fully into view first"
    },
    "dismiss": "Tap outside the menu or system Back closes it with no action; focus returns to More",
    "controls": [
@@ -1472,27 +1482,22 @@
      "id": "menu-identity",
      "role": "heading",
      "label": "Actions for Synthetic lake photo",
-     "rect_px": null,
-     "visibility": "offscreen",
-     "content_rect_px": [
+     "rect_px": [
       313,
       157.5,
       771.5,
       183
-     ]
+     ],
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
      "role": "menuitem",
      "label": "AI Edit",
-     "rect_px": [
-      313,
-      137.0,
-      771.5,
-      61.1
-     ],
+     "rect_px": null,
      "lines": 1,
-     "visibility": "partial",
+     "visibility": "offscreen",
      "content_rect_px": [
       313,
       340.5,
@@ -1506,12 +1511,18 @@
      "label": "Swap person",
      "rect_px": [
       313,
-      198.1,
+      340.5,
       771.5,
-      204.9
+      62.5
      ],
      "lines": 1,
-     "visibility": "full"
+     "visibility": "partial",
+     "content_rect_px": [
+      313,
+      545.4,
+      771.5,
+      204.9
+     ]
     },
     {
      "id": "set-wallpaper",
@@ -1556,7 +1567,12 @@
     "slab-share",
     "slab-delete"
    ],
-   "focus_ring_px": null,
+   "focus_ring_px": [
+    313,
+    157.5,
+    771.5,
+    183
+   ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
     "menu_items": [
@@ -1633,9 +1649,10 @@
       276.5,
       312.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "ai-edit",
@@ -1697,7 +1714,7 @@
     276.5,
     312.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {
@@ -1770,9 +1787,10 @@
       276.5,
       312.5,
       771.5,
-      183.0
+      183
      ],
-     "visibility": "full"
+     "visibility": "full",
+     "pinned": true
     },
     {
      "id": "set-wallpaper",
@@ -1820,7 +1838,7 @@
     276.5,
     312.5,
     771.5,
-    183.0
+    183
    ],
    "returns_to": "same viewer item (synthetic-lake), viewer state unchanged",
    "status": {

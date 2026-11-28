@@ -344,23 +344,25 @@ def frame_menu(name, theme, orientation, scale, items, scroll='top', identity=Fa
     fr.body.append('<g class="modal">')
     fr.rect(x, top, w, h, t['mist'] if theme == 'dark' else t['ground'], rx=44, stroke=t['ink2'], sw=3)
     fr.modal = [x, top, w, h]
-    viewport = [x, top + 2, w, h - 4]
-    if overflow > 0:
-        fr.clip_open(viewport, dy)
-        fr.scroll = {'container': 'menu', 'content_px': round(content_h, 1), 'viewport_px': r1(viewport),
-                     'offset_px': round(dy, 1), 'position': scroll,
-                     'reveal': 'focus or a swipe scrolls the menu; every item can be fully shown'}
     y = top + MENU_PAD_Y
     if identity:
+        # pinned header: drawn outside the scrolling rows, so it stays visible at any scroll position
         tx = x + ITEM_PAD_X
         fr.thumb(tx, y + 24, 135 * 900 / 1300, 135)
         ly = y + 24 + (135 - size * 1.3) / 2
         fr.para(tx + 135 * 900 / 1300 + 24, ly, 'This photo', size, t['ink'], w - 2 * ITEM_PAD_X - 135 - 24, 'bold')
-        rect = [x + 8, y, w - 16, ident_h]
-        vr, extra = _visible(rect, viewport, dy)
-        fr.control('menu-identity', 'heading', f'Actions for {ITEM["label"]}', vr, **extra)
+        fr.control('menu-identity', 'heading', f'Actions for {ITEM["label"]}', [x + 8, y, w - 16, ident_h],
+                   visibility='full', pinned=True)
         fr.rect(x + 24, y + ident_h - 1.5, w - 48, 3, t['ink2'])
         y += ident_h
+    viewport = [x, y, w, top + h - 2 - y]
+    if overflow > 0:
+        fr.clip_open(viewport, dy)
+        fr.scroll = {'container': 'menu rows (identity header pinned)', 'content_px': round(content_h, 1),
+                     'viewport_px': r1(viewport), 'offset_px': round(dy, 1), 'position': scroll,
+                     'reveal': 'focus or a swipe scrolls the rows; every item can be fully shown; '
+                               'a partly shown row is tappable on its visible part and focus scrolls it '
+                               'fully into view first'}
     for cid, label, origin, lines, ih in rows:
         for i, line in enumerate(lines):
             fr.text(x + ITEM_PAD_X, y + ITEM_PAD_Y + size * 0.95 + i * size * 1.3, line, size, t['ink'],
@@ -653,7 +655,7 @@ def verify_frame(g, svg, png, bg, palette, errors):
         checks += 1
         if not inside(r, g['modal_px']):
             errors.append(f'{name}/{c["id"]}: outside its surface')
-        if g['scroll'] and not inside(r, g['scroll']['viewport_px']) and c['id'] != 'ok':
+        if g['scroll'] and not inside(r, g['scroll']['viewport_px']) and c['id'] != 'ok' and not c.get('pinned'):
             errors.append(f'{name}/{c["id"]}: visible rect outside the scroll viewport')
         if c['role'] in TAPPABLE and vis == 'full':
             checks += 2
@@ -676,6 +678,10 @@ def verify_frame(g, svg, png, bg, palette, errors):
             errors.append(f'{name}: still-image menu lacks Set as wallpaper or Copy image')
         if (g['font_scale'] >= 1.5) != ('menu-identity' in ids):
             errors.append(f'{name}: identity row must appear exactly when font scale >= 1.5')
+        ident = next((c for c in controls if c['id'] == 'menu-identity'), None)
+        if ident and (ident.get('visibility', 'full') != 'full' or not ident['rect_px']
+                      or (g['scroll'] and not ident.get('pinned'))):
+            errors.append(f'{name}: identity row is not fully visible and pinned')
         if 'swap-person' in labels and 'ai-edit' not in labels:
             errors.append(f'{name}: Swap person without AI Edit')
     else:
@@ -686,7 +692,8 @@ def verify_frame(g, svg, png, bg, palette, errors):
             errors.append(f'{name}: error offers an action other than OK')
         checks += 2
     checks += 1
-    if g['photo_visible_fraction'] < MIN_PHOTO_VISIBLE and 'menu-identity' not in ids:
+    shown_ids = {c['id'] for c in controls if c.get('visibility', 'full') == 'full' and c['rect_px']}
+    if g['photo_visible_fraction'] < MIN_PHOTO_VISIBLE and 'menu-identity' not in shown_ids:
         errors.append(f'{name}: photo {g["photo_visible_fraction"]:.0%} visible and no explicit item identity')
     if g['scroll']:
         checks += 1
