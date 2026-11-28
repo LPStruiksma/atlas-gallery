@@ -283,6 +283,7 @@ class PeopleForceStopRelaunchTest {
         android.util.Log.i("ATLAS_RELAUNCH31", "people_first_named_ms=$shownMs seen=$seen")
         assertTrue("People showed a not-started state after relaunch: $seen", seen.isEmpty())
         // Settings straight after: the restored scan state, never "Restoring…".
+        val settingsStarted = SystemClock.elapsedRealtime()
         compose.onNodeWithTag("atlas-header-more").performClick()
         waitFor("Settings action") { has("atlas-library-status") }
         compose.onNodeWithTag("atlas-library-status").performClick()
@@ -290,6 +291,8 @@ class PeopleForceStopRelaunchTest {
         assertTrue("Settings still restoring once People showed",
             compose.onAllNodesWithText("Restoring…").fetchSemanticsNodes().isEmpty())
         assertTrue(compose.onAllNodesWithText("Unavailable").fetchSemanticsNodes().isEmpty())
+        android.util.Log.i("ATLAS_READINESS1045",
+            "people_ms=$shownMs settings_ms=${SystemClock.elapsedRealtime() - settingsStarted}")
         compose.onNodeWithTag("atlas-header-back").performClick()
         // Back lands on People: captureLibrary opens Photos itself and checks the
         // grid is not replaced by the first-time inventory spinner.

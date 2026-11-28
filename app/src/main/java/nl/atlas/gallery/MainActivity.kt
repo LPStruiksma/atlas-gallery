@@ -389,7 +389,7 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
         android.content.res.Configuration.UI_MODE_NIGHT_YES
 
 /**
- * PERF-A1A debug-only witness. A drawWithContent after drawContent marks a
+ * PERF-A1A / #1045 completed-frame witness. A drawWithContent after drawContent marks a
  * nonempty, grant-correct Photos grid in the Choreographer frame; Window
  * FrameMetrics confirms that *same vsync* completed on the renderer. Neither
  * composition, withFrameNanos nor an Activity launch is treated as a frame.
@@ -397,7 +397,16 @@ internal fun android.content.res.Configuration.isNightMode(): Boolean =
  * completion into elapsedRealtime at callback time for the process origin.
  * No media identifiers or filenames are observed or logged.
  */
-internal class PerfA1FrameProbe(private val window: android.view.Window) {
+internal class PerfA1FrameProbe(
+    private val window: android.view.Window,
+    private val debugWitness: Boolean
+) {
+    // Snapshot state invalidates a retained Photos draw layer on actual return.
+    var drawGeneration by mutableIntStateOf(0)
+        private set
+    private var photosActive = false
+    fun photosActive(active: Boolean) { photosActive = active }
+    private var registered = false
     private var mode = "cold"
     private var reported = false
     private var stopped = false
@@ -431,7 +440,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
     // no completed-frame proof. Retain evidence even when FrameMetrics arrives
     // late; never print an image name, URI or path, or emit per-frame spam.
     private fun scheduleDiagnostics() {
-        if (diagnosticsScheduled) return
+        if (!debugWitness || diagnosticsScheduled) return
         diagnosticsScheduled = true
         val generation = diagnosticGeneration
         for (delayMs in listOf(1_500L, 6_000L, 20_000L, 65_000L)) {
@@ -470,7 +479,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
                 exactMatches++
                 if (cached && !cachedMatchLogged) {
                     cachedMatchLogged = true
-                    Log.i("ATLAS_PERF_A1",
+                    if (debugWitness) Log.i("ATLAS_PERF_A1",
                         "event=vsync_match pid=${android.os.Process.myPid()}")
                 }
             } else {
@@ -502,9 +511,13 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
                     witnessedFrames.clear()
                     choreographer.removeFrameCallback(frameCallback)
                     diagnosticHandler.removeCallbacksAndMessages(null)
-                    Log.i("ATLAS_PERF_A1",
+                    unregister()
+                    val elapsedMs = elapsedNs / 1_000_000.0
+                    val accepted = if (mode == "cold") PerformanceSession.firstGridFrame(elapsedMs)
+                        else PerformanceSession.warmGridFrame(elapsedMs)
+                    if (debugWitness && accepted) Log.i("ATLAS_PERF_A1",
                         "mode=$mode pid=${android.os.Process.myPid()} " +
-                        "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedNs / 1_000_000.0)} " +
+                        "elapsed_ms=${String.format(Locale.US, "%.3f", elapsedMs)} " +
                         "cached=${if (cached) 1 else 0} draw=grid frame=completed")
                 } else {
                     invalidCompletions++
@@ -512,22 +525,40 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
             }
         }
     }
-    init {
+    init { register() }
+
+    private fun register() {
+        if (registered) return
+        registered = true
         choreographer.postFrameCallback(frameCallback)
         window.addOnFrameMetricsAvailableListener(
             listener, android.os.Handler(android.os.Looper.getMainLooper()))
+        // Bound ordinary app sampling when there is no eligible grid.
+        if (!debugWitness) diagnosticHandler.postDelayed({
+            reported = true
+            witnessedFrames.clear()
+            unregister()
+        }, 15_000L)
+    }
+
+    private fun unregister() {
+        choreographer.removeFrameCallback(frameCallback)
+        if (registered) {
+            window.removeOnFrameMetricsAvailableListener(listener)
+            registered = false
+        }
     }
 
     val isWarm: Boolean get() = mode == "warm"
     fun noteDraw(cached: Boolean) {
-        if (reported || stopped || closed || (mode == "cold" && !cached)) return
+        if (reported || stopped || closed || !photosActive || (mode == "cold" && !cached)) return
         eligibleDraws++
         if (cached) cachedDraws++
         val vsync = currentFrameVsyncNs
         if (vsync > 0L && !witnessedFrames.containsKey(vsync)) {
             if (cached && !cachedDrawLogged) {
                 cachedDrawLogged = true
-                Log.i("ATLAS_PERF_A1",
+                if (debugWitness) Log.i("ATLAS_PERF_A1",
                     "event=cached_draw pid=${android.os.Process.myPid()}")
             }
             scheduleDiagnostics()
@@ -546,7 +577,7 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         }
     }
     fun refreshed() {
-        if (!refreshReported) {
+        if (debugWitness && !refreshReported) {
             refreshReported = true
             Log.i("ATLAS_PERF_A1", "event=refreshed pid=${android.os.Process.myPid()} grant=1")
         }
@@ -557,11 +588,16 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         diagnosticHandler.removeCallbacksAndMessages(null)
         diagnosticsScheduled = false
         witnessedFrames.clear()
-        choreographer.removeFrameCallback(frameCallback)
+        unregister()
+        if (debugWitness) Log.i("ATLAS_PERF_A1", "event=stopped pid=${android.os.Process.myPid()}")
     }
     fun onStarted() {
         if (!stopped) return
         stopped = false
+        if (!photosActive) {
+            reported = true
+            return
+        }
         mode = "warm"
         originElapsedNs = android.os.SystemClock.elapsedRealtimeNanos()
         witnessedFrames.clear()
@@ -581,15 +617,15 @@ internal class PerfA1FrameProbe(private val window: android.view.Window) {
         nearestMismatchAbsNs = Long.MAX_VALUE
         nearestMismatchSignedNs = 0L
         diagnosticsScheduled = false
-        choreographer.postFrameCallback(frameCallback)
+        register()
+        drawGeneration++
     }
     fun close() {
         closed = true
         diagnosticGeneration++
         diagnosticHandler.removeCallbacksAndMessages(null)
         witnessedFrames.clear()
-        choreographer.removeFrameCallback(frameCallback)
-        window.removeOnFrameMetricsAvailableListener(listener)
+        unregister()
     }
 }
 class MainActivity : ComponentActivity() {
@@ -630,14 +666,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pickSession = savedInstanceState?.getInt(PICK_SESSION_KEY, 0) ?: 0
         if (!acceptExternalIntent(intent)) return
-        // Opt-in marker is created only by the synthetic hosted benchmark.
-        // Release builds and normal debug sessions never install a listener.
-        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
+        // Local numeric measurements in all builds; logs only for synthetic CI.
+        val debugWitness = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 &&
             (android.os.Build.HARDWARE in setOf("ranchu", "goldfish") ||
                 android.os.Build.FINGERPRINT.contains("emulator")) &&
-            File(noBackupFilesDir, "atlas-perf-a1-enabled").isFile) {
-            perfA1Probe = PerfA1FrameProbe(window)
-        }
+            File(noBackupFilesDir, "atlas-perf-a1-enabled").isFile
+        perfA1Probe = PerfA1FrameProbe(window, debugWitness)
         applyAtlasSystemBars(window, resources.configuration.isNightMode())
         android.os.Trace.beginSection("atlas_activity_content")
         try {
@@ -4215,11 +4249,9 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         )
                     }
                     tab == 0 -> {
-                        LaunchedEffect(publishedGallery.epoch, CatalogSourceKey(visible)) {
-                            if (visible.isNotEmpty()) {
-                                withFrameNanos { }
-                                PerformanceSession.firstGridFrame()
-                            }
+                        DisposableEffect(perfA1Probe, albumRoute == null) {
+                            perfA1Probe?.photosActive(albumRoute == null)
+                            onDispose { perfA1Probe?.photosActive(false) }
                         }
                         // Observe the *drawn* Photos subtree, not its Compose
                         // publication. FrameMetrics must later match this vsync.
@@ -4452,7 +4484,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         if (perfA1Probe != null) {
                             Box(Modifier.fillMaxSize().drawWithContent {
                                 drawContent()
-                                if (albumRoute == null && visible.isNotEmpty() &&
+                                if (perfA1Probe.drawGeneration >= 0 &&
+                                    albumRoute == null && visible.isNotEmpty() &&
                                     publishedGallery.epoch >= 0L &&
                                     publishedGallery.showable(grants) &&
                                     (publishedGallery.fromCache || perfA1Probe.isWarm)) {
@@ -4460,7 +4493,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 }
                             }) { perfA1PhotosContent() }
                         } else {
-                            perfA1PhotosContent() // no extra layout in normal/release builds
+                            perfA1PhotosContent() // Hosts without an Activity witness
                         }
                     }
                     tab == 1 && hideAlbumsOpen -> {

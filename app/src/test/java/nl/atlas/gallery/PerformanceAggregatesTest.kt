@@ -36,6 +36,18 @@ class PerformanceAggregatesTest {
         assertFalse(samples.snapshot("face_photos_min").p95 != null)
     }
 
+    @Test fun coldAndWarmAreIndependentNumericDistributions() {
+        val samples = PerformanceAggregates()
+        listOf(300.0, 400.0, 500.0).forEach { samples.record("cold_start_ms", it) }
+        listOf(12.0, 20.0, 40.0).forEach { assertTrue(samples.record("warm_resume_ms", it)) }
+        assertFalse(samples.record("warm_resume_ms", Double.NaN))
+        assertEquals(3, samples.snapshot("cold_start_ms").count)
+        assertEquals(400.0, samples.snapshot("cold_start_ms").p50!!, 0.0)
+        assertEquals(3, samples.snapshot("warm_resume_ms").count)
+        assertEquals(20.0, samples.snapshot("warm_resume_ms").p50!!, 0.0)
+        assertEquals(40.0, samples.snapshot("warm_resume_ms").p90!!, 0.0)
+    }
+
     @Test fun capacityAndKeysAreBounded() {
         val samples = PerformanceAggregates(capacity = 2)
         assertFalse(samples.record("", 10.0))

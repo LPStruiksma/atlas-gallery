@@ -59,7 +59,7 @@ internal object PerformanceReport {
         val tag = "atlas-perf-$key"
         if (number > INSTRUMENTED_ACTIONS) Row(tag, label, NOT_MEASURED, false)
         else metric(p, key, label, ::ms).copy(tag = tag)
-    }
+    } + metric(p, "warm_resume_ms", "Resume to photos", ::ms)
 
     private fun metric(
         p: PerformanceAggregates, key: String, label: String, unit: (Double) -> String

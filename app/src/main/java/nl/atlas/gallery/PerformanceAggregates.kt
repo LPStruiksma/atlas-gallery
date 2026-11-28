@@ -25,7 +25,7 @@ class PerformanceAggregates(
         val count: Int, val p50: Double?, val p90: Double?, val p95: Double?,
         val max: Double? = null
     )
-    private val keys = setOf("cold_start_ms", "viewer_ms", "grid_frame_ms",
+    private val keys = setOf("cold_start_ms", "warm_resume_ms", "viewer_ms", "grid_frame_ms",
         "grid_frame_over_budget",
         "face_photos_min", "visual_photos_min", "heap_fraction") +
         (1..22).map { "action_a${it}_ms" }
@@ -155,10 +155,6 @@ internal object PerformanceSession {
     private val viewer = ViewerTimingProbe()
     private var lastForwardedViewer: ViewerTimingProbe.Sample? = null
     private var peakHeapFraction = 0.0
-    private val coldStart = ColdStartClock(
-        processStartElapsedMs = { android.os.Process.getStartElapsedRealtime() },
-        nowElapsedMs = { android.os.SystemClock.elapsedRealtime() }
-    )
     private var firstGridReported = false
     // Only the first preview after opening a viewer counts as A3; later
     // filmstrip selections are A4. No selected index or URI is retained here.
@@ -212,14 +208,18 @@ internal object PerformanceSession {
 
     fun viewerProbe(): ViewerTimingProbe = viewer
 
-    @Synchronized fun firstGridFrame() {
-        if (firstGridReported) return
-        val elapsed = coldStart.elapsedMs() ?: return
-        if (aggregate.record("cold_start_ms", elapsed)) {
-            recordActionMs(1, elapsed)
-            firstGridReported = true
-        }
+    /** Renderer-completed cached Photos frame, once per process (A1). */
+    @Synchronized fun firstGridFrame(elapsedMs: Double): Boolean {
+        if (firstGridReported || elapsedMs <= 0.0) return false
+        if (!aggregate.record("cold_start_ms", elapsedMs)) return false
+        recordActionMs(1, elapsedMs)
+        firstGridReported = true
+        return true
     }
+
+    /** Separate sample: a same-Activity stopped -> started Photos return. */
+    fun warmGridFrame(elapsedMs: Double): Boolean =
+        elapsedMs > 0.0 && aggregate.record("warm_resume_ms", elapsedMs)
 
     @Synchronized fun updateViewer() {
         val samples = viewer.snapshot()

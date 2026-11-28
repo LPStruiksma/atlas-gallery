@@ -667,7 +667,7 @@ run_perf_a1_cached_frame() (
   seeded=1
   a1_phase seed seedCachedPicturesOutsideTimedWindow
 
-  local -a times=() pids=()
+  local -a times=() warm_times=() pids=()
   local i attempt pid capture line ms logged_pid ready refreshed
   # A cold launch whose first Photos draw was already the *fresh* publication
   # (the cache was never drawn) measures nothing: it is an invalid attempt, not
@@ -739,47 +739,41 @@ run_perf_a1_cached_frame() (
     times+=("$ms")
     echo "ATLAS_PERF_A1 sample mode=cold index=$i pid=$pid ms=$ms n=1 frame=completed cached=1 emulator=$model api=$api head=$head"
 
-    if (( i == 5 )); then
-      # A separate control: return the Activity, *without* force-stopping the
-      # same PID. The app's debug witness rearms on Activity restart.
-      adb shell input keyevent KEYCODE_HOME
-      adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
-      [[ "$(adb shell pidof "$pkg" | tr -d '\r')" == "$pid" ]] || {
-        echo "::error::Warm return unexpectedly relaunched the process"; exit 1;
-      }
-      local warm="" warm_ms
-      for attempt in $(seq 1 120); do
-        capture="$(timeout 30 adb logcat -d -v raw -s ATLAS_PERF_A1:I || true)"
-        warm="$(printf '%s\n' "$capture" | grep "^mode=warm pid=$pid " | tail -1 || true)"
-        [[ -n "$warm" ]] && break
-        sleep 0.5
-      done
-      if [[ "$warm" =~ ^mode=warm[[:space:]]pid=([0-9]+)[[:space:]]elapsed_ms=([0-9]+[.][0-9]+)[[:space:]]cached=[01][[:space:]]draw=grid[[:space:]]frame=completed$ ]]; then
-        warm_ms="${BASH_REMATCH[2]}"
-      else
-        # Preserve the strict warm-frame gate, but retain bounded numeric
-        # evidence from the same PID so Review/Strategy can distinguish an
-        # absent eligible draw, missing callbacks, vsync mismatch or invalid
-        # completion. These diagnostics never count as a warm sample.
-        echo "ATLAS_PERF_A1 sample mode=warm pid=$pid outcome=no_completed_grid_frame emulator=$model api=$api head=$head"
-        printf '%s\\n' "$capture" | grep -E "^event=(frame_diag|cached_draw|vsync_match) pid=$pid( |$)" | tail -6 || true
-        # Hosted run 45040443795 (a6523d0): five valid cold samples, but a plain
-        # HOME + return does not necessarily redraw the already-composed grid,
-        # so no eligible warm draw exists to witness. The warm return is a
-        # same-PID *control*, not the measured cold metric: report it as
-        # unobserved (never as a latency) and keep the cold acceptance intact.
-        echo "::warning::PERF-A1A warm control unobserved: no completed grid frame after same-PID return (control only; cold samples unaffected)"
-        warm_ms=""
+    # A real stopped Activity must return in the same process.
+    adb shell input keyevent KEYCODE_HOME
+    local stopped=0 warm="" warm_ms
+    for attempt in $(seq 1 60); do
+      capture="$(timeout 30 adb logcat -d -v raw -s ATLAS_PERF_A1:I || true)"
+      if printf '%s\n' "$capture" | grep -Fxq "event=stopped pid=$pid"; then
+        stopped=1; break
       fi
-      if [[ -n "$warm_ms" ]]; then
-        echo "ATLAS_PERF_A1 sample mode=warm pid=$pid ms=$warm_ms n=1 frame=completed emulator=$model api=$api head=$head"
-      else
-        echo "ATLAS_PERF_A1 sample mode=warm pid=$pid outcome=unobserved_control emulator=$model api=$api head=$head"
-      fi
+      sleep 0.5
+    done
+    [[ "$stopped" == "1" ]] || { echo "::error::Warm return did not observe Activity stop"; exit 1; }
+    adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
+    [[ "$(adb shell pidof "$pkg" | tr -d '\r')" == "$pid" ]] || {
+      echo "::error::Warm return unexpectedly relaunched the process"; exit 1;
+    }
+    for attempt in $(seq 1 120); do
+      capture="$(timeout 30 adb logcat -d -v raw -s ATLAS_PERF_A1:I || true)"
+      warm="$(printf '%s\n' "$capture" | grep "^mode=warm pid=$pid " | tail -1 || true)"
+      [[ -n "$warm" ]] && break
+      sleep 0.5
+    done
+    if [[ "$warm" =~ ^mode=warm[[:space:]]pid=([0-9]+)[[:space:]]elapsed_ms=([0-9]+[.][0-9]+)[[:space:]]cached=[01][[:space:]]draw=grid[[:space:]]frame=completed$ ]]; then
+      warm_ms="${BASH_REMATCH[2]}"
+    else
+      echo "::error::Warm return has no completed grid frame"
+      printf '%s\n' "$capture" | grep -E "^event=(frame_diag|cached_draw|vsync_match) pid=$pid( |$)" | tail -6 || true
+      exit 1
     fi
+    [[ "$(adb shell pidof "$pkg" | tr -d '\r')" == "$pid" ]] || {
+      echo "::error::Warm frame process disappeared"; exit 1;
+    }
+    warm_times+=("$warm_ms")
     a1_phase verify verifyFreshPicturesAndCacheAfterColdFrame
   done
-  [[ "${#times[@]}" == "5" && "${#pids[@]}" == "$(( 5 + invalid_attempts ))" ]] || {
+  [[ "${#times[@]}" == "5" && "${#warm_times[@]}" == "5" && "${#pids[@]}" == "$(( 5 + invalid_attempts ))" ]] || {
     echo "::error::PERF-A1A fewer than five independent process-cold samples"; exit 1;
   }
   printf '%s\n' "${times[@]}" | sort -n | awk \
@@ -787,8 +781,15 @@ run_perf_a1_cached_frame() (
       v[NR]=$1
     } END {
       p50=v[int((NR*50+99)/100)]
+      p90=v[int((NR*90+99)/100)]
       p95=v[int((NR*95+99)/100)]
-      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s invalid_attempts=%d\n", NR, p50, p95, model, api, head, inv
+      printf "ATLAS_PERF_A1 aggregate mode=cold n=%d p50_ms=%.3f p90_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s invalid_attempts=%d\n", NR, p50, p90, p95, model, api, head, inv
+    }'
+  printf '%s\n' "${warm_times[@]}" | sort -n | awk \
+    -v model="$model" -v api="$api" -v head="$head" '{
+      v[NR]=$1
+    } END {
+      printf "ATLAS_PERF_A1 aggregate mode=warm n=%d p50_ms=%.3f p90_ms=%.3f p95_ms=%.3f frame=completed emulator=%s api=%s head=%s\n", NR, v[int((NR*50+99)/100)], v[int((NR*90+99)/100)], v[int((NR*95+99)/100)], model, api, head
     }'
 )
 
@@ -833,6 +834,10 @@ if [[ "$SHARD_INDEX" == "0" ]]; then
   run_relaunch_phase seed seedBeforeForceStop
   adb shell am force-stop nl.atlas.gallery
   run_relaunch_phase verify verifyAfterForceStop
+  readiness="$(timeout 30 adb logcat -d -v raw -s ATLAS_READINESS1045:I | tr -d '\r' |
+    grep -E '^people_ms=[0-9]+ settings_ms=[0-9]+$' | tail -1 || true)"
+  [[ -n "$readiness" ]] || { echo "::error::Missing People/Settings readable-state timing"; exit 1; }
+  echo "ATLAS_READINESS1045 $readiness (synthetic emulator, one readable-state observation each)"
   if timeout 30 adb logcat -d -b crash -t 500 |
     grep -E 'FATAL EXCEPTION|Process nl[.]atlas[.]gallery.*crashed'; then
     echo "::error::#31 visual index relaunch emitted a process crash"; exit 1
