@@ -334,4 +334,46 @@ class AiEditSaverAndroidTest {
             assertTrue(temporary.delete())
         }
     }
+
+    /** AIE-21: session Undo deletes exactly the published copy; the original never changes. */
+    @Test fun undoDeletesOnlyTheExactPublishedCopyAndForgetsItsLineage() = runBlocking {
+        val original = image("undo-source-" + UUID.randomUUID() + ".jpg", Color.RED)
+        val sibling = image("undo-sibling-" + UUID.randomUUID() + ".jpg", Color.GREEN)
+        val candidate = image("undo-candidate-" + UUID.randomUUID() + ".jpg", Color.BLUE)
+        val before = bytes(original)
+        val saver = AiEditSaver(context, store)
+        val result = saver.save(recipe(original, candidate))
+        created += result.uri
+        var refreshed = 0
+        assertEquals(AiEditUndoOutcome.REMOVED, saver.undoPublished(result, onRefresh = { refreshed++ }))
+        assertEquals(1, refreshed)
+        resolver.query(MediaStore.setIncludePending(result.uri), arrayOf(MediaStore.Images.Media._ID),
+            null, null, null)!!.use { assertFalse("Undone copy must be gone", it.moveToFirst()) }
+        assertNull(store.get(result.uri.toString()))
+        assertArrayEquals("Original MediaStore bytes must never change", before, bytes(original))
+        assertEquals("0", value(sibling, MediaStore.Images.Media.IS_PENDING))
+        // Undo again: the copy is already gone, nothing else is touched.
+        assertEquals(AiEditUndoOutcome.REMOVED, saver.undoPublished(result))
+        assertArrayEquals(before, bytes(original))
+    }
+
+    @Test fun undoRefusesTheOriginalAndRowsWithoutMatchingLineage() = runBlocking {
+        val original = image("undo-refuse-" + UUID.randomUUID() + ".jpg", Color.RED)
+        val other = image("undo-other-" + UUID.randomUUID() + ".jpg", Color.YELLOW)
+        val candidate = image("undo-refuse-candidate-" + UUID.randomUUID() + ".jpg", Color.BLUE)
+        val before = bytes(original)
+        val otherBefore = bytes(other)
+        val saver = AiEditSaver(context, store)
+        val result = saver.save(recipe(original, candidate))
+        created += result.uri
+        // Pointing Undo at the original, or at an app-owned row with no lineage, deletes nothing.
+        assertEquals(AiEditUndoOutcome.FAILED, saver.undoPublished(result.copy(uri = original)))
+        assertEquals(AiEditUndoOutcome.FAILED, saver.undoPublished(result.copy(uri = other)))
+        // Lineage that names a different original is refused too.
+        assertEquals(AiEditUndoOutcome.FAILED, saver.undoPublished(result.copy(originalUri = other)))
+        assertArrayEquals(before, bytes(original))
+        assertArrayEquals(otherBefore, bytes(other))
+        assertEquals("0", value(result.uri, MediaStore.Images.Media.IS_PENDING))
+        assertNotNull(store.get(result.uri.toString()))
+    }
 }

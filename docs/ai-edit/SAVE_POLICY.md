@@ -122,6 +122,27 @@ metadata is **entirely stripped**, including capture dates and GPS. A remote
 adapter must only transmit this copy and delete the file in a `finally` block.
 It does not initiate network transfer, and does not silently upload originals.
 
+## Session Undo of a published copy (AIE-21, #433)
+
+- `AiEditSaver.undoPublished(result)` deletes **only** the exact Uri that this
+  save returned, serialized with saves and recovery under the same mutex.
+- Before deleting, `AiEditUndoPolicy` requires: the Uri is not the original;
+  it equals the canonical `content://media/<volume>/images/media/<id>` form;
+  MediaStore still shows the row as this app's own (`OWNER_PACKAGE_NAME`),
+  published (not pending), in the original's folder when that is still
+  readable; and the lineage row for that Uri names the same original. Any
+  failed check deletes nothing.
+- The delete is the app deleting its own row: no consent prompt and no
+  broader permission. A `SecurityException` or a row count other than 1 is
+  reported as "Couldn't undo. Copy still saved." A row that is already gone
+  counts as removed; its lineage row is forgotten.
+- Undo is offered only on the Saved slab of the editor session that made the
+  copy (the result is kept in memory, never persisted), so it can never act
+  after navigation away or after process death. It never reuses pending-save
+  recovery, which only reclaims rows that were never published.
+- View sets the pending focus target to exactly the saved Uri; Done exits
+  without moving focus.
+
 ## Test and integration boundaries
 
 Synthetic on-emulator tests exercise untouched original bytes, folder,

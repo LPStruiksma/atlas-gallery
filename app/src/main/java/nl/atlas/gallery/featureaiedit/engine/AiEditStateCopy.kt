@@ -81,6 +81,10 @@ object AiEditStateCopy {
     /** Shown when the source is larger than the service accepts (#431 rev 2 table). */
     fun sentAtSize(width: Int, height: Int) = "This photo will be sent at $width×$height."
 
+    /** AIE-21 session Undo outcomes (rev 5 E). */
+    const val UNDO_REMOVED = "Copy removed"
+    const val UNDO_FAILED = "Couldn't undo. Copy still saved."
+
     const val NO_SERVICE_TITLE = "Connect a service to start"
     const val NO_SERVICE_DETAIL = "AI Edit sends the photo you choose and your instruction to a service that makes the edit."
 

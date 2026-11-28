@@ -3389,7 +3389,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                 sourceUri = Uri.parse(selectedForAiEdit),
                 sessionId = aiEditSession!!,
                 onRefresh = { vm.refresh() },
-                onSaved = { newUri -> pendingAiSavedUri = newUri.toString() },
+                // Only View focuses the new copy; Done returns without moving focus (AIE-21 E).
+                onView = { newUri -> pendingAiSavedUri = newUri.toString() },
                 onExit = {
                     aiEditSourceUri = null
                     aiEditSession = null
