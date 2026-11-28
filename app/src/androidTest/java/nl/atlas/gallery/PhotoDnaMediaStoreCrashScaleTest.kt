@@ -92,8 +92,7 @@ class PhotoDnaMediaStoreCrashScaleTest {
         scaleLog("photo-dna", started)
 
         compose.onNodeWithTag("atlas-photo-dna-back").performClick()
-        compose.awaitThat("People nav", STEP_TIMEOUT_MS) { exists("atlas-nav-people") }
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection(STEP_TIMEOUT_MS)
         compose.awaitThat("People home", STEP_TIMEOUT_MS) { exists("atlas-people-home") }
         // Start the real opted-in face scope if it is off. Scan is not drained
         // here: this test checks the visual switch's initialization, not 2k

@@ -1,5 +1,5 @@
-#413 S24+ bottom navigation label containment, light/dark and 100/130/200% font.
-# Photos selected at every scale; Albums, People and Search each selected at 200%.
+#413 / BRAND-L4 #657 S24+ Lapis slab geometry, light/dark and 100/130/200% font.
+# Pictures current at every scale; Collections, People (Collections current) and search at 200%.
 nav-413-font100-light
 nav-413-font130-light
 nav-413-font200-light

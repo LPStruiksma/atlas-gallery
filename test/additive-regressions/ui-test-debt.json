@@ -54,10 +54,6 @@
     "rawClick": 13,
     "privateWait": 1
   },
-  "FloatingTabBackdropJourneyTest.kt": {
-    "rawClick": 2,
-    "deviceStateWrite": 2
-  },
   "FloatingTabBarJourneyTest.kt": {
     "rawClick": 3,
     "privateWait": 2

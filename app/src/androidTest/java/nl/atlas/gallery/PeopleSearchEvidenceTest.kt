@@ -84,8 +84,7 @@ class PeopleSearchAppEvidenceTest {
             assertTrue("Previous instrumentation leaked confirmed People into the screenshot",
                 it.people().isEmpty())
         }
-        waitFor(compose, hasTestTag("atlas-nav-people"))
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         waitFor(compose, hasTestTag("atlas-people-home"))
         // None of the owner-flagged chrome (#526 owner evidence) is on People.
         listOf("atlas-visual-index", "atlas-people-details").forEach {

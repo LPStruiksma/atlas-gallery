@@ -53,8 +53,7 @@ class FindSimilarAppJourneyTest {
 
     @Test fun peopleShowsTheIndexPanelAndFindSimilarReachesATypedState() {
         // The shell (bottom bar included) waits for the first MediaStore scan.
-        waitFor(hasTestTag("atlas-nav-people"))
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         // #643: the index opt-in lives in ⋮ → Library status & settings.
         waitFor(hasTestTag("atlas-header-more"))
         compose.onNodeWithTag("atlas-header-more").performClick()

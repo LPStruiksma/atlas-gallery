@@ -136,9 +136,8 @@ import nl.atlas.gallery.featuredesign.AtlasDestination
 import nl.atlas.gallery.featuredesign.AtlasGalleryHeader
 import nl.atlas.gallery.featuredesign.AtlasHeaderMenuItem
 import nl.atlas.gallery.featuredesign.AtlasGalleryNavigation
-import nl.atlas.gallery.featuredesign.LocalAtlasTabBackdrop
-import nl.atlas.gallery.featuredesign.rememberAtlasTabBackdropState
-import nl.atlas.gallery.featuredesign.atlasCaptureTabBackdrop
+import nl.atlas.gallery.featuredesign.AtlasCollectionsSection
+import nl.atlas.gallery.featuredesign.AtlasCollectionsSections
 import nl.atlas.gallery.featuredesign.LocalAtlasBottomChrome
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -3191,7 +3190,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     requestScopedRefresh(grants)
                 }) { Text("Retry") }
             } else {
-                CircularProgressIndicator(Modifier.testTag("atlas-first-scan"))
+                nl.atlas.gallery.featuredesign.AtlasFirstScanLoading()
             }
         }
         return
@@ -3716,9 +3715,27 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         return
     }
 
-    // The content and floating navigation share the underlying *drawn* page.
-    // The recorded layer never includes the pill or selection actions.
-    val tabBackdrop = rememberAtlasTabBackdropState()
+    // BRAND-L4 (#657): Collections hosts Albums, People and Stories as
+    // sections until BRAND-L5; each keeps its existing screen and Back.
+    val onSelectCollectionsSection: (AtlasCollectionsSection) -> Unit = { section ->
+        UsageRecorder.count(UsageAction.A15)
+        when (section) {
+            AtlasCollectionsSection.ALBUMS -> { tab = 1; storiesOpen = false }
+            AtlasCollectionsSection.PEOPLE -> {
+                peopleTabStartNs = android.os.SystemClock.elapsedRealtimeNanos()
+                tab = 2
+            }
+            AtlasCollectionsSection.STORIES -> { tab = 1; storiesOpen = true }
+        }
+        photoDnaOpen = false
+        hideAlbumsOpen = false
+        personFilter = null
+        nativePersonAlbum = null
+        hiddenPeopleOpen = false
+        needsSplittingOpen = false
+        hiddenNeedsSplittingOpen = false
+    }
+
     CompositionLocalProvider(LocalSearchHistory provides searchHistory) {
     Box(Modifier.fillMaxSize()) {
     Scaffold(
@@ -3783,7 +3800,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         }
                     ) else emptyList())
                 )
-            } else CompositionLocalProvider(LocalAtlasTabBackdrop provides tabBackdrop) {
+            } else {
                 AtlasGalleryNavigation(
                 selected = when (tab) {
                     1 -> AtlasDestination.ALBUMS
@@ -3797,7 +3814,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                     UsageRecorder.count(UsageAction.A15)
                     if (destination == AtlasDestination.PEOPLE) peopleTabStartNs = entryNs
                     if (destination == AtlasDestination.SEARCH) searchTabStartNs = entryNs
-                    // A primary-tab tap always opens that tab's unfiltered entry point.
+                    // A slab tap always opens that place's unfiltered entry point;
+                    // Collections opens on its Albums section (BRAND-L4).
                     tab = when (destination) {
                         AtlasDestination.PHOTOS -> 0
                         AtlasDestination.ALBUMS -> 1
@@ -3836,12 +3854,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
         val layoutDirection = LocalLayoutDirection.current
         CompositionLocalProvider(LocalAtlasBottomChrome provides
             (if (drawUnderBar) insets.calculateBottomPadding() else 0.dp)) {
-        // No GPU capture or blur allocation in the Android 10/11 fallback.
-        val contentModifier = if (Build.VERSION.SDK_INT >= 31) {
-            Modifier.fillMaxSize().atlasCaptureTabBackdrop(tabBackdrop)
-        } else {
-            Modifier.fillMaxSize()
-        }
+        // BRAND-L4: the lapis slab is opaque, so no backdrop is captured or blurred.
+        val contentModifier = Modifier.fillMaxSize()
         Column(contentModifier.padding(
             start = insets.calculateStartPadding(layoutDirection),
             top = insets.calculateTopPadding(),
@@ -3925,7 +3939,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         tab == 0 && album != null -> album!!.trimEnd('/').substringAfterLast('/')
                         tab == 2 -> "People"
                         tab == 3 -> "Search"
-                        else -> "Photos"
+                        else -> "Pictures"
                     },
                     // Album detail swaps only the final count wording: Settings still
                     // hides the subtitle and pending sort/filter still say so.
@@ -4524,6 +4538,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                         )
                     }
                     tab == 1 -> Column(Modifier.fillMaxSize()) {
+                        AtlasCollectionsSections(AtlasCollectionsSection.ALBUMS, onSelectCollectionsSection)
                         AtlasAlbumsScreen(
                             modifier = Modifier.weight(1f),
                             albums = albums,
@@ -4816,6 +4831,8 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                 discoveryHost, discovery.status?.people) {
                                 samePersonQueueOpen = false
                             }
+                            Column(Modifier.fillMaxSize()) {
+                            AtlasCollectionsSections(AtlasCollectionsSection.PEOPLE, onSelectCollectionsSection)
                             PeopleHomeScreen(
                                 sortChoice = peopleSortChoice,
                                 onSortChoice = { choice ->
@@ -4883,6 +4900,7 @@ private fun AtlasApp(vm: GalleryViewModel = viewModel()) {
                                         })
                                 }
                             )
+                            }
                         }
                     }
                     else -> Unit

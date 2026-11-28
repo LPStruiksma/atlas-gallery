@@ -1,5 +1,7 @@
 package nl.atlas.gallery
 
+import org.junit.Assert.assertEquals
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,6 +76,10 @@ class PeopleStatusEvidenceTest {
             compose.runOnIdle { dark = theme; showPeople = true }
             compose.waitForIdle()
             compose.onNodeWithTag("atlas-people-progress").assertExists()
+            // BRAND-L4 (#657): the held-sphere arc keeps the determinate range (3 of 10).
+            val range = compose.onNodeWithTag("atlas-people-progress", useUnmergedTree = true)
+                .fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo]
+            assertEquals(0.3f, range.current, 0.01f)
             compose.onNodeWithTag("atlas-people-status").assertExists()
             compose.onNodeWithTag("atlas-header-more").performClick()
             compose.onNodeWithTag("atlas-people-scan-now").assertExists()

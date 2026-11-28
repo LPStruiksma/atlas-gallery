@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
@@ -255,9 +256,9 @@ private fun GalleryViewerSnapshot(
             spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
         )
     }
-    // #509: Samsung-style thin strip. Uniform tile stride keeps the
-    // pager->strip fraction maths exact; the centre tile is only drawn larger.
-    val stripStridePx = with(LocalDensity.current) { (STRIP_TILE_WIDTH + STRIP_TILE_GAP).roundToPx() }
+    // BRAND-L4: a uniform 48 dp item stride keeps the pager->strip fraction
+    // maths exact; the current item is marked by its ring and sphere.
+    val stripStridePx = with(LocalDensity.current) { STRIP_ITEM_WIDTH.roundToPx() }
     val videoPositions = remember(CatalogSourceKey(items)) { ViewerPlaybackPositions() }
     // The playing video's live position, read on main when "Find similar" is tapped.
     val livePlayback = remember(CatalogSourceKey(items)) { HashMap<String, () -> Long>() }
@@ -992,12 +993,11 @@ private fun GalleryViewerSnapshot(
             // #573: one caller-granted item has no strip (never a lone filmstrip tile).
             if (access == ViewerAccess.LIBRARY || items.size > 1)
             BoxWithConstraints(Modifier.fillMaxWidth().height(STRIP_HEIGHT)) {
-                val contentPad = (maxWidth - STRIP_TILE_WIDTH) / 2
+                val contentPad = (maxWidth - STRIP_ITEM_WIDTH) / 2
                 LazyRow(
                     state = stripState,
                     flingBehavior = snapFling,
                     contentPadding = PaddingValues(horizontal = contentPad),
-                    horizontalArrangement = Arrangement.spacedBy(STRIP_TILE_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxSize().testTag("atlas-filmstrip")
                         // Cancel even during the held pre-touch-slop phase.
@@ -1018,15 +1018,11 @@ private fun GalleryViewerSnapshot(
                         val selected by remember(index, displayedIndexState) {
                             derivedStateOf { displayedIndexState.value == index }
                         }
-                        Box(Modifier.size(STRIP_TILE_WIDTH, STRIP_TILE_HEIGHT)
+                        // BRAND-L4 (#657, Structure 6): each item is a 48 dp wide
+                        // target holding a 40 dp tile (8 dp visual gap); the current
+                        // item gets a 2 dp white ring and the small sphere above it.
+                        Box(Modifier.size(STRIP_ITEM_WIDTH, STRIP_HEIGHT)
                             .testTag("atlas-thumbnail-$index")
-                            .zIndex(if (selected) 1f else 0f)
-                            .graphicsLayer {
-                                val grow = if (selected) STRIP_CENTRE_SCALE else 1f
-                                scaleX = grow; scaleY = grow
-                            }
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(AtlasTokens.Colors.Viewer.FilmstripTrack)
                             .semantics(mergeDescendants = true) {
                                 this.selected = selected
                                 contentDescription = "${if (media.isVideo) "Video" else "Photo"} " +
@@ -1036,6 +1032,20 @@ private fun GalleryViewerSnapshot(
                             .clickable(role = Role.Button) {
                                 requestViewerSelection(index, ViewerJumpOrigin.THUMBNAIL)
                             }) {
+                            if (selected) Box(Modifier.align(Alignment.TopCenter)
+                                .padding(top = STRIP_SPHERE_TOP)
+                                .size(AtlasTokens.Sphere.Filmstrip)
+                                .clip(CircleShape)
+                                .background(AtlasTokens.Colors.Viewer.FilmstripSphere)
+                                .testTag("atlas-filmstrip-sphere"))
+                            Box(Modifier.align(Alignment.BottomCenter)
+                                .size(STRIP_TILE_WIDTH, STRIP_TILE_HEIGHT)
+                                .clip(RoundedCornerShape(STRIP_TILE_RADIUS))
+                                .background(AtlasTokens.Colors.Viewer.FilmstripTrack)
+                                .then(if (selected) Modifier.border(AtlasTokens.Sphere.Halo,
+                                    AtlasTokens.Colors.Viewer.FilmstripRing,
+                                    RoundedCornerShape(STRIP_TILE_RADIUS))
+                                    .testTag("atlas-filmstrip-ring") else Modifier)) {
                             MediaPreview(
                                 // The parent already announces Photo/Video N of M
                                 // and filename. Suppress the duplicated Coil
@@ -1047,6 +1057,7 @@ private fun GalleryViewerSnapshot(
                             )
                             if (media.isVideo) Icon(Icons.Filled.PlayArrow, null,
                                 Modifier.align(Alignment.Center).size(14.dp), tint = Color.White)
+                            }
                         }
                     }
                 }
@@ -1160,13 +1171,16 @@ private fun GalleryViewerSnapshot(
     }
 }
 
-// #509 filmstrip geometry (Samsung 15.9 look: small portrait tiles, 2dp gaps,
-// the centre tile drawn ~25% larger, no label, marker line or second rail).
-private val STRIP_TILE_WIDTH = 30.dp
-private val STRIP_TILE_HEIGHT = 40.dp
-private val STRIP_TILE_GAP = 2.dp
-private val STRIP_HEIGHT = 56.dp
-private const val STRIP_CENTRE_SCALE = 1.25f
+// BRAND-L4 (#657; #889 geometry): 40 dp tiles on a 48 dp pitch, so every
+// item is a 48 dp target that touches but never overlaps its neighbours. The
+// current item has a 2 dp white ring and the small held sphere above it; no
+// label, marker line or second rail.
+private val STRIP_ITEM_WIDTH = 48.dp
+private val STRIP_TILE_WIDTH = 40.dp
+private val STRIP_TILE_HEIGHT = 48.dp
+private val STRIP_TILE_RADIUS = 4.dp
+private val STRIP_SPHERE_TOP = 2.dp
+private val STRIP_HEIGHT = 64.dp
 private const val STRIP_THUMB_PIXELS = 144
 // Chrome fades instead of popping (spec §0 Motion).
 private val CHROME_ENTER = fadeIn(tween(200))
@@ -1299,7 +1313,8 @@ private const val SCRUB_SHARPEN_DELAY_MS = 60L
 
 @Composable
 private fun ViewerPill(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
-    Row(modifier.clip(RoundedCornerShape(percent = 50)).background(AtlasTokens.Colors.Viewer.ActionPill)
+    // BRAND-L4: viewer actions live in the opaque #3448E0 lapis slab (24 dp radius).
+    Row(modifier.clip(RoundedCornerShape(AtlasTokens.Radii.Slab)).background(AtlasTokens.Colors.Viewer.ActionPill)
         .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically,
         content = content)
 }

@@ -229,7 +229,7 @@ class PeopleForceStopRelaunchTest {
         waitFor("six synthetic photos in gallery") {
             vm.publishedInventory.value.items.count { it.id in specs } == PHOTOS
         }
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         waitFor("People tab") { has("atlas-people-home") }
         waitFor("Discover faces") {
             compose.onAllNodesWithText("Discover faces").fetchSemanticsNodes().isNotEmpty()
@@ -265,8 +265,8 @@ class PeopleForceStopRelaunchTest {
         // check until the named person shows. A restored library must never
         // pass through "No people" / "Discover faces", and must not take long.
         val launched = SystemClock.elapsedRealtime()
-        waitFor("navigation bar") { has("atlas-nav-people") }
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        waitFor("navigation bar") { has("atlas-nav-albums") }
+        compose.openPeopleSection()
         val seen = linkedSetOf<String>()
         try {
             compose.waitUntil(FIRST_PEOPLE_MS) {
@@ -294,7 +294,7 @@ class PeopleForceStopRelaunchTest {
         // Back lands on People: captureLibrary opens Photos itself and checks the
         // grid is not replaced by the first-time inventory spinner.
         captureLibrary("after")
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         waitFor("named People after a new process") { has("atlas-native-person-album") }
         val epoch = drainFaceScan()
         val scanner = requireNotNull(host)

@@ -58,7 +58,7 @@ class SettingsBackNavigationJourneyTest {
         systemBack()
         waitFor(hasTestTag("atlas-settings-screen"))
         compose.onNodeWithTag("atlas-settings-advanced").assertExists()
-        compose.onNodeWithTag("atlas-nav-people").assertDoesNotExist()
+        compose.onNodeWithTag("atlas-nav-pill").assertDoesNotExist()
 
         // The header arrow is a second exit route with the same origin.
         compose.onNodeWithTag("atlas-header-back").performClick()
@@ -79,6 +79,12 @@ class SettingsBackNavigationJourneyTest {
     }
 
     private fun select(tab: String) {
+        // BRAND-L4 (#657): People is a Collections section, not a slab place.
+        if (tab == "people") {
+            compose.openPeopleSection()
+            waitFor(hasTestTag("atlas-people-home"))
+            return
+        }
         waitFor(hasTestTag("atlas-nav-$tab"))
         compose.onNodeWithTag("atlas-nav-$tab").performClick()
         compose.onNodeWithTag("atlas-nav-$tab").assertIsSelected()
@@ -106,6 +112,13 @@ class SettingsBackNavigationJourneyTest {
 
     private fun assertReturnedTo(tab: String) {
         compose.onNodeWithTag("atlas-settings-screen").assertDoesNotExist()
+        if (tab == "people") {
+            // People keeps Collections current; its section pill is selected.
+            waitFor(hasTestTag("atlas-people-home"))
+            compose.onNodeWithTag("atlas-nav-albums").assertIsSelected()
+            compose.onNodeWithTag("atlas-collections-people").assertIsSelected()
+            return
+        }
         waitFor(hasTestTag("atlas-nav-$tab"))
         compose.onNodeWithTag("atlas-nav-$tab").assertIsSelected()
         compose.onNodeWithTag("atlas-nav-$tab").assertIsDisplayed()

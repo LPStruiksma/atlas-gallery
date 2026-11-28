@@ -10,6 +10,8 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.printToString
+import nl.atlas.gallery.testkit.exists
+import nl.atlas.gallery.testkit.tap
 
 /**
  * Shared self-diagnosing wait for journey tests (#641 follow-up of #653):
@@ -81,3 +83,28 @@ private val MEDIA_TILE = Regex("-media-|thumbnail-|tile-")
 private fun callerLine(): String = Throwable().stackTrace
     .firstOrNull { it.fileName?.endsWith("Test.kt") == true && !it.methodName.startsWith("waitFor") }
     ?.let { "${it.fileName}:${it.lineNumber}" } ?: "unknown step"
+
+/**
+ * BRAND-L4 (#657): People is a Collections section, not a slab place. Open it
+ * the way a person does: tap Collections in the slab, then the People section.
+ */
+fun ComposeTestRule.openPeopleSection(timeoutMillis: Long = 60_000L) {
+    val albums = androidx.compose.ui.test.hasTestTag("atlas-nav-albums")
+    val people = androidx.compose.ui.test.hasTestTag("atlas-collections-people")
+    waitForNode(albums, timeoutMillis)
+    // Paired before/after captures (BRAND-L2, shard 0) run this candidate test
+    // APK against the installed pre-L4 baseline too, which still has a People
+    // tab: use it there.
+    val legacyPeopleTab = androidx.compose.ui.test.hasTestTag("atlas-nav-people")
+    if (exists(legacyPeopleTab)) {
+        tap(legacyPeopleTab, timeoutMs = timeoutMillis) {
+            exists(androidx.compose.ui.test.hasTestTag("atlas-people-home"))
+        }
+        return
+    }
+    tap(albums, timeoutMs = timeoutMillis) { exists(people) }
+    // People keeps Collections current; its section pill turns selected.
+    tap(people, timeoutMs = timeoutMillis) {
+        exists(people and androidx.compose.ui.test.isSelected())
+    }
+}

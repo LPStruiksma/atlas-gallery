@@ -1,5 +1,7 @@
 package nl.atlas.gallery.featurepeopleui
 
+import nl.atlas.gallery.featuredesign.AtlasLoadingArc
+
 import androidx.compose.material.icons.outlined.People
 import nl.atlas.gallery.featuredesign.AtlasEmptyState
 import androidx.compose.foundation.background
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -416,20 +419,24 @@ private fun peopleScanControls(
 @Composable
 private fun PeopleScanProgress(state: FaceDiscoveryUiState) {
     val line = state.statusNote ?: peopleProgressLine(state) ?: return
-    Column(Modifier.fillMaxWidth().semantics { stateDescription = line }
-        .testTag("atlas-people-progress-line")) {
+    val active = state.statusNote == null && (state.phase == FaceDiscoveryPhase.SCANNING ||
+        state.phase == FaceDiscoveryPhase.GROUPING)
+    // BRAND-L4 (#657): while work runs, the held sphere climbs an arc beside
+    // the plain count; no bar, banner or extra chrome.
+    Row(Modifier.fillMaxWidth().semantics { stateDescription = line }
+        .padding(horizontal = 16.dp, vertical = 4.dp)
+        .testTag("atlas-people-progress-line"),
+        verticalAlignment = Alignment.CenterVertically) {
+        if (active) {
+            val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
+            AtlasLoadingArc(progress, size = 28.dp, tag = "atlas-people-progress")
+            Spacer(Modifier.width(10.dp))
+        }
         Text(line,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            modifier = Modifier.weight(1f)
                 .semantics { stateDescription = line }.testTag("atlas-people-status"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (state.statusNote == null && (state.phase == FaceDiscoveryPhase.SCANNING ||
-            state.phase == FaceDiscoveryPhase.GROUPING)) {
-            val bar = Modifier.fillMaxWidth().height(2.dp).testTag("atlas-people-progress")
-            val progress = if (state.phase == FaceDiscoveryPhase.GROUPING) null else state.progress
-            if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = bar)
-            else LinearProgressIndicator(modifier = bar)
-        }
     }
 }
 

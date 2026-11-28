@@ -89,7 +89,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         settle()
         saveUiEvidence("brand-l2-$revision-photos-$mode-$scale.png")
 
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         waitFor(hasTestTag("atlas-people-home"))
         settle()
         saveUiEvidence("brand-l2-$revision-people-$mode-$scale.png")
@@ -134,7 +134,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 dark, it.resources.configuration.isNightMode())
         }
         listOf("photos", "albums", "people", "search").forEach { tab ->
-            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            openPlace(tab)
             settle()
             saveUiEvidence("theme-662-$tab-$mode.png")
             // #685: capture the real selected and inactive pill icons on
@@ -196,8 +196,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
         compose.onNodeWithTag("atlas-header-back").assertIsDisplayed()
         compose.onNodeWithTag("atlas-header-title").assertIsDisplayed()
         compose.onNodeWithTag("atlas-header-back").performClick()
-        waitFor(hasTestTag("atlas-nav-people"))
-        compose.onNodeWithTag("atlas-nav-people").performClick()
+        compose.openPeopleSection()
         waitFor(hasTestTag("atlas-people-home"))
         openMenuItem("atlas-header-more", "atlas-people-hidden-open")
         waitFor(hasTestTag("atlas-people-hidden"))
@@ -302,7 +301,7 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
     @Test fun settingsFromPhotosAlbumsPeopleFollowSystemTheme() {
         waitFor(hasTestTag("atlas-nav-photos"))
         listOf("photos", "albums", "people").forEach { tab ->
-            compose.onNodeWithTag("atlas-nav-$tab").performClick()
+            openPlace(tab)
             waitFor(hasTestTag("atlas-header-more"))
             if (tab == "photos") {
                 // The Photos sort icon remains available on the Photos route.
@@ -352,7 +351,17 @@ abstract class SystemThemeJourney(private val dark: Boolean) {
                 waitFor(hasTestTag("atlas-settings-screen"))
             }
             compose.onNodeWithTag("atlas-header-back").performClick()
-            waitFor(hasTestTag("atlas-nav-$tab"))
+            waitFor(hasTestTag(if (tab == "people") "atlas-people-home" else "atlas-nav-$tab"))
+        }
+    }
+
+    /** BRAND-L4 (#657): People is a Collections section; the rest are slab places. */
+    private fun openPlace(tab: String) {
+        if (tab == "people") {
+            compose.openPeopleSection()
+            waitFor(hasTestTag("atlas-people-home"))
+        } else {
+            compose.onNodeWithTag("atlas-nav-$tab").performClick()
         }
     }
 
