@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 1 of #1125: capability probe, not the complete fixture or product suite.
+# #1125 staged proof: capability probe followed by terminal grant-owner control.
 set -euo pipefail
 mkdir -p share-proof-evidence
 python3 - <<'PY'
@@ -35,7 +35,7 @@ BASE = pathlib.Path("test-fixtures/share-proof")
 EVIDENCE = pathlib.Path("share-proof-evidence/probe.json")
 PAYLOAD = b"atlas-share-proof-v1\n"
 NONCE = uuid.uuid4().hex
-receipt = {"schemaVersion": 1, "scope": "fixture-capability-probe-only",
+receipt = {"schemaVersion": 1, "scope": "fixture-capability-and-terminal-owner-control",
            "completeHarness": False, "api": API, "head": HEAD,
            "pr": int(os.environ["PR_NUMBER"]), "observations": []}
 installed = []
@@ -174,11 +174,14 @@ def command(phase, publisher=False, initial=False):
          "duplicate-extra-result", "unexpected publisher or recipient action")
     need(type(rr["uid"]) is int and type(rr["pid"]) is int and type(rr["taskId"]) is int
          and isinstance(rr["activityInstanceId"], str) and rr["activityInstanceId"]
-         and rr["released"] is True and rr["ownerFinished"] is False,
+         and rr["released"] is True and rr["ownerFinished"] is (phase in ("finish-owner", "deny", "finish-holder")),
          "malformed-result", "recipient field types")
     need(rr["uid"] == recipient_uid and process(R, recipient_uid) == rr["pid"],
          "actor-mismatch", "recipient UID/PID")
-    if phase != "status":
+    if phase == "deny":
+        need(rr["exceptionClass"] == "SecurityException" and rr["length"] is None
+             and rr["sha256"] is None, "provider-phase-grant-lost", "actual terminal read did not deny")
+    elif phase not in ("status", "holder", "finish-owner", "finish-holder"):
         need(rr["exceptionClass"] is None and rr["mime"] == "application/octet-stream"
              and type(rr["length"]) is int and rr["length"] == len(PAYLOAD)
              and rr["sha256"] == hashlib.sha256(PAYLOAD).hexdigest(),
@@ -218,6 +221,39 @@ def grant(rr):
     need(owners[0] in activity_dump, "recipient-grant-owner-lost", "owner ActivityRecord missing")
     # Raw URI, grant and owner identity remain in process memory; never serialize them.
     return (entries[0].strip(), owners[0])
+def holder_state(first, owner, require_removed=False):
+    need(process(R, recipient_uid) == first["pid"], "recipient-died-with-provider", "terminal PID changed")
+    dump = shell("dumpsys", "activity", "activities")
+    # Match the resumed ActivityRecord, not just a history row or a window title.
+    resumed = set(re.findall(r"(?m)^\s*(?:mResumedActivity|topResumedActivity|ResumedActivity):?\s*[=:]?\s*(ActivityRecord\{[^\n]+\})\s*$", dump))
+    records = {x for x in resumed if R + "/.RecipientActivity$HolderActivity" in x
+               and re.search(r"\bt" + str(first["taskId"]) + r"\b", x)}
+    if not records:
+        return None
+    need(len(records) == 1, "provider-phase-runner-unsupported", "ambiguous resumed holder")
+    record = next(iter(records))
+    need(record != owner, "recipient-grant-owner-lost", "holder equals grant owner")
+    if require_removed and owner in dump:
+        return None
+    state = shell("am", "get-uid-state", str(recipient_uid))
+    # AOSP prints the numeric process state, sometimes with a symbolic suffix.
+    m = re.fullmatch(r"(\d+)(?:\s*\([^)]*\))?", state)
+    if state in ("TOP", "PROCESS_STATE_TOP"):
+        top = True
+    else:
+        need(m is not None, "provider-phase-runner-unsupported", "unparseable recipient UID state")
+        top = int(m[1]) == 2
+    return record if top else None
+
+def no_grant():
+    dump = shell("dumpsys", "activity", "permissions")
+    need("ACTIVITY MANAGER URI PERMISSIONS" in dump, "provider-phase-runner-unsupported",
+         "permissions header missing")
+    blocks = re.split(r"(?m)^\s*\* UID (\d+) holds:\s*$", dump)
+    matching = [blocks[i+1] for i in range(1, len(blocks), 2) if int(blocks[i]) == recipient_uid]
+    need(len(matching) <= 1, "provider-phase-runner-unsupported", "ambiguous recipient grant dump")
+    return not matching
+
 def same_owner(first, later):
     need(all(first[k] == later[k] for k in ("uid", "pid", "taskId", "activityInstanceId")),
          "recipient-grant-owner-lost", "recipient owner changed")
@@ -318,7 +354,33 @@ try:
          "provider-phase-runner-unsupported", "boot changed")
     receipt["postKill"] = {"oldPublisherPid": old, "newPublisherPid": new, "grantSame": True,
                            "ownerSame": True, "grantCount": 1, "recipientPid": later["pid"]}
-    receipt["outcome"] = "probe-pass"
+    receipt["capabilityProbe"] = "probe-pass"
+    holder, _ = command("holder")
+    same_owner(first, holder)
+    holder_record = poll(lambda: holder_state(first, snapshot[1]), "recipient-cached",
+                         "holder did not become top in original task", 15)
+    need(grant(holder) == snapshot, "provider-phase-grant-lost", "holder added or changed grant")
+    finished, _ = command("finish-owner")
+    same_owner(first, finished)
+    def terminal_ready():
+        current = holder_state(first, snapshot[1], require_removed=True)
+        if current is None or not no_grant():
+            return None
+        need(current == holder_record, "recipient-grant-owner-lost", "holder changed")
+        return current
+    poll(terminal_ready, "recipient-cached", "owner removal/grant removal/top holder not observed", 15)
+    need(terminal_ready() == holder_record, "recipient-cached", "immediate terminal readiness recheck")
+    denied, _ = command("deny")
+    same_owner(first, denied)
+    need(terminal_ready() == holder_record, "recipient-grant-owner-lost", "holder/grant changed after denial")
+    receipt["terminal"] = {"ownerFinished": True, "holderSameTask": True, "holderTop": True,
+                           "holderIdentitySha256": hashlib.sha256(holder_record.encode()).hexdigest(),
+                           "grantRemoved": True, "recipientPid": denied["pid"],
+                           "actualReadDenied": True, "grantCountAtLastStatus": 1}
+    # The command writes its receipt before finishing the holder; cleanup below verifies removal.
+    cleaned, _ = command("finish-holder")
+    same_owner(first, cleaned)
+    receipt["outcome"] = "terminal-probe-pass"
 except Failed as e:
     receipt["outcome"] = "failed"
     receipt["failure"] = str(e)
@@ -335,6 +397,6 @@ finally:
             receipt["failure"] = "provider-phase-runner-unsupported: synthetic cleanup failed"
     EVIDENCE.write_text(json.dumps(receipt, indent=2) + "\n")
 print("share-provider capability probe:", receipt["outcome"])
-if receipt["outcome"] != "probe-pass":
+if receipt["outcome"] != "terminal-probe-pass":
     sys.exit(receipt["failure"])
 PY

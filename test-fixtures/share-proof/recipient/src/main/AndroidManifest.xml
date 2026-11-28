@@ -5,5 +5,8 @@
         <activity android:name=".RecipientActivity" android:exported="true"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".RecipientActivity$HolderActivity" android:exported="false"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
     </application>
 </manifest>

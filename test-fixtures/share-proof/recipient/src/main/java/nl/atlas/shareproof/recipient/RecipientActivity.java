@@ -36,7 +36,9 @@ public final class RecipientActivity extends Activity {
     private final Set<String> seen = new HashSet<>();
     private String nonce, invocation, phase;
     private Uri retained;
-    private boolean awaiting;
+    private boolean awaiting, ownerFinished;
+    private int ownerTask;
+    private static HolderActivity holder;
     private BroadcastReceiver receiver;
 
     private static boolean id(String s) { return s != null && s.matches("[a-f0-9]{32}"); }
@@ -49,7 +51,7 @@ public final class RecipientActivity extends Activity {
                 || command.getData() != null || command.getClipData() != null
                 || (command.getFlags() & GRANT_FLAGS) != 0 || awaiting) return false;
         if (initial ? !"grant".equals(p) : !n.equals(nonce)
-                || !new java.util.HashSet<>(java.util.Arrays.asList("reread", "post-kill", "status")).contains(p)) return false;
+                || !new java.util.HashSet<>(java.util.Arrays.asList("reread", "post-kill", "status", "holder", "finish-owner", "deny", "finish-holder")).contains(p)) return false;
         if (!seen.add(i)) return false;
         nonce = n; invocation = i; phase = p;
         return true;
@@ -58,10 +60,39 @@ public final class RecipientActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null || !command(getIntent(), true)) { finish(); return; }
+        ownerTask = getTaskId();
         receiver = new BroadcastReceiver() {
             @Override public void onReceive(Context context, Intent intent) {
                 if (!COMMAND.equals(intent.getAction()) || !command(intent, false) || retained == null) return;
-                if ("status".equals(phase)) requestPublisher(); else read();
+                switch (phase) {
+                    case "holder":
+                        if (ownerFinished || holder != null) { failure("InvalidPhase"); return; }
+                        awaiting = true;
+                        startActivity(new Intent(RecipientActivity.this, HolderActivity.class));
+                        // Holder reports only after its own onResume, through the same process.
+                        pendingOwner = RecipientActivity.this;
+                        break;
+                    case "finish-owner":
+                        if (ownerFinished || !holderReady()) { failure("InvalidPhase"); return; }
+                        finish();
+                        break;
+                    case "deny":
+                        if (!ownerFinished || !holderReady()) { failure("InvalidPhase"); return; }
+                        denyRead();
+                        break;
+                    case "finish-holder":
+                        if (!ownerFinished || !holderReady()) { failure("InvalidPhase"); return; }
+                        publish(null, null, null, null, true);
+                        holder.finish();
+                        getApplicationContext().unregisterReceiver(receiver);
+                        receiver = null;
+                        pendingOwner = null;
+                        retained = null;
+                        break;
+                    default:
+                        if (ownerFinished || holder != null) { failure("InvalidPhase"); return; }
+                        if ("status".equals(phase)) requestPublisher(); else read();
+                }
             }
         };
         IntentFilter filter = new IntentFilter(COMMAND);
@@ -69,6 +100,52 @@ public final class RecipientActivity extends Activity {
             getApplicationContext().registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED);
         else getApplicationContext().registerReceiver(receiver, filter);
         requestPublisher();
+    }
+
+    private static RecipientActivity pendingOwner;
+    private boolean holderReady() {
+        return holder != null && holder.resumed && holder.getTaskId() == ownerTask;
+    }
+
+    public static final class HolderActivity extends Activity {
+        private boolean resumed;
+        @Override protected void onCreate(Bundle state) {
+            super.onCreate(state);
+            Intent intent = getIntent();
+            if (state != null || pendingOwner == null || intent.getData() != null
+                    || intent.getClipData() != null || intent.getExtras() != null
+                    || (intent.getFlags() & GRANT_FLAGS) != 0
+                    || getTaskId() != pendingOwner.ownerTask || holder != null) {
+                finish(); return;
+            }
+            holder = this;
+        }
+        @Override protected void onResume() {
+            super.onResume();
+            resumed = true;
+            RecipientActivity owner = pendingOwner;
+            if (holder == this && owner != null && owner.awaiting && "holder".equals(owner.phase)) {
+                owner.awaiting = false;
+                owner.publish(null, null, null, null, true);
+            }
+        }
+        @Override protected void onPause() { resumed = false; super.onPause(); }
+        @Override protected void onDestroy() {
+            if (holder == this) holder = null;
+            super.onDestroy();
+        }
+    }
+
+    // Only the original fixed URI in process memory; no URI passes to the holder.
+    private void denyRead() {
+        String mime = null;
+        String error = null;
+        try { mime = getContentResolver().getType(retained); } catch (Exception ignored) {}
+        try (InputStream stream = getContentResolver().openInputStream(retained)) {
+            if (stream != null) stream.read();
+            error = "UnexpectedRead";
+        } catch (Exception e) { error = e.getClass().getSimpleName(); }
+        publish(mime, null, null, error, true);
     }
 
     private void requestPublisher() {
@@ -140,12 +217,12 @@ public final class RecipientActivity extends Activity {
             record.put("schemaVersion", 2).put("caseNonce", nonce).put("invocationId", invocation)
                     .put("phase", phase).put("api", Build.VERSION.SDK_INT)
                     .put("uid", Process.myUid()).put("pid", Process.myPid())
-                    .put("taskId", getTaskId()).put("activityInstanceId", instance)
+                    .put("taskId", ownerTask).put("activityInstanceId", instance)
                     .put("mime", mime == null ? JSONObject.NULL : mime)
                     .put("length", length == null ? JSONObject.NULL : length)
                     .put("sha256", hash == null ? JSONObject.NULL : hash)
                     .put("exceptionClass", error == null ? JSONObject.NULL : error)
-                    .put("released", released).put("ownerFinished", false);
+                    .put("released", released).put("ownerFinished", ownerFinished);
             File target = new File(getFilesDir(), nonce + "-" + invocation + ".json");
             if (target.exists()) throw new IllegalStateException("duplicate result");
             File tmp = File.createTempFile("proof-", ".tmp", getFilesDir());
@@ -159,7 +236,15 @@ public final class RecipientActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
-        if (receiver != null) getApplicationContext().unregisterReceiver(receiver);
+        // Only the intentional normal owner finish may retain the process receiver.
+        if (isFinishing() && "finish-owner".equals(phase) && holderReady()) {
+            ownerFinished = true;
+            publish(null, null, null, null, true);
+        } else if (receiver != null) {
+            getApplicationContext().unregisterReceiver(receiver);
+            receiver = null;
+            pendingOwner = null;
+        }
         super.onDestroy();
     }
 }
