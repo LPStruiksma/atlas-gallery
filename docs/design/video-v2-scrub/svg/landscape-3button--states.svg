@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1262.0 1750.0" width="2524.0" height="3500.0" font-family="Funnel Sans, Inter, Arial, sans-serif"><title>VIDEO-V2 seeker states landscape-3button</title>
-<rect width="1262.0" height="1750.0" fill="#1B1C24"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1262.0 2110.0" width="2524.0" height="4220.0" font-family="Funnel Sans, Inter, Arial, sans-serif"><title>VIDEO-V2 seeker states landscape-3button</title>
+<rect width="1262.0" height="2110.0" fill="#1B1C24"/>
 <text x="8" y="16" font-size="10" fill="#FFF" font-weight="600">PROPOSED seeker state matrix · landscape-3button · strip band at true scale (dp)</text>
 <text x="8" y="29" font-size="7.4" fill="#9AA0B8">Each row is the 76 dp band of the #142 target; left column is the band, right column the rule. Synthetic media; dark theme row tones alternate with light.</text>
 <g transform="translate(0,-192.0)">
@@ -604,8 +604,8 @@
 <path d="M474.22 305.0 h-40" stroke="#FFB020" stroke-width="1.2" marker-end="url(#a)"/>
 </g>
 <text x="842.0" y="324.0" font-size="8.4" fill="#FFF" font-weight="600">4. dragging</text>
-<text x="842.0" y="337.0" font-size="7.4" fill="#F2F3F8">Span follows finger 1:1. Main view = nearest cached frame. Tick when playhead crosses a</text>
-<text x="842.0" y="347.0" font-size="7.4" fill="#F2F3F8">frame boundary.</text>
+<text x="842.0" y="337.0" font-size="7.4" fill="#F2F3F8">Span follows finger 1:1. Main view = cached tile nearest by decoded PTS (approximate;</text>
+<text x="842.0" y="347.0" font-size="7.4" fill="#F2F3F8">unknown PTS marked). Tick per frame-tile boundary.</text>
 <g transform="translate(0,168.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r4band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
@@ -1309,8 +1309,8 @@
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
 <text x="842.0" y="684.0" font-size="8.4" fill="#FFF" font-weight="600">8. interrupted fling</text>
-<text x="842.0" y="697.0" font-size="7.4" fill="#F2F3F8">Finger down stops the span where it is; that time becomes the new drag origin; no seek is</text>
-<text x="842.0" y="707.0" font-size="7.4" fill="#F2F3F8">committed.</text>
+<text x="842.0" y="697.0" font-size="7.4" fill="#F2F3F8">Finger down = new scrub gen; span stops where it is; the fling's ORIGINAL resume intent</text>
+<text x="842.0" y="707.0" font-size="7.4" fill="#F2F3F8">transfers; its late callbacks are dropped.</text>
 <g transform="translate(0,528.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r8band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
@@ -1484,508 +1484,491 @@
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="774.0" font-size="8.4" fill="#FFF" font-weight="600">9. release</text>
-<text x="842.0" y="787.0" font-size="7.4" fill="#F2F3F8">Commit T at release (or fling end). Offset, sphere, elapsed text unchanged. Resume if it</text>
-<text x="842.0" y="797.0" font-size="7.4" fill="#F2F3F8">was playing.</text>
+<text x="842.0" y="774.0" font-size="8.4" fill="#FFF" font-weight="600">9. release / settling</text>
+<text x="842.0" y="787.0" font-size="7.4" fill="#F2F3F8">EXACT seek to T_r. Offset, T_r and elapsed text held; follow stays off; still paused</text>
+<text x="842.0" y="797.0" font-size="7.4" fill="#F2F3F8">until exact confirmation (matching gen).</text>
 <g transform="translate(0,618.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r9band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
 <g clip-path="url(#r9band)">
-<clipPath id="r9n-11"><rect x="366.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9n-11"><rect x="146.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9n-11)">
-<rect x="366.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M366.22 279.36 L375.02 265.92 L384.7 278.24 L394.38 262.56 L410.22 276.0 V304.0 H366.22 Z" fill="#6D86B5"/>
-<rect x="366.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="381.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M394.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="146.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M146.22 279.36 L155.02 265.92 L164.7 278.24 L174.38 262.56 L190.22 276.0 V304.0 H146.22 Z" fill="#6D86B5"/>
+<rect x="146.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="161.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M174.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-12"><rect x="318.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9n11"><rect x="638.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r9n11)">
+<rect x="638.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M638.22 279.36 L647.02 265.92 L656.7 278.24 L666.38 262.56 L682.22 276.0 V304.0 H638.22 Z" fill="#243457"/>
+<rect x="638.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="653.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M666.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r9n-12"><rect x="98.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9n-12)">
-<rect x="318.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M318.22 279.36 L327.02 265.92 L336.7 278.24 L346.38 262.56 L362.22 276.0 V304.0 H318.22 Z" fill="#243457"/>
-<rect x="318.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="333.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M346.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="98.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M98.22 279.36 L107.02 265.92 L116.7 278.24 L126.38 262.56 L142.22 276.0 V304.0 H98.22 Z" fill="#243457"/>
+<rect x="98.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="113.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M126.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-13"><rect x="270.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9n12"><rect x="686.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r9n12)">
+<rect x="686.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M686.22 279.36 L695.02 265.92 L704.7 278.24 L714.38 262.56 L730.22 276.0 V304.0 H686.22 Z" fill="#6D86B5"/>
+<rect x="686.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="701.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M714.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r9n-13"><rect x="50.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9n-13)">
-<rect x="270.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M270.22 279.36 L279.02 265.92 L288.7 278.24 L298.38 262.56 L314.22 276.0 V304.0 H270.22 Z" fill="#6D86B5"/>
-<rect x="270.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="285.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M298.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="50.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M50.22 279.36 L59.02 265.92 L68.7 278.24 L78.38 262.56 L94.22 276.0 V304.0 H50.22 Z" fill="#6D86B5"/>
+<rect x="50.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="65.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M78.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-14"><rect x="222.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9n13"><rect x="734.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r9n13)">
+<rect x="734.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M734.22 279.36 L743.02 265.92 L752.7 278.24 L762.38 262.56 L778.22 276.0 V304.0 H734.22 Z" fill="#243457"/>
+<rect x="734.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="749.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M762.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r9n-14"><rect x="2.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9n-14)">
-<rect x="222.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M222.22 279.36 L231.02 265.92 L240.7 278.24 L250.38 262.56 L266.22 276.0 V304.0 H222.22 Z" fill="#243457"/>
-<rect x="222.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="237.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M250.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="2.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M2.22 279.36 L11.02 265.92 L20.7 278.24 L30.38 262.56 L46.22 276.0 V304.0 H2.22 Z" fill="#243457"/>
+<rect x="2.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="17.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M30.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-15"><rect x="174.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9n14"><rect x="782.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r9n14)">
+<rect x="782.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M782.22 279.36 L791.02 265.92 L800.7 278.24 L810.38 262.56 L826.22 276.0 V304.0 H782.22 Z" fill="#6D86B5"/>
+<rect x="782.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="797.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M810.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r9n-15"><rect x="-45.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9n-15)">
-<rect x="174.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M174.22 279.36 L183.02 265.92 L192.7 278.24 L202.38 262.56 L218.22 276.0 V304.0 H174.22 Z" fill="#6D86B5"/>
-<rect x="174.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="189.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M202.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="-45.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M-45.78 279.36 L-36.98 265.92 L-27.3 278.24 L-17.62 262.56 L-1.78 276.0 V304.0 H-45.78 Z" fill="#6D86B5"/>
+<rect x="-45.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="-30.82" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M-17.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-16"><rect x="126.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r9n-16)">
-<rect x="126.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M126.22 279.36 L135.02 265.92 L144.7 278.24 L154.38 262.56 L170.22 276.0 V304.0 H126.22 Z" fill="#243457"/>
-<rect x="126.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="141.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M154.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<clipPath id="r9n15"><rect x="830.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r9n15)">
+<rect x="830.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M830.22 279.36 L839.02 265.92 L848.7 278.24 L858.38 262.56 L874.22 276.0 V304.0 H830.22 Z" fill="#243457"/>
+<rect x="830.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="845.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M858.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r9n-17"><rect x="78.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r9n-17)">
-<rect x="78.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M78.22 279.36 L87.02 265.92 L96.7 278.24 L106.38 262.56 L122.22 276.0 V304.0 H78.22 Z" fill="#6D86B5"/>
-<rect x="78.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="93.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M106.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r9n-18"><rect x="30.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r9n-18)">
-<rect x="30.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M30.22 279.36 L39.02 265.92 L48.7 278.24 L58.38 262.56 L74.22 276.0 V304.0 H30.22 Z" fill="#243457"/>
-<rect x="30.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="45.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M58.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r9n-19"><rect x="-17.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r9n-19)">
-<rect x="-17.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M-17.78 279.36 L-8.98 265.92 L0.7 278.24 L10.38 262.56 L26.22 276.0 V304.0 H-17.78 Z" fill="#6D86B5"/>
-<rect x="-17.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="-2.82" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M10.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r9span"><rect x="414.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<clipPath id="r9span"><rect x="194.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
 <g clip-path="url(#r9span)">
-<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M414.22 279.36 L423.02 265.92 L432.7 278.24 L442.38 262.56 L458.22 276.0 V304.0 H414.22 Z" fill="#6D86B5"/>
-<rect x="414.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="418.62" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M451.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="416.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="418.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
-<line x1="458.22" y1="248.0" x2="458.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="458.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M458.22 279.36 L467.02 265.92 L476.7 278.24 L486.38 262.56 L502.22 276.0 V304.0 H458.22 Z" fill="#6D86B5"/>
-<rect x="458.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="466.13" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M492.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="460.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
-<line x1="502.22" y1="248.0" x2="502.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="502.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M502.22 279.36 L511.02 265.92 L520.7 278.24 L530.38 262.56 L546.22 276.0 V304.0 H502.22 Z" fill="#6D86B5"/>
-<rect x="502.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="513.64" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M533.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="504.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
-<line x1="546.22" y1="248.0" x2="546.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="546.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M546.22 279.36 L555.02 265.92 L564.7 278.24 L574.38 262.56 L590.22 276.0 V304.0 H546.22 Z" fill="#6D86B5"/>
-<rect x="546.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="561.14" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M574.41 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="548.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
-<line x1="590.22" y1="248.0" x2="590.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="590.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M590.22 279.36 L599.02 265.92 L608.7 278.24 L618.38 262.56 L634.22 276.0 V304.0 H590.22 Z" fill="#6D86B5"/>
-<rect x="590.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="608.65" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M615.34 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="592.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
-<line x1="634.22" y1="248.0" x2="634.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="634.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M634.22 279.36 L643.02 265.92 L652.7 278.24 L662.38 262.56 L678.22 276.0 V304.0 H634.22 Z" fill="#6D86B5"/>
-<rect x="634.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="656.16" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M656.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="636.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="638.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
-<line x1="678.22" y1="248.0" x2="678.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="678.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M678.22 279.36 L687.02 265.92 L696.7 278.24 L706.38 262.56 L722.22 276.0 V304.0 H678.22 Z" fill="#6D86B5"/>
-<rect x="678.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="703.67" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M697.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="680.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="682.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
-<line x1="722.22" y1="248.0" x2="722.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="722.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M722.22 279.36 L731.02 265.92 L740.7 278.24 L750.38 262.56 L766.22 276.0 V304.0 H722.22 Z" fill="#6D86B5"/>
-<rect x="722.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="751.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M738.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="724.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="726.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
-<line x1="766.22" y1="248.0" x2="766.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="766.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M766.22 279.36 L775.02 265.92 L784.7 278.24 L794.38 262.56 L810.22 276.0 V304.0 H766.22 Z" fill="#6D86B5"/>
-<rect x="766.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="798.69" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M779.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="768.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="770.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
-<line x1="810.22" y1="248.0" x2="810.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="810.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M810.22 279.36 L819.02 265.92 L828.7 278.24 L838.38 262.56 L854.22 276.0 V304.0 H810.22 Z" fill="#6D86B5"/>
-<rect x="810.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="846.19" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M819.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="812.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="814.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
-<line x1="854.22" y1="248.0" x2="854.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-</g>
-<rect x="411.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
-<rect x="413.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
-</g>
-<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
-<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
-</g>
-<text x="842.0" y="864.0" font-size="8.4" fill="#FFF" font-weight="600">10. edge 0:00</text>
-<text x="842.0" y="877.0" font-size="7.4" fill="#F2F3F8">Span's left edge sits under the playhead; further drag is clamped (no pager hand-off</text>
-<text x="842.0" y="887.0" font-size="7.4" fill="#F2F3F8">while expanded).</text>
-<g transform="translate(0,708.0)">
-<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r10band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r10band)">
-<clipPath id="r10n11"><rect x="418.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n11)">
-<rect x="418.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M418.7 279.36 L427.5 265.92 L437.18 278.24 L446.86 262.56 L462.7 276.0 V304.0 H418.7 Z" fill="#243457"/>
-<rect x="418.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="433.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M446.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n12"><rect x="466.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n12)">
-<rect x="466.7" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M466.7 279.36 L475.5 265.92 L485.18 278.24 L494.86 262.56 L510.7 276.0 V304.0 H466.7 Z" fill="#6D86B5"/>
-<rect x="466.7" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="481.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M494.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n13"><rect x="514.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n13)">
-<rect x="514.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M514.7 279.36 L523.5 265.92 L533.18 278.24 L542.86 262.56 L558.7 276.0 V304.0 H514.7 Z" fill="#243457"/>
-<rect x="514.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="529.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M542.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n14"><rect x="562.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n14)">
-<rect x="562.7" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M562.7 279.36 L571.5 265.92 L581.18 278.24 L590.86 262.56 L606.7 276.0 V304.0 H562.7 Z" fill="#6D86B5"/>
-<rect x="562.7" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="577.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M590.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n15"><rect x="610.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n15)">
-<rect x="610.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M610.7 279.36 L619.5 265.92 L629.18 278.24 L638.86 262.56 L654.7 276.0 V304.0 H610.7 Z" fill="#243457"/>
-<rect x="610.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="625.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M638.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n16"><rect x="658.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n16)">
-<rect x="658.7" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M658.7 279.36 L667.5 265.92 L677.18 278.24 L686.86 262.56 L702.7 276.0 V304.0 H658.7 Z" fill="#6D86B5"/>
-<rect x="658.7" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="673.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M686.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n17"><rect x="706.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n17)">
-<rect x="706.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M706.7 279.36 L715.5 265.92 L725.18 278.24 L734.86 262.56 L750.7 276.0 V304.0 H706.7 Z" fill="#243457"/>
-<rect x="706.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="721.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M734.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n18"><rect x="754.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n18)">
-<rect x="754.7" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M754.7 279.36 L763.5 265.92 L773.18 278.24 L782.86 262.56 L798.7 276.0 V304.0 H754.7 Z" fill="#6D86B5"/>
-<rect x="754.7" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="769.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M782.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10n19"><rect x="802.7" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10n19)">
-<rect x="802.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M802.7 279.36 L811.5 265.92 L821.18 278.24 L830.86 262.56 L846.7 276.0 V304.0 H802.7 Z" fill="#243457"/>
-<rect x="802.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="817.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M830.86 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r10span"><rect x="-25.3" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r10span)">
-<rect x="-25.3" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M-25.3 279.36 L-16.5 265.92 L-6.82 278.24 L2.86 262.56 L18.7 276.0 V304.0 H-25.3 Z" fill="#243457"/>
-<rect x="-25.3" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="-20.9" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M12.1 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="-23.3" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="-21.3" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
-<line x1="18.7" y1="248.0" x2="18.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="18.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M18.7 279.36 L27.5 265.92 L37.18 278.24 L46.86 262.56 L62.7 276.0 V304.0 H18.7 Z" fill="#243457"/>
-<rect x="18.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="26.61" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M53.03 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="20.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="22.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
-<line x1="62.7" y1="248.0" x2="62.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="62.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M62.7 279.36 L71.5 265.92 L81.18 278.24 L90.86 262.56 L106.7 276.0 V304.0 H62.7 Z" fill="#243457"/>
-<rect x="62.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="74.12" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M93.96 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="64.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="66.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
-<line x1="106.7" y1="248.0" x2="106.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="106.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M106.7 279.36 L115.5 265.92 L125.18 278.24 L134.86 262.56 L150.7 276.0 V304.0 H106.7 Z" fill="#243457"/>
-<rect x="106.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="121.62" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M134.89 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="108.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="110.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
-<line x1="150.7" y1="248.0" x2="150.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="150.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M150.7 279.36 L159.5 265.92 L169.18 278.24 L178.86 262.56 L194.7 276.0 V304.0 H150.7 Z" fill="#243457"/>
-<rect x="150.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="169.13" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M175.82 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="152.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="154.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
-<line x1="194.7" y1="248.0" x2="194.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="194.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M194.7 279.36 L203.5 265.92 L213.18 278.24 L222.86 262.56 L238.7 276.0 V304.0 H194.7 Z" fill="#243457"/>
-<rect x="194.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="216.64" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M216.75 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="196.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="198.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
-<line x1="238.7" y1="248.0" x2="238.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="238.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M238.7 279.36 L247.5 265.92 L257.18 278.24 L266.86 262.56 L282.7 276.0 V304.0 H238.7 Z" fill="#243457"/>
-<rect x="238.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="264.15" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M257.68 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="240.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="242.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
-<line x1="282.7" y1="248.0" x2="282.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="282.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M282.7 279.36 L291.5 265.92 L301.18 278.24 L310.86 262.56 L326.7 276.0 V304.0 H282.7 Z" fill="#243457"/>
-<rect x="282.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="311.66" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M298.61 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="284.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="286.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
-<line x1="326.7" y1="248.0" x2="326.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="326.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M326.7 279.36 L335.5 265.92 L345.18 278.24 L354.86 262.56 L370.7 276.0 V304.0 H326.7 Z" fill="#243457"/>
-<rect x="326.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="359.17" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M339.54 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="328.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="330.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
-<line x1="370.7" y1="248.0" x2="370.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="370.7" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M370.7 279.36 L379.5 265.92 L389.18 278.24 L398.86 262.56 L414.7 276.0 V304.0 H370.7 Z" fill="#243457"/>
-<rect x="370.7" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="406.67" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M380.47 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="372.7" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="374.7" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
-<line x1="414.7" y1="248.0" x2="414.7" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-</g>
-<rect x="-28.3" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
-<rect x="-26.3" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
-</g>
-<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
-<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
-</g>
-<text x="842.0" y="954.0" font-size="8.4" fill="#FFF" font-weight="600">11. edge end</text>
-<text x="842.0" y="967.0" font-size="7.4" fill="#F2F3F8">Clamped at the last frame time d−1 frame; same rule.</text>
-<g transform="translate(0,798.0)">
-<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r11band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r11band)">
-<clipPath id="r11n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-11)">
-<rect x="190.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M190.22 279.36 L199.02 265.92 L208.7 278.24 L218.38 262.56 L234.22 276.0 V304.0 H190.22 Z" fill="#6D86B5"/>
-<rect x="190.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="205.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M218.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n11)">
-<rect x="682.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M682.22 279.36 L691.02 265.92 L700.7 278.24 L710.38 262.56 L726.22 276.0 V304.0 H682.22 Z" fill="#243457"/>
-<rect x="682.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="697.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M710.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-12)">
-<rect x="142.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M142.22 279.36 L151.02 265.92 L160.7 278.24 L170.38 262.56 L186.22 276.0 V304.0 H142.22 Z" fill="#243457"/>
-<rect x="142.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="157.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M170.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n12)">
-<rect x="730.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M730.22 279.36 L739.02 265.92 L748.7 278.24 L758.38 262.56 L774.22 276.0 V304.0 H730.22 Z" fill="#6D86B5"/>
-<rect x="730.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="745.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M758.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-13)">
-<rect x="94.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M94.22 279.36 L103.02 265.92 L112.7 278.24 L122.38 262.56 L138.22 276.0 V304.0 H94.22 Z" fill="#6D86B5"/>
-<rect x="94.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="109.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M122.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n13)">
-<rect x="778.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M778.22 279.36 L787.02 265.92 L796.7 278.24 L806.38 262.56 L822.22 276.0 V304.0 H778.22 Z" fill="#243457"/>
-<rect x="778.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="793.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M806.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-14)">
-<rect x="46.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M46.22 279.36 L55.02 265.92 L64.7 278.24 L74.38 262.56 L90.22 276.0 V304.0 H46.22 Z" fill="#243457"/>
-<rect x="46.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="61.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M74.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n14)">
-<rect x="826.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M826.22 279.36 L835.02 265.92 L844.7 278.24 L854.38 262.56 L870.22 276.0 V304.0 H826.22 Z" fill="#6D86B5"/>
-<rect x="826.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="841.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M854.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-15)">
-<rect x="-1.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M-1.78 279.36 L7.02 265.92 L16.7 278.24 L26.38 262.56 L42.22 276.0 V304.0 H-1.78 Z" fill="#6D86B5"/>
-<rect x="-1.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="13.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M26.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11n-16)">
-<rect x="-49.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
-<path d="M-49.78 279.36 L-40.98 265.92 L-31.3 278.24 L-21.62 262.56 L-5.78 276.0 V304.0 H-49.78 Z" fill="#243457"/>
-<rect x="-49.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
-<circle cx="-34.82" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M-21.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-</g>
-<clipPath id="r11span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r11span)">
+<rect x="194.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M194.22 279.36 L203.02 265.92 L212.7 278.24 L222.38 262.56 L238.22 276.0 V304.0 H194.22 Z" fill="#6D86B5"/>
+<rect x="194.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="198.62" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M231.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="196.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="198.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="238.22" y1="248.0" x2="238.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#6D86B5"/>
 <rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="242.62" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M275.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="246.13" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M272.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="240.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="242.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<text x="242.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
 <line x1="282.22" y1="248.0" x2="282.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="282.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M282.22 279.36 L291.02 265.92 L300.7 278.24 L310.38 262.56 L326.22 276.0 V304.0 H282.22 Z" fill="#6D86B5"/>
 <rect x="282.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="290.13" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M316.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="293.64" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M313.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="284.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="286.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<text x="286.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
 <line x1="326.22" y1="248.0" x2="326.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="326.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M326.22 279.36 L335.02 265.92 L344.7 278.24 L354.38 262.56 L370.22 276.0 V304.0 H326.22 Z" fill="#6D86B5"/>
 <rect x="326.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="337.64" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M357.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="341.14" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M354.41 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="328.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="330.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<text x="330.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
 <line x1="370.22" y1="248.0" x2="370.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="370.22" y="248.0" width="44.0" height="56.0" fill="#14152A"/>
+<rect x="370.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M370.22 279.36 L379.02 265.92 L388.7 278.24 L398.38 262.56 L414.22 276.0 V304.0 H370.22 Z" fill="#6D86B5"/>
+<rect x="370.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="388.65" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M395.34 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="372.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="374.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
 <line x1="414.22" y1="248.0" x2="414.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#14152A"/>
+<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M414.22 279.36 L423.02 265.92 L432.7 278.24 L442.38 262.56 L458.22 276.0 V304.0 H414.22 Z" fill="#6D86B5"/>
+<rect x="414.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="436.16" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M436.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="416.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="418.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
 <line x1="458.22" y1="248.0" x2="458.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="458.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M458.22 279.36 L467.02 265.92 L476.7 278.24 L486.38 262.56 L502.22 276.0 V304.0 H458.22 Z" fill="#6D86B5"/>
 <rect x="458.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="480.16" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M480.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="483.67" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M477.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="460.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
 <line x1="502.22" y1="248.0" x2="502.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="502.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M502.22 279.36 L511.02 265.92 L520.7 278.24 L530.38 262.56 L546.22 276.0 V304.0 H502.22 Z" fill="#6D86B5"/>
 <rect x="502.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="527.67" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M521.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="531.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M518.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="504.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
 <line x1="546.22" y1="248.0" x2="546.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="546.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M546.22 279.36 L555.02 265.92 L564.7 278.24 L574.38 262.56 L590.22 276.0 V304.0 H546.22 Z" fill="#6D86B5"/>
 <rect x="546.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="575.18" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M562.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="578.69" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M559.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="548.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
 <line x1="590.22" y1="248.0" x2="590.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 <rect x="590.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M590.22 279.36 L599.02 265.92 L608.7 278.24 L618.38 262.56 L634.22 276.0 V304.0 H590.22 Z" fill="#6D86B5"/>
 <rect x="590.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="622.69" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M603.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<circle cx="626.19" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M599.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 <rect x="592.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
 <line x1="634.22" y1="248.0" x2="634.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
-<rect x="634.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
-<path d="M634.22 279.36 L643.02 265.92 L652.7 278.24 L662.38 262.56 L678.22 276.0 V304.0 H634.22 Z" fill="#6D86B5"/>
-<rect x="634.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
-<circle cx="670.19" cy="259.2" r="3.52" fill="#FFD35A"/>
-<path d="M643.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
-<rect x="636.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
-<text x="638.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
-<line x1="678.22" y1="248.0" x2="678.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
 </g>
-<rect x="235.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
-<rect x="237.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<rect x="191.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="193.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
 </g>
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="1044.0" font-size="8.4" fill="#FFF" font-weight="600">12. frame unavailable</text>
-<text x="842.0" y="1057.0" font-size="7.4" fill="#F2F3F8">Mist #14152A tile, no glyph or text. Main view keeps last good frame until the decoder</text>
-<text x="842.0" y="1067.0" font-size="7.4" fill="#F2F3F8">frame lands.</text>
+<text x="842.0" y="864.0" font-size="8.4" fill="#FFF" font-weight="600">10. confirmed → follow</text>
+<text x="842.0" y="877.0" font-size="7.4" fill="#F2F3F8">Resume only now, if intent was playing. Follow anchors at T_r with lead 0; lead grows to</text>
+<text x="842.0" y="887.0" font-size="7.4" fill="#F2F3F8">200 ms as playback advances (no jump).</text>
+<g transform="translate(0,708.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r10band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r10band)">
+<clipPath id="r10n-11"><rect x="146.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n-11)">
+<rect x="146.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M146.22 279.36 L155.02 265.92 L164.7 278.24 L174.38 262.56 L190.22 276.0 V304.0 H146.22 Z" fill="#6D86B5"/>
+<rect x="146.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="161.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M174.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n11"><rect x="638.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n11)">
+<rect x="638.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M638.22 279.36 L647.02 265.92 L656.7 278.24 L666.38 262.56 L682.22 276.0 V304.0 H638.22 Z" fill="#243457"/>
+<rect x="638.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="653.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M666.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n-12"><rect x="98.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n-12)">
+<rect x="98.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M98.22 279.36 L107.02 265.92 L116.7 278.24 L126.38 262.56 L142.22 276.0 V304.0 H98.22 Z" fill="#243457"/>
+<rect x="98.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="113.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M126.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n12"><rect x="686.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n12)">
+<rect x="686.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M686.22 279.36 L695.02 265.92 L704.7 278.24 L714.38 262.56 L730.22 276.0 V304.0 H686.22 Z" fill="#6D86B5"/>
+<rect x="686.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="701.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M714.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n-13"><rect x="50.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n-13)">
+<rect x="50.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M50.22 279.36 L59.02 265.92 L68.7 278.24 L78.38 262.56 L94.22 276.0 V304.0 H50.22 Z" fill="#6D86B5"/>
+<rect x="50.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="65.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M78.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n13"><rect x="734.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n13)">
+<rect x="734.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M734.22 279.36 L743.02 265.92 L752.7 278.24 L762.38 262.56 L778.22 276.0 V304.0 H734.22 Z" fill="#243457"/>
+<rect x="734.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="749.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M762.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n-14"><rect x="2.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n-14)">
+<rect x="2.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M2.22 279.36 L11.02 265.92 L20.7 278.24 L30.38 262.56 L46.22 276.0 V304.0 H2.22 Z" fill="#243457"/>
+<rect x="2.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="17.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M30.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n14"><rect x="782.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n14)">
+<rect x="782.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M782.22 279.36 L791.02 265.92 L800.7 278.24 L810.38 262.56 L826.22 276.0 V304.0 H782.22 Z" fill="#6D86B5"/>
+<rect x="782.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="797.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M810.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n-15"><rect x="-45.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n-15)">
+<rect x="-45.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M-45.78 279.36 L-36.98 265.92 L-27.3 278.24 L-17.62 262.56 L-1.78 276.0 V304.0 H-45.78 Z" fill="#6D86B5"/>
+<rect x="-45.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="-30.82" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M-17.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10n15"><rect x="830.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10n15)">
+<rect x="830.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M830.22 279.36 L839.02 265.92 L848.7 278.24 L858.38 262.56 L874.22 276.0 V304.0 H830.22 Z" fill="#243457"/>
+<rect x="830.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="845.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M858.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r10span"><rect x="194.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r10span)">
+<rect x="194.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M194.22 279.36 L203.02 265.92 L212.7 278.24 L222.38 262.56 L238.22 276.0 V304.0 H194.22 Z" fill="#243457"/>
+<rect x="194.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="198.62" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M231.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="196.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="198.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="238.22" y1="248.0" x2="238.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#243457"/>
+<rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="246.13" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M272.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="240.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="242.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<line x1="282.22" y1="248.0" x2="282.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="282.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M282.22 279.36 L291.02 265.92 L300.7 278.24 L310.38 262.56 L326.22 276.0 V304.0 H282.22 Z" fill="#243457"/>
+<rect x="282.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="293.64" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M313.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="284.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="286.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<line x1="326.22" y1="248.0" x2="326.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="326.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M326.22 279.36 L335.02 265.92 L344.7 278.24 L354.38 262.56 L370.22 276.0 V304.0 H326.22 Z" fill="#243457"/>
+<rect x="326.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="341.14" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M354.41 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="328.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="330.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
+<line x1="370.22" y1="248.0" x2="370.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="370.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M370.22 279.36 L379.02 265.92 L388.7 278.24 L398.38 262.56 L414.22 276.0 V304.0 H370.22 Z" fill="#243457"/>
+<rect x="370.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="388.65" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M395.34 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="372.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="374.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
+<line x1="414.22" y1="248.0" x2="414.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M414.22 279.36 L423.02 265.92 L432.7 278.24 L442.38 262.56 L458.22 276.0 V304.0 H414.22 Z" fill="#243457"/>
+<rect x="414.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="436.16" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M436.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="416.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="418.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<line x1="458.22" y1="248.0" x2="458.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="458.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M458.22 279.36 L467.02 265.92 L476.7 278.24 L486.38 262.56 L502.22 276.0 V304.0 H458.22 Z" fill="#243457"/>
+<rect x="458.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="483.67" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M477.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="460.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<line x1="502.22" y1="248.0" x2="502.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="502.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M502.22 279.36 L511.02 265.92 L520.7 278.24 L530.38 262.56 L546.22 276.0 V304.0 H502.22 Z" fill="#243457"/>
+<rect x="502.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="531.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M518.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="504.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<line x1="546.22" y1="248.0" x2="546.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="546.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M546.22 279.36 L555.02 265.92 L564.7 278.24 L574.38 262.56 L590.22 276.0 V304.0 H546.22 Z" fill="#243457"/>
+<rect x="546.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="578.69" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M559.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="548.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<line x1="590.22" y1="248.0" x2="590.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="590.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M590.22 279.36 L599.02 265.92 L608.7 278.24 L618.38 262.56 L634.22 276.0 V304.0 H590.22 Z" fill="#243457"/>
+<rect x="590.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="626.19" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M599.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="592.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
+<line x1="634.22" y1="248.0" x2="634.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+</g>
+<rect x="191.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="193.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+</g>
+<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+<path d="M474.22 305.0 h-40" stroke="#FFB020" stroke-width="1.2" marker-end="url(#a)"/>
+</g>
+<text x="842.0" y="954.0" font-size="8.4" fill="#FFF" font-weight="600">11. second scrub while playing</text>
+<text x="842.0" y="967.0" font-size="7.4" fill="#F2F3F8">Finger down on the open seeker: new gen, snapshot playing, pause, follow off, T = where</text>
+<text x="842.0" y="977.0" font-size="7.4" fill="#F2F3F8">the strip stands.</text>
+<g transform="translate(0,798.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r11t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t0)">
+<rect x="392.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M392.22 279.36 L401.02 265.92 L410.7 278.24 L420.38 262.56 L436.22 276.0 V304.0 H392.22 Z" fill="#243457"/>
+<rect x="392.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="410.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M417.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<rect x="389.22" y="245.0" width="50.0" height="62.0" rx="11" fill="none" stroke="#000"/>
+<rect x="391.22" y="247.0" width="46.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<circle cx="414.22" cy="240.0" r="5" fill="#000"/><circle cx="414.22" cy="240.0" r="4" fill="#8C9BFF"/>
+<clipPath id="r11t1"><rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t1)">
+<rect x="440.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M440.22 279.36 L449.02 265.92 L458.7 278.24 L468.38 262.56 L484.22 276.0 V304.0 H440.22 Z" fill="#6D86B5"/>
+<rect x="440.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="458.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M465.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t2"><rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t2)">
+<rect x="488.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M488.22 279.36 L497.02 265.92 L506.7 278.24 L516.38 262.56 L532.22 276.0 V304.0 H488.22 Z" fill="#243457"/>
+<rect x="488.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="506.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M513.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t3"><rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t3)">
+<rect x="536.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M536.22 279.36 L545.02 265.92 L554.7 278.24 L564.38 262.56 L580.22 276.0 V304.0 H536.22 Z" fill="#6D86B5"/>
+<rect x="536.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="554.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M561.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t4"><rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t4)">
+<rect x="584.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M584.22 279.36 L593.02 265.92 L602.7 278.24 L612.38 262.56 L628.22 276.0 V304.0 H584.22 Z" fill="#243457"/>
+<rect x="584.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="602.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M609.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t5"><rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t5)">
+<rect x="632.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M632.22 279.36 L641.02 265.92 L650.7 278.24 L660.38 262.56 L676.22 276.0 V304.0 H632.22 Z" fill="#6D86B5"/>
+<rect x="632.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="650.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M657.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t6"><rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t6)">
+<rect x="680.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M680.22 279.36 L689.02 265.92 L698.7 278.24 L708.38 262.56 L724.22 276.0 V304.0 H680.22 Z" fill="#243457"/>
+<rect x="680.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="698.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M705.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t7"><rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t7)">
+<rect x="728.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M728.22 279.36 L737.02 265.92 L746.7 278.24 L756.38 262.56 L772.22 276.0 V304.0 H728.22 Z" fill="#6D86B5"/>
+<rect x="728.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="746.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M753.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t8"><rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t8)">
+<rect x="344.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M344.22 279.36 L353.02 265.92 L362.7 278.24 L372.38 262.56 L388.22 276.0 V304.0 H344.22 Z" fill="#243457"/>
+<rect x="344.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="362.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M369.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t9"><rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t9)">
+<rect x="296.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M296.22 279.36 L305.02 265.92 L314.7 278.24 L324.38 262.56 L340.22 276.0 V304.0 H296.22 Z" fill="#6D86B5"/>
+<rect x="296.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="314.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M321.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t10"><rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t10)">
+<rect x="248.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M248.22 279.36 L257.02 265.92 L266.7 278.24 L276.38 262.56 L292.22 276.0 V304.0 H248.22 Z" fill="#243457"/>
+<rect x="248.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="266.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M273.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t11"><rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t11)">
+<rect x="200.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M200.22 279.36 L209.02 265.92 L218.7 278.24 L228.38 262.56 L244.22 276.0 V304.0 H200.22 Z" fill="#6D86B5"/>
+<rect x="200.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="218.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M225.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t12"><rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t12)">
+<rect x="152.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M152.22 279.36 L161.02 265.92 L170.7 278.24 L180.38 262.56 L196.22 276.0 V304.0 H152.22 Z" fill="#243457"/>
+<rect x="152.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="170.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M177.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t13"><rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t13)">
+<rect x="104.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M104.22 279.36 L113.02 265.92 L122.7 278.24 L132.38 262.56 L148.22 276.0 V304.0 H104.22 Z" fill="#6D86B5"/>
+<rect x="104.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="122.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M129.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r11t14"><rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r11t14)">
+<rect x="56.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M56.22 279.36 L65.02 265.92 L74.7 278.24 L84.38 262.56 L100.22 276.0 V304.0 H56.22 Z" fill="#243457"/>
+<rect x="56.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="74.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M81.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+</g>
+<text x="842.0" y="1044.0" font-size="8.4" fill="#FFF" font-weight="600">12. cancelled</text>
+<text x="842.0" y="1057.0" font-size="7.4" fill="#F2F3F8">Back swipe, lifecycle stop, audio focus, unplug: stay paused at last selected T;</text>
+<text x="842.0" y="1067.0" font-size="7.4" fill="#F2F3F8">collapse. Then a paused page: Play works (a later stop clears a queued Play).</text>
 <g transform="translate(0,888.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
 <clipPath id="r12t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
@@ -2113,13 +2096,643 @@
 <path d="M81.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
 </g>
-<text x="842.0" y="1134.0" font-size="8.4" fill="#FFF" font-weight="600">13. decoder error</text>
-<text x="842.0" y="1147.0" font-size="7.4" fill="#F2F3F8">Hold does not expand; strip stays a photo strip; #142 error state on the page. Mid-drag</text>
-<text x="842.0" y="1157.0" font-size="7.4" fill="#F2F3F8">error: freeze, collapse on release.</text>
+<text x="842.0" y="1134.0" font-size="8.4" fill="#FFF" font-weight="600">13. exact decode failed</text>
+<text x="842.0" y="1147.0" font-size="7.4" fill="#F2F3F8">Stay paused at T_r; keep the frame on screen, marked approximate even if its PTS equals</text>
+<text x="842.0" y="1157.0" font-size="7.4" fill="#F2F3F8">T; no resume; #142 error retry (not Play).</text>
 <g transform="translate(0,978.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r13t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t0)">
+<clipPath id="r13band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r13band)">
+<clipPath id="r13n-11"><rect x="366.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-11)">
+<rect x="366.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M366.22 279.36 L375.02 265.92 L384.7 278.24 L394.38 262.56 L410.22 276.0 V304.0 H366.22 Z" fill="#6D86B5"/>
+<rect x="366.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="381.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M394.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-12"><rect x="318.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-12)">
+<rect x="318.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M318.22 279.36 L327.02 265.92 L336.7 278.24 L346.38 262.56 L362.22 276.0 V304.0 H318.22 Z" fill="#243457"/>
+<rect x="318.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="333.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M346.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-13"><rect x="270.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-13)">
+<rect x="270.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M270.22 279.36 L279.02 265.92 L288.7 278.24 L298.38 262.56 L314.22 276.0 V304.0 H270.22 Z" fill="#6D86B5"/>
+<rect x="270.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="285.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M298.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-14"><rect x="222.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-14)">
+<rect x="222.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M222.22 279.36 L231.02 265.92 L240.7 278.24 L250.38 262.56 L266.22 276.0 V304.0 H222.22 Z" fill="#243457"/>
+<rect x="222.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="237.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M250.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-15"><rect x="174.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-15)">
+<rect x="174.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M174.22 279.36 L183.02 265.92 L192.7 278.24 L202.38 262.56 L218.22 276.0 V304.0 H174.22 Z" fill="#6D86B5"/>
+<rect x="174.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="189.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M202.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-16"><rect x="126.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-16)">
+<rect x="126.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M126.22 279.36 L135.02 265.92 L144.7 278.24 L154.38 262.56 L170.22 276.0 V304.0 H126.22 Z" fill="#243457"/>
+<rect x="126.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="141.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M154.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-17"><rect x="78.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-17)">
+<rect x="78.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M78.22 279.36 L87.02 265.92 L96.7 278.24 L106.38 262.56 L122.22 276.0 V304.0 H78.22 Z" fill="#6D86B5"/>
+<rect x="78.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="93.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M106.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-18"><rect x="30.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-18)">
+<rect x="30.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M30.22 279.36 L39.02 265.92 L48.7 278.24 L58.38 262.56 L74.22 276.0 V304.0 H30.22 Z" fill="#243457"/>
+<rect x="30.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="45.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M58.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13n-19"><rect x="-17.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13n-19)">
+<rect x="-17.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M-17.78 279.36 L-8.98 265.92 L0.7 278.24 L10.38 262.56 L26.22 276.0 V304.0 H-17.78 Z" fill="#6D86B5"/>
+<rect x="-17.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="-2.82" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M10.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r13span"><rect x="414.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r13span)">
+<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M414.22 279.36 L423.02 265.92 L432.7 278.24 L442.38 262.56 L458.22 276.0 V304.0 H414.22 Z" fill="#6D86B5"/>
+<rect x="414.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="418.62" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M451.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="416.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="418.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="458.22" y1="248.0" x2="458.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="458.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M458.22 279.36 L467.02 265.92 L476.7 278.24 L486.38 262.56 L502.22 276.0 V304.0 H458.22 Z" fill="#6D86B5"/>
+<rect x="458.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="466.13" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M492.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="460.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<line x1="502.22" y1="248.0" x2="502.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="502.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M502.22 279.36 L511.02 265.92 L520.7 278.24 L530.38 262.56 L546.22 276.0 V304.0 H502.22 Z" fill="#6D86B5"/>
+<rect x="502.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="513.64" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M533.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="504.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<line x1="546.22" y1="248.0" x2="546.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="546.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M546.22 279.36 L555.02 265.92 L564.7 278.24 L574.38 262.56 L590.22 276.0 V304.0 H546.22 Z" fill="#6D86B5"/>
+<rect x="546.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="561.14" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M574.41 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="548.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
+<line x1="590.22" y1="248.0" x2="590.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="590.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M590.22 279.36 L599.02 265.92 L608.7 278.24 L618.38 262.56 L634.22 276.0 V304.0 H590.22 Z" fill="#6D86B5"/>
+<rect x="590.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="608.65" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M615.34 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="592.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
+<line x1="634.22" y1="248.0" x2="634.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="634.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M634.22 279.36 L643.02 265.92 L652.7 278.24 L662.38 262.56 L678.22 276.0 V304.0 H634.22 Z" fill="#6D86B5"/>
+<rect x="634.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="656.16" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M656.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="636.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="638.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<line x1="678.22" y1="248.0" x2="678.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="678.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M678.22 279.36 L687.02 265.92 L696.7 278.24 L706.38 262.56 L722.22 276.0 V304.0 H678.22 Z" fill="#6D86B5"/>
+<rect x="678.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="703.67" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M697.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="680.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="682.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<line x1="722.22" y1="248.0" x2="722.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="722.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M722.22 279.36 L731.02 265.92 L740.7 278.24 L750.38 262.56 L766.22 276.0 V304.0 H722.22 Z" fill="#6D86B5"/>
+<rect x="722.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="751.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M738.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="724.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="726.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<line x1="766.22" y1="248.0" x2="766.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="766.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M766.22 279.36 L775.02 265.92 L784.7 278.24 L794.38 262.56 L810.22 276.0 V304.0 H766.22 Z" fill="#6D86B5"/>
+<rect x="766.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="798.69" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M779.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="768.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="770.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<line x1="810.22" y1="248.0" x2="810.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="810.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M810.22 279.36 L819.02 265.92 L828.7 278.24 L838.38 262.56 L854.22 276.0 V304.0 H810.22 Z" fill="#6D86B5"/>
+<rect x="810.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="846.19" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M819.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="812.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="814.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
+<line x1="854.22" y1="248.0" x2="854.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+</g>
+<rect x="411.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="413.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+</g>
+<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+</g>
+<text x="842.0" y="1224.0" font-size="8.4" fill="#FFF" font-weight="600">14. edge 0:00</text>
+<text x="842.0" y="1237.0" font-size="7.4" fill="#F2F3F8">Span's left edge sits under the playhead; further drag is clamped (no pager hand-off</text>
+<text x="842.0" y="1247.0" font-size="7.4" fill="#F2F3F8">while expanded).</text>
+<g transform="translate(0,1068.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r14band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r14band)">
+<clipPath id="r14n11"><rect x="418.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n11)">
+<rect x="418.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M418.72 279.36 L427.52 265.92 L437.2 278.24 L446.88 262.56 L462.72 276.0 V304.0 H418.72 Z" fill="#243457"/>
+<rect x="418.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="433.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M446.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n12"><rect x="466.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n12)">
+<rect x="466.72" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M466.72 279.36 L475.52 265.92 L485.2 278.24 L494.88 262.56 L510.72 276.0 V304.0 H466.72 Z" fill="#6D86B5"/>
+<rect x="466.72" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="481.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M494.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n13"><rect x="514.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n13)">
+<rect x="514.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M514.72 279.36 L523.52 265.92 L533.2 278.24 L542.88 262.56 L558.72 276.0 V304.0 H514.72 Z" fill="#243457"/>
+<rect x="514.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="529.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M542.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n14"><rect x="562.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n14)">
+<rect x="562.72" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M562.72 279.36 L571.52 265.92 L581.2 278.24 L590.88 262.56 L606.72 276.0 V304.0 H562.72 Z" fill="#6D86B5"/>
+<rect x="562.72" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="577.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M590.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n15"><rect x="610.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n15)">
+<rect x="610.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M610.72 279.36 L619.52 265.92 L629.2 278.24 L638.88 262.56 L654.72 276.0 V304.0 H610.72 Z" fill="#243457"/>
+<rect x="610.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="625.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M638.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n16"><rect x="658.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n16)">
+<rect x="658.72" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M658.72 279.36 L667.52 265.92 L677.2 278.24 L686.88 262.56 L702.72 276.0 V304.0 H658.72 Z" fill="#6D86B5"/>
+<rect x="658.72" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="673.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M686.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n17"><rect x="706.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n17)">
+<rect x="706.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M706.72 279.36 L715.52 265.92 L725.2 278.24 L734.88 262.56 L750.72 276.0 V304.0 H706.72 Z" fill="#243457"/>
+<rect x="706.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="721.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M734.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n18"><rect x="754.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n18)">
+<rect x="754.72" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M754.72 279.36 L763.52 265.92 L773.2 278.24 L782.88 262.56 L798.72 276.0 V304.0 H754.72 Z" fill="#6D86B5"/>
+<rect x="754.72" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="769.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M782.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14n19"><rect x="802.72" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14n19)">
+<rect x="802.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M802.72 279.36 L811.52 265.92 L821.2 278.24 L830.88 262.56 L846.72 276.0 V304.0 H802.72 Z" fill="#243457"/>
+<rect x="802.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="817.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M830.88 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r14span"><rect x="-25.28" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r14span)">
+<rect x="-25.28" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M-25.28 279.36 L-16.48 265.92 L-6.8 278.24 L2.88 262.56 L18.72 276.0 V304.0 H-25.28 Z" fill="#243457"/>
+<rect x="-25.28" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="-20.88" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M12.12 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="-23.28" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="-21.28" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="18.72" y1="248.0" x2="18.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="18.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M18.72 279.36 L27.52 265.92 L37.2 278.24 L46.88 262.56 L62.72 276.0 V304.0 H18.72 Z" fill="#243457"/>
+<rect x="18.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="26.63" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M53.05 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="20.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="22.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<line x1="62.72" y1="248.0" x2="62.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="62.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M62.72 279.36 L71.52 265.92 L81.2 278.24 L90.88 262.56 L106.72 276.0 V304.0 H62.72 Z" fill="#243457"/>
+<rect x="62.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="74.14" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M93.98 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="64.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="66.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<line x1="106.72" y1="248.0" x2="106.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="106.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M106.72 279.36 L115.52 265.92 L125.2 278.24 L134.88 262.56 L150.72 276.0 V304.0 H106.72 Z" fill="#243457"/>
+<rect x="106.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="121.64" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M134.91 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="108.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="110.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">3</text>
+<line x1="150.72" y1="248.0" x2="150.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="150.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M150.72 279.36 L159.52 265.92 L169.2 278.24 L178.88 262.56 L194.72 276.0 V304.0 H150.72 Z" fill="#243457"/>
+<rect x="150.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="169.15" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M175.84 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="152.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="154.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">4</text>
+<line x1="194.72" y1="248.0" x2="194.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="194.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M194.72 279.36 L203.52 265.92 L213.2 278.24 L222.88 262.56 L238.72 276.0 V304.0 H194.72 Z" fill="#243457"/>
+<rect x="194.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="216.66" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M216.77 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="196.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="198.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<line x1="238.72" y1="248.0" x2="238.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="238.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M238.72 279.36 L247.52 265.92 L257.2 278.24 L266.88 262.56 L282.72 276.0 V304.0 H238.72 Z" fill="#243457"/>
+<rect x="238.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="264.17" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M257.7 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="240.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="242.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<line x1="282.72" y1="248.0" x2="282.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="282.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M282.72 279.36 L291.52 265.92 L301.2 278.24 L310.88 262.56 L326.72 276.0 V304.0 H282.72 Z" fill="#243457"/>
+<rect x="282.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="311.68" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M298.63 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="284.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="286.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<line x1="326.72" y1="248.0" x2="326.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="326.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M326.72 279.36 L335.52 265.92 L345.2 278.24 L354.88 262.56 L370.72 276.0 V304.0 H326.72 Z" fill="#243457"/>
+<rect x="326.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="359.19" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M339.56 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="328.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="330.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<line x1="370.72" y1="248.0" x2="370.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="370.72" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M370.72 279.36 L379.52 265.92 L389.2 278.24 L398.88 262.56 L414.72 276.0 V304.0 H370.72 Z" fill="#243457"/>
+<rect x="370.72" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="406.69" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M380.49 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="372.72" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="374.72" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
+<line x1="414.72" y1="248.0" x2="414.72" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+</g>
+<rect x="-28.28" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="-26.28" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+</g>
+<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+</g>
+<text x="842.0" y="1314.0" font-size="8.4" fill="#FFF" font-weight="600">15. edge end</text>
+<text x="842.0" y="1327.0" font-size="7.4" fill="#F2F3F8">Clamped at the last decodable PTS (else d − 100 ms, marked approximate). Endpoint decode</text>
+<text x="842.0" y="1337.0" font-size="7.4" fill="#F2F3F8">requested; tile N−1 shown as approximate meanwhile.</text>
+<g transform="translate(0,1158.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r15band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r15band)">
+<clipPath id="r15n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-11)">
+<rect x="190.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M190.22 279.36 L199.02 265.92 L208.7 278.24 L218.38 262.56 L234.22 276.0 V304.0 H190.22 Z" fill="#6D86B5"/>
+<rect x="190.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="205.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M218.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n11)">
+<rect x="682.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M682.22 279.36 L691.02 265.92 L700.7 278.24 L710.38 262.56 L726.22 276.0 V304.0 H682.22 Z" fill="#243457"/>
+<rect x="682.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="697.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M710.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-12)">
+<rect x="142.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M142.22 279.36 L151.02 265.92 L160.7 278.24 L170.38 262.56 L186.22 276.0 V304.0 H142.22 Z" fill="#243457"/>
+<rect x="142.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="157.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M170.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n12)">
+<rect x="730.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M730.22 279.36 L739.02 265.92 L748.7 278.24 L758.38 262.56 L774.22 276.0 V304.0 H730.22 Z" fill="#6D86B5"/>
+<rect x="730.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="745.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M758.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-13)">
+<rect x="94.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M94.22 279.36 L103.02 265.92 L112.7 278.24 L122.38 262.56 L138.22 276.0 V304.0 H94.22 Z" fill="#6D86B5"/>
+<rect x="94.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="109.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M122.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n13)">
+<rect x="778.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M778.22 279.36 L787.02 265.92 L796.7 278.24 L806.38 262.56 L822.22 276.0 V304.0 H778.22 Z" fill="#243457"/>
+<rect x="778.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="793.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M806.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-14)">
+<rect x="46.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M46.22 279.36 L55.02 265.92 L64.7 278.24 L74.38 262.56 L90.22 276.0 V304.0 H46.22 Z" fill="#243457"/>
+<rect x="46.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="61.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M74.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n14)">
+<rect x="826.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M826.22 279.36 L835.02 265.92 L844.7 278.24 L854.38 262.56 L870.22 276.0 V304.0 H826.22 Z" fill="#6D86B5"/>
+<rect x="826.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="841.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M854.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-15)">
+<rect x="-1.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M-1.78 279.36 L7.02 265.92 L16.7 278.24 L26.38 262.56 L42.22 276.0 V304.0 H-1.78 Z" fill="#6D86B5"/>
+<rect x="-1.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="13.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M26.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15n-16)">
+<rect x="-49.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M-49.78 279.36 L-40.98 265.92 L-31.3 278.24 L-21.62 262.56 L-5.78 276.0 V304.0 H-49.78 Z" fill="#243457"/>
+<rect x="-49.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="-34.82" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M-21.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r15span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r15span)">
+<rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#6D86B5"/>
+<rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="242.62" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M275.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="240.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="242.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">0</text>
+<line x1="282.22" y1="248.0" x2="282.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="282.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M282.22 279.36 L291.02 265.92 L300.7 278.24 L310.38 262.56 L326.22 276.0 V304.0 H282.22 Z" fill="#6D86B5"/>
+<rect x="282.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="290.13" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M316.55 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="284.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="286.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">1</text>
+<line x1="326.22" y1="248.0" x2="326.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="326.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M326.22 279.36 L335.02 265.92 L344.7 278.24 L354.38 262.56 L370.22 276.0 V304.0 H326.22 Z" fill="#6D86B5"/>
+<rect x="326.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="337.64" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M357.48 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="328.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="330.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">2</text>
+<line x1="370.22" y1="248.0" x2="370.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="370.22" y="248.0" width="44.0" height="56.0" fill="#14152A"/>
+<line x1="414.22" y1="248.0" x2="414.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="414.22" y="248.0" width="44.0" height="56.0" fill="#14152A"/>
+<line x1="458.22" y1="248.0" x2="458.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="458.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M458.22 279.36 L467.02 265.92 L476.7 278.24 L486.38 262.56 L502.22 276.0 V304.0 H458.22 Z" fill="#6D86B5"/>
+<rect x="458.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="480.16" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M480.27 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="460.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="462.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">5</text>
+<line x1="502.22" y1="248.0" x2="502.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="502.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M502.22 279.36 L511.02 265.92 L520.7 278.24 L530.38 262.56 L546.22 276.0 V304.0 H502.22 Z" fill="#6D86B5"/>
+<rect x="502.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="527.67" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M521.2 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="504.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="506.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">6</text>
+<line x1="546.22" y1="248.0" x2="546.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="546.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M546.22 279.36 L555.02 265.92 L564.7 278.24 L574.38 262.56 L590.22 276.0 V304.0 H546.22 Z" fill="#6D86B5"/>
+<rect x="546.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="575.18" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M562.13 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="548.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="550.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">7</text>
+<line x1="590.22" y1="248.0" x2="590.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="590.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M590.22 279.36 L599.02 265.92 L608.7 278.24 L618.38 262.56 L634.22 276.0 V304.0 H590.22 Z" fill="#6D86B5"/>
+<rect x="590.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="622.69" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M603.06 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="592.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="594.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">8</text>
+<line x1="634.22" y1="248.0" x2="634.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+<rect x="634.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M634.22 279.36 L643.02 265.92 L652.7 278.24 L662.38 262.56 L678.22 276.0 V304.0 H634.22 Z" fill="#6D86B5"/>
+<rect x="634.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="670.19" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M643.99 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+<rect x="636.22" y="291.2" width="9.46" height="10.8" fill="#000" opacity=".6"/>
+<text x="638.22" y="300.0" font-size="8.8" fill="#FFF" font-family="monospace">9</text>
+<line x1="678.22" y1="248.0" x2="678.22" y2="304.0" stroke="#000" stroke-opacity=".35" stroke-width=".5"/>
+</g>
+<rect x="235.22" y="245.0" width="446.0" height="62.0" rx="11" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="237.22" y="247.0" width="442.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+</g>
+<circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
+<circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
+</g>
+<text x="842.0" y="1404.0" font-size="8.4" fill="#FFF" font-weight="600">16. frame unavailable</text>
+<text x="842.0" y="1417.0" font-size="7.4" fill="#F2F3F8">Mist #14152A tile, no glyph or text. Main view keeps the last valid preview until a</text>
+<text x="842.0" y="1427.0" font-size="7.4" fill="#F2F3F8">matching-generation frame lands.</text>
+<g transform="translate(0,1248.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r16t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t0)">
+<rect x="392.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M392.22 279.36 L401.02 265.92 L410.7 278.24 L420.38 262.56 L436.22 276.0 V304.0 H392.22 Z" fill="#243457"/>
+<rect x="392.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="410.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M417.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8" fill="#14152A"/>
+<rect x="389.22" y="245.0" width="50.0" height="62.0" rx="11" fill="none" stroke="#000"/>
+<rect x="391.22" y="247.0" width="46.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
+<circle cx="414.22" cy="240.0" r="5" fill="#000"/><circle cx="414.22" cy="240.0" r="4" fill="#8C9BFF"/>
+<clipPath id="r16t1"><rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t1)">
+<rect x="440.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M440.22 279.36 L449.02 265.92 L458.7 278.24 L468.38 262.56 L484.22 276.0 V304.0 H440.22 Z" fill="#6D86B5"/>
+<rect x="440.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="458.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M465.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t2"><rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t2)">
+<rect x="488.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M488.22 279.36 L497.02 265.92 L506.7 278.24 L516.38 262.56 L532.22 276.0 V304.0 H488.22 Z" fill="#243457"/>
+<rect x="488.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="506.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M513.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t3"><rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t3)">
+<rect x="536.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M536.22 279.36 L545.02 265.92 L554.7 278.24 L564.38 262.56 L580.22 276.0 V304.0 H536.22 Z" fill="#6D86B5"/>
+<rect x="536.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="554.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M561.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t4"><rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t4)">
+<rect x="584.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M584.22 279.36 L593.02 265.92 L602.7 278.24 L612.38 262.56 L628.22 276.0 V304.0 H584.22 Z" fill="#243457"/>
+<rect x="584.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="602.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M609.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t5"><rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t5)">
+<rect x="632.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M632.22 279.36 L641.02 265.92 L650.7 278.24 L660.38 262.56 L676.22 276.0 V304.0 H632.22 Z" fill="#6D86B5"/>
+<rect x="632.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="650.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M657.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t6"><rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t6)">
+<rect x="680.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M680.22 279.36 L689.02 265.92 L698.7 278.24 L708.38 262.56 L724.22 276.0 V304.0 H680.22 Z" fill="#243457"/>
+<rect x="680.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="698.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M705.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t7"><rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t7)">
+<rect x="728.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M728.22 279.36 L737.02 265.92 L746.7 278.24 L756.38 262.56 L772.22 276.0 V304.0 H728.22 Z" fill="#6D86B5"/>
+<rect x="728.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="746.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M753.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t8"><rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t8)">
+<rect x="344.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M344.22 279.36 L353.02 265.92 L362.7 278.24 L372.38 262.56 L388.22 276.0 V304.0 H344.22 Z" fill="#243457"/>
+<rect x="344.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="362.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M369.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t9"><rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t9)">
+<rect x="296.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M296.22 279.36 L305.02 265.92 L314.7 278.24 L324.38 262.56 L340.22 276.0 V304.0 H296.22 Z" fill="#6D86B5"/>
+<rect x="296.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="314.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M321.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t10"><rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t10)">
+<rect x="248.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M248.22 279.36 L257.02 265.92 L266.7 278.24 L276.38 262.56 L292.22 276.0 V304.0 H248.22 Z" fill="#243457"/>
+<rect x="248.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="266.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M273.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t11"><rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t11)">
+<rect x="200.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M200.22 279.36 L209.02 265.92 L218.7 278.24 L228.38 262.56 L244.22 276.0 V304.0 H200.22 Z" fill="#6D86B5"/>
+<rect x="200.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="218.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M225.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t12"><rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t12)">
+<rect x="152.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M152.22 279.36 L161.02 265.92 L170.7 278.24 L180.38 262.56 L196.22 276.0 V304.0 H152.22 Z" fill="#243457"/>
+<rect x="152.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="170.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M177.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t13"><rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t13)">
+<rect x="104.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
+<path d="M104.22 279.36 L113.02 265.92 L122.7 278.24 L132.38 262.56 L148.22 276.0 V304.0 H104.22 Z" fill="#6D86B5"/>
+<rect x="104.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
+<circle cx="122.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M129.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+<clipPath id="r16t14"><rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r16t14)">
+<rect x="56.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
+<path d="M56.22 279.36 L65.02 265.92 L74.7 278.24 L84.38 262.56 L100.22 276.0 V304.0 H56.22 Z" fill="#243457"/>
+<rect x="56.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
+<circle cx="74.7" cy="259.2" r="3.52" fill="#FFD35A"/>
+<path d="M81.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
+</g>
+</g>
+<text x="842.0" y="1494.0" font-size="8.4" fill="#FFF" font-weight="600">17. decoder error</text>
+<text x="842.0" y="1507.0" font-size="7.4" fill="#F2F3F8">Hold does not expand; strip stays a photo strip; #142 error state on the page. Mid-drag</text>
+<text x="842.0" y="1517.0" font-size="7.4" fill="#F2F3F8">error: freeze, collapse on release.</text>
+<g transform="translate(0,1338.0)">
+<rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
+<clipPath id="r17t0"><rect x="392.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t0)">
 <rect x="392.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M392.22 279.36 L401.02 265.92 L410.7 278.24 L420.38 262.56 L436.22 276.0 V304.0 H392.22 Z" fill="#243457"/>
 <rect x="392.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
@@ -2129,112 +2742,112 @@
 <rect x="389.22" y="245.0" width="50.0" height="62.0" rx="11" fill="none" stroke="#000"/>
 <rect x="391.22" y="247.0" width="46.0" height="58.0" rx="9" fill="none" stroke="#FFF" stroke-width="2"/>
 <circle cx="414.22" cy="240.0" r="5" fill="#000"/><circle cx="414.22" cy="240.0" r="4" fill="#8C9BFF"/>
-<clipPath id="r13t1"><rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t1)">
+<clipPath id="r17t1"><rect x="440.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t1)">
 <rect x="440.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M440.22 279.36 L449.02 265.92 L458.7 278.24 L468.38 262.56 L484.22 276.0 V304.0 H440.22 Z" fill="#6D86B5"/>
 <rect x="440.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="458.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M465.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t2"><rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t2)">
+<clipPath id="r17t2"><rect x="488.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t2)">
 <rect x="488.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M488.22 279.36 L497.02 265.92 L506.7 278.24 L516.38 262.56 L532.22 276.0 V304.0 H488.22 Z" fill="#243457"/>
 <rect x="488.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="506.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M513.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t3"><rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t3)">
+<clipPath id="r17t3"><rect x="536.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t3)">
 <rect x="536.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M536.22 279.36 L545.02 265.92 L554.7 278.24 L564.38 262.56 L580.22 276.0 V304.0 H536.22 Z" fill="#6D86B5"/>
 <rect x="536.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="554.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M561.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t4"><rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t4)">
+<clipPath id="r17t4"><rect x="584.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t4)">
 <rect x="584.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M584.22 279.36 L593.02 265.92 L602.7 278.24 L612.38 262.56 L628.22 276.0 V304.0 H584.22 Z" fill="#243457"/>
 <rect x="584.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="602.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M609.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t5"><rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t5)">
+<clipPath id="r17t5"><rect x="632.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t5)">
 <rect x="632.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M632.22 279.36 L641.02 265.92 L650.7 278.24 L660.38 262.56 L676.22 276.0 V304.0 H632.22 Z" fill="#6D86B5"/>
 <rect x="632.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="650.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M657.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t6"><rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t6)">
+<clipPath id="r17t6"><rect x="680.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t6)">
 <rect x="680.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M680.22 279.36 L689.02 265.92 L698.7 278.24 L708.38 262.56 L724.22 276.0 V304.0 H680.22 Z" fill="#243457"/>
 <rect x="680.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="698.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M705.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t7"><rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t7)">
+<clipPath id="r17t7"><rect x="728.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t7)">
 <rect x="728.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M728.22 279.36 L737.02 265.92 L746.7 278.24 L756.38 262.56 L772.22 276.0 V304.0 H728.22 Z" fill="#6D86B5"/>
 <rect x="728.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="746.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M753.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t8"><rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t8)">
+<clipPath id="r17t8"><rect x="344.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t8)">
 <rect x="344.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M344.22 279.36 L353.02 265.92 L362.7 278.24 L372.38 262.56 L388.22 276.0 V304.0 H344.22 Z" fill="#243457"/>
 <rect x="344.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="362.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M369.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t9"><rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t9)">
+<clipPath id="r17t9"><rect x="296.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t9)">
 <rect x="296.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M296.22 279.36 L305.02 265.92 L314.7 278.24 L324.38 262.56 L340.22 276.0 V304.0 H296.22 Z" fill="#6D86B5"/>
 <rect x="296.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="314.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M321.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t10"><rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t10)">
+<clipPath id="r17t10"><rect x="248.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t10)">
 <rect x="248.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M248.22 279.36 L257.02 265.92 L266.7 278.24 L276.38 262.56 L292.22 276.0 V304.0 H248.22 Z" fill="#243457"/>
 <rect x="248.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="266.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M273.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t11"><rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t11)">
+<clipPath id="r17t11"><rect x="200.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t11)">
 <rect x="200.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M200.22 279.36 L209.02 265.92 L218.7 278.24 L228.38 262.56 L244.22 276.0 V304.0 H200.22 Z" fill="#6D86B5"/>
 <rect x="200.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="218.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M225.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t12"><rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t12)">
+<clipPath id="r17t12"><rect x="152.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t12)">
 <rect x="152.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M152.22 279.36 L161.02 265.92 L170.7 278.24 L180.38 262.56 L196.22 276.0 V304.0 H152.22 Z" fill="#243457"/>
 <rect x="152.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="170.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M177.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t13"><rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t13)">
+<clipPath id="r17t13"><rect x="104.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t13)">
 <rect x="104.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M104.22 279.36 L113.02 265.92 L122.7 278.24 L132.38 262.56 L148.22 276.0 V304.0 H104.22 Z" fill="#6D86B5"/>
 <rect x="104.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="122.7" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M129.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r13t14"><rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r13t14)">
+<clipPath id="r17t14"><rect x="56.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r17t14)">
 <rect x="56.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M56.22 279.36 L65.02 265.92 L74.7 278.24 L84.38 262.56 L100.22 276.0 V304.0 H56.22 Z" fill="#243457"/>
 <rect x="56.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
@@ -2242,134 +2855,134 @@
 <path d="M81.3 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
 </g>
-<text x="842.0" y="1224.0" font-size="8.4" fill="#FFF" font-weight="600">14. short video < 300 ms</text>
-<text x="842.0" y="1237.0" font-size="7.4" fill="#F2F3F8">Seeker not offered; hold does nothing (no tick).</text>
-<g transform="translate(0,1068.0)">
+<text x="842.0" y="1584.0" font-size="8.4" fill="#FFF" font-weight="600">18. short video < 300 ms</text>
+<text x="842.0" y="1597.0" font-size="7.4" fill="#F2F3F8">Seeker not offered; hold does nothing (no tick).</text>
+<g transform="translate(0,1428.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r14band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r14band)">
-<clipPath id="r14n-11"><rect x="300.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-11)">
+<clipPath id="r18band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r18band)">
+<clipPath id="r18n-11"><rect x="300.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-11)">
 <rect x="300.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M300.22 279.36 L309.02 265.92 L318.7 278.24 L328.38 262.56 L344.22 276.0 V304.0 H300.22 Z" fill="#6D86B5"/>
 <rect x="300.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="315.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M328.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n11"><rect x="528.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n11)">
+<clipPath id="r18n11"><rect x="528.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n11)">
 <rect x="528.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M528.22 279.36 L537.02 265.92 L546.7 278.24 L556.38 262.56 L572.22 276.0 V304.0 H528.22 Z" fill="#243457"/>
 <rect x="528.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="543.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M556.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-12"><rect x="252.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-12)">
+<clipPath id="r18n-12"><rect x="252.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-12)">
 <rect x="252.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M252.22 279.36 L261.02 265.92 L270.7 278.24 L280.38 262.56 L296.22 276.0 V304.0 H252.22 Z" fill="#243457"/>
 <rect x="252.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="267.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M280.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n12"><rect x="576.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n12)">
+<clipPath id="r18n12"><rect x="576.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n12)">
 <rect x="576.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M576.22 279.36 L585.02 265.92 L594.7 278.24 L604.38 262.56 L620.22 276.0 V304.0 H576.22 Z" fill="#6D86B5"/>
 <rect x="576.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="591.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M604.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-13"><rect x="204.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-13)">
+<clipPath id="r18n-13"><rect x="204.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-13)">
 <rect x="204.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M204.22 279.36 L213.02 265.92 L222.7 278.24 L232.38 262.56 L248.22 276.0 V304.0 H204.22 Z" fill="#6D86B5"/>
 <rect x="204.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="219.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M232.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n13"><rect x="624.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n13)">
+<clipPath id="r18n13"><rect x="624.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n13)">
 <rect x="624.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M624.22 279.36 L633.02 265.92 L642.7 278.24 L652.38 262.56 L668.22 276.0 V304.0 H624.22 Z" fill="#243457"/>
 <rect x="624.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="639.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M652.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-14"><rect x="156.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-14)">
+<clipPath id="r18n-14"><rect x="156.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-14)">
 <rect x="156.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M156.22 279.36 L165.02 265.92 L174.7 278.24 L184.38 262.56 L200.22 276.0 V304.0 H156.22 Z" fill="#243457"/>
 <rect x="156.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="171.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M184.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n14"><rect x="672.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n14)">
+<clipPath id="r18n14"><rect x="672.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n14)">
 <rect x="672.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M672.22 279.36 L681.02 265.92 L690.7 278.24 L700.38 262.56 L716.22 276.0 V304.0 H672.22 Z" fill="#6D86B5"/>
 <rect x="672.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="687.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M700.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-15"><rect x="108.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-15)">
+<clipPath id="r18n-15"><rect x="108.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-15)">
 <rect x="108.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M108.22 279.36 L117.02 265.92 L126.7 278.24 L136.38 262.56 L152.22 276.0 V304.0 H108.22 Z" fill="#6D86B5"/>
 <rect x="108.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="123.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M136.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n15"><rect x="720.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n15)">
+<clipPath id="r18n15"><rect x="720.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n15)">
 <rect x="720.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M720.22 279.36 L729.02 265.92 L738.7 278.24 L748.38 262.56 L764.22 276.0 V304.0 H720.22 Z" fill="#243457"/>
 <rect x="720.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="735.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M748.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-16"><rect x="60.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-16)">
+<clipPath id="r18n-16"><rect x="60.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-16)">
 <rect x="60.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M60.22 279.36 L69.02 265.92 L78.7 278.24 L88.38 262.56 L104.22 276.0 V304.0 H60.22 Z" fill="#243457"/>
 <rect x="60.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="75.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M88.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n16"><rect x="768.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n16)">
+<clipPath id="r18n16"><rect x="768.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n16)">
 <rect x="768.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M768.22 279.36 L777.02 265.92 L786.7 278.24 L796.38 262.56 L812.22 276.0 V304.0 H768.22 Z" fill="#6D86B5"/>
 <rect x="768.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="783.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M796.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-17"><rect x="12.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-17)">
+<clipPath id="r18n-17"><rect x="12.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-17)">
 <rect x="12.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M12.22 279.36 L21.02 265.92 L30.7 278.24 L40.38 262.56 L56.22 276.0 V304.0 H12.22 Z" fill="#6D86B5"/>
 <rect x="12.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="27.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M40.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n17"><rect x="816.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n17)">
+<clipPath id="r18n17"><rect x="816.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n17)">
 <rect x="816.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M816.22 279.36 L825.02 265.92 L834.7 278.24 L844.38 262.56 L860.22 276.0 V304.0 H816.22 Z" fill="#243457"/>
 <rect x="816.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="831.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M844.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14n-18"><rect x="-35.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14n-18)">
+<clipPath id="r18n-18"><rect x="-35.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18n-18)">
 <rect x="-35.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M-35.78 279.36 L-26.98 265.92 L-17.3 278.24 L-7.62 262.56 L8.22 276.0 V304.0 H-35.78 Z" fill="#243457"/>
 <rect x="-35.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="-20.82" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M-7.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r14span"><rect x="348.22" y="248.0" width="176.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r14span)">
+<clipPath id="r18span"><rect x="348.22" y="248.0" width="176.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r18span)">
 <rect x="348.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M348.22 279.36 L357.02 265.92 L366.7 278.24 L376.38 262.56 L392.22 276.0 V304.0 H348.22 Z" fill="#243457"/>
 <rect x="348.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
@@ -2409,14 +3022,14 @@
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="1314.0" font-size="8.4" fill="#FFF" font-weight="600">15. 4 s video</text>
-<text x="842.0" y="1327.0" font-size="7.4" fill="#F2F3F8">N = max(3, ⌊7·log10 4⌋) = 4 frames, span 176 dp.</text>
-<g transform="translate(0,1158.0)">
+<text x="842.0" y="1674.0" font-size="8.4" fill="#FFF" font-weight="600">19. 4 s video</text>
+<text x="842.0" y="1687.0" font-size="7.4" fill="#F2F3F8">N = max(3, ⌊7·log10 4⌋) = 4 frames, span 176 dp.</text>
+<g transform="translate(0,1518.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r15band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r15band)">
-<clipPath id="r15span"><rect x="-25.78" y="248.0" width="1100.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r15span)">
+<clipPath id="r19band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r19band)">
+<clipPath id="r19span"><rect x="-25.78" y="248.0" width="1100.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r19span)">
 <rect x="-25.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M-25.78 279.36 L-16.98 265.92 L-7.3 278.24 L2.38 262.56 L18.22 276.0 V304.0 H-25.78 Z" fill="#6D86B5"/>
 <rect x="-25.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
@@ -2624,94 +3237,94 @@
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="1404.0" font-size="8.4" fill="#FFF" font-weight="600">16. 1:23:45 video</text>
-<text x="842.0" y="1417.0" font-size="7.4" fill="#F2F3F8">N = 25 frames, span 1100 dp; span scrolls past both screen edges.</text>
-<g transform="translate(0,1248.0)">
+<text x="842.0" y="1764.0" font-size="8.4" fill="#FFF" font-weight="600">20. 1:23:45 video</text>
+<text x="842.0" y="1777.0" font-size="7.4" fill="#F2F3F8">N = 25 frames, span 1100 dp; span scrolls past both screen edges.</text>
+<g transform="translate(0,1608.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r16band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r16band)">
-<clipPath id="r16n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-11)">
+<clipPath id="r20band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r20band)">
+<clipPath id="r20n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-11)">
 <rect x="190.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M190.22 279.36 L199.02 265.92 L208.7 278.24 L218.38 262.56 L234.22 276.0 V304.0 H190.22 Z" fill="#6D86B5"/>
 <rect x="190.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="205.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M218.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n11)">
+<clipPath id="r20n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n11)">
 <rect x="682.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M682.22 279.36 L691.02 265.92 L700.7 278.24 L710.38 262.56 L726.22 276.0 V304.0 H682.22 Z" fill="#243457"/>
 <rect x="682.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="697.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M710.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-12)">
+<clipPath id="r20n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-12)">
 <rect x="142.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M142.22 279.36 L151.02 265.92 L160.7 278.24 L170.38 262.56 L186.22 276.0 V304.0 H142.22 Z" fill="#243457"/>
 <rect x="142.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="157.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M170.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n12)">
+<clipPath id="r20n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n12)">
 <rect x="730.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M730.22 279.36 L739.02 265.92 L748.7 278.24 L758.38 262.56 L774.22 276.0 V304.0 H730.22 Z" fill="#6D86B5"/>
 <rect x="730.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="745.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M758.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-13)">
+<clipPath id="r20n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-13)">
 <rect x="94.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M94.22 279.36 L103.02 265.92 L112.7 278.24 L122.38 262.56 L138.22 276.0 V304.0 H94.22 Z" fill="#6D86B5"/>
 <rect x="94.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="109.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M122.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n13)">
+<clipPath id="r20n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n13)">
 <rect x="778.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M778.22 279.36 L787.02 265.92 L796.7 278.24 L806.38 262.56 L822.22 276.0 V304.0 H778.22 Z" fill="#243457"/>
 <rect x="778.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="793.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M806.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-14)">
+<clipPath id="r20n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-14)">
 <rect x="46.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M46.22 279.36 L55.02 265.92 L64.7 278.24 L74.38 262.56 L90.22 276.0 V304.0 H46.22 Z" fill="#243457"/>
 <rect x="46.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="61.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M74.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n14)">
+<clipPath id="r20n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n14)">
 <rect x="826.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M826.22 279.36 L835.02 265.92 L844.7 278.24 L854.38 262.56 L870.22 276.0 V304.0 H826.22 Z" fill="#6D86B5"/>
 <rect x="826.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="841.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M854.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-15)">
+<clipPath id="r20n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-15)">
 <rect x="-1.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M-1.78 279.36 L7.02 265.92 L16.7 278.24 L26.38 262.56 L42.22 276.0 V304.0 H-1.78 Z" fill="#6D86B5"/>
 <rect x="-1.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="13.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M26.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16n-16)">
+<clipPath id="r20n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20n-16)">
 <rect x="-49.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M-49.78 279.36 L-40.98 265.92 L-31.3 278.24 L-21.62 262.56 L-5.78 276.0 V304.0 H-49.78 Z" fill="#243457"/>
 <rect x="-49.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="-34.82" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M-21.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r16span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r16span)">
+<clipPath id="r20span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r20span)">
 <rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#243457"/>
 <rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
@@ -2800,95 +3413,95 @@
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 <rect x="45.44" y="233.0" width="737.56" height="74.0" fill="none" stroke="#34C759" stroke-width="2"/>
 </g>
-<text x="842.0" y="1494.0" font-size="8.4" fill="#FFF" font-weight="600">17. TalkBack</text>
-<text x="842.0" y="1507.0" font-size="7.4" fill="#F2F3F8">Hold is not used. Video tile gets custom action 'Seek through frames'; adjustable steps</text>
-<text x="842.0" y="1517.0" font-size="7.4" fill="#F2F3F8">of one frame tile.</text>
-<g transform="translate(0,1338.0)">
+<text x="842.0" y="1854.0" font-size="8.4" fill="#FFF" font-weight="600">21. TalkBack</text>
+<text x="842.0" y="1867.0" font-size="7.4" fill="#F2F3F8">Hold is not used. Video tile gets custom action 'Seek through frames'; adjustable steps</text>
+<text x="842.0" y="1877.0" font-size="7.4" fill="#F2F3F8">of one frame tile.</text>
+<g transform="translate(0,1698.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r17band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r17band)">
-<clipPath id="r17n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-11)">
+<clipPath id="r21band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r21band)">
+<clipPath id="r21n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-11)">
 <rect x="190.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M190.22 279.36 L199.02 265.92 L208.7 278.24 L218.38 262.56 L234.22 276.0 V304.0 H190.22 Z" fill="#6D86B5"/>
 <rect x="190.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="205.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M218.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n11)">
+<clipPath id="r21n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n11)">
 <rect x="682.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M682.22 279.36 L691.02 265.92 L700.7 278.24 L710.38 262.56 L726.22 276.0 V304.0 H682.22 Z" fill="#243457"/>
 <rect x="682.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="697.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M710.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-12)">
+<clipPath id="r21n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-12)">
 <rect x="142.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M142.22 279.36 L151.02 265.92 L160.7 278.24 L170.38 262.56 L186.22 276.0 V304.0 H142.22 Z" fill="#243457"/>
 <rect x="142.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="157.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M170.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n12)">
+<clipPath id="r21n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n12)">
 <rect x="730.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M730.22 279.36 L739.02 265.92 L748.7 278.24 L758.38 262.56 L774.22 276.0 V304.0 H730.22 Z" fill="#6D86B5"/>
 <rect x="730.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="745.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M758.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-13)">
+<clipPath id="r21n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-13)">
 <rect x="94.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M94.22 279.36 L103.02 265.92 L112.7 278.24 L122.38 262.56 L138.22 276.0 V304.0 H94.22 Z" fill="#6D86B5"/>
 <rect x="94.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="109.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M122.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n13)">
+<clipPath id="r21n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n13)">
 <rect x="778.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M778.22 279.36 L787.02 265.92 L796.7 278.24 L806.38 262.56 L822.22 276.0 V304.0 H778.22 Z" fill="#243457"/>
 <rect x="778.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="793.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M806.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-14)">
+<clipPath id="r21n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-14)">
 <rect x="46.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M46.22 279.36 L55.02 265.92 L64.7 278.24 L74.38 262.56 L90.22 276.0 V304.0 H46.22 Z" fill="#243457"/>
 <rect x="46.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="61.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M74.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n14)">
+<clipPath id="r21n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n14)">
 <rect x="826.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M826.22 279.36 L835.02 265.92 L844.7 278.24 L854.38 262.56 L870.22 276.0 V304.0 H826.22 Z" fill="#6D86B5"/>
 <rect x="826.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="841.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M854.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-15)">
+<clipPath id="r21n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-15)">
 <rect x="-1.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M-1.78 279.36 L7.02 265.92 L16.7 278.24 L26.38 262.56 L42.22 276.0 V304.0 H-1.78 Z" fill="#6D86B5"/>
 <rect x="-1.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="13.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M26.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17n-16)">
+<clipPath id="r21n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21n-16)">
 <rect x="-49.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M-49.78 279.36 L-40.98 265.92 L-31.3 278.24 L-21.62 262.56 L-5.78 276.0 V304.0 H-49.78 Z" fill="#243457"/>
 <rect x="-49.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="-34.82" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M-21.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r17span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r17span)">
+<clipPath id="r21span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r21span)">
 <rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#6D86B5"/>
 <rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
@@ -2976,95 +3589,95 @@
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="1584.0" font-size="8.4" fill="#FFF" font-weight="600">18. reduced motion</text>
-<text x="842.0" y="1597.0" font-size="7.4" fill="#F2F3F8">Expand/collapse and preview cross-fade cut; finger-driven drag and fling physics</text>
-<text x="842.0" y="1607.0" font-size="7.4" fill="#F2F3F8">unchanged.</text>
-<g transform="translate(0,1428.0)">
+<text x="842.0" y="1944.0" font-size="8.4" fill="#FFF" font-weight="600">22. reduced motion</text>
+<text x="842.0" y="1957.0" font-size="7.4" fill="#F2F3F8">Expand/collapse and preview cross-fade cut; finger-driven drag and fling physics</text>
+<text x="842.0" y="1967.0" font-size="7.4" fill="#F2F3F8">unchanged.</text>
+<g transform="translate(0,1788.0)">
 <rect x="0" y="226.0" width="832.0" height="88.0" fill="#000"/>
-<clipPath id="r18band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
-<g clip-path="url(#r18band)">
-<clipPath id="r18n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-11)">
+<clipPath id="r22band"><rect x="44.44" y="230.0" width="739.56" height="80.0"/></clipPath>
+<g clip-path="url(#r22band)">
+<clipPath id="r22n-11"><rect x="190.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-11)">
 <rect x="190.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M190.22 279.36 L199.02 265.92 L208.7 278.24 L218.38 262.56 L234.22 276.0 V304.0 H190.22 Z" fill="#6D86B5"/>
 <rect x="190.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="205.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M218.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n11)">
+<clipPath id="r22n11"><rect x="682.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n11)">
 <rect x="682.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M682.22 279.36 L691.02 265.92 L700.7 278.24 L710.38 262.56 L726.22 276.0 V304.0 H682.22 Z" fill="#243457"/>
 <rect x="682.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="697.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M710.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-12)">
+<clipPath id="r22n-12"><rect x="142.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-12)">
 <rect x="142.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M142.22 279.36 L151.02 265.92 L160.7 278.24 L170.38 262.56 L186.22 276.0 V304.0 H142.22 Z" fill="#243457"/>
 <rect x="142.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="157.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M170.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n12)">
+<clipPath id="r22n12"><rect x="730.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n12)">
 <rect x="730.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M730.22 279.36 L739.02 265.92 L748.7 278.24 L758.38 262.56 L774.22 276.0 V304.0 H730.22 Z" fill="#6D86B5"/>
 <rect x="730.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="745.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M758.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-13)">
+<clipPath id="r22n-13"><rect x="94.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-13)">
 <rect x="94.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M94.22 279.36 L103.02 265.92 L112.7 278.24 L122.38 262.56 L138.22 276.0 V304.0 H94.22 Z" fill="#6D86B5"/>
 <rect x="94.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="109.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M122.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n13)">
+<clipPath id="r22n13"><rect x="778.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n13)">
 <rect x="778.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M778.22 279.36 L787.02 265.92 L796.7 278.24 L806.38 262.56 L822.22 276.0 V304.0 H778.22 Z" fill="#243457"/>
 <rect x="778.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="793.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M806.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-14)">
+<clipPath id="r22n-14"><rect x="46.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-14)">
 <rect x="46.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M46.22 279.36 L55.02 265.92 L64.7 278.24 L74.38 262.56 L90.22 276.0 V304.0 H46.22 Z" fill="#243457"/>
 <rect x="46.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="61.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M74.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n14)">
+<clipPath id="r22n14"><rect x="826.22" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n14)">
 <rect x="826.22" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M826.22 279.36 L835.02 265.92 L844.7 278.24 L854.38 262.56 L870.22 276.0 V304.0 H826.22 Z" fill="#6D86B5"/>
 <rect x="826.22" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="841.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M854.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-15)">
+<clipPath id="r22n-15"><rect x="-1.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-15)">
 <rect x="-1.78" y="248.0" width="44.0" height="56.0" fill="#F5F7FF"/>
 <path d="M-1.78 279.36 L7.02 265.92 L16.7 278.24 L26.38 262.56 L42.22 276.0 V304.0 H-1.78 Z" fill="#6D86B5"/>
 <rect x="-1.78" y="281.6" width="44.0" height="22.4" fill="#8CC8E8"/>
 <circle cx="13.18" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M26.38 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18n-16)">
+<clipPath id="r22n-16"><rect x="-49.78" y="248.0" width="44.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22n-16)">
 <rect x="-49.78" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M-49.78 279.36 L-40.98 265.92 L-31.3 278.24 L-21.62 262.56 L-5.78 276.0 V304.0 H-49.78 Z" fill="#243457"/>
 <rect x="-49.78" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
 <circle cx="-34.82" cy="259.2" r="3.52" fill="#FFD35A"/>
 <path d="M-21.62 288.32 l0 -7.84 l3.52 7.84 Z" fill="#FFFFFF" opacity=".92"/>
 </g>
-<clipPath id="r18span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
-<g clip-path="url(#r18span)">
+<clipPath id="r22span"><rect x="238.22" y="248.0" width="440.0" height="56.0" rx="8"/></clipPath>
+<g clip-path="url(#r22span)">
 <rect x="238.22" y="248.0" width="44.0" height="56.0" fill="#0E1830"/>
 <path d="M238.22 279.36 L247.02 265.92 L256.7 278.24 L266.38 262.56 L282.22 276.0 V304.0 H238.22 Z" fill="#243457"/>
 <rect x="238.22" y="281.6" width="44.0" height="22.4" fill="#11263F"/>
@@ -3152,7 +3765,7 @@
 <circle cx="414.22" cy="240.0" r="5.0" fill="#000"/>
 <circle cx="414.22" cy="240.0" r="4.0" fill="#8C9BFF"/>
 </g>
-<text x="842.0" y="1674.0" font-size="8.4" fill="#FFF" font-weight="600">19. 200% font</text>
-<text x="842.0" y="1687.0" font-size="7.4" fill="#F2F3F8">No text in the strip; video row reflows above (#142 F3); band geometry identical.</text>
+<text x="842.0" y="2034.0" font-size="8.4" fill="#FFF" font-weight="600">23. 200% font</text>
+<text x="842.0" y="2047.0" font-size="7.4" fill="#F2F3F8">No text in the strip; video row reflows above (#142 F3); band geometry identical.</text>
 <defs><marker id="a" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#FFB020"/></marker></defs>
 </svg>

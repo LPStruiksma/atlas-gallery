@@ -1,6 +1,6 @@
 # ATLAS self-hosted image editor (AIE-8a)
 
-Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
+Reference server for the [versioned ATLAS protocol](../../docs/ai-edit/PROTOCOL.md). It is independent of the Android app. Modes: fake (CPU-only, Python standard library), qwen (Diffusers/Qwen-Image-Edit), flux (Diffusers/FLUX.1 Kontext [dev]), and comfy (proxy to one operator-configured ComfyUI API workflow). The separately named `flux2-head` is a provenance-gated route that is a non-executing scaffold by default and can only activate behind a PASS verdict ledger; see [HEAD_DEPLOYMENT.md](../../docs/identity-studio/HEAD_DEPLOYMENT.md). No model weights, cloud resources, real photos or paid endpoints are needed for CI.
 
 ## Run the fake locally (no Python dependencies)
 
@@ -86,3 +86,86 @@ The proxy normalizes the selected source/mask/references through Pillow to fresh
 - No user-selectable network backend URL, no redirects on the ComfyUI proxy, no background library scan, no ATLAS-side category filters. Follow all applicable laws and model licenses separately.
 - One process has 1 worker, 32 job slots, and 1-hour terminal retention. In-memory queue/results are lost on restart, not multi-replica safe; no durable storage, per-user quotas, accurate GPU progress, hard GPU cancellation, TLS termination or production hardening.
 - Use only synthetic/licensed imagery for tests. AIE-8b must bind this protocol to explicit user choices and implement client-side non-destructive save and failure handling.
+
+## Provenance-gated FLUX.2 whole-head route (IDS-12B)
+
+`flux2-head` is a distinct route; it never aliases the existing `flux` (FLUX.1
+Kontext) mode. It is disabled by default and startup fails closed unless the mode is exactly `scaffold` (the default),
+`ATLAS_FLUX2_HEAD_ENABLED=true` and `ATLAS_FLUX2_HEAD_CONFIG` names an admission
+JSON file. The admission file is operator-controlled—not accepted on `/v1/edits`—and
+must contain `schema_version: 1`, a fixed `comfy_url`, and independent true evidence
+gates named `licences_verified`, `adapter_provenance_verified`,
+`operator_safeguards_verified`, and `ids12a_acceptance_passed`. Each of `model`,
+`encoder`, `runtime`, `adapter`, and `workflow` must have an absolute local `path`,
+lowercase immutable `sha256`, and non-empty `original_host`, `licence`, and
+`provenance` records. Every hash is checked at startup and again before each job.
+A file name, placeholder, mirror, or BFS adapter alone is not evidence.
+
+The admission-only contract is an exact seven-node API graph: IDs 1–3 are
+LoadImage nodes for target, mask and one reference; 4–5 are ImageCrop nodes
+linked to target and mask respectively; 6 is an AtlasFlux2Head contract node
+linked to both crops and the reference, with instruction, seed and adapter
+inputs; 7 is the sole PreviewImage output linked to node 6 port 0. Extra nodes,
+wrong classes, fields, links or placeholder locations fail closed. Both crop
+nodes bind the same explicit x/y/width/height in the prepared graph. The custom
+node name is a proposed interface, not evidence of an installed runtime.
+The scaffold discards the prepared graph: no upload, execution, output or
+lineage; `full_head` is never advertised. Actual output decoding, exactly one
+crop-sized PNG and lineage must be verified before any separately reviewed
+activation.
+
+Example shape only (the values below are deliberately not deployable evidence):
+
+~~~json
+{
+  "schema_version": 1,
+  "comfy_url": "http://127.0.0.1:8188",
+  "artifacts": {
+    "model": {"path": "/absolute/model", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "encoder": {"path": "/absolute/encoder", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "runtime": {"path": "/absolute/runtime", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "adapter": {"path": "/absolute/adapter", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"},
+    "workflow": {"path": "/absolute/workflow.json", "sha256": "<64 lowercase hex>", "original_host": "<verified>", "licence": "<verified>", "provenance": "<verified>"}
+  },
+  "evidence": {"licences_verified": false, "adapter_provenance_verified": false, "operator_safeguards_verified": false, "ids12a_acceptance_passed": false}
+}
+~~~
+
+### Gated activation (IDS-12B activation half, #773)
+
+`ATLAS_FLUX2_HEAD_MODE=activate` is the only other accepted mode (`full_head`
+and anything else still fail closed). Activation needs, all at once: the enable
+flag, every scaffold evidence gate, two more evidence gates
+`adapter_dossier_passed` (#1090) and `head_verdict_passed` (#1092), unchanged
+artifact hashes, and the repository verdict ledger
+`head_workflow.HEAD_VERDICT_LEDGER == "PASS"`. That ledger is checked in as
+`NOT_MEASURED`, and only the separately reviewed verdict unit (#1092) may change
+it, so no deployment can activate today and `full_head` stays unadvertised.
+
+When every gate is open, a job re-checks the gates (the admission file must
+also equal the admitted snapshot, so a changed artifact path, digest,
+provenance, endpoint or timeout closes it), uploads the target, mask and
+reference as pixel-only PNGs rebuilt from raw pixels (no EXIF, GPS, ICC or
+text; gates re-checked before each upload; a target or mask with a
+non-identity EXIF orientation is refused first, so crop, mask and uploads share
+the target's encoded pixel grid), binds the admitted
+seven-node graph in one replacement pass, re-checks the gates again and submits
+it. It then requires exactly one image from output node 7 (any other count or
+node is an error), fetches it, and accepts it only as a complete, CRC-valid,
+non-interlaced 8/16-bit grey/RGB/alpha PNG of exactly the declared crop size
+with correctly sized pixel data. All ancillary chunks (ComfyUI's tEXt prompt and
+workflow, eXIf, tIME, iCCP and the rest) are dropped, IDAT must be consecutive
+and hold one zlib stream with no trailing bytes, IEND must be empty, and the
+decoded pixels are recompressed. Advertised `full_head`/`lineage` drop to false
+as soon as any gate is revoked. The crop is returned with lineage: `engine`, `version`, `mode`, `seed` and
+the SHA-256 of model, encoder, runtime, adapter and workflow. Gates are checked
+once more before publication; a provider error, refusal, cancel, closed gate or
+changed artifact deletes only this job's queued prompt and publishes neither an
+image nor lineage. Tests mock the provider (`tests/test_head_workflow.py`);
+real model quality is proven only by #1091/#1092.
+
+The checked-in state has no verified values and therefore remains **HEAD
+unavailable / NOT MEASURED**. Do not change a gate to true without independently
+reviewable evidence. Transport inherits the server's bearer authentication,
+loopback-only HTTP/remote TLS rule, redirect ban, size/deadline bounds, and
+cancellation-without-publication behavior.

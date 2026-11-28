@@ -1,60 +1,95 @@
-# SHARE-1P · four-flow share and details design target (v1)
+# SHARE-1 v3 · share, wallpaper, copy and date/location design target
 
-**Status: synthetic design proposal for independent preflight; not a Samsung observation, Android implementation, runtime screenshot, or design PASS.** Unit [#843](https://github.com/LPStruiksma/atlas-gallery/issues/843); parent [#584](https://github.com/LPStruiksma/atlas-gallery/issues/584); goal [#97](https://github.com/LPStruiksma/atlas-gallery/issues/97). The scope is this directory only. Every lighthouse/lake image is drawn from deterministic shapes; no private photo, coordinates or real user record.
+**Status: synthetic design proposal for independent preflight.** Not a Samsung observation, Android implementation, runtime screenshot or design PASS. Unit [#1115](https://github.com/LPStruiksma/atlas-gallery/issues/1115) (SHARE-1P2) corrects the [v2 preflight defects](https://github.com/LPStruiksma/atlas-gallery/issues/584#issuecomment-7231982556) on the [#966](https://github.com/LPStruiksma/atlas-gallery/pull/966) target. Parent [#584](https://github.com/LPStruiksma/atlas-gallery/issues/584); goal [#97](https://github.com/LPStruiksma/atlas-gallery/issues/97). Scope is this directory only. Every image is drawn from deterministic shapes: no private photo, real coordinates or user record. No parity checklist item is completed by this document.
 
-## Decisions, sources and deviations
+## Sources and classification
 
-| Decision | Evidence and source | Status |
+| Decision | Source | Classification |
 | --- | --- | --- |
-| Black photo-first viewer, held sphere and white-ring strip, lapis slab, no permanent extra buttons | [Quiet Frame v3](../QUIET_FRAME.md), [owner intent](../../OWNER_INTENT.md), viewer target [#142](https://github.com/LPStruiksma/atlas-gallery/issues/142) | Proposed adaptation to ATLAS; not shipped |
-| A: one short options sheet before Android's sharesheet, `Remove location` **off** initially | Android [FileProvider](https://developer.android.com/reference/androidx/core/content/FileProvider) and [sharing](https://developer.android.com/training/sharing/send), #843 | Proposed; no verified Samsung UI location |
-| B: wallpaper as a viewer-overflow action, then `ACTION_ATTACH_DATA` | Android [Intent](https://developer.android.com/reference/android/content/Intent) | System chooser UI drawn only conceptually; actual handlers unknown |
-| C: overflow `Copy image` passes a readable `content://` URI in `ClipData`, with system feedback | Android [clipboard](https://developer.android.com/develop/ui/views/touch-and-input/copy-paste) | Receiver grant and lifetime not tested |
-| D: swipe up → Details → `Edit date and location` → consent → save + Undo | Android [MediaStore](https://developer.android.com/reference/android/provider/MediaStore), [shared storage](https://developer.android.com/training/data-storage/shared/media) | Strong original-byte rollback is a high-risk design dependency |
-| Filmstrip white 2 dp ring and `#8C9BFF` sphere gain a black **1 dp external keyline** over bright imagery | [#142 critique](https://github.com/LPStruiksma/atlas-gallery/issues/142#issuecomment-7056330457) | **Design adaptation only.** Does not assert #142 implemented or fixed |
-| Samsung behavior and finding IDs for these exact four actions | Private finding archive not included in the public spec | **UNVERIFIED**: no screenshots, OEM geometry, findings or parity assertion fabricated |
+| Black photo-first viewer, held sphere, white-ring filmstrip, lapis slab; no new permanent viewer chrome | [Quiet Frame v3](../QUIET_FRAME.md), [OWNER_INTENT](../../OWNER_INTENT.md), [#142](https://github.com/LPStruiksma/atlas-gallery/issues/142) | Approved identity, adapted |
+| A: options sheet before Android's sharesheet; location-free share uses a verified temporary derivative | Android [FileProvider](https://developer.android.com/reference/androidx/core/content/FileProvider), [sharing](https://developer.android.com/training/sharing/send) | **Platform-derived proposal** |
+| B: `Set as wallpaper` hands off with `ACTION_ATTACH_DATA` | Android [Intent](https://developer.android.com/reference/android/content/Intent) | **Platform-derived proposal** |
+| C: `Copy image` puts a readable `content://` URI in `ClipData`; Android shows its own feedback | Android [clipboard](https://developer.android.com/develop/ui/views/touch-and-input/copy-paste) | **Platform-derived proposal** |
+| D: Details → `Edit date and location` → Android write consent → Undo | Android [MediaStore](https://developer.android.com/reference/android/provider/MediaStore), [shared storage](https://developer.android.com/training/data-storage/shared/media) | **Platform-derived proposal**; mechanism unresolved (below) |
+| Samsung placement or behaviour for these four actions | No independently sourced observation IDs available to this unit | **Not demonstrated Samsung parity.** No OEM geometry or finding IDs are claimed; private research is not copied |
+| Black 1 dp external keyline around the 2 dp white filmstrip ring and the `#8C9BFF` sphere | [#142 critique](https://github.com/LPStruiksma/atlas-gallery/issues/142#issuecomment-7056330457) | Documented adaptation using the existing viewer ground; coordinate with #142, not a claim that #142 is fixed |
 
-## Flow transitions, ownership and content rules
+## A · share without location: state machine
 
-**A / location-free share.** `F0` viewer → `F1` ATLAS options sheet → `F2` Android sharesheet → `F3` same viewer item. Off sends the unchanged provider URI. On must first create and validate a *temporary*, GPS-free derivative. If strip/encoding/verification fails: block the outbound intent and show “Couldn't prepare location-free copy”, Retry or Cancel. If there is no GPS, report “No location stored”; do not claim a privacy rewrite occurred. Grant read access to the chooser and final consumer; deferred reads and URI revocation require implementation testing. Never delete the temporary file merely because a chooser returns. Do not rewrite the original or silently fall back to its URI when On.
+The `Remove location` preference is **Off only on first use**. Only the user changes it, with the switch in this sheet, while the sheet is idle (Off, ready or no-location state). It is never changed by Atlas, by a failure, or by a recovery button. Inaccessible, redacted or unreadable location is **not** treated as “no location”.
 
-**B / wallpaper.** Viewer overflow → “Set as wallpaper” → Android `ACTION_ATTACH_DATA` with readable `content://`, image MIME and read grant → same viewer item on cancel/return. Android owns the crop and target UI. Unsupported media, absent handler and revoked URI get a short error without mutation. No invented ATLAS cropper.
+| State | Frame | Remove location | Actions (focus order) | Dispatch |
+| --- | --- | --- | --- | --- |
+| Off (initial only) | `A-off-*` | Off, interactive switch | switch, Cancel, Share | Original provider URI with read grant (user's explicit choice) |
+| On · preparing | `A-preparing-*` | On, badge “Stays on for this share” | progress message, Cancel, Share (disabled) | **Disabled** until verification ends |
+| On · verified ready | `A-ready-*` | On, interactive | switch, Cancel, Share | Verified temporary GPS-free derivative only |
+| On · verified no location | `A-nogps-*` | On, interactive | switch, Cancel, Share | Still the verified temporary derivative, never the original |
+| On · failed | `A-failed-*` | On, badge | **error message (focused)**, Cancel, Retry | **Blocked**: no outbound intent, no original-URI fallback |
+| On · location unknown | `A-unknown-*` | On, badge | **error message (focused)**, Cancel, Retry | **Blocked** |
+| On · too large / unsupported | `A-unsupported-*` | On, badge | **error message (focused)**, Cancel | **Blocked** |
 
-**C / copy.** Viewer overflow → “Copy image” → `ClipData` with provider URI → OS feedback → same viewer item. Check before copying that URI is readable; a broken/revoked URI never enters the clipboard. Actual app-to-app paste and recipient grant expiry are untested. Do not infer that clipboard copying makes a new media file or add a persistent success banner.
+Transitions: viewer Share → Off (first use) or straight to preparing (On remembered). Switch Off→On → preparing → ready, no-location, failed, unknown or unsupported. Retry → preparing. Switch On→Off from ready/no-location → Off (explicit). Share → Android sharesheet (`A-sharesheet`, system-owned) → back to the **same viewer item** (`A-return`). Cancel, system Back or scrim tap at any state → same viewer item, nothing sent; an in-flight preparation is cancelled and its temporary file deleted.
 
-**D / date & location.** Swipe up / Details → read-only photo context → Edit date and location → compact date/time with explicit `Europe/Amsterdam` timezone **as a synthetic example**; manual place or offline lookup only when available → Save → Android write consent → mutate *only* selected EXIF fields → rescan/index → Details with Undo → viewer. Distinguish EXIF capture time, display date, UTC offset and user-selected local civil time. On Cancel/Denied/Unsupported/Full storage/Write failure, return with **byte-for-byte original and index unchanged**. The actual atomicity approach is **unresolved**, not an implementation promise: draft a staged transaction (snapshot original bytes + index, validate writable format, obtain per-item permission, write to a durable prepared copy, verify fields, atomically install only if supported, update index, recover on restart); seek independent critique of SAF/MediaStore semantics, crash windows and consent renewal. Undo after restart must restore previous values only after fresh permission, with an explicit backup-retention policy. Fail safely if the platform cannot provide atomic swap; never claim a successful edit first and roll back silently.
+Specified, not rendered as separate frames: **huge/unsupported media** fail closed into `A-unsupported`; **offline** makes no difference (preparation is local, no network); **late reads** by the recipient are covered by a bounded read grant on the temporary file, kept for a bounded window after dispatch rather than deleted when the chooser returns; **cleanup** removes temporary derivatives on cancel, on failure, after the window, and on next start. The original file is never rewritten by A. All seven states are rendered light and dark; all seven at 200 % (light) plus `A-failed-dark-200`; ready and failed also in landscape.
 
-All platform-owned screens in the art are **conceptual placeholders**. Back/cancel from every flow returns to the same viewer item; no file writes occur in this document.
+## B/C · one More menu
 
-## Geometry and reproducible evidence
+Live `main` at `eb1880e` has one viewer overflow: `atlas-viewer-more` with `AI Edit` and, only when eligible, `Swap person` ([GalleryViewer.kt lines 949–972](https://github.com/LPStruiksma/atlas-gallery/blob/eb1880e30f6ad41e75b5773d34c1a3ec0935190c/app/src/main/java/nl/atlas/gallery/GalleryViewer.kt#L949-L972)). The proposal keeps both, in that order, and appends `Set as wallpaper` and `Copy image`. The **same** menu (`BC-menu-light`, `BC-menu-dark`, `BC-menu-dark-landscape`) serves both flows; there is no second menu variant. Today More is shown only when AI Edit is eligible; the proposal shows it whenever at least one item applies (wallpaper and copy: still images only). Coordinate ownership of the overflow with [#142](https://github.com/LPStruiksma/atlas-gallery/issues/142) and [#573](https://github.com/LPStruiksma/atlas-gallery/issues/573) before production.
 
-Individual proposed [SVG frames](svg/) are 1080×2340 portrait and physically rotated 2340×1080 landscape; see [geometry.json](geometry.json). Density **2.8125 px/dp** and insets are synthetic S24-profile design inputs copied from the [#142 emulator three-button viewer target](../viewer-142-target/README.md), not measurements of Lukas's S24+ and not independently observed on this layout. Portrait safeDrawing L/T/R/B = **0/125/0/135 px**; landscape = **125/68/135/0 px**. No gesture-navigation or cutout validation is claimed. `geometry.json` exposes every actual-pixel photo, sheet, Back, More, filmstrip and slab rectangle; all clickable header boxes and each slab slot measure at least **135 px = 48 dp** (48 × 2.8125), and the selected filmstrip hit is 140×154 px. Visual glyphs can be smaller than semantic hits. Focus order: Back → More → photo → sheet title and controls (when present) → filmstrip → slab. The focused action is the first contextual control. Landscape proposal reflows the sheet beside the photo, not on top of a tiny bottom strip. The `F1-share-200` SVG proposes **exactly 2×** type relative to `F1-share-light` for the visible sheet (title 45→90 px, toggle 36→72, helper 30→60, primary Share 39→78, Back 25→50). The 285 px (101 dp) switch section wraps the toggle below its enlarged label, and the 185 px (66 dp) Share control and 150 px (53 dp) Back region reflow vertically inside the 976×1015 px sheet; `geometry.json` records each hit rectangle. The viewer slab remains *behind* the modal sheet and is not interactive while it is open. This is a synthetic 200% **proposal**, not an Android font-scale capture; device clipping, TalkBack and accessibility reflow remain untested.
+B: `Set as wallpaper` → Android wallpaper picker (`B-wallpaper-handoff`, system-owned, conceptual) → same item. No app (`B-no-handler-light`) or unsupported/revoked file (`B-unsupported-dark`) → short message, OK, nothing changed. No Atlas cropper. C: `Copy image` checks the URI is readable first → Android's own clipboard confirmation (`C-copy-feedback`) → same item; unreadable or revoked (`C-revoked-light`, `C-revoked-dark-landscape`) → message, clipboard unchanged. `BC-return` shows the safe return. The menu is a popup: outside tap or Back closes it with no action.
 
-Frames: A has F0/F1 light/F1 dark/F1 200%/F2/strip error/F3 and rotated A; B shows overflow/system-owned handoff/missing handler/rotated B; C shows overflow/copy feedback/revoked URI/rotated C; D has light/dark Details, editor/IME, Undo/denied, rotated D. All frames have a recognizable synthetic lake/lighthouse/sail photo and no new permanent viewer chrome.
+## D · date and location
 
-To reproduce PNGs from the authoritative editable SVG sources:
+One term, **location**, throughout. A location is a **point chosen on an offline map**, shown with its coordinates (synthetic `10.00° N, 20.00° E`), never a free-text place name alone. Time shows date, time and an explicit UTC offset with its time zone (synthetic example `UTC+02:00, Europe/Amsterdam`).
+
+Frames: `D-details-light/dark`; no location (`D-details-nolocation-light`, `D-editor-nolocation-light` with “Add location”); read-only or unsupported, Edit absent (`D-details-readonly-dark`); editor light/dark and landscape; keyboard open at 100 % and 200 % portrait and 200 % landscape, where **Save and Cancel stay pinned above the keyboard** and the focused field stays visible; `D-discard-light` (explicit **Discard** vs **Keep editing**); `D-consent` (Android write consent, system-owned, conceptual; Deny keeps the draft); `D-write-failed-light/dark` (Retry/Cancel, edits kept); `D-saved-undo-light/dark` (Undo).
+
+Keyboard dismissal (the IME's hide key or the first Back while it is open) only hides the keyboard and **keeps the draft**. Discarding needs Cancel or a second Back, then an explicit **Discard**.
+
+**Unresolved, pending an independent high-stakes gap pass ([#786](https://github.com/LPStruiksma/atlas-gallery/issues/786), [#579](https://github.com/LPStruiksma/atlas-gallery/issues/579))**: transaction mechanism; coordinate validation; civil time and UTC-offset handling; consent renewal (including Undo after restart); atomicity and rollback; backup retention; index reconciliation. The copy “Nothing was saved” on write failure is the **target** behaviour and holds only if that gap pass proves it. This document does **not** imply a provider can atomically replace bytes, and performs no app or storage operation.
+
+## Palette
+
+All UI colours are [Quiet Frame v3 tokens](../QUIET_FRAME.md#colour-tokens); the verifier rejects any other colour outside the synthetic photo art. The v2 literal error red `#B3222B` and the extra dark card shade are gone. Errors are carried by explicit copy, an outlined `!`/`?` glyph and **focus moved to the message**, never by colour alone.
+
+| Use | Light | Dark |
+| --- | --- | --- |
+| Sheet / dialog surface | ground `#FFFFFF` | mist `#14152A` |
+| Rows, fields, secondary buttons | mist `#F2F3F8` | ground `#000000` on mist surfaces; mist on full screens |
+| Primary text / error and focus outline | ink `#0E1030` | ink `#F2F3F8` |
+| Helper text, Off switch track | ink-secondary `#5A5F7A` | ink-secondary `#9AA0B8` |
+| Titles | brand-text `#2639C9` | brand-text `#8C9BFF` |
+| Primary button, On badge | brand-fill `#2639C9` | brand-fill `#3448E0` |
+| On switch track | brand-fill `#2639C9` | brand-text `#8C9BFF` (≥3:1 on its row) |
+| Viewer ground, slab, sphere, ring, keyline | `#000000`, `#3448E0`, `#8C9BFF`, `#FFFFFF`, `#000000` | same |
+
+## Geometry, focus and accessibility
+
+Portrait 1080×2340 and landscape 2340×1080 at **2.8125 px/dp**; synthetic safe insets L/T/R/B portrait 0/125/0/135 px, landscape 125/68/135/0 px (from the [#142 target](../viewer-142-target/README.md), not measured on an S24+). Type uses Quiet Frame sizes (section title 18 sp, body 15 sp, secondary and labels 14 sp); 200 % frames double every sheet size exactly. Art uses DejaVu Sans as a measurable stand-in for Funnel Sans; runtime fonts are untested.
+
+[`geometry.json`](geometry.json) lists, per frame, every control with id, role, label and semantic rectangle **in focus order**, the modal surface, inert background controls, the IME rectangle, the dismissal path and the share state. While a sheet, dialog, menu or editor is open the viewer behind it is inert and absent from focus order. Alerts take focus first and are drawn with a focus outline.
+
+## Reproduce and verify
 
 ```bash
-python3 docs/design/share-584-target/render_and_verify.py --render
-python3 docs/design/share-584-target/render_and_verify.py --verify
+python3 docs/design/share-584-target/build_frames.py                     # SVG + geometry.json
+python3 docs/design/share-584-target/render_and_verify.py --render --verify
 ```
 
-Requires Python 3, CairoSVG for raster export and Pillow for PNG inspection. `--verify` checks all 23 SVG/PNG stage pairs at exact dimensions, all geometry rectangles and actual SVG text foreground against sampled text-free rendered SVG background pixels. All **23 editable SVGs and 23 real PNG files** are committed in this PR. At the **previous** review head, all 23 PNGs were checked for PNG structure, dimensions, CRCs and decompression (23/23 valid then). The revised `F1-share-200.png` is a newly committed indexed-colour synthetic preview with large bitmap fallback text corresponding to the doubled SVG labels; its binary validity and foreground/background evidence have **not** been validated by an exact-head Python execution in this seat. Running `--render` with CairoSVG will replace preview bitmap glyphs with canonical SVG font rasterization. The original 23-frame `geometry.json` passed **115 semantic-rectangle checks** at the previous head. The revised 200% control hit boxes and SVG-derived foreground/background verifier require an exact-head execution; this seat does not claim a fresh pass. On the prior validation commit all three repository CI workflows were successful; those results are not a pass for the revised head. A local CairoSVG/Pillow prototype also rendered and inspected 23 frames, but the Python `--render --verify` command **was not executed on an exact-head checkout** in this seat. Editable SVG is canonical; the PNGs are synthetic raster previews made with a simplified bitmap-type fallback, so re-exporting via CairoSVG can change text glyph pixels. Independent Review should regenerate and visually compare actual frames before making a design-preflight recommendation. The F1 200%-labelled mock now doubles all five visible sheet text sizes and reflows their controls; independent rerender and runtime capture are still required. This evidence does **not** claim an Android runtime, OEM, accessibility or original-file write test.
+Needs Python 3, CairoSVG, Pillow and DejaVu Sans. `--verify` re-renders every SVG and compares it with the committed PNG, then checks palette, text fit and contrast against the rendered text-free background, control size (≥135 px = 48 dp), safe insets, modal containment, IME clearance, non-overlap, focus order, modal isolation, dismissal, switch-track contrast, share-state invariants and the exact 2× scale. Current result: **54 frames** (48 portrait, 6 landscape), 197 controls, 1,107 control checks, 24 share-state checks, 8 scale checks, 432 text runs with minimum contrast **5.65:1**, **0 errors**. The PR records the exact commit and hosted CI.
 
-## Matrix: shown, proposed, and untested
+## Matrix: rendered, specified, runtime-untested
 
-| Situation | A: share | B: wallpaper | C: copy | D: edit | Proof status |
-| --- | --- | --- | --- | --- | --- |
-| Normal and return | F0,F1,F2,F3 | B1,B2 | C1,C2 | D0,D1,D2 | SVG rendered proposal; Android untested |
-| Light/dark surfaces, bright/dark media | F1 light/dark, F3 bright | B1/B2 | C1/C3 | D0 light/dark | SVG rendered proposal; no phone proof |
-| No GPS / redacted metadata | F1 options, absence text planned | Unchanged URI required | Unchanged URI required | no-location field planned | **Planned, not rendered for all variants** |
-| Read-only/revoked URI / missing target or consumer | F2 error; read grant pending | B3 missing handler | C3 revoked | unsupported fallback planned | Selected SVG; URI lifetime untested |
-| Late recipient read / clipboard paste | Temporary copy retention TBD | Handoff grant TBD | Paste grant TBD | n/a | **Not tested** |
-| Cancel / denied write consent / mid-write failure | Cancel → F3 | Cancel → viewer | Copy error → viewer | D2-denied | Selected SVG only; atomic rollback unproven |
-| Undo after rescan or process restart | n/a | n/a | n/a | D2 Undo | Static design; recovery untested |
-| Offline, large media, loading, narrow cutout landscape | Intent should not depend on network | no handler | invalid URI | offline/manual entry | Landscape drawn; performance/cutout not tested |
-| 100%/200% text, keyboard/IME | F1-200 | system-owned | system feedback | D1-keyboard | Selected SVG; system font metrics unmeasured |
-| TalkBack/focus, reach, reduced motion | Back → options → Share | More → target | More → Copy | Details → editor → consent | Specified only; platform testing required |
-| Motion | ATLAS 200 ms Lift, cut for reduced-motion | OS controls system transitions | OS feedback | consent OS-owned | Specified only |
+| Situation | A share | B wallpaper | C copy | D edit |
+| --- | --- | --- | --- | --- |
+| Normal path and return | Rendered | Rendered (handoff conceptual) | Rendered (feedback conceptual) | Rendered |
+| Light/dark | Rendered, all states | Rendered menu; errors in one theme each | Rendered menu; error light + dark landscape | Rendered |
+| Landscape | Rendered ready + failed | Rendered menu | Rendered error | Rendered editor + 200 % IME |
+| 200 % text | Rendered, all states | Specified (Android-owned) | Specified (Android-owned) | Rendered editor with IME |
+| No location / unknown | Rendered both, kept distinct | n/a | n/a | Rendered no location |
+| Failure / unsupported / revoked | Rendered | Rendered | Rendered | Rendered read-only + write failed |
+| Cancel, consent, discard, Undo | Rendered cancel path | Rendered OK | Rendered OK | Rendered; atomicity unresolved |
+| Offline, huge media, late read, cleanup | Specified above | Specified | Specified | Gap pass |
+| TalkBack, real focus traversal, runtime fonts, grants, file writes | **Runtime-untested** | **Runtime-untested** | **Runtime-untested** | **Runtime-untested** |
 
-**Release gates:** Independent [design rubric](https://github.com/LPStruiksma/autodev/blob/main/docs/design/rubric.md) preflight for #584 must score checks 1–6 and 8 against rendered states *after this evidence PR is complete and merged*. #584 must not begin production Dev on these drawings alone. There is no runtime Kotlin change, no Android intent/grant/EXIF execution and no original-media modification here.
+**Release gates:** an independent reviewer must open the regenerated PNGs; artifact review of this PR is not parent design approval. #584 production stays held until this issue closes and an independent parent preflight passes; Parent Strategy owns the split into A, B/C, D and the D gap pass. No Kotlin, manifest, intent, grant, EXIF or original-media change is made here.

@@ -1,0 +1,112 @@
+name: Identity head benchmark
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'tools/identity_bench/head/**'
+      - '.github/workflows/identity-head-bench.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  identity-head:
+    name: Identity head Python tests and verdict replay (exact head)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify tested head SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Identity benchmark tested head: $actual"
+          test "$actual" = "$EXPECTED_SHA"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run identity head Python tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=tools/identity_bench/head
+          test -d "$dir"
+          if [[ -z "$(find "$dir" -maxdepth 1 -type f -name 'test_*.py' -print -quit)" ]]; then
+            echo "::error::Missing identity head test files"
+            exit 1
+          fi
+          log="$(mktemp)"
+          trap 'rm -f "$log"' EXIT
+          python3 -m unittest discover -s tools/identity_bench/head -p 'test_*.py' -v 2>&1 | tee "$log"
+          if ! grep -Eq '^Ran [1-9][0-9]* tests? in ' "$log"; then
+            echo "::error::Identity head unittest discovery ran zero tests"
+            exit 1
+          fi
+      - name: Verify deterministic assembly and replay committed verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=tools/identity_bench/head/results/ids12f
+          markers=(judge-a-blinded.json assemble_votes.py votes.json rows-with-votes.json verdict.json VERDICT.md)
+          present=false
+          for marker in "${markers[@]}"; do
+            if [[ -e "$dir/$marker" || -L "$dir/$marker" ]]; then
+              present=true
+            fi
+          done
+          if [[ "$present" == false ]]; then
+            echo "IDS-12G replay NOT PRESENT at $(git rev-parse HEAD) (not tested)"
+            exit 0
+          fi
+          for file in "${markers[@]}" judge-b-blinded.json rows.json sheet-key.json; do
+            if [[ ! -f "$dir/$file" ]]; then
+              echo "::error::Partial IDS-12G evidence: missing $dir/$file"
+              exit 1
+            fi
+          done
+          cohort=tools/identity_bench/head/cohort.json
+          test -f "$cohort"
+          python3 "$dir/assemble_votes.py"
+
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          rc=0
+          python3 tools/identity_bench/head/quality.py "$cohort" "$dir/rows-with-votes.json" --json "$tmp/verdict.json" 2>"$tmp/stderr" || rc=$?
+          if [[ -s "$tmp/stderr" ]]; then
+            cat "$tmp/stderr" >&2
+            echo "::error::Evaluator emitted diagnostics; replay is not valid"
+            exit 1
+          fi
+          python3 - "$tmp/verdict.json" "$dir/verdict.json" "$rc" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          def reject_constant(value):
+              raise ValueError(f"Invalid JSON constant: {value}")
+
+          def load(path):
+              return json.loads(Path(path).read_text(encoding="utf-8"), parse_constant=reject_constant)
+
+          actual, committed = map(load, sys.argv[1:3])
+          if not isinstance(actual, dict) or not isinstance(committed, dict):
+              raise SystemExit("Expected JSON verdict objects")
+          verdict = actual.get("verdict")
+          expected = {"PASS": 0, "FAIL": 1, "INSUFFICIENT_EVIDENCE": 1}
+          if verdict not in expected or int(sys.argv[3]) != expected[verdict]:
+              raise SystemExit(f"Unexpected evaluator verdict/exit: {verdict!r}, {sys.argv[3]}")
+          if json.dumps(actual, sort_keys=True) != json.dumps(committed, sort_keys=True):
+              raise SystemExit("Fresh evaluator JSON differs from committed verdict.json")
+          print(f"Committed verdict matches replay: {verdict} (exit {sys.argv[3]})")
+          PY
+          echo "IDS-12G replay VERIFIED at $(git rev-parse HEAD)"

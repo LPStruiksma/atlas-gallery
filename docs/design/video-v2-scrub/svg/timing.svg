@@ -1,47 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900.0 455.0" width="1800.0" height="910.0" font-family="Funnel Sans, Inter, Arial, sans-serif"><title>VIDEO-V2 seeker timing</title>
-<rect width="900" height="455" fill="#1B1C24"/>
-<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED seeker timing and seek pipeline (ms; one example gesture)</text>
-<text x="12" y="32" font-size="8" fill="#9AA0B8">OBSERVED values carry a finding ID; everything else is an ATLAS proposal. Media3 behaviour must be proven by the Dev JVM/emulator tests named in README.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900.0 498.0" width="1800.0" height="996.0" font-family="Funnel Sans, Inter, Arial, sans-serif"><title>VIDEO-V2 seeker timing</title>
+<rect width="900" height="498" fill="#1B1C24"/>
+<text x="12" y="18" font-size="11" fill="#FFF" font-weight="600">PROPOSED seeker timing and seek pipeline (ms; one scrub that starts while playing)</text>
+<text x="12" y="32" font-size="8" fill="#9AA0B8">OBSERVED values carry a finding ID; everything else is an ATLAS proposal. Repeat scrubs, interrupted fling, pause/cancel and stale callbacks: svg/lifecycle.svg. Media3 behaviour must be measured, not inferred.</text>
 <text x="12" y="76" font-size="9" fill="#FFF">finger</text>
 <line x1="110" y1="84" x2="890" y2="84" stroke="#3A3C4A"/>
 <text x="12" y="122" font-size="9" fill="#FFF">seeker state</text>
 <line x1="110" y1="130" x2="890" y2="130" stroke="#3A3C4A"/>
-<text x="12" y="168" font-size="9" fill="#FFF">main view</text>
+<text x="12" y="168" font-size="9" fill="#FFF">player state</text>
 <line x1="110" y1="176" x2="890" y2="176" stroke="#3A3C4A"/>
-<text x="12" y="214" font-size="9" fill="#FFF">player seek</text>
+<text x="12" y="214" font-size="9" fill="#FFF">main view</text>
 <line x1="110" y1="222" x2="890" y2="222" stroke="#3A3C4A"/>
-<text x="12" y="260" font-size="9" fill="#FFF">frame cache</text>
+<text x="12" y="260" font-size="9" fill="#FFF">player seek</text>
 <line x1="110" y1="268" x2="890" y2="268" stroke="#3A3C4A"/>
-<text x="12" y="306" font-size="9" fill="#FFF">haptic</text>
+<text x="12" y="306" font-size="9" fill="#FFF">frame cache</text>
 <line x1="110" y1="314" x2="890" y2="314" stroke="#3A3C4A"/>
-<text x="12" y="352" font-size="9" fill="#FFF">TalkBack</text>
+<text x="12" y="352" font-size="9" fill="#FFF">haptic</text>
 <line x1="110" y1="360" x2="890" y2="360" stroke="#3A3C4A"/>
-<line x1="110.0" y1="50" x2="110.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="110.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">0</text>
-<line x1="172.0" y1="50" x2="172.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="172.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">100</text>
-<line x1="234.0" y1="50" x2="234.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="234.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">200</text>
-<line x1="296.0" y1="50" x2="296.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="296.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">300</text>
-<line x1="358.0" y1="50" x2="358.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="358.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">400</text>
-<line x1="420.0" y1="50" x2="420.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="420.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">500</text>
-<line x1="482.0" y1="50" x2="482.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="482.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">600</text>
-<line x1="544.0" y1="50" x2="544.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="544.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">700</text>
-<line x1="606.0" y1="50" x2="606.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="606.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">800</text>
-<line x1="668.0" y1="50" x2="668.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="668.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">900</text>
-<line x1="730.0" y1="50" x2="730.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="730.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1000</text>
-<line x1="792.0" y1="50" x2="792.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="792.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1100</text>
-<line x1="854.0" y1="50" x2="854.0" y2="382" stroke="#2A2C38" stroke-dasharray="2 3"/>
-<text x="854.0" y="392" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1200</text>
+<text x="12" y="398" font-size="9" fill="#FFF">TalkBack</text>
+<line x1="110" y1="406" x2="890" y2="406" stroke="#3A3C4A"/>
+<line x1="110.0" y1="50" x2="110.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="110.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">0</text>
+<line x1="172.0" y1="50" x2="172.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="172.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">100</text>
+<line x1="234.0" y1="50" x2="234.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="234.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">200</text>
+<line x1="296.0" y1="50" x2="296.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="296.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">300</text>
+<line x1="358.0" y1="50" x2="358.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="358.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">400</text>
+<line x1="420.0" y1="50" x2="420.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="420.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">500</text>
+<line x1="482.0" y1="50" x2="482.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="482.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">600</text>
+<line x1="544.0" y1="50" x2="544.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="544.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">700</text>
+<line x1="606.0" y1="50" x2="606.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="606.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">800</text>
+<line x1="668.0" y1="50" x2="668.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="668.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">900</text>
+<line x1="730.0" y1="50" x2="730.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="730.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1000</text>
+<line x1="792.0" y1="50" x2="792.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="792.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1100</text>
+<line x1="854.0" y1="50" x2="854.0" y2="428" stroke="#2A2C38" stroke-dasharray="2 3"/>
+<text x="854.0" y="438" font-size="7.5" fill="#9AA0B8" text-anchor="middle">1200</text>
 <rect x="110.0" y="72" width="111.6" height="22" rx="4" fill="#4A4E69" opacity=".85"/>
 <text x="114.0" y="86" font-size="7.4" fill="#FFF">down, within slop</text>
 <rect x="221.6" y="72" width="235.6" height="22" rx="4" fill="#5E60CE" opacity=".85"/>
@@ -55,54 +57,71 @@
 <rect x="110.0" y="118" width="111.6" height="22" rx="4" fill="#3A3C4A" opacity=".85"/>
 <text x="114.0" y="132" font-size="7.4" fill="#FFF">armed</text>
 <line x1="221.6" y1="114" x2="221.6" y2="144" stroke="#FFB020" stroke-width="1.6"/>
-<text x="224.6" y="112" font-size="7.2" fill="#FFB020">expand 180 ms [V16]</text>
+<text x="224.6" y="112" font-size="7.2" fill="#FFB020">expand 180 ms [V16] = scrub begin, gen g</text>
 <rect x="221.6" y="118" width="124.0" height="22" rx="4" fill="#2639C9" opacity=".85"/>
 <text x="225.6" y="132" font-size="7.4" fill="#FFF">200 ms Lift</text>
 <rect x="345.6" y="118" width="359.6" height="22" rx="4" fill="#3448E0" opacity=".85"/>
-<text x="349.6" y="132" font-size="7.4" fill="#FFF">seeking</text>
-<rect x="705.2" y="118" width="186.0" height="22" rx="4" fill="#2639C9" opacity=".85"/>
-<text x="709.2" y="132" font-size="7.4" fill="#FFF">committed, stays expanded</text>
-<rect x="221.6" y="164" width="272.8" height="22" rx="4" fill="#6D6875" opacity=".85"/>
-<text x="225.6" y="178" font-size="7.4" fill="#FFF">nearest cached frame tile</text>
-<line x1="494.4" y1="160" x2="494.4" y2="190" stroke="#FFB020" stroke-width="1.6"/>
-<text x="497.4" y="158" font-size="7.2" fill="#FFB020">+60 ms</text>
-<rect x="494.4" y="164" width="74.4" height="22" rx="4" fill="#457B9D" opacity=".85"/>
-<text x="498.4" y="178" font-size="7.4" fill="#FFF">sync frame</text>
-<line x1="568.8" y1="160" x2="568.8" y2="190" stroke="#FFB020" stroke-width="1.6"/>
-<text x="571.8" y="158" font-size="7.2" fill="#FFB020">+180 ms</text>
-<rect x="568.8" y="164" width="49.6" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
-<text x="572.8" y="178" font-size="7.4" fill="#FFF">exact</text>
-<rect x="618.4" y="164" width="86.8" height="22" rx="4" fill="#6D6875" opacity=".85"/>
-<text x="622.4" y="178" font-size="7.4" fill="#FFF">cached tile</text>
-<rect x="705.2" y="164" width="186.0" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
-<text x="709.2" y="178" font-size="7.4" fill="#FFF">exact at T_release</text>
-<rect x="221.6" y="210" width="235.6" height="22" rx="4" fill="#3A3C4A" opacity=".85"/>
-<text x="225.6" y="224" font-size="7.4" fill="#FFF">≤1 CLOSEST_SYNC in flight, newest wins</text>
+<text x="349.6" y="132" font-size="7.4" fill="#FFF">dragging (follow off)</text>
+<rect x="705.2" y="118" width="55.8" height="22" rx="4" fill="#6A4C93" opacity=".85"/>
+<text x="709.2" y="132" font-size="7.4" fill="#FFF">settling</text>
+<line x1="761.0" y1="114" x2="761.0" y2="144" stroke="#2EC4B6" stroke-width="1.6"/>
+<text x="764.0" y="112" font-size="7.2" fill="#2EC4B6">exact confirmed (gen g)</text>
+<rect x="761.0" y="118" width="130.2" height="22" rx="4" fill="#2639C9" opacity=".85"/>
+<text x="765.0" y="132" font-size="7.4" fill="#FFF">follow: T_r + advance, lead 0→200</text>
+<rect x="110.0" y="164" width="111.6" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
+<text x="114.0" y="178" font-size="7.4" fill="#FFF">playing</text>
+<line x1="221.6" y1="160" x2="221.6" y2="190" stroke="#FFB020" stroke-width="1.6"/>
+<text x="224.6" y="158" font-size="7.2" fill="#FFB020">snapshot playing=true · pause</text>
+<rect x="221.6" y="164" width="539.4" height="22" rx="4" fill="#3A3C4A" opacity=".85"/>
+<text x="225.6" y="178" font-size="7.4" fill="#FFF">paused (resume intent = true)</text>
+<line x1="761.0" y1="160" x2="761.0" y2="190" stroke="#2EC4B6" stroke-width="1.6"/>
+<text x="764.0" y="158" font-size="7.2" fill="#2EC4B6">resume</text>
+<rect x="761.0" y="164" width="130.2" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
+<text x="765.0" y="178" font-size="7.4" fill="#FFF">playing</text>
+<rect x="221.6" y="210" width="272.8" height="22" rx="4" fill="#6D6875" opacity=".85"/>
+<text x="225.6" y="224" font-size="7.4" fill="#FFF">cached tile nearest by PTS (approx)</text>
 <line x1="494.4" y1="206" x2="494.4" y2="236" stroke="#FFB020" stroke-width="1.6"/>
-<text x="497.4" y="204" font-size="7.2" fill="#FFB020">CLOSEST_SYNC(T)</text>
+<text x="497.4" y="204" font-size="7.2" fill="#FFB020">+60 ms</text>
+<rect x="494.4" y="210" width="74.4" height="22" rx="4" fill="#457B9D" opacity=".85"/>
+<text x="498.4" y="224" font-size="7.4" fill="#FFF">sync frame, gen g</text>
 <line x1="568.8" y1="206" x2="568.8" y2="236" stroke="#FFB020" stroke-width="1.6"/>
-<text x="571.8" y="204" font-size="7.2" fill="#FFB020">EXACT(T)</text>
-<line x1="618.4" y1="206" x2="618.4" y2="236" stroke="#FF5A5F" stroke-width="1.6"/>
-<text x="621.4" y="204" font-size="7.2" fill="#FF5A5F">cancel: new target</text>
-<line x1="705.2" y1="206" x2="705.2" y2="236" stroke="#FFB020" stroke-width="1.6"/>
-<text x="708.2" y="204" font-size="7.2" fill="#FFB020">EXACT(T_r) commit</text>
-<rect x="221.6" y="256" width="210.8" height="22" rx="4" fill="#6A4C93" opacity=".85"/>
-<text x="225.6" y="270" font-size="7.4" fill="#FFF">extract N tiles at t_i (off main)</text>
-<line x1="792.0" y1="252" x2="792.0" y2="282" stroke="#FF5A5F" stroke-width="1.6"/>
-<text x="795.0" y="250" font-size="7.2" fill="#FF5A5F">collapse/page → cancel jobs</text>
-<line x1="271.2" y1="298" x2="271.2" y2="328" stroke="#FFB020" stroke-width="1.6"/>
-<text x="274.2" y="296" font-size="7.2" fill="#FFB020">tick</text>
-<line x1="320.8" y1="298" x2="320.8" y2="328" stroke="#FFB020" stroke-width="1.6"/>
-<text x="323.8" y="296" font-size="7.2" fill="#FFB020">tick</text>
-<line x1="389.0" y1="298" x2="389.0" y2="328" stroke="#FFB020" stroke-width="1.6"/>
-<text x="392.0" y="296" font-size="7.2" fill="#FFB020">tick</text>
-<line x1="655.6" y1="298" x2="655.6" y2="328" stroke="#FFB020" stroke-width="1.6"/>
-<text x="658.6" y="296" font-size="7.2" fill="#FFB020">tick</text>
-<line x1="221.6" y1="298" x2="221.6" y2="328" stroke="#FFB020" stroke-width="1.6"/>
-<text x="224.6" y="296" font-size="7.2" fill="#FFB020">expand</text>
-<line x1="816.8" y1="344" x2="816.8" y2="374" stroke="#FFB020" stroke-width="1.6"/>
-<text x="819.8" y="342" font-size="7.2" fill="#FFB020">announce once</text>
-<g transform="translate(110,428)">
-<text x="0" y="0" font-size="7.8" fill="#F2F3F8">Release invariance: at ACTION_UP the strip offset x_r, target T_r = clamp(map(x_r), 0, d − 1 frame) and the elapsed label are frozen; the commit only replaces the preview image with the decoded frame at T_r.</text>
-<text x="0" y="12" font-size="7.8" fill="#F2F3F8">A fling ends with the same rule at its rest offset. No snap to a frame tile: the time axis is continuous; frame tiles are only a visual index.</text>
+<text x="571.8" y="204" font-size="7.2" fill="#FFB020">+180 ms</text>
+<rect x="568.8" y="210" width="49.6" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
+<text x="572.8" y="224" font-size="7.4" fill="#FFF">exact</text>
+<rect x="618.4" y="210" width="86.8" height="22" rx="4" fill="#6D6875" opacity=".85"/>
+<text x="622.4" y="224" font-size="7.4" fill="#FFF">cached tile</text>
+<rect x="705.2" y="210" width="55.8" height="22" rx="4" fill="#6D6875" opacity=".85"/>
+<text x="709.2" y="224" font-size="7.4" fill="#FFF">last preview</text>
+<rect x="761.0" y="210" width="130.2" height="22" rx="4" fill="#2A9D8F" opacity=".85"/>
+<text x="765.0" y="224" font-size="7.4" fill="#FFF">decoded frame, then playback</text>
+<rect x="221.6" y="256" width="235.6" height="22" rx="4" fill="#3A3C4A" opacity=".85"/>
+<text x="225.6" y="270" font-size="7.4" fill="#FFF">≤1 CLOSEST_SYNC in flight, newest wins</text>
+<line x1="494.4" y1="252" x2="494.4" y2="282" stroke="#FFB020" stroke-width="1.6"/>
+<text x="497.4" y="250" font-size="7.2" fill="#FFB020">CLOSEST_SYNC(T)</text>
+<line x1="568.8" y1="252" x2="568.8" y2="282" stroke="#FFB020" stroke-width="1.6"/>
+<text x="571.8" y="250" font-size="7.2" fill="#FFB020">EXACT(T)</text>
+<line x1="618.4" y1="252" x2="618.4" y2="282" stroke="#FF5A5F" stroke-width="1.6"/>
+<text x="621.4" y="250" font-size="7.2" fill="#FF5A5F">cancel: new target</text>
+<line x1="705.2" y1="252" x2="705.2" y2="282" stroke="#FFB020" stroke-width="1.6"/>
+<text x="708.2" y="250" font-size="7.2" fill="#FFB020">EXACT(T_r) commit</text>
+<rect x="221.6" y="302" width="210.8" height="22" rx="4" fill="#6A4C93" opacity=".85"/>
+<text x="225.6" y="316" font-size="7.4" fill="#FFF">extract N tiles at nominal t_i (off main)</text>
+<line x1="792.0" y1="298" x2="792.0" y2="328" stroke="#FF5A5F" stroke-width="1.6"/>
+<text x="795.0" y="296" font-size="7.2" fill="#FF5A5F">collapse/page → cancel jobs</text>
+<line x1="271.2" y1="344" x2="271.2" y2="374" stroke="#FFB020" stroke-width="1.6"/>
+<text x="274.2" y="342" font-size="7.2" fill="#FFB020">tick</text>
+<line x1="320.8" y1="344" x2="320.8" y2="374" stroke="#FFB020" stroke-width="1.6"/>
+<text x="323.8" y="342" font-size="7.2" fill="#FFB020">tick</text>
+<line x1="389.0" y1="344" x2="389.0" y2="374" stroke="#FFB020" stroke-width="1.6"/>
+<text x="392.0" y="342" font-size="7.2" fill="#FFB020">tick</text>
+<line x1="655.6" y1="344" x2="655.6" y2="374" stroke="#FFB020" stroke-width="1.6"/>
+<text x="658.6" y="342" font-size="7.2" fill="#FFB020">tick</text>
+<line x1="221.6" y1="344" x2="221.6" y2="374" stroke="#FFB020" stroke-width="1.6"/>
+<text x="224.6" y="342" font-size="7.2" fill="#FFB020">expand</text>
+<line x1="816.8" y1="390" x2="816.8" y2="420" stroke="#FFB020" stroke-width="1.6"/>
+<text x="819.8" y="388" font-size="7.2" fill="#FFB020">announce once</text>
+<g transform="translate(110,454)">
+<text x="0" y="0" font-size="7.8" fill="#F2F3F8">Release invariance: from ACTION_UP until exact confirmation the strip offset x_r, requested T_r = clamp(map(x_r), 0, T_max) and the elapsed label are frozen and follow is off.</text>
+<text x="0" y="12" font-size="7.8" fill="#F2F3F8">Resume happens only after the matching-generation confirmation. Follow then starts at T_r with lead 0 and the 200 ms lead [V16] grows only as playback advances (no +200 ms jump).</text>
+<text x="0" y="24" font-size="7.8" fill="#F2F3F8">Preview PTS are approximate unless reported by the decoder; the exact frame's decoded PTS is recorded, not promised. No snap to a frame tile: the time axis is continuous.</text>
 </g></svg>

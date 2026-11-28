@@ -1,1299 +1,5668 @@
 {
-  "schema": 1,
-  "source": "synthetic coordinates; does not represent S24+ measured runtime",
-  "frames": [
+ "schema": 2,
+ "version": "SHARE-1 v3 (#1115)",
+ "source": "synthetic coordinates from build_frames.py; not S24+ runtime measurement",
+ "density_px_per_dp": 2.8125,
+ "min_hit_px": 135,
+ "palette": [
+  "#000000",
+  "#0E1030",
+  "#14152A",
+  "#2639C9",
+  "#3448E0",
+  "#5A5F7A",
+  "#8C9BFF",
+  "#9AA0B8",
+  "#DCE1FF",
+  "#F2F3F8",
+  "#FFFFFF"
+ ],
+ "frames": [
+  {
+   "file": "A-viewer",
+   "flow": "A",
+   "stage": "viewer",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
     {
-      "file": "F0-viewer",
-      "flow": "A",
-      "stage": "viewer",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": null
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
     },
     {
-      "file": "F1-share-light",
-      "flow": "A",
-      "stage": "share",
-      "theme": "light",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
+     "id": "more",
+     "role": "button",
+     "label": "More photo actions",
+     "rect_px": [
+      890,
+      137,
+      166,
+      138
+     ],
+     "enabled": true
     },
     {
-      "file": "F1-share-dark",
-      "flow": "A",
-      "stage": "share",
-      "theme": "dark",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ],
+     "enabled": true
     },
     {
-      "file": "F1-share-200",
-      "flow": "A",
-      "stage": "share200",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ],
-      "share200_hit_px": {
-        "switch": [
-          104,
-          1215,
-          864,
-          285
-        ],
-        "share": [
-          118,
-          1640,
-          844,
-          185
-        ],
-        "back": [
-          810,
-          1880,
-          190,
-          150
-        ]
-      }
+     "id": "filmstrip-current",
+     "role": "button",
+     "label": "Current photo in filmstrip",
+     "rect_px": [
+      470,
+      1853,
+      140,
+      154
+     ],
+     "enabled": true
     },
     {
-      "file": "F2-sharesheet",
-      "flow": "A",
-      "stage": "chooser",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
+     "id": "slab-favourite",
+     "role": "button",
+     "label": "Favourite",
+     "rect_px": [
+      215.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
     },
     {
-      "file": "F2-no-location-error",
-      "flow": "A",
-      "stage": "share-error",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
+     "id": "slab-edit",
+     "role": "button",
+     "label": "Edit",
+     "rect_px": [
+      377.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
     },
     {
-      "file": "F3-return",
-      "flow": "A",
-      "stage": "viewer",
-      "theme": "dark",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": null
+     "id": "slab-share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      540.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
     },
     {
-      "file": "B1-wallpaper-action",
-      "flow": "B",
-      "stage": "more-wallpaper",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "B2-android-wallpaper",
-      "flow": "B",
-      "stage": "wallpaper",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "B3-missing-handler",
-      "flow": "B",
-      "stage": "no-handler",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "C1-copy-action",
-      "flow": "C",
-      "stage": "more-copy",
-      "theme": "dark",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "C2-copy-feedback",
-      "flow": "C",
-      "stage": "copy",
-      "theme": "dark",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": null
-    },
-    {
-      "file": "C3-revoked",
-      "flow": "C",
-      "stage": "copy-error",
-      "theme": "light",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D0-details-light",
-      "flow": "D",
-      "stage": "details",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D0-details-dark",
-      "flow": "D",
-      "stage": "details",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D1-edit-date-place",
-      "flow": "D",
-      "stage": "edit",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D1-keyboard-open",
-      "flow": "D",
-      "stage": "ime",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D2-undo",
-      "flow": "D",
-      "stage": "saved",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "D2-denied",
-      "flow": "D",
-      "stage": "denied",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "portrait",
-      "px": [
-        1080,
-        2340
-      ],
-      "insets_ltrb_px": [
-        0,
-        125,
-        0,
-        135
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        90,
-        280,
-        900,
-        1300
-      ],
-      "back_hit_px": [
-        24,
-        137,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        890,
-        137,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        470,
-        1853,
-        140,
-        154
-      ],
-      "slab_px": [
-        215,
-        2042,
-        650,
-        145
-      ],
-      "action_hit_width_px": 162.5,
-      "sheet_px": [
-        52,
-        1040,
-        976,
-        1015
-      ]
-    },
-    {
-      "file": "A-landscape",
-      "flow": "A",
-      "stage": "share",
-      "theme": "dark",
-      "photo": "bright",
-      "orientation": "landscape",
-      "px": [
-        2340,
-        1080
-      ],
-      "insets_ltrb_px": [
-        125,
-        68,
-        135,
-        0
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        350,
-        138,
-        1640,
-        730
-      ],
-      "back_hit_px": [
-        149,
-        80,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        2015,
-        80,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        1100,
-        758,
-        140,
-        154
-      ],
-      "slab_px": [
-        820,
-        925,
-        700,
-        145
-      ],
-      "action_hit_width_px": 175,
-      "sheet_px": [
-        1175,
-        188,
-        950,
-        782
-      ]
-    },
-    {
-      "file": "B-landscape",
-      "flow": "B",
-      "stage": "more-wallpaper",
-      "theme": "dark",
-      "photo": "dark",
-      "orientation": "landscape",
-      "px": [
-        2340,
-        1080
-      ],
-      "insets_ltrb_px": [
-        125,
-        68,
-        135,
-        0
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        350,
-        138,
-        1640,
-        730
-      ],
-      "back_hit_px": [
-        149,
-        80,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        2015,
-        80,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        1100,
-        758,
-        140,
-        154
-      ],
-      "slab_px": [
-        820,
-        925,
-        700,
-        145
-      ],
-      "action_hit_width_px": 175,
-      "sheet_px": [
-        1175,
-        188,
-        950,
-        782
-      ]
-    },
-    {
-      "file": "C-landscape",
-      "flow": "C",
-      "stage": "more-copy",
-      "theme": "light",
-      "photo": "bright",
-      "orientation": "landscape",
-      "px": [
-        2340,
-        1080
-      ],
-      "insets_ltrb_px": [
-        125,
-        68,
-        135,
-        0
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        350,
-        138,
-        1640,
-        730
-      ],
-      "back_hit_px": [
-        149,
-        80,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        2015,
-        80,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        1100,
-        758,
-        140,
-        154
-      ],
-      "slab_px": [
-        820,
-        925,
-        700,
-        145
-      ],
-      "action_hit_width_px": 175,
-      "sheet_px": [
-        1175,
-        188,
-        950,
-        782
-      ]
-    },
-    {
-      "file": "D-landscape",
-      "flow": "D",
-      "stage": "edit",
-      "theme": "light",
-      "photo": "dark",
-      "orientation": "landscape",
-      "px": [
-        2340,
-        1080
-      ],
-      "insets_ltrb_px": [
-        125,
-        68,
-        135,
-        0
-      ],
-      "density_px_per_dp": 2.8125,
-      "photo_px": [
-        350,
-        138,
-        1640,
-        730
-      ],
-      "back_hit_px": [
-        149,
-        80,
-        144,
-        138
-      ],
-      "more_hit_px": [
-        2015,
-        80,
-        166,
-        138
-      ],
-      "filmstrip_hit_px": [
-        1100,
-        758,
-        140,
-        154
-      ],
-      "slab_px": [
-        820,
-        925,
-        700,
-        145
-      ],
-      "action_hit_width_px": 175,
-      "sheet_px": [
-        1175,
-        188,
-        950,
-        782
-      ]
+     "id": "slab-delete",
+     "role": "button",
+     "label": "Delete",
+     "rect_px": [
+      702.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
     }
-  ]
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "A-off-light",
+   "flow": "A",
+   "stage": "off",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1563.4,
+    976,
+    631.6
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, Off",
+     "rect_px": [
+      118,
+      1690.7,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1705.1,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "Off",
+    "dispatch": "original URI (user chose Off)",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-off-dark",
+   "flow": "A",
+   "stage": "off",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1563.4,
+    976,
+    631.6
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, Off",
+     "rect_px": [
+      118,
+      1690.7,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1705.1,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "Off",
+    "dispatch": "original URI (user chose Off)",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-preparing-light",
+   "flow": "A",
+   "stage": "preparing",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Preparing a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": false
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "disabled",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-preparing-dark",
+   "flow": "A",
+   "stage": "preparing",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Preparing a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": false
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "disabled",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-ready-light",
+   "flow": "A",
+   "stage": "ready",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1642.4,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-ready-dark",
+   "flow": "A",
+   "stage": "ready",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1642.4,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-nogps-light",
+   "flow": "A",
+   "stage": "nogps",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1642.4,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-nogps-dark",
+   "flow": "A",
+   "stage": "nogps",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      792,
+      1642.4,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-failed-light",
+   "flow": "A",
+   "stage": "failed",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't prepare a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1737.0,
+    864,
+    252.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-failed-dark",
+   "flow": "A",
+   "stage": "failed",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't prepare a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1737.0,
+    864,
+    252.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unknown-light",
+   "flow": "A",
+   "stage": "unknown",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't check the location",
+     "rect_px": [
+      114,
+      1797.8,
+      852,
+      185.2
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1791.8,
+    864,
+    197.2
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unknown-dark",
+   "flow": "A",
+   "stage": "unknown",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1500.7,
+    976,
+    694.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't check the location",
+     "rect_px": [
+      114,
+      1797.8,
+      852,
+      185.2
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1627.9,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1791.8,
+    864,
+    197.2
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unsupported-light",
+   "flow": "A",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "dark",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Can't make a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      844.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel"
+   ],
+   "focus_ring_px": [
+    108,
+    1737.0,
+    864,
+    252.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unsupported-dark",
+   "flow": "A",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1445.8,
+    976,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Can't make a copy without location",
+     "rect_px": [
+      114,
+      1743.0,
+      852,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      1573.1,
+      844,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      844.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel"
+   ],
+   "focus_ring_px": [
+    108,
+    1737.0,
+    864,
+    252.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-off-light-200",
+   "flow": "A",
+   "stage": "off",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    728.3,
+    976,
+    1466.7
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, Off",
+     "rect_px": [
+      118,
+      982.8,
+      844,
+      417.5
+     ],
+     "enabled": true,
+     "indicator_px": [
+      722.0,
+      1081.0,
+      210.0,
+      111.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "Off",
+    "dispatch": "original URI (user chose Off)",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-preparing-light-200",
+   "flow": "A",
+   "stage": "preparing",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    383.4,
+    976,
+    1811.6
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Preparing a copy without location",
+     "rect_px": [
+      114,
+      1203.9,
+      852,
+      700.1
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      638.0,
+      844,
+      519.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": false
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "disabled",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-ready-light-200",
+   "flow": "A",
+   "stage": "ready",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    281.0,
+    976,
+    1914.0
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      535.6,
+      844,
+      417.5
+     ],
+     "enabled": true,
+     "indicator_px": [
+      722.0,
+      633.8,
+      210.0,
+      111.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-nogps-light-200",
+   "flow": "A",
+   "stage": "nogps",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    493.1,
+    976,
+    1701.9
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      118,
+      747.7,
+      844,
+      417.5
+     ],
+     "enabled": true,
+     "indicator_px": [
+      722.0,
+      845.9,
+      210.0,
+      111.0
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-failed-light-200",
+   "flow": "A",
+   "stage": "failed",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    273.7,
+    976,
+    1921.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't prepare a copy without location",
+     "rect_px": [
+      114,
+      1094.2,
+      852,
+      809.8
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      528.3,
+      844,
+      519.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1088.2,
+    864,
+    821.8
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unknown-light-200",
+   "flow": "A",
+   "stage": "unknown",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    178.6,
+    976,
+    2016.4
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't check the location",
+     "rect_px": [
+      114,
+      999.1,
+      852,
+      904.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      433.2,
+      844,
+      519.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    993.1,
+    864,
+    916.9
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-unsupported-light-200",
+   "flow": "A",
+   "stage": "unsupported",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    281.0,
+    976,
+    1914.0
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Can't make a copy without location",
+     "rect_px": [
+      114,
+      1101.5,
+      852,
+      802.5
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      535.6,
+      844,
+      519.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      844.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel"
+   ],
+   "focus_ring_px": [
+    108,
+    1095.5,
+    864,
+    814.5
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-failed-dark-200",
+   "flow": "A",
+   "stage": "failed",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    273.7,
+    976,
+    1921.3
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't prepare a copy without location",
+     "rect_px": [
+      114,
+      1094.2,
+      852,
+      809.8
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      118,
+      528.3,
+      844,
+      519.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      1926.0,
+      410.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1088.2,
+    864,
+    821.8
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-ready-light-landscape",
+   "flow": "A",
+   "stage": "ready",
+   "theme": "light",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "modal_px": [
+    1330,
+    259.6,
+    855,
+    800.4
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "remove-location",
+     "role": "switch",
+     "label": "Remove location, On",
+     "rect_px": [
+      1396,
+      386.9,
+      723,
+      153.9
+     ],
+     "enabled": true,
+     "indicator_px": [
+      1949,
+      401.3,
+      140,
+      74
+     ]
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      1396.0,
+      870.0,
+      349.5,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      1769.5,
+      870.0,
+      349.5,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "remove-location",
+    "cancel",
+    "share"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "remove_location": "On",
+    "dispatch": "verified temporary derivative",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-failed-dark-landscape",
+   "flow": "A",
+   "stage": "failed",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "modal_px": [
+    1330,
+    310.8,
+    855,
+    749.2
+   ],
+   "dismiss": "Cancel button, system Back, or tap on the scrim; returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "status-message",
+     "role": "alert",
+     "label": "Couldn't prepare a copy without location",
+     "rect_px": [
+      1392,
+      608.0,
+      731,
+      240.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "remove-location-state",
+     "role": "status",
+     "label": "Remove location, On, stays on for this share",
+     "rect_px": [
+      1396,
+      438.1,
+      723,
+      153.9
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      1396.0,
+      870.0,
+      349.5,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      1769.5,
+      870.0,
+      349.5,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "status-message",
+    "remove-location-state",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    1386,
+    602.0,
+    743,
+    252.0
+   ],
+   "status": {
+    "remove_location": "On",
+    "dispatch": "blocked: no intent, no original fallback",
+    "preference_changed_silently": false
+   },
+   "note": ""
+  },
+  {
+   "file": "A-sharesheet",
+   "flow": "A",
+   "stage": "dispatch",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1215,
+    976,
+    980
+   ],
+   "dismiss": "Android owns this screen; system Back returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": [
+    "conceptual"
+   ],
+   "controls": [],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "A-return",
+   "flow": "A",
+   "stage": "return",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "more",
+     "role": "button",
+     "label": "More photo actions",
+     "rect_px": [
+      890,
+      137,
+      166,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ],
+     "enabled": true
+    },
+    {
+     "id": "filmstrip-current",
+     "role": "button",
+     "label": "Current photo in filmstrip",
+     "rect_px": [
+      470,
+      1853,
+      140,
+      154
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-favourite",
+     "role": "button",
+     "label": "Favourite",
+     "rect_px": [
+      215.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-edit",
+     "role": "button",
+     "label": "Edit",
+     "rect_px": [
+      377.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      540.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-delete",
+     "role": "button",
+     "label": "Delete",
+     "rect_px": [
+      702.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "BC-menu-light",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    496,
+    290,
+    560,
+    632
+   ],
+   "dismiss": "Tap outside the menu or system Back closes it with no action (popup menu)",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      504,
+      306,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      504,
+      456,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      504,
+      606,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      504,
+      756,
+      544,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "focus_ring_px": [
+    504,
+    306,
+    544,
+    150
+   ],
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing, only when eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed"
+     }
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "BC-menu-dark",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    496,
+    290,
+    560,
+    632
+   ],
+   "dismiss": "Tap outside the menu or system Back closes it with no action (popup menu)",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      504,
+      306,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      504,
+      456,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      504,
+      606,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      504,
+      756,
+      544,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "focus_ring_px": [
+    504,
+    306,
+    544,
+    150
+   ],
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing, only when eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed"
+     }
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "BC-menu-dark-landscape",
+   "flow": "BC",
+   "stage": "menu",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "modal_px": [
+    305,
+    250,
+    560,
+    632
+   ],
+   "dismiss": "Tap outside the menu or system Back closes it with no action (popup menu)",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "ai-edit",
+     "role": "menuitem",
+     "label": "AI Edit",
+     "rect_px": [
+      313,
+      266,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "swap-person",
+     "role": "menuitem",
+     "label": "Swap person",
+     "rect_px": [
+      313,
+      416,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "set-wallpaper",
+     "role": "menuitem",
+     "label": "Set as wallpaper",
+     "rect_px": [
+      313,
+      566,
+      544,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "copy-image",
+     "role": "menuitem",
+     "label": "Copy image",
+     "rect_px": [
+      313,
+      716,
+      544,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "ai-edit",
+    "swap-person",
+    "set-wallpaper",
+    "copy-image"
+   ],
+   "focus_ring_px": [
+    313,
+    266,
+    544,
+    150
+   ],
+   "status": {
+    "menu_items": [
+     {
+      "id": "ai-edit",
+      "label": "AI Edit",
+      "origin": "existing"
+     },
+     {
+      "id": "swap-person",
+      "label": "Swap person",
+      "origin": "existing, only when eligible"
+     },
+     {
+      "id": "set-wallpaper",
+      "label": "Set as wallpaper",
+      "origin": "proposed"
+     },
+     {
+      "id": "copy-image",
+      "label": "Copy image",
+      "origin": "proposed"
+     }
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "B-wallpaper-handoff",
+   "flow": "B",
+   "stage": "handoff",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1215,
+    976,
+    980
+   ],
+   "dismiss": "Android owns this screen; system Back returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": [
+    "conceptual"
+   ],
+   "controls": [],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "B-no-handler-light",
+   "flow": "B",
+   "stage": "no-handler",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1800.5,
+    976,
+    394.5
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "No app can set wallpaper",
+     "rect_px": [
+      114,
+      1836.5,
+      852,
+      146.5
+     ],
+     "enabled": true
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118.0,
+      2005.0,
+      844.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "ok"
+   ],
+   "focus_ring_px": [
+    108,
+    1830.5,
+    864,
+    158.5
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "B-unsupported-dark",
+   "flow": "B",
+   "stage": "unsupported",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1632.3,
+    976,
+    562.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Can't use this file as wallpaper",
+     "rect_px": [
+      114,
+      1668.3,
+      852,
+      314.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118.0,
+      2005.0,
+      844.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "ok"
+   ],
+   "focus_ring_px": [
+    108,
+    1662.3,
+    864,
+    326.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "C-copy-feedback",
+   "flow": "C",
+   "stage": "feedback",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1215,
+    976,
+    980
+   ],
+   "dismiss": "Android owns this screen; system Back returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": [
+    "conceptual"
+   ],
+   "controls": [],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "C-revoked-light",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Couldn't copy image",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      197.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      118.0,
+      2005.0,
+      844.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "ok"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    209.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "C-revoked-dark-landscape",
+   "flow": "C",
+   "stage": "revoked",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    330,
+    90,
+    900,
+    800
+   ],
+   "modal_px": [
+    1330,
+    614.3,
+    855,
+    445.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Couldn't copy image",
+     "rect_px": [
+      1392,
+      650.3,
+      731,
+      197.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "ok",
+     "role": "button",
+     "label": "OK",
+     "rect_px": [
+      1396.0,
+      870.0,
+      723.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "ok"
+   ],
+   "focus_ring_px": [
+    1386,
+    644.3,
+    743,
+    209.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "BC-return",
+   "flow": "BC",
+   "stage": "return",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "more",
+     "role": "button",
+     "label": "More photo actions",
+     "rect_px": [
+      890,
+      137,
+      166,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      280,
+      900,
+      1300
+     ],
+     "enabled": true
+    },
+    {
+     "id": "filmstrip-current",
+     "role": "button",
+     "label": "Current photo in filmstrip",
+     "rect_px": [
+      470,
+      1853,
+      140,
+      154
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-favourite",
+     "role": "button",
+     "label": "Favourite",
+     "rect_px": [
+      215.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-edit",
+     "role": "button",
+     "label": "Edit",
+     "rect_px": [
+      377.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-share",
+     "role": "button",
+     "label": "Share",
+     "rect_px": [
+      540.0,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    },
+    {
+     "id": "slab-delete",
+     "role": "button",
+     "label": "Delete",
+     "rect_px": [
+      702.5,
+      2042,
+      162.5,
+      145
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-details-light",
+   "flow": "D",
+   "stage": "details-normal",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "edit-date-location",
+     "role": "button",
+     "label": "Edit date and location",
+     "rect_px": [
+      60,
+      1452.5,
+      960,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "edit-date-location"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-details-dark",
+   "flow": "D",
+   "stage": "details-normal",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "edit-date-location",
+     "role": "button",
+     "label": "Edit date and location",
+     "rect_px": [
+      60,
+      1452.5,
+      960,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "edit-date-location"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-details-nolocation-light",
+   "flow": "D",
+   "stage": "details-nolocation",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "edit-date-location",
+     "role": "button",
+     "label": "Edit date and location",
+     "rect_px": [
+      60,
+      1452.5,
+      960,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "edit-date-location"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-details-readonly-dark",
+   "flow": "D",
+   "stage": "details-readonly",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "readonly-message",
+     "role": "status",
+     "label": "Date and location cannot be edited for this file",
+     "rect_px": [
+      54,
+      1446.5,
+      972,
+      228.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "readonly-message"
+   ],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-editor-light",
+   "flow": "D",
+   "stage": "edit",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    145,
+    900,
+    640
+   ],
+   "modal_px": [
+    0,
+    0,
+    1080,
+    2340
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; IME dismissal never discards",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      90,
+      145,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-date",
+     "role": "field",
+     "label": "Date, 14 Jul 2024",
+     "rect_px": [
+      60,
+      898.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      60,
+      1070.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-zone",
+     "role": "field",
+     "label": "Time zone, UTC+02:00, Europe/Amsterdam",
+     "rect_px": [
+      60,
+      1242.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-location",
+     "role": "field",
+     "label": "Location, Map point 10.00\u00b0 N, 20.00\u00b0 E (synthetic)",
+     "rect_px": [
+      60,
+      1414.3,
+      960,
+      200.8
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      60.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      552.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-date",
+    "field-time",
+    "field-zone",
+    "field-location",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": null,
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-dark",
+   "flow": "D",
+   "stage": "edit",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    145,
+    900,
+    640
+   ],
+   "modal_px": [
+    0,
+    0,
+    1080,
+    2340
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; IME dismissal never discards",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      90,
+      145,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-date",
+     "role": "field",
+     "label": "Date, 14 Jul 2024",
+     "rect_px": [
+      60,
+      898.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      60,
+      1070.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-zone",
+     "role": "field",
+     "label": "Time zone, UTC+02:00, Europe/Amsterdam",
+     "rect_px": [
+      60,
+      1242.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-location",
+     "role": "field",
+     "label": "Location, Map point 10.00\u00b0 N, 20.00\u00b0 E (synthetic)",
+     "rect_px": [
+      60,
+      1414.3,
+      960,
+      200.8
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      60.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      552.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-date",
+    "field-time",
+    "field-zone",
+    "field-location",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": null,
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-nolocation-light",
+   "flow": "D",
+   "stage": "nolocation",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    145,
+    900,
+    640
+   ],
+   "modal_px": [
+    0,
+    0,
+    1080,
+    2340
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; IME dismissal never discards",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      90,
+      145,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-date",
+     "role": "field",
+     "label": "Date, 14 Jul 2024",
+     "rect_px": [
+      60,
+      898.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      60,
+      1070.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-zone",
+     "role": "field",
+     "label": "Time zone, UTC+02:00, Europe/Amsterdam",
+     "rect_px": [
+      60,
+      1242.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-location",
+     "role": "field",
+     "label": "Location, No location. Add location",
+     "rect_px": [
+      60,
+      1414.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      60.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      552.0,
+      2035,
+      468.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-date",
+    "field-time",
+    "field-zone",
+    "field-location",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": null,
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-ime-light",
+   "flow": "D",
+   "stage": "edit-ime",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    145,
+    900,
+    300
+   ],
+   "modal_px": [
+    0,
+    0,
+    1080,
+    2340
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; hiding the keyboard (IME hide key or first Back) keeps the draft",
+   "ime_px": [
+    0,
+    1385,
+    1080,
+    820
+   ],
+   "system_owned": [
+    "ime"
+   ],
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      90,
+      145,
+      900,
+      300
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      60,
+      558.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-zone",
+     "role": "field",
+     "label": "Time zone, UTC+02:00, Europe/Amsterdam",
+     "rect_px": [
+      60,
+      730.3,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      60.0,
+      1219,
+      468.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      552.0,
+      1219,
+      468.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-time",
+    "field-zone",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": "field-time",
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-200-ime-light",
+   "flow": "D",
+   "stage": "edit-ime",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    145,
+    900,
+    170
+   ],
+   "modal_px": [
+    0,
+    0,
+    1080,
+    2340
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; hiding the keyboard (IME hide key or first Back) keeps the draft",
+   "ime_px": [
+    0,
+    1385,
+    1080,
+    820
+   ],
+   "system_owned": [
+    "ime"
+   ],
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      90,
+      145,
+      900,
+      170
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      60,
+      345,
+      960,
+      292.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      60.0,
+      1180.0,
+      468.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      552.0,
+      1180.0,
+      468.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-time",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": "field-time",
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-dark-landscape",
+   "flow": "D",
+   "stage": "edit",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    145,
+    80,
+    760,
+    980
+   ],
+   "modal_px": [
+    0,
+    0,
+    2340,
+    1080
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; IME dismissal never discards",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      145,
+      80,
+      760,
+      980
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-date",
+     "role": "field",
+     "label": "Date, 14 Jul 2024",
+     "rect_px": [
+      955,
+      163.3,
+      1230,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      955,
+      335.3,
+      1230,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-zone",
+     "role": "field",
+     "label": "Time zone, UTC+02:00, Europe/Amsterdam",
+     "rect_px": [
+      955,
+      507.3,
+      1230,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-location",
+     "role": "field",
+     "label": "Location, Map point 10.00\u00b0 N, 20.00\u00b0 E (synthetic)",
+     "rect_px": [
+      955,
+      679.3,
+      1230,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      955.0,
+      910,
+      603.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      1582.0,
+      910,
+      603.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-date",
+    "field-time",
+    "field-zone",
+    "field-location",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": null,
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-editor-200-ime-dark-landscape",
+   "flow": "D",
+   "stage": "edit-ime",
+   "theme": "dark",
+   "orientation": "landscape",
+   "font_scale": 2,
+   "photo": "bright",
+   "px": [
+    2340,
+    1080
+   ],
+   "insets_ltrb_px": [
+    125,
+    68,
+    135,
+    0
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    145,
+    80,
+    420,
+    556
+   ],
+   "modal_px": [
+    0,
+    0,
+    2340,
+    1080
+   ],
+   "dismiss": "Cancel or system Back: with unsaved changes, asks Discard or Keep editing; hiding the keyboard (IME hide key or first Back) keeps the draft",
+   "ime_px": [
+    125,
+    650,
+    2080,
+    430
+   ],
+   "system_owned": [
+    "ime"
+   ],
+   "controls": [
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo being edited",
+     "rect_px": [
+      145,
+      80,
+      420,
+      556
+     ],
+     "enabled": true
+    },
+    {
+     "id": "field-time",
+     "role": "field",
+     "label": "Time, 14:05",
+     "rect_px": [
+      615,
+      80,
+      1570,
+      292.0
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      615.0,
+      447.0,
+      773.0,
+      189.0
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "save",
+     "role": "button",
+     "label": "Save",
+     "rect_px": [
+      1412.0,
+      447.0,
+      773.0,
+      189.0
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "photo",
+    "field-time",
+    "cancel",
+    "save"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "focused_field": "field-time",
+    "unresolved_pending_gap_pass": [
+     "transaction mechanism",
+     "coordinate validation",
+     "civil time and UTC offset handling",
+     "consent renewal",
+     "atomicity and rollback",
+     "backup retention",
+     "index reconciliation"
+    ]
+   },
+   "note": ""
+  },
+  {
+   "file": "D-discard-light",
+   "flow": "D",
+   "stage": "discard",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Discard changes?",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      197.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "keep-editing",
+     "role": "button",
+     "label": "Keep editing",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "discard",
+     "role": "button",
+     "label": "Discard",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "keep-editing",
+    "discard"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    209.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-consent",
+   "flow": "D",
+   "stage": "consent",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1215,
+    976,
+    980
+   ],
+   "dismiss": "Android owns this screen; system Back returns to the same viewer item",
+   "ime_px": null,
+   "system_owned": [
+    "conceptual"
+   ],
+   "controls": [],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [],
+   "focus_ring_px": null,
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-write-failed-light",
+   "flow": "D",
+   "stage": "write-failed",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Couldn't save changes",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      197.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    209.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-write-failed-dark",
+   "flow": "D",
+   "stage": "write-failed",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    280,
+    900,
+    1300
+   ],
+   "modal_px": [
+    52,
+    1749.3,
+    976,
+    445.7
+   ],
+   "dismiss": "The listed button or system Back returns to the same viewer item; nothing is changed",
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "notice-message",
+     "role": "alert",
+     "label": "Couldn't save changes",
+     "rect_px": [
+      114,
+      1785.3,
+      852,
+      197.7
+     ],
+     "enabled": true
+    },
+    {
+     "id": "cancel",
+     "role": "button",
+     "label": "Cancel",
+     "rect_px": [
+      118.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true,
+     "dismiss": true
+    },
+    {
+     "id": "retry",
+     "role": "button",
+     "label": "Retry",
+     "rect_px": [
+      552.0,
+      2005.0,
+      410.0,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [
+    "back",
+    "more",
+    "photo",
+    "filmstrip-current",
+    "slab-favourite",
+    "slab-edit",
+    "slab-share",
+    "slab-delete"
+   ],
+   "focus_order": [
+    "notice-message",
+    "cancel",
+    "retry"
+   ],
+   "focus_ring_px": [
+    108,
+    1779.3,
+    864,
+    209.7
+   ],
+   "status": {},
+   "note": ""
+  },
+  {
+   "file": "D-saved-undo-light",
+   "flow": "D",
+   "stage": "details-undo",
+   "theme": "light",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "edit-date-location",
+     "role": "button",
+     "label": "Edit date and location",
+     "rect_px": [
+      60,
+      1452.5,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "undo",
+     "role": "button",
+     "label": "Undo date and location change",
+     "rect_px": [
+      780,
+      2025,
+      240,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "edit-date-location",
+    "undo"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "undo": "restores previous values; after restart only with fresh permission (unresolved, gap pass)"
+   },
+   "note": ""
+  },
+  {
+   "file": "D-saved-undo-dark",
+   "flow": "D",
+   "stage": "details-undo",
+   "theme": "dark",
+   "orientation": "portrait",
+   "font_scale": 1,
+   "photo": "bright",
+   "px": [
+    1080,
+    2340
+   ],
+   "insets_ltrb_px": [
+    0,
+    125,
+    0,
+    135
+   ],
+   "density_px_per_dp": 2.8125,
+   "photo_px": [
+    90,
+    290,
+    900,
+    640
+   ],
+   "modal_px": null,
+   "dismiss": null,
+   "ime_px": null,
+   "system_owned": null,
+   "controls": [
+    {
+     "id": "back",
+     "role": "button",
+     "label": "Back",
+     "rect_px": [
+      24,
+      137,
+      144,
+      138
+     ],
+     "enabled": true
+    },
+    {
+     "id": "photo",
+     "role": "image",
+     "label": "Synthetic lake photo",
+     "rect_px": [
+      90,
+      290,
+      900,
+      640
+     ],
+     "enabled": true
+    },
+    {
+     "id": "edit-date-location",
+     "role": "button",
+     "label": "Edit date and location",
+     "rect_px": [
+      60,
+      1452.5,
+      960,
+      150
+     ],
+     "enabled": true
+    },
+    {
+     "id": "undo",
+     "role": "button",
+     "label": "Undo date and location change",
+     "rect_px": [
+      780,
+      2025,
+      240,
+      150
+     ],
+     "enabled": true
+    }
+   ],
+   "inert_background_controls": [],
+   "focus_order": [
+    "back",
+    "photo",
+    "edit-date-location",
+    "undo"
+   ],
+   "focus_ring_px": null,
+   "status": {
+    "undo": "restores previous values; after restart only with fresh permission (unresolved, gap pass)"
+   },
+   "note": ""
+  }
+ ]
 }
