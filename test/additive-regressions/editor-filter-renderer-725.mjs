@@ -20,3 +20,13 @@ test('EDIT-7 device test uses packaged LUTs and a measured perceptual limit', ()
     assert.match(source, /maxDeltaE <= 1\.0/);
     assert.match(source, /MissingAssetException/);
 });
+
+test('EDIT-7 metric and preview evidence uses the retained emulator log tag', () => {
+    const source = read('app/src/androidTest/java/nl/atlas/gallery/featureeditor/render/FilterRendererTest.kt');
+    const kit = read('app/src/androidTest/java/nl/atlas/gallery/featureeditor/render/RenderTestKit.kt');
+    const collector = read('scripts/ci_android_upgrade_emulator.sh');
+    assert.match(source, /RenderTestKit\.log\("EDIT7 id=.*maxDeltaE76=.*referenceError8bit=/);
+    assert.match(source, /RenderTestKit\.log\("EDIT7 preview id=.*maxDeltaE76=.*swatches=/);
+    assert.match(kit, /const val TAG = "ATLAS_EDIT2"/);
+    assert.match(collector, /adb logcat -d -s ATLAS_EDIT2:I/);
+});
