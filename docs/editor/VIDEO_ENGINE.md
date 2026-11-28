@@ -1,0 +1,30 @@
+# EDIT-12 — Pure Kotlin video edit recipe and render plan
+
+Issue: [#730](https://github.com/LPStruiksma/atlas-gallery/issues/730), goal [#629](https://github.com/LPStruiksma/atlas-gallery/issues/629), parity target [PARITY.md](PARITY.md). This unit is a non-destructive **planning engine**, not a playable editor, encoder, Media3 adapter, or claim of current Samsung device parity.
+
+## Model and persistence
+
+Package: nl.atlas.gallery.featureeditor.video.engine (separate from the photo engine).
+
+- **VideoEditRecipe** (atlas.video-edit-recipe, v1) stores ordered clips, per-source speed partitions, audio beds, timed overlay layers, and transitions. A clip has a stable ID, source URI, half-open [inUs,outUs) source trim, output timelineStartUs, volume/mute, a quarter-turn rotation, normalized crop, and an optional Atlas LUT filter. NormRect, EditOperation.Filter, and OverlayLayer reuse the photo engine **by reference**; the photo engine is not changed.
+- Source/time ranges are signed 64-bit **microseconds**; all starts inclusive, ends exclusive. Output duration for a clip is the sum of (source segment length / speed) for rates 0.25×–4×, rounded **once** to the nearest microsecond (half up) using decimal arithmetic. Empty speed partitions mean 1× for the entire trimmed interval. Explicit partitions must be ordered, adjacent, gap-free, and cover exactly the trimmed source.
+- Clips cannot overlap in output time; gaps are permitted (e.g. for an incomplete draft). Transitions require neighbouring, touching clips and define a boundary effect with no implicit timeline shortening. CUT lasts zero; FADE, DISSOLVE, and SLIDE have positive durations with per-clip transition budgets. Cross-clip effects are *render-plan instructions*, not a claim that an individual EditedMediaItem alone can mix them.
+- Timed overlays use the same photo OverlayLayer for text/captions, stickers, strokes/drawing, shapes and emoji. Their [startUs,endUs) is in output time and must fit the video. Audio beds independently represent music or effects with output-time range, volume and optional looping; clips carry source-audio volume/mute. This is data only, not audio decoding or licence grants.
+- **VideoRecipeJson.encode/decode** writes strict, deterministic JSON: fixed field order, sorted overlay properties, preserved list order, finite numbers, no duplicate fields or permissive unknown versions. Reader depth and input length are bounded. No Android JSON stubs or new dependency. A future schema needs an explicit migration; v1 will not silently strip fields from a newer version.
+- **VideoEditHistory** is immutable snapshot history with preview, commit, apply, cancelPending, undo, redo, revertAll and setComparing. Pending is visible but not saved; one drag is one undo entry. New commits clear redo. encodeHistory/decodeHistory preserve committed undo/redo snapshots for process restoration but omit the transient drag and compare flag. Persist the committed recipe on Save.
+
+**split(clipId, sourceUs, newClipId)** divides the clip at an interior *source* timestamp, clips its source-time speed partitions, retains both halves' geometry/filter/audio policy, inserts a CUT boundary and retargets the original outgoing transition. Decimal rounding can change total output duration by one microsecond; subsequent clip positions and timed layer endpoints shift at the splice to preserve alignment. A split can be one history step via history.apply(recipe.split(...)). Invalid splits, timeline overlaps, out-of-range speeds, malformed overlay references and oversized output times fail closed.
+
+## Render-plan contract (future EDIT-13 adapter)
+
+**recipe.toRenderPlan(VideoRenderOutput.Movie)** produces ordered VideoRenderClip descriptors with source URI, trim window, 1×/section speed, output start/end, crop, quarter-turn, filter strength/LUT, and source-audio volume/mute. One such descriptor is the intended input to one Media3 EditedMediaItem plus per-clip effects when support is available. Timed overlays, transitions and audioBeds are **separate composition tracks**; the adapter must explicitly implement or reject them, not silently discard operations. A render plan is deterministic and does no IO.
+
+**StillFrame(atUs)** selects one occupied output timestamp. It maps to a decoded/composited frame for a subsequent still-image writer; positions in gaps are invalid. **Gif(startUs,endUs,fps,loop)** selects a contiguous output interval at 1–60 fps for a future GIF encoder; gaps or out-of-bounds intervals are invalid. Movie export requests the full project duration. These *plan outputs* do **not** save a frame, encode a GIF or write MediaStore today.
+
+**preserveSourceDynamicRange=true** in every plan is a strict adapter requirement: if HDR metadata/color transfer cannot be retained by the selected codec/device, the adapter must fail or offer a documented user choice; **no silent HDR→SDR fallback**. The adapter also owns original audio resampling with speed, transition mixing, supported LUT discovery, source duration probing, codec/container/bitrate/resolution selection, lifecycle/cancellation, export atomicity and publish/save/revert.
+
+## Boundaries and verification
+
+The bounded source and output duration is 24 h per project. The engine validates output clip non-overlap, source speed partitioning, per-clip length, timed overlays, audio ranges and transition adjacency/budgets before a render plan can be built. Video filters reuse Atlas descriptors, **not** proprietary Samsung looks; renderer fidelity is future work. A serialised recipe alone never modifies source bytes or gives access to private media.
+
+JVM regression tests (VideoEngineTest) cover canonical JSON + history round-trip, duplicate/unknown/future JSON rejection, clip overlap and speed-section invariants, exact duration at 0.25×/0.5×/1×/2×/4×, split and undo/redo, filters/crop/mute/audio/overlays in a render plan, and valid/invalid still frame and GIF requests. Repository CI is the authoritative compilation/test gate. No physical S24+ video, full render, HDR or GIF artifact is asserted as verified by EDIT-12.
