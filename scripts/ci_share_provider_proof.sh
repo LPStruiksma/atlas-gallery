@@ -96,24 +96,59 @@ def android_user(s):
         return int(s)
     m = re.fullmatch(r"u(\d+)_a(\d+)", s)
     return 100000 * int(m[1]) + 10000 + int(m[2]) if m else None
-def process(pkg, wanted_uid):
-    need(uid(pkg) == wanted_uid, "actor-mismatch", "package UID changed")
+def process(pkg, wanted_uid, site, expected_pid=None):
+    # Fixed call sites and aggregate matching-row evidence only; never publish ps output.
+    observation = {"site": site, "actor": "publisher" if pkg == P else "recipient",
+                   "stage": "package-uid", "packageUidMatch": None,
+                   "matchingRowCount": None, "rowsComplete": False,
+                   "mainNameCount": None, "secondaryNameCount": None,
+                   "otherSameUidCount": None, "allUidMatch": None,
+                   "allMainNameMatch": None, "expectedPidProvided": expected_pid is not None,
+                   "anyExpectedPidMatch": None, "allExpectedPidMatch": None}
+    receipt["lastProcessObservation"] = observation
+    if site.startswith(("post-kill-", "command-post-kill-", "command-status-")):
+        receipt["lastPostKillProcessObservation"] = observation
+    observation["packageUidMatch"] = uid(pkg) == wanted_uid
+    need(observation["packageUidMatch"], "actor-mismatch", "package UID changed")
+    observation["stage"] = "ps-command"
     lines = shell("ps", "-A", "-o", "USER,PID,NAME").splitlines()
+    observation["stage"] = "ps-header"
     need(lines and lines[0].split() == ["USER", "PID", "NAME"],
          "provider-phase-runner-unsupported", "ps header")
     rows = []
+    def summarize_rows(complete):
+        observation.update({
+            "matchingRowCount": len(rows), "rowsComplete": complete,
+            "mainNameCount": sum(name == pkg for _, _, name in rows),
+            "secondaryNameCount": sum(name.startswith(pkg + ":") for _, _, name in rows),
+            "otherSameUidCount": sum(actor_uid == wanted_uid and name != pkg
+                                     and not name.startswith(pkg + ":")
+                                     for actor_uid, _, name in rows),
+            "allUidMatch": all(actor_uid == wanted_uid for actor_uid, _, _ in rows) if rows else None,
+            "allMainNameMatch": all(name == pkg for _, _, name in rows) if rows else None,
+            "anyExpectedPidMatch": any(pid == expected_pid for _, pid, _ in rows)
+                                   if rows and expected_pid is not None else None,
+            "allExpectedPidMatch": all(pid == expected_pid for _, pid, _ in rows)
+                                   if rows and expected_pid is not None else None,
+        })
+    observation["stage"] = "ps-row-parse"
     for line in lines[1:]:
         cols = line.split()
         if len(cols) != 3 or not cols[1].isdigit():
+            summarize_rows(False)
             fail("provider-phase-runner-unsupported", "unparseable process row")
         user, pid, name = cols
         actor_uid = android_user(user)
         if name == pkg or name.startswith(pkg + ":") or actor_uid == wanted_uid:
             rows.append((actor_uid, int(pid), name))
+    summarize_rows(True)
+    observation["stage"] = "uniqueness"
     if not rows:
+        observation["stage"] = "absent"
         return None
     need(len(rows) == 1 and rows[0][0] == wanted_uid and rows[0][2] == pkg,
          "provider-phase-runner-unsupported", "not a unique main process")
+    observation["stage"] = "unique"
     return rows[0][1]
 def files(pkg):
     top = shell("run-as", pkg, "ls", "-1").splitlines()
@@ -176,7 +211,7 @@ def command(phase, publisher=False, initial=False):
          and isinstance(rr["activityInstanceId"], str) and rr["activityInstanceId"]
          and rr["released"] is True and rr["ownerFinished"] is (phase in ("finish-owner", "deny", "finish-holder")),
          "malformed-result", "recipient field types")
-    need(rr["uid"] == recipient_uid and process(R, recipient_uid) == rr["pid"],
+    need(rr["uid"] == recipient_uid and process(R, recipient_uid, "command-" + phase + "-recipient-record", rr["pid"]) == rr["pid"],
          "actor-mismatch", "recipient UID/PID")
     if phase == "deny":
         need(rr["exceptionClass"] == "SecurityException" and rr["length"] is None
@@ -191,7 +226,7 @@ def command(phase, publisher=False, initial=False):
              "malformed-result", "status-only recipient read")
     if publisher:
         need(type(pp["publisherUid"]) is int and type(pp["publisherPid"]) is int
-             and pp["publisherUid"] == publisher_uid and process(P, publisher_uid) == pp["publisherPid"]
+             and pp["publisherUid"] == publisher_uid and process(P, publisher_uid, "command-" + phase + "-publisher-record", pp["publisherPid"]) == pp["publisherPid"]
              and pp["verifiedCallerPackage"] == R and pp["outcome"] == "ok"
              and type(pp["grantIssuedCount"]) is int and pp["grantIssuedCount"] == 1,
              "actor-mismatch", "publisher identity/status/grant count")
@@ -222,7 +257,9 @@ def grant(rr):
     # Raw URI, grant and owner identity remain in process memory; never serialize them.
     return (entries[0].strip(), owners[0])
 def holder_state(first, owner, require_removed=False):
-    need(process(R, recipient_uid) == first["pid"], "recipient-died-with-provider", "terminal PID changed")
+    need(process(R, recipient_uid, "terminal-holder-after-finish" if require_removed else
+                 "terminal-holder-before-finish", first["pid"]) == first["pid"],
+         "recipient-died-with-provider", "terminal PID changed")
     dump = shell("dumpsys", "activity", "activities")
     # Match the resumed ActivityRecord, not just a history row or a window title.
     resumed = set(re.findall(r"(?m)^\s*(?:mResumedActivity|topResumedActivity|ResumedActivity):?\s*[=:]?\s*(ActivityRecord\{[^\n]+\})\s*$", dump))
@@ -324,26 +361,29 @@ try:
     reread, _ = command("reread")
     same_owner(first, reread)
     need(grant(reread) == snapshot, "provider-phase-grant-lost", "grant changed after reread")
-    def eligible():
-        need(process(P, publisher_uid) == old and process(R, recipient_uid) == first["pid"],
+    def eligible(site):
+        need(process(P, publisher_uid, site + "-publisher", old) == old
+             and process(R, recipient_uid, site + "-recipient", first["pid"]) == first["pid"],
              "provider-phase-runner-unsupported", "process continuity before kill")
         state = readiness(old)
         return state if state["killEligible"] else None
-    poll(eligible, "publisher-not-background", "connection or OOM state did not become eligible", 20)
+    poll(lambda: eligible("pre-kill-readiness"), "publisher-not-background", "connection or OOM state did not become eligible", 20)
     need(grant(reread) == snapshot, "provider-phase-grant-lost", "prekill grant changed")
-    witness = eligible()
+    witness = eligible("pre-kill-immediate-readiness")
     need(witness is not None, "publisher-not-background", "immediate readiness recheck")
-    need(process(P, publisher_uid) == old and process(R, recipient_uid) == first["pid"],
+    need(process(P, publisher_uid, "pre-kill-final-publisher", old) == old
+         and process(R, recipient_uid, "pre-kill-final-recipient", first["pid"]) == first["pid"],
          "provider-phase-runner-unsupported", "identity changed immediately before kill")
     receipt["preKill"] = {**witness, "publisherPid": old, "grantCount": 1,
                           "grantSame": True, "readOnly": True, "ownerSame": True}
     shell("am", "kill", P)  # exactly one external kill, on a verified single-process synthetic package
-    poll(lambda: process(P, publisher_uid) is None,
+    poll(lambda: process(P, publisher_uid, "post-kill-wait-absent", old) is None,
          "provider-phase-runner-unsupported", "old publisher PID did not disappear", 15)
-    need(process(R, recipient_uid) == first["pid"], "recipient-died-with-provider", "recipient PID changed")
+    need(process(R, recipient_uid, "post-kill-recipient-continuity", first["pid"]) == first["pid"],
+         "recipient-died-with-provider", "recipient PID changed")
     later, _ = command("post-kill")
     same_owner(first, later)
-    new = process(P, publisher_uid)
+    new = process(P, publisher_uid, "post-kill-new-publisher", old)
     need(new is not None and new != old, "provider-phase-runner-unsupported", "new publisher PID missing")
     need(grant(later) == snapshot, "provider-phase-grant-lost", "post-kill grant changed")
     status, post = command("status", publisher=True)
@@ -398,5 +438,8 @@ finally:
     EVIDENCE.write_text(json.dumps(receipt, indent=2) + "\n")
 print("share-provider capability probe:", receipt["outcome"])
 if receipt["outcome"] != "terminal-probe-pass":
+    print("share-provider process diagnostics:", json.dumps({
+        key: receipt.get(key) for key in ("lastProcessObservation", "lastPostKillProcessObservation")
+    }, separators=(",", ":")))
     sys.exit(receipt["failure"])
 PY
