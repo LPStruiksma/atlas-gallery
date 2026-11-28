@@ -7,6 +7,12 @@ scenes=["album-date","folder-name","person-size","search-relevance","similar-rel
 standard=["Date created","Date modified","File name","Size","Random"]
 ns="{http://www.w3.org/2000/svg}"
 errors=[]
+forbidden=("Relevance has no direction", "\u00b7")
+def check_copy(text,location):
+ for pattern in forbidden:
+  if pattern in text:
+   errors.append(f"{location}: forbidden UI copy {pattern!r}")
+check_copy((root/"generate.mjs").read_text(encoding="utf-8"),"generate.mjs")
 for scene in scenes:
  for theme in ("light","dark"):
   path=root/f"{scene}-{theme}.svg"
@@ -16,6 +22,9 @@ for scene in scenes:
    continue
   def check(ok,message):
    if not ok: errors.append(f"{path.name}: {message}")
+  check_copy(path.read_text(encoding="utf-8"),path.name)
+  for t in svg.iter(ns+"text"):
+   check_copy("".join(t.itertext()),path.name)
   check(svg.get("width")=="1080" and svg.get("height")=="2340" and svg.get("viewBox")=="0 0 360 780","viewport")
   check(svg.get("data-synthetic")=="true" and svg.get("data-density-illustrative")=="3","synthetic declaration")
   check(svg.get("data-scene")==scene and svg.get("data-theme")==theme,"identity")
@@ -41,6 +50,7 @@ for scene in scenes:
   if scene in ("search-relevance","similar-relevance","search-empty"):
    check(keys==["Relevance"]+standard,"results six keys")
    check(svg.get("data-query"),"query retained")
+   check([r.get("data-key") for r in targets.get("key",[]) if r.get("data-selected")=="true"]==["Relevance"],"Relevance selected")
    check(not targets.get("direction") and not targets.get("shuffle"),"Relevance extra controls")
   if scene in ("album-date","folder-name","person-size","trash-size","font200-direction"):
    d=targets.get("direction",[])
@@ -99,4 +109,4 @@ for scene in scenes:
   for a,b in zip(targets.get("key",[]),targets.get("key",[])[1:]):
    check(float(a.get("y"))+float(a.get("height"))<=float(b.get("y")),"key rows overlap")
 if errors: raise SystemExit("\n".join(errors))
-print(f"PASS: {len(scenes)*2} SVGs; XML, geometry, states, typography and controls.")
+print(f"PASS: {len(scenes)*2} SVGs; XML, geometry, states, typography, controls and UI copy.")

@@ -8,7 +8,7 @@
 <text x="303" y="67" fill="#8C9BFF" font-size="14" font-family="Funnel Sans, sans-serif" font-weight="600">Sort</text>
 <g data-transition="keyboard">
 <rect x="16" y="142" width="328" height="187" rx="15" fill="#14152A"/>
-<text x="28" y="165" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">1 · Keyboard visible</text>
+<text x="28" y="165" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">Step 1: Keyboard visible</text>
 <rect x="28" y="177" width="304" height="43" rx="9" fill="#000000"/>
 <text x="43" y="205" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
 <rect x="28" y="229" width="304" height="90" rx="8" fill="#343955"/>
@@ -36,17 +36,17 @@
 </g>
 <g data-transition="dismissed">
 <rect x="16" y="347" width="328" height="187" rx="15" fill="#14152A"/>
-<text x="28" y="370" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">2 · IME dismissed</text>
+<text x="28" y="370" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">Step 2: IME dismissed</text>
 <rect x="28" y="382" width="304" height="43" rx="9" fill="#000000"/>
 <text x="43" y="410" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
-<text x="30" y="460" fill="#F2F3F8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">234 matching media · query retained</text>
+<text x="30" y="460" fill="#F2F3F8" font-size="13" font-family="Funnel Sans, sans-serif" font-weight="400">234 matching media</text>
 <rect x="30" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
 <rect x="131" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
 <rect x="232" y="473" width="98" height="43" rx="5" fill="#333C6C"/>
 </g>
 <g data-transition="sheet">
 <rect x="16" y="552" width="328" height="187" rx="15" fill="#14152A"/>
-<text x="28" y="575" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">3 · Sort opened</text>
+<text x="28" y="575" fill="#F2F3F8" font-size="15" font-family="Funnel Sans, sans-serif" font-weight="600">Step 3: Sort opened</text>
 <rect x="28" y="587" width="304" height="43" rx="9" fill="#000000"/>
 <text x="43" y="615" fill="#F2F3F8" font-size="16" font-family="Funnel Sans, sans-serif" font-weight="400">canal</text>
 <rect x="28" y="639" width="304" height="87" rx="12" fill="#000000"/>
