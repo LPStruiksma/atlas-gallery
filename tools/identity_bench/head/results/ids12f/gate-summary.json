@@ -1,0 +1,367 @@
+{
+ "note": "Derived from rows.json with the frozen evaluator's definitions; lists the IDs behind each gate count.",
+ "rubric_revision": "IDS-12A@096f0796",
+ "verdict": "FAIL",
+ "denominator": 20,
+ "whole_head_and_pose": {
+  "status": "FAIL",
+  "threshold": 0.9,
+  "passed": [
+   "f04",
+   "f05",
+   "f06",
+   "f07",
+   "f08",
+   "f13",
+   "f14",
+   "f15",
+   "f16"
+  ],
+  "failed": {
+   "f01": [
+    "classification=no_swap"
+   ],
+   "f02": [
+    "classification=no_swap",
+    "target pose not preserved"
+   ],
+   "f03": [
+    "classification=no_swap"
+   ],
+   "f09": [
+    "classification=no_swap"
+   ],
+   "f10": [
+    "classification=no_swap"
+   ],
+   "f11": [
+    "classification=no_swap"
+   ],
+   "f12": [
+    "classification=no_swap"
+   ],
+   "f17": [
+    "classification=no_swap"
+   ],
+   "f18": [
+    "classification=no_swap"
+   ],
+   "f19": [
+    "classification=no_swap",
+    "target pose not preserved"
+   ],
+   "f20": [
+    "classification=no_swap"
+   ]
+  }
+ },
+ "edit_fence": {
+  "status": "PASS",
+  "passed": [
+   "f01",
+   "f02",
+   "f03",
+   "f04",
+   "f05",
+   "f06",
+   "f07",
+   "f08",
+   "f09",
+   "f10",
+   "f11",
+   "f12",
+   "f13",
+   "f14",
+   "f15",
+   "f16",
+   "f17",
+   "f18",
+   "f19",
+   "f20"
+  ],
+  "failed": {}
+ },
+ "scale": {
+  "status": "PASS",
+  "threshold": 0.1,
+  "median": 0.056184006157740454,
+  "errors": {
+   "f01": 0.0593,
+   "f02": 0.0567,
+   "f03": 0.0154,
+   "f04": 0.1595,
+   "f05": 0.0557,
+   "f06": 0.0741,
+   "f07": 0.0331,
+   "f08": 0.065,
+   "f09": 0.1082,
+   "f10": 0.0135,
+   "f11": 0.0365,
+   "f12": 0.1895,
+   "f13": 0.0096,
+   "f14": 0.0157,
+   "f15": 0.1507,
+   "f16": 0.0533,
+   "f17": 0.025,
+   "f18": 0.0543,
+   "f19": 0.0687,
+   "f20": 0.0925
+  },
+  "not_measured": {}
+ },
+ "new_hair_hairline": {
+  "status": "INSUFFICIENT_EVIDENCE",
+  "not_measured": {
+   "f01": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f02": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f03": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f04": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f05": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f06": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f07": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f08": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f09": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f10": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f11": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f12": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f13": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f14": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f15": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f16": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f17": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f18": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f19": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f20": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  }
+ },
+ "neck_seam": {
+  "status": "INSUFFICIENT_EVIDENCE",
+  "not_measured": {
+   "f01": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f02": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f03": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f04": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f05": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f06": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f07": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f08": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f09": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f10": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f11": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f12": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f13": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f14": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f15": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f16": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f17": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f18": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f19": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here",
+   "f20": "two-judge blinded step is the follow-up unit; sheets and key are committed, votes are not collected here"
+  }
+ },
+ "profile_identity": {
+  "status": "INSUFFICIENT_EVIDENCE",
+  "pairs": {
+   "f01": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f02": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f03": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f04": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f05": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f06": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f07": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f08": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f09": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f10": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f11": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f12": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f13": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f14": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f15": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f16": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f17": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f18": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "not_preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f19": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   },
+   "f20": {
+    "profile_capable_sources": [
+     "glintr100"
+    ],
+    "outcomes": {
+     "sface": "preserved",
+     "glintr100": "preserved"
+    },
+    "reason": "1 profile-capable source(s); the rubric needs 2"
+   }
+  }
+ }
+}

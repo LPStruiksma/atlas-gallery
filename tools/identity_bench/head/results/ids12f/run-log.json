@@ -1,0 +1,257 @@
+{
+ "unit": "IDS-12F (#1091)",
+ "host": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.30GHz",
+  "threads": 4,
+  "ram_mb": 16087,
+  "gpu": "none"
+ },
+ "versions": {
+  "python": "3.13.18",
+  "stable-diffusion-cpp-python": "0.4.7",
+  "onnxruntime": "1.32.0",
+  "opencv-python-headless": "5.1.0.95",
+  "numpy": "2.5.5",
+  "pillow": "13.0.0"
+ },
+ "cohort_digest": "ee4f486121d1ff06aae3355b55df0dcdc10b3352db4d733340fcae60cf3afd69",
+ "fixtures": {
+  "ref_a": {
+   "seconds": 544.7,
+   "seed": 470
+  },
+  "ref_b": {
+   "seconds": 536.7,
+   "seed": 471
+  },
+  "ref_c": {
+   "seconds": 546.5,
+   "seed": 472
+  },
+  "tgt_1": {
+   "seconds": 545.5,
+   "seed": 473
+  },
+  "tgt_2": {
+   "seconds": 531.4,
+   "seed": 474
+  },
+  "tgt_3": {
+   "seconds": 525.8,
+   "seed": 475
+  },
+  "tgt_4": {
+   "seconds": 523.2,
+   "seed": 1091
+  },
+  "tgt_5": {
+   "seconds": 537.5,
+   "seed": 1092
+  },
+  "tgt_6": {
+   "seconds": 541.2,
+   "seed": 1093
+  },
+  "tgt_7": {
+   "seconds": 515.6,
+   "seed": 1094
+  },
+  "tgt_8": {
+   "seconds": 528.0,
+   "seed": 1095
+  },
+  "ref_d": {
+   "seconds": 527.6,
+   "seed": 1096
+  },
+  "ref_e": {
+   "seconds": 519.9,
+   "seed": 1097
+  }
+ },
+ "fixture_peak_rss_mb": 10076,
+ "pairs": {
+  "f01": {
+   "candidate_wall_s": 731.5,
+   "candidate_status": "ok",
+   "candidate_generate_s": 714.1,
+   "candidate_peak_rss_mb": 10179,
+   "baseline_wall_s": 113.3,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T22:16:26Z"
+  },
+  "f02": {
+   "candidate_wall_s": 727.2,
+   "candidate_status": "ok",
+   "candidate_generate_s": 716.6,
+   "candidate_peak_rss_mb": 10509,
+   "baseline_wall_s": 6.5,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T22:28:37Z"
+  },
+  "f03": {
+   "candidate_wall_s": 718.9,
+   "candidate_status": "ok",
+   "candidate_generate_s": 707.6,
+   "candidate_peak_rss_mb": 10513,
+   "baseline_wall_s": 5.9,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T22:40:44Z"
+  },
+  "f04": {
+   "candidate_wall_s": 718.9,
+   "candidate_status": "ok",
+   "candidate_generate_s": 708.0,
+   "candidate_peak_rss_mb": 10513,
+   "baseline_wall_s": 6.2,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T22:52:44Z"
+  },
+  "f05": {
+   "candidate_wall_s": 731.5,
+   "candidate_status": "ok",
+   "candidate_generate_s": 720.1,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.6,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T23:04:43Z"
+  },
+  "f06": {
+   "candidate_wall_s": 716.4,
+   "candidate_status": "ok",
+   "candidate_generate_s": 706.5,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 5.6,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T23:16:55Z"
+  },
+  "f07": {
+   "candidate_wall_s": 704.9,
+   "candidate_status": "ok",
+   "candidate_generate_s": 693.5,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.4,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T23:28:53Z"
+  },
+  "f08": {
+   "candidate_wall_s": 710.8,
+   "candidate_status": "ok",
+   "candidate_generate_s": 699.3,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.6,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T23:40:38Z"
+  },
+  "f09": {
+   "candidate_wall_s": 711.4,
+   "candidate_status": "ok",
+   "candidate_generate_s": 700.4,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.5,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-27T23:52:29Z"
+  },
+  "f10": {
+   "candidate_wall_s": 703.0,
+   "candidate_status": "ok",
+   "candidate_generate_s": 692.2,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.2,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T00:04:21Z"
+  },
+  "f11": {
+   "candidate_wall_s": 710.8,
+   "candidate_status": "ok",
+   "candidate_generate_s": 700.0,
+   "candidate_peak_rss_mb": 10519,
+   "baseline_wall_s": 6.2,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T00:16:04Z"
+  },
+  "f12": {
+   "candidate_wall_s": 862.9,
+   "candidate_status": "ok",
+   "candidate_generate_s": 690.6,
+   "candidate_peak_rss_mb": 10284,
+   "baseline_wall_s": 5.1,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T02:26:07Z"
+  },
+  "f13": {
+   "candidate_wall_s": 701.4,
+   "candidate_status": "ok",
+   "candidate_generate_s": 690.2,
+   "candidate_peak_rss_mb": 10608,
+   "baseline_wall_s": 4.9,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T02:40:30Z"
+  },
+  "f14": {
+   "candidate_wall_s": 697.4,
+   "candidate_status": "ok",
+   "candidate_generate_s": 686.3,
+   "candidate_peak_rss_mb": 10620,
+   "baseline_wall_s": 5.4,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T02:52:12Z"
+  },
+  "f15": {
+   "candidate_wall_s": 690.6,
+   "candidate_status": "ok",
+   "candidate_generate_s": 680.9,
+   "candidate_peak_rss_mb": 10620,
+   "baseline_wall_s": 5.5,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T03:03:50Z"
+  },
+  "f16": {
+   "candidate_wall_s": 695.5,
+   "candidate_status": "ok",
+   "candidate_generate_s": 684.1,
+   "candidate_peak_rss_mb": 10620,
+   "baseline_wall_s": 5.3,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T03:15:21Z"
+  },
+  "f17": {
+   "candidate_wall_s": 701.3,
+   "candidate_status": "ok",
+   "candidate_generate_s": 689.2,
+   "candidate_peak_rss_mb": 10620,
+   "baseline_wall_s": 5.1,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T03:26:58Z"
+  },
+  "f18": {
+   "candidate_wall_s": 703.3,
+   "candidate_status": "ok",
+   "candidate_generate_s": 692.4,
+   "candidate_peak_rss_mb": 10621,
+   "baseline_wall_s": 5.3,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T03:38:39Z"
+  },
+  "f19": {
+   "candidate_wall_s": 702.6,
+   "candidate_status": "ok",
+   "candidate_generate_s": 691.2,
+   "candidate_peak_rss_mb": 10621,
+   "baseline_wall_s": 6.4,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T03:50:24Z"
+  },
+  "f20": {
+   "candidate_wall_s": 708.1,
+   "candidate_status": "ok",
+   "candidate_generate_s": 697.0,
+   "candidate_peak_rss_mb": 10621,
+   "baseline_wall_s": 5.1,
+   "baseline_status": "ok",
+   "candidate_started": "2026-11-28T04:02:06Z"
+  }
+ },
+ "candidate_wall_s_total": 14348.4,
+ "candidate_wall_s_median": 709.45
+}
